@@ -245,7 +245,7 @@ AS $$
       expr: COUNT(DISTINCT vendor_id)
       comment: "Number of unique vendors associated with quality deviations"
     - name: "distinct_customers_affected"
-      expr: COUNT(DISTINCT customer_account_id)
+      expr: COUNT(DISTINCT account_id)
       comment: "Number of unique customer accounts affected by quality deviations"
 $$;
 
@@ -325,7 +325,7 @@ AS $$
       expr: ROUND(100.0 * SUM(CASE WHEN gmp_compliance = TRUE THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
       comment: "Percentage of CAPAs addressing GMP compliance issues"
     - name: "distinct_quality_deviations_addressed"
-      expr: COUNT(DISTINCT capa_quality_deviation_id)
+      expr: COUNT(DISTINCT quality_deviation_id)
       comment: "Number of unique quality deviations addressed by CAPAs"
     - name: "distinct_products_improved"
       expr: COUNT(DISTINCT chemical_product_id)

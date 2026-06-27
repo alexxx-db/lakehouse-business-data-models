@@ -221,7 +221,7 @@ AS $$
       expr: COUNT(1)
       comment: "Total number of open AR items"
     - name: "unique_customers"
-      expr: COUNT(DISTINCT primary_ar_account_id)
+      expr: COUNT(DISTINCT account_id)
       comment: "Number of unique customer accounts with open AR"
     - name: "unique_invoices"
       expr: COUNT(DISTINCT invoice_id)

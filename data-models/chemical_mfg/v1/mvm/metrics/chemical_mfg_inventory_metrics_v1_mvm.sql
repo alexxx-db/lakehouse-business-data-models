@@ -70,7 +70,7 @@ AS $$
       expr: ROUND(100.0 * SUM(CAST(blocked_quantity AS DOUBLE)) / NULLIF(SUM(CAST(on_hand_quantity AS DOUBLE)), 0), 2)
       comment: "Percentage of on-hand inventory that is blocked (quality risk indicator)"
     - name: "distinct_material_count"
-      expr: COUNT(DISTINCT primary_stock_material_master_id)
+      expr: COUNT(DISTINCT material_master_id)
       comment: "Number of distinct materials in stock (SKU complexity)"
     - name: "distinct_lot_count"
       expr: COUNT(DISTINCT lot_id)

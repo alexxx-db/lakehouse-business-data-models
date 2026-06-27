@@ -404,7 +404,7 @@ AS $$
       expr: AVG(CAST(lot_size AS DOUBLE))
       comment: "Average lot size of planned orders - manufacturing efficiency and inventory optimization metric"
     - name: "distinct_materials_planned"
-      expr: COUNT(DISTINCT primary_planned_material_master_id)
+      expr: COUNT(DISTINCT material_master_id)
       comment: "Number of unique materials in planned orders - portfolio complexity and planning breadth"
     - name: "distinct_vendors_planned"
       expr: COUNT(DISTINCT vendor_id)
