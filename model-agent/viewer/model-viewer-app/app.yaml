@@ -1,4 +1,0 @@
-command: [node, start.js]
-env:
-  - name: PORT
-    value: "8000"
