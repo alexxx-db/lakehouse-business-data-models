@@ -1,0 +1,279 @@
+**Model Quality Score: 48.28/100**
+
+**Static Analysis Findings (1 actionable):**
+  - [SA:denormalized_natural_key] Product 'content.lifecycle_event' has both FK 'version_id' and natural key 'version_number' for entity 'version'. The natural key is redundant — use the FK join instead.
+
+**PRIORITY 1 — connect_table: distribution.ott_platform** — add column partner_id (BIGINT) with FK to distribution.partner.partner_id — OTT platforms are operated by or associated with distribution partners and need linkage for carriage and delivery tracking.
+**PRIORITY 2 — connect_table: scheduling.channel** — add column ott_platform_id (BIGINT) with FK to distribution.ott_platform.ott_platform_id — channels are distributed via OTT platforms and need platform association for FAST and simulcast routing.
+**PRIORITY 3 — connect_table: scheduling.daypart** — add column channel_id (BIGINT) with FK to scheduling.channel.channel_id — dayparts are typically defined per channel and need channel context for programming grids.
+**PRIORITY 4 — connect_table: content.rating** — add column genre_id (BIGINT) with FK to content.genre.genre_id — ratings often correlate with genre classification context. Alternative: leave rating as a pure reference table if intentional — flag only if rating is fully isolated; currently it has inbound FKs only so it is a valid orphan reference table.
+**PRIORITY 5 — remove_fk: PRIORITY 4 is invalid** — rating is a valid reference table with inbound FKs only; ignore PRIORITY 4.
+**PRIORITY 6 — connect_table: talent.talent_agency** — add column account_id (BIGINT) with FK to sales.account.account_id — talent agencies are business entities that should link to the master account record for commercial relationship tracking.
+**PRIORITY 7 — connect_table: mediaasset.storage_location** — add column ott_platform_id (BIGINT) with FK to distribution.ott_platform.ott_platform_id — storage locations are tied to delivery infrastructure for origin server and edge cache routing.
+**PRIORITY 8 — connect_table: audience.demographic_segment** — add column parent_demographic_segment_id (BIGINT) with FK to audience.demographic_segment.demographic_segment_id — demographic segments commonly nest (e.g., A18-49 contains A18-34) and need hierarchical linkage.
+**PRIORITY 9 — connect_table: scheduling.channel** — add column delivery_channel_id (BIGINT) with FK to distribution.delivery_channel.delivery_channel_id — linear channels need explicit linkage to their delivery channel for distribution routing.
+**PRIORITY 10 — connect_table: subscriber.household** — add column subscription_id (BIGINT) with FK to subscriber.subscription.subscription_id — households hold the primary subscription and need direct linkage beyond subscriber-level association.
+**PRIORITY 11 — connect_table: rights.holder** — add column account_id (BIGINT) with FK to sales.account.account_id — rights holders are commercial entities often represented as accounts.
+**PRIORITY 12 — connect_table: rights.royalty_statement** — add column royalty_rule_id (BIGINT) with FK to rights.royalty_rule.royalty_rule_id — royalty statements are generated based on royalty rules and need direct rule linkage.
+**PRIORITY 13 — connect_table: production.budget** — add column content_episode_id (BIGINT) with FK to content.content_episode.content_episode_id — budgets are commonly scoped to episodes in addition to projects.
+**PRIORITY 14 — connect_table: production.crew_assignment** — add column compensation_structure_id (BIGINT) with FK to talent.compensation_structure.compensation_structure_id — crew assignments reference compensation structures for payment processing.
+**PRIORITY 15 — connect_table: scheduling.playout_event** — add column ad_break_id (BIGINT) with FK to scheduling.ad_break.ad_break_id — playout events execute ad breaks and need direct break reference for SCTE-35 cue tracking.
+**PRIORITY 16 — connect_table: sales.ad_order** — add column rate_card_id (BIGINT) with FK to advertising.rate_card.rate_card_id — ad orders are priced against rate cards and need direct rate card linkage.
+**PRIORITY 17 — connect_table: advertising.advertising_campaign** — add column rate_card_id (BIGINT) with FK to advertising.rate_card.rate_card_id — campaigns use rate card pricing and need linkage for billing reconciliation.
+**PRIORITY 18 — connect_table: distribution.deal** — add column partner_id (BIGINT) with FK to distribution.partner.partner_id — distribution deals are negotiated with partners and need direct partner linkage in addition to account.
+**PRIORITY 19 — connect_table: content.acquisition** — add column holder_id (BIGINT) with FK to rights.holder.holder_id — acquisitions are sourced from rights holders and need direct holder linkage.
+**PRIORITY 20 — connect_table: subscriber.subscription_plan** — add column rate_card_id (BIGINT) with FK to advertising.rate_card.rate_card_id — subscription plans tied to ad-supported tiers need rate card pricing references.
+**PRIORITY 21 — connect_table: talent.talent_profile** — add column representation_agreement_id (BIGINT) with FK to talent.representation_agreement.representation_agreement_id — talent profiles need direct link to active representation agreement.
+**PRIORITY 22 — rename_product: sales.account** — rename to account because the SELF-REF column parent_account_sales_account_id contains redundant domain qualifier; rename the FK column parent_account_sales_account_id to parent_account_id instead.
+**PRIORITY 23 — rename_attribute: sales.account** — rename column parent_account_sales_account_id to parent_account_id
+**PRIORITY 24 — connect_table: content.package_title** — add column version_id (BIGINT) with FK to content.version.version_id — package contents often reference specific versions, not just titles.
+**PRIORITY 25 — connect_table: distribution.delivery_event** — add column carriage_agreement_id (BIGINT) with FK to distribution.carriage_agreement.carriage_agreement_id — delivery events execute against carriage agreements and need agreement linkage for SLA tracking.
+**PRIORITY 26 — connect_table: mediaasset.archive_record** — add column retention_policy_id (BIGINT) with FK to mediaasset.storage_location.storage_location_id — archive records need retention/storage policy linkage; storage_location may suffice but verify a dedicated retention reference is not needed.
+**PRIORITY 27 — connect_table: rights.clearance_request** — add column residual_id (BIGINT) with FK to rights.residual.residual_id — clearance requests for re-use often trigger residual obligations.
+**PRIORITY 28 — connect_table: audience.panel** — add column ott_platform_id (BIGINT) with FK to distribution.ott_platform.ott_platform_id — measurement panels are often platform-specific for cross-platform measurement.
+**PRIORITY 29 — connect_table: scheduling.epg_entry** — add column content_episode_id (BIGINT) with FK to content.content_episode.content_episode_id — EPG entries identify the airing episode and need direct episode reference.
+**PRIORITY 30 — connect_table: scheduling.epg_entry** — add column title_id (BIGINT) with FK to content.title.title_id — EPG entries represent scheduled titles and need direct title linkage.
+**PRIORITY 31 — connect_table: scheduling.schedule_slot** — add column content_episode_id (BIGINT) with FK to content.content_episode.content_episode_id — schedule slots air specific episodes and need direct episode linkage.
+**PRIORITY 32 — connect_table: scheduling.schedule_slot** — add column title_id (BIGINT) with FK to content.title.title_id — schedule slots are populated with titles and need direct title FK.
+**PRIORITY 33 — connect_table: scheduling.ad_break** — add column playout_event_id (BIGINT) with FK to scheduling.playout_event.playout_event_id — ad breaks are realized through playout events and need linkage for executed-vs-scheduled reconciliation.
+**PRIORITY 34 — connect_table: sales.proposal_line** — add column ad_inventory_id (BIGINT) with FK to advertising.ad_inventory.ad_inventory_id — proposal lines commit specific ad inventory and need direct inventory reference.
+**PRIORITY 35 — connect_table: advertising.ad_inventory** — add column ott_platform_id (BIGINT) with FK to distribution.ott_platform.ott_platform_id — ad inventory exists per OTT platform for digital ad sales.
+**PRIORITY 36 — connect_table: subscriber.entitlement** — add column ott_platform_id (BIGINT) with FK to distribution.ott_platform.ott_platform_id — entitlements are platform-scoped and need direct platform linkage.
+**PRIORITY 37 — connect_table: talent.role** — add column content_episode_id (BIGINT) with FK to content.content_episode.content_episode_id — roles are often defined per episode for guest stars and recurring characters.
+**PRIORITY 38 — connect_table: rights.holdback** — add column delivery_channel_id (BIGINT) with FK to distribution.delivery_channel.delivery_channel_id — holdbacks restrict specific delivery channels and need channel linkage.
+**PRIORITY 39 — connect_table: content.lifecycle_event** — add column asset_version_id (BIGINT) with FK to mediaasset.asset_version.asset_version_id — lifecycle events often track version-specific transitions.
+**PRIORITY 40 — connect_table: production.script** — add column content_episode_id (BIGINT) with FK to content.content_episode.content_episode_id — scripts are written per episode and need episode linkage.
+**PRIORITY 41 — connect_table: talent.deal_memo** — add column project_id (BIGINT) with FK to production.project.project_id — deal memos are negotiated for specific projects and need project linkage.
+**PRIORITY 42 — connect_table: advertising.creative** — add column asset_version_id (BIGINT) with FK to mediaasset.asset_version.asset_version_id — creatives are specific versions of media assets and need version-level linkage.
+**PRIORITY 43 — connect_table: sales.upfront_deal** — add column proposal_id (BIGINT) with FK to sales.proposal.proposal_id — upfront deals originate from proposals and need proposal linkage.
+**PRIORITY 44 — connect_table: rights.royalty_rule** — add column holder_id (BIGINT) with FK to rights.holder.holder_id — royalty rules apply to specific rights holders.
+**PRIORITY 45 — connect_table: subscriber.churn_event** — add column subscription_plan_id (BIGINT) with FK to subscriber.subscription_plan.subscription_plan_id — churn analysis requires plan-level linkage for retention metrics.
+**PRIORITY 46 — connect_table: audience.viewership_record** — add column subscription_plan_id (BIGINT) with FK to subscriber.subscription_plan.subscription_plan_id — viewership analysis by plan tier needs plan linkage.
+**PRIORITY 47 — connect_table: production.deliverable** — add column asset_version_id (BIGINT) with FK to mediaasset.asset_version.asset_version_id — deliverables are specific asset versions and need version-level FK in addition to media_asset.
+**PRIORITY 48 — connect_table: distribution.carriage_agreement** — add column ott_platform_id (BIGINT) with FK to distribution.ott_platform.ott_platform_id — carriage agreements increasingly cover OTT distribution and need platform linkage.
+**PRIORITY 49 — connect_table: rights.music_sync_license** — add column production_episode_id (BIGINT) with FK to production.production_episode.production_episode_id — music sync licenses are typically cleared per episode of use.
+**PRIORITY 50 — connect_table: sales.ad_spot** — add column delivery_event_id (BIGINT) with FK to distribution.delivery_event.delivery_event_id — ad spot delivery confirmation requires delivery event linkage.
+
+Other known issues from static analysis (220):
+  - Attribute '_created_at' in content.title is not valid snake_case
+  - Attribute '_updated_at' in content.title is not valid snake_case
+  - Attribute '_created_at' in content.series is not valid snake_case
+  - Attribute '_updated_at' in content.series is not valid snake_case
+  - Attribute '_created_at' in content.season is not valid snake_case
+  - Attribute '_updated_at' in content.season is not valid snake_case
+  - Attribute '_created_at' in content.content_episode is not valid snake_case
+  - Attribute '_updated_at' in content.content_episode is not valid snake_case
+  - Attribute '_created_at' in content.version is not valid snake_case
+  - Attribute '_updated_at' in content.version is not valid snake_case
+  - Attribute '_created_at' in content.genre is not valid snake_case
+  - Attribute '_updated_at' in content.genre is not valid snake_case
+  - Attribute '_created_at' in content.rating is not valid snake_case
+  - Attribute '_updated_at' in content.rating is not valid snake_case
+  - Attribute '_created_at' in content.talent_credit is not valid snake_case
+  - Attribute '_updated_at' in content.talent_credit is not valid snake_case
+  - Attribute '_created_at' in content.acquisition is not valid snake_case
+  - Attribute '_updated_at' in content.acquisition is not valid snake_case
+  - Attribute '_created_at' in content.lifecycle_event is not valid snake_case
+  - Attribute '_updated_at' in content.lifecycle_event is not valid snake_case
+  - Attribute '_created_at' in content.artwork is not valid snake_case
+  - Attribute '_updated_at' in content.artwork is not valid snake_case
+  - Attribute '_created_at' in content.package is not valid snake_case
+  - Attribute '_updated_at' in content.package is not valid snake_case
+  - Attribute '_created_at' in production.project is not valid snake_case
+  - Attribute '_updated_at' in production.project is not valid snake_case
+  - Attribute '_created_at' in production.budget is not valid snake_case
+  - Attribute '_updated_at' in production.budget is not valid snake_case
+  - Attribute '_created_at' in production.budget_line is not valid snake_case
+  - Attribute '_updated_at' in production.budget_line is not valid snake_case
+  - Attribute '_created_at' in production.crew_assignment is not valid snake_case
+  - Attribute '_updated_at' in production.crew_assignment is not valid snake_case
+  - Attribute '_created_at' in production.production_episode is not valid snake_case
+  - Attribute '_updated_at' in production.production_episode is not valid snake_case
+  - Attribute '_created_at' in production.script is not valid snake_case
+  - Attribute '_updated_at' in production.script is not valid snake_case
+  - Attribute '_created_at' in production.deliverable is not valid snake_case
+  - Attribute '_updated_at' in production.deliverable is not valid snake_case
+  - Attribute '_created_at' in production.qc_review is not valid snake_case
+  - Attribute '_updated_at' in production.qc_review is not valid snake_case
+  - Attribute '_created_at' in production.milestone is not valid snake_case
+  - Attribute '_updated_at' in production.milestone is not valid snake_case
+  - Attribute '_created_at' in production.cost_transaction is not valid snake_case
+  - Attribute '_updated_at' in production.cost_transaction is not valid snake_case
+  - Attribute '_created_at' in scheduling.channel is not valid snake_case
+  - Attribute '_updated_at' in scheduling.channel is not valid snake_case
+  - Attribute '_created_at' in scheduling.daypart is not valid snake_case
+  - Attribute '_updated_at' in scheduling.daypart is not valid snake_case
+  - Attribute '_created_at' in scheduling.program_schedule is not valid snake_case
+  - Attribute '_updated_at' in scheduling.program_schedule is not valid snake_case
+  - Attribute '_created_at' in scheduling.schedule_slot is not valid snake_case
+  - Attribute '_updated_at' in scheduling.schedule_slot is not valid snake_case
+  - Attribute '_created_at' in scheduling.epg_entry is not valid snake_case
+  - Attribute '_updated_at' in scheduling.epg_entry is not valid snake_case
+  - Attribute '_created_at' in scheduling.ad_break is not valid snake_case
+  - Attribute '_updated_at' in scheduling.ad_break is not valid snake_case
+  - Attribute '_created_at' in scheduling.playout_event is not valid snake_case
+  - Attribute '_updated_at' in scheduling.playout_event is not valid snake_case
+  - Attribute '_created_at' in scheduling.program_rundown is not valid snake_case
+  - Attribute '_updated_at' in scheduling.program_rundown is not valid snake_case
+  - Attribute '_created_at' in scheduling.rundown_item is not valid snake_case
+  - Attribute '_updated_at' in scheduling.rundown_item is not valid snake_case
+  - Attribute '_created_at' in scheduling.channel_license is not valid snake_case
+  - Attribute '_updated_at' in scheduling.channel_license is not valid snake_case
+  - Attribute '_created_at' in distribution.ott_platform is not valid snake_case
+  - Attribute '_source_code' in distribution.ott_platform is not valid snake_case
+  - Attribute '_updated_at' in distribution.ott_platform is not valid snake_case
+  - Attribute '_created_at' in distribution.streaming_endpoint is not valid snake_case
+  - Attribute '_source_code' in distribution.streaming_endpoint is not valid snake_case
+  - Attribute '_updated_at' in distribution.streaming_endpoint is not valid snake_case
+  - Attribute '_created_at' in distribution.playback_session is not valid snake_case
+  - Attribute '_source_code' in distribution.playback_session is not valid snake_case
+  - Attribute '_updated_at' in distribution.playback_session is not valid snake_case
+  - Attribute '_created_at' in distribution.partner is not valid snake_case
+  - Attribute '_source_code' in distribution.partner is not valid snake_case
+  - Attribute '_updated_at' in distribution.partner is not valid snake_case
+  - Attribute '_created_at' in distribution.carriage_agreement is not valid snake_case
+  - Attribute '_source_code' in distribution.carriage_agreement is not valid snake_case
+  - Attribute '_updated_at' in distribution.carriage_agreement is not valid snake_case
+  - Attribute '_created_at' in distribution.delivery_channel is not valid snake_case
+  - Attribute '_source_code' in distribution.delivery_channel is not valid snake_case
+  - Attribute '_updated_at' in distribution.delivery_channel is not valid snake_case
+  - Attribute '_created_at' in distribution.delivery_event is not valid snake_case
+  - Attribute '_source_code' in distribution.delivery_event is not valid snake_case
+  - Attribute '_updated_at' in distribution.delivery_event is not valid snake_case
+  - Attribute '_created_at' in distribution.deal is not valid snake_case
+  - Attribute '_source_code' in distribution.deal is not valid snake_case
+  - Attribute '_updated_at' in distribution.deal is not valid snake_case
+  - Attribute '_created_at' in distribution.content_delivery_order is not valid snake_case
+  - Attribute '_source_code' in distribution.content_delivery_order is not valid snake_case
+  - Attribute '_updated_at' in distribution.content_delivery_order is not valid snake_case
+  - Attribute '_created_at' in mediaasset.media_asset is not valid snake_case
+  - Attribute '_updated_at' in mediaasset.media_asset is not valid snake_case
+  - Attribute '_created_at' in mediaasset.asset_version is not valid snake_case
+  - Attribute '_updated_at' in mediaasset.asset_version is not valid snake_case
+  - Attribute '_created_at' in mediaasset.ingest_job is not valid snake_case
+  - Attribute '_updated_at' in mediaasset.ingest_job is not valid snake_case
+  - Attribute '_created_at' in mediaasset.transcode_job is not valid snake_case
+  - Attribute '_updated_at' in mediaasset.transcode_job is not valid snake_case
+  - Attribute '_created_at' in mediaasset.qc_inspection is not valid snake_case
+  - Attribute '_updated_at' in mediaasset.qc_inspection is not valid snake_case
+  - Attribute '_created_at' in mediaasset.storage_location is not valid snake_case
+  - Attribute '_updated_at' in mediaasset.storage_location is not valid snake_case
+  - Attribute '_created_at' in mediaasset.asset_storage_assignment is not valid snake_case
+  - Attribute '_updated_at' in mediaasset.asset_storage_assignment is not valid snake_case
+  - Attribute '_created_at' in mediaasset.archive_record is not valid snake_case
+  - Attribute '_updated_at' in mediaasset.archive_record is not valid snake_case
+  - Attribute '_created_at' in rights.license_agreement is not valid snake_case
+  - Attribute '_updated_at' in rights.license_agreement is not valid snake_case
+  - Attribute '_created_at' in rights.grant is not valid snake_case
+  - Attribute '_updated_at' in rights.grant is not valid snake_case
+  - Attribute '_created_at' in rights.holdback is not valid snake_case
+  - Attribute '_updated_at' in rights.holdback is not valid snake_case
+  - Attribute '_created_at' in rights.royalty_rule is not valid snake_case
+  - Attribute '_updated_at' in rights.royalty_rule is not valid snake_case
+  - Attribute '_created_at' in rights.royalty_statement is not valid snake_case
+  - Attribute '_updated_at' in rights.royalty_statement is not valid snake_case
+  - Attribute '_created_at' in rights.royalty_statement_line is not valid snake_case
+  - Attribute '_updated_at' in rights.royalty_statement_line is not valid snake_case
+  - Attribute '_created_at' in rights.residual is not valid snake_case
+  - Attribute '_updated_at' in rights.residual is not valid snake_case
+  - Attribute '_created_at' in rights.music_sync_license is not valid snake_case
+  - Attribute '_updated_at' in rights.music_sync_license is not valid snake_case
+  - Attribute '_created_at' in rights.clearance_request is not valid snake_case
+  - Attribute '_updated_at' in rights.clearance_request is not valid snake_case
+  - Attribute '_created_at' in rights.holder is not valid snake_case
+  - Attribute '_updated_at' in rights.holder is not valid snake_case
+  - Attribute '_created_at' in advertising.ad_inventory is not valid snake_case
+  - Attribute '_updated_at' in advertising.ad_inventory is not valid snake_case
+  - Attribute '_created_at' in advertising.rate_card is not valid snake_case
+  - Attribute '_updated_at' in advertising.rate_card is not valid snake_case
+  - Attribute '_created_at' in subscriber.subscriber is not valid snake_case
+  - Attribute '_updated_at' in subscriber.subscriber is not valid snake_case
+  - Attribute '_created_at' in subscriber.household is not valid snake_case
+  - Attribute '_updated_at' in subscriber.household is not valid snake_case
+  - Attribute '_created_at' in subscriber.subscription_plan is not valid snake_case
+  - Attribute '_updated_at' in subscriber.subscription_plan is not valid snake_case
+  - Attribute '_created_at' in subscriber.subscription is not valid snake_case
+  - Attribute '_updated_at' in subscriber.subscription is not valid snake_case
+  - Attribute '_created_at' in subscriber.device_registration is not valid snake_case
+  - Attribute '_updated_at' in subscriber.device_registration is not valid snake_case
+  - Attribute '_created_at' in subscriber.entitlement is not valid snake_case
+  - Attribute '_updated_at' in subscriber.entitlement is not valid snake_case
+  - Attribute '_created_at' in subscriber.viewer_profile is not valid snake_case
+  - Attribute '_updated_at' in subscriber.viewer_profile is not valid snake_case
+  - Attribute '_created_at' in subscriber.churn_event is not valid snake_case
+  - Attribute '_updated_at' in subscriber.churn_event is not valid snake_case
+  - Attribute '_created_at' in subscriber.payment_instrument is not valid snake_case
+  - Attribute '_updated_at' in subscriber.payment_instrument is not valid snake_case
+  - Attribute '_created_at' in audience.nielsen_rating is not valid snake_case
+  - Attribute '_updated_at' in audience.nielsen_rating is not valid snake_case
+  - Attribute '_created_at' in audience.demographic_segment is not valid snake_case
+  - Attribute '_updated_at' in audience.demographic_segment is not valid snake_case
+  - Attribute '_created_at' in audience.panel is not valid snake_case
+  - Attribute '_updated_at' in audience.panel is not valid snake_case
+  - Attribute '_created_at' in audience.viewership_record is not valid snake_case
+  - Attribute '_updated_at' in audience.viewership_record is not valid snake_case
+  - Attribute '_created_at' in audience.reach_frequency_report is not valid snake_case
+  - Attribute '_updated_at' in audience.reach_frequency_report is not valid snake_case
+  - Attribute '_created_at' in audience.engagement_event is not valid snake_case
+  - Attribute '_updated_at' in audience.engagement_event is not valid snake_case
+  - Attribute '_created_at' in audience.audience_profile is not valid snake_case
+  - Attribute '_updated_at' in audience.audience_profile is not valid snake_case
+  - Attribute '_created_at' in audience.cross_platform_measurement is not valid snake_case
+  - Attribute '_updated_at' in audience.cross_platform_measurement is not valid snake_case
+  - Attribute '_created_at' in talent.talent_profile is not valid snake_case
+  - Attribute '_updated_at' in talent.talent_profile is not valid snake_case
+  - Attribute '_created_at' in talent.contract is not valid snake_case
+  - Attribute '_updated_at' in talent.contract is not valid snake_case
+  - Attribute '_created_at' in talent.compensation_structure is not valid snake_case
+  - Attribute '_updated_at' in talent.compensation_structure is not valid snake_case
+  - Attribute '_created_at' in talent.residual_eligibility is not valid snake_case
+  - Attribute '_updated_at' in talent.residual_eligibility is not valid snake_case
+  - Attribute '_created_at' in talent.residual_payment is not valid snake_case
+  - Attribute '_updated_at' in talent.residual_payment is not valid snake_case
+  - Attribute '_created_at' in talent.deal_memo is not valid snake_case
+  - Attribute '_updated_at' in talent.deal_memo is not valid snake_case
+  - Attribute '_created_at' in talent.role is not valid snake_case
+  - Attribute '_updated_at' in talent.role is not valid snake_case
+  - Attribute '_created_at' in talent.talent_agency is not valid snake_case
+  - Attribute '_updated_at' in talent.talent_agency is not valid snake_case
+  - Attribute '_created_at' in talent.representation_agreement is not valid snake_case
+  - Attribute '_updated_at' in talent.representation_agreement is not valid snake_case
+  - Attribute '_created_at' in talent.clearance is not valid snake_case
+  - Attribute '_updated_at' in talent.clearance is not valid snake_case
+  - Attribute '_created_at' in sales.ad_order is not valid snake_case
+  - Attribute '_updated_at' in sales.ad_order is not valid snake_case
+  - Attribute '_created_at' in sales.ad_order_line is not valid snake_case
+  - Attribute '_updated_at' in sales.ad_order_line is not valid snake_case
+  - Attribute '_created_at' in sales.sales_campaign is not valid snake_case
+  - Attribute '_updated_at' in sales.sales_campaign is not valid snake_case
+  - Attribute '_created_at' in sales.advertiser is not valid snake_case
+  - Attribute '_updated_at' in sales.advertiser is not valid snake_case
+  - Attribute '_created_at' in sales.sales_agency is not valid snake_case
+  - Attribute '_updated_at' in sales.sales_agency is not valid snake_case
+  - Attribute '_created_at' in sales.ad_spot is not valid snake_case
+  - Attribute '_updated_at' in sales.ad_spot is not valid snake_case
+  - Attribute '_created_at' in sales.upfront_deal is not valid snake_case
+  - Attribute '_updated_at' in sales.upfront_deal is not valid snake_case
+  - Attribute '_created_at' in sales.account is not valid snake_case
+  - Attribute '_updated_at' in sales.account is not valid snake_case
+  - Attribute '_created_at' in sales.opportunity is not valid snake_case
+  - Attribute '_updated_at' in sales.opportunity is not valid snake_case
+  - Attribute '_created_at' in sales.proposal_line is not valid snake_case
+  - Attribute '_updated_at' in sales.proposal_line is not valid snake_case
+  - Attribute content.title.aspect_ratio has unrecognized data type 'NUMERIC' — expected a valid Spark SQL type (STRING, BIGINT, INT, DECIMAL, BOOLEAN, DATE, TIMESTAMP, etc.)
+  - Attribute content.series.aspect_ratio has unrecognized data type 'NUMERIC' — expected a valid Spark SQL type (STRING, BIGINT, INT, DECIMAL, BOOLEAN, DATE, TIMESTAMP, etc.)
+  - Attribute content.content_episode.aspect_ratio has unrecognized data type 'NUMERIC' — expected a valid Spark SQL type (STRING, BIGINT, INT, DECIMAL, BOOLEAN, DATE, TIMESTAMP, etc.)
+  - Attribute content.version.aspect_ratio has unrecognized data type 'NUMERIC' — expected a valid Spark SQL type (STRING, BIGINT, INT, DECIMAL, BOOLEAN, DATE, TIMESTAMP, etc.)
+  - Attribute content.artwork.aspect_ratio has unrecognized data type 'NUMERIC' — expected a valid Spark SQL type (STRING, BIGINT, INT, DECIMAL, BOOLEAN, DATE, TIMESTAMP, etc.)
+  - Attribute production.deliverable.aspect_ratio has unrecognized data type 'NUMERIC' — expected a valid Spark SQL type (STRING, BIGINT, INT, DECIMAL, BOOLEAN, DATE, TIMESTAMP, etc.)
+  - Attribute scheduling.schedule_slot.aspect_ratio has unrecognized data type 'NUMERIC' — expected a valid Spark SQL type (STRING, BIGINT, INT, DECIMAL, BOOLEAN, DATE, TIMESTAMP, etc.)
+  - Attribute distribution.delivery_channel.aspect_ratio has unrecognized data type 'NUMERIC' — expected a valid Spark SQL type (STRING, BIGINT, INT, DECIMAL, BOOLEAN, DATE, TIMESTAMP, etc.)
+  - Attribute mediaasset.media_asset.aspect_ratio has unrecognized data type 'NUMERIC' — expected a valid Spark SQL type (STRING, BIGINT, INT, DECIMAL, BOOLEAN, DATE, TIMESTAMP, etc.)
+  - Attribute mediaasset.asset_version.aspect_ratio has unrecognized data type 'NUMERIC' — expected a valid Spark SQL type (STRING, BIGINT, INT, DECIMAL, BOOLEAN, DATE, TIMESTAMP, etc.)
+  - Attribute mediaasset.ingest_job.aspect_ratio has unrecognized data type 'NUMERIC' — expected a valid Spark SQL type (STRING, BIGINT, INT, DECIMAL, BOOLEAN, DATE, TIMESTAMP, etc.)
+  - Attribute mediaasset.qc_inspection.detected_aspect_ratio has unrecognized data type 'NUMERIC' — expected a valid Spark SQL type (STRING, BIGINT, INT, DECIMAL, BOOLEAN, DATE, TIMESTAMP, etc.)
+  - 1 attribute(s) contain banned boilerplate phrases (Fortune N, multinational, enterprise-wide, cross-company, group reporting). Clean descriptions.
+  - 26 attribute(s) match person-data patterns but lack pii_ tags
+  - 1 attribute(s) have pipe-enum value_regex with >8 values — consider creating a reference product instead
+
+Deterministic score: 48.28/100 (LLM assessment: 72/100)

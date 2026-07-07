@@ -1,0 +1,259 @@
+**Model Quality Score: 50/100**
+
+**Static Analysis Findings (48 actionable):**
+  - [SA:unlinked_fk] Column project.construction_project.bim_model_id looks like an FK but has no foreign_key_to reference
+  - [SA:unlinked_fk] Column project.wbs_element.project_baseline_id looks like an FK but has no foreign_key_to reference
+  - [SA:unlinked_fk] Column project.project_milestone.contract_milestone_id looks like an FK but has no foreign_key_to reference
+  - [SA:unlinked_fk] Column contract.contract_change_order.project_change_order_id looks like an FK but has no foreign_key_to reference
+  - [SA:unlinked_fk] Column site.site_permit.compliance_permit_id looks like an FK but has no foreign_key_to reference
+  - [SA:unlinked_fk] Column design.design_scope.contract_scope_id looks like an FK but has no foreign_key_to reference
+  - [SA:unlinked_fk] Column procurement.procurement_framework_agreement.client_framework_agreement_id looks like an FK but has no foreign_key_to reference
+  - [SA:unlinked_fk] Column material.material_boq_line.bid_boq_line_id looks like an FK but has no foreign_key_to reference
+  - [SA:unlinked_fk] Column equipment.maintenance_order.notification_id looks like an FK but has no foreign_key_to reference
+  - [SA:unlinked_fk] Column finance.finance_retention_ledger.contract_retention_ledger_id looks like an FK but has no foreign_key_to reference
+  - [SA:unlinked_fk] Column bid.bid_opportunity.client_opportunity_id looks like an FK but has no foreign_key_to reference
+  - [SA:unlinked_fk] Column bid.bid_risk.schedule_risk_id looks like an FK but has no foreign_key_to reference
+  - [SA:unlinked_fk] Column bid.bid_prequalification.client_prequalification_id looks like an FK but has no foreign_key_to reference
+  - [SA:unlinked_fk] Column compliance.compliance_action.sustainability_action_id looks like an FK but has no foreign_key_to reference
+  - [SA:unlinked_fk] Column compliance.compliance_calendar.schedule_calendar_id looks like an FK but has no foreign_key_to reference
+  - [SA:empty_domain] Domain 'employee' has no products
+  - [SA:empty_domain] Domain 'org_unit' has no products
+  - [SA:duplicate_product_pair] Domain 'contract' has both 'agreement' and 'contract_agreement' - SSOT violation. Merge into 'agreement'.
+  - [SA:denormalized_natural_key] Product 'site.site_location' has both FK 'site_id' and natural key 'site_code' for entity 'site'. The natural key is redundant - use the FK join instead.
+  - [SA:denormalized_natural_key] Product 'material.physical_inventory' has both FK 'warehouse_id' and natural key 'warehouse_code' for entity 'warehouse'. The natural key is redundant - use the FK join instead.
+  - [SA:cross_domain_duplicate] Potential SSOT violation: 'bid.payment_application' and 'finance.payment_application' have the same entity name 'payment_application' in different domains. One should be the SSOT owner, the other should reference via FK.
+  - [SA:cross_domain_duplicate] Potential SSOT violation: 'bid.insurance_certificate' and 'contract.insurance_certificate' have the same entity name 'insurance_certificate' in different domains. One should be the SSOT owner, the other should reference via FK.
+  - [SA:cross_domain_duplicate] Potential SSOT violation: 'bid.bid_opportunity' and 'client.client_opportunity' have the same entity name 'opportunity' in different domains. One should be the SSOT owner, the other should reference via FK.
+  - [SA:cross_domain_duplicate] Potential SSOT violation: 'bid.bid_boq_line' and 'material.material_boq_line' have the same entity name 'boq_line' in different domains. One should be the SSOT owner, the other should reference via FK.
+  - [SA:cross_domain_duplicate] Potential SSOT violation: 'bid.bid_risk' and 'schedule.schedule_risk' have the same entity name 'risk' in different domains. One should be the SSOT owner, the other should reference via FK.
+  - [SA:cross_domain_duplicate] Potential SSOT violation: 'bid.bid_prequalification' and 'client.client_prequalification' have the same entity name 'prequalification' in different domains. One should be the SSOT owner, the other should reference via FK.
+  - [SA:cross_domain_duplicate] Potential SSOT violation: 'bid.lien_waiver' and 'finance.lien_waiver' have the same entity name 'lien_waiver' in different domains. One should be the SSOT owner, the other should reference via FK.
+  - [SA:cross_domain_duplicate] Potential SSOT violation: 'client.client_framework_agreement' and 'procurement.procurement_framework_agreement' have the same entity name 'framework_agreement' in different domains. One should be the SSOT owner, the other should reference via FK.
+  - [SA:cross_domain_duplicate] Potential SSOT violation: 'compliance.compliance_permit' and 'site.site_permit' have the same entity name 'permit' in different domains. One should be the SSOT owner, the other should reference via FK.
+  - [SA:cross_domain_duplicate] Potential SSOT violation: 'compliance.compliance_action' and 'sustainability.sustainability_action' have the same entity name 'action' in different domains. One should be the SSOT owner, the other should reference via FK.
+  - [SA:cross_domain_duplicate] Potential SSOT violation: 'compliance.compliance_calendar' and 'schedule.schedule_calendar' have the same entity name 'calendar' in different domains. One should be the SSOT owner, the other should reference via FK.
+  - [SA:cross_domain_duplicate] Potential SSOT violation: 'contract.contract_scope' and 'design.design_scope' have the same entity name 'scope' in different domains. One should be the SSOT owner, the other should reference via FK.
+  - [SA:cross_domain_duplicate] Potential SSOT violation: 'contract.contract_milestone' and 'project.project_milestone' have the same entity name 'milestone' in different domains. One should be the SSOT owner, the other should reference via FK.
+  - [SA:cross_domain_duplicate] Potential SSOT violation: 'contract.contract_milestone' and 'schedule.schedule_milestone' have the same entity name 'milestone' in different domains. One should be the SSOT owner, the other should reference via FK.
+  - [SA:cross_domain_duplicate] Potential SSOT violation: 'project.project_milestone' and 'schedule.schedule_milestone' have the same entity name 'milestone' in different domains. One should be the SSOT owner, the other should reference via FK.
+  - [SA:cross_domain_duplicate] Potential SSOT violation: 'contract.contract_change_order' and 'project.project_change_order' have the same entity name 'change_order' in different domains. One should be the SSOT owner, the other should reference via FK.
+  - [SA:cross_domain_duplicate] Potential SSOT violation: 'contract.contract_change_order' and 'subcontractor.subcontractor_change_order' have the same entity name 'change_order' in different domains. One should be the SSOT owner, the other should reference via FK.
+  - [SA:cross_domain_duplicate] Potential SSOT violation: 'project.project_change_order' and 'subcontractor.subcontractor_change_order' have the same entity name 'change_order' in different domains. One should be the SSOT owner, the other should reference via FK.
+  - [SA:cross_domain_duplicate] Potential SSOT violation: 'contract.contract_eot_claim' and 'schedule.schedule_eot_claim' have the same entity name 'eot_claim' in different domains. One should be the SSOT owner, the other should reference via FK.
+  - [SA:cross_domain_duplicate] Potential SSOT violation: 'contract.contract_eot_claim' and 'subcontractor.subcontractor_eot_claim' have the same entity name 'eot_claim' in different domains. One should be the SSOT owner, the other should reference via FK.
+  - [SA:cross_domain_duplicate] Potential SSOT violation: 'schedule.schedule_eot_claim' and 'subcontractor.subcontractor_eot_claim' have the same entity name 'eot_claim' in different domains. One should be the SSOT owner, the other should reference via FK.
+  - [SA:cross_domain_duplicate] Potential SSOT violation: 'contract.contract_retention_ledger' and 'finance.finance_retention_ledger' have the same entity name 'retention_ledger' in different domains. One should be the SSOT owner, the other should reference via FK.
+  - [SA:cross_domain_duplicate] Potential SSOT violation: 'design.design_submittal' and 'quality.quality_submittal' have the same entity name 'submittal' in different domains. One should be the SSOT owner, the other should reference via FK.
+  - [SA:cross_domain_duplicate] Potential SSOT violation: 'equipment.equipment_mobilization' and 'site.site_mobilization' have the same entity name 'mobilization' in different domains. One should be the SSOT owner, the other should reference via FK.
+  - [SA:cross_domain_duplicate] Potential SSOT violation: 'finance.finance_budget_revision' and 'project.project_budget_revision' have the same entity name 'budget_revision' in different domains. One should be the SSOT owner, the other should reference via FK.
+  - [SA:cross_domain_duplicate] Potential SSOT violation: 'project.project_baseline' and 'schedule.schedule_baseline' have the same entity name 'baseline' in different domains. One should be the SSOT owner, the other should reference via FK.
+  - [SA:cross_domain_duplicate] Potential SSOT violation: 'project.site' and 'site.site' have the same entity name 'site' in different domains. One should be the SSOT owner, the other should reference via FK.
+  - [SA:cross_domain_duplicate] Potential SSOT violation: 'quality.quality_plan' and 'sustainability.sustainability_plan' have the same entity name 'plan' in different domains. One should be the SSOT owner, the other should reference via FK.
+
+**PRIORITY 1 - move_product: bid.contract_agreement** - move to contract because contract_agreement semantically belongs in the contract domain which already owns agreement and amendment products
+**PRIORITY 2 - move_product: bid.payment_application** - move to finance because payment applications are progress billing instruments that belong with other payment products
+**PRIORITY 3 - move_product: bid.lien_waiver** - move to finance because lien waivers are legal-financial documents tied to payment processing, not bid management
+**PRIORITY 4 - move_product: bid.insurance_certificate** - move to contract because insurance certificates are contractual compliance documents managed with contract administration
+**PRIORITY 5 - move_product: bid.performance_scorecard** - move to subcontractor because performance scorecards evaluate subcontractor/vendor performance post-award
+**PRIORITY 6 - connect_table: bid.jv_partner** - add column account_id (BIGINT) with FK to client.account.account_id - JV partners represent organizations that should link to the client account master
+**PRIORITY 7 - connect_table: compliance.regulatory_authority** - add column account_id (BIGINT) with FK to client.account.account_id - regulatory authorities are organizations and should anchor to the account master
+**PRIORITY 8 - connect_table: schedule.schedule_calendar** - add column construction_project_id (BIGINT) with FK to project.construction_project.construction_project_id - schedule calendars are project-specific working time definitions
+**PRIORITY 9 - connect_table: workforce.skill_trade** - add column org_unit_id (BIGINT) with FK to hr.org_unit.org_unit_id - skill trades should link to the organizational unit that owns them
+**PRIORITY 10 - connect_table: workforce.labor_cost_code** - add column cost_code_id (BIGINT) with FK to finance.cost_code.cost_code_id - labor cost codes must map to the finance chart of cost codes
+**PRIORITY 11 - connect_table: finance.billing_period** - add column construction_project_id (BIGINT) with FK to project.construction_project.construction_project_id - billing periods are scoped to projects for progress billing
+**PRIORITY 12 - connect_table: compliance.consent_record** - add column employee_id (BIGINT) with FK to hr.employee.employee_id - GDPR consent records track which data subject granted consent
+**PRIORITY 13 - connect_table: compliance.finding** - add column construction_project_id (BIGINT) with FK to project.construction_project.construction_project_id - audit findings are project-scoped
+**PRIORITY 14 - connect_table: compliance.finding** - add column assessment_id (BIGINT) with FK to compliance.assessment.assessment_id - findings should trace back to the assessment that produced them
+**PRIORITY 15 - connect_table: material.physical_inventory** - add column warehouse_id (BIGINT) with FK to material.warehouse.warehouse_id - physical inventory counts occur at warehouses
+**PRIORITY 16 - connect_table: material.physical_inventory** - add column construction_project_id (BIGINT) with FK to project.construction_project.construction_project_id - inventory counts are project-scoped
+**PRIORITY 17 - connect_table: schedule.progress_update** - add column activity_id (BIGINT) with FK to schedule.activity.activity_id - progress updates must reference the specific activity being updated
+**PRIORITY 18 - connect_table: schedule.activity_relationship** - add column construction_project_id (BIGINT) with FK to project.construction_project.construction_project_id - activity relationships are project-scoped
+**PRIORITY 19 - connect_table: design.change_impact** - add column construction_project_id (BIGINT) with FK to project.construction_project.construction_project_id - change impacts are project-scoped
+**PRIORITY 20 - connect_table: contract.contractual_notice** - add column agreement_id (BIGINT) with FK to contract.agreement.agreement_id - contractual notices are issued under specific agreements
+**PRIORITY 21 - connect_table: project.regulatory_oversight** - add column compliance_permit_id (BIGINT) with FK to compliance.compliance_permit.compliance_permit_id - regulatory oversight tracks permit-level supervision
+**PRIORITY 22 - connect_table: site.work_front_assignment** - add column crew_id (BIGINT) with FK to workforce.crew.crew_id - crew assignments to work fronts are core to the entity
+**PRIORITY 23 - connect_table: site.work_front_assignment** - add column construction_project_id (BIGINT) with FK to project.construction_project.construction_project_id - work front assignments must scope to a project
+**PRIORITY 24 - connect_table: design.equipment_installation** - add column wbs_element_id (BIGINT) with FK to project.wbs_element.wbs_element_id - equipment installations roll up to WBS for cost/progress tracking
+**PRIORITY 25 - connect_table: design.equipment_installation** - add column technical_specification_id (BIGINT) with FK to design.technical_specification.technical_specification_id - installations are governed by technical specifications
+**PRIORITY 26 - connect_table: design.interface_equipment_assignment** - add column construction_project_id (BIGINT) with FK to project.construction_project.construction_project_id - interface assignments are project-scoped
+**PRIORITY 27 - connect_table: design.zone_equipment_allocation** - add column construction_project_id (BIGINT) with FK to project.construction_project.construction_project_id - zone allocations are project-scoped
+**PRIORITY 28 - connect_table: design.drawing_requirement** - add column construction_project_id (BIGINT) with FK to project.construction_project.construction_project_id - drawing requirements are project-scoped
+**PRIORITY 29 - connect_table: design.drawing_requirement** - add column technical_specification_id (BIGINT) with FK to design.technical_specification.technical_specification_id - requirements typically reference specifications
+**PRIORITY 30 - connect_table: design.drawing_incident_link** - add column construction_project_id (BIGINT) with FK to project.construction_project.construction_project_id - drawing incident links are project-scoped
+**PRIORITY 31 - connect_table: procurement.procurement_bid** - add column construction_project_id (BIGINT) with FK to project.construction_project.construction_project_id - procurement bids are project-scoped
+**PRIORITY 32 - connect_table: procurement.procurement_bid** - add column hr_employee_id (BIGINT) with FK to hr.employee.employee_id - bids have an evaluator/buyer of record
+**PRIORITY 33 - connect_table: safety.incident_subcontractor_involvement** - add column subcontract_id (BIGINT) with FK to contract.subcontract.subcontract_id - subcontractor involvement should reference the subcontract under which they were working
+**PRIORITY 34 - connect_table: safety.incident_subcontractor_involvement** - add column construction_project_id (BIGINT) with FK to project.construction_project.construction_project_id - incident involvement records are project-scoped
+**PRIORITY 35 - connect_table: contract.change_order_activity_impact** - add column construction_project_id (BIGINT) with FK to project.construction_project.construction_project_id - activity impacts are project-scoped
+**PRIORITY 36 - connect_table: equipment.asset_activity_assignment** - add column wbs_element_id (BIGINT) with FK to project.wbs_element.wbs_element_id - asset activity assignments roll up to WBS
+**PRIORITY 37 - connect_table: equipment.asset_activity_assignment** - add column hr_employee_id (BIGINT) with FK to hr.employee.employee_id - assignments need a responsible owner/operator
+**PRIORITY 38 - connect_table: workforce.carbon_reduction_participation** - add column construction_project_id (BIGINT) with FK to project.construction_project.construction_project_id - participation records are project-scoped
+**PRIORITY 39 - connect_table: bid.bid_team_assignment** - add column firm_profile_id (BIGINT) with FK to bid.firm_profile.firm_profile_id - bid team assignments must reference the bidding firm
+**PRIORITY 40 - connect_table: bid.bid_team_assignment** - add column construction_project_id (BIGINT) with FK to project.construction_project.construction_project_id - team assignments are project-scoped
+**PRIORITY 41 - rename_product: bid.bid_opportunity** - rename to pursuit because client.client_opportunity is the SSOT for opportunity records and the bid-side entity should reflect the pursuit/capture phase to remove the cross-domain duplicate
+**PRIORITY 42 - rename_product: bid.bid_boq_line** - rename to bid_pricing_line because material.material_boq_line owns BOQ master quantities; the bid entity should distinguish itself as the priced bid response line
+**PRIORITY 43 - rename_product: bid.bid_risk** - rename to pursuit_risk because schedule.schedule_risk owns execution-phase schedule risks; bid risks belong to the pursuit/capture phase
+**PRIORITY 44 - rename_product: bid.bid_prequalification** - rename to bidder_prequalification because client.client_prequalification covers client-side qualification; bid-side covers prequalifying as a bidder
+**PRIORITY 45 - rename_product: contract.contract_milestone** - rename to payment_milestone because project.project_milestone is the SSOT for project milestones and contract milestones are specifically payment/contractual gating events
+**PRIORITY 46 - rename_product: schedule.schedule_milestone** - rename to scheduled_event because project.project_milestone owns milestone identity; schedule-side records the planned/forecast date instance
+**PRIORITY 47 - rename_product: contract.contract_change_order** - rename to commercial_change_order because project.project_change_order owns project-level CO and subcontractor.subcontractor_change_order owns sub-tier CO; contract CO is the prime commercial instrument
+**PRIORITY 48 - rename_product: contract.contract_eot_claim** - rename to prime_eot_claim because schedule.schedule_eot_claim and subcontractor.subcontractor_eot_claim each have distinct ownership; contract is the prime contract claim
+**PRIORITY 49 - rename_product: contract.contract_retention_ledger** - rename to retention_account because finance.finance_retention_ledger is the SSOT general ledger; contract side is the contract-level retention account/balance
+**PRIORITY 50 - rename_product: design.design_submittal** - rename to engineering_submittal because quality.quality_submittal exists for QA submittals; design submittals are engineering deliverable submittals
+**PRIORITY 51 - rename_product: contract.contract_scope** - rename to scope_of_work because design.design_scope owns the engineering scope; contract scope is the contractual SOW
+**PRIORITY 52 - rename_product: compliance.compliance_permit** - rename to regulatory_permit because site.site_permit covers site-level work permits and compliance side covers regulatory authority permits
+**PRIORITY 53 - rename_product: compliance.compliance_action** - rename to remediation_action because sustainability.sustainability_action exists; compliance actions are remediation/CAPA actions
+**PRIORITY 54 - rename_product: compliance.compliance_calendar** - rename to obligation_calendar because schedule.schedule_calendar exists for working-time calendars; compliance calendar tracks obligation due dates
+**PRIORITY 55 - rename_product: client.client_framework_agreement** - rename to master_services_agreement because procurement.procurement_framework_agreement owns supply-side; client side is the client-facing MSA
+**PRIORITY 56 - rename_product: schedule.schedule_eot_claim** - rename to schedule_impact_claim because contract.contract_eot_claim is the contractual instrument; schedule side is the time-impact analysis
+**PRIORITY 57 - rename_product: subcontractor.subcontractor_eot_claim** - rename to sub_time_extension because contract.contract_eot_claim and schedule.schedule_eot_claim exist; sub-tier is the subcontract time extension claim
+**PRIORITY 58 - rename_product: subcontractor.subcontractor_change_order** - rename to sub_change_order because the prefix is redundant in the subcontractor domain and the entity must distinguish from contract/project CO
+**PRIORITY 59 - connect_table: schedule.lookahead_plan** - add column wbs_element_id (BIGINT) with FK to project.wbs_element.wbs_element_id - lookahead plans typically scope to a WBS branch
+**PRIORITY 60 - connect_table: finance.chart_of_accounts** - add column company_code_id (BIGINT) with FK to finance.company_code.company_code_id - charts of accounts are owned by company codes
+**PRIORITY 61 - connect_table: hr.benefit_plan** - add column org_unit_id (BIGINT) with FK to hr.org_unit.org_unit_id - benefit plans are sponsored by an organizational unit
+**PRIORITY 62 - connect_table: hr.kpi** - add column org_unit_id (BIGINT) with FK to hr.org_unit.org_unit_id - KPIs are owned by org units
+**PRIORITY 63 - connect_table: hr.policy** - add column owner_employee_id (BIGINT) with FK to hr.employee.employee_id - policies have a designated owner
+**PRIORITY 64 - connect_table: workforce.agency** - add column account_id (BIGINT) with FK to client.account.account_id - labor agencies are organizations and should anchor to the account master
+**PRIORITY 65 - connect_table: sustainability.waste_carrier** - add column account_id (BIGINT) with FK to client.account.account_id - waste carriers are external organizations
+**PRIORITY 66 - connect_table: sustainability.disposal_facility** - add column account_id (BIGINT) with FK to client.account.account_id - disposal facilities are external organizations
+**PRIORITY 67 - connect_table: sustainability.emission_source** - add column construction_project_id (BIGINT) with FK to project.construction_project.construction_project_id - emission sources are typically project-scoped
+**PRIORITY 68 - connect_table: sustainability.emission_factor** - add column regulatory_authority_id (BIGINT) with FK to compliance.regulatory_authority.regulatory_authority_id - emission factors are published by regulatory bodies
+**PRIORITY 69 - connect_table: equipment.fuel_point** - add column site_id (BIGINT) with FK to site.site.site_id - fuel points are physically located at sites
+**PRIORITY 70 - connect_table: equipment.functional_location** - add column site_id (BIGINT) with FK to site.site.site_id - functional locations live within a site
+**PRIORITY 71 - connect_table: project.reporting_period** - add column construction_project_id (BIGINT) with FK to project.construction_project.construction_project_id - reporting periods are project-scoped
+**PRIORITY 72 - connect_table: client.segment** - add column owner_employee_id (BIGINT) with FK to hr.employee.employee_id - segments have a designated owner/relationship manager
+**PRIORITY 73 - connect_table: design.workflow_template** - add column construction_project_id (BIGINT) with FK to project.construction_project.construction_project_id - workflow templates are typically project-scoped configurations
+**PRIORITY 74 - connect_table: procurement.approval_workflow** - add column construction_project_id (BIGINT) with FK to project.construction_project.construction_project_id - approval workflows are project-scoped
+**PRIORITY 75 - connect_table: procurement.service** - add column material_catalog_id (BIGINT) with FK to procurement.material_catalog.material_catalog_id - services should link to the catalog they belong to
+**PRIORITY 76 - connect_table: hr.payroll_group** - add column company_code_id (BIGINT) with FK to finance.company_code.company_code_id - payroll groups roll up to company codes
+**PRIORITY 77 - connect_table: hr.onboarding_template** - add column org_unit_id (BIGINT) with FK to hr.org_unit.org_unit_id - onboarding templates are owned by org units
+**PRIORITY 78 - connect_table: finance.profit_center** - add column company_code_id (BIGINT) with FK to finance.company_code.company_code_id - profit centers belong to company codes
+**PRIORITY 79 - connect_table: contract.insurance_register** - add column agreement_id (BIGINT) with FK to contract.agreement.agreement_id - insurance register entries should reference the underlying agreement
+**PRIORITY 80 - connect_table: design.distribution_matrix** - add column workflow_template_id (BIGINT) with FK to design.workflow_template.workflow_template_id - distribution matrices configure workflow routing
+**PRIORITY 81 - connect_table: project.site** - add column site_id (BIGINT) with FK to site.site.site_id - the project.site product should reference the operational site master to avoid duplication
+**PRIORITY 82 - connect_table: bid.firm_profile** - add column account_id (BIGINT) with FK to client.account.account_id - firm profiles represent organizations that should anchor to the account master
+**PRIORITY 83 - connect_table: bid.firm_profile** - add column vendor_id (BIGINT) with FK to procurement.vendor.vendor_id - firm profiles overlap with vendor master and should cross-reference
+**PRIORITY 84 - connect_table: contract.dlp_register** - add column construction_project_id (BIGINT) with FK to project.construction_project.construction_project_id - DLP registers are project-scoped
+**PRIORITY 85 - connect_table: contract.dlp_register** - add column handover_certificate_id (BIGINT) with FK to project.handover_certificate.handover_certificate_id - DLP commences from handover
+**PRIORITY 86 - connect_table: contract.advance_payment** - add column construction_project_id (BIGINT) with FK to project.construction_project.construction_project_id - advance payments are project-scoped
+**PRIORITY 87 - connect_table: contract.bond_guarantee** - add column financial_guarantee_id (BIGINT) with FK to finance.financial_guarantee.financial_guarantee_id - bond guarantees should link to the finance-side guarantee record
+**PRIORITY 88 - connect_table: workforce.skill_trade** - add column labor_cost_code_id (BIGINT) with FK to workforce.labor_cost_code.labor_cost_code_id - skill trades typically map to a default labor cost code
+**PRIORITY 89 - connect_table: equipment.maintenance_plan** - add column functional_location_id (BIGINT) with FK to equipment.functional_location.functional_location_id - maintenance plans attach to functional locations
+**PRIORITY 90 - connect_table: equipment.insurance_policy** - add column construction_project_id (BIGINT) with FK to project.construction_project.construction_project_id - equipment insurance policies are often project-scoped
+**PRIORITY 91 - connect_table: bid.firm_profile** - add column subcontractor_prequalification_id (BIGINT) with FK to bid.subcontractor_prequalification.subcontractor_prequalification_id - firm profiles relate to their qualification record
+**PRIORITY 92 - remove_fk: compliance.permit_application** - remove FK on column applicant_id because permit applications are filed by employees/contractors not HR job applicants; replace with employee_id FK to hr.employee
+**PRIORITY 93 - connect_table: compliance.permit_application** - add column applicant_employee_id (BIGINT) with FK to hr.employee.employee_id - permit applications need a responsible filing employee
+**PRIORITY 94 - connect_table: hr.applicant** - add column position_id (BIGINT) with FK to hr.position.position_id - applicants apply for specific positions
+**PRIORITY 95 - connect_table: client.address** - add column site_id (BIGINT) with FK to site.site.site_id - client addresses can correspond to project sites for delivery/billing
+**PRIORITY 96 - connect_table: contract.party** - add column vendor_id (BIGINT) with FK to procurement.vendor.vendor_id - contract parties may be vendors and should link to vendor master
+**PRIORITY 97 - connect_table: design.review** - add column hr_employee_id (BIGINT) with FK to hr.employee.employee_id - design reviews need a reviewer of record
+**PRIORITY 98 - connect_table: finance.commitment** - add column purchase_order_id (BIGINT) with FK to procurement.purchase_order.purchase_order_id - commitments are typically backed by POs
+**PRIORITY 99 - connect_table: project.regulatory_oversight** - add column hr_employee_id (BIGINT) with FK to hr.employee.employee_id - oversight records require a responsible person
+**PRIORITY 100 - connect_table: design.equipment_installation** - add column hr_employee_id (BIGINT) with FK to hr.employee.employee_id - installations require a responsible engineer
+
+Other known issues from static analysis (69):
+  - Table contract.contract_agreement has no table_name defined
+  - Table contract.insurance_certificate has no table_name defined
+  - Table subcontractor.performance_scorecard has no table_name defined
+  - Table finance.payment_application has no table_name defined
+  - Table finance.lien_waiver has no table_name defined
+  - Table design.clash_detection_run has self-referencing FK on column 'comparison_run_id' with same name as PK 'clash_detection_run_id' - the FK column must have a different name that describes the relationship (the LLM should choose a contextual label)
+  - Table hr.disciplinary_case has self-referencing FK on column 'related_disciplinary_case_id' with same name as PK 'disciplinary_case_id' - the FK column must have a different name that describes the relationship (the LLM should choose a contextual label)
+  - Table site.work_front has 2 FK columns pointing to project.construction_project (construction_project_id, site_construction_project_id) (generic/unlabeled: construction_project_id) - rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table site.daily_log has 2 FK columns pointing to project.construction_project (construction_project_id, site_construction_project_id) (generic/unlabeled: construction_project_id) - rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table site.material_delivery has 2 FK columns pointing to project.construction_project (construction_project_id, site_construction_project_id) (generic/unlabeled: construction_project_id) - rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table site.lift_plan has 2 FK columns pointing to project.construction_project (construction_project_id, site_construction_project_id) (generic/unlabeled: construction_project_id) - rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table site.shift_report has 2 FK columns pointing to project.construction_project (construction_project_id, site_construction_project_id) (generic/unlabeled: construction_project_id) - rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table site.site has 2 FK columns pointing to hr.employee (employee_id, manager_employee_id) (generic/unlabeled: employee_id) - rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table procurement.rfq_line has 2 FK columns pointing to project.construction_project (construction_project_id, site_construction_project_id) (generic/unlabeled: construction_project_id) - rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table equipment.asset has 2 FK columns pointing to project.construction_project (construction_project_id, current_location_site_construction_project_id) (generic/unlabeled: construction_project_id) - rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table quality.checklist_execution has 2 FK columns pointing to project.construction_project (construction_project_id, site_construction_project_id) (generic/unlabeled: construction_project_id) - rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table quality.sample has 2 FK columns pointing to quality.laboratory (lab_id, laboratory_id) (generic/unlabeled: laboratory_id) - rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table compliance.env_monitoring has 2 FK columns pointing to project.construction_project (construction_project_id, site_construction_project_id) (generic/unlabeled: construction_project_id) - rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table hr.onboarding_checklist has 4 FK columns pointing to hr.employee (employee_id, onboarding_employee_id, primary_onboarding_employee_id, tertiary_onboarding_buddy_assigned_employee_id) (generic/unlabeled: employee_id) - rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table sustainability.sustainability_audit has 2 FK columns pointing to project.construction_project (construction_project_id, site_construction_project_id) (generic/unlabeled: construction_project_id) - rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - PII-candidate attribute project.site.address_line1 has no classification tags - expected restricted/confidential + PII tag
+  - PII-candidate attribute project.site.address_line2 has no classification tags - expected restricted/confidential + PII tag
+  - PII-candidate attribute project.site.latitude has no classification tags - expected restricted/confidential + PII tag
+  - PII-candidate attribute project.site.longitude has no classification tags - expected restricted/confidential + PII tag
+  - PII-candidate attribute project.site.postal_code has no classification tags - expected restricted/confidential + PII tag
+  - PII-candidate attribute contract.insurance_certificate.certificate_holder_address has no classification tags - expected restricted/confidential + PII tag
+  - PII-candidate attribute site.site.latitude has no classification tags - expected restricted/confidential + PII tag
+  - PII-candidate attribute site.site.longitude has no classification tags - expected restricted/confidential + PII tag
+  - PII-candidate attribute site.site_location.latitude has no classification tags - expected restricted/confidential + PII tag
+  - PII-candidate attribute site.site_location.longitude has no classification tags - expected restricted/confidential + PII tag
+  - PII-candidate attribute site.site_location.primary_contact_name has no classification tags - expected restricted/confidential + PII tag
+  - PII-candidate attribute equipment.asset_activity_assignment.operator_name has no classification tags - expected restricted/confidential + PII tag
+  - PII-candidate attribute equipment.fuel_point.address has no classification tags - expected restricted/confidential + PII tag
+  - PII-candidate attribute equipment.fuel_point.latitude has no classification tags - expected restricted/confidential + PII tag
+  - PII-candidate attribute equipment.fuel_point.longitude has no classification tags - expected restricted/confidential + PII tag
+  - PII-candidate attribute equipment.fuel_point.zip_code has no classification tags - expected restricted/confidential + PII tag
+  - PII-candidate attribute equipment.functional_location.latitude has no classification tags - expected restricted/confidential + PII tag
+  - PII-candidate attribute equipment.functional_location.longitude has no classification tags - expected restricted/confidential + PII tag
+  - PII-candidate attribute workforce.agency.address_line1 has no classification tags - expected restricted/confidential + PII tag
+  - PII-candidate attribute workforce.agency.address_line2 has no classification tags - expected restricted/confidential + PII tag
+  - PII-candidate attribute workforce.agency.postal_code has no classification tags - expected restricted/confidential + PII tag
+  - PII-candidate attribute quality.ndt_record.witness_name has no classification tags - expected restricted/confidential + PII tag
+  - PII-candidate attribute quality.laboratory.address has no classification tags - expected restricted/confidential + PII tag
+  - PII-candidate attribute quality.laboratory.address_line has no classification tags - expected restricted/confidential + PII tag
+  - PII-candidate attribute quality.laboratory.contact_email has no classification tags - expected restricted/confidential + PII tag
+  - PII-candidate attribute quality.laboratory.contact_name has no classification tags - expected restricted/confidential + PII tag
+  - PII-candidate attribute quality.laboratory.contact_phone has no classification tags - expected restricted/confidential + PII tag
+  - PII-candidate attribute quality.laboratory.latitude has no classification tags - expected restricted/confidential + PII tag
+  - PII-candidate attribute quality.laboratory.longitude has no classification tags - expected restricted/confidential + PII tag
+  - PII-candidate attribute finance.company_code.primary_contact_name has no classification tags - expected restricted/confidential + PII tag
+  - PII-candidate attribute finance.chart_of_accounts.account_number has no classification tags - expected restricted/confidential + PII tag
+  - PII-candidate attribute hr.payroll_group.gl_account_number has no classification tags - expected restricted/confidential + PII tag
+  - PII-candidate attribute sustainability.waste_carrier.address_line1 has no classification tags - expected restricted/confidential + PII tag
+  - PII-candidate attribute sustainability.waste_carrier.address_line2 has no classification tags - expected restricted/confidential + PII tag
+  - PII-candidate attribute sustainability.waste_carrier.billing_address_line1 has no classification tags - expected restricted/confidential + PII tag
+  - PII-candidate attribute sustainability.waste_carrier.billing_address_line2 has no classification tags - expected restricted/confidential + PII tag
+  - PII-candidate attribute sustainability.waste_carrier.billing_postal_code has no classification tags - expected restricted/confidential + PII tag
+  - PII-candidate attribute sustainability.waste_carrier.postal_code has no classification tags - expected restricted/confidential + PII tag
+  - PII-candidate attribute sustainability.waste_carrier.primary_contact_name has no classification tags - expected restricted/confidential + PII tag
+  - PII-candidate attribute sustainability.disposal_facility.latitude has no classification tags - expected restricted/confidential + PII tag
+  - PII-candidate attribute sustainability.disposal_facility.longitude has no classification tags - expected restricted/confidential + PII tag
+  - Subdomain 'project_planning' appears in 2 domains: material, project. Consider renaming to qualified form.
+  - Subdomain 'contract_administration' appears in 2 domains: bid, contract. Consider renaming to qualified form.
+  - Subdomain 'change_control' appears in 2 domains: contract, design. Consider renaming to qualified form.
+  - 6 attribute(s) contain banned boilerplate phrases (Fortune N, multinational, enterprise-wide, cross-company, group reporting). Clean descriptions.
+  - 436 attribute(s) match person-data patterns but lack pii_ tags
+  - 1 attribute(s) have datatypes inconsistent with their column name pattern
+  - 26 non-PK attributes redundantly prefixed with their product name
+  - 1 attribute(s) have value_regex on typed columns (DATE/BOOLEAN/INT/etc.) - regex is redundant when data_type constrains format
+
+Deterministic score: 50/100 (LLM assessment: 58/100)
+
+## MISSED VIBES (carried from the previous run - apply these THIS run; user directives first)
+
+- (USER DIRECTIVE - supreme authority) Connect table workforce.skill_trade by adding column org_unit_id (BIGINT) with a foreign key to hr.org_unit.org_unit_id because skill trades should link to the organizational unit. (target: workforce.skill_trade -> hr.org_unit.org_unit_id) [missed: vov_residual_unapplied]
+- (USER DIRECTIVE - supreme authority) Connect table workforce.labor_cost_code by adding column cost_code_id (BIGINT) with a foreign key to finance.cost_code.cost_code_id because labor cost codes should map to the finance cost code. (target: workforce.labor_cost_code -> finance.cost_code.cost_code_id) [missed: vov_residual_unapplied]
+- (USER DIRECTIVE - supreme authority) Connect table finance.billing_period by adding column construction_project_id (BIGINT) with a foreign key to project.construction_project.construction_project_id because billing periods belong to a construction project. (target: finance.billing_period -> project.construction_project.construction_project_id) [missed: vov_residual_unapplied]
+- (USER DIRECTIVE - supreme authority) Connect table compliance.consent_record by adding column employee_id (BIGINT) with a foreign key to hr.employee.employee_id because consent records under GDPR must track which data subject the consent applies to. (target: compliance.consent_record -> hr.employee.employee_id) [missed: vov_residual_unapplied]
+- (USER DIRECTIVE - supreme authority) Connect table compliance.finding by adding column construction_project_id (BIGINT) with a foreign key to project.construction_project.construction_project_id because audit findings relate to a construction project. (target: compliance.finding -> project.construction_project.construction_project_id) [missed: vov_residual_unapplied]
+- (USER DIRECTIVE - supreme authority) Connect table compliance.finding by adding column assessment_id (BIGINT) with a foreign key to compliance.assessment.assessment_id because findings should trace back to the assessment that produced them. (target: compliance.finding -> compliance.assessment.assessment_id) [missed: vov_residual_unapplied]
+- (USER DIRECTIVE - supreme authority) Connect table material.physical_inventory by adding column warehouse_id (BIGINT) with a foreign key to material.warehouse.warehouse_id because physical inventory counts occur at a warehouse. (target: material.physical_inventory -> material.warehouse.warehouse_id) [missed: vov_residual_unapplied]
+- (USER DIRECTIVE - supreme authority) Connect table material.physical_inventory by adding column construction_project_id (BIGINT) with a foreign key to project.construction_project.construction_project_id because inventory counts relate to a construction project. (target: material.physical_inventory -> project.construction_project.construction_project_id) [missed: vov_residual_unapplied]
+- (USER DIRECTIVE - supreme authority) Connect table schedule.progress_update by adding column activity_id (BIGINT) with a foreign key to schedule.activity.activity_id because progress updates must reference the specific activity being updated. (target: schedule.progress_update -> schedule.activity.activity_id) [missed: vov_residual_unapplied]
+- (USER DIRECTIVE - supreme authority) Connect table schedule.activity_relationship by adding column construction_project_id (BIGINT) with a foreign key to project.construction_project.construction_project_id. (target: schedule.activity_relationship -> project.construction_project.construction_project_id) [missed: vov_residual_unapplied]
+- (USER DIRECTIVE - supreme authority) Connect schedule.activity_relationship by adding construction_project_id (BIGINT) FK to project.construction_project.construction_project_id. (target: schedule.activity_relationship -> project.construction_project) [missed: vov_residual_unapplied]
+- (USER DIRECTIVE - supreme authority) Connect schedule.activity_relationship by adding column construction_project_id (BIGINT) with FK to project.construction_project.construction_project_id. (target: relation: schedule.activity_relationship -> project.construction_project.construction_project_id) [missed: vov_residual_unapplied]
+- (USER DIRECTIVE - supreme authority) Connect workforce.skill_trade by adding column org_unit_id (BIGINT) with FK to hr.org_unit.org_unit_id. (target: relation: workforce.skill_trade -> hr.org_unit.org_unit_id) [missed: vov_residual_unapplied]
+- (USER DIRECTIVE - supreme authority) Connect compliance.consent_record by adding column employee_id (BIGINT) with FK to hr.employee.employee_id for GDPR data subject tracking. (target: relation: compliance.consent_record -> hr.employee.employee_id) [missed: vov_residual_unapplied]
+- (USER DIRECTIVE - supreme authority) Connect compliance.finding by adding column assessment_id (BIGINT) with FK to compliance.assessment.assessment_id. (target: relation: compliance.finding -> compliance.assessment.assessment_id) [missed: vov_residual_unapplied]
+- (USER DIRECTIVE - supreme authority) Connect material.physical_inventory by adding column warehouse_id (BIGINT) with FK to material.warehouse.warehouse_id. (target: relation: material.physical_inventory -> material.warehouse.warehouse_id) [missed: vov_residual_unapplied]
+- (USER DIRECTIVE - supreme authority) Connect schedule.progress_update by adding column activity_id (BIGINT) with FK to schedule.activity.activity_id. (target: relation: schedule.progress_update -> schedule.activity.activity_id) [missed: vov_residual_unapplied]
+- (USER DIRECTIVE - supreme authority) Connect contract.contractual_notice by adding column agreement_id (BIGINT) with FK to contract.agreement.agreement_id. (target: relation: contract.contractual_notice -> contract.agreement.agreement_id) [missed: vov_residual_unapplied]
+- (USER DIRECTIVE - supreme authority) Move product bid.contract_agreement to the contract domain because contract_agreement semantically belongs in the contract domain which already owns agreement. (target: bid.contract_agreement -> contract domain) [missed: vov_residual_unapplied]
+- (USER DIRECTIVE - supreme authority) Move product bid.payment_application to the finance domain because payment applications are financial instruments for progress billing and belong with other payment entities. (target: bid.payment_application -> finance domain) [missed: vov_residual_unapplied]
+- (USER DIRECTIVE - supreme authority) Move product bid.lien_waiver to the finance domain because lien waivers are legal-financial documents tied to payment processing, not bid management. (target: bid.lien_waiver -> finance domain) [missed: vov_residual_unapplied]
+- (USER DIRECTIVE - supreme authority) Move product bid.contract_agreement to the contract domain. (target: bid.contract_agreement -> contract domain) [missed: vov_residual_unapplied]
+- (USER DIRECTIVE - supreme authority) Move product bid.payment_application to the finance domain. (target: bid.payment_application -> finance domain) [missed: vov_residual_unapplied]
+- (USER DIRECTIVE - supreme authority) Move product bid.lien_waiver to the finance domain. (target: bid.lien_waiver -> finance domain) [missed: vov_residual_unapplied]
+- (USER DIRECTIVE - supreme authority) Move product bid.insurance_certificate to the contract domain. (target: bid.insurance_certificate -> contract domain) [missed: vov_residual_unapplied]
+- (USER DIRECTIVE - supreme authority) Move product bid.performance_scorecard to the subcontractor domain. (target: bid.performance_scorecard -> subcontractor domain) [missed: vov_residual_unapplied]
+- Move contract_agreement from bid to contract domain (target: bid.contract_agreement, contract) [missed: orchestrator status=partial]
+- Move payment_application from bid to finance domain (target: bid.payment_application, finance) [missed: orchestrator status=partial]
+- Move lien_waiver from bid to finance domain (target: bid.lien_waiver, finance) [missed: orchestrator status=partial]
+- Move insurance_certificate from bid to contract domain (target: bid.insurance_certificate, contract) [missed: orchestrator status=partial]
+- re-add metric view bid_performance_scorecard (owner bid.performance_scorecard was renamed/removed; re-point to the current product) (target: bid.performance_scorecard) [missed: mv_orphan_scrubbed]

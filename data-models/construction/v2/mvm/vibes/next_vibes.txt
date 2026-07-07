@@ -1,0 +1,50 @@
+**Model Quality Score: 80.51/100**
+
+**Static Analysis Findings (1 actionable):**
+  - [SA:denormalized_natural_key] Product 'contract.commercial_change_order' has both FK 'change_order_id' and natural key 'change_order_number' for entity 'change_order'. The natural key is redundant — use the FK join instead.
+
+**PRIORITY 1 — connect_table: procurement.vendor** — add column primary_account_id (BIGINT) with FK to client.account.account_id — vendor master should link to client account where the vendor is also tracked as a counterparty for relationship and credit context.
+**PRIORITY 2 — rename_attribute: client.master_services_agreement** — rename column parent_agreement_client_framework_agreement_master_services_agreement_id to parent_agreement_id — current self-ref name is unreadable and violates concise naming.
+**PRIORITY 3 — connect_table: design.drawing** — add column package_id (BIGINT) with FK to design.package.package_id — drawings are produced and issued within design packages but drawing currently only links to bim_model.
+**PRIORITY 4 — connect_table: design.rfi** — add column construction_project_id (BIGINT) with FK to project.construction_project.construction_project_id — RFIs must be attributable to a project for tracking and routing.
+**PRIORITY 5 — connect_table: design.rfi** — add column phase_id (BIGINT) with FK to project.phase.phase_id — RFIs are typically raised against a project phase.
+**PRIORITY 6 — connect_table: design.technical_specification** — add column package_id (BIGINT) with FK to design.package.package_id — technical specifications belong to design packages.
+**PRIORITY 7 — connect_table: design.bim_model** — add column construction_project_id (BIGINT) with FK to project.construction_project.construction_project_id — BIM models should be directly attributable to a project, not only via phase.
+**PRIORITY 8 — connect_table: contract.subcontract** — add column construction_project_id (BIGINT) with FK to project.construction_project.construction_project_id — subcontracts must be tied to the project they execute against.
+**PRIORITY 9 — connect_table: contract.subcontract** — add column agreement_id (BIGINT) with FK to contract.agreement.agreement_id — subcontracts derive from a head contract agreement.
+**PRIORITY 10 — connect_table: contract.scope_of_work** — add column agreement_id (BIGINT) with FK to contract.agreement.agreement_id — scope of work must be linked to its governing agreement.
+**PRIORITY 11 — connect_table: procurement.vendor_qualification** — add column construction_project_id (BIGINT) with FK to project.construction_project.construction_project_id — vendor qualifications are often project-specific in construction prequalification.
+**PRIORITY 12 — connect_table: equipment.functional_location** — add column construction_project_id (BIGINT) with FK to project.construction_project.construction_project_id — functional locations should be attributable to a project site context.
+**PRIORITY 13 — rename_attribute: equipment.functional_location** — rename column parent_location_functional_location_id to parent_functional_location_id — duplicate redundant self-ref column; consolidate to one parent reference naming.
+**PRIORITY 14 — remove_fk: equipment.functional_location** — remove FK on column parent_location_functional_location_id because it duplicates parent_functional_location_id which already provides the hierarchical self-reference.
+**PRIORITY 15 — connect_table: material.master** — add column asset_category_id (BIGINT) with FK to equipment.asset_category.asset_category_id — only if material is categorized; otherwise add column cost_code_id (BIGINT) with FK to finance.cost_code.cost_code_id — material master lacks any cost coding linkage for job costing.
+**PRIORITY 16 — connect_table: material.master** — add column default_warehouse_id (BIGINT) with FK to material.warehouse.warehouse_id — material master should reference a default storage location.
+**PRIORITY 17 — connect_table: procurement.vendor_qualification** — add column vendor_qualification_prequalification_id (BIGINT) with FK to client.prequalification.prequalification_id — align supplier qualification with client prequalification records where shared.
+**PRIORITY 18 — connect_table: schedule.resource** — add column craft_worker_id (BIGINT) with FK to workforce.craft_worker.craft_worker_id — schedule resources represent labor and should link to craft worker pool.
+**PRIORITY 19 — connect_table: schedule.resource** — add column asset_id (BIGINT) with FK to equipment.asset.asset_id — schedule resources also represent equipment assets for resource leveling.
+**PRIORITY 20 — connect_table: quality.plan** — add column construction_project_id (BIGINT) with FK to project.construction_project.construction_project_id — quality plans are project-scoped, currently only linked to phase.
+**PRIORITY 21 — connect_table: quality.punch_list** — add column construction_project_id (BIGINT) with FK to project.construction_project.construction_project_id — punch lists must be attributable to a project.
+**PRIORITY 22 — connect_table: contract.payment_schedule** — add column construction_project_id (BIGINT) with FK to project.construction_project.construction_project_id — payment schedules belong to a project for cash flow alignment.
+**PRIORITY 23 — connect_table: finance.invoice** — add column construction_project_id (BIGINT) with FK to project.construction_project.construction_project_id — invoices should carry direct project attribution for job costing.
+**PRIORITY 24 — connect_table: project.project_site** — add column construction_project_id (BIGINT) with FK to project.construction_project.construction_project_id — project_site must link to its parent construction project.
+**PRIORITY 25 — connect_table: project.project_site** — add column site_id (BIGINT) with FK to site.site.site_id — project_site should map to the physical site entity to avoid duplication of site data.
+**PRIORITY 27 — connect_table: design.workflow_approval** — add column construction_project_id (BIGINT) with FK to project.construction_project.construction_project_id — approval workflows should be traceable to a project.
+**PRIORITY 28 — connect_table: contract.bond_guarantee** — add column subcontract_id (BIGINT) with FK to contract.subcontract.subcontract_id — subcontractor bonds must reference the relevant subcontract.
+**PRIORITY 29 — connect_table: material.warehouse** — add column construction_project_id (BIGINT) with FK to project.construction_project.construction_project_id — site warehouses should link to the project they serve.
+**PRIORITY 30 — connect_table: equipment.asset** — add column functional_location_id (BIGINT) with FK to equipment.functional_location.functional_location_id — asset lacks current location reference despite functional_location being a core fleet concept.
+**PRIORITY 31 — connect_table: quality.itp** — add column construction_project_id (BIGINT) with FK to project.construction_project.construction_project_id — ITPs are project-scoped and currently link only to phase and account.
+**PRIORITY 32 — connect_table: design.transmittal** — add column construction_project_id (BIGINT) with FK to project.construction_project.construction_project_id — transmittals must be attributable to a project for document control.
+**PRIORITY 33 — connect_table: design.document_register** — add column construction_project_id (BIGINT) with FK to project.construction_project.construction_project_id — document registers are maintained per project.
+**PRIORITY 34 — connect_table: procurement.purchase_order** — add column construction_project_id (BIGINT) with FK to project.construction_project.construction_project_id — POs should carry direct project attribution beyond cost_account.
+**PRIORITY 35 — connect_table: client.opportunity** — add column primary_contact_id (BIGINT) with FK to client.contact.contact_id — opportunities should reference a primary client contact for the pursuit.
+**PRIORITY 36 — connect_table: safety.toolbox_meeting** — add column construction_project_id (BIGINT) with FK to project.construction_project.construction_project_id — toolbox meetings occur on a project and should be attributable.
+**PRIORITY 37 — connect_table: safety.hazard_register** — add column construction_project_id (BIGINT) with FK to project.construction_project.construction_project_id — hazard registers are project-scoped.
+**PRIORITY 38 — connect_table: workforce.crew** — add column construction_project_id (BIGINT) with FK to project.construction_project.construction_project_id — crews are assigned to projects and lack direct project linkage.
+**PRIORITY 39 — connect_table: quality.checklist** — add column itp_id (BIGINT) with FK to quality.itp.itp_id — inspection checklists derive from inspection and test plans.
+**PRIORITY 40 — connect_table: design.engineering_submittal** — add column construction_project_id (BIGINT) with FK to project.construction_project.construction_project_id — submittals must be attributable to a project.
+
+Other known issues from static analysis (2):
+  - 5 attribute(s) contain banned boilerplate phrases (Fortune N, multinational, enterprise-wide, cross-company, group reporting). Clean descriptions.
+  - 161 attribute(s) match person-data patterns but lack pii_ tags
+
+Deterministic score: 80.51/100 (LLM assessment: 78/100)

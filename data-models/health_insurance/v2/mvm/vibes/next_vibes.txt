@@ -1,0 +1,44 @@
+**Model Quality Score: 82.22/100**
+
+**PRIORITY 1 — connect_table: appeal.iro_organization** — add column external_review_id (BIGINT) with FK to appeal.external_review.external_review_id — iro_organization is ISOLATED (zero inbound and zero outbound FKs); link it to the external review process that engages independent review organizations.
+**PRIORITY 2 — connect_table: pharmacy.drug_master** — add column formulary_id (BIGINT) with FK to pharmacy.formulary.formulary_id — drug_master has zero outbound FKs; while referenced inbound, ensure it associates each drug to the formulary it belongs to for navigability.
+**PRIORITY 3 — connect_table: care.hedis_measure** — add column health_plan_id (BIGINT) with FK to plan.health_plan.health_plan_id — hedis_measure has zero outbound FKs and should associate measures with the plan they are tracked against.
+**PRIORITY 4 — connect_table: network.adequacy_standard** — add column provider_network_id (BIGINT) with FK to network.provider_network.provider_network_id — adequacy_standard has zero outbound FKs and should reference the network the standard applies to.
+**PRIORITY 5 — connect_table: care.coordinator** — add column provider_id (BIGINT) with FK to provider.provider.provider_id — coordinator has zero outbound FKs; link care coordinators to their provider identity record.
+**PRIORITY 6 — connect_table: provider.provider** — add column primary_specialty_id (BIGINT) with FK to provider.specialty.specialty_id — provider has zero outbound FKs; associate each provider with its primary specialty.
+**PRIORITY 7 — connect_table: network.provider_network** — add column health_plan_id (BIGINT) with FK to plan.health_plan.health_plan_id — provider_network has zero outbound FKs; networks should reference the plan product they serve.
+**PRIORITY 8 — connect_table: risk.score_run** — add column raps_submission_id (BIGINT) with FK to risk.raps_submission.raps_submission_id — wait, this is circular; instead add column health_plan_id already exists. Remove this priority. (skip)
+**PRIORITY 8 — connect_table: claim.diagnosis** — add column line_id (BIGINT) with FK to claim.line.line_id — diagnosis currently only links to claim.header; diagnoses are typically tied to specific claim lines for line-level adjudication.
+**PRIORITY 9 — connect_table: claim.procedure** — add column line_id (BIGINT) with FK to claim.line.line_id — procedure links to claim.header but not claim.line; procedure codes are billed at the line level and should reference the specific line.
+**PRIORITY 10 — connect_table: member.id_card** — add column subscriber_id (BIGINT) with FK to member.subscriber.subscriber_id — id_card references identity and policy but should also reference the subscriber that owns the family coverage.
+**PRIORITY 11 — connect_table: billing.account** — add column policy_id (BIGINT) with FK to member.policy.policy_id — account only links to provider entities; a billing account should associate with the member policy being billed.
+**PRIORITY 12 — connect_table: billing.account** — add column subscriber_id (BIGINT) with FK to member.subscriber.subscriber_id — billing accounts for individual market premiums must reference the responsible subscriber.
+**PRIORITY 13 — connect_table: pharmacy.dispensing_pharmacy** — add column drug_master_id (BIGINT) — skip; dispensing pharmacy is a location, not drug-specific. (skip)
+**PRIORITY 13 — connect_table: care.hra** — add column member_risk_tier_id already exists. (skip)
+**PRIORITY 13 — connect_table: risk.hcc_mapping** — add column condition_registry_id (BIGINT) with FK to care.condition_registry.condition_registry_id — hcc_mapping only references member_risk_score; it should link to the clinical condition registry that drives HCC assignment.
+**PRIORITY 14 — connect_table: enrollment.qualifying_life_event** — add column event_id (BIGINT) with FK to enrollment.event.event_id — qualifying_life_event should associate with the enrollment event it triggers.
+**PRIORITY 15 — connect_table: provider.specialty** — add column directory_entry_id — skip; specialty is a reference table referenced by provider/directory and validly orphan-out. (skip)
+**PRIORITY 16 — connect_table: plan.health_plan** — add column service_area_id (BIGINT) with FK to plan.service_area.service_area_id — health_plan only references network/formulary; it should reference its service area for geographic plan configuration.
+**PRIORITY 17 — connect_table: member.address** — add column member_identity_id (BIGINT) with FK to member.identity.identity_id — address only links to subscriber; dependents and non-subscriber members also have addresses tied to member identity.
+**PRIORITY 18 — connect_table: member.contact** — add column member_identity_id (BIGINT) with FK to member.identity.identity_id — contact only links to subscriber; member identity-level contacts should be supported for all members.
+**PRIORITY 19 — connect_table: enrollment.open_enrollment_period** — add column health_plan_id (BIGINT) with FK to plan.health_plan.health_plan_id — open_enrollment_period only references service_area; it should associate with the health plans available during the period.
+**PRIORITY 20 — connect_table: pharmacy.formulary** — add column health_plan_id (BIGINT) with FK to plan.health_plan.health_plan_id — formulary has only a self-ref outbound FK; it should associate with the plan that adopts it.
+**PRIORITY 21 — connect_table: provider.license** — add column specialty_id (BIGINT) with FK to provider.specialty.specialty_id — license should associate with the specialty the license authorizes.
+**PRIORITY 22 — connect_table: network.tier** — add column health_plan_id (BIGINT) with FK to plan.health_plan.health_plan_id — tier only references provider_network; tier definitions are often plan-specific and should reference the plan.
+**PRIORITY 23 — connect_table: risk.member_risk_score** — add column score_run_id already exists. (skip)
+**PRIORITY 23 — connect_table: care.condition_registry** — add column eligibility_span_id (BIGINT) with FK to member.eligibility_span.eligibility_span_id — condition registry entries should align with the member coverage span during which the condition is documented.
+**PRIORITY 24 — connect_table: plan.rate** — add column benefit_package_id (BIGINT) with FK to plan.benefit_package.benefit_package_id — rate only references health_plan; premium rates are typically tied to a specific benefit package.
+**PRIORITY 25 — connect_table: plan.service_area** — add column network_config_id — skip; service_area validly references health_plan only. (skip)
+**PRIORITY 25 — connect_table: provider.group_practice** — add column practice_location_id — skip circular; group_practice validly references provider only as primary. (skip)
+**PRIORITY 25 — connect_table: enrollment.edi_transaction** — add column member_policy_id (BIGINT) with FK to member.policy.policy_id — edi_transaction (834) should reference the policy being enrolled/changed.
+
+Other known issues from static analysis (7):
+  - Table member.contact has 3 FK columns pointing to member.subscriber (subscriber_id, contact_subscriber_id, primary_member_subscriber_id) (generic/unlabeled: subscriber_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table enrollment.eligibility_verification has 2 FK columns pointing to enrollment.edi_transaction (edi_transaction_id, primary_eligibility_edi_transaction_id) (generic/unlabeled: edi_transaction_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table provider.practice_location has 2 FK columns pointing to provider.provider (provider_id, tertiary_primary_provider_id) (generic/unlabeled: provider_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table claim.header has 2 FK columns pointing to provider.provider (provider_id, tertiary_rendering_provider_id) (generic/unlabeled: provider_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table care.care_plan has 2 FK columns pointing to member.subscriber (subscriber_id, plan_care_subscriber_id) (generic/unlabeled: subscriber_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Product 'appeal.case' has 28 outgoing FKs (max recommended: 25). Consider splitting into multiple products or refactoring as a junction.
+  - 64 attribute(s) match person-data patterns but lack pii_ tags
+
+Deterministic score: 82.22/100 (LLM assessment: 82/100)

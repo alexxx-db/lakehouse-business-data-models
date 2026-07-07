@@ -1,0 +1,456 @@
+**Model Quality Score: 50/100**
+
+**Static Analysis Findings (110 actionable):**
+  - [SA:unlinked_fk] Column product.sku.product_lca_id looks like an FK but has no foreign_key_to reference
+  - [SA:unlinked_fk] Column manufacturing.manufacturing_facility.distribution_facility_id looks like an FK but has no foreign_key_to reference
+  - [SA:unlinked_fk] Column manufacturing.batch_record.lot_batch_id looks like an FK but has no foreign_key_to reference
+  - [SA:unlinked_fk] Column consumer.shopper.primary_address_id looks like an FK but has no foreign_key_to reference
+  - [SA:unlinked_fk] Column consumer.household.shopper_id looks like an FK but has no foreign_key_to reference
+  - [SA:unlinked_fk] Column consumer.loyalty_account.program_id looks like an FK but has no foreign_key_to reference
+  - [SA:unlinked_fk] Column consumer.dtc_order_line.dtc_return_id looks like an FK but has no foreign_key_to reference
+  - [SA:unlinked_fk] Column consumer.dtc_return.order_line_id looks like an FK but has no foreign_key_to reference
+  - [SA:unlinked_fk] Column consumer.referral.program_id looks like an FK but has no foreign_key_to reference
+  - [SA:unlinked_fk] Column consumer.panel.household_id looks like an FK but has no foreign_key_to reference
+  - [SA:unlinked_fk] Column supply.demand_plan.forecast_version_id looks like an FK but has no foreign_key_to reference
+  - [SA:unlinked_fk] Column supply.supply_replenishment_order.inventory_replenishment_order_id looks like an FK but has no foreign_key_to reference
+  - [SA:unlinked_fk] Column supply.network_node.distribution_facility_id looks like an FK but has no foreign_key_to reference
+  - [SA:unlinked_fk] Column supply.network_node.manufacturing_facility_id looks like an FK but has no foreign_key_to reference
+  - [SA:unlinked_fk] Column sales.trade_account.channel_classification_id looks like an FK but has no foreign_key_to reference
+  - [SA:unlinked_fk] Column sales.sales_dsd_delivery.distribution_dsd_delivery_id looks like an FK but has no foreign_key_to reference
+  - [SA:unlinked_fk] Column quality.capa.nonconformance_id looks like an FK but has no foreign_key_to reference
+  - [SA:unlinked_fk] Column quality.gmp_audit.audit_checklist_id looks like an FK but has no foreign_key_to reference
+  - [SA:unlinked_fk] Column quality.specification.inspection_plan_id looks like an FK but has no foreign_key_to reference
+  - [SA:unlinked_fk] Column distribution.distribution_dsd_route.sales_dsd_route_id looks like an FK but has no foreign_key_to reference
+  - [SA:unlinked_fk] Column procurement.procurement_vmi_agreement.inventory_vmi_agreement_id looks like an FK but has no foreign_key_to reference
+  - [SA:unlinked_fk] Column procurement.procurement_vmi_agreement.sales_vmi_agreement_id looks like an FK but has no foreign_key_to reference
+  - [SA:unlinked_fk] Column promotion.promotion_event.marketing_event_id looks like an FK but has no foreign_key_to reference
+  - [SA:unlinked_fk] Column promotion.promotion_accrual.finance_accrual_id looks like an FK but has no foreign_key_to reference
+  - [SA:unlinked_fk] Column marketing.marketing_brand.product_brand_id looks like an FK but has no foreign_key_to reference
+  - [SA:unlinked_fk] Column marketing.marketing_offset_allocation.distribution_offset_allocation_id looks like an FK but has no foreign_key_to reference
+  - [SA:unlinked_fk] Column finance.finance_budget.marketing_budget_id looks like an FK but has no foreign_key_to reference
+  - [SA:unlinked_fk] Column finance.chart_of_accounts.controlling_area_id looks like an FK but has no foreign_key_to reference
+  - [SA:unlinked_fk] Column logistics.logistics_shipment.distribution_shipment_id looks like an FK but has no foreign_key_to reference
+  - [SA:unlinked_fk] Column inventory.inventory_storage_location.distribution_storage_location_id looks like an FK but has no foreign_key_to reference
+  - [SA:unlinked_fk] Column inventory.inventory_cycle_count.distribution_cycle_count_id looks like an FK but has no foreign_key_to reference
+  - [SA:unlinked_fk] Column research.research_formulation.product_formulation_id looks like an FK but has no foreign_key_to reference
+  - [SA:unlinked_fk] Column research.research_formulation_ingredient.product_formulation_ingredient_id looks like an FK but has no foreign_key_to reference
+  - [SA:unlinked_fk] Column research.consumer_test.respondent_id looks like an FK but has no foreign_key_to reference
+  - [SA:unlinked_fk] Column research.innovation_brief.linked_rd_project_id looks like an FK but has no foreign_key_to reference
+  - [SA:unlinked_fk] Column research.raw_material_spec.material_id looks like an FK but has no foreign_key_to reference
+  - [SA:unlinked_fk] Column research.research_packaging_spec.product_packaging_spec_id looks like an FK but has no foreign_key_to reference
+  - [SA:unlinked_fk] Column regulatory.regulatory_registration.product_registration_id looks like an FK but has no foreign_key_to reference
+  - [SA:unlinked_fk] Column regulatory.dossier.submission_id looks like an FK but has no foreign_key_to reference
+  - [SA:unlinked_fk] Column regulatory.regulatory_claim.product_claim_id looks like an FK but has no foreign_key_to reference
+  - [SA:unlinked_fk] Column workforce.employee.org_unit_id looks like an FK but has no foreign_key_to reference
+  - [SA:unlinked_fk] Column workforce.position.incumbent_employee_id looks like an FK but has no foreign_key_to reference
+  - [SA:unlinked_fk] Column workforce.recruiting_requisition.position_id looks like an FK but has no foreign_key_to reference
+  - [SA:fk_cycle] Circular FK dependency detected: workforce.employee -> workforce.work_location -> workforce.org_unit -> finance.cost_center...
+  - [SA:fk_cycle] Circular FK dependency detected: workforce.employee -> workforce.work_location -> workforce.org_unit -> finance.cost_center...
+  - [SA:fk_cycle] Circular FK dependency detected: workforce.employee -> workforce.work_location -> workforce.org_unit -> finance.cost_center...
+  - [SA:duplicate_product_pair] Domain 'product' has both 'category' and 'product_category' - SSOT violation. Merge into 'category'.
+  - [SA:denormalized_natural_key] Product 'product.freight_contract_assignment' has both FK 'lane_id' and natural key 'lane_code' for entity 'lane'. The natural key is redundant - use the FK join instead.
+  - [SA:denormalized_natural_key] Product 'product.product_category' has both FK 'category_id' and natural key 'category_code' for entity 'category'. The natural key is redundant - use the FK join instead.
+  - [SA:denormalized_natural_key] Product 'manufacturing.work_center' has both FK 'cost_center_id' and natural key 'cost_center_code' for entity 'cost_center'. The natural key is redundant - use the FK join instead.
+  - [SA:denormalized_natural_key] Product 'manufacturing.production_order' has both FK 'routing_id' and natural key 'routing_number' for entity 'routing'. The natural key is redundant - use the FK join instead.
+  - [SA:denormalized_natural_key] Product 'manufacturing.gmp_event' has both FK 'capa_id' and natural key 'capa_reference' for entity 'capa'. The natural key is redundant - use the FK join instead.
+  - [SA:denormalized_natural_key] Product 'manufacturing.process_parameter' has both FK 'work_center_id' and natural key 'work_center_code' for entity 'work_center'. The natural key is redundant - use the FK join instead.
+  - [SA:denormalized_natural_key] Product 'consumer.dtc_order' has both FK 'order_id' and natural key 'order_number' for entity 'order'. The natural key is redundant - use the FK join instead.
+  - [SA:denormalized_natural_key] Product 'consumer.nps_response' has both FK 'sku_id' and natural key 'sku_code' for entity 'sku'. The natural key is redundant - use the FK join instead.
+  - [SA:denormalized_natural_key] Product 'supply.network_lane' has both FK 'lane_id' and natural key 'lane_code' for entity 'lane'. The natural key is redundant - use the FK join instead.
+  - [SA:denormalized_natural_key] Product 'quality.batch_release' has both FK 'certificate_of_analysis_id' and natural key 'certificate_of_analysis_number' for entity 'certificate_of_analysis'. The natural key is redundant - use the FK join instead.
+  - [SA:denormalized_natural_key] Product 'quality.lab_test_request' has both FK 'inspection_lot_id' and natural key 'inspection_lot_number' for entity 'inspection_lot'. The natural key is redundant - use the FK join instead.
+  - [SA:denormalized_natural_key] Product 'quality.lab_test_request' has both FK 'sample_id' and natural key 'sample_code' for entity 'sample'. The natural key is redundant - use the FK join instead.
+  - [SA:denormalized_natural_key] Product 'quality.change_control' has both FK 'change_id' and natural key 'change_number' for entity 'change'. The natural key is redundant - use the FK join instead.
+  - [SA:denormalized_natural_key] Product 'distribution.inbound_receipt' has both FK 'purchase_order_id' and natural key 'purchase_order_number' for entity 'purchase_order'. The natural key is redundant - use the FK join instead.
+  - [SA:denormalized_natural_key] Product 'distribution.outbound_order' has both FK 'order_id' and natural key 'order_number' for entity 'order'. The natural key is redundant - use the FK join instead.
+  - [SA:denormalized_natural_key] Product 'distribution.outbound_order_line' has both FK 'sku_id' and natural key 'sku_code' for entity 'sku'. The natural key is redundant - use the FK join instead.
+  - [SA:denormalized_natural_key] Product 'procurement.invoice_line' has both FK 'material_id' and natural key 'material_code' for entity 'material'. The natural key is redundant - use the FK join instead.
+  - [SA:denormalized_natural_key] Product 'procurement.sourcing_event' has both FK 'spend_category_id' and natural key 'spend_category_code' for entity 'spend_category'. The natural key is redundant - use the FK join instead.
+  - [SA:denormalized_natural_key] Product 'promotion.trade_spend_allocation' has both FK 'cost_center_id' and natural key 'cost_center_code' for entity 'cost_center'. The natural key is redundant - use the FK join instead.
+  - [SA:denormalized_natural_key] Product 'marketing.campaign_submission_link' has both FK 'submission_id' and natural key 'submission_reference' for entity 'submission'. The natural key is redundant - use the FK join instead.
+  - [SA:denormalized_natural_key] Product 'finance.cost_center' has both FK 'controlling_area_id' and natural key 'controlling_area_code' for entity 'controlling_area'. The natural key is redundant - use the FK join instead.
+  - [SA:denormalized_natural_key] Product 'finance.cost_center' has both FK 'profit_center_id' and natural key 'profit_center_code' for entity 'profit_center'. The natural key is redundant - use the FK join instead.
+  - [SA:denormalized_natural_key] Product 'finance.profit_center' has both FK 'controlling_area_id' and natural key 'controlling_area_code' for entity 'controlling_area'. The natural key is redundant - use the FK join instead.
+  - [SA:denormalized_natural_key] Product 'finance.journal_entry_line' has both FK 'cost_center_id' and natural key 'cost_center_code' for entity 'cost_center'. The natural key is redundant - use the FK join instead.
+  - [SA:denormalized_natural_key] Product 'finance.journal_entry_line' has both FK 'profit_center_id' and natural key 'profit_center_code' for entity 'profit_center'. The natural key is redundant - use the FK join instead.
+  - [SA:denormalized_natural_key] Product 'finance.ap_payment' has both FK 'payment_run_id' and natural key 'payment_run_code' for entity 'payment_run'. The natural key is redundant - use the FK join instead.
+  - [SA:denormalized_natural_key] Product 'finance.finance_budget' has both FK 'gl_account_id' and natural key 'gl_account_code' for entity 'gl_account'. The natural key is redundant - use the FK join instead.
+  - [SA:denormalized_natural_key] Product 'finance.finance_budget' has both FK 'profit_center_id' and natural key 'profit_center_code' for entity 'profit_center'. The natural key is redundant - use the FK join instead.
+  - [SA:denormalized_natural_key] Product 'finance.finance_accrual' has both FK 'gl_account_id' and natural key 'gl_account_code' for entity 'gl_account'. The natural key is redundant - use the FK join instead.
+  - [SA:denormalized_natural_key] Product 'logistics.delivery' has both FK 'carrier_id' and natural key 'carrier_code' for entity 'carrier'. The natural key is redundant - use the FK join instead.
+  - [SA:denormalized_natural_key] Product 'logistics.freight_audit_result' has both FK 'freight_invoice_id' and natural key 'freight_invoice_number' for entity 'freight_invoice'. The natural key is redundant - use the FK join instead.
+  - [SA:denormalized_natural_key] Product 'logistics.freight_cost' has both FK 'gl_account_id' and natural key 'gl_account_code' for entity 'gl_account'. The natural key is redundant - use the FK join instead.
+  - [SA:denormalized_natural_key] Product 'research.raw_material_spec' has both FK 'supplier_id' and natural key 'supplier_code' for entity 'supplier'. The natural key is redundant - use the FK join instead.
+  - [SA:denormalized_natural_key] Product 'research.research_packaging_spec' has both FK 'supplier_id' and natural key 'supplier_code' for entity 'supplier'. The natural key is redundant - use the FK join instead.
+  - [SA:denormalized_natural_key] Product 'regulatory.submission' has both FK 'dossier_id' and natural key 'dossier_reference' for entity 'dossier'. The natural key is redundant - use the FK join instead.
+  - [SA:denormalized_natural_key] Product 'regulatory.dossier' has both FK 'jurisdiction_id' and natural key 'jurisdiction_code' for entity 'jurisdiction'. The natural key is redundant - use the FK join instead.
+  - [SA:denormalized_natural_key] Product 'regulatory.ingredient_list' has both FK 'jurisdiction_id' and natural key 'jurisdiction_code' for entity 'jurisdiction'. The natural key is redundant - use the FK join instead.
+  - [SA:denormalized_natural_key] Product 'regulatory.regulatory_claim' has both FK 'jurisdiction_id' and natural key 'jurisdiction_code' for entity 'jurisdiction'. The natural key is redundant - use the FK join instead.
+  - [SA:denormalized_natural_key] Product 'workforce.org_unit' has both FK 'cost_center_id' and natural key 'cost_center_code' for entity 'cost_center'. The natural key is redundant - use the FK join instead.
+  - [SA:cross_domain_duplicate] Potential SSOT violation: 'distribution.distribution_facility' and 'manufacturing.manufacturing_facility' have the same entity name 'facility' in different domains. One should be the SSOT owner, the other should reference via FK.
+  - [SA:cross_domain_duplicate] Potential SSOT violation: 'distribution.distribution_storage_location' and 'inventory.inventory_storage_location' have the same entity name 'storage_location' in different domains. One should be the SSOT owner, the other should reference via FK.
+  - [SA:cross_domain_duplicate] Potential SSOT violation: 'distribution.distribution_shipment' and 'logistics.logistics_shipment' have the same entity name 'shipment' in different domains. One should be the SSOT owner, the other should reference via FK.
+  - [SA:cross_domain_duplicate] Potential SSOT violation: 'distribution.distribution_cycle_count' and 'inventory.inventory_cycle_count' have the same entity name 'cycle_count' in different domains. One should be the SSOT owner, the other should reference via FK.
+  - [SA:cross_domain_duplicate] Potential SSOT violation: 'distribution.distribution_dsd_route' and 'sales.sales_dsd_route' have the same entity name 'dsd_route' in different domains. One should be the SSOT owner, the other should reference via FK.
+  - [SA:cross_domain_duplicate] Potential SSOT violation: 'distribution.distribution_dsd_delivery' and 'sales.sales_dsd_delivery' have the same entity name 'dsd_delivery' in different domains. One should be the SSOT owner, the other should reference via FK.
+  - [SA:cross_domain_duplicate] Potential SSOT violation: 'distribution.distribution_offset_allocation' and 'marketing.marketing_offset_allocation' have the same entity name 'offset_allocation' in different domains. One should be the SSOT owner, the other should reference via FK.
+  - [SA:cross_domain_duplicate] Potential SSOT violation: 'finance.finance_budget' and 'marketing.marketing_budget' have the same entity name 'budget' in different domains. One should be the SSOT owner, the other should reference via FK.
+  - [SA:cross_domain_duplicate] Potential SSOT violation: 'finance.finance_accrual' and 'promotion.promotion_accrual' have the same entity name 'accrual' in different domains. One should be the SSOT owner, the other should reference via FK.
+  - [SA:cross_domain_duplicate] Potential SSOT violation: 'inventory.inventory_replenishment_order' and 'supply.supply_replenishment_order' have the same entity name 'replenishment_order' in different domains. One should be the SSOT owner, the other should reference via FK.
+  - [SA:cross_domain_duplicate] Potential SSOT violation: 'inventory.inventory_vmi_agreement' and 'procurement.procurement_vmi_agreement' have the same entity name 'vmi_agreement' in different domains. One should be the SSOT owner, the other should reference via FK.
+  - [SA:cross_domain_duplicate] Potential SSOT violation: 'inventory.inventory_vmi_agreement' and 'sales.sales_vmi_agreement' have the same entity name 'vmi_agreement' in different domains. One should be the SSOT owner, the other should reference via FK.
+  - [SA:cross_domain_duplicate] Potential SSOT violation: 'procurement.procurement_vmi_agreement' and 'sales.sales_vmi_agreement' have the same entity name 'vmi_agreement' in different domains. One should be the SSOT owner, the other should reference via FK.
+  - [SA:cross_domain_duplicate] Potential SSOT violation: 'marketing.marketing_brand' and 'product.product_brand' have the same entity name 'brand' in different domains. One should be the SSOT owner, the other should reference via FK.
+  - [SA:cross_domain_duplicate] Potential SSOT violation: 'marketing.marketing_event' and 'promotion.promotion_event' have the same entity name 'event' in different domains. One should be the SSOT owner, the other should reference via FK.
+  - [SA:cross_domain_duplicate] Potential SSOT violation: 'product.product_formulation' and 'research.research_formulation' have the same entity name 'formulation' in different domains. One should be the SSOT owner, the other should reference via FK.
+  - [SA:cross_domain_duplicate] Potential SSOT violation: 'product.product_formulation_ingredient' and 'research.research_formulation_ingredient' have the same entity name 'formulation_ingredient' in different domains. One should be the SSOT owner, the other should reference via FK.
+  - [SA:cross_domain_duplicate] Potential SSOT violation: 'product.product_packaging_spec' and 'research.research_packaging_spec' have the same entity name 'packaging_spec' in different domains. One should be the SSOT owner, the other should reference via FK.
+  - [SA:cross_domain_duplicate] Potential SSOT violation: 'product.product_claim' and 'regulatory.regulatory_claim' have the same entity name 'claim' in different domains. One should be the SSOT owner, the other should reference via FK.
+  - [SA:cross_domain_duplicate] Potential SSOT violation: 'product.product_registration' and 'regulatory.regulatory_registration' have the same entity name 'registration' in different domains. One should be the SSOT owner, the other should reference via FK.
+  - [SA:cross_domain_duplicate] Potential SSOT violation: 'promotion.promotion_deduction' and 'sales.sales_deduction' have the same entity name 'deduction' in different domains. One should be the SSOT owner, the other should reference via FK.
+  - [SA:cross_domain_duplicate] Potential SSOT violation: 'promotion.promotion_rebate_agreement' and 'sales.sales_rebate_agreement' have the same entity name 'rebate_agreement' in different domains. One should be the SSOT owner, the other should reference via FK.
+  - [SA:cross_domain_duplicate] Potential SSOT violation: 'quality.quality_stability_study' and 'research.research_stability_study' have the same entity name 'stability_study' in different domains. One should be the SSOT owner, the other should reference via FK.
+  - [SA:cross_domain_duplicate] Potential SSOT violation: 'quality.sample' and 'research.sample' have the same entity name 'sample' in different domains. One should be the SSOT owner, the other should reference via FK.
+
+**PRIORITY 1 - rename_product: procurement.procurement_vmi_agreement2** - rename to vmi_agreement_type because it is a stub duplicate of procurement_vmi_agreement and per v1 next_vibes P2 should be a typed lookup
+**PRIORITY 2 - remove_fk: procurement.procurement_vmi_agreement** - remove FK on column procurement_vmi_agreement2_id because procurement_vmi_agreement2 is being renamed to vmi_agreement_type and this self-referencing duplicate FK is invalid
+**PRIORITY 3 - connect_table: customer.channel_classification** - add column trade_account_id (BIGINT) with FK to sales.trade_account.trade_account_id - channel classification must associate with the trade account it classifies
+**PRIORITY 4 - connect_table: finance.party** - add column supplier_id (BIGINT) with FK to procurement.supplier.supplier_id - party should resolve to a supplier counterparty
+**PRIORITY 5 - connect_table: finance.party** - add column trade_account_id (BIGINT) with FK to sales.trade_account.trade_account_id - party should resolve to a customer counterparty
+**PRIORITY 6 - connect_table: marketing.agency** - add column supplier_id (BIGINT) with FK to procurement.supplier.supplier_id - agencies are external vendors and must link to supplier master
+**PRIORITY 7 - connect_table: workforce.training_course** - add column org_unit_id (BIGINT) with FK to workforce.org_unit.org_unit_id - training courses are owned by an organizational unit
+**PRIORITY 8 - connect_table: consumer.consent_session** - add column shopper_id (BIGINT) with FK to consumer.shopper.shopper_id - a consent session must identify the consumer
+**PRIORITY 9 - connect_table: consumer.loyalty_tier** - add column loyalty_program_id (BIGINT) with FK to consumer.loyalty_program.loyalty_program_id - tiers belong to a specific program
+**PRIORITY 10 - connect_table: consumer.survey** - add column marketing_brand_id (BIGINT) with FK to marketing.marketing_brand.marketing_brand_id - surveys are typically brand-sponsored
+**PRIORITY 11 - connect_table: logistics.consolidation** - add column distribution_facility_id (BIGINT) with FK to distribution.distribution_facility.distribution_facility_id - consolidations occur at a DC
+**PRIORITY 12 - connect_table: logistics.vehicle** - add column carrier_id (BIGINT) with FK to logistics.carrier.carrier_id - vehicles belong to or are operated by a carrier
+**PRIORITY 13 - connect_table: logistics.transport_unit** - add column carrier_id (BIGINT) with FK to logistics.carrier.carrier_id - transport units are owned/operated by carriers
+**PRIORITY 14 - connect_table: logistics.handling_unit** - add column logistics_shipment_id (BIGINT) with FK to logistics.logistics_shipment.logistics_shipment_id - handling units are loaded onto shipments
+**PRIORITY 15 - connect_table: shared.region** - add column jurisdiction_id (BIGINT) with FK to regulatory.jurisdiction.jurisdiction_id - regions map to regulatory jurisdictions
+**PRIORITY 16 - connect_table: sales.account_hierarchy** - add column parent_trade_account_id (BIGINT) with FK to sales.trade_account.trade_account_id - hierarchy needs explicit parent linkage
+**PRIORITY 17 - connect_table: sales.account_hierarchy** - add column child_trade_account_id (BIGINT) with FK to sales.trade_account.trade_account_id - hierarchy needs explicit child linkage
+**PRIORITY 18 - connect_table: workforce.applicant** - add column job_profile_id (BIGINT) with FK to workforce.job_profile.job_profile_id - applicants apply for specific job profiles
+**PRIORITY 19 - connect_table: workforce.safety_incident** - add column manufacturing_facility_id (BIGINT) with FK to manufacturing.manufacturing_facility.manufacturing_facility_id - most safety incidents occur at a plant
+**PRIORITY 20 - connect_table: workforce.labor_relation** - add column employee_id (BIGINT) with FK to workforce.employee.employee_id - labor relations records must link to the employee
+**PRIORITY 21 - connect_table: finance.company_code** - add column controlling_area_id (BIGINT) with FK to finance.controlling_area.controlling_area_id - company codes operate within a controlling area
+**PRIORITY 22 - connect_table: product.product_registration** - add column regulatory_registration_id (BIGINT) with FK to regulatory.regulatory_registration.regulatory_registration_id - product registration is a consumer-facing wrapper around regulatory registration and must reference it
+**PRIORITY 23 - connect_table: product.product_registration** - add column registered_shopper_id (BIGINT) with FK to consumer.shopper.shopper_id - product registration is a consumer warranty/registration record
+**PRIORITY 24 - connect_table: product.product_registration** - add column sku_id (BIGINT) with FK to product.sku.sku_id - registration must identify the registered SKU
+**PRIORITY 25 - connect_table: consumer.research_participation** - add column market_research_study_id (BIGINT) with FK to marketing.market_research_study.market_research_study_id - participation must link to the study being conducted
+**PRIORITY 26 - connect_table: consumer.research_participation** - add column shopper_id (BIGINT) with FK to consumer.shopper.shopper_id - participation must identify the consumer participant
+**PRIORITY 27 - connect_table: consumer.research_participation** - add column panel_id (BIGINT) with FK to consumer.panel.panel_id - participation typically occurs through a panel
+**PRIORITY 28 - connect_table: distribution.distribution_offset_allocation** - add column distribution_facility_id (BIGINT) with FK to distribution.distribution_facility.distribution_facility_id - offset allocations apply to a specific facility
+**PRIORITY 29 - connect_table: distribution.distribution_offset_allocation** - add column carbon_offset_id (BIGINT) with FK to sustainability.carbon_offset.carbon_offset_id - allocation references the carbon offset being allocated
+**PRIORITY 30 - connect_table: promotion.flight_allocation** - add column campaign_flight_id (BIGINT) with FK to marketing.campaign_flight.campaign_flight_id - allocation must reference the flight
+**PRIORITY 31 - connect_table: promotion.flight_allocation** - add column promotion_event_id (BIGINT) with FK to promotion.promotion_event.promotion_event_id - allocation links flight spend to a promotion event
+**PRIORITY 32 - connect_table: marketing.brand_assignment** - add column marketing_brand_id (BIGINT) with FK to marketing.marketing_brand.marketing_brand_id - assignment must reference the brand being assigned
+**PRIORITY 33 - connect_table: marketing.brand_assignment** - add column employee_id (BIGINT) with FK to workforce.employee.employee_id - assignment must reference the assigned brand owner
+**PRIORITY 34 - connect_table: marketing.campaign_inventory_allocation** - add column campaign_id (BIGINT) with FK to marketing.campaign.campaign_id - allocation must reference the campaign
+**PRIORITY 35 - connect_table: marketing.campaign_inventory_allocation** - add column sku_id (BIGINT) with FK to product.sku.sku_id - allocation reserves inventory for a SKU
+**PRIORITY 36 - connect_table: marketing.marketing_offset_allocation** - add column campaign_id (BIGINT) with FK to marketing.campaign.campaign_id - offset allocation maps a campaign's emissions to offsets
+**PRIORITY 37 - connect_table: marketing.marketing_offset_allocation** - add column carbon_offset_id (BIGINT) with FK to sustainability.carbon_offset.carbon_offset_id - allocation references the offset record
+**PRIORITY 38 - connect_table: marketing.campaign_submission_link** - add column campaign_id (BIGINT) with FK to marketing.campaign.campaign_id - link must identify the campaign submitted
+**PRIORITY 39 - connect_table: marketing.campaign_submission_link** - add column submission_id (BIGINT) with FK to regulatory.submission.submission_id - link must identify the regulatory submission
+**PRIORITY 40 - connect_table: marketing.event_participation** - add column marketing_event_id (BIGINT) with FK to marketing.marketing_event.marketing_event_id - participation must reference the event attended
+**PRIORITY 41 - connect_table: marketing.event_participation** - add column shopper_id (BIGINT) with FK to consumer.shopper.shopper_id - participation must identify the participant
+**PRIORITY 42 - connect_table: finance.chart_of_accounts** - add column controlling_area_id (BIGINT) with FK to finance.controlling_area.controlling_area_id - COA is associated with controlling area scope
+**PRIORITY 43 - connect_table: finance.chart_of_accounts** - add column company_code_id (BIGINT) with FK to finance.company_code.company_code_id - COA is assigned to company codes
+**PRIORITY 44 - connect_table: product.vmi_sku_assignment** - add column inventory_vmi_agreement_id (BIGINT) with FK to inventory.inventory_vmi_agreement.inventory_vmi_agreement_id - VMI SKU assignment must link to the underlying VMI agreement
+**PRIORITY 45 - connect_table: product.freight_contract_assignment** - add column manufacturing_facility_id (BIGINT) with FK to manufacturing.manufacturing_facility.manufacturing_facility_id - freight contracts assigned to SKUs are typically origin-facility scoped
+**PRIORITY 46 - connect_table: product.supply_agreement** - add column supplier_site_id (BIGINT) with FK to procurement.supplier_site.supplier_site_id - supply agreements typically specify a supplying site
+**PRIORITY 47 - connect_table: sales.sales_vmi_agreement** - add column retail_store_id (BIGINT) with FK to sales.retail_store.retail_store_id - VMI agreements often operate at store level
+**PRIORITY 48 - connect_table: sales.sales_vmi_agreement** - add column inventory_vmi_agreement_id (BIGINT) with FK to inventory.inventory_vmi_agreement.inventory_vmi_agreement_id - sales-side VMI must link to the inventory VMI master record
+**PRIORITY 49 - connect_table: sales.call** - add column account_call_id (BIGINT) with FK to sales.account_call.account_call_id - sales.call appears to overlap account_call and should reference its parent record
+**PRIORITY 50 - connect_table: sales.compliance_assignment** - add column account_compliance_record_id (BIGINT) with FK to sales.account_compliance_record.account_compliance_record_id - assignment should link to the compliance record being assigned
+**PRIORITY 51 - connect_table: marketing.brand_distribution_allocation** - add column sku_id (BIGINT) with FK to product.sku.sku_id - allocation typically targets specific SKUs within a brand
+**PRIORITY 52 - connect_table: marketing.brand_distribution_allocation** - add column workforce_employee_id (BIGINT) with FK to workforce.employee.employee_id - allocations have an owner/approver
+**PRIORITY 53 - connect_table: marketing.campaign_assignment** - add column marketing_brand_id (BIGINT) with FK to marketing.marketing_brand.marketing_brand_id - campaign assignment is brand-scoped
+**PRIORITY 54 - connect_table: marketing.campaign_assignment** - add column trade_account_id (BIGINT) with FK to sales.trade_account.trade_account_id - campaign assignments often target specific trade accounts
+**PRIORITY 55 - connect_table: workforce.enrollment** - add column enrollment_period_start_date_id (BIGINT) with FK to workforce.payroll_period.payroll_period_id - enrollment effective period should align to a payroll period
+**PRIORITY 56 - connect_table: research.inci_library** - add column raw_material_spec_id (BIGINT) with FK to research.raw_material_spec.raw_material_spec_id - INCI entries map to raw material specs
+**PRIORITY 57 - connect_table: product.gtin_registry** - add column pack_hierarchy_id (BIGINT) with FK to product.pack_hierarchy.pack_hierarchy_id - GTINs are issued per pack level
+**PRIORITY 58 - connect_table: regulatory.restricted_substance** - add column reach_substance_id (BIGINT) with FK to regulatory.reach_substance.reach_substance_id - restricted substances overlap REACH-listed substances
+**PRIORITY 59 - connect_table: workforce.benefit_enrollment** - add column enrollment_id (BIGINT) with FK to workforce.enrollment.enrollment_id - benefit enrollment is a specialization of enrollment
+**PRIORITY 60 - connect_table: consumer.loyalty_program** - add column owning_marketing_brand_id (BIGINT) with FK to marketing.marketing_brand.marketing_brand_id - loyalty programs are owned by a brand (existing FK already correct, but ensure linkage; flag if missing in v2)
+**PRIORITY 61 - connect_table: product.product_brand** - add column marketing_brand_id (BIGINT) with FK to marketing.marketing_brand.marketing_brand_id - product_brand is the product-side projection of marketing_brand and must reference the master
+**PRIORITY 62 - connect_table: product.product_claim** - add column regulatory_claim_id (BIGINT) with FK to regulatory.regulatory_claim.regulatory_claim_id - product claim must reference the regulatory claim that substantiates it
+**PRIORITY 63 - connect_table: product.product_formulation** - add column research_formulation_id (BIGINT) with FK to research.research_formulation.research_formulation_id - commercialized product formulation must trace to its R&D source formulation
+**PRIORITY 64 - connect_table: product.product_formulation_ingredient** - add column research_formulation_ingredient_id (BIGINT) with FK to research.research_formulation_ingredient.research_formulation_ingredient_id - production ingredient must trace to R&D ingredient
+**PRIORITY 65 - connect_table: product.product_packaging_spec** - add column research_packaging_spec_id (BIGINT) with FK to research.research_packaging_spec.research_packaging_spec_id - production packaging spec must trace to R&D packaging spec
+**PRIORITY 66 - connect_table: distribution.distribution_facility** - add column manufacturing_facility_id (BIGINT) with FK to manufacturing.manufacturing_facility.manufacturing_facility_id - co-located DCs at plants must reference the manufacturing facility master
+**PRIORITY 67 - connect_table: distribution.distribution_storage_location** - add column inventory_storage_location_id (BIGINT) with FK to inventory.inventory_storage_location.inventory_storage_location_id - distribution storage location is the WMS view of inventory storage location and must reference the master
+**PRIORITY 68 - connect_table: distribution.distribution_shipment** - add column logistics_shipment_id (BIGINT) with FK to logistics.logistics_shipment.logistics_shipment_id - distribution shipment is the warehouse view; must reference the logistics master record
+**PRIORITY 69 - connect_table: distribution.distribution_cycle_count** - add column inventory_cycle_count_id (BIGINT) with FK to inventory.inventory_cycle_count.inventory_cycle_count_id - must reference the inventory-side master cycle count
+**PRIORITY 70 - connect_table: distribution.distribution_dsd_route** - add column sales_dsd_route_id (BIGINT) with FK to sales.sales_dsd_route.sales_dsd_route_id - distribution DSD route is the operational view of the sales-defined route
+**PRIORITY 71 - connect_table: distribution.distribution_dsd_delivery** - add column sales_dsd_delivery_id (BIGINT) with FK to sales.sales_dsd_delivery.sales_dsd_delivery_id - distribution DSD delivery executes a sales DSD delivery
+**PRIORITY 72 - connect_table: finance.finance_budget** - add column marketing_budget_id (BIGINT) with FK to marketing.marketing_budget.marketing_budget_id - finance budget consolidates marketing budgets and must reference them
+**PRIORITY 73 - connect_table: inventory.inventory_replenishment_order** - add column supply_replenishment_order_id (BIGINT) with FK to supply.supply_replenishment_order.supply_replenishment_order_id - inventory replenishment order executes a supply-planned order
+**PRIORITY 74 - connect_table: inventory.inventory_vmi_agreement** - add column procurement_vmi_agreement_id (BIGINT) with FK to procurement.procurement_vmi_agreement.procurement_vmi_agreement_id - supplier-managed VMI must reference procurement-side master
+**PRIORITY 75 - connect_table: marketing.marketing_event** - add column promotion_event_id (BIGINT) with FK to promotion.promotion_event.promotion_event_id - marketing events that drive trade promotion must reference the promotion event
+**PRIORITY 76 - connect_table: research.sample** - add column quality_sample_id (BIGINT) with FK to quality.sample.quality_sample_id - research samples that proceed to QC must reference the quality sample record
+**PRIORITY 77 - rename_attribute: finance.material_ledger_posting** - rename column reversal_posting_id to reversal_material_ledger_posting_id because the FK targets material_ledger_posting and the column name should follow the role-prefix pattern
+**PRIORITY 78 - connect_table: regulatory.jurisdiction** - add column region_id (BIGINT) with FK to shared.region.region_id - jurisdictions roll up to regions for reporting
+**PRIORITY 79 - connect_table: workforce.position** - add column reports_to_position_id (BIGINT) with FK to workforce.position.position_id - position hierarchy needs explicit reporting line beyond supervisor_position_id if not already present (verify)
+**PRIORITY 80 - connect_table: sales.account_team** - add column trade_account_id (BIGINT) with FK to sales.trade_account.trade_account_id - already present per spec; flag only if missing - ensure team is anchored to its account
+**PRIORITY 81 - connect_table: procurement.supplier_site** - add column address_country_jurisdiction_id (BIGINT) with FK to regulatory.jurisdiction.jurisdiction_id - supplier sites need jurisdiction for trade compliance
+**PRIORITY 82 - connect_table: manufacturing.equipment** - add column work_center_id (BIGINT) with FK to manufacturing.work_center.work_center_id - equipment is assigned to a work center (verify presence)
+**PRIORITY 83 - connect_table: quality.sample** - add column lab_test_request_id (BIGINT) with FK to quality.lab_test_request.lab_test_request_id - samples are typically taken in response to a lab test request
+**PRIORITY 84 - connect_table: research.stability_timepoint** - add column stability_result_id (BIGINT) with FK to quality.stability_result.stability_result_id - research timepoints feed stability results
+**PRIORITY 85 - connect_table: sustainability.commitment_progress** - add column reporting_period_start_date (DATE) and reporting_period_end_date (DATE) - progress records require a reporting period (data attribute thinness)
+**PRIORITY 86 - connect_table: sustainability.carbon_offset** - add column supplier_id (BIGINT) with FK to procurement.supplier.supplier_id - offsets are purchased from offset providers/suppliers
+**PRIORITY 87 - connect_table: consumer.loyalty_program** - add column terms_jurisdiction_id (BIGINT) with FK to regulatory.jurisdiction.jurisdiction_id - loyalty programs have jurisdiction-specific terms
+**PRIORITY 88 - connect_table: marketing.influencer** - add column shopper_id (BIGINT) with FK to consumer.shopper.shopper_id - influencers may also be tracked as shoppers/consumers
+**PRIORITY 89 - connect_table: workforce.employee** - add column org_unit_id (BIGINT) with FK to workforce.org_unit.org_unit_id - employee must report to an org unit (verify presence)
+**PRIORITY 90 - connect_table: sales.rep** - add column employee_id (BIGINT) with FK to workforce.employee.employee_id - sales reps are employees (verify already present per spec)
+
+Other known issues from static analysis (221):
+  - Table procurement.procurement_vmi_agreement2 has no table_name defined
+  - Attribute 'routing_version' in manufacturing.routing has redundant product prefix 'routing_'. Rename to 'version'
+  - Attribute 'changeover_end_timestamp' in manufacturing.changeover has redundant product prefix 'changeover_'. Rename to 'end_timestamp'
+  - Attribute 'changeover_start_timestamp' in manufacturing.changeover has redundant product prefix 'changeover_'. Rename to 'start_timestamp'
+  - Attribute 'address_line_1' in consumer.address has redundant product prefix 'address_'. Rename to 'line_1'
+  - Attribute 'address_line_2' in consumer.address has redundant product prefix 'address_'. Rename to 'line_2'
+  - Attribute 'interaction_channel' in consumer.interaction has redundant product prefix 'interaction_'. Rename to 'channel'
+  - Attribute 'interaction_outcome' in consumer.interaction has redundant product prefix 'interaction_'. Rename to 'outcome'
+  - Attribute 'referral_channel' in consumer.referral has redundant product prefix 'referral_'. Rename to 'channel'
+  - Attribute 'panel_provider' in consumer.panel has redundant product prefix 'panel_'. Rename to 'provider'
+  - Attribute 'survey_version' in consumer.survey has redundant product prefix 'survey_'. Rename to 'version'
+  - Attribute 'safety_stock_quantity' in supply.safety_stock has redundant product prefix 'safety_stock_'. Rename to 'quantity'
+  - Attribute 'quota_amount' in sales.quota has redundant product prefix 'quota_'. Rename to 'amount'
+  - Attribute 'call_duration_minutes' in sales.call has redundant product prefix 'call_'. Rename to 'duration_minutes'
+  - Attribute 'call_outcome' in sales.call has redundant product prefix 'call_'. Rename to 'outcome'
+  - Attribute 'sample_quantity' in quality.sample has redundant product prefix 'sample_'. Rename to 'quantity'
+  - Attribute 'sample_quantity_uom' in quality.sample has redundant product prefix 'sample_'. Rename to 'quantity_uom'
+  - Attribute 'promoted_price_amount' in promotion.promoted_price has redundant product prefix 'promoted_price_'. Rename to 'amount'
+  - Attribute 'baseline_volume_units' in promotion.baseline_volume has redundant product prefix 'baseline_volume_'. Rename to 'units'
+  - Attribute 'campaign_objective' in marketing.campaign has redundant product prefix 'campaign_'. Rename to 'objective'
+  - Attribute 'influencer_tier' in marketing.influencer has redundant product prefix 'influencer_'. Rename to 'tier'
+  - Attribute 'attribution_weight' in marketing.attribution has redundant product prefix 'attribution_'. Rename to 'weight'
+  - Attribute 'delivery_uom' in logistics.delivery has redundant product prefix 'delivery_'. Rename to 'uom'
+  - Attribute 'position_title' in workforce.position has redundant product prefix 'position_'. Rename to 'title'
+  - Attribute 'enrollment_notes' in workforce.enrollment has redundant product prefix 'enrollment_'. Rename to 'notes'
+  - Table consumer.loyalty_account has self-referencing FK on column 'referral_account_id' with same name as PK 'loyalty_account_id' - the FK column must have a different name that describes the relationship (the LLM should choose a contextual label)
+  - Table supply.forecast_version has self-referencing FK on column 'baseline_version_id' with same name as PK 'forecast_version_id' - the FK column must have a different name that describes the relationship (the LLM should choose a contextual label)
+  - Table supply.drp_run has self-referencing FK on column 'last_successful_run_id' with same name as PK 'drp_run_id' - the FK column must have a different name that describes the relationship (the LLM should choose a contextual label)
+  - Table sales.account_contact has self-referencing FK on column 'reports_to_contact_id' with same name as PK 'account_contact_id' - the FK column must have a different name that describes the relationship (the LLM should choose a contextual label)
+  - Table promotion.tpo_scenario has self-referencing FK on column 'baseline_scenario_id' with same name as PK 'tpo_scenario_id' - the FK column must have a different name that describes the relationship (the LLM should choose a contextual label)
+  - Table product.sku has 2 FK columns pointing to marketing.marketing_brand (brand_id, marketing_brand_id) (generic/unlabeled: marketing_brand_id) - rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table product.freight_contract_assignment has 2 FK columns pointing to logistics.carrier_contract (carrier_contract_id, freight_contract_id) (generic/unlabeled: carrier_contract_id) - rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table manufacturing.manufacturing_bom has 2 FK columns pointing to product.sku (primary_manufacturing_sku_id, sku_id) (generic/unlabeled: sku_id) - rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table manufacturing.production_confirmation has 3 FK columns pointing to workforce.employee (confirmed_by_employee_id, employee_id, primary_production_employee_id) (generic/unlabeled: employee_id) - rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table manufacturing.equipment has 2 FK columns pointing to manufacturing.production_line (line_id, production_line_id) (generic/unlabeled: production_line_id) - rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table consumer.data_subject_request has 3 FK columns pointing to workforce.employee (assigned_employee_id, employee_id, handled_by_employee_id) (generic/unlabeled: employee_id) - rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table supply.demand_plan has 2 FK columns pointing to supply.network_node (network_node_id, supply_network_node_id) (generic/unlabeled: network_node_id) - rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table supply.plan has 2 FK columns pointing to supply.network_node (network_node_id, supply_network_node_id) (generic/unlabeled: network_node_id) - rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table supply.forecast_version has 3 FK columns pointing to workforce.employee (employee_id, primary_forecast_employee_id, tertiary_forecast_modified_by_user_employee_id) (generic/unlabeled: employee_id) - rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table supply.forecast_version has 2 FK columns pointing to supply.sop_cycle (planning_cycle_id, sop_cycle_id) (generic/unlabeled: sop_cycle_id) - rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table supply.inventory_policy has 2 FK columns pointing to supply.network_node (network_node_id, supply_network_node_id) (generic/unlabeled: network_node_id) - rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table supply.safety_stock has 2 FK columns pointing to supply.network_node (network_node_id, supply_network_node_id) (generic/unlabeled: network_node_id) - rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table supply.atp_record has 2 FK columns pointing to supply.network_node (network_node_id, supply_network_node_id) (generic/unlabeled: network_node_id) - rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table supply.constraint has 2 FK columns pointing to supply.network_node (network_node_id, supply_network_node_id) (generic/unlabeled: network_node_id) - rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table supply.risk_register has 2 FK columns pointing to supply.network_node (network_node_id, supply_network_node_id) (generic/unlabeled: network_node_id) - rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table supply.planning_exception has 2 FK columns pointing to supply.network_node (network_node_id, supply_network_node_id) (generic/unlabeled: network_node_id) - rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table supply.sku_planning_param has 2 FK columns pointing to supply.network_node (network_node_id, supply_network_node_id) (generic/unlabeled: network_node_id) - rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table supply.inventory_projection has 2 FK columns pointing to supply.network_node (network_node_id, supply_network_node_id) (generic/unlabeled: network_node_id) - rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table supply.demand_event has 2 FK columns pointing to supply.network_node (network_node_id, supply_network_node_id) (generic/unlabeled: network_node_id) - rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table supply.demand_event has 2 FK columns pointing to product.sku (primary_demand_sku_id, sku_id) (generic/unlabeled: sku_id) - rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table supply.otif_target has 2 FK columns pointing to supply.network_node (network_node_id, supply_network_node_id) (generic/unlabeled: network_node_id) - rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table supply.atp_rule has 2 FK columns pointing to supply.network_node (network_node_id, supply_network_node_id) (generic/unlabeled: network_node_id) - rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table supply.planning_run has 2 FK columns pointing to workforce.employee (employee_id, triggered_by_employee_id) (generic/unlabeled: employee_id) - rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table supply.drp_run has 2 FK columns pointing to supply.network_node (network_node_id, supply_network_node_id) (generic/unlabeled: network_node_id) - rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table sales.account_hierarchy has 4 FK columns pointing to sales.trade_account (child_account_trade_account_id, parent_trade_account_id, primary_trade_account_id, trade_account_id) (generic/unlabeled: trade_account_id) - rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table sales.account_pricing_agreement has 2 FK columns pointing to workforce.employee (employee_id, primary_account_manager_employee_id) (generic/unlabeled: employee_id) - rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table sales.order has 2 FK columns pointing to sales.rep (rep_id, sales_rep_id) (generic/unlabeled: rep_id) - rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table sales.invoice has 2 FK columns pointing to sales.order (order_id, sales_order_id) (generic/unlabeled: order_id) - rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table sales.opportunity has 2 FK columns pointing to sales.rep (assigned_sales_rep_id, rep_id) (generic/unlabeled: rep_id) - rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table sales.account_call has 2 FK columns pointing to sales.rep (rep_id, sales_rep_id) (generic/unlabeled: rep_id) - rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table sales.return_order has 2 FK columns pointing to sales.order (order_id, originating_sales_order_id) (generic/unlabeled: order_id) - rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table sales.quota has 2 FK columns pointing to sales.rep (rep_id, sales_rep_id) (generic/unlabeled: rep_id) - rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table sales.sales_dsd_route has 2 FK columns pointing to sales.rep (rep_id, sales_rep_id) (generic/unlabeled: rep_id) - rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table sales.call has 2 FK columns pointing to sales.rep (rep_id, sales_rep_id) (generic/unlabeled: rep_id) - rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table quality.batch_release has 2 FK columns pointing to quality.certificate_of_analysis (batch_release_certificate_of_analysis_id, certificate_of_analysis_id) (generic/unlabeled: certificate_of_analysis_id) - rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table quality.batch_release has 3 FK columns pointing to workforce.employee (employee_id, modified_by_user_employee_id, released_by_employee_id) (generic/unlabeled: employee_id) - rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table quality.gmp_audit has 2 FK columns pointing to workforce.employee (employee_id, lead_auditor_employee_id) (generic/unlabeled: employee_id) - rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table quality.specification has 2 FK columns pointing to product.sku (material_sku_id, sku_id) (generic/unlabeled: sku_id) - rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table quality.control_chart has 2 FK columns pointing to quality.specification (control_chart_specification_id, specification_id) (generic/unlabeled: specification_id) - rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table quality.control_chart has 2 FK columns pointing to workforce.employee (employee_id, owner_employee_id) (generic/unlabeled: employee_id) - rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table quality.change_control has 5 FK columns pointing to workforce.employee (approved_by_employee_id, employee_id, initiator_employee_id, owner_employee_id, requested_by_employee_id) (generic/unlabeled: employee_id) - rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table distribution.inbound_receipt has 2 FK columns pointing to distribution.distribution_facility (distribution_facility_id, warehouse_distribution_facility_id) (generic/unlabeled: distribution_facility_id) - rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table distribution.putaway_task has 2 FK columns pointing to workforce.employee (assigned_employee_id, employee_id) (generic/unlabeled: employee_id) - rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table distribution.putaway_task has 3 FK columns pointing to distribution.distribution_storage_location (distribution_storage_location_id, primary_putaway_distribution_storage_location_id, target_location_distribution_storage_location_id) (generic/unlabeled: distribution_storage_location_id) - rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table distribution.outbound_order has 2 FK columns pointing to distribution.distribution_facility (distribution_facility_id, ship_to_location_distribution_facility_id) (generic/unlabeled: distribution_facility_id) - rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table distribution.outbound_order has 2 FK columns pointing to sales.order (order_id, sales_order_id) (generic/unlabeled: order_id) - rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table distribution.pick_task has 3 FK columns pointing to distribution.distribution_storage_location (destination_location_distribution_storage_location_id, distribution_storage_location_id, primary_pick_distribution_storage_location_id) (generic/unlabeled: distribution_storage_location_id) - rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table distribution.distribution_dsd_delivery has 2 FK columns pointing to workforce.employee (driver_employee_id, employee_id) (generic/unlabeled: employee_id) - rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table procurement.purchase_requisition has 2 FK columns pointing to finance.cost_center (cost_center_id, requesting_cost_center_id) (generic/unlabeled: cost_center_id) - rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table procurement.invoice_line has 2 FK columns pointing to procurement.supplier_invoice (invoice_id, supplier_invoice_id) (generic/unlabeled: supplier_invoice_id) - rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table marketing.brand_health_tracker has 2 FK columns pointing to marketing.marketing_brand (marketing_brand_id, primary_competitor_brand_marketing_brand_id) (generic/unlabeled: marketing_brand_id) - rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table marketing.attribution has 2 FK columns pointing to product.sku (product_sku_id, sku_id) (generic/unlabeled: sku_id) - rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table marketing.brand_assignment has 2 FK columns pointing to workforce.employee (assigned_by_employee_id, employee_id) (generic/unlabeled: employee_id) - rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table marketing.campaign_assignment has 2 FK columns pointing to workforce.employee (assignee_employee_id, employee_id) (generic/unlabeled: employee_id) - rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table finance.standard_cost has 2 FK columns pointing to product.sku (primary_standard_sku_id, sku_id) (generic/unlabeled: sku_id) - rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table finance.intercompany_transaction has 2 FK columns pointing to finance.journal_entry (elimination_journal_entry_id, journal_entry_id) (generic/unlabeled: journal_entry_id) - rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table finance.revenue_recognition has 2 FK columns pointing to finance.revenue_contract (contract_id, revenue_contract_id) (generic/unlabeled: revenue_contract_id) - rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table finance.payment_run has 3 FK columns pointing to workforce.employee (created_by_user_employee_id, employee_id, executed_by_employee_id) (generic/unlabeled: employee_id) - rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table finance.revenue_contract has 2 FK columns pointing to workforce.employee (contract_manager_employee_id, employee_id) (generic/unlabeled: employee_id) - rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table finance.contract_party has 2 FK columns pointing to finance.party (parent_party_id, party_id) (generic/unlabeled: party_id) - rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table logistics.lane has 3 FK columns pointing to logistics.carrier (carrier_id, lane_backup_carrier_id, lane_preferred_carrier_id) (generic/unlabeled: carrier_id) - rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table logistics.shipment_leg has 2 FK columns pointing to supply.network_node (destination_node_id, network_node_id) (generic/unlabeled: network_node_id) - rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table logistics.freight_order has 2 FK columns pointing to supply.network_node (network_node_id, supply_network_node_id) (generic/unlabeled: network_node_id) - rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table research.research_formulation has 2 FK columns pointing to workforce.employee (employee_id, formulator_employee_id) (generic/unlabeled: employee_id) - rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table research.safety_assessment has 2 FK columns pointing to workforce.employee (assessor_employee_id, employee_id) (generic/unlabeled: employee_id) - rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table research.study_protocol has 2 FK columns pointing to workforce.employee (author_employee_id, employee_id) (generic/unlabeled: employee_id) - rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table research.panel_session has 2 FK columns pointing to research.rd_project (project_id, rd_project_id) (generic/unlabeled: rd_project_id) - rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table workforce.payroll_record has 2 FK columns pointing to workforce.employee (employee_id, primary_payroll_approved_by_user_employee_id) (generic/unlabeled: employee_id) - rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table workforce.benefit_enrollment has 2 FK columns pointing to workforce.employee (employee_id, primary_benefit_employee_id) (generic/unlabeled: employee_id) - rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table workforce.time_entry has 4 FK columns pointing to workforce.employee (approved_by_employee_id, approver_employee_id, employee_id, primary_time_employee_id) (generic/unlabeled: employee_id) - rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table workforce.recruiting_requisition has 2 FK columns pointing to workforce.org_unit (org_unit_id, primary_recruiting_business_unit_org_unit_id) (generic/unlabeled: org_unit_id) - rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table workforce.performance_review has 3 FK columns pointing to workforce.employee (employee_id, primary_performance_employee_id, reviewer_employee_id) (generic/unlabeled: employee_id) - rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table workforce.safety_incident has 2 FK columns pointing to workforce.employee (employee_id, reported_by_employee_id) (generic/unlabeled: employee_id) - rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table sustainability.sourcing_certification has 2 FK columns pointing to procurement.supplier (primary_sourcing_supplier_id, supplier_id) (generic/unlabeled: supplier_id) - rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table sustainability.materiality_assessment has 2 FK columns pointing to workforce.employee (employee_id, owner_employee_id) (generic/unlabeled: employee_id) - rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - PII-candidate attribute product.product_registration.registered_email has no classification tags - expected restricted/confidential + PII tag
+  - PII-candidate attribute consumer.shopper.date_of_birth has no classification tags - expected restricted/confidential + PII tag
+  - PII-candidate attribute consumer.shopper.email has no classification tags - expected restricted/confidential + PII tag
+  - PII-candidate attribute consumer.shopper.first_name has no classification tags - expected restricted/confidential + PII tag
+  - PII-candidate attribute consumer.shopper.last_name has no classification tags - expected restricted/confidential + PII tag
+  - PII-candidate attribute consumer.shopper.phone has no classification tags - expected restricted/confidential + PII tag
+  - PII-candidate attribute consumer.shopper.primary_address_id has no classification tags - expected restricted/confidential + PII tag
+  - PII-candidate attribute consumer.household.address_summary has no classification tags - expected restricted/confidential + PII tag
+  - PII-candidate attribute consumer.address.address_code has no classification tags - expected restricted/confidential + PII tag
+  - PII-candidate attribute consumer.address.address_description has no classification tags - expected restricted/confidential + PII tag
+  - PII-candidate attribute consumer.address.address_name has no classification tags - expected restricted/confidential + PII tag
+  - PII-candidate attribute consumer.dtc_order.shipping_address_id has no classification tags - expected restricted/confidential + PII tag
+  - PII-candidate attribute consumer.subscription.billing_address_id has no classification tags - expected restricted/confidential + PII tag
+  - PII-candidate attribute consumer.subscription.shipping_address_id has no classification tags - expected restricted/confidential + PII tag
+  - PII-candidate attribute consumer.research_participation.compensation_currency has no classification tags - expected restricted/confidential + PII tag
+  - PII-candidate attribute consumer.research_participation.compensation_type has no classification tags - expected restricted/confidential + PII tag
+  - PII-candidate attribute consumer.preference_center.email_opt_in has no classification tags - expected restricted/confidential + PII tag
+  - PII-candidate attribute consumer.preference_center.phone_opt_in has no classification tags - expected restricted/confidential + PII tag
+  - PII-candidate attribute consumer.data_subject_request.requester_email has no classification tags - expected restricted/confidential + PII tag
+  - PII-candidate attribute sales.trade_account.account_number has no classification tags - expected restricted/confidential + PII tag
+  - PII-candidate attribute sales.account_contact.email has no classification tags - expected restricted/confidential + PII tag
+  - PII-candidate attribute sales.account_contact.account_contact_name has no classification tags - expected restricted/confidential + PII tag
+  - PII-candidate attribute sales.account_contact.phone has no classification tags - expected restricted/confidential + PII tag
+  - PII-candidate attribute sales.account_address.account_address_code has no classification tags - expected restricted/confidential + PII tag
+  - PII-candidate attribute sales.account_address.account_address_description has no classification tags - expected restricted/confidential + PII tag
+  - PII-candidate attribute sales.account_address.account_address_name has no classification tags - expected restricted/confidential + PII tag
+  - PII-candidate attribute quality.certificate_of_analysis.customer_name has no classification tags - expected restricted/confidential + PII tag
+  - PII-candidate attribute quality.laboratory.address_city has no classification tags - expected restricted/confidential + PII tag
+  - PII-candidate attribute quality.laboratory.address_country has no classification tags - expected restricted/confidential + PII tag
+  - PII-candidate attribute quality.laboratory.latitude has no classification tags - expected restricted/confidential + PII tag
+  - PII-candidate attribute quality.laboratory.longitude has no classification tags - expected restricted/confidential + PII tag
+  - PII-candidate attribute distribution.distribution_facility.address_line_1 has no classification tags - expected restricted/confidential + PII tag
+  - PII-candidate attribute distribution.distribution_facility.latitude has no classification tags - expected restricted/confidential + PII tag
+  - PII-candidate attribute distribution.distribution_facility.longitude has no classification tags - expected restricted/confidential + PII tag
+  - PII-candidate attribute distribution.distribution_facility.postal_code has no classification tags - expected restricted/confidential + PII tag
+  - PII-candidate attribute distribution.outbound_order.ship_to_address has no classification tags - expected restricted/confidential + PII tag
+  - PII-candidate attribute procurement.supplier_site.address_line1 has no classification tags - expected restricted/confidential + PII tag
+  - PII-candidate attribute procurement.supplier_site.contact_email has no classification tags - expected restricted/confidential + PII tag
+  - PII-candidate attribute procurement.supplier_site.contact_name has no classification tags - expected restricted/confidential + PII tag
+  - PII-candidate attribute marketing.influencer.contact_email has no classification tags - expected restricted/confidential + PII tag
+  - PII-candidate attribute marketing.agency.contact_email has no classification tags - expected restricted/confidential + PII tag
+  - PII-candidate attribute marketing.agency.contact_name has no classification tags - expected restricted/confidential + PII tag
+  - PII-candidate attribute finance.gl_account.gl_account_number has no classification tags - expected restricted/confidential + PII tag
+  - PII-candidate attribute finance.ar_payment.bank_account_id has no classification tags - expected restricted/confidential + PII tag
+  - PII-candidate attribute finance.ap_payment.bank_account_id has no classification tags - expected restricted/confidential + PII tag
+  - PII-candidate attribute finance.payment_run.bank_account_id has no classification tags - expected restricted/confidential + PII tag
+  - PII-candidate attribute finance.bank_account.bank_account_number has no classification tags - expected restricted/confidential + PII tag
+  - PII-candidate attribute finance.bank_account.bank_account_code has no classification tags - expected restricted/confidential + PII tag
+  - PII-candidate attribute finance.bank_account.bank_account_description has no classification tags - expected restricted/confidential + PII tag
+  - PII-candidate attribute finance.bank_account.bank_account_name has no classification tags - expected restricted/confidential + PII tag
+  - PII-candidate attribute finance.bank_account.bank_account_status has no classification tags - expected restricted/confidential + PII tag
+  - PII-candidate attribute finance.chart_of_accounts.length_of_account_number has no classification tags - expected restricted/confidential + PII tag
+  - PII-candidate attribute finance.chart_of_accounts.length_of_gl_account_number has no classification tags - expected restricted/confidential + PII tag
+  - PII-candidate attribute finance.party.postal_code has no classification tags - expected restricted/confidential + PII tag
+  - PII-candidate attribute finance.party.primary_address_line1 has no classification tags - expected restricted/confidential + PII tag
+  - PII-candidate attribute finance.party.primary_address_line2 has no classification tags - expected restricted/confidential + PII tag
+  - PII-candidate attribute logistics.carrier.contact_email has no classification tags - expected restricted/confidential + PII tag
+  - PII-candidate attribute logistics.carrier.contact_name has no classification tags - expected restricted/confidential + PII tag
+  - PII-candidate attribute logistics.carrier.contact_phone has no classification tags - expected restricted/confidential + PII tag
+  - PII-candidate attribute logistics.logistics_shipment.destination_address has no classification tags - expected restricted/confidential + PII tag
+  - PII-candidate attribute logistics.logistics_shipment.origin_address has no classification tags - expected restricted/confidential + PII tag
+  - PII-candidate attribute logistics.delivery.address has no classification tags - expected restricted/confidential + PII tag
+  - PII-candidate attribute logistics.proof_of_delivery.gps_latitude has no classification tags - expected restricted/confidential + PII tag
+  - PII-candidate attribute logistics.proof_of_delivery.gps_longitude has no classification tags - expected restricted/confidential + PII tag
+  - PII-candidate attribute logistics.route.driver_name has no classification tags - expected restricted/confidential + PII tag
+  - PII-candidate attribute logistics.route_stop.gps_latitude has no classification tags - expected restricted/confidential + PII tag
+  - PII-candidate attribute logistics.route_stop.gps_longitude has no classification tags - expected restricted/confidential + PII tag
+  - PII-candidate attribute logistics.route_stop.stop_address has no classification tags - expected restricted/confidential + PII tag
+  - PII-candidate attribute logistics.tracking_event.gps_latitude has no classification tags - expected restricted/confidential + PII tag
+  - PII-candidate attribute logistics.tracking_event.gps_longitude has no classification tags - expected restricted/confidential + PII tag
+  - PII-candidate attribute logistics.third_party_provider.contact_email has no classification tags - expected restricted/confidential + PII tag
+  - PII-candidate attribute logistics.third_party_provider.contact_name has no classification tags - expected restricted/confidential + PII tag
+  - PII-candidate attribute logistics.third_party_provider.contact_phone has no classification tags - expected restricted/confidential + PII tag
+  - PII-candidate attribute logistics.transport_unit.gps_latitude has no classification tags - expected restricted/confidential + PII tag
+  - PII-candidate attribute logistics.transport_unit.gps_longitude has no classification tags - expected restricted/confidential + PII tag
+  - PII-candidate attribute logistics.vehicle.assigned_driver_name has no classification tags - expected restricted/confidential + PII tag
+  - PII-candidate attribute inventory.warehouse.address_line1 has no classification tags - expected restricted/confidential + PII tag
+  - PII-candidate attribute inventory.warehouse.address_line2 has no classification tags - expected restricted/confidential + PII tag
+  - PII-candidate attribute inventory.warehouse.address_line_1 has no classification tags - expected restricted/confidential + PII tag
+  - PII-candidate attribute inventory.warehouse.latitude has no classification tags - expected restricted/confidential + PII tag
+  - PII-candidate attribute inventory.warehouse.longitude has no classification tags - expected restricted/confidential + PII tag
+  - PII-candidate attribute inventory.warehouse.postal_code has no classification tags - expected restricted/confidential + PII tag
+  - PII-candidate attribute research.patent_family.family_name has no classification tags - expected restricted/confidential + PII tag
+  - PII-candidate attribute research.patent_family.patent_family_name has no classification tags - expected restricted/confidential + PII tag
+  - PII-candidate attribute workforce.employee.date_of_birth has no classification tags - expected restricted/confidential + PII tag
+  - PII-candidate attribute workforce.employee.email has no classification tags - expected restricted/confidential + PII tag
+  - PII-candidate attribute workforce.employee.first_name has no classification tags - expected restricted/confidential + PII tag
+  - PII-candidate attribute workforce.employee.full_name has no classification tags - expected restricted/confidential + PII tag
+  - PII-candidate attribute workforce.employee.last_name has no classification tags - expected restricted/confidential + PII tag
+  - PII-candidate attribute workforce.job_profile.max_salary has no classification tags - expected restricted/confidential + PII tag
+  - PII-candidate attribute workforce.job_profile.min_salary has no classification tags - expected restricted/confidential + PII tag
+  - PII-candidate attribute workforce.payroll_record.gross_pay has no classification tags - expected restricted/confidential + PII tag
+  - PII-candidate attribute workforce.payroll_record.net_pay has no classification tags - expected restricted/confidential + PII tag
+  - PII-candidate attribute workforce.applicant.email_address has no classification tags - expected restricted/confidential + PII tag
+  - PII-candidate attribute workforce.applicant.expected_salary has no classification tags - expected restricted/confidential + PII tag
+  - PII-candidate attribute workforce.work_location.address_line_1 has no classification tags - expected restricted/confidential + PII tag
+  - PII-candidate attribute workforce.work_location.emergency_contact_name has no classification tags - expected restricted/confidential + PII tag
+  - PII-candidate attribute workforce.work_location.latitude has no classification tags - expected restricted/confidential + PII tag
+  - PII-candidate attribute workforce.work_location.longitude has no classification tags - expected restricted/confidential + PII tag
+  - PII-candidate attribute workforce.payroll_group.compensation_grade has no classification tags - expected restricted/confidential + PII tag
+  - PII-candidate attribute sustainability.deforestation_assessment.geolocation_data has no classification tags - expected restricted/confidential + PII tag
+  - PII-candidate attribute sustainability.deforestation_assessment.geolocation_reference has no classification tags - expected restricted/confidential + PII tag
+  - PII-candidate attribute shared.region.latitude_center has no classification tags - expected restricted/confidential + PII tag
+  - PII-candidate attribute shared.region.longitude_center has no classification tags - expected restricted/confidential + PII tag
+  - Attribute marketing.brand_distribution_allocation.notes has unrecognized data type 'TEXT' - expected a valid Spark SQL type (STRING, BIGINT, INT, DECIMAL, BOOLEAN, DATE, TIMESTAMP, etc.)
+  - Attribute marketing.campaign_assignment.responsibility_description has unrecognized data type 'TEXT' - expected a valid Spark SQL type (STRING, BIGINT, INT, DECIMAL, BOOLEAN, DATE, TIMESTAMP, etc.)
+  - Subdomain 'regulatory_compliance' appears in 2 domains: product, research. Consider renaming to qualified form.
+  - Subdomain 'facility_management' appears in 2 domains: distribution, manufacturing. Consider renaming to qualified form.
+  - Subdomain 'inventory_management' appears in 2 domains: inventory, supply. Consider renaming to qualified form.
+  - Subdomain 'order_fulfillment' appears in 2 domains: distribution, procurement. Consider renaming to qualified form.
+  - 15 attribute(s) contain banned boilerplate phrases (Fortune N, multinational, enterprise-wide, cross-company, group reporting). Clean descriptions.
+  - 972 attribute(s) match person-data patterns but lack pii_ tags
+  - 3 attribute(s) have datatypes inconsistent with their column name pattern
+  - 61 non-PK attributes redundantly prefixed with their product name
+  - 5 attribute(s) have value_regex on typed columns (DATE/BOOLEAN/INT/etc.) - regex is redundant when data_type constrains format
+  - 1 attribute(s) have pipe-enum value_regex with >8 values - consider creating a reference product instead
+
+Deterministic score: 50/100 (LLM assessment: 62/100)
+
+## MISSED VIBES (carried from the previous run - apply these THIS run; user directives first)
+
+- (USER DIRECTIVE - supreme authority) P3: Connect customer.channel_classification by adding column trade_account_id (BIGINT) with an FK to sales.trade_account. (target: customer.channel_classification trade_account_id FK) [missed: vov_residual_unapplied]
+- (USER DIRECTIVE - supreme authority) Connect customer.channel_classification by adding a column with an FK to sales.trade_account.trade_account_id. (target: relation: customer.channel_classification -> sales.trade_account.trade_account_id) [missed: vov_residual_unapplied]
+- (USER DIRECTIVE - supreme authority) Connect finance.party by adding column supplier_id (BIGINT) with FK to procurement.supplier.supplier_id, because finance.party is isolated. (target: relation: finance.party.supplier_id -> procurement.supplier.supplier_id) [missed: vov_residual_unapplied]
+- (USER DIRECTIVE - supreme authority) Connect finance.party by adding column trade_account_id (BIGINT) with FK to sales.trade_account.trade_account_id, because party should resolve to either a supplier or a trade account. (target: relation: finance.party.trade_account_id -> sales.trade_account.trade_account_id) [missed: vov_residual_unapplied]
+- (USER DIRECTIVE - supreme authority) Connect marketing.agency by adding column supplier_id (BIGINT) with FK to procurement.supplier.supplier_id, because agencies are external vendors. (target: relation: marketing.agency.supplier_id -> procurement.supplier.supplier_id) [missed: vov_residual_unapplied]
+- (USER DIRECTIVE - supreme authority) Connect workforce.training_course by adding column org_unit_id (BIGINT) with FK to workforce.org_unit.org_unit_id. (target: relation: workforce.training_course.org_unit_id -> workforce.org_unit.org_unit_id) [missed: vov_residual_unapplied]
+- (USER DIRECTIVE - supreme authority) Connect consumer.consent_session by adding column shopper_id (BIGINT) with FK to consumer.shopper.shopper_id. (target: relation: consumer.consent_session.shopper_id -> consumer.shopper.shopper_id) [missed: vov_residual_unapplied]
+- (USER DIRECTIVE - supreme authority) Connect consumer.loyalty_tier by adding column loyalty_program_id (BIGINT) with FK to consumer.loyalty_program.loyalty_program_id. (target: relation: consumer.loyalty_tier.loyalty_program_id -> consumer.loyalty_program.loyalty_program_id) [missed: vov_residual_unapplied]
+- (USER DIRECTIVE - supreme authority) Connect consumer.survey by adding column marketing_brand_id (BIGINT) with FK to marketing.marketing_brand.marketing_brand_id. (target: relation: consumer.survey.marketing_brand_id -> marketing.marketing_brand.marketing_brand_id) [missed: vov_residual_unapplied]
+- (USER DIRECTIVE - supreme authority) Connect logistics.consolidation by adding column distribution_facility_id (BIGINT) with FK to distribution.distribution_facility.distribution_facility_id. (target: relation: logistics.consolidation.distribution_facility_id -> distribution.distribution_facility.distribution_facility_id) [missed: vov_residual_unapplied]
+- (USER DIRECTIVE - supreme authority) Connect logistics.vehicle by adding column carrier_id (BIGINT) with FK to logistics.carrier.carrier_id. (target: relation: logistics.vehicle.carrier_id -> logistics.carrier.carrier_id) [missed: vov_residual_unapplied]
+- (USER DIRECTIVE - supreme authority) Connect logistics.transport_unit by adding column carrier_id (BIGINT) with FK to logistics.carrier.carrier_id. (target: relation: logistics.transport_unit.carrier_id -> logistics.carrier.carrier_id) [missed: vov_residual_unapplied]
+- (USER DIRECTIVE - supreme authority) P17: Connect workforce.applicant by adding column job_profile_id (BIGINT) with an FK to workforce.job_profile.job_profile_id because applicants apply for specific job profiles. (target: relation: workforce.applicant -> workforce.job_profile) [missed: vov_residual_unapplied]
+- (USER DIRECTIVE - supreme authority) P18: Connect workforce.safety_incident by adding column manufacturing_facility_id (BIGINT) with an FK to manufacturing.manufacturing_facility.manufacturing_facility_id. (target: relation: workforce.safety_incident -> manufacturing.manufacturing_facility) [missed: vov_residual_unapplied]
+- (USER DIRECTIVE - supreme authority) P19: Connect workforce.labor_relation by adding column employee_id (BIGINT) with an FK to workforce.employee.employee_id because labor relations records must link to the employee. (target: relation: workforce.labor_relation -> workforce.employee) [missed: vov_residual_unapplied]
+- (USER DIRECTIVE - supreme authority) P20: Connect finance.company_code by adding column controlling_area_id (BIGINT) with an FK to finance.controlling_area.controlling_area_id because company codes operate within a controlling area. (target: relation: finance.company_code -> finance.controlling_area) [missed: vov_residual_unapplied]
+- (USER DIRECTIVE - supreme authority) P11: Connect logistics.consolidation by adding column distribution_facility_id (BIGINT) with an FK to distribution.distribution_facility.distribution_facility_id. (target: logistics.consolidation) [missed: vov_residual_unapplied]
+- (USER DIRECTIVE - supreme authority) P12: Connect logistics.vehicle by adding column carrier_id (BIGINT) with an FK to logistics.carrier.carrier_id. (target: logistics.vehicle) [missed: vov_residual_unapplied]
+- (USER DIRECTIVE - supreme authority) P13: Connect logistics.transport_unit by adding column carrier_id (BIGINT) with an FK to logistics.carrier.carrier_id. (target: logistics.transport_unit) [missed: vov_residual_unapplied]
+- (USER DIRECTIVE - supreme authority) P14: Connect logistics.handling_unit by adding column logistics_shipment_id (BIGINT) with an FK to logistics.logistics_shipment.logistics_shipment_id. (target: logistics.handling_unit) [missed: vov_residual_unapplied]
+- (USER DIRECTIVE - supreme authority) P19: Connect workforce.labor_relation by adding column employee_id (BIGINT) with an FK to workforce.employee.employee_id. (target: workforce.labor_relation) [missed: vov_residual_unapplied]
+- (USER DIRECTIVE - supreme authority) P20: Connect finance.company_code by adding column controlling_area_id (BIGINT) with an FK to finance.controlling_area.controlling_area_id. (target: finance.company_code) [missed: vov_residual_unapplied]
+- (USER DIRECTIVE - supreme authority) P3-P20: Apply the specified connect_table FK additions (all using BIGINT type) to connect isolated tables. (target: FK additions P3 through P20) [missed: vov_residual_unapplied]
+- Preserve all 19 domains and 403 products; no removal/rename/merge without permission (target: *) [missed: orchestrator status=partial]

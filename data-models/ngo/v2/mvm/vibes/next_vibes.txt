@@ -1,0 +1,60 @@
+**Model Quality Score: 79.36/100**
+
+**PRIORITY 1 — connect_table: program.theory_of_change** — add column program_id (BIGINT) with FK to program.program.program_id — theory_of_change is isolated with zero inbound and zero outbound FKs; it must anchor to a program.
+**PRIORITY 2 — connect_table: program.theory_of_change** — add column country_office_id (BIGINT) with FK to field.country_office.country_office_id — ties ToC to the country office context where it applies.
+**PRIORITY 3 — connect_table: supply.commodity** — add column country_office_id (BIGINT) with FK to field.country_office.country_office_id — commodity is orphan with no outbound FKs; anchor commodities to their managing country office.
+**PRIORITY 4 — connect_table: supply.commodity** — add column governance_policy_id (BIGINT) with FK to compliance.governance_policy.governance_policy_id — link commodity items to procurement/handling policy governing them.
+**PRIORITY 5 — connect_table: safeguarding.psea_policy** — add column country_office_id (BIGINT) with FK to field.country_office.country_office_id — psea_policy has zero outbound FKs; needs country_office ownership for policy scope.
+**PRIORITY 6 — connect_table: safeguarding.psea_policy** — add column governance_policy_id (BIGINT) with FK to compliance.governance_policy.governance_policy_id — PSEA policies should be traceable to the parent governance policy framework.
+**PRIORITY 7 — connect_table: safeguarding.investigation_action** — add column focal_point_id (BIGINT) with FK to safeguarding.focal_point.focal_point_id — investigation actions should be assignable to a responsible focal point.
+**PRIORITY 8 — connect_table: safeguarding.investigation_action** — add column reporting_period_id (BIGINT) with FK to mel.reporting_period.reporting_period_id — enable temporal reporting of investigation actions.
+**PRIORITY 9 — connect_table: partnership.partner_contact** — add column country_office_id (BIGINT) with FK to field.country_office.country_office_id — partner_contact only links to partner_org; add country office context for CO-level relationships.
+**PRIORITY 10 — connect_table: program.program** — add column governance_policy_id (BIGINT) with FK to compliance.governance_policy.governance_policy_id — programmes should reference the governance policies they operate under.
+**PRIORITY 11 — connect_table: program.intervention** — add column reporting_period_id (BIGINT) with FK to mel.reporting_period.reporting_period_id — enable intervention-level temporal alignment.
+**PRIORITY 12 — connect_table: program.target_population** — add column reporting_period_id (BIGINT) with FK to mel.reporting_period.reporting_period_id — target populations vary by reporting period.
+**PRIORITY 13 — connect_table: program.target_population** — add column country_office_id (BIGINT) with FK to field.country_office.country_office_id — anchor target populations geographically.
+**PRIORITY 14 — connect_table: donor.constituent** — add column governance_policy_id (BIGINT) with FK to compliance.governance_policy.governance_policy_id — constituent data handling should reference privacy/data governance policy.
+**PRIORITY 15 — connect_table: donor.constituent** — add column country_office_id (BIGINT) with FK to field.country_office.country_office_id — constituent has only country FK; add owning NC/country office.
+**PRIORITY 16 — connect_table: field.country** — add column statutory_registration_id (BIGINT) with FK to compliance.statutory_registration.statutory_registration_id — link country to its statutory registration record for that jurisdiction.
+**PRIORITY 17 — connect_table: grant.funding_source** — add column governance_policy_id (BIGINT) with FK to compliance.governance_policy.governance_policy_id — funding source terms are governed by donor compliance policy.
+**PRIORITY 18 — connect_table: grant.amendment** — add column reporting_period_id (BIGINT) with FK to mel.reporting_period.reporting_period_id — amendments have effective reporting periods.
+**PRIORITY 19 — connect_table: grant.amendment** — add column award_id (BIGINT) with FK to grant.award.award_id — amendment must directly reference the award being amended.
+**PRIORITY 20 — connect_table: mel.indicator** — add column reporting_period_id (BIGINT) with FK to mel.reporting_period.reporting_period_id — indicators need baseline/measurement period linkage.
+**PRIORITY 21 — connect_table: beneficiary.registrant** — add column country_office_id (BIGINT) with FK to field.country_office.country_office_id — registrant lacks country office anchor for geographic scoping.
+**PRIORITY 22 — connect_table: beneficiary.household** — add column country_office_id (BIGINT) with FK to field.country_office.country_office_id — households need country office anchor.
+**PRIORITY 23 — connect_table: beneficiary.consent_record** — add column reporting_period_id (BIGINT) with FK to mel.reporting_period.reporting_period_id — consent has temporal validity and reporting alignment.
+**PRIORITY 24 — connect_table: compliance.governance_policy** — add column country_office_id (BIGINT) with FK to field.country_office.country_office_id — policies are scoped to country offices.
+**PRIORITY 25 — connect_table: partnership.agreement** — add column country_office_id (BIGINT) with FK to field.country_office.country_office_id — agreements need the executing country office.
+**PRIORITY 26 — connect_table: partnership.agreement** — add column reporting_period_id (BIGINT) with FK to mel.reporting_period.reporting_period_id — agreement performance windows.
+**PRIORITY 27 — connect_table: donor.campaign** — add column reporting_period_id (BIGINT) with FK to mel.reporting_period.reporting_period_id — campaigns run over reporting periods.
+**PRIORITY 28 — connect_table: field.team** — add column reporting_period_id (BIGINT) with FK to mel.reporting_period.reporting_period_id — team staffing aligns with reporting periods.
+**PRIORITY 29 — connect_table: safeguarding.focal_point** — add column reporting_period_id (BIGINT) with FK to mel.reporting_period.reporting_period_id — track focal point assignments over time.
+**PRIORITY 30 — connect_table: safeguarding.reporting_channel** — add column psea_policy_id (BIGINT) with FK to safeguarding.psea_policy.psea_policy_id — channels operate under a specific PSEA policy.
+**PRIORITY 31 — connect_table: supply.vendor** — add column country_office_id (BIGINT) with FK to field.country_office.country_office_id — vendors are registered per country office.
+**PRIORITY 32 — connect_table: supply.vendor** — add column statutory_registration_id (BIGINT) with FK to compliance.statutory_registration.statutory_registration_id — vendors have statutory registration records.
+**PRIORITY 33 — connect_table: mel.reporting_period** — add column country_office_id (BIGINT) with FK to field.country_office.country_office_id — reporting periods are scoped by CO fiscal calendar.
+**PRIORITY 34 — connect_table: compliance.statutory_registration** — add column country_office_id (BIGINT) with FK to field.country_office.country_office_id — registration is held by the country office in-country.
+**PRIORITY 35 — connect_table: program.program_logframe** — add column reporting_period_id (BIGINT) with FK to mel.reporting_period.reporting_period_id — logframe versions align to reporting periods.
+**PRIORITY 36 — connect_table: program.implementation_plan** — add column reporting_period_id (BIGINT) with FK to mel.reporting_period.reporting_period_id — implementation plans are time-bound to periods.
+**PRIORITY 37 — connect_table: program.program_partnership** — add column agreement_id (BIGINT) with FK to partnership.agreement.agreement_id — link the programme partnership to its legal agreement.
+**PRIORITY 38 — connect_table: program.program_partnership** — add column reporting_period_id (BIGINT) with FK to mel.reporting_period.reporting_period_id — partnerships operate over reporting periods.
+**PRIORITY 39 — connect_table: program.budget_plan** — add column reporting_period_id (BIGINT) with FK to mel.reporting_period.reporting_period_id — budget plans are period-bound.
+**PRIORITY 40 — connect_table: supply.distribution_plan** — add column reporting_period_id (BIGINT) with FK to mel.reporting_period.reporting_period_id — plans align with reporting periods.
+**PRIORITY 41 — connect_table: supply.inventory_balance** — add column reporting_period_id (BIGINT) with FK to mel.reporting_period.reporting_period_id — inventory balances are periodic snapshots.
+**PRIORITY 42 — connect_table: partnership.consortium** — add column country_office_id (BIGINT) with FK to field.country_office.country_office_id — consortium is anchored to a lead CO.
+**PRIORITY 43 — connect_table: donor.fund** — add column reporting_period_id (BIGINT) with FK to mel.reporting_period.reporting_period_id — funds have activity/reporting period alignment.
+**PRIORITY 44 — connect_table: safeguarding.risk_assessment** — add column reporting_period_id (BIGINT) with FK to mel.reporting_period.reporting_period_id — risk assessments are periodic.
+**PRIORITY 45 — connect_table: field.emergency** — add column reporting_period_id (BIGINT) with FK to mel.reporting_period.reporting_period_id — emergency response phases align with reporting periods.
+**PRIORITY 46 — connect_table: field.project_site** — add column reporting_period_id (BIGINT) with FK to mel.reporting_period.reporting_period_id — site operational periods.
+**PRIORITY 47 — connect_table: compliance.obligation** — add column reporting_period_id (BIGINT) with FK to mel.reporting_period.reporting_period_id — obligations have due periods.
+**PRIORITY 48 — connect_table: beneficiary.vulnerability_profile** — add column country_office_id (BIGINT) with FK to field.country_office.country_office_id — profiles are managed at CO level.
+
+Other known issues from static analysis (6):
+  - Table beneficiary.referral has 2 FK columns pointing to partnership.partner_org (partner_org_id, receiving_organization_partner_org_id) (generic/unlabeled: partner_org_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table supply.stock_movement has 2 FK columns pointing to supply.warehouse (warehouse_id, source_warehouse_id) (generic/unlabeled: warehouse_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table supply.waybill has 2 FK columns pointing to supply.warehouse (warehouse_id, waybill_warehouse_id) (generic/unlabeled: warehouse_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - 23 attribute(s) match person-data patterns but lack pii_ tags
+  - PK columns use 2 different datatypes: BIGINT, DECIMAL(18,2). Recommend all PKs use BIGINT.
+  - 1 FK column(s) have a data type that differs from their target PK - an FK and its referenced PK MUST share the same type. e.g., beneficiary.registrant.deduplication_master_registrant_id (STRING!=BIGINT)
+
+Deterministic score: 79.36/100 (LLM assessment: 72/100)
