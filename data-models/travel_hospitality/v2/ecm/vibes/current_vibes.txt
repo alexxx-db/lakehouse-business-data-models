@@ -1,0 +1,225 @@
+**Model Quality Score: 50/100**
+
+**Static Analysis Findings (37 actionable):**
+  - [SA:unlinked_fk] Column guest.profile.predictive_score_id looks like an FK but has no foreign_key_to reference
+  - [SA:duplicate_product_pair] Domain 'channel' has both 'inventory_allocation' and 'channel_inventory_allocation' - SSOT violation. Merge into 'inventory_allocation'.
+  - [SA:denormalized_natural_key] Product 'revenue.competitor_rate' has both FK 'competitor_property_id' and natural key 'competitor_property_code' for entity 'competitor_property'. The natural key is redundant - use the FK join instead.
+  - [SA:denormalized_natural_key] Product 'revenue.segment_program_eligibility' has both FK 'program_id' and natural key 'program_code' for entity 'program'. The natural key is redundant - use the FK join instead.
+  - [SA:denormalized_natural_key] Product 'finance.journal_entry_line' has both FK 'property_id' and natural key 'property_code' for entity 'property'. The natural key is redundant - use the FK join instead.
+  - [SA:denormalized_natural_key] Product 'finance.recurring_entry_template' has both FK 'property_id' and natural key 'property_code' for entity 'property'. The natural key is redundant - use the FK join instead.
+  - [SA:denormalized_natural_key] Product 'finance.gl_batch' has both FK 'property_id' and natural key 'property_code' for entity 'property'. The natural key is redundant - use the FK join instead.
+  - [SA:denormalized_natural_key] Product 'procurement.program_assignment' has both FK 'program_id' and natural key 'program_code' for entity 'program'. The natural key is redundant - use the FK join instead.
+  - [SA:cross_domain_duplicate] Potential SSOT violation: 'channel.channel_rate_plan' and 'reservation.reservation_rate_plan' have the same entity name 'rate_plan' in different domains. One should be the SSOT owner, the other should reference via FK.
+  - [SA:cross_domain_duplicate] Potential SSOT violation: 'channel.channel_rate_plan' and 'revenue.revenue_rate_plan' have the same entity name 'rate_plan' in different domains. One should be the SSOT owner, the other should reference via FK.
+  - [SA:cross_domain_duplicate] Potential SSOT violation: 'reservation.reservation_rate_plan' and 'revenue.revenue_rate_plan' have the same entity name 'rate_plan' in different domains. One should be the SSOT owner, the other should reference via FK.
+  - [SA:cross_domain_duplicate] Potential SSOT violation: 'channel.channel_booking' and 'event.event_booking' have the same entity name 'booking' in different domains. One should be the SSOT owner, the other should reference via FK.
+  - [SA:cross_domain_duplicate] Potential SSOT violation: 'channel.channel_booking' and 'reservation.reservation_booking' have the same entity name 'booking' in different domains. One should be the SSOT owner, the other should reference via FK.
+  - [SA:cross_domain_duplicate] Potential SSOT violation: 'event.event_booking' and 'reservation.reservation_booking' have the same entity name 'booking' in different domains. One should be the SSOT owner, the other should reference via FK.
+  - [SA:cross_domain_duplicate] Potential SSOT violation: 'channel.channel_contract' and 'event.event_contract' have the same entity name 'contract' in different domains. One should be the SSOT owner, the other should reference via FK.
+  - [SA:cross_domain_duplicate] Potential SSOT violation: 'channel.channel_contract' and 'procurement.procurement_contract' have the same entity name 'contract' in different domains. One should be the SSOT owner, the other should reference via FK.
+  - [SA:cross_domain_duplicate] Potential SSOT violation: 'event.event_contract' and 'procurement.procurement_contract' have the same entity name 'contract' in different domains. One should be the SSOT owner, the other should reference via FK.
+  - [SA:cross_domain_duplicate] Potential SSOT violation: 'channel.channel_negotiated_rate' and 'revenue.revenue_negotiated_rate' have the same entity name 'negotiated_rate' in different domains. One should be the SSOT owner, the other should reference via FK.
+  - [SA:cross_domain_duplicate] Potential SSOT violation: 'compliance.compliance_training_completion' and 'housekeeping.housekeeping_training_completion' have the same entity name 'training_completion' in different domains. One should be the SSOT owner, the other should reference via FK.
+  - [SA:cross_domain_duplicate] Potential SSOT violation: 'compliance.compliance_calendar' and 'marketing.marketing_calendar' have the same entity name 'calendar' in different domains. One should be the SSOT owner, the other should reference via FK.
+  - [SA:cross_domain_duplicate] Potential SSOT violation: 'event.event_group_block' and 'guest.guest_group_block' have the same entity name 'group_block' in different domains. One should be the SSOT owner, the other should reference via FK.
+  - [SA:cross_domain_duplicate] Potential SSOT violation: 'event.event_group_block' and 'reservation.reservation_group_block' have the same entity name 'group_block' in different domains. One should be the SSOT owner, the other should reference via FK.
+  - [SA:cross_domain_duplicate] Potential SSOT violation: 'guest.guest_group_block' and 'reservation.reservation_group_block' have the same entity name 'group_block' in different domains. One should be the SSOT owner, the other should reference via FK.
+  - [SA:cross_domain_duplicate] Potential SSOT violation: 'event.event_space_allocation' and 'property.property_space_allocation' have the same entity name 'space_allocation' in different domains. One should be the SSOT owner, the other should reference via FK.
+  - [SA:cross_domain_duplicate] Potential SSOT violation: 'event.event_class_enrollment' and 'spa.spa_class_enrollment' have the same entity name 'class_enrollment' in different domains. One should be the SSOT owner, the other should reference via FK.
+  - [SA:cross_domain_duplicate] Potential SSOT violation: 'experience.experience_special_request' and 'reservation.reservation_special_request' have the same entity name 'special_request' in different domains. One should be the SSOT owner, the other should reference via FK.
+  - [SA:cross_domain_duplicate] Potential SSOT violation: 'finance.finance_budget' and 'revenue.revenue_budget' have the same entity name 'budget' in different domains. One should be the SSOT owner, the other should reference via FK.
+  - [SA:cross_domain_duplicate] Potential SSOT violation: 'fnb.fnb_outlet' and 'property.property_outlet' have the same entity name 'outlet' in different domains. One should be the SSOT owner, the other should reference via FK.
+  - [SA:cross_domain_duplicate] Potential SSOT violation: 'fnb.fnb_supply_agreement' and 'procurement.procurement_supply_agreement' have the same entity name 'supply_agreement' in different domains. One should be the SSOT owner, the other should reference via FK.
+  - [SA:cross_domain_duplicate] Potential SSOT violation: 'guest.guest_enrollment' and 'loyalty.loyalty_enrollment' have the same entity name 'enrollment' in different domains. One should be the SSOT owner, the other should reference via FK.
+  - [SA:cross_domain_duplicate] Potential SSOT violation: 'guest.guest_enrollment' and 'procurement.procurement_enrollment' have the same entity name 'enrollment' in different domains. One should be the SSOT owner, the other should reference via FK.
+  - [SA:cross_domain_duplicate] Potential SSOT violation: 'loyalty.loyalty_enrollment' and 'procurement.procurement_enrollment' have the same entity name 'enrollment' in different domains. One should be the SSOT owner, the other should reference via FK.
+  - [SA:cross_domain_duplicate] Potential SSOT violation: 'housekeeping.work_order' and 'procurement.work_order' have the same entity name 'work_order' in different domains. One should be the SSOT owner, the other should reference via FK.
+  - [SA:cross_domain_duplicate] Potential SSOT violation: 'inventory.inventory_overbooking_policy' and 'revenue.revenue_overbooking_policy' have the same entity name 'overbooking_policy' in different domains. One should be the SSOT owner, the other should reference via FK.
+  - [SA:cross_domain_duplicate] Potential SSOT violation: 'procurement.procurement_therapist_certification' and 'spa.spa_therapist_certification' have the same entity name 'therapist_certification' in different domains. One should be the SSOT owner, the other should reference via FK.
+  - [SA:cross_domain_duplicate] Potential SSOT violation: 'procurement.benefit_plan' and 'workforce.benefit_plan' have the same entity name 'benefit_plan' in different domains. One should be the SSOT owner, the other should reference via FK.
+  - [SA:cross_domain_duplicate] Potential SSOT violation: 'property.property_facility' and 'spa.spa_facility' have the same entity name 'facility' in different domains. One should be the SSOT owner, the other should reference via FK.
+
+**PRIORITY 1 - rename_product: channel.inventory_allocation** - rename to channel_wholesale_inventory_allocation because it duplicates channel.channel_inventory_allocation with identical FK signature (channel, channel_rate_plan, room_type, property) and must be semantically differentiated or expanded with distinct wholesale-allotment attributes.
+**PRIORITY 2 - connect_table: channel.inventory_allocation** - add column wholesale_allotment_id (BIGINT) with FK to channel.wholesale_allotment.wholesale_allotment_id - stub table needs differentiation from channel_inventory_allocation by tying it to wholesale allotment context.
+**PRIORITY 3 - connect_table: experience.program** - add column property_id (BIGINT) with FK to property.property.property_id - experience programs operate at specific properties.
+**PRIORITY 4 - connect_table: loyalty.partner_program** - add column property_id (BIGINT) with FK to property.property.property_id - partner programs need property context for property-level participation.
+**PRIORITY 5 - connect_table: property.ownership_entity** - add column party_id (BIGINT) with FK to property.party.party_id - ownership entities represent legal parties.
+**PRIORITY 6 - connect_table: property.party** - add column property_id (BIGINT) with FK to property.property.property_id - party records (owners, investors) need association to a property.
+**PRIORITY 7 - connect_table: procurement.vendor** - add column property_id (BIGINT) with FK to property.property.property_id - vendors serve specific properties at master record level.
+**PRIORITY 8 - connect_table: reservation.cancellation_policy** - add column property_id (BIGINT) with FK to property.property.property_id - cancellation policies vary by property.
+**PRIORITY 9 - connect_table: workforce.learning_course** - add column property_id (BIGINT) with FK to property.property.property_id - learning courses are deployed at properties.
+**PRIORITY 10 - remove_fk: channel.channel** - remove FK on column procurement_employee_id because a distribution channel entity should not have a direct employee FK.
+**PRIORITY 11 - connect_table: housekeeping.team** - add column property_id (BIGINT) with FK to property.property.property_id - housekeeping teams operate at specific properties.
+**PRIORITY 12 - connect_table: housekeeping.maintenance_request** - add column property_id (BIGINT) with FK to property.property.property_id - maintenance requests originate at a property.
+**PRIORITY 13 - connect_table: housekeeping.maintenance_request** - add column room_id (BIGINT) with FK to inventory.room.room_id - maintenance requests typically target a specific room.
+**PRIORITY 14 - connect_table: procurement.delivery_address** - add column property_id (BIGINT) with FK to property.property.property_id - delivery addresses serve specific properties.
+**PRIORITY 15 - connect_table: procurement.project** - add column property_id (BIGINT) with FK to property.property.property_id - procurement projects (CapEx/PIP) are property-scoped.
+**PRIORITY 16 - connect_table: finance.allocation_rule_set** - add column property_id (BIGINT) with FK to property.property.property_id - allocation rule sets apply to specific properties.
+**PRIORITY 17 - connect_table: finance.gl_batch** - add column property_id (BIGINT) with FK to property.property.property_id - GL batches are posted at property level.
+**PRIORITY 18 - move_product: procurement.benefit_plan** - move to workforce because benefit plans are an HR/workforce function not a purchasing function.
+**PRIORITY 19 - move_product: procurement.compensation_plan** - move to workforce because compensation plans are HR/workforce management not procurement.
+**PRIORITY 20 - move_product: procurement.disciplinary_action** - move to workforce because disciplinary actions are HR/workforce management not procurement.
+**PRIORITY 21 - move_product: procurement.job_requisition** - move to workforce because job requisitions are talent acquisition/HR not procurement.
+**PRIORITY 22 - move_product: procurement.performance_review** - move to workforce because performance reviews are HR/workforce management not procurement.
+**PRIORITY 23 - move_product: procurement.leave_request** - move to workforce because leave requests are HR/workforce management not procurement.
+**PRIORITY 24 - move_product: procurement.workforce_safety_incident** - move to workforce because workforce safety incidents are an HR/workforce function not procurement.
+**PRIORITY 25 - move_product: procurement.employee** - move to workforce because employee master data is an HR/workforce function not procurement.
+**PRIORITY 26 - move_product: procurement.position** - move to workforce because positions are HR/workforce structure not procurement.
+**PRIORITY 27 - move_product: procurement.org_unit** - move to workforce because org units are HR/workforce structure not procurement.
+**PRIORITY 28 - move_product: procurement.shift_template** - move to workforce because shift templates are HR/workforce scheduling not procurement.
+**PRIORITY 29 - move_product: procurement.schedule** - move to workforce because schedules are HR/workforce scheduling not procurement.
+**PRIORITY 30 - move_product: procurement.time_entry** - move to workforce because time entries are HR/workforce timekeeping not procurement.
+**PRIORITY 31 - move_product: procurement.payroll_run** - move to workforce because payroll is an HR/workforce function not procurement.
+**PRIORITY 32 - move_product: procurement.payroll_period** - move to workforce because payroll periods are HR/workforce not procurement.
+**PRIORITY 33 - move_product: procurement.procurement_enrollment** - move to workforce and rename to benefit_enrollment because the table links employee to benefit_plan and is an HR enrollment artifact not procurement.
+**PRIORITY 34 - connect_table: reservation.reservation_booking** - add column room_type_id (BIGINT) with FK to inventory.room_type.room_type_id - replace free-text room_type_requested with proper FK; this is the most important join in hospitality analytics per reviewer comment.
+**PRIORITY 35 - connect_table: revenue.segment_program_eligibility** - add columns effective_date, expiration_date, eligibility_status, points_multiplier, rate_discount_pct, blackout_dates, minimum_los, maximum_los, eligibility_priority, eligibility_notes, approval_employee_id, last_review_date - thin product (5 attrs) needs depth for segment-program eligibility business logic.
+**PRIORITY 36 - connect_table: procurement.program_assignment** - add columns assignment_start_date, assignment_end_date, assignment_status, assignment_role, allocation_pct, billing_rate, scope_of_work, deliverables, performance_rating, contract_value, currency_id, termination_reason - thin product (8 attrs) needs depth for program assignment lifecycle.
+**PRIORITY 37 - rename_product: experience.feedback_topic_extraction** - rename to feedback_topic because the existing topic_extraction table already covers extraction artifacts; differentiate or merge to avoid duplicate AI/ML topic surfaces.
+**PRIORITY 38 - connect_table: experience.feedback_topic_extraction** - add column guest_feedback_id (BIGINT) with FK to experience.guest_feedback.guest_feedback_id - feedback topic extractions must link to the source feedback record.
+**PRIORITY 39 - connect_table: experience.review_topic_extraction** - add column online_review_id (BIGINT) with FK to experience.online_review.online_review_id - review topic extractions must link to the source review.
+**PRIORITY 40 - connect_table: guest.predictive_score** - add column property_id (BIGINT) with FK to property.property.property_id - predictive scores (churn, upsell, NBO) are scoped to property context for property-level activation.
+**PRIORITY 41 - rename_attribute: guest.stay_history** - rename column revpar to adr because the measure divides revenue by occupied room nights which is ADR not RevPAR per reviewer comment.
+**PRIORITY 42 - connect_table: workforce.benefit_plan** - add column ownership_entity_id (BIGINT) with FK to property.ownership_entity.ownership_entity_id - benefit plans are sponsored at the legal/ownership entity level for HR compliance.
+**PRIORITY 43 - connect_table: workforce.learning_course** - add column category_id (BIGINT) with FK to procurement.category.category_id - learning courses need taxonomy/category classification.
+**PRIORITY 44 - connect_table: revenue.segment_program_eligibility** - add column tier_id (BIGINT) with FK to loyalty.tier.tier_id - eligibility frequently varies by loyalty tier, not just market segment.
+**PRIORITY 45 - connect_table: channel.channel_rate_plan** - add column revenue_rate_plan_id (BIGINT) with FK to revenue.revenue_rate_plan.revenue_rate_plan_id - channel rate plans must derive from the revenue master rate plan to resolve SSOT duplicate.
+**PRIORITY 46 - connect_table: reservation.reservation_rate_plan** - add column revenue_rate_plan_id (BIGINT) with FK to revenue.revenue_rate_plan.revenue_rate_plan_id - reservation rate plans must reference the revenue master rate plan to resolve SSOT duplicate.
+**PRIORITY 47 - connect_table: event.event_booking** - add column reservation_group_block_id (BIGINT) with FK to reservation.reservation_group_block.reservation_group_block_id - event bookings with room blocks must link to the reservation group block SSOT.
+**PRIORITY 48 - connect_table: channel.channel_booking** - add column reservation_booking_id (BIGINT) with FK to reservation.reservation_booking.reservation_booking_id - channel bookings represent the channel-side view of reservation bookings (already present, ensure non-null and resolve SSOT).
+**PRIORITY 49 - connect_table: event.event_contract** - add column procurement_contract_id (BIGINT) with FK to procurement.procurement_contract.procurement_contract_id - event contracts should reference the master contract entity to resolve SSOT.
+**PRIORITY 50 - connect_table: channel.channel_contract** - add column procurement_contract_id (BIGINT) with FK to procurement.procurement_contract.procurement_contract_id - channel contracts should reference the master contract entity to resolve SSOT.
+**PRIORITY 51 - connect_table: channel.channel_negotiated_rate** - add column revenue_negotiated_rate_id (BIGINT) with FK to revenue.revenue_negotiated_rate.revenue_negotiated_rate_id - channel negotiated rates are channel projections of the revenue master negotiated rate.
+**PRIORITY 52 - connect_table: housekeeping.housekeeping_training_completion** - add column compliance_training_completion_id (BIGINT) with FK to compliance.compliance_training_completion.compliance_training_completion_id - housekeeping training completions should reference the master training completion record to resolve SSOT.
+**PRIORITY 53 - connect_table: marketing.marketing_calendar** - add column compliance_calendar_id (BIGINT) with FK to compliance.compliance_calendar.compliance_calendar_id - calendar SSOT linkage to avoid duplicate calendar concepts.
+**PRIORITY 54 - connect_table: event.event_group_block** - add column guest_group_block_id (BIGINT) with FK to guest.guest_group_block.guest_group_block_id - event group blocks must link to guest group block SSOT.
+**PRIORITY 55 - connect_table: reservation.reservation_group_block** - add column guest_group_block_id (BIGINT) with FK to guest.guest_group_block.guest_group_block_id - reservation group blocks must link to guest group block SSOT.
+**PRIORITY 56 - connect_table: event.event_space_allocation** - add column property_space_allocation_id (BIGINT) with FK to property.property_space_allocation.property_space_allocation_id - event space allocations should reference master property space allocation.
+**PRIORITY 57 - connect_table: event.event_class_enrollment** - add column spa_class_enrollment_id (BIGINT) with FK to spa.spa_class_enrollment.spa_class_enrollment_id - event class enrollments overlap with spa class enrollments; resolve SSOT.
+**PRIORITY 58 - connect_table: experience.experience_special_request** - add column reservation_special_request_id (BIGINT) with FK to reservation.reservation_special_request.reservation_special_request_id - experience special requests are derived from reservation special requests.
+**PRIORITY 59 - connect_table: revenue.revenue_budget** - add column finance_budget_id (BIGINT) with FK to finance.finance_budget.finance_budget_id - revenue budget should be a partition of finance budget SSOT.
+**PRIORITY 60 - connect_table: property.property_outlet** - add column fnb_outlet_id (BIGINT) with FK to fnb.fnb_outlet.fnb_outlet_id - property outlet and fnb outlet overlap; link to resolve SSOT.
+**PRIORITY 61 - rename_attribute: guest.stay_history** - rename column length_of_stay_string to length_of_stay_nights because numeric measures must not be typed STRING per reviewer comment 3.
+**PRIORITY 62 - rename_attribute: inventory.room_type** - rename column bed_count_string to bed_count because numeric column must be INTEGER not STRING per reviewer comment 3.
+**PRIORITY 63 - rename_attribute: spa.treatment** - rename column duration_minutes_string to duration_minutes because numeric column must be INTEGER not STRING per reviewer comment 3.
+**PRIORITY 64 - rename_attribute: revenue.performance_actuals** - rename column rooms_sold_string to rooms_sold because numeric column must be INTEGER not STRING per reviewer comment 3.
+**PRIORITY 65 - connect_table: experience.topic_extraction** - add column extraction_model_version (STRING) and confidence_score (DOUBLE) and topic_label (STRING) and sentiment_score (DOUBLE) - topic extraction product needs ML attribute depth for AI/ML hospitality story per reviewer suggestion.
+**PRIORITY 66 - rename_product: experience.topic_extraction** - rename to feedback_review_topic_assignment because the table joins both feedback and review and needs a clear scope name to differentiate from the feedback_topic_extraction and review_topic_extraction siblings.
+**PRIORITY 67 - connect_table: spa.product** - add column material_master_id (BIGINT) with FK to procurement.material_master.material_master_id - spa products need linkage to material master for inventory and procurement reconciliation.
+**PRIORITY 68 - connect_table: spa.retail_product** - add column property_id (BIGINT) with FK to property.property.property_id - retail products are stocked at property level.
+**PRIORITY 69 - connect_table: spa.product_line** - add column property_id (BIGINT) with FK to property.property.property_id - product lines need property scope for property-level merchandising.
+**PRIORITY 70 - connect_table: compliance.regulatory_requirement** - add column property_id (BIGINT) with FK to property.property.property_id - regulatory requirements vary by jurisdiction/property.
+**PRIORITY 71 - connect_table: experience.gss_score** - add columns survey_response_count, period_start_date, period_end_date, score_average, score_median, score_stddev, response_rate_pct, top_box_pct, bottom_box_pct, comparison_period_score, variance_pct, market_segment_id - table appears thin and needs measurement depth.
+**PRIORITY 72 - connect_table: experience.survey_template** - add column property_id (BIGINT) with FK to property.property.property_id - survey templates are property-scoped for branded surveys.
+**PRIORITY 73 - connect_table: marketing.communication_template** - add column property_id (BIGINT) with FK to property.property.property_id - communication templates are property-scoped for branded comms.
+**PRIORITY 74 - connect_table: loyalty.tier** - add column program_config_id (BIGINT) with FK to loyalty.program_config.program_config_id - already present, ensure non-null; tiers must roll up to program config.
+**PRIORITY 75 - connect_table: guest.predictive_score** - add columns score_type, score_value, model_version, prediction_date, churn_risk_score, upsell_propensity_score, next_best_offer_id, score_confidence, feature_vector_ref, scored_at_timestamp, expires_at_timestamp, model_run_id - predictive_score is referenced by lifetime_value but needs depth for AI/ML use cases per reviewer suggestion.
+**PRIORITY 76 - connect_table: guest.profile** - add pii_classification tag attributes on email, phone, dob, document_number, address columns - PII tagging is a tracked known issue per reviewer comment 1.
+**PRIORITY 77 - connect_table: experience.program_treatment_inclusion** - add columns inclusion_quantity, inclusion_value, is_complimentary, blackout_dates - many-to-many table is too thin to support program economics.
+**PRIORITY 78 - connect_table: experience.program_fitness_inclusion** - add columns inclusion_quantity, session_credits, is_complimentary, blackout_dates - many-to-many table is too thin to support program economics.
+**PRIORITY 79 - remove_fk: channel.channel_booking** - remove FK on column channel_rate_plan_id and replace with revenue_rate_plan_id only because the channel.channel_rate_plan is an SSOT duplicate of revenue.revenue_rate_plan and bookings should attach to one rate plan source of truth.
+**PRIORITY 80 - connect_table: spa.spa_therapist_certification** - add column property_id (BIGINT) with FK to property.property.property_id - therapist certifications are tracked at property level for licensing audits.
+**PRIORITY 81 - connect_table: housekeeping.work_order** - add column procurement_work_order_id (BIGINT) with FK to procurement.work_order.procurement_work_order_id - housekeeping work orders should reference master procurement work orders to resolve overlap.
+**PRIORITY 82 - connect_table: spa.appointment_package** - add column appointment_id (BIGINT) with FK to spa.appointment.appointment_id - already present per signature, ensure relationship; needed for appointment-package linkage.
+**PRIORITY 83 - connect_table: revenue.segment_program_eligibility** - add column member_segment_id (BIGINT) with FK to loyalty.member_segment.member_segment_id - eligibility commonly applies to loyalty member segments alongside market segment.
+**PRIORITY 84 - connect_table: procurement.program_assignment** - add column project_id (BIGINT) with FK to procurement.project.project_id - program assignments often roll up to projects for billing and tracking.
+**PRIORITY 85 - connect_table: spa.product_line** - add column brand_id (BIGINT) with FK to marketing.brand.brand_id - product lines are tied to brands for retail merchandising.
+**PRIORITY 86 - connect_table: workforce.learning_course** - add column compliance_obligation_id (BIGINT) with FK to compliance.obligation.obligation_id - many learning courses fulfil specific compliance obligations.
+
+Other known issues from static analysis (71):
+  - Table guest.predictive_score has no table_name defined
+  - Table procurement.benefit_plan has no table_name defined
+  - Table experience.topic_extraction has no table_name defined
+  - Table loyalty.fraud_alert has self-referencing FK on column 'related_fraud_alert_id' with same name as PK 'fraud_alert_id' - the FK column must have a different name that describes the relationship (the LLM should choose a contextual label)
+  - Table compliance.audit_finding has self-referencing FK on column 'related_audit_finding_id' with same name as PK 'audit_finding_id' - the FK column must have a different name that describes the relationship (the LLM should choose a contextual label)
+  - Table compliance.health_safety_incident has self-referencing FK on column 'related_health_safety_incident_id' with same name as PK 'health_safety_incident_id' - the FK column must have a different name that describes the relationship (the LLM should choose a contextual label)
+  - Table compliance.privacy_incident has self-referencing FK on column 'related_privacy_incident_id' with same name as PK 'privacy_incident_id' - the FK column must have a different name that describes the relationship (the LLM should choose a contextual label)
+  - Table compliance.whistleblower_report has self-referencing FK on column 'related_whistleblower_report_id' with same name as PK 'whistleblower_report_id' - the FK column must have a different name that describes the relationship (the LLM should choose a contextual label)
+  - Table reservation.reservation_booking has 2 FK columns pointing to inventory.room_type (room_type_id, room_type_requested_id) (generic/unlabeled: room_type_id) - rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table reservation.room_assignment has 2 FK columns pointing to reservation.reservation_booking (booking_id, reservation_booking_id) (generic/unlabeled: reservation_booking_id) - rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table revenue.segment_program_eligibility has 2 FK columns pointing to experience.program (experience_program_id, program_id) (generic/unlabeled: program_id) - rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table loyalty.fraud_alert has 2 FK columns pointing to loyalty.points_ledger (points_ledger_id, triggering_points_ledger_id) (generic/unlabeled: points_ledger_id) - rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table channel.channel_negotiated_rate has 2 FK columns pointing to guest.corporate_account (corporate_account_id, tmc_corporate_account_id) (generic/unlabeled: corporate_account_id) - rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table channel.inventory_allocation has 2 FK columns pointing to channel.channel_rate_plan (channel_rate_plan_id, rate_plan_id) (generic/unlabeled: channel_rate_plan_id) - rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table fnb.stock_transaction has 2 FK columns pointing to fnb.fnb_outlet (destination_location_fnb_outlet_id, fnb_outlet_id) (generic/unlabeled: fnb_outlet_id) - rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table workforce.disciplinary_action has 4 FK columns pointing to procurement.employee (employee_id, last_modified_by_user_employee_id, primary_disciplinary_employee_id, tertiary_disciplinary_hr_business_partner_employee_id) (generic/unlabeled: employee_id) - rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table finance.payment_run has 2 FK columns pointing to procurement.employee (created_by_user_employee_id, employee_id) (generic/unlabeled: employee_id) - rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table finance.allocation_run has 2 FK columns pointing to procurement.employee (approved_by_user_employee_id, employee_id) (generic/unlabeled: employee_id) - rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table finance.allocation_rule_set has 3 FK columns pointing to procurement.employee (created_by_user_employee_id, employee_id, last_modified_by_user_employee_id) (generic/unlabeled: employee_id) - rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table procurement.po_line has 2 FK columns pointing to procurement.material_master (material_master_id, service_material_master_id) (generic/unlabeled: material_master_id) - rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table procurement.vendor_program_participation has 2 FK columns pointing to experience.program (experience_program_id, program_id) (generic/unlabeled: program_id) - rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table procurement.program_assignment has 3 FK columns pointing to procurement.employee (approver_employee_id, assigned_by_employee_id, employee_id) (generic/unlabeled: employee_id) - rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table procurement.requisition_line has 2 FK columns pointing to procurement.employee (approved_by_employee_id, employee_id) (generic/unlabeled: employee_id) - rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table procurement.project has 3 FK columns pointing to procurement.employee (employee_id, manager_employee_id, sponsor_employee_id) (generic/unlabeled: employee_id) - rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table experience.program_treatment_inclusion has 2 FK columns pointing to experience.program (experience_program_id, program_id) (generic/unlabeled: program_id) - rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table experience.program_fitness_inclusion has 2 FK columns pointing to experience.program (experience_program_id, program_id) (generic/unlabeled: program_id) - rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table spa.fitness_class has 2 FK columns pointing to procurement.employee (employee_id, modified_by_user_employee_id) (generic/unlabeled: employee_id) - rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table spa.package_treatment has 2 FK columns pointing to spa.package (package_id, spa_package_id) (generic/unlabeled: package_id) - rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table compliance.risk_register has 3 FK columns pointing to procurement.employee (employee_id, primary_risk_owner_employee_id, updated_by_user_employee_id) (generic/unlabeled: employee_id) - rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table compliance.sanction_screening has 4 FK columns pointing to procurement.employee (employee_id, primary_sanction_employee_id, reviewer_employee_id, updated_by_user_employee_id) (generic/unlabeled: employee_id) - rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table compliance.compliance_calendar has 3 FK columns pointing to procurement.employee (employee_id, last_modified_by_user_employee_id, primary_compliance_responsible_owner_employee_id) (generic/unlabeled: employee_id) - rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - PII-candidate attribute finance.payment_run.bank_account_id has no classification tags - expected restricted/confidential + PII tag
+  - PII-candidate attribute procurement.delivery_address.delivery_address_status has no classification tags - expected restricted/confidential + PII tag
+  - Attribute guest.predictive_score.predictive_score_id has no data type defined
+  - Attribute guest.predictive_score.profile_id has no data type defined
+  - Attribute guest.predictive_score.churn_risk_score has no data type defined
+  - Attribute guest.predictive_score.model_version has no data type defined
+  - Attribute guest.predictive_score.next_best_offer_code has no data type defined
+  - Attribute guest.predictive_score.scored_timestamp has no data type defined
+  - Attribute guest.predictive_score.upsell_propensity_score has no data type defined
+  - Attribute property.property_space_allocation.end_time has unrecognized data type 'TIME' - expected a valid Spark SQL type (STRING, BIGINT, INT, DECIMAL, BOOLEAN, DATE, TIMESTAMP, etc.)
+  - Attribute property.property_space_allocation.start_time has unrecognized data type 'TIME' - expected a valid Spark SQL type (STRING, BIGINT, INT, DECIMAL, BOOLEAN, DATE, TIMESTAMP, etc.)
+  - Attribute revenue.segment_program_eligibility.advance_booking_days has no data type defined
+  - Attribute revenue.segment_program_eligibility.discount_eligible has no data type defined
+  - Attribute revenue.segment_program_eligibility.eligibility_rule_code has no data type defined
+  - Attribute revenue.segment_program_eligibility.expiration_date has no data type defined
+  - Attribute revenue.segment_program_eligibility.min_los_requirement has no data type defined
+  - Attribute channel.inventory_allocation.guaranteed_units has no data type defined
+  - Attribute channel.inventory_allocation.overbooking_limit has no data type defined
+  - Attribute channel.inventory_allocation.rate_plan_code has no data type defined
+  - Attribute procurement.program_assignment.vendor_id has no data type defined
+  - Attribute procurement.program_assignment.assigned_by has no data type defined
+  - Attribute procurement.program_assignment.assignment_date has no data type defined
+  - Attribute procurement.program_assignment.assignment_role has no data type defined
+  - Attribute procurement.program_assignment.expiration_date has no data type defined
+  - Attribute procurement.program_assignment.start_date has no data type defined
+  - Attribute experience.topic_extraction.topic_extraction_id has no data type defined
+  - Attribute experience.topic_extraction.guest_feedback_id has no data type defined
+  - Attribute experience.topic_extraction.online_review_id has no data type defined
+  - Attribute experience.topic_extraction.extracted_timestamp has no data type defined
+  - Attribute experience.topic_extraction.sentiment_score has no data type defined
+  - Attribute experience.topic_extraction.topic_confidence has no data type defined
+  - Attribute experience.topic_extraction.topic_label has no data type defined
+  - Table procurement.benefit_plan has only 1 attribute(s) - likely incomplete or should be merged
+  - Subdomain 'inventory_control' appears in 2 domains: channel, housekeeping. Consider renaming to qualified form.
+  - Subdomain 'workforce_management' appears in 3 domains: procurement, spa, workforce. Consider renaming to qualified form.
+  - 10 attribute(s) contain banned boilerplate phrases (Fortune N, multinational, enterprise-wide, cross-company, group reporting). Clean descriptions.
+  - 425 attribute(s) match person-data patterns but lack pii_ tags
+  - 2 attribute(s) have datatypes inconsistent with their column name pattern
+  - 44 non-PK attributes redundantly prefixed with their product name
+  - 1 attribute(s) have value_regex on typed columns (DATE/BOOLEAN/INT/etc.) - regex is redundant when data_type constrains format
+
+Deterministic score: 50/100 (LLM assessment: 62/100)
+
+## MISSED VIBES (carried from the previous run - apply these THIS run; user directives first)
+
+- (USER DIRECTIVE - supreme authority) P13: add column property_id (BIGINT) with FK to property.property.property_id on procurement.delivery_address. (target: procurement.delivery_address -> property.property) [missed: vov_residual_unapplied]
+- (USER DIRECTIVE - supreme authority) P14: add column property_id (BIGINT) with FK to property.property.property_id on procurement.project. (target: procurement.project -> property.property) [missed: vov_residual_unapplied]
+- (USER DIRECTIVE - supreme authority) P15: add column property_id (BIGINT) with FK to property.property.property_id on finance.allocation_rule_set. (target: finance.allocation_rule_set -> property.property) [missed: vov_residual_unapplied]
+- (USER DIRECTIVE - supreme authority) P16: add column property_id (BIGINT) with FK to property.property.property_id on finance.gl_batch. (target: finance.gl_batch -> property.property) [missed: vov_residual_unapplied]
+- (USER DIRECTIVE - supreme authority) P17: move product procurement.benefit_plan to the workforce domain. (target: procurement.benefit_plan -> workforce domain) [missed: vov_residual_unapplied]
+- (USER DIRECTIVE - supreme authority) P18: move product procurement.compensation_plan to the workforce domain. (target: procurement.compensation_plan -> workforce domain) [missed: vov_residual_unapplied]
+- (USER DIRECTIVE - supreme authority) P19: move product procurement.disciplinary_action to the workforce domain. (target: procurement.disciplinary_action -> workforce domain) [missed: vov_residual_unapplied]
+- (USER DIRECTIVE - supreme authority) P20: move product procurement.job_requisition to the workforce domain. (target: procurement.job_requisition -> workforce domain) [missed: vov_residual_unapplied]
+- (USER DIRECTIVE - supreme authority) Move procurement.benefit_plan to the workforce domain because benefit plans are an HR/workforce function not a purchasing function. (target: procurement.benefit_plan -> workforce) [missed: vov_residual_unapplied]
+- (USER DIRECTIVE - supreme authority) Move procurement.compensation_plan to the workforce domain because compensation plans are HR/workforce management not procurement. (target: procurement.compensation_plan -> workforce) [missed: vov_residual_unapplied]
+- (USER DIRECTIVE - supreme authority) Move procurement.disciplinary_action to the workforce domain because disciplinary actions are HR/workforce management not procurement. (target: procurement.disciplinary_action -> workforce) [missed: vov_residual_unapplied]
+- (USER DIRECTIVE - supreme authority) Move procurement.job_requisition to the workforce domain because job requisitions are talent acquisition/HR not procurement. (target: procurement.job_requisition -> workforce) [missed: vov_residual_unapplied]
+- Preserve all 17 domains and 356 products; no removals/renames/merges without permission (target: *) [missed: orchestrator status=partial]
+- Keep PII tagging tracked as a known issue (target: *) [missed: orchestrator status=failed]
+- Fix/remove the incorrect RevPAR measure on guest_stay_history (it computes ADR) (target: guest.stay_history) [missed: orchestrator status=failed]
+- Optionally add guest predictive score table and review/feedback topic extraction (future AI/ML) (target: guest, experience) [missed: orchestrator status=partial]
+- P17: move procurement.benefit_plan to workforce (target: procurement.benefit_plan, workforce) [missed: orchestrator status=partial]
+- P18: move procurement.compensation_plan to workforce (target: procurement.compensation_plan, workforce) [missed: orchestrator status=partial]
+- P19: move procurement.disciplinary_action to workforce (target: procurement.disciplinary_action, workforce) [missed: orchestrator status=partial]
+- P20: move procurement.job_requisition to workforce (target: procurement.job_requisition, workforce) [missed: orchestrator status=partial]

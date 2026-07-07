@@ -1,0 +1,1407 @@
+**Model Quality Score: 64.1/100**
+
+**Static Analysis Findings (22 actionable):**
+  - [SA:siloed_table] Table rights.rights_status_ref has no incoming or outgoing relationships (completely disconnected)
+  - [SA:siloed_table] Table sales.order_status_ref has no incoming or outgoing relationships (completely disconnected)
+  - [SA:fk_cycle] Circular FK dependency detected: technology.broadcast_facility -> technology.equipment_status_ref -> technology.broadcast_facility
+  - [SA:fk_cycle] Circular FK dependency detected: workforce.employee -> workforce.employment_status_ref -> workforce.employee
+  - [SA:fk_cycle] Circular FK dependency detected: workforce.employee -> workforce.org_unit -> workforce.employee
+  - [SA:fk_cycle] Circular FK dependency detected: compliance.broadcast_license -> compliance.incident_severity_ref -> compliance.broadcast_license
+  - [SA:fk_cycle] Circular FK dependency detected: compliance.broadcast_license -> compliance.filing_status_ref -> compliance.broadcast_license
+  - [SA:fk_cycle] Circular FK dependency detected: partner.partner -> partner.deal_status_ref -> partner.partner
+  - [SA:fk_cycle] Circular FK dependency detected: billing.billing_account -> sales.sales_account -> billing.billing_account
+  - [SA:fk_cycle] Circular FK dependency detected: subscriber.subscriber -> subscriber.household -> subscriber.subscriber
+  - [SA:fk_cycle] Circular FK dependency detected: finance.chart_of_accounts -> finance.currency_ref -> finance.chart_of_accounts
+  - [SA:fk_cycle] Circular FK dependency detected: production.project -> production.budget_status_ref -> production.project
+  - [SA:duplicate_product_pair] Domain 'sales' has both 'proposal' and 'sales_proposal' — SSOT violation. Merge into 'proposal'.
+  - [SA:duplicate_product_pair] Domain 'sales' has both 'scatter_order' and 'sales_scatter_order' — SSOT violation. Merge into 'scatter_order'.
+  - [SA:silo_product] Product 'rights.rights_status_ref' has zero incoming AND zero outgoing FKs — completely isolated.
+  - [SA:silo_product] Product 'sales.order_status_ref' has zero incoming AND zero outgoing FKs — completely isolated.
+  - [SA:denormalized_natural_key] Product 'content.localization' has both FK 'version_id' and natural key 'version_number' for entity 'version'. The natural key is redundant — use the FK join instead.
+  - [SA:denormalized_natural_key] Product 'content.lifecycle_event' has both FK 'version_id' and natural key 'version_number' for entity 'version'. The natural key is redundant — use the FK join instead.
+  - [SA:denormalized_natural_key] Product 'technology.tech_incident' has both FK 'incident_id' and natural key 'incident_number' for entity 'incident'. The natural key is redundant — use the FK join instead.
+  - [SA:cross_domain_duplicate] Potential SSOT violation: 'content.content_clearance' and 'talent.talent_clearance' have the same entity name 'clearance' in different domains. One should be the SSOT owner, the other should reference via FK.
+  - [SA:cross_domain_duplicate] Potential SSOT violation: 'partner.partner_type_ref' and 'rights.rights_type_ref' have the same entity name 'type_ref' in different domains. One should be the SSOT owner, the other should reference via FK.
+  - [SA:cross_domain_duplicate] Potential SSOT violation: 'distribution.distribution_local_avail_inventory' and 'scheduling.scheduling_local_avail_inventory' have the same entity name 'local_avail_inventory' in different domains. One should be the SSOT owner, the other should reference via FK.
+
+**PRIORITY 1 — rename_product: partner.partner** — rename to partner_organization because the structure preserves a required product named partner_partner per Section 1; the doubled-name artifact must be resolved while remaining distinct from the domain name per v1 next_vibes P1.
+**PRIORITY 2 — connect_table: sales.proposal** — add column sales_opportunity_id (BIGINT) with FK to sales.opportunity.opportunity_id — proposals originate from a sales opportunity in the pipeline (also enrich this skeleton product with proposal_name, proposal_status, total_amount, valid_until_date, submitted_at, version_number, currency_code per 3E.1/3E.2).
+**PRIORITY 3 — connect_table: sales.scatter_order** — add column sales_advertiser_id (BIGINT) with FK to sales.advertiser.advertiser_id — scatter orders are placed by an advertiser (also enrich this skeleton with order_number, order_status, gross_amount, net_amount, daypart_mix, flight_start_date, flight_end_date, cpm_rate per 3E.1/3E.2).
+**PRIORITY 4 — connect_table: content.billing_line** — add column finance_cost_center_id (BIGINT) with FK to finance.cost_center.cost_center_id — billing lines need cost center attribution for GL posting (v1 next_vibes P5).
+**PRIORITY 5 — connect_table: distribution.cdn_configuration** — add column technology_broadcast_facility_id (BIGINT) with FK to technology.broadcast_facility.broadcast_facility_id — CDN configurations are hosted at a broadcast facility (v1 next_vibes P6).
+**PRIORITY 6 — connect_table: distribution.cdn_configuration** — add column workforce_employee_id (BIGINT) with FK to workforce.employee.employee_id — CDN configurations require an accountable owner (v1 next_vibes P7).
+**PRIORITY 7 — connect_table: mediaasset.storage_location** — add column technology_broadcast_facility_id (BIGINT) with FK to technology.broadcast_facility.broadcast_facility_id — physical storage locations reside in a broadcast facility (v1 next_vibes P8).
+**PRIORITY 8 — connect_table: billing.product** — add column finance_revenue_stream_id (BIGINT) with FK to finance.revenue_stream.revenue_stream_id — billing products must map to a revenue stream (v1 next_vibes P10).
+**PRIORITY 9 — connect_table: billing.cycle** — add column workforce_employee_id (BIGINT) with FK to workforce.employee.employee_id — billing cycles need an operational owner (v1 next_vibes P11).
+**PRIORITY 10 — connect_table: content.rating** — add column compliance_regulatory_obligation_id (BIGINT) with FK to compliance.regulatory_obligation.regulatory_obligation_id — content ratings are governed by regulatory obligations (v1 next_vibes P12).
+**PRIORITY 11 — connect_table: distribution.sla_definition** — add column workforce_employee_id (BIGINT) with FK to workforce.employee.employee_id — SLA definitions need an accountable owner (v1 next_vibes P13).
+**PRIORITY 12 — connect_table: rights.holder** — add column partner_partner_id (BIGINT) with FK to partner.partner.partner_id — rights holders are typically partner organizations (v1 next_vibes P14; note holder already FKs partner.partner — verify this is materialized).
+**PRIORITY 13 — remove_fk: audience.nielsen_rating** — remove FK on column compliance_eas_log_id because Nielsen ratings have no business dependency on Emergency Alert System logs (v1 next_vibes P17).
+**PRIORITY 14 — remove_fk: audience.nielsen_rating** — remove FK on column compliance_closed_caption_record_id because closed captioning compliance is unrelated to audience measurement (v1 next_vibes P18).
+**PRIORITY 15 — remove_fk: audience.nielsen_rating** — remove FK on column compliance_sox_control_id because audience ratings are not governed by SOX financial controls.
+**PRIORITY 16 — remove_fk: audience.nielsen_rating** — remove FK on column compliance_political_ad_record_id because Nielsen ratings have no structural dependency on political ad records.
+**PRIORITY 17 — remove_fk: audience.nielsen_rating** — remove FK on column compliance_incident_id because audience ratings are not structurally dependent on compliance incidents.
+**PRIORITY 18 — remove_fk: audience.cross_platform_measurement** — remove FK on column finance_cost_center_id because cross-platform audience measurement is a measurement artifact, not a cost-allocated transaction.
+**PRIORITY 19 — remove_fk: audience.cross_platform_measurement** — remove FK on column finance_profit_center_id because audience measurement records carry no profit-center attribution.
+**PRIORITY 20 — remove_fk: audience.viewership_record** — remove FK on column finance_cost_center_id because viewership records are measurement facts, not cost-allocated entities.
+**PRIORITY 21 — remove_fk: audience.viewership_record** — remove FK on column workforce_employee_id because viewership measurement records do not depend on an employee.
+**PRIORITY 22 — remove_fk: audience.reach_frequency_report** — remove FK on column finance_cost_center_id because reach/frequency reporting is a measurement output unrelated to cost centers.
+**PRIORITY 23 — connect_table: rights.rights_territory** — add column audience_market_coverage_id (BIGINT) with FK to audience.market_coverage.market_coverage_id — rights territories map to DMA/market coverage (v1 next_vibes P15; verify materialized since listed in FK signature).
+**PRIORITY 24 — connect_table: mediaasset.format_specification** — add column technology_broadcast_standard_id (BIGINT) with FK to technology.broadcast_standard.broadcast_standard_id — format specs conform to a broadcast standard (v1 next_vibes P9; verify materialized).
+**PRIORITY 25 — connect_table: content.episode_transmission** — add column distribution_playout_feed_id (BIGINT) with FK to distribution.playout_feed.playout_feed_id — transmissions are carried over a playout feed; enrich this thin product (8 attrs) with transmission_start_at, transmission_end_at, transmission_status, signal_quality_score, as_run_duration_seconds.
+**PRIORITY 26 — connect_table: production.broadcast** — add column scheduling_program_schedule_id (BIGINT) with FK to scheduling.program_schedule.program_schedule_id — a production broadcast slots into a program schedule; enrich this thin product (8 attrs) with broadcast_status, air_date, repeat_flag, simulcast_flag.
+**PRIORITY 27 — connect_table: scheduling.daypart_assignment** — add column scheduling_program_schedule_id (BIGINT) with FK to scheduling.program_schedule.program_schedule_id — daypart assignments apply to a program schedule; enrich this thin product (8 attrs) with effective_date, expiry_date, priority_rank, override_flag.
+**PRIORITY 28 — connect_table: partner.deal_compliance_obligation** — add column workforce_employee_id (BIGINT) with FK to workforce.employee.employee_id — compliance obligations need an accountable owner; enrich this thin product (8 attrs) with obligation_status, due_date, completion_date, evidence_reference.
+**PRIORITY 29 — connect_table: finance.project_assignment** — add column finance_profit_center_id (BIGINT) with FK to finance.profit_center.profit_center_id — project assignments carry profit-center attribution; enrich this thin product (8 attrs) with assignment_start_date, assignment_end_date, allocation_percentage, assignment_status.
+**PRIORITY 30 — connect_table: finance.cost_center_obligation_allocation** — add column finance_chart_of_accounts_id (BIGINT) with FK to finance.chart_of_accounts.chart_of_accounts_id — obligation allocations must map to a GL account; enrich this thin product (8 attrs) with allocation_amount, allocation_percentage, effective_date, allocation_method.
+**PRIORITY 31 — connect_table: compliance.facility_compliance** — add column compliance_calendar_id (BIGINT) with FK to compliance.calendar.calendar_id — facility compliance reviews follow a regulatory calendar; enrich this thin product (8 attrs) with compliance_status, last_review_date, next_review_date, finding_count.
+**PRIORITY 32 — connect_table: sales.proposal_distribution** — add column workforce_employee_id (BIGINT) with FK to workforce.employee.employee_id — proposal distributions are sent by an employee; enrich this thin product (7 attrs) with distribution_method, sent_at, recipient_count, delivery_status, opened_at.
+**PRIORITY 33 — rename_attribute: content.title** — rename column aspect_ratio to aspect_ratio_decimal because the value must be DECIMAL/DOUBLE not STRING per 3E.3.
+**PRIORITY 34 — rename_attribute: content.series** — rename column aspect_ratio to aspect_ratio_decimal because the value must be DECIMAL/DOUBLE not STRING per 3E.3.
+**PRIORITY 35 — rename_attribute: content.content_episode** — rename column aspect_ratio to aspect_ratio_decimal because the value must be DECIMAL/DOUBLE not STRING per 3E.3.
+**PRIORITY 36 — rename_attribute: content.version** — rename column aspect_ratio to aspect_ratio_decimal because the value must be DECIMAL/DOUBLE not STRING per 3E.3.
+**PRIORITY 37 — rename_attribute: content.metadata_profile** — rename column aspect_ratio to aspect_ratio_decimal because the value must be DECIMAL/DOUBLE not STRING per 3E.3.
+**PRIORITY 38 — rename_attribute: content.artwork** — rename column aspect_ratio to aspect_ratio_decimal because the value must be DECIMAL/DOUBLE not STRING per 3E.3.
+**PRIORITY 39 — rename_attribute: content.ingest_event** — rename column source_aspect_ratio to source_aspect_ratio_decimal because the value must be DECIMAL/DOUBLE not STRING per 3E.3.
+**PRIORITY 40 — rename_attribute: content.content_library** — rename column aspect_ratio to aspect_ratio_decimal because the value must be DECIMAL/DOUBLE not STRING per 3E.3.
+**PRIORITY 41 — rename_attribute: content.vod_library** — rename column aspect_ratio to aspect_ratio_decimal because the value must be DECIMAL/DOUBLE not STRING per 3E.3.
+**PRIORITY 42 — rename_attribute: content.content_portfolio** — rename column aspect_ratio to aspect_ratio_decimal because the value must be DECIMAL/DOUBLE not STRING per 3E.3.
+**PRIORITY 43 — rename_attribute: production.vfx_shot** — rename column aspect_ratio to aspect_ratio_decimal because the value must be DECIMAL/DOUBLE not STRING per 3E.3.
+**PRIORITY 44 — rename_attribute: production.deliverable** — rename column aspect_ratio to aspect_ratio_decimal because the value must be DECIMAL/DOUBLE not STRING per 3E.3.
+**PRIORITY 45 — rename_attribute: production.ingest_record** — rename column aspect_ratio to aspect_ratio_decimal because the value must be DECIMAL/DOUBLE not STRING per 3E.3.
+**PRIORITY 46 — rename_attribute: production.format_spec** — rename column aspect_ratio to aspect_ratio_decimal because the value must be DECIMAL/DOUBLE not STRING per 3E.3.
+**PRIORITY 47 — rename_attribute: scheduling.schedule_slot** — rename column aspect_ratio to aspect_ratio_decimal because the value must be DECIMAL/DOUBLE not STRING per 3E.3.
+**PRIORITY 48 — rename_attribute: distribution.delivery_channel** — rename column aspect_ratio to aspect_ratio_decimal because the value must be DECIMAL/DOUBLE not STRING per 3E.3.
+**PRIORITY 49 — rename_attribute: distribution.playout_feed** — rename column aspect_ratio to aspect_ratio_decimal because the value must be DECIMAL/DOUBLE not STRING per 3E.3.
+**PRIORITY 50 — rename_attribute: mediaasset.media_asset** — rename column aspect_ratio to aspect_ratio_decimal because the value must be DECIMAL/DOUBLE not STRING per 3E.3.
+**PRIORITY 51 — rename_attribute: mediaasset.asset_version** — rename column aspect_ratio to aspect_ratio_decimal because the value must be DECIMAL/DOUBLE not STRING per 3E.3.
+**PRIORITY 52 — rename_attribute: mediaasset.ingest_job** — rename column aspect_ratio to aspect_ratio_decimal because the value must be DECIMAL/DOUBLE not STRING per 3E.3.
+**PRIORITY 53 — rename_attribute: mediaasset.qc_inspection** — rename column detected_aspect_ratio to detected_aspect_ratio_decimal because the value must be DECIMAL/DOUBLE not STRING per 3E.3.
+**PRIORITY 54 — rename_attribute: mediaasset.format_specification** — rename column aspect_ratio to aspect_ratio_decimal because the value must be DECIMAL/DOUBLE not STRING per 3E.3.
+**PRIORITY 55 — rename_attribute: sales.isci_creative** — rename column aspect_ratio to aspect_ratio_decimal because the value must be DECIMAL/DOUBLE not STRING per 3E.3.
+**PRIORITY 56 — connect_table: audience.guarantee** — add column sales_advertising_audience_guarantee_id (BIGINT) with FK to sales.advertising_audience_guarantee.advertising_audience_guarantee_id — the audience.guarantee product appears unlinked; tie measurement guarantees to the sales-side guarantee commitment, and remove any compliance_sox_control_id/compliance_political_ad_record_id FKs per v1 next_vibes P19/P20.
+**PRIORITY 57 — remove_fk: audience.guarantee** — remove FK on column compliance_sox_control_id because audience guarantees are commercial commitments not governed by SOX financial controls (v1 next_vibes P19).
+**PRIORITY 58 — remove_fk: audience.guarantee** — remove FK on column compliance_political_ad_record_id because audience delivery guarantees are not structurally dependent on political ad records (v1 next_vibes P20).
+**PRIORITY 59 — connect_table: audience.partner_demographic_target** — add column partner_partner_id (BIGINT) with FK to partner.partner.partner_id — partner_demographic_target product (required in Section 1) must link to the partner it targets demographics for.
+**PRIORITY 60 — connect_table: audience.partner_demographic_target** — add column audience_demographic_segment_id (BIGINT) with FK to audience.demographic_segment.demographic_segment_id — partner demographic targets reference the demographic segment being targeted.
+**PRIORITY 61 — connect_table: distribution.delivery_sla** — add column distribution_distribution_partner_id (BIGINT) with FK to distribution.distribution_partner.distribution_partner_id — delivery SLAs apply to a distribution partner; product currently only links to workforce.employee.
+**PRIORITY 62 — connect_table: distribution.feature_flag** — add column distribution_ott_platform_id (BIGINT) with FK to distribution.ott_platform.ott_platform_id — feature flags are scoped to a platform; product currently only links to workforce.employee.
+**PRIORITY 63 — connect_table: content.sports_league** — add column compliance_regulatory_obligation_id (BIGINT) with FK to compliance.regulatory_obligation.regulatory_obligation_id — sports_league is near-isolated (only inbound); add an outbound link, or alternatively connect to partner.partner as the rights-holding league entity.
+**PRIORITY 64 — connect_table: content.podcast_show** — add column workforce_employee_id (BIGINT) with FK to workforce.employee.employee_id — podcast_show has only inbound FK from podcast_episode; add an accountable producer/owner link to integrate it into the graph.
+**PRIORITY 65 — connect_table: content.news_story** — add column workforce_employee_id (BIGINT) with FK to workforce.employee.employee_id — news_story has only inbound FKs; add the assigning editor/owner outbound link to connect it.
+**PRIORITY 66 — connect_table: content.news_story** — add column production_production_episode_id (BIGINT) with FK to production.production_episode.production_episode_id — news stories feed into broadcast episodes/rundowns; connect to production for newsroom analytics per Section 2 A1.
+**PRIORITY 67 — connect_table: distribution.social_distribution_outlet** — add column partner_partner_id (BIGINT) with FK to partner.partner.partner_id — social_distribution_outlet has only inbound FK from clip_distribution_event; link the outlet to its operating partner.
+**PRIORITY 68 — connect_table: sales.dsp** — add column partner_partner_id (BIGINT) with FK to partner.partner.partner_id — dsp master has only inbound FKs; link DSP identity to the partner organization that operates it.
+**PRIORITY 69 — connect_table: sales.ssp** — add column partner_partner_id (BIGINT) with FK to partner.partner.partner_id — ssp master has only inbound FKs; link SSP identity to its operating partner.
+**PRIORITY 70 — connect_table: sales.exchange** — add column partner_partner_id (BIGINT) with FK to partner.partner.partner_id — exchange master has only inbound FKs; link exchange identity to its operating partner.
+**PRIORITY 71 — connect_table: sales.brand** — add column sales_advertiser_id (BIGINT) with FK to sales.advertiser.advertiser_id — brand has only a self-ref and inbound FKs; link brands to the advertiser that owns them.
+**PRIORITY 72 — connect_table: sales.product** — add column billing_product_id (BIGINT) with FK to billing.product.product_id — sales products must link to billing products for fulfillment (v1 next_vibes P16).
+**PRIORITY 73 — connect_table: content.composition** — add column rights_holder_id (BIGINT) with FK to rights.holder.holder_id — compositions have an authoritative rights holder for publishing royalty routing per Section 2 A3.
+**PRIORITY 74 — connect_table: content.release** — add column content_master_recording_id (BIGINT) with FK to content.master_recording.master_recording_id — a release packages master recordings; surface the linkage for label catalog demos per Section 2 A3 (note: currently master_recording→release exists but release lacks reverse anchor — verify directionality).
+**PRIORITY 75 — connect_table: rights.rights_pro_affiliation** — add column rights_holder_id (BIGINT) with FK to rights.holder.holder_id — rights_pro_affiliation appears isolated except as a target; link PRO affiliations to the rights holder they apply to.
+**PRIORITY 76 — connect_table: audience.dsp_usage_report** — add column rights_royalty_statement_id (BIGINT) with FK to rights.royalty_statement.royalty_statement_id — DSP usage reports feed mechanical/streaming royalty statements per Section 2 A3.
+**PRIORITY 77 — connect_table: compliance.correction_record** — add column workforce_employee_id (BIGINT) with FK to workforce.employee.employee_id — already references news_story; also attribute the issuing editor for editorial correction lifecycle per Section 2 A1.
+**PRIORITY 78 — connect_table: content.athlete** — add column content_sports_event_id (BIGINT) with FK to content.sports_event.sports_event_id — athletes participate in sports events; connect for sports right-holder analytics per Section 2 A2.
+**PRIORITY 79 — rename_attribute: content.content_clearance** — add sensitivity tag pii to column rights_holder_name because it is a person name requiring PII classification and non-prod masking per 3E.4.
+**PRIORITY 80 — rename_attribute: production.cost_transaction** — add sensitivity tag pii to column payee_name because it is a person name requiring PII classification per 3E.4.
+**PRIORITY 81 — rename_attribute: production.call_sheet** — add sensitivity tag pii to column first_ad_name because it is a person name requiring PII classification per 3E.4.
+**PRIORITY 82 — rename_attribute: rights.royalty_statement_line** — add sensitivity tag pii to column rights_holder_name because it is a person name requiring PII classification per 3E.4.
+**PRIORITY 83 — rename_attribute: rights.music_sync_license** — add sensitivity tag pii to column rights_holder_name because it is a person name requiring PII classification per 3E.4.
+**PRIORITY 84 — rename_attribute: rights.exploitation_report** — add sensitivity tag pii to column rights_holder_name because it is a person name requiring PII classification per 3E.4.
+**PRIORITY 85 — rename_attribute: rights.holder** — add sensitivity tag pii to column rights_holder_name because it is a person name requiring PII classification per 3E.4.
+**PRIORITY 86 — rename_attribute: technology.software_license** — add sensitivity tag pii to column renewal_owner_name because it is a person name requiring PII classification per 3E.4.
+**PRIORITY 87 — rename_attribute: technology.tech_project** — add sensitivity tag pii to column technology_owner_name because it is a person name requiring PII classification per 3E.4.
+**PRIORITY 88 — connect_table: advertising.ad_inventory** — add column scheduling_schedule_slot_id (BIGINT) with FK to scheduling.schedule_slot.schedule_slot_id — ad inventory units map to specific schedule slots for linear avail management (advertising domain expansion per 3E.0).
+**PRIORITY 89 — connect_table: advertising.rate_card** — add column finance_revenue_stream_id (BIGINT) with FK to finance.revenue_stream.revenue_stream_id — rate cards drive revenue stream attribution for ad pricing.
+**PRIORITY 90 — rename_attribute: audience.advertiser_commitments** — note: Section 2 C3 / Recommended-Step 6 requires moving upfront/scatter commitments out of audience; however a product named audience.guarantee exists in Section 1 — keep guarantee in audience as measurement and ensure commercial commitment attributes live in sales.upfront_commitment (no audience.advertiser_commitments product is listed in required structure; do not recreate it in audience).
+**PRIORITY 91 — connect_table: content.title_relationship** — verify self-ref column is parent_title_relationship_id (valid) but title_relationship must also link the two related titles; add column related_title_id (BIGINT) with FK to content.title.title_id — a title relationship needs both endpoints, currently only one title FK is expressed.
+**PRIORITY 92 — connect_table: distribution.betting_data_feed** — add column content_sports_competition_id (BIGINT) with FK to content.sports_competition.sports_competition_id — betting feeds are scoped to a competition not just an event, for live sports data partner demos per Section 2 A2.
+**PRIORITY 93 — connect_table: talent.talent_sports_team** — add column content_sports_team_id (BIGINT) with FK to content.sports_team.sports_team_id — talent_sports_team should reference the canonical content.sports_team rather than duplicating roster identity, to avoid SSOT drift between talent and content sports entities.
+**PRIORITY 94 — connect_table: sales.campaign** — add column sales_advertiser_id (BIGINT) with FK to sales.advertiser.advertiser_id — sales.campaign (required Section 1 product distinct from sales_campaign) must anchor to its advertiser; verify it is not a redundant duplicate of sales.sales_campaign and carries distinct attributes.
+**PRIORITY 95 — connect_table: content.podcast_dynamic_ad_insertion** — add column distribution_dai_configuration_id (BIGINT) with FK to distribution.dai_configuration.dai_configuration_id — podcast DAI must reference the DAI configuration it executes under for consistent ad-insertion lineage.
+
+Other known issues from static analysis (1221):
+  - Attribute '_created_at' in content.title is not valid snake_case
+  - Attribute '_updated_at' in content.title is not valid snake_case
+  - Attribute '_created_at' in content.series is not valid snake_case
+  - Attribute '_updated_at' in content.series is not valid snake_case
+  - Attribute '_created_at' in content.season is not valid snake_case
+  - Attribute '_updated_at' in content.season is not valid snake_case
+  - Attribute '_created_at' in content.content_episode is not valid snake_case
+  - Attribute '_updated_at' in content.content_episode is not valid snake_case
+  - Attribute '_created_at' in content.version is not valid snake_case
+  - Attribute '_updated_at' in content.version is not valid snake_case
+  - Attribute '_created_at' in content.genre is not valid snake_case
+  - Attribute '_updated_at' in content.genre is not valid snake_case
+  - Attribute '_created_at' in content.rating is not valid snake_case
+  - Attribute '_updated_at' in content.rating is not valid snake_case
+  - Attribute '_created_at' in content.localization is not valid snake_case
+  - Attribute '_updated_at' in content.localization is not valid snake_case
+  - Attribute '_created_at' in content.identifier is not valid snake_case
+  - Attribute '_updated_at' in content.identifier is not valid snake_case
+  - Attribute '_created_at' in content.talent_credit is not valid snake_case
+  - Attribute '_updated_at' in content.talent_credit is not valid snake_case
+  - Attribute '_created_at' in content.acquisition is not valid snake_case
+  - Attribute '_updated_at' in content.acquisition is not valid snake_case
+  - Attribute '_created_at' in content.windowing_plan is not valid snake_case
+  - Attribute '_updated_at' in content.windowing_plan is not valid snake_case
+  - Attribute '_created_at' in content.lifecycle_event is not valid snake_case
+  - Attribute '_updated_at' in content.lifecycle_event is not valid snake_case
+  - Attribute '_created_at' in content.content_clearance is not valid snake_case
+  - Attribute '_updated_at' in content.content_clearance is not valid snake_case
+  - Attribute '_created_at' in content.metadata_profile is not valid snake_case
+  - Attribute '_updated_at' in content.metadata_profile is not valid snake_case
+  - Attribute '_created_at' in content.artwork is not valid snake_case
+  - Attribute '_updated_at' in content.artwork is not valid snake_case
+  - Attribute '_created_at' in content.tag is not valid snake_case
+  - Attribute '_updated_at' in content.tag is not valid snake_case
+  - Attribute '_created_at' in content.ingest_event is not valid snake_case
+  - Attribute '_updated_at' in content.ingest_event is not valid snake_case
+  - Attribute '_created_at' in content.package is not valid snake_case
+  - Attribute '_updated_at' in content.package is not valid snake_case
+  - Attribute '_created_at' in content.compliance_finding is not valid snake_case
+  - Attribute '_updated_at' in content.compliance_finding is not valid snake_case
+  - Attribute '_created_at' in content.title_relationship is not valid snake_case
+  - Attribute '_updated_at' in content.title_relationship is not valid snake_case
+  - Attribute '_created_at' in content.series_talent_credit is not valid snake_case
+  - Attribute '_updated_at' in content.series_talent_credit is not valid snake_case
+  - Attribute '_created_at' in content.credit is not valid snake_case
+  - Attribute '_updated_at' in content.credit is not valid snake_case
+  - Attribute '_created_at' in content.billing_line is not valid snake_case
+  - Attribute '_updated_at' in content.billing_line is not valid snake_case
+  - Attribute '_created_at' in content.title_rights_grant is not valid snake_case
+  - Attribute '_updated_at' in content.title_rights_grant is not valid snake_case
+  - Attribute '_created_at' in content.title_asset_usage is not valid snake_case
+  - Attribute '_updated_at' in content.title_asset_usage is not valid snake_case
+  - Attribute '_created_at' in content.genre_buy_agreement is not valid snake_case
+  - Attribute '_updated_at' in content.genre_buy_agreement is not valid snake_case
+  - Attribute '_created_at' in content.package_inclusion is not valid snake_case
+  - Attribute '_updated_at' in content.package_inclusion is not valid snake_case
+  - Attribute '_created_at' in content.series_crew_assignment is not valid snake_case
+  - Attribute '_updated_at' in content.series_crew_assignment is not valid snake_case
+  - Attribute '_created_at' in content.distribution_package is not valid snake_case
+  - Attribute '_updated_at' in content.distribution_package is not valid snake_case
+  - Attribute '_created_at' in content.episode_transmission is not valid snake_case
+  - Attribute '_updated_at' in content.episode_transmission is not valid snake_case
+  - Attribute '_created_at' in content.taxonomy is not valid snake_case
+  - Attribute '_updated_at' in content.taxonomy is not valid snake_case
+  - Attribute '_created_at' in content.content_library is not valid snake_case
+  - Attribute '_updated_at' in content.content_library is not valid snake_case
+  - Attribute '_created_at' in content.vod_library is not valid snake_case
+  - Attribute '_updated_at' in content.vod_library is not valid snake_case
+  - Attribute '_created_at' in content.content_portfolio is not valid snake_case
+  - Attribute '_updated_at' in content.content_portfolio is not valid snake_case
+  - Attribute '_created_at' in content.content_type_ref is not valid snake_case
+  - Attribute '_updated_at' in content.content_type_ref is not valid snake_case
+  - Attribute '_created_at' in content.content_status_ref is not valid snake_case
+  - Attribute '_updated_at' in content.content_status_ref is not valid snake_case
+  - Attribute '_created_at' in content.color_format_ref is not valid snake_case
+  - Attribute '_updated_at' in content.color_format_ref is not valid snake_case
+  - Attribute '_created_at' in content.language_ref is not valid snake_case
+  - Attribute '_updated_at' in content.language_ref is not valid snake_case
+  - Attribute '_created_at' in content.country_ref is not valid snake_case
+  - Attribute '_updated_at' in content.country_ref is not valid snake_case
+  - Attribute '_created_at' in content.audio_format_ref is not valid snake_case
+  - Attribute '_updated_at' in content.audio_format_ref is not valid snake_case
+  - Attribute '_created_at' in content.video_resolution_ref is not valid snake_case
+  - Attribute '_updated_at' in content.video_resolution_ref is not valid snake_case
+  - Attribute '_created_at' in content.series_type_ref is not valid snake_case
+  - Attribute '_updated_at' in content.series_type_ref is not valid snake_case
+  - Attribute '_created_at' in content.episode_type_ref is not valid snake_case
+  - Attribute '_updated_at' in content.episode_type_ref is not valid snake_case
+  - Attribute '_created_at' in content.hdr_format_ref is not valid snake_case
+  - Attribute '_updated_at' in content.hdr_format_ref is not valid snake_case
+  - Attribute '_created_at' in content.series_status_ref is not valid snake_case
+  - Attribute '_updated_at' in content.series_status_ref is not valid snake_case
+  - Attribute '_created_at' in content.resolution_ref is not valid snake_case
+  - Attribute '_updated_at' in content.resolution_ref is not valid snake_case
+  - Attribute '_created_at' in content.release is not valid snake_case
+  - Attribute '_updated_at' in content.release is not valid snake_case
+  - Attribute '_created_at' in production.project is not valid snake_case
+  - Attribute '_source_code' in production.project is not valid snake_case
+  - Attribute '_updated_at' in production.project is not valid snake_case
+  - Attribute '_created_at' in production.shoot_schedule is not valid snake_case
+  - Attribute '_source_code' in production.shoot_schedule is not valid snake_case
+  - Attribute '_updated_at' in production.shoot_schedule is not valid snake_case
+  - Attribute '_created_at' in production.budget is not valid snake_case
+  - Attribute '_source_code' in production.budget is not valid snake_case
+  - Attribute '_updated_at' in production.budget is not valid snake_case
+  - Attribute '_created_at' in production.budget_line is not valid snake_case
+  - Attribute '_source_code' in production.budget_line is not valid snake_case
+  - Attribute '_updated_at' in production.budget_line is not valid snake_case
+  - Attribute '_created_at' in production.crew_assignment is not valid snake_case
+  - Attribute '_source_code' in production.crew_assignment is not valid snake_case
+  - Attribute '_updated_at' in production.crew_assignment is not valid snake_case
+  - Attribute '_created_at' in production.facility_booking is not valid snake_case
+  - Attribute '_source_code' in production.facility_booking is not valid snake_case
+  - Attribute '_updated_at' in production.facility_booking is not valid snake_case
+  - Attribute '_created_at' in production.equipment_allocation is not valid snake_case
+  - Attribute '_source_code' in production.equipment_allocation is not valid snake_case
+  - Attribute '_updated_at' in production.equipment_allocation is not valid snake_case
+  - Attribute '_created_at' in production.production_episode is not valid snake_case
+  - Attribute '_source_code' in production.production_episode is not valid snake_case
+  - Attribute '_updated_at' in production.production_episode is not valid snake_case
+  - Attribute '_created_at' in production.script is not valid snake_case
+  - Attribute '_source_code' in production.script is not valid snake_case
+  - Attribute '_updated_at' in production.script is not valid snake_case
+  - Attribute '_created_at' in production.post_production_task is not valid snake_case
+  - Attribute '_source_code' in production.post_production_task is not valid snake_case
+  - Attribute '_updated_at' in production.post_production_task is not valid snake_case
+  - Attribute '_created_at' in production.vfx_shot is not valid snake_case
+  - Attribute '_source_code' in production.vfx_shot is not valid snake_case
+  - Attribute '_updated_at' in production.vfx_shot is not valid snake_case
+  - Attribute '_created_at' in production.deliverable is not valid snake_case
+  - Attribute '_source_code' in production.deliverable is not valid snake_case
+  - Attribute '_updated_at' in production.deliverable is not valid snake_case
+  - Attribute '_created_at' in production.qc_review is not valid snake_case
+  - Attribute '_source_code' in production.qc_review is not valid snake_case
+  - Attribute '_updated_at' in production.qc_review is not valid snake_case
+  - Attribute '_created_at' in production.ingest_record is not valid snake_case
+  - Attribute '_source_code' in production.ingest_record is not valid snake_case
+  - Attribute '_updated_at' in production.ingest_record is not valid snake_case
+  - Attribute '_created_at' in production.milestone is not valid snake_case
+  - Attribute '_source_code' in production.milestone is not valid snake_case
+  - Attribute '_updated_at' in production.milestone is not valid snake_case
+  - Attribute '_created_at' in production.location is not valid snake_case
+  - Attribute '_source_code' in production.location is not valid snake_case
+  - Attribute '_updated_at' in production.location is not valid snake_case
+  - Attribute '_created_at' in production.cost_transaction is not valid snake_case
+  - Attribute '_source_code' in production.cost_transaction is not valid snake_case
+  - Attribute '_updated_at' in production.cost_transaction is not valid snake_case
+  - Attribute '_created_at' in production.insurance_policy is not valid snake_case
+  - Attribute '_source_code' in production.insurance_policy is not valid snake_case
+  - Attribute '_updated_at' in production.insurance_policy is not valid snake_case
+  - Attribute '_created_at' in production.production_clearance is not valid snake_case
+  - Attribute '_source_code' in production.production_clearance is not valid snake_case
+  - Attribute '_updated_at' in production.production_clearance is not valid snake_case
+  - Attribute '_created_at' in production.format_spec is not valid snake_case
+  - Attribute '_source_code' in production.format_spec is not valid snake_case
+  - Attribute '_updated_at' in production.format_spec is not valid snake_case
+  - Attribute '_created_at' in production.rating_submission is not valid snake_case
+  - Attribute '_source_code' in production.rating_submission is not valid snake_case
+  - Attribute '_updated_at' in production.rating_submission is not valid snake_case
+  - Attribute '_created_at' in production.daily_production_report is not valid snake_case
+  - Attribute '_source_code' in production.daily_production_report is not valid snake_case
+  - Attribute '_updated_at' in production.daily_production_report is not valid snake_case
+  - Attribute '_created_at' in production.call_sheet is not valid snake_case
+  - Attribute '_source_code' in production.call_sheet is not valid snake_case
+  - Attribute '_updated_at' in production.call_sheet is not valid snake_case
+  - Attribute '_created_at' in production.broadcast is not valid snake_case
+  - Attribute '_source_code' in production.broadcast is not valid snake_case
+  - Attribute '_updated_at' in production.broadcast is not valid snake_case
+  - Attribute '_created_at' in production.episode_sponsorship is not valid snake_case
+  - Attribute '_source_code' in production.episode_sponsorship is not valid snake_case
+  - Attribute '_updated_at' in production.episode_sponsorship is not valid snake_case
+  - Attribute '_created_at' in production.project_sponsorship is not valid snake_case
+  - Attribute '_source_code' in production.project_sponsorship is not valid snake_case
+  - Attribute '_updated_at' in production.project_sponsorship is not valid snake_case
+  - Attribute '_created_at' in production.shoot_day is not valid snake_case
+  - Attribute '_source_code' in production.shoot_day is not valid snake_case
+  - Attribute '_updated_at' in production.shoot_day is not valid snake_case
+  - Attribute '_created_at' in production.equipment_item is not valid snake_case
+  - Attribute '_source_code' in production.equipment_item is not valid snake_case
+  - Attribute '_updated_at' in production.equipment_item is not valid snake_case
+  - Attribute '_created_at' in production.equipment_type is not valid snake_case
+  - Attribute '_source_code' in production.equipment_type is not valid snake_case
+  - Attribute '_updated_at' in production.equipment_type is not valid snake_case
+  - Attribute '_created_at' in production.rental_agreement is not valid snake_case
+  - Attribute '_source_code' in production.rental_agreement is not valid snake_case
+  - Attribute '_updated_at' in production.rental_agreement is not valid snake_case
+  - Attribute '_created_at' in production.project_status_ref is not valid snake_case
+  - Attribute '_source_code' in production.project_status_ref is not valid snake_case
+  - Attribute '_updated_at' in production.project_status_ref is not valid snake_case
+  - Attribute '_created_at' in production.budget_status_ref is not valid snake_case
+  - Attribute '_source_code' in production.budget_status_ref is not valid snake_case
+  - Attribute '_updated_at' in production.budget_status_ref is not valid snake_case
+  - Attribute '_created_at' in production.qc_status_ref is not valid snake_case
+  - Attribute '_source_code' in production.qc_status_ref is not valid snake_case
+  - Attribute '_updated_at' in production.qc_status_ref is not valid snake_case
+  - Attribute '_created_at' in scheduling.channel is not valid snake_case
+  - Attribute '_updated_at' in scheduling.channel is not valid snake_case
+  - Attribute '_created_at' in scheduling.daypart is not valid snake_case
+  - Attribute '_updated_at' in scheduling.daypart is not valid snake_case
+  - Attribute '_created_at' in scheduling.program_schedule is not valid snake_case
+  - Attribute '_updated_at' in scheduling.program_schedule is not valid snake_case
+  - Attribute '_created_at' in scheduling.schedule_slot is not valid snake_case
+  - Attribute '_updated_at' in scheduling.schedule_slot is not valid snake_case
+  - Attribute '_created_at' in scheduling.epg_entry is not valid snake_case
+  - Attribute '_updated_at' in scheduling.epg_entry is not valid snake_case
+  - Attribute '_created_at' in scheduling.ad_break is not valid snake_case
+  - Attribute '_updated_at' in scheduling.ad_break is not valid snake_case
+  - Attribute '_created_at' in scheduling.scte_marker is not valid snake_case
+  - Attribute '_updated_at' in scheduling.scte_marker is not valid snake_case
+  - Attribute '_created_at' in scheduling.simulcast_config is not valid snake_case
+  - Attribute '_updated_at' in scheduling.simulcast_config is not valid snake_case
+  - Attribute '_created_at' in scheduling.scheduling_blackout_rule is not valid snake_case
+  - Attribute '_updated_at' in scheduling.scheduling_blackout_rule is not valid snake_case
+  - Attribute '_created_at' in scheduling.playout_event is not valid snake_case
+  - Attribute '_updated_at' in scheduling.playout_event is not valid snake_case
+  - Attribute '_created_at' in scheduling.program_rundown is not valid snake_case
+  - Attribute '_updated_at' in scheduling.program_rundown is not valid snake_case
+  - Attribute '_created_at' in scheduling.rundown_item is not valid snake_case
+  - Attribute '_updated_at' in scheduling.rundown_item is not valid snake_case
+  - Attribute '_created_at' in scheduling.scheduling_availability_window is not valid snake_case
+  - Attribute '_updated_at' in scheduling.scheduling_availability_window is not valid snake_case
+  - Attribute '_created_at' in scheduling.channel_carriage is not valid snake_case
+  - Attribute '_updated_at' in scheduling.channel_carriage is not valid snake_case
+  - Attribute '_created_at' in scheduling.channel_allocation is not valid snake_case
+  - Attribute '_updated_at' in scheduling.channel_allocation is not valid snake_case
+  - Attribute '_created_at' in scheduling.channel_license is not valid snake_case
+  - Attribute '_updated_at' in scheduling.channel_license is not valid snake_case
+  - Attribute '_created_at' in scheduling.channel_asset_playout is not valid snake_case
+  - Attribute '_updated_at' in scheduling.channel_asset_playout is not valid snake_case
+  - Attribute '_created_at' in scheduling.channel_abr_assignment is not valid snake_case
+  - Attribute '_updated_at' in scheduling.channel_abr_assignment is not valid snake_case
+  - Attribute '_created_at' in scheduling.channel_targeting is not valid snake_case
+  - Attribute '_updated_at' in scheduling.channel_targeting is not valid snake_case
+  - Attribute '_created_at' in scheduling.daypart_assignment is not valid snake_case
+  - Attribute '_updated_at' in scheduling.daypart_assignment is not valid snake_case
+  - Attribute '_created_at' in scheduling.schedule_status_ref is not valid snake_case
+  - Attribute '_updated_at' in scheduling.schedule_status_ref is not valid snake_case
+  - Attribute '_created_at' in distribution.ott_platform is not valid snake_case
+  - Attribute '_source_code' in distribution.ott_platform is not valid snake_case
+  - Attribute '_updated_at' in distribution.ott_platform is not valid snake_case
+  - Attribute '_created_at' in distribution.device_type is not valid snake_case
+  - Attribute '_source_code' in distribution.device_type is not valid snake_case
+  - Attribute '_updated_at' in distribution.device_type is not valid snake_case
+  - Attribute '_created_at' in distribution.app_version is not valid snake_case
+  - Attribute '_source_code' in distribution.app_version is not valid snake_case
+  - Attribute '_updated_at' in distribution.app_version is not valid snake_case
+  - Attribute '_created_at' in distribution.streaming_endpoint is not valid snake_case
+  - Attribute '_source_code' in distribution.streaming_endpoint is not valid snake_case
+  - Attribute '_updated_at' in distribution.streaming_endpoint is not valid snake_case
+  - Attribute '_created_at' in distribution.abr_profile is not valid snake_case
+  - Attribute '_source_code' in distribution.abr_profile is not valid snake_case
+  - Attribute '_updated_at' in distribution.abr_profile is not valid snake_case
+  - Attribute '_created_at' in distribution.playback_session is not valid snake_case
+  - Attribute '_source_code' in distribution.playback_session is not valid snake_case
+  - Attribute '_updated_at' in distribution.playback_session is not valid snake_case
+  - Attribute '_created_at' in distribution.qos_event is not valid snake_case
+  - Attribute '_source_code' in distribution.qos_event is not valid snake_case
+  - Attribute '_updated_at' in distribution.qos_event is not valid snake_case
+  - Attribute '_created_at' in distribution.sla_definition is not valid snake_case
+  - Attribute '_source_code' in distribution.sla_definition is not valid snake_case
+  - Attribute '_updated_at' in distribution.sla_definition is not valid snake_case
+  - Attribute '_created_at' in distribution.sla_performance is not valid snake_case
+  - Attribute '_source_code' in distribution.sla_performance is not valid snake_case
+  - Attribute '_updated_at' in distribution.sla_performance is not valid snake_case
+  - Attribute '_created_at' in distribution.api_endpoint is not valid snake_case
+  - Attribute '_source_code' in distribution.api_endpoint is not valid snake_case
+  - Attribute '_updated_at' in distribution.api_endpoint is not valid snake_case
+  - Attribute '_created_at' in distribution.personalization_engine is not valid snake_case
+  - Attribute '_source_code' in distribution.personalization_engine is not valid snake_case
+  - Attribute '_updated_at' in distribution.personalization_engine is not valid snake_case
+  - Attribute '_created_at' in distribution.dai_configuration is not valid snake_case
+  - Attribute '_source_code' in distribution.dai_configuration is not valid snake_case
+  - Attribute '_updated_at' in distribution.dai_configuration is not valid snake_case
+  - Attribute '_created_at' in distribution.feature_flag is not valid snake_case
+  - Attribute '_source_code' in distribution.feature_flag is not valid snake_case
+  - Attribute '_updated_at' in distribution.feature_flag is not valid snake_case
+  - Attribute '_created_at' in distribution.distribution_partner is not valid snake_case
+  - Attribute '_source_code' in distribution.distribution_partner is not valid snake_case
+  - Attribute '_updated_at' in distribution.distribution_partner is not valid snake_case
+  - Attribute '_created_at' in distribution.carriage_agreement is not valid snake_case
+  - Attribute '_source_code' in distribution.carriage_agreement is not valid snake_case
+  - Attribute '_updated_at' in distribution.carriage_agreement is not valid snake_case
+  - Attribute '_created_at' in distribution.distribution_carriage_fee_invoice is not valid snake_case
+  - Attribute '_source_code' in distribution.distribution_carriage_fee_invoice is not valid snake_case
+  - Attribute '_updated_at' in distribution.distribution_carriage_fee_invoice is not valid snake_case
+  - Attribute '_created_at' in distribution.delivery_channel is not valid snake_case
+  - Attribute '_source_code' in distribution.delivery_channel is not valid snake_case
+  - Attribute '_updated_at' in distribution.delivery_channel is not valid snake_case
+  - Attribute '_created_at' in distribution.drm_policy is not valid snake_case
+  - Attribute '_source_code' in distribution.drm_policy is not valid snake_case
+  - Attribute '_updated_at' in distribution.drm_policy is not valid snake_case
+  - Attribute '_created_at' in distribution.cdn_configuration is not valid snake_case
+  - Attribute '_source_code' in distribution.cdn_configuration is not valid snake_case
+  - Attribute '_updated_at' in distribution.cdn_configuration is not valid snake_case
+  - Attribute '_created_at' in distribution.delivery_sla is not valid snake_case
+  - Attribute '_source_code' in distribution.delivery_sla is not valid snake_case
+  - Attribute '_updated_at' in distribution.delivery_sla is not valid snake_case
+  - Attribute '_created_at' in distribution.signal_route is not valid snake_case
+  - Attribute '_source_code' in distribution.signal_route is not valid snake_case
+  - Attribute '_updated_at' in distribution.signal_route is not valid snake_case
+  - Attribute '_created_at' in distribution.release_window is not valid snake_case
+  - Attribute '_source_code' in distribution.release_window is not valid snake_case
+  - Attribute '_updated_at' in distribution.release_window is not valid snake_case
+  - Attribute '_created_at' in distribution.delivery_event is not valid snake_case
+  - Attribute '_source_code' in distribution.delivery_event is not valid snake_case
+  - Attribute '_updated_at' in distribution.delivery_event is not valid snake_case
+  - Attribute '_created_at' in distribution.sla_breach is not valid snake_case
+  - Attribute '_source_code' in distribution.sla_breach is not valid snake_case
+  - Attribute '_updated_at' in distribution.sla_breach is not valid snake_case
+  - Attribute '_created_at' in distribution.dai_session is not valid snake_case
+  - Attribute '_source_code' in distribution.dai_session is not valid snake_case
+  - Attribute '_updated_at' in distribution.dai_session is not valid snake_case
+  - Attribute '_created_at' in distribution.retransmission_consent is not valid snake_case
+  - Attribute '_source_code' in distribution.retransmission_consent is not valid snake_case
+  - Attribute '_updated_at' in distribution.retransmission_consent is not valid snake_case
+  - Attribute '_created_at' in distribution.subscriber_count_report is not valid snake_case
+  - Attribute '_source_code' in distribution.subscriber_count_report is not valid snake_case
+  - Attribute '_updated_at' in distribution.subscriber_count_report is not valid snake_case
+  - Attribute '_created_at' in distribution.channel_lineup is not valid snake_case
+  - Attribute '_source_code' in distribution.channel_lineup is not valid snake_case
+  - Attribute '_updated_at' in distribution.channel_lineup is not valid snake_case
+  - Attribute '_created_at' in distribution.playout_feed is not valid snake_case
+  - Attribute '_source_code' in distribution.playout_feed is not valid snake_case
+  - Attribute '_updated_at' in distribution.playout_feed is not valid snake_case
+  - Attribute '_created_at' in distribution.deal is not valid snake_case
+  - Attribute '_source_code' in distribution.deal is not valid snake_case
+  - Attribute '_updated_at' in distribution.deal is not valid snake_case
+  - Attribute '_created_at' in distribution.content_delivery_order is not valid snake_case
+  - Attribute '_source_code' in distribution.content_delivery_order is not valid snake_case
+  - Attribute '_updated_at' in distribution.content_delivery_order is not valid snake_case
+  - Attribute '_created_at' in distribution.platform_distribution_agreement is not valid snake_case
+  - Attribute '_source_code' in distribution.platform_distribution_agreement is not valid snake_case
+  - Attribute '_updated_at' in distribution.platform_distribution_agreement is not valid snake_case
+  - Attribute '_created_at' in distribution.endpoint_allocation is not valid snake_case
+  - Attribute '_source_code' in distribution.endpoint_allocation is not valid snake_case
+  - Attribute '_updated_at' in distribution.endpoint_allocation is not valid snake_case
+  - Attribute '_created_at' in distribution.playout is not valid snake_case
+  - Attribute '_source_code' in distribution.playout is not valid snake_case
+  - Attribute '_updated_at' in distribution.playout is not valid snake_case
+  - Attribute '_created_at' in distribution.channel_compliance is not valid snake_case
+  - Attribute '_source_code' in distribution.channel_compliance is not valid snake_case
+  - Attribute '_updated_at' in distribution.channel_compliance is not valid snake_case
+  - Attribute '_created_at' in distribution.platform_type_ref is not valid snake_case
+  - Attribute '_source_code' in distribution.platform_type_ref is not valid snake_case
+  - Attribute '_updated_at' in distribution.platform_type_ref is not valid snake_case
+  - Attribute '_created_at' in distribution.device_type_category_ref is not valid snake_case
+  - Attribute '_source_code' in distribution.device_type_category_ref is not valid snake_case
+  - Attribute '_updated_at' in distribution.device_type_category_ref is not valid snake_case
+  - Attribute '_created_at' in distribution.drm_type_ref is not valid snake_case
+  - Attribute '_source_code' in distribution.drm_type_ref is not valid snake_case
+  - Attribute '_updated_at' in distribution.drm_type_ref is not valid snake_case
+  - Attribute '_created_at' in mediaasset.media_asset is not valid snake_case
+  - Attribute '_updated_at' in mediaasset.media_asset is not valid snake_case
+  - Attribute '_created_at' in mediaasset.asset_version is not valid snake_case
+  - Attribute '_updated_at' in mediaasset.asset_version is not valid snake_case
+  - Attribute '_created_at' in mediaasset.ingest_job is not valid snake_case
+  - Attribute '_updated_at' in mediaasset.ingest_job is not valid snake_case
+  - Attribute '_created_at' in mediaasset.transcode_job is not valid snake_case
+  - Attribute '_updated_at' in mediaasset.transcode_job is not valid snake_case
+  - Attribute '_created_at' in mediaasset.qc_inspection is not valid snake_case
+  - Attribute '_updated_at' in mediaasset.qc_inspection is not valid snake_case
+  - Attribute '_created_at' in mediaasset.storage_location is not valid snake_case
+  - Attribute '_updated_at' in mediaasset.storage_location is not valid snake_case
+  - Attribute '_created_at' in mediaasset.asset_storage_assignment is not valid snake_case
+  - Attribute '_updated_at' in mediaasset.asset_storage_assignment is not valid snake_case
+  - Attribute '_created_at' in mediaasset.retention_policy is not valid snake_case
+  - Attribute '_updated_at' in mediaasset.retention_policy is not valid snake_case
+  - Attribute '_created_at' in mediaasset.asset_lifecycle_event is not valid snake_case
+  - Attribute '_updated_at' in mediaasset.asset_lifecycle_event is not valid snake_case
+  - Attribute '_created_at' in mediaasset.legal_hold is not valid snake_case
+  - Attribute '_updated_at' in mediaasset.legal_hold is not valid snake_case
+  - Attribute '_created_at' in mediaasset.format_specification is not valid snake_case
+  - Attribute '_updated_at' in mediaasset.format_specification is not valid snake_case
+  - Attribute '_created_at' in mediaasset.asset_collection is not valid snake_case
+  - Attribute '_updated_at' in mediaasset.asset_collection is not valid snake_case
+  - Attribute '_created_at' in mediaasset.archive_record is not valid snake_case
+  - Attribute '_updated_at' in mediaasset.archive_record is not valid snake_case
+  - Attribute '_created_at' in mediaasset.format_migration is not valid snake_case
+  - Attribute '_updated_at' in mediaasset.format_migration is not valid snake_case
+  - Attribute '_created_at' in mediaasset.asset_access_request is not valid snake_case
+  - Attribute '_updated_at' in mediaasset.asset_access_request is not valid snake_case
+  - Attribute '_created_at' in mediaasset.asset_rights_grant is not valid snake_case
+  - Attribute '_updated_at' in mediaasset.asset_rights_grant is not valid snake_case
+  - Attribute '_created_at' in mediaasset.deal_asset_license is not valid snake_case
+  - Attribute '_updated_at' in mediaasset.deal_asset_license is not valid snake_case
+  - Attribute '_created_at' in mediaasset.collection_membership is not valid snake_case
+  - Attribute '_updated_at' in mediaasset.collection_membership is not valid snake_case
+  - Attribute '_created_at' in mediaasset.asset_legal_hold is not valid snake_case
+  - Attribute '_updated_at' in mediaasset.asset_legal_hold is not valid snake_case
+  - Attribute '_created_at' in mediaasset.syndication_inventory is not valid snake_case
+  - Attribute '_updated_at' in mediaasset.syndication_inventory is not valid snake_case
+  - Attribute '_created_at' in mediaasset.asset_status_ref is not valid snake_case
+  - Attribute '_updated_at' in mediaasset.asset_status_ref is not valid snake_case
+  - Attribute '_created_at' in mediaasset.storage_tier_ref is not valid snake_case
+  - Attribute '_updated_at' in mediaasset.storage_tier_ref is not valid snake_case
+  - Attribute '_created_at' in rights.license_agreement is not valid snake_case
+  - Attribute '_updated_at' in rights.license_agreement is not valid snake_case
+  - Attribute '_created_at' in rights.grant is not valid snake_case
+  - Attribute '_updated_at' in rights.grant is not valid snake_case
+  - Attribute '_created_at' in rights.rights_content_window is not valid snake_case
+  - Attribute '_updated_at' in rights.rights_content_window is not valid snake_case
+  - Attribute '_created_at' in rights.holdback is not valid snake_case
+  - Attribute '_updated_at' in rights.holdback is not valid snake_case
+  - Attribute '_created_at' in rights.rights_territory is not valid snake_case
+  - Attribute '_updated_at' in rights.rights_territory is not valid snake_case
+  - Attribute '_created_at' in rights.royalty_rule is not valid snake_case
+  - Attribute '_updated_at' in rights.royalty_rule is not valid snake_case
+  - Attribute '_created_at' in rights.royalty_statement is not valid snake_case
+  - Attribute '_updated_at' in rights.royalty_statement is not valid snake_case
+  - Attribute '_created_at' in rights.royalty_statement_line is not valid snake_case
+  - Attribute '_updated_at' in rights.royalty_statement_line is not valid snake_case
+  - Attribute '_created_at' in rights.residual is not valid snake_case
+  - Attribute '_updated_at' in rights.residual is not valid snake_case
+  - Attribute '_created_at' in rights.music_sync_license is not valid snake_case
+  - Attribute '_updated_at' in rights.music_sync_license is not valid snake_case
+  - Attribute '_created_at' in rights.clearance_request is not valid snake_case
+  - Attribute '_updated_at' in rights.clearance_request is not valid snake_case
+  - Attribute '_created_at' in rights.rights_availability_window is not valid snake_case
+  - Attribute '_updated_at' in rights.rights_availability_window is not valid snake_case
+  - Attribute '_created_at' in rights.conflict is not valid snake_case
+  - Attribute '_updated_at' in rights.conflict is not valid snake_case
+  - Attribute '_created_at' in rights.license_amendment is not valid snake_case
+  - Attribute '_updated_at' in rights.license_amendment is not valid snake_case
+  - Attribute '_created_at' in rights.exploitation_report is not valid snake_case
+  - Attribute '_updated_at' in rights.exploitation_report is not valid snake_case
+  - Attribute '_created_at' in rights.holder is not valid snake_case
+  - Attribute '_updated_at' in rights.holder is not valid snake_case
+  - Attribute '_created_at' in rights.rights_blackout_rule is not valid snake_case
+  - Attribute '_updated_at' in rights.rights_blackout_rule is not valid snake_case
+  - Attribute '_created_at' in rights.rights_syndication_deal is not valid snake_case
+  - Attribute '_updated_at' in rights.rights_syndication_deal is not valid snake_case
+  - Attribute '_created_at' in rights.license_fee_schedule is not valid snake_case
+  - Attribute '_updated_at' in rights.license_fee_schedule is not valid snake_case
+  - Attribute '_created_at' in rights.rights_audit_event is not valid snake_case
+  - Attribute '_updated_at' in rights.rights_audit_event is not valid snake_case
+  - Attribute '_created_at' in rights.rights_audit_session is not valid snake_case
+  - Attribute '_updated_at' in rights.rights_audit_session is not valid snake_case
+  - Attribute '_created_at' in rights.rights_type_ref is not valid snake_case
+  - Attribute '_updated_at' in rights.rights_type_ref is not valid snake_case
+  - Attribute '_created_at' in rights.license_status_ref is not valid snake_case
+  - Attribute '_updated_at' in rights.license_status_ref is not valid snake_case
+  - Attribute '_created_at' in rights.rights_status_ref is not valid snake_case
+  - Attribute '_updated_at' in rights.rights_status_ref is not valid snake_case
+  - Attribute '_created_at' in rights.grant_type_ref is not valid snake_case
+  - Attribute '_updated_at' in rights.grant_type_ref is not valid snake_case
+  - Attribute '_created_at' in rights.exploitation_type_ref is not valid snake_case
+  - Attribute '_updated_at' in rights.exploitation_type_ref is not valid snake_case
+  - Attribute '_created_at' in advertising.ad_inventory is not valid snake_case
+  - Attribute '_source_code' in advertising.ad_inventory is not valid snake_case
+  - Attribute '_updated_at' in advertising.ad_inventory is not valid snake_case
+  - Attribute '_created_at' in advertising.rate_card is not valid snake_case
+  - Attribute '_source_code' in advertising.rate_card is not valid snake_case
+  - Attribute '_updated_at' in advertising.rate_card is not valid snake_case
+  - Attribute '_created_at' in advertising.ad_type_ref is not valid snake_case
+  - Attribute '_source_code' in advertising.ad_type_ref is not valid snake_case
+  - Attribute '_updated_at' in advertising.ad_type_ref is not valid snake_case
+  - Attribute '_created_at' in advertising.inventory_type_ref is not valid snake_case
+  - Attribute '_source_code' in advertising.inventory_type_ref is not valid snake_case
+  - Attribute '_updated_at' in advertising.inventory_type_ref is not valid snake_case
+  - Attribute '_created_at' in subscriber.subscriber is not valid snake_case
+  - Attribute '_source_code' in subscriber.subscriber is not valid snake_case
+  - Attribute '_updated_at' in subscriber.subscriber is not valid snake_case
+  - Attribute '_created_at' in subscriber.household is not valid snake_case
+  - Attribute '_source_code' in subscriber.household is not valid snake_case
+  - Attribute '_updated_at' in subscriber.household is not valid snake_case
+  - Attribute '_created_at' in subscriber.subscription_plan is not valid snake_case
+  - Attribute '_source_code' in subscriber.subscription_plan is not valid snake_case
+  - Attribute '_updated_at' in subscriber.subscription_plan is not valid snake_case
+  - Attribute '_created_at' in subscriber.subscription is not valid snake_case
+  - Attribute '_source_code' in subscriber.subscription is not valid snake_case
+  - Attribute '_updated_at' in subscriber.subscription is not valid snake_case
+  - Attribute '_created_at' in subscriber.device_registration is not valid snake_case
+  - Attribute '_source_code' in subscriber.device_registration is not valid snake_case
+  - Attribute '_updated_at' in subscriber.device_registration is not valid snake_case
+  - Attribute '_created_at' in subscriber.entitlement is not valid snake_case
+  - Attribute '_source_code' in subscriber.entitlement is not valid snake_case
+  - Attribute '_updated_at' in subscriber.entitlement is not valid snake_case
+  - Attribute '_created_at' in subscriber.parental_control is not valid snake_case
+  - Attribute '_source_code' in subscriber.parental_control is not valid snake_case
+  - Attribute '_updated_at' in subscriber.parental_control is not valid snake_case
+  - Attribute '_created_at' in subscriber.viewer_profile is not valid snake_case
+  - Attribute '_source_code' in subscriber.viewer_profile is not valid snake_case
+  - Attribute '_updated_at' in subscriber.viewer_profile is not valid snake_case
+  - Attribute '_created_at' in subscriber.churn_event is not valid snake_case
+  - Attribute '_source_code' in subscriber.churn_event is not valid snake_case
+  - Attribute '_updated_at' in subscriber.churn_event is not valid snake_case
+  - Attribute '_created_at' in subscriber.subscription_change is not valid snake_case
+  - Attribute '_source_code' in subscriber.subscription_change is not valid snake_case
+  - Attribute '_updated_at' in subscriber.subscription_change is not valid snake_case
+  - Attribute '_created_at' in subscriber.payment_instrument is not valid snake_case
+  - Attribute '_source_code' in subscriber.payment_instrument is not valid snake_case
+  - Attribute '_updated_at' in subscriber.payment_instrument is not valid snake_case
+  - Attribute '_created_at' in subscriber.offer_redemption is not valid snake_case
+  - Attribute '_source_code' in subscriber.offer_redemption is not valid snake_case
+  - Attribute '_updated_at' in subscriber.offer_redemption is not valid snake_case
+  - Attribute '_created_at' in subscriber.subscriber_consent_record is not valid snake_case
+  - Attribute '_source_code' in subscriber.subscriber_consent_record is not valid snake_case
+  - Attribute '_updated_at' in subscriber.subscriber_consent_record is not valid snake_case
+  - Attribute '_created_at' in subscriber.communication_preference is not valid snake_case
+  - Attribute '_source_code' in subscriber.communication_preference is not valid snake_case
+  - Attribute '_updated_at' in subscriber.communication_preference is not valid snake_case
+  - Attribute '_created_at' in subscriber.mvpd_affiliation is not valid snake_case
+  - Attribute '_source_code' in subscriber.mvpd_affiliation is not valid snake_case
+  - Attribute '_updated_at' in subscriber.mvpd_affiliation is not valid snake_case
+  - Attribute '_created_at' in subscriber.win_back_offer is not valid snake_case
+  - Attribute '_source_code' in subscriber.win_back_offer is not valid snake_case
+  - Attribute '_updated_at' in subscriber.win_back_offer is not valid snake_case
+  - Attribute '_created_at' in subscriber.offer is not valid snake_case
+  - Attribute '_source_code' in subscriber.offer is not valid snake_case
+  - Attribute '_updated_at' in subscriber.offer is not valid snake_case
+  - Attribute '_created_at' in subscriber.add_on is not valid snake_case
+  - Attribute '_source_code' in subscriber.add_on is not valid snake_case
+  - Attribute '_updated_at' in subscriber.add_on is not valid snake_case
+  - Attribute '_created_at' in subscriber.subscription_status_ref is not valid snake_case
+  - Attribute '_source_code' in subscriber.subscription_status_ref is not valid snake_case
+  - Attribute '_updated_at' in subscriber.subscription_status_ref is not valid snake_case
+  - Attribute '_created_at' in subscriber.churn_reason_ref is not valid snake_case
+  - Attribute '_source_code' in subscriber.churn_reason_ref is not valid snake_case
+  - Attribute '_updated_at' in subscriber.churn_reason_ref is not valid snake_case
+  - Attribute '_created_at' in audience.nielsen_rating is not valid snake_case
+  - Attribute '_updated_at' in audience.nielsen_rating is not valid snake_case
+  - Attribute '_created_at' in audience.demographic_segment is not valid snake_case
+  - Attribute '_updated_at' in audience.demographic_segment is not valid snake_case
+  - Attribute '_created_at' in audience.sweeps_period is not valid snake_case
+  - Attribute '_updated_at' in audience.sweeps_period is not valid snake_case
+  - Attribute '_created_at' in audience.panel is not valid snake_case
+  - Attribute '_updated_at' in audience.panel is not valid snake_case
+  - Attribute '_created_at' in audience.viewership_record is not valid snake_case
+  - Attribute '_updated_at' in audience.viewership_record is not valid snake_case
+  - Attribute '_created_at' in audience.reach_frequency_report is not valid snake_case
+  - Attribute '_updated_at' in audience.reach_frequency_report is not valid snake_case
+  - Attribute '_created_at' in audience.market_coverage is not valid snake_case
+  - Attribute '_updated_at' in audience.market_coverage is not valid snake_case
+  - Attribute '_created_at' in audience.engagement_event is not valid snake_case
+  - Attribute '_updated_at' in audience.engagement_event is not valid snake_case
+  - Attribute '_created_at' in audience.audience_profile is not valid snake_case
+  - Attribute '_updated_at' in audience.audience_profile is not valid snake_case
+  - Attribute '_created_at' in audience.measurement_methodology is not valid snake_case
+  - Attribute '_updated_at' in audience.measurement_methodology is not valid snake_case
+  - Attribute '_created_at' in audience.segment is not valid snake_case
+  - Attribute '_updated_at' in audience.segment is not valid snake_case
+  - Attribute '_created_at' in audience.cross_platform_measurement is not valid snake_case
+  - Attribute '_updated_at' in audience.cross_platform_measurement is not valid snake_case
+  - Attribute '_created_at' in audience.market_distribution_agreement is not valid snake_case
+  - Attribute '_updated_at' in audience.market_distribution_agreement is not valid snake_case
+  - Attribute '_created_at' in audience.talent_demographic_appeal is not valid snake_case
+  - Attribute '_updated_at' in audience.talent_demographic_appeal is not valid snake_case
+  - Attribute '_created_at' in audience.segment_regulatory_compliance is not valid snake_case
+  - Attribute '_updated_at' in audience.segment_regulatory_compliance is not valid snake_case
+  - Attribute '_created_at' in audience.demographic_type_ref is not valid snake_case
+  - Attribute '_updated_at' in audience.demographic_type_ref is not valid snake_case
+  - Attribute '_created_at' in audience.measurement_source_ref is not valid snake_case
+  - Attribute '_updated_at' in audience.measurement_source_ref is not valid snake_case
+  - Attribute '_created_at' in audience.demographic_category_ref is not valid snake_case
+  - Attribute '_updated_at' in audience.demographic_category_ref is not valid snake_case
+  - Attribute '_created_at' in talent.talent_profile is not valid snake_case
+  - Attribute '_source_code' in talent.talent_profile is not valid snake_case
+  - Attribute '_updated_at' in talent.talent_profile is not valid snake_case
+  - Attribute '_created_at' in talent.guild_affiliation is not valid snake_case
+  - Attribute '_source_code' in talent.guild_affiliation is not valid snake_case
+  - Attribute '_updated_at' in talent.guild_affiliation is not valid snake_case
+  - Attribute '_created_at' in talent.contract is not valid snake_case
+  - Attribute '_source_code' in talent.contract is not valid snake_case
+  - Attribute '_updated_at' in talent.contract is not valid snake_case
+  - Attribute '_created_at' in talent.compensation_structure is not valid snake_case
+  - Attribute '_source_code' in talent.compensation_structure is not valid snake_case
+  - Attribute '_updated_at' in talent.compensation_structure is not valid snake_case
+  - Attribute '_created_at' in talent.exclusivity_clause is not valid snake_case
+  - Attribute '_source_code' in talent.exclusivity_clause is not valid snake_case
+  - Attribute '_updated_at' in talent.exclusivity_clause is not valid snake_case
+  - Attribute '_created_at' in talent.appearance_schedule is not valid snake_case
+  - Attribute '_source_code' in talent.appearance_schedule is not valid snake_case
+  - Attribute '_updated_at' in talent.appearance_schedule is not valid snake_case
+  - Attribute '_created_at' in talent.credit_attribution is not valid snake_case
+  - Attribute '_source_code' in talent.credit_attribution is not valid snake_case
+  - Attribute '_updated_at' in talent.credit_attribution is not valid snake_case
+  - Attribute '_created_at' in talent.residual_eligibility is not valid snake_case
+  - Attribute '_source_code' in talent.residual_eligibility is not valid snake_case
+  - Attribute '_updated_at' in talent.residual_eligibility is not valid snake_case
+  - Attribute '_created_at' in talent.residual_payment is not valid snake_case
+  - Attribute '_source_code' in talent.residual_payment is not valid snake_case
+  - Attribute '_updated_at' in talent.residual_payment is not valid snake_case
+  - Attribute '_created_at' in talent.deal_memo is not valid snake_case
+  - Attribute '_source_code' in talent.deal_memo is not valid snake_case
+  - Attribute '_updated_at' in talent.deal_memo is not valid snake_case
+  - Attribute '_created_at' in talent.role is not valid snake_case
+  - Attribute '_source_code' in talent.role is not valid snake_case
+  - Attribute '_updated_at' in talent.role is not valid snake_case
+  - Attribute '_created_at' in talent.talent_agency is not valid snake_case
+  - Attribute '_source_code' in talent.talent_agency is not valid snake_case
+  - Attribute '_updated_at' in talent.talent_agency is not valid snake_case
+  - Attribute '_created_at' in talent.representation_agreement is not valid snake_case
+  - Attribute '_source_code' in talent.representation_agreement is not valid snake_case
+  - Attribute '_updated_at' in talent.representation_agreement is not valid snake_case
+  - Attribute '_created_at' in talent.usage_right is not valid snake_case
+  - Attribute '_source_code' in talent.usage_right is not valid snake_case
+  - Attribute '_updated_at' in talent.usage_right is not valid snake_case
+  - Attribute '_created_at' in talent.contract_option is not valid snake_case
+  - Attribute '_source_code' in talent.contract_option is not valid snake_case
+  - Attribute '_updated_at' in talent.contract_option is not valid snake_case
+  - Attribute '_created_at' in talent.availability is not valid snake_case
+  - Attribute '_source_code' in talent.availability is not valid snake_case
+  - Attribute '_updated_at' in talent.availability is not valid snake_case
+  - Attribute '_created_at' in talent.pension_health_contribution is not valid snake_case
+  - Attribute '_source_code' in talent.pension_health_contribution is not valid snake_case
+  - Attribute '_updated_at' in talent.pension_health_contribution is not valid snake_case
+  - Attribute '_created_at' in talent.talent_clearance is not valid snake_case
+  - Attribute '_source_code' in talent.talent_clearance is not valid snake_case
+  - Attribute '_updated_at' in talent.talent_clearance is not valid snake_case
+  - Attribute '_created_at' in talent.cba_rate_card is not valid snake_case
+  - Attribute '_source_code' in talent.cba_rate_card is not valid snake_case
+  - Attribute '_updated_at' in talent.cba_rate_card is not valid snake_case
+  - Attribute '_created_at' in talent.contract_amendment is not valid snake_case
+  - Attribute '_source_code' in talent.contract_amendment is not valid snake_case
+  - Attribute '_updated_at' in talent.contract_amendment is not valid snake_case
+  - Attribute '_created_at' in talent.talent_grievance is not valid snake_case
+  - Attribute '_source_code' in talent.talent_grievance is not valid snake_case
+  - Attribute '_updated_at' in talent.talent_grievance is not valid snake_case
+  - Attribute '_created_at' in talent.partner_relationship is not valid snake_case
+  - Attribute '_source_code' in talent.partner_relationship is not valid snake_case
+  - Attribute '_updated_at' in talent.partner_relationship is not valid snake_case
+  - Attribute '_created_at' in talent.endorsement_deal is not valid snake_case
+  - Attribute '_source_code' in talent.endorsement_deal is not valid snake_case
+  - Attribute '_updated_at' in talent.endorsement_deal is not valid snake_case
+  - Attribute '_created_at' in talent.facility_access is not valid snake_case
+  - Attribute '_source_code' in talent.facility_access is not valid snake_case
+  - Attribute '_updated_at' in talent.facility_access is not valid snake_case
+  - Attribute '_created_at' in talent.contract_status_ref is not valid snake_case
+  - Attribute '_source_code' in talent.contract_status_ref is not valid snake_case
+  - Attribute '_updated_at' in talent.contract_status_ref is not valid snake_case
+  - Attribute '_created_at' in talent.guild_type_ref is not valid snake_case
+  - Attribute '_source_code' in talent.guild_type_ref is not valid snake_case
+  - Attribute '_updated_at' in talent.guild_type_ref is not valid snake_case
+  - Attribute '_created_at' in talent.guild_ref is not valid snake_case
+  - Attribute '_source_code' in talent.guild_ref is not valid snake_case
+  - Attribute '_updated_at' in talent.guild_ref is not valid snake_case
+  - Attribute '_created_at' in sales.ad_order is not valid snake_case
+  - Attribute '_updated_at' in sales.ad_order is not valid snake_case
+  - Attribute '_created_at' in sales.ad_order_line is not valid snake_case
+  - Attribute '_updated_at' in sales.ad_order_line is not valid snake_case
+  - Attribute '_created_at' in sales.sales_campaign is not valid snake_case
+  - Attribute '_updated_at' in sales.sales_campaign is not valid snake_case
+  - Attribute '_created_at' in sales.advertiser is not valid snake_case
+  - Attribute '_updated_at' in sales.advertiser is not valid snake_case
+  - Attribute '_created_at' in sales.sales_agency is not valid snake_case
+  - Attribute '_updated_at' in sales.sales_agency is not valid snake_case
+  - Attribute '_created_at' in sales.ad_spot is not valid snake_case
+  - Attribute '_updated_at' in sales.ad_spot is not valid snake_case
+  - Attribute '_created_at' in sales.isci_creative is not valid snake_case
+  - Attribute '_updated_at' in sales.isci_creative is not valid snake_case
+  - Attribute '_created_at' in sales.ad_pod is not valid snake_case
+  - Attribute '_updated_at' in sales.ad_pod is not valid snake_case
+  - Attribute '_created_at' in sales.affidavit is not valid snake_case
+  - Attribute '_updated_at' in sales.affidavit is not valid snake_case
+  - Attribute '_created_at' in sales.makegood is not valid snake_case
+  - Attribute '_updated_at' in sales.makegood is not valid snake_case
+  - Attribute '_created_at' in sales.sales_proposal is not valid snake_case
+  - Attribute '_updated_at' in sales.sales_proposal is not valid snake_case
+  - Attribute '_created_at' in sales.upfront_deal is not valid snake_case
+  - Attribute '_updated_at' in sales.upfront_deal is not valid snake_case
+  - Attribute '_created_at' in sales.advertising_audience_guarantee is not valid snake_case
+  - Attribute '_updated_at' in sales.advertising_audience_guarantee is not valid snake_case
+  - Attribute '_created_at' in sales.dai_event is not valid snake_case
+  - Attribute '_updated_at' in sales.dai_event is not valid snake_case
+  - Attribute '_created_at' in sales.impression_delivery is not valid snake_case
+  - Attribute '_updated_at' in sales.impression_delivery is not valid snake_case
+  - Attribute '_created_at' in sales.sales_scatter_order is not valid snake_case
+  - Attribute '_updated_at' in sales.sales_scatter_order is not valid snake_case
+  - Attribute '_created_at' in sales.sponsorship is not valid snake_case
+  - Attribute '_updated_at' in sales.sponsorship is not valid snake_case
+  - Attribute '_created_at' in sales.political_ad_disclosure is not valid snake_case
+  - Attribute '_updated_at' in sales.political_ad_disclosure is not valid snake_case
+  - Attribute '_created_at' in sales.sales_account is not valid snake_case
+  - Attribute '_updated_at' in sales.sales_account is not valid snake_case
+  - Attribute '_created_at' in sales.sales_contact is not valid snake_case
+  - Attribute '_updated_at' in sales.sales_contact is not valid snake_case
+  - Attribute '_created_at' in sales.opportunity is not valid snake_case
+  - Attribute '_updated_at' in sales.opportunity is not valid snake_case
+  - Attribute '_created_at' in sales.proposal_line is not valid snake_case
+  - Attribute '_updated_at' in sales.proposal_line is not valid snake_case
+  - Attribute '_created_at' in sales.upfront_commitment is not valid snake_case
+  - Attribute '_updated_at' in sales.upfront_commitment is not valid snake_case
+  - Attribute '_created_at' in sales.ad_sales_order is not valid snake_case
+  - Attribute '_updated_at' in sales.ad_sales_order is not valid snake_case
+  - Attribute '_created_at' in sales.order_line is not valid snake_case
+  - Attribute '_updated_at' in sales.order_line is not valid snake_case
+  - Attribute '_created_at' in sales.content_license_deal is not valid snake_case
+  - Attribute '_updated_at' in sales.content_license_deal is not valid snake_case
+  - Attribute '_created_at' in sales.sales_syndication_deal is not valid snake_case
+  - Attribute '_updated_at' in sales.sales_syndication_deal is not valid snake_case
+  - Attribute '_created_at' in sales.carriage_deal is not valid snake_case
+  - Attribute '_updated_at' in sales.carriage_deal is not valid snake_case
+  - Attribute '_created_at' in sales.agency_commission is not valid snake_case
+  - Attribute '_updated_at' in sales.agency_commission is not valid snake_case
+  - Attribute '_created_at' in sales.rep is not valid snake_case
+  - Attribute '_updated_at' in sales.rep is not valid snake_case
+  - Attribute '_created_at' in sales.sales_territory is not valid snake_case
+  - Attribute '_updated_at' in sales.sales_territory is not valid snake_case
+  - Attribute '_created_at' in sales.rfp is not valid snake_case
+  - Attribute '_updated_at' in sales.rfp is not valid snake_case
+  - Attribute '_created_at' in sales.avail is not valid snake_case
+  - Attribute '_updated_at' in sales.avail is not valid snake_case
+  - Attribute '_created_at' in sales.upfront_option_exercise is not valid snake_case
+  - Attribute '_updated_at' in sales.upfront_option_exercise is not valid snake_case
+  - Attribute '_created_at' in sales.forecast is not valid snake_case
+  - Attribute '_updated_at' in sales.forecast is not valid snake_case
+  - Attribute '_created_at' in sales.sales_deal_approval is not valid snake_case
+  - Attribute '_updated_at' in sales.sales_deal_approval is not valid snake_case
+  - Attribute '_created_at' in sales.proposal_distribution is not valid snake_case
+  - Attribute '_updated_at' in sales.proposal_distribution is not valid snake_case
+  - Attribute '_created_at' in sales.facility_service_agreement is not valid snake_case
+  - Attribute '_updated_at' in sales.facility_service_agreement is not valid snake_case
+  - Attribute '_created_at' in sales.campaign_funding is not valid snake_case
+  - Attribute '_updated_at' in sales.campaign_funding is not valid snake_case
+  - Attribute '_created_at' in sales.brand is not valid snake_case
+  - Attribute '_updated_at' in sales.brand is not valid snake_case
+  - Attribute '_created_at' in sales.sales_team is not valid snake_case
+  - Attribute '_updated_at' in sales.sales_team is not valid snake_case
+  - Attribute '_created_at' in sales.sales_product is not valid snake_case
+  - Attribute '_updated_at' in sales.sales_product is not valid snake_case
+  - Attribute '_created_at' in sales.order_status_ref is not valid snake_case
+  - Attribute '_updated_at' in sales.order_status_ref is not valid snake_case
+  - Attribute '_created_at' in sales.campaign_status_ref is not valid snake_case
+  - Attribute '_updated_at' in sales.campaign_status_ref is not valid snake_case
+  - Attribute '_created_at' in sales.proposal_status_ref is not valid snake_case
+  - Attribute '_updated_at' in sales.proposal_status_ref is not valid snake_case
+  - Attribute '_created_at' in billing.invoice is not valid snake_case
+  - Attribute '_updated_at' in billing.invoice is not valid snake_case
+  - Attribute '_created_at' in billing.invoice_line is not valid snake_case
+  - Attribute '_updated_at' in billing.invoice_line is not valid snake_case
+  - Attribute '_created_at' in billing.payment is not valid snake_case
+  - Attribute '_updated_at' in billing.payment is not valid snake_case
+  - Attribute '_created_at' in billing.payment_method is not valid snake_case
+  - Attribute '_updated_at' in billing.payment_method is not valid snake_case
+  - Attribute '_created_at' in billing.billing_account is not valid snake_case
+  - Attribute '_updated_at' in billing.billing_account is not valid snake_case
+  - Attribute '_created_at' in billing.cycle is not valid snake_case
+  - Attribute '_updated_at' in billing.cycle is not valid snake_case
+  - Attribute '_created_at' in billing.subscription_invoice is not valid snake_case
+  - Attribute '_updated_at' in billing.subscription_invoice is not valid snake_case
+  - Attribute '_created_at' in billing.ad_billing_order is not valid snake_case
+  - Attribute '_updated_at' in billing.ad_billing_order is not valid snake_case
+  - Attribute '_created_at' in billing.billing_carriage_fee_invoice is not valid snake_case
+  - Attribute '_updated_at' in billing.billing_carriage_fee_invoice is not valid snake_case
+  - Attribute '_created_at' in billing.syndication_license_fee is not valid snake_case
+  - Attribute '_updated_at' in billing.syndication_license_fee is not valid snake_case
+  - Attribute '_created_at' in billing.credit_memo is not valid snake_case
+  - Attribute '_updated_at' in billing.credit_memo is not valid snake_case
+  - Attribute '_created_at' in billing.billing_dispute is not valid snake_case
+  - Attribute '_updated_at' in billing.billing_dispute is not valid snake_case
+  - Attribute '_created_at' in billing.refund is not valid snake_case
+  - Attribute '_updated_at' in billing.refund is not valid snake_case
+  - Attribute '_created_at' in billing.dunning_event is not valid snake_case
+  - Attribute '_updated_at' in billing.dunning_event is not valid snake_case
+  - Attribute '_created_at' in billing.revenue_recognition_schedule is not valid snake_case
+  - Attribute '_updated_at' in billing.revenue_recognition_schedule is not valid snake_case
+  - Attribute '_created_at' in billing.tax_record is not valid snake_case
+  - Attribute '_updated_at' in billing.tax_record is not valid snake_case
+  - Attribute '_created_at' in billing.payment_allocation is not valid snake_case
+  - Attribute '_updated_at' in billing.payment_allocation is not valid snake_case
+  - Attribute '_created_at' in billing.run is not valid snake_case
+  - Attribute '_updated_at' in billing.run is not valid snake_case
+  - Attribute '_created_at' in billing.write_off is not valid snake_case
+  - Attribute '_updated_at' in billing.write_off is not valid snake_case
+  - Attribute '_created_at' in billing.ad_billing_reconciliation is not valid snake_case
+  - Attribute '_updated_at' in billing.ad_billing_reconciliation is not valid snake_case
+  - Attribute '_created_at' in billing.communication_template is not valid snake_case
+  - Attribute '_updated_at' in billing.communication_template is not valid snake_case
+  - Attribute '_created_at' in billing.billing_product is not valid snake_case
+  - Attribute '_updated_at' in billing.billing_product is not valid snake_case
+  - Attribute '_created_at' in billing.invoice_status_ref is not valid snake_case
+  - Attribute '_updated_at' in billing.invoice_status_ref is not valid snake_case
+  - Attribute '_created_at' in billing.payment_status_ref is not valid snake_case
+  - Attribute '_updated_at' in billing.payment_status_ref is not valid snake_case
+  - Attribute '_created_at' in billing.payment_method_type_ref is not valid snake_case
+  - Attribute '_updated_at' in billing.payment_method_type_ref is not valid snake_case
+  - Attribute '_created_at' in partner.partner is not valid snake_case
+  - Attribute '_updated_at' in partner.partner is not valid snake_case
+  - Attribute '_created_at' in partner.partner_contact is not valid snake_case
+  - Attribute '_updated_at' in partner.partner_contact is not valid snake_case
+  - Attribute '_created_at' in partner.acquisition_deal is not valid snake_case
+  - Attribute '_updated_at' in partner.acquisition_deal is not valid snake_case
+  - Attribute '_created_at' in partner.acquisition_deal_line is not valid snake_case
+  - Attribute '_updated_at' in partner.acquisition_deal_line is not valid snake_case
+  - Attribute '_created_at' in partner.distribution_agreement is not valid snake_case
+  - Attribute '_updated_at' in partner.distribution_agreement is not valid snake_case
+  - Attribute '_created_at' in partner.syndication_agreement is not valid snake_case
+  - Attribute '_updated_at' in partner.syndication_agreement is not valid snake_case
+  - Attribute '_created_at' in partner.coproduction_agreement is not valid snake_case
+  - Attribute '_updated_at' in partner.coproduction_agreement is not valid snake_case
+  - Attribute '_created_at' in partner.affiliate_agreement is not valid snake_case
+  - Attribute '_updated_at' in partner.affiliate_agreement is not valid snake_case
+  - Attribute '_created_at' in partner.deal_negotiation is not valid snake_case
+  - Attribute '_updated_at' in partner.deal_negotiation is not valid snake_case
+  - Attribute '_created_at' in partner.deal_amendment is not valid snake_case
+  - Attribute '_updated_at' in partner.deal_amendment is not valid snake_case
+  - Attribute '_created_at' in partner.delivery_obligation is not valid snake_case
+  - Attribute '_updated_at' in partner.delivery_obligation is not valid snake_case
+  - Attribute '_created_at' in partner.carriage_fee_schedule is not valid snake_case
+  - Attribute '_updated_at' in partner.carriage_fee_schedule is not valid snake_case
+  - Attribute '_created_at' in partner.performance_obligation is not valid snake_case
+  - Attribute '_updated_at' in partner.performance_obligation is not valid snake_case
+  - Attribute '_created_at' in partner.minimum_guarantee is not valid snake_case
+  - Attribute '_updated_at' in partner.minimum_guarantee is not valid snake_case
+  - Attribute '_created_at' in partner.payment_term is not valid snake_case
+  - Attribute '_updated_at' in partner.payment_term is not valid snake_case
+  - Attribute '_created_at' in partner.territory_grant is not valid snake_case
+  - Attribute '_updated_at' in partner.territory_grant is not valid snake_case
+  - Attribute '_created_at' in partner.partner_audit_event is not valid snake_case
+  - Attribute '_updated_at' in partner.partner_audit_event is not valid snake_case
+  - Attribute '_created_at' in partner.partner_dispute is not valid snake_case
+  - Attribute '_updated_at' in partner.partner_dispute is not valid snake_case
+  - Attribute '_created_at' in partner.partner_content_window is not valid snake_case
+  - Attribute '_updated_at' in partner.partner_content_window is not valid snake_case
+  - Attribute '_created_at' in partner.renewal is not valid snake_case
+  - Attribute '_updated_at' in partner.renewal is not valid snake_case
+  - Attribute '_created_at' in partner.partner_deal_approval is not valid snake_case
+  - Attribute '_updated_at' in partner.partner_deal_approval is not valid snake_case
+  - Attribute '_created_at' in partner.license_ownership is not valid snake_case
+  - Attribute '_updated_at' in partner.license_ownership is not valid snake_case
+  - Attribute '_created_at' in partner.deal_compliance_obligation is not valid snake_case
+  - Attribute '_updated_at' in partner.deal_compliance_obligation is not valid snake_case
+  - Attribute '_created_at' in partner.vendor is not valid snake_case
+  - Attribute '_updated_at' in partner.vendor is not valid snake_case
+  - Attribute '_created_at' in partner.partner_agreement is not valid snake_case
+  - Attribute '_updated_at' in partner.partner_agreement is not valid snake_case
+  - Attribute '_created_at' in partner.payment_schedule is not valid snake_case
+  - Attribute '_updated_at' in partner.payment_schedule is not valid snake_case
+  - Attribute '_created_at' in partner.partner_type_ref is not valid snake_case
+  - Attribute '_updated_at' in partner.partner_type_ref is not valid snake_case
+  - Attribute '_created_at' in partner.deal_status_ref is not valid snake_case
+  - Attribute '_updated_at' in partner.deal_status_ref is not valid snake_case
+  - Attribute '_created_at' in finance.chart_of_accounts is not valid snake_case
+  - Attribute '_updated_at' in finance.chart_of_accounts is not valid snake_case
+  - Attribute '_created_at' in finance.cost_center is not valid snake_case
+  - Attribute '_updated_at' in finance.cost_center is not valid snake_case
+  - Attribute '_created_at' in finance.profit_center is not valid snake_case
+  - Attribute '_updated_at' in finance.profit_center is not valid snake_case
+  - Attribute '_created_at' in finance.general_ledger is not valid snake_case
+  - Attribute '_updated_at' in finance.general_ledger is not valid snake_case
+  - Attribute '_created_at' in finance.journal_entry is not valid snake_case
+  - Attribute '_updated_at' in finance.journal_entry is not valid snake_case
+  - Attribute '_created_at' in finance.production_budget is not valid snake_case
+  - Attribute '_updated_at' in finance.production_budget is not valid snake_case
+  - Attribute '_created_at' in finance.budget_version is not valid snake_case
+  - Attribute '_updated_at' in finance.budget_version is not valid snake_case
+  - Attribute '_created_at' in finance.revenue_stream is not valid snake_case
+  - Attribute '_updated_at' in finance.revenue_stream is not valid snake_case
+  - Attribute '_created_at' in finance.revenue_recognition_event is not valid snake_case
+  - Attribute '_updated_at' in finance.revenue_recognition_event is not valid snake_case
+  - Attribute '_created_at' in finance.accounts_receivable is not valid snake_case
+  - Attribute '_updated_at' in finance.accounts_receivable is not valid snake_case
+  - Attribute '_created_at' in finance.accounts_payable is not valid snake_case
+  - Attribute '_updated_at' in finance.accounts_payable is not valid snake_case
+  - Attribute '_created_at' in finance.intercompany_transaction is not valid snake_case
+  - Attribute '_updated_at' in finance.intercompany_transaction is not valid snake_case
+  - Attribute '_created_at' in finance.period_close is not valid snake_case
+  - Attribute '_updated_at' in finance.period_close is not valid snake_case
+  - Attribute '_created_at' in finance.legal_entity is not valid snake_case
+  - Attribute '_updated_at' in finance.legal_entity is not valid snake_case
+  - Attribute '_created_at' in finance.cost_allocation is not valid snake_case
+  - Attribute '_updated_at' in finance.cost_allocation is not valid snake_case
+  - Attribute '_created_at' in finance.capex_project is not valid snake_case
+  - Attribute '_updated_at' in finance.capex_project is not valid snake_case
+  - Attribute '_created_at' in finance.fixed_asset is not valid snake_case
+  - Attribute '_updated_at' in finance.fixed_asset is not valid snake_case
+  - Attribute '_created_at' in finance.depreciation_run is not valid snake_case
+  - Attribute '_updated_at' in finance.depreciation_run is not valid snake_case
+  - Attribute '_created_at' in finance.tax_posting is not valid snake_case
+  - Attribute '_updated_at' in finance.tax_posting is not valid snake_case
+  - Attribute '_created_at' in finance.ebitda_snapshot is not valid snake_case
+  - Attribute '_updated_at' in finance.ebitda_snapshot is not valid snake_case
+  - Attribute '_created_at' in finance.financial_reconciliation is not valid snake_case
+  - Attribute '_updated_at' in finance.financial_reconciliation is not valid snake_case
+  - Attribute '_created_at' in finance.facility_legal_assignment is not valid snake_case
+  - Attribute '_updated_at' in finance.facility_legal_assignment is not valid snake_case
+  - Attribute '_created_at' in finance.project_assignment is not valid snake_case
+  - Attribute '_updated_at' in finance.project_assignment is not valid snake_case
+  - Attribute '_created_at' in finance.obligation_gl_mapping is not valid snake_case
+  - Attribute '_updated_at' in finance.obligation_gl_mapping is not valid snake_case
+  - Attribute '_created_at' in finance.cost_center_obligation_allocation is not valid snake_case
+  - Attribute '_updated_at' in finance.cost_center_obligation_allocation is not valid snake_case
+  - Attribute '_created_at' in finance.cost_center_authorization is not valid snake_case
+  - Attribute '_updated_at' in finance.cost_center_authorization is not valid snake_case
+  - Attribute '_created_at' in finance.facility_cost_allocation is not valid snake_case
+  - Attribute '_updated_at' in finance.facility_cost_allocation is not valid snake_case
+  - Attribute '_created_at' in finance.recurring_entry_template is not valid snake_case
+  - Attribute '_updated_at' in finance.recurring_entry_template is not valid snake_case
+  - Attribute '_created_at' in finance.source_document is not valid snake_case
+  - Attribute '_updated_at' in finance.source_document is not valid snake_case
+  - Attribute '_created_at' in finance.depreciation_schedule is not valid snake_case
+  - Attribute '_updated_at' in finance.depreciation_schedule is not valid snake_case
+  - Attribute '_created_at' in finance.account_type_ref is not valid snake_case
+  - Attribute '_updated_at' in finance.account_type_ref is not valid snake_case
+  - Attribute '_created_at' in finance.currency_ref is not valid snake_case
+  - Attribute '_updated_at' in finance.currency_ref is not valid snake_case
+  - Attribute '_created_at' in compliance.broadcast_license is not valid snake_case
+  - Attribute '_source_code' in compliance.broadcast_license is not valid snake_case
+  - Attribute '_updated_at' in compliance.broadcast_license is not valid snake_case
+  - Attribute '_created_at' in compliance.license_renewal is not valid snake_case
+  - Attribute '_source_code' in compliance.license_renewal is not valid snake_case
+  - Attribute '_updated_at' in compliance.license_renewal is not valid snake_case
+  - Attribute '_created_at' in compliance.regulatory_filing is not valid snake_case
+  - Attribute '_source_code' in compliance.regulatory_filing is not valid snake_case
+  - Attribute '_updated_at' in compliance.regulatory_filing is not valid snake_case
+  - Attribute '_created_at' in compliance.public_inspection_file is not valid snake_case
+  - Attribute '_source_code' in compliance.public_inspection_file is not valid snake_case
+  - Attribute '_updated_at' in compliance.public_inspection_file is not valid snake_case
+  - Attribute '_created_at' in compliance.content_rating is not valid snake_case
+  - Attribute '_source_code' in compliance.content_rating is not valid snake_case
+  - Attribute '_updated_at' in compliance.content_rating is not valid snake_case
+  - Attribute '_created_at' in compliance.coppa_declaration is not valid snake_case
+  - Attribute '_source_code' in compliance.coppa_declaration is not valid snake_case
+  - Attribute '_updated_at' in compliance.coppa_declaration is not valid snake_case
+  - Attribute '_created_at' in compliance.compliance_consent_record is not valid snake_case
+  - Attribute '_source_code' in compliance.compliance_consent_record is not valid snake_case
+  - Attribute '_updated_at' in compliance.compliance_consent_record is not valid snake_case
+  - Attribute '_created_at' in compliance.privacy_request is not valid snake_case
+  - Attribute '_source_code' in compliance.privacy_request is not valid snake_case
+  - Attribute '_updated_at' in compliance.privacy_request is not valid snake_case
+  - Attribute '_created_at' in compliance.closed_caption_record is not valid snake_case
+  - Attribute '_source_code' in compliance.closed_caption_record is not valid snake_case
+  - Attribute '_updated_at' in compliance.closed_caption_record is not valid snake_case
+  - Attribute '_created_at' in compliance.accessibility_obligation is not valid snake_case
+  - Attribute '_source_code' in compliance.accessibility_obligation is not valid snake_case
+  - Attribute '_updated_at' in compliance.accessibility_obligation is not valid snake_case
+  - Attribute '_created_at' in compliance.eas_log is not valid snake_case
+  - Attribute '_source_code' in compliance.eas_log is not valid snake_case
+  - Attribute '_updated_at' in compliance.eas_log is not valid snake_case
+  - Attribute '_created_at' in compliance.political_ad_record is not valid snake_case
+  - Attribute '_source_code' in compliance.political_ad_record is not valid snake_case
+  - Attribute '_updated_at' in compliance.political_ad_record is not valid snake_case
+  - Attribute '_created_at' in compliance.sox_control is not valid snake_case
+  - Attribute '_source_code' in compliance.sox_control is not valid snake_case
+  - Attribute '_updated_at' in compliance.sox_control is not valid snake_case
+  - Attribute '_created_at' in compliance.audit_finding is not valid snake_case
+  - Attribute '_source_code' in compliance.audit_finding is not valid snake_case
+  - Attribute '_updated_at' in compliance.audit_finding is not valid snake_case
+  - Attribute '_created_at' in compliance.regulatory_obligation is not valid snake_case
+  - Attribute '_source_code' in compliance.regulatory_obligation is not valid snake_case
+  - Attribute '_updated_at' in compliance.regulatory_obligation is not valid snake_case
+  - Attribute '_created_at' in compliance.incident is not valid snake_case
+  - Attribute '_source_code' in compliance.incident is not valid snake_case
+  - Attribute '_updated_at' in compliance.incident is not valid snake_case
+  - Attribute '_created_at' in compliance.ad_standards_clearance is not valid snake_case
+  - Attribute '_source_code' in compliance.ad_standards_clearance is not valid snake_case
+  - Attribute '_updated_at' in compliance.ad_standards_clearance is not valid snake_case
+  - Attribute '_created_at' in compliance.technical_standard_cert is not valid snake_case
+  - Attribute '_source_code' in compliance.technical_standard_cert is not valid snake_case
+  - Attribute '_updated_at' in compliance.technical_standard_cert is not valid snake_case
+  - Attribute '_created_at' in compliance.calendar is not valid snake_case
+  - Attribute '_source_code' in compliance.calendar is not valid snake_case
+  - Attribute '_updated_at' in compliance.calendar is not valid snake_case
+  - Attribute '_created_at' in compliance.regulatory_change is not valid snake_case
+  - Attribute '_source_code' in compliance.regulatory_change is not valid snake_case
+  - Attribute '_updated_at' in compliance.regulatory_change is not valid snake_case
+  - Attribute '_created_at' in compliance.facility_compliance_obligation is not valid snake_case
+  - Attribute '_source_code' in compliance.facility_compliance_obligation is not valid snake_case
+  - Attribute '_updated_at' in compliance.facility_compliance_obligation is not valid snake_case
+  - Attribute '_created_at' in compliance.facility_compliance is not valid snake_case
+  - Attribute '_source_code' in compliance.facility_compliance is not valid snake_case
+  - Attribute '_updated_at' in compliance.facility_compliance is not valid snake_case
+  - Attribute '_created_at' in compliance.audit is not valid snake_case
+  - Attribute '_source_code' in compliance.audit is not valid snake_case
+  - Attribute '_updated_at' in compliance.audit is not valid snake_case
+  - Attribute '_created_at' in compliance.filing_status_ref is not valid snake_case
+  - Attribute '_source_code' in compliance.filing_status_ref is not valid snake_case
+  - Attribute '_updated_at' in compliance.filing_status_ref is not valid snake_case
+  - Attribute '_created_at' in compliance.incident_severity_ref is not valid snake_case
+  - Attribute '_source_code' in compliance.incident_severity_ref is not valid snake_case
+  - Attribute '_updated_at' in compliance.incident_severity_ref is not valid snake_case
+  - Attribute '_created_at' in compliance.regulatory_body_ref is not valid snake_case
+  - Attribute '_source_code' in compliance.regulatory_body_ref is not valid snake_case
+  - Attribute '_updated_at' in compliance.regulatory_body_ref is not valid snake_case
+  - Attribute '_created_at' in workforce.employee is not valid snake_case
+  - Attribute '_source_code' in workforce.employee is not valid snake_case
+  - Attribute '_updated_at' in workforce.employee is not valid snake_case
+  - Attribute '_created_at' in workforce.org_unit is not valid snake_case
+  - Attribute '_source_code' in workforce.org_unit is not valid snake_case
+  - Attribute '_updated_at' in workforce.org_unit is not valid snake_case
+  - Attribute '_created_at' in workforce.job_profile is not valid snake_case
+  - Attribute '_source_code' in workforce.job_profile is not valid snake_case
+  - Attribute '_updated_at' in workforce.job_profile is not valid snake_case
+  - Attribute '_created_at' in workforce.position is not valid snake_case
+  - Attribute '_source_code' in workforce.position is not valid snake_case
+  - Attribute '_updated_at' in workforce.position is not valid snake_case
+  - Attribute '_created_at' in workforce.employment_record is not valid snake_case
+  - Attribute '_source_code' in workforce.employment_record is not valid snake_case
+  - Attribute '_updated_at' in workforce.employment_record is not valid snake_case
+  - Attribute '_created_at' in workforce.compensation_plan is not valid snake_case
+  - Attribute '_source_code' in workforce.compensation_plan is not valid snake_case
+  - Attribute '_updated_at' in workforce.compensation_plan is not valid snake_case
+  - Attribute '_created_at' in workforce.payroll_record is not valid snake_case
+  - Attribute '_source_code' in workforce.payroll_record is not valid snake_case
+  - Attribute '_updated_at' in workforce.payroll_record is not valid snake_case
+  - Attribute '_created_at' in workforce.benefit_enrollment is not valid snake_case
+  - Attribute '_source_code' in workforce.benefit_enrollment is not valid snake_case
+  - Attribute '_updated_at' in workforce.benefit_enrollment is not valid snake_case
+  - Attribute '_created_at' in workforce.leave_request is not valid snake_case
+  - Attribute '_source_code' in workforce.leave_request is not valid snake_case
+  - Attribute '_updated_at' in workforce.leave_request is not valid snake_case
+  - Attribute '_created_at' in workforce.leave_balance is not valid snake_case
+  - Attribute '_source_code' in workforce.leave_balance is not valid snake_case
+  - Attribute '_updated_at' in workforce.leave_balance is not valid snake_case
+  - Attribute '_created_at' in workforce.timesheet is not valid snake_case
+  - Attribute '_source_code' in workforce.timesheet is not valid snake_case
+  - Attribute '_updated_at' in workforce.timesheet is not valid snake_case
+  - Attribute '_created_at' in workforce.work_schedule is not valid snake_case
+  - Attribute '_source_code' in workforce.work_schedule is not valid snake_case
+  - Attribute '_updated_at' in workforce.work_schedule is not valid snake_case
+  - Attribute '_created_at' in workforce.performance_review is not valid snake_case
+  - Attribute '_source_code' in workforce.performance_review is not valid snake_case
+  - Attribute '_updated_at' in workforce.performance_review is not valid snake_case
+  - Attribute '_created_at' in workforce.goal is not valid snake_case
+  - Attribute '_source_code' in workforce.goal is not valid snake_case
+  - Attribute '_updated_at' in workforce.goal is not valid snake_case
+  - Attribute '_created_at' in workforce.training_course is not valid snake_case
+  - Attribute '_source_code' in workforce.training_course is not valid snake_case
+  - Attribute '_updated_at' in workforce.training_course is not valid snake_case
+  - Attribute '_created_at' in workforce.training_enrollment is not valid snake_case
+  - Attribute '_source_code' in workforce.training_enrollment is not valid snake_case
+  - Attribute '_updated_at' in workforce.training_enrollment is not valid snake_case
+  - Attribute '_created_at' in workforce.certification is not valid snake_case
+  - Attribute '_source_code' in workforce.certification is not valid snake_case
+  - Attribute '_updated_at' in workforce.certification is not valid snake_case
+  - Attribute '_created_at' in workforce.disciplinary_action is not valid snake_case
+  - Attribute '_source_code' in workforce.disciplinary_action is not valid snake_case
+  - Attribute '_updated_at' in workforce.disciplinary_action is not valid snake_case
+  - Attribute '_created_at' in workforce.workforce_grievance is not valid snake_case
+  - Attribute '_source_code' in workforce.workforce_grievance is not valid snake_case
+  - Attribute '_updated_at' in workforce.workforce_grievance is not valid snake_case
+  - Attribute '_created_at' in workforce.headcount_plan is not valid snake_case
+  - Attribute '_source_code' in workforce.headcount_plan is not valid snake_case
+  - Attribute '_updated_at' in workforce.headcount_plan is not valid snake_case
+  - Attribute '_created_at' in workforce.requisition is not valid snake_case
+  - Attribute '_source_code' in workforce.requisition is not valid snake_case
+  - Attribute '_updated_at' in workforce.requisition is not valid snake_case
+  - Attribute '_created_at' in workforce.applicant is not valid snake_case
+  - Attribute '_source_code' in workforce.applicant is not valid snake_case
+  - Attribute '_updated_at' in workforce.applicant is not valid snake_case
+  - Attribute '_created_at' in workforce.interview_event is not valid snake_case
+  - Attribute '_source_code' in workforce.interview_event is not valid snake_case
+  - Attribute '_updated_at' in workforce.interview_event is not valid snake_case
+  - Attribute '_created_at' in workforce.onboarding_task is not valid snake_case
+  - Attribute '_source_code' in workforce.onboarding_task is not valid snake_case
+  - Attribute '_updated_at' in workforce.onboarding_task is not valid snake_case
+  - Attribute '_created_at' in workforce.union_membership is not valid snake_case
+  - Attribute '_source_code' in workforce.union_membership is not valid snake_case
+  - Attribute '_updated_at' in workforce.union_membership is not valid snake_case
+  - Attribute '_created_at' in workforce.separation_record is not valid snake_case
+  - Attribute '_source_code' in workforce.separation_record is not valid snake_case
+  - Attribute '_updated_at' in workforce.separation_record is not valid snake_case
+  - Attribute '_created_at' in workforce.course_requirement is not valid snake_case
+  - Attribute '_source_code' in workforce.course_requirement is not valid snake_case
+  - Attribute '_updated_at' in workforce.course_requirement is not valid snake_case
+  - Attribute '_created_at' in workforce.benefit_plan is not valid snake_case
+  - Attribute '_source_code' in workforce.benefit_plan is not valid snake_case
+  - Attribute '_updated_at' in workforce.benefit_plan is not valid snake_case
+  - Attribute '_created_at' in workforce.employment_status_ref is not valid snake_case
+  - Attribute '_source_code' in workforce.employment_status_ref is not valid snake_case
+  - Attribute '_updated_at' in workforce.employment_status_ref is not valid snake_case
+  - Attribute '_created_at' in workforce.leave_type_ref is not valid snake_case
+  - Attribute '_source_code' in workforce.leave_type_ref is not valid snake_case
+  - Attribute '_updated_at' in workforce.leave_type_ref is not valid snake_case
+  - Attribute '_created_at' in technology.broadcast_facility is not valid snake_case
+  - Attribute '_updated_at' in technology.broadcast_facility is not valid snake_case
+  - Attribute '_created_at' in technology.transmission_equipment is not valid snake_case
+  - Attribute '_updated_at' in technology.transmission_equipment is not valid snake_case
+  - Attribute '_created_at' in technology.studio_facility is not valid snake_case
+  - Attribute '_updated_at' in technology.studio_facility is not valid snake_case
+  - Attribute '_created_at' in technology.noc_monitor is not valid snake_case
+  - Attribute '_updated_at' in technology.noc_monitor is not valid snake_case
+  - Attribute '_created_at' in technology.noc_alert is not valid snake_case
+  - Attribute '_updated_at' in technology.noc_alert is not valid snake_case
+  - Attribute '_created_at' in technology.it_asset is not valid snake_case
+  - Attribute '_updated_at' in technology.it_asset is not valid snake_case
+  - Attribute '_created_at' in technology.network_circuit is not valid snake_case
+  - Attribute '_updated_at' in technology.network_circuit is not valid snake_case
+  - Attribute '_created_at' in technology.signal_path is not valid snake_case
+  - Attribute '_updated_at' in technology.signal_path is not valid snake_case
+  - Attribute '_created_at' in technology.maintenance_work_order is not valid snake_case
+  - Attribute '_updated_at' in technology.maintenance_work_order is not valid snake_case
+  - Attribute '_created_at' in technology.maintenance_schedule is not valid snake_case
+  - Attribute '_updated_at' in technology.maintenance_schedule is not valid snake_case
+  - Attribute '_created_at' in technology.outage_record is not valid snake_case
+  - Attribute '_updated_at' in technology.outage_record is not valid snake_case
+  - Attribute '_created_at' in technology.capacity_plan is not valid snake_case
+  - Attribute '_updated_at' in technology.capacity_plan is not valid snake_case
+  - Attribute '_created_at' in technology.vendor_contract is not valid snake_case
+  - Attribute '_updated_at' in technology.vendor_contract is not valid snake_case
+  - Attribute '_created_at' in technology.tech_change_request is not valid snake_case
+  - Attribute '_updated_at' in technology.tech_change_request is not valid snake_case
+  - Attribute '_created_at' in technology.software_license is not valid snake_case
+  - Attribute '_updated_at' in technology.software_license is not valid snake_case
+  - Attribute '_created_at' in technology.tech_project is not valid snake_case
+  - Attribute '_updated_at' in technology.tech_project is not valid snake_case
+  - Attribute '_created_at' in technology.tech_sla is not valid snake_case
+  - Attribute '_updated_at' in technology.tech_sla is not valid snake_case
+  - Attribute '_created_at' in technology.sla_performance_record is not valid snake_case
+  - Attribute '_updated_at' in technology.sla_performance_record is not valid snake_case
+  - Attribute '_created_at' in technology.broadcast_standard is not valid snake_case
+  - Attribute '_updated_at' in technology.broadcast_standard is not valid snake_case
+  - Attribute '_created_at' in technology.equipment_procurement is not valid snake_case
+  - Attribute '_updated_at' in technology.equipment_procurement is not valid snake_case
+  - Attribute '_created_at' in technology.tech_incident is not valid snake_case
+  - Attribute '_updated_at' in technology.tech_incident is not valid snake_case
+  - Attribute '_created_at' in technology.encoder_config is not valid snake_case
+  - Attribute '_updated_at' in technology.encoder_config is not valid snake_case
+  - Attribute '_created_at' in technology.satellite_transponder is not valid snake_case
+  - Attribute '_updated_at' in technology.satellite_transponder is not valid snake_case
+  - Attribute '_created_at' in technology.tech_asset_lifecycle is not valid snake_case
+  - Attribute '_updated_at' in technology.tech_asset_lifecycle is not valid snake_case
+  - Attribute '_created_at' in technology.tech_problem is not valid snake_case
+  - Attribute '_updated_at' in technology.tech_problem is not valid snake_case
+  - Attribute '_created_at' in technology.knowledge_article is not valid snake_case
+  - Attribute '_updated_at' in technology.knowledge_article is not valid snake_case
+  - Attribute '_created_at' in technology.equipment_status_ref is not valid snake_case
+  - Attribute '_updated_at' in technology.equipment_status_ref is not valid snake_case
+  - Attribute '_created_at' in technology.alert_severity_ref is not valid snake_case
+  - Attribute '_updated_at' in technology.alert_severity_ref is not valid snake_case
+  - Attribute 'release_title' in content.release has redundant product prefix 'release_'. Rename to 'title'
+  - Attribute 'broadcast_duration_seconds' in production.broadcast has redundant product prefix 'broadcast_'. Rename to 'duration_seconds'
+  - Attribute 'proposal_sales_agency_id_2' in sales.proposal has redundant product prefix 'proposal_'. Rename to 'sales_agency_id_2'
+  - Table distribution.playout_feed has self-referencing FK on column 'failover_to_feed_id' with same name as PK 'playout_feed_id' — the FK column must have a different name that describes the relationship (the LLM should choose a contextual label)
+  - Table sales.ad_order_line has self-referencing FK on column 'makegood_for_line_id' with same name as PK 'ad_order_line_id' — the FK column must have a different name that describes the relationship (the LLM should choose a contextual label)
+  - Table compliance.sox_control has self-referencing FK on column 'compensating_control_id' with same name as PK 'sox_control_id' — the FK column must have a different name that describes the relationship (the LLM should choose a contextual label)
+  - Table content.title_relationship has 2 FK columns pointing to content.title (title_id, target_title_id) (generic/unlabeled: title_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table content.episode_transmission has 2 FK columns pointing to scheduling.channel (channel_id, episode_channel_id) (generic/unlabeled: channel_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table content.sports_event has 2 FK columns pointing to content.sports_team (sports_away_team_id, sports_team_id) (generic/unlabeled: sports_team_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table production.qc_review has 2 FK columns pointing to workforce.employee (employee_id, primary_qc_employee_id) (generic/unlabeled: employee_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table production.production_clearance has 2 FK columns pointing to content.content_clearance (content_clearance_id, production_content_content_clearance_id) (generic/unlabeled: content_clearance_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table production.daily_production_report has 2 FK columns pointing to workforce.employee (employee_id, tertiary_daily_submitted_by_user_employee_id) (generic/unlabeled: employee_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table production.shoot_day has 3 FK columns pointing to workforce.employee (employee_id, shoot_employee_id, shoot_first_assistant_director_employee_id) (generic/unlabeled: employee_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table scheduling.simulcast_config has 3 FK columns pointing to scheduling.channel (channel_id, source_channel_id, target_channel_id) (generic/unlabeled: channel_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table scheduling.scheduling_blackout_rule has 2 FK columns pointing to rights.rights_blackout_rule (rights_blackout_rule_id, scheduling_rights_rights_blackout_rule_id) (generic/unlabeled: rights_blackout_rule_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table scheduling.daypart_assignment has 4 FK columns pointing to workforce.employee (employee_id, daypart_backup_employee_id, daypart_employee_id, daypart_supervisor_employee_id) (generic/unlabeled: employee_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table distribution.playback_session has 2 FK columns pointing to distribution.device_type (device_type_id, playback_device_type_id) (generic/unlabeled: device_type_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table mediaasset.asset_access_request has 2 FK columns pointing to workforce.employee (employee_id, primary_asset_employee_id) (generic/unlabeled: employee_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table rights.conflict has 2 FK columns pointing to workforce.employee (employee_id, tertiary_conflict_resolved_by_analyst_employee_id) (generic/unlabeled: employee_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table rights.license_amendment has 2 FK columns pointing to partner.partner (partner_id, primary_licensee_party_partner_id) (generic/unlabeled: partner_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table rights.holder has 2 FK columns pointing to partner.partner (partner_id, partner_partner_id) (generic/unlabeled: partner_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table rights.rights_audit_event has 2 FK columns pointing to workforce.employee (employee_id, primary_rights_employee_id) (generic/unlabeled: employee_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table rights.rights_audit_session has 4 FK columns pointing to workforce.employee (employee_id, rights_created_by_employee_id, rights_employee_id, rights_modified_by_employee_id) (generic/unlabeled: employee_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table advertising.ad_inventory has 2 FK columns pointing to content.title (title_id, ad_title_id) (generic/unlabeled: title_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table subscriber.support_case has 2 FK columns pointing to workforce.employee (assigned_employee_id, employee_id) (generic/unlabeled: employee_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table talent.talent_clearance has 2 FK columns pointing to content.content_clearance (content_clearance_id, talent_content_content_clearance_id) (generic/unlabeled: content_clearance_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table talent.talent_sports_team has 2 FK columns pointing to content.sports_league (league_id, sports_league_id) (generic/unlabeled: sports_league_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table sales.advertiser has 2 FK columns pointing to workforce.employee (employee_id, tertiary_advertiser_updated_by_user_employee_id) (generic/unlabeled: employee_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table sales.ad_pod has 2 FK columns pointing to content.title (title_id, ad_title_id) (generic/unlabeled: title_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table sales.upfront_deal has 2 FK columns pointing to workforce.employee (employee_id, tertiary_upfront_modified_by_user_employee_id) (generic/unlabeled: employee_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table sales.dai_event has 2 FK columns pointing to mediaasset.media_asset (dai_media_asset_id, media_asset_id) (generic/unlabeled: media_asset_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table sales.sponsorship has 3 FK columns pointing to workforce.employee (employee_id, quaternary_sponsorship_modified_by_user_employee_id, tertiary_sponsorship_employee_id) (generic/unlabeled: employee_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table sales.sales_account has 2 FK columns pointing to billing.billing_account (billing_account_id, billing_billing_account_id) (generic/unlabeled: billing_account_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table sales.sales_contact has 2 FK columns pointing to workforce.employee (employee_id, sales_last_modified_by_user_employee_id) (generic/unlabeled: employee_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table sales.sales_contact has 2 FK columns pointing to partner.partner_contact (partner_contact_id, sales_partner_partner_contact_id) (generic/unlabeled: partner_contact_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table sales.proposal has 2 FK columns pointing to workforce.employee (employee_id, proposal_created_by_employee_id) (generic/unlabeled: employee_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table sales.proposal has 2 FK columns pointing to sales.rep (rep_id, proposal_sales_rep_id) (generic/unlabeled: rep_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table sales.scatter_order has 2 FK columns pointing to sales.sales_agency (sales_agency_id, scatter_sales_agency_id) (generic/unlabeled: sales_agency_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table sales.scatter_order has 2 FK columns pointing to workforce.employee (employee_id, scatter_created_by_employee_id) (generic/unlabeled: employee_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table sales.sales_syndication_deal has 2 FK columns pointing to rights.rights_syndication_deal (rights_syndication_deal_id, sales_rights_syndication_deal_id) (generic/unlabeled: rights_syndication_deal_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table sales.upfront_option_exercise has 2 FK columns pointing to workforce.employee (employee_id, tertiary_upfront_last_modified_by_user_employee_id) (generic/unlabeled: employee_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table sales.sales_deal_approval has 3 FK columns pointing to workforce.employee (employee_id, tertiary_quinary_sales_last_modified_by_user_employee_id, tertiary_sales_submitted_by_user_employee_id) (generic/unlabeled: employee_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table sales.proposal_distribution has 2 FK columns pointing to sales.sales_contact (sales_contact_id, proposal_sales_contact_id) (generic/unlabeled: sales_contact_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table billing.credit_memo has 2 FK columns pointing to workforce.employee (employee_id, tertiary_credit_modified_by_user_employee_id) (generic/unlabeled: employee_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table partner.affiliate_agreement has 3 FK columns pointing to scheduling.channel (channel_id, affiliate_network_channel_id, primary_affiliate_station_channel_id) (generic/unlabeled: channel_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table partner.deal_negotiation has 2 FK columns pointing to workforce.employee (employee_id, tertiary_deal_legal_reviewer_employee_id) (generic/unlabeled: employee_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table partner.partner_audit_event has 2 FK columns pointing to rights.rights_audit_event (rights_audit_event_id, partner_rights_rights_audit_event_id) (generic/unlabeled: rights_audit_event_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table partner.partner_dispute has 2 FK columns pointing to billing.billing_dispute (billing_billing_dispute_id, related_billing_dispute_id) (generic/unlabeled: related_billing_dispute_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table partner.renewal has 3 FK columns pointing to workforce.employee (employee_id, quaternary_renewal_legal_reviewer_employee_id, tertiary_renewal_finance_approver_employee_id) (generic/unlabeled: employee_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table partner.partner_deal_approval has 2 FK columns pointing to sales.sales_deal_approval (sales_deal_approval_id, partner_sales_sales_deal_approval_id) (generic/unlabeled: sales_deal_approval_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table finance.journal_entry has 2 FK columns pointing to workforce.employee (employee_id, primary_journal_employee_id) (generic/unlabeled: employee_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table finance.budget_version has 2 FK columns pointing to workforce.employee (employee_id, budget_employee_id) (generic/unlabeled: employee_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table finance.financial_reconciliation has 2 FK columns pointing to workforce.employee (employee_id, reviewer_employee_id) (generic/unlabeled: employee_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table finance.project_assignment has 3 FK columns pointing to workforce.employee (employee_id, project_approved_by_employee_id, project_employee_id) (generic/unlabeled: employee_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table finance.cost_center_obligation_allocation has 2 FK columns pointing to workforce.employee (employee_id, cost_responsible_contact_employee_id) (generic/unlabeled: employee_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table finance.cost_center_authorization has 3 FK columns pointing to workforce.employee (employee_id, cost_granted_by_employee_id, cost_revoked_by_employee_id) (generic/unlabeled: employee_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table finance.recurring_entry_template has 3 FK columns pointing to workforce.employee (employee_id, recurring_employee_id, recurring_last_modified_by_user_employee_id) (generic/unlabeled: employee_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table compliance.compliance_consent_record has 2 FK columns pointing to subscriber.subscriber_consent_record (subscriber_consent_record_id, compliance_subscriber_subscriber_consent_record_id) (generic/unlabeled: subscriber_consent_record_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table workforce.leave_request has 2 FK columns pointing to workforce.employee (employee_id, tertiary_leave_substitute_employee_id) (generic/unlabeled: employee_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table workforce.timesheet has 2 FK columns pointing to workforce.employee (employee_id, tertiary_timesheet_modified_by_user_employee_id) (generic/unlabeled: employee_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table workforce.performance_review has 3 FK columns pointing to workforce.employee (employee_id, primary_performance_employee_id, reviewer_employee_id) (generic/unlabeled: employee_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table workforce.disciplinary_action has 2 FK columns pointing to workforce.employee (employee_id, tertiary_disciplinary_issuing_manager_employee_id) (generic/unlabeled: employee_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table workforce.workforce_grievance has 2 FK columns pointing to workforce.employee (employee_id, tertiary_workforce_employee_id) (generic/unlabeled: employee_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table workforce.requisition has 2 FK columns pointing to workforce.employee (employee_id, tertiary_requisition_recruiter_employee_id) (generic/unlabeled: employee_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table workforce.onboarding_task has 2 FK columns pointing to workforce.employee (employee_id, tertiary_onboarding_completed_by_employee_id) (generic/unlabeled: employee_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table workforce.separation_record has 4 FK columns pointing to workforce.employee (employee_id, quaternary_quinary_separation_approved_by_employee_id, tertiary_quaternary_separation_initiated_by_employee_id, tertiary_separation_hr_business_partner_employee_id) (generic/unlabeled: employee_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table workforce.benefit_plan has 2 FK columns pointing to workforce.employee (employee_id, benefit_modified_by_user_employee_id) (generic/unlabeled: employee_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table technology.maintenance_work_order has 2 FK columns pointing to workforce.employee (employee_id, tertiary_maintenance_approved_by_employee_id) (generic/unlabeled: employee_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table technology.maintenance_schedule has 2 FK columns pointing to workforce.employee (employee_id, tertiary_maintenance_last_modified_by_user_employee_id) (generic/unlabeled: employee_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table technology.vendor_contract has 2 FK columns pointing to workforce.employee (employee_id, primary_vendor_employee_id) (generic/unlabeled: employee_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table technology.tech_incident has 2 FK columns pointing to workforce.employee (employee_id, tertiary_tech_resolved_by_user_employee_id) (generic/unlabeled: employee_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - Table technology.tech_asset_lifecycle has 2 FK columns pointing to workforce.employee (employee_id, tertiary_tech_created_by_user_employee_id) (generic/unlabeled: employee_id) — rename generic columns to describe their business role (e.g., inspector_employee_id, approver_employee_id; origin_plan_id, amendment_plan_id)
+  - FK column 'proposal_sales_agency_id_2' in sales.proposal doesn't end with target PK 'sales_agency_id' — FK columns MUST end with the target table's PK (e.g., driver_sales_agency_id or just sales_agency_id)
+  - Attribute content.title.aspect_ratio has unrecognized data type 'NUMERIC' — expected a valid Spark SQL type (STRING, BIGINT, INT, DECIMAL, BOOLEAN, DATE, TIMESTAMP, etc.)
+  - Attribute content.series.aspect_ratio has unrecognized data type 'NUMERIC' — expected a valid Spark SQL type (STRING, BIGINT, INT, DECIMAL, BOOLEAN, DATE, TIMESTAMP, etc.)
+  - Attribute content.content_episode.aspect_ratio has unrecognized data type 'NUMERIC' — expected a valid Spark SQL type (STRING, BIGINT, INT, DECIMAL, BOOLEAN, DATE, TIMESTAMP, etc.)
+  - Attribute content.version.aspect_ratio has unrecognized data type 'NUMERIC' — expected a valid Spark SQL type (STRING, BIGINT, INT, DECIMAL, BOOLEAN, DATE, TIMESTAMP, etc.)
+  - Attribute content.metadata_profile.aspect_ratio has unrecognized data type 'NUMERIC' — expected a valid Spark SQL type (STRING, BIGINT, INT, DECIMAL, BOOLEAN, DATE, TIMESTAMP, etc.)
+  - Attribute content.artwork.aspect_ratio has unrecognized data type 'NUMERIC' — expected a valid Spark SQL type (STRING, BIGINT, INT, DECIMAL, BOOLEAN, DATE, TIMESTAMP, etc.)
+  - Attribute content.ingest_event.source_aspect_ratio has unrecognized data type 'NUMERIC' — expected a valid Spark SQL type (STRING, BIGINT, INT, DECIMAL, BOOLEAN, DATE, TIMESTAMP, etc.)
+  - Attribute content.content_library.aspect_ratio has unrecognized data type 'NUMERIC' — expected a valid Spark SQL type (STRING, BIGINT, INT, DECIMAL, BOOLEAN, DATE, TIMESTAMP, etc.)
+  - Attribute content.vod_library.aspect_ratio has unrecognized data type 'NUMERIC' — expected a valid Spark SQL type (STRING, BIGINT, INT, DECIMAL, BOOLEAN, DATE, TIMESTAMP, etc.)
+  - Attribute content.content_portfolio.aspect_ratio has unrecognized data type 'NUMERIC' — expected a valid Spark SQL type (STRING, BIGINT, INT, DECIMAL, BOOLEAN, DATE, TIMESTAMP, etc.)
+  - Attribute production.vfx_shot.aspect_ratio has unrecognized data type 'NUMERIC' — expected a valid Spark SQL type (STRING, BIGINT, INT, DECIMAL, BOOLEAN, DATE, TIMESTAMP, etc.)
+  - Attribute production.deliverable.aspect_ratio has unrecognized data type 'NUMERIC' — expected a valid Spark SQL type (STRING, BIGINT, INT, DECIMAL, BOOLEAN, DATE, TIMESTAMP, etc.)
+  - Attribute production.ingest_record.aspect_ratio has unrecognized data type 'NUMERIC' — expected a valid Spark SQL type (STRING, BIGINT, INT, DECIMAL, BOOLEAN, DATE, TIMESTAMP, etc.)
+  - Attribute production.format_spec.aspect_ratio has unrecognized data type 'NUMERIC' — expected a valid Spark SQL type (STRING, BIGINT, INT, DECIMAL, BOOLEAN, DATE, TIMESTAMP, etc.)
+  - Attribute scheduling.schedule_slot.aspect_ratio has unrecognized data type 'NUMERIC' — expected a valid Spark SQL type (STRING, BIGINT, INT, DECIMAL, BOOLEAN, DATE, TIMESTAMP, etc.)
+  - Attribute distribution.delivery_channel.aspect_ratio has unrecognized data type 'NUMERIC' — expected a valid Spark SQL type (STRING, BIGINT, INT, DECIMAL, BOOLEAN, DATE, TIMESTAMP, etc.)
+  - Attribute distribution.playout_feed.aspect_ratio has unrecognized data type 'NUMERIC' — expected a valid Spark SQL type (STRING, BIGINT, INT, DECIMAL, BOOLEAN, DATE, TIMESTAMP, etc.)
+  - Attribute mediaasset.media_asset.aspect_ratio has unrecognized data type 'NUMERIC' — expected a valid Spark SQL type (STRING, BIGINT, INT, DECIMAL, BOOLEAN, DATE, TIMESTAMP, etc.)
+  - Attribute mediaasset.asset_version.aspect_ratio has unrecognized data type 'NUMERIC' — expected a valid Spark SQL type (STRING, BIGINT, INT, DECIMAL, BOOLEAN, DATE, TIMESTAMP, etc.)
+  - Attribute mediaasset.ingest_job.aspect_ratio has unrecognized data type 'NUMERIC' — expected a valid Spark SQL type (STRING, BIGINT, INT, DECIMAL, BOOLEAN, DATE, TIMESTAMP, etc.)
+  - Attribute mediaasset.qc_inspection.detected_aspect_ratio has unrecognized data type 'NUMERIC' — expected a valid Spark SQL type (STRING, BIGINT, INT, DECIMAL, BOOLEAN, DATE, TIMESTAMP, etc.)
+  - Attribute mediaasset.format_specification.aspect_ratio has unrecognized data type 'NUMERIC' — expected a valid Spark SQL type (STRING, BIGINT, INT, DECIMAL, BOOLEAN, DATE, TIMESTAMP, etc.)
+  - Attribute sales.isci_creative.aspect_ratio has unrecognized data type 'NUMERIC' — expected a valid Spark SQL type (STRING, BIGINT, INT, DECIMAL, BOOLEAN, DATE, TIMESTAMP, etc.)
+  - 8 attribute(s) contain banned boilerplate phrases (Fortune N, multinational, enterprise-wide, cross-company, group reporting). Clean descriptions.
+  - 258 attribute(s) match person-data patterns but lack pii_ tags
+  - 15 non-PK attributes redundantly prefixed with their product name
+  - 1 attribute(s) have pipe-enum value_regex with >8 values — consider creating a reference product instead
+  - Corporate division holds 4/17 domains (23%) - exceeds the 20% cap (Operations+Business must be >=80%). Relocate or reclassify.
+**Vibe adherence: 90.5% (468/517 VREQs applied) | Structural quality: 68/100 (reported separately, NOT blended)**
+
+Deterministic score: 64.1/100 (LLM assessment: 72/100)
+
+## MISSED VIBES (carried from the previous run — apply these THIS run; user directives first)
+
+- (USER DIRECTIVE - supreme authority) Add a news operations capability because news organisations are in the business description but there is no news-specific subdomain. (target: newsroom domain / news_room subdomain under content) [missed: vov_residual_unapplied]
+- (USER DIRECTIVE - supreme authority) Add a news operations capability (newsroom) because news organisations are in the business description but there is no news-specific subdomain. (target: newsroom domain / news_room subdomain under content) [missed: vov_residual_unapplied]
+- (USER DIRECTIVE - supreme authority) Add news_story table in a new news_room subdomain under content or a new newsroom domain capturing story slug/dateline/byline/wire-source/embargo/correction lifecycle. (target: content (new news_room subdomain) or new newsroom domain: news_story) [missed: vov_residual_unapplied]
+- (USER DIRECTIVE - supreme authority) Apply generic typing rule: every monetary attribute across the model must be DECIMAL(18,2). (target: all monetary attributes (model-wide)) [missed: vov_residual_unapplied]
+- (USER DIRECTIVE - supreme authority) Add a news-specific subdomain (story/wire/byline/dateline/correction) to align with Schema.org NewsArticle / NewsMediaOrganization. (target: news subdomain (Schema.org alignment)) [missed: vov_residual_unapplied]
+- (USER DIRECTIVE - supreme authority) Add a news operations capability (missing domain): provide news_story in content's new news_room subdomain or a new newsroom domain capturing story slug/dateline/byline/wire-source/embargo/correction lifecycle. (target: newsroom.news_story) [missed: vov_residual_unapplied]
+- (USER DIRECTIVE - supreme authority) Add wire_ingest to the newsroom domain for inbound feeds from news agencies (AP/AFP/Bloomberg), raw to editorial workflow. (target: newsroom.wire_ingest) [missed: vov_residual_unapplied]
+- (USER DIRECTIVE - supreme authority) Add wire_ingest to newsroom for inbound feed from news agencies (AP/AFP/Bloomberg), raw to editorial workflow. (target: newsroom.wire_ingest) [missed: vov_residual_unapplied]
+- (USER DIRECTIVE - supreme authority) Add wire_ingest table to newsroom for inbound feed from news agencies (AP/AFP/Bloomberg), raw to editorial workflow. (target: newsroom.wire_ingest) [missed: vov_residual_unapplied]
+- (USER DIRECTIVE - supreme authority) Add a wire_ingest table to newsroom for inbound feed from news agencies (AP/AFP/Bloomberg), raw to editorial workflow. (target: newsroom.wire_ingest) [missed: vov_residual_unapplied]
+- (USER DIRECTIVE - supreme authority) Add wire_ingest to the newsroom domain for inbound feed from news agencies (AP/AFP/Bloomberg) flowing raw to editorial workflow. (target: newsroom.wire_ingest) [missed: vov_residual_unapplied]
+- (USER DIRECTIVE - supreme authority) Add byline_credit to the newsroom domain for reporter/photographer/editor credit, distinct from talent_credit. (target: newsroom.byline_credit) [missed: vov_residual_unapplied]
+- (USER DIRECTIVE - supreme authority) Add byline_credit to the newsroom domain for reporter/photographer/editor credit distinct from talent_credit. (target: newsroom: byline_credit) [missed: vov_residual_unapplied]
+- (USER DIRECTIVE - supreme authority) Add byline_credit table to the newsroom domain for reporter/photographer/editor credit, distinct from talent_credit. (target: newsroom: byline_credit) [missed: vov_residual_unapplied]
+- (USER DIRECTIVE - supreme authority) Add a byline_credit table to the newsroom domain for reporter/photographer/editor credit, distinct from talent_credit. (target: newsroom.byline_credit) [missed: vov_residual_unapplied]
+- (USER DIRECTIVE - supreme authority) Add breaking_news_event to the newsroom domain as a crash-out/special-report trigger feeding program_rundown. (target: newsroom.breaking_news_event) [missed: vov_residual_unapplied]
+- (USER DIRECTIVE - supreme authority) Add breaking_news_event to newsroom as a crash-out/special-report trigger feeding program_rundown. (target: newsroom.breaking_news_event) [missed: vov_residual_unapplied]
+- (USER DIRECTIVE - supreme authority) Add breaking_news_event table to newsroom for crash-out/special-report trigger feeding program_rundown. (target: newsroom.breaking_news_event) [missed: vov_residual_unapplied]
+- (USER DIRECTIVE - supreme authority) Add breaking_news_event table to newsroom as a crash-out/special-report trigger feeding program_rundown. (target: newsroom: breaking_news_event) [missed: vov_residual_unapplied]
+- (USER DIRECTIVE - supreme authority) Add breaking_news_event table to the newsroom domain as a crash-out/special-report trigger feeding program_rundown. (target: newsroom: breaking_news_event) [missed: vov_residual_unapplied]
+- (USER DIRECTIVE - supreme authority) Add a breaking_news_event table to the newsroom domain as a crash-out/special-report trigger feeding program_rundown. (target: newsroom.breaking_news_event) [missed: vov_residual_unapplied]
+- (USER DIRECTIVE - supreme authority) Add a breaking_news_event table to newsroom for crash-out/special-report trigger feeding program_rundown. (target: newsroom.breaking_news_event) [missed: vov_residual_unapplied]
+- (USER DIRECTIVE - supreme authority) Add editorial_workflow_state to the newsroom domain capturing draft to assigned to filed to edited to cleared to published. (target: newsroom.editorial_workflow_state) [missed: vov_residual_unapplied]
+- (USER DIRECTIVE - supreme authority) Add editorial_workflow_state to the newsroom domain modelling draft to assigned to filed to edited to cleared to published. (target: newsroom: editorial_workflow_state) [missed: vov_residual_unapplied]
+- (USER DIRECTIVE - supreme authority) Add editorial_workflow_state table to the newsroom domain modelling draft to assigned to filed to edited to cleared to published. (target: newsroom: editorial_workflow_state) [missed: vov_residual_unapplied]
+- (USER DIRECTIVE - supreme authority) Add editorial_workflow_state to the newsroom domain modelling draft -> assigned -> filed -> edited -> cleared -> published. (target: newsroom.editorial_workflow_state) [missed: vov_residual_unapplied]
+- (USER DIRECTIVE - supreme authority) Add byline_credit to newsroom for reporter/photographer/editor credit, distinct from talent_credit. (target: newsroom.byline_credit) [missed: vov_residual_unapplied]
+- (USER DIRECTIVE - supreme authority) Add byline_credit table to newsroom for reporter/photographer/editor credit, distinct from talent_credit. (target: newsroom.byline_credit) [missed: vov_residual_unapplied]
+- (USER DIRECTIVE - supreme authority) Add a byline_credit table to newsroom for reporter/photographer/editor credit, distinct from talent_credit. (target: newsroom.byline_credit) [missed: vov_residual_unapplied]
+- (USER DIRECTIVE - supreme authority) Add editorial_workflow_state to newsroom covering draft to assigned to filed to edited to cleared to published. (target: newsroom.editorial_workflow_state) [missed: vov_residual_unapplied]
+- (USER DIRECTIVE - supreme authority) Add editorial_workflow_state table to newsroom covering draft to assigned to filed to edited to cleared to published. (target: newsroom: editorial_workflow_state) [missed: vov_residual_unapplied]
+- (USER DIRECTIVE - supreme authority) Create the wire_ingest table in newsroom capturing inbound feeds from news agencies (AP/AFP/Bloomberg) flowing raw to editorial workflow. (target: newsroom.wire_ingest) [missed: vov_residual_unapplied]
+- (USER DIRECTIVE - supreme authority) Create the byline_credit table in newsroom for reporter/photographer/editor credit, distinct from talent_credit. (target: newsroom.byline_credit) [missed: vov_residual_unapplied]
+- (USER DIRECTIVE - supreme authority) Create the breaking_news_event table in newsroom as crash-out/special-report trigger feeding program_rundown. (target: newsroom.breaking_news_event) [missed: vov_residual_unapplied]
+- (USER DIRECTIVE - supreme authority) Create the editorial_workflow_state table in newsroom modelling Draft -> assigned -> filed -> edited -> cleared -> published lifecycle. (target: newsroom.editorial_workflow_state) [missed: vov_residual_unapplied]
+- (USER DIRECTIVE - supreme authority) Add editorial_workflow_state table to newsroom modelling the draft to assigned to filed to edited to cleared to published lifecycle. (target: newsroom.editorial_workflow_state) [missed: vov_residual_unapplied]
+- (USER DIRECTIVE - supreme authority) Add a news operations capability as a missing domain because news organisations are explicitly in the business description but have no news-specific subdomain. (target: newsroom domain (or news_room subdomain under content)) [missed: vov_residual_unapplied]
+- (USER DIRECTIVE - supreme authority) Add news_story table to content (new news_room subdomain) or new newsroom domain covering story slug/dateline/byline/wire-source/embargo/correction lifecycle. (target: content news_room subdomain or newsroom domain: news_story) [missed: vov_residual_unapplied]
+- (USER DIRECTIVE - supreme authority) Add a news_story table (story slug/dateline/byline/wire-source/embargo/correction lifecycle) to content (new news_room subdomain) or a new newsroom domain. (target: newsroom.news_story (or content.news_room.news_story)) [missed: vov_residual_unapplied]
+- (USER DIRECTIVE - supreme authority) Add a news_story table (story slug/dateline/byline/wire-source/embargo/correction lifecycle) in a new newsroom domain or news_room subdomain under content. (target: newsroom.news_story (or content.news_room.news_story)) [missed: vov_residual_unapplied]
+- (USER DIRECTIVE - supreme authority) Add a wire_ingest table to the newsroom domain capturing inbound feeds from news agencies (AP/AFP/Bloomberg) flowing from raw to editorial workflow. (target: newsroom.wire_ingest) [missed: vov_residual_unapplied]
+- (USER DIRECTIVE - supreme authority) Add an editorial_workflow_state table to the newsroom domain modelling the lifecycle draft → assigned → filed → edited → cleared → published. (target: newsroom.editorial_workflow_state) [missed: vov_residual_unapplied]
+- (USER DIRECTIVE - supreme authority) Add an editorial_workflow_state table to newsroom modelling draft to assigned to filed to edited to cleared to published. (target: newsroom.editorial_workflow_state) [missed: vov_residual_unapplied]
+- Preserve all existing domains and products; additions allowed, removals/renames/merges forbidden without permission (target: *) [missed: orchestrator status=partial]
+- Promote enum-ref-candidate columns to reference tables (target: *) [missed: orchestrator status=partial]
+- Reconcile stub duplications across MVM/ECM (target: billing.billing_dispute) [missed: orchestrator status=partial]
+- Move advertiser commitments from audience to sales (target: audience, sales) [missed: orchestrator status=partial]
+- Add explicit fact/dim labelling in data_type field (target: *) [missed: orchestrator status=partial]
+- Align ontology IRIs to EBU CCDM namespace (target: *) [missed: orchestrator status=partial]
+- Resolve 21 cross-domain SSOT duplicate pairs (target: *) [missed: orchestrator status=partial]
+- Rename self-ref FK column on billing.communication_template (target: billing.communication_template.parent_communication_template_id) [missed: orchestrator status=failed]
+- Rename self-ref column on sales.sales_team (target: sales.sales_team.parent_sales_team_id) [missed: orchestrator status=failed]
+- Connect sales.product to billing.product (target: sales.product) [missed: orchestrator status=partial]
+- Address denormalized natural key warning (target: *) [missed: orchestrator status=partial]
+- Resolve 8 MVM SSOT duplicates and raise MVM quality score >=80 (target: *) [missed: orchestrator status=partial]
+- Expand the stub advertising domain with real entities (target: advertising) [missed: orchestrator status=partial]
+- Treat reviewer comments as supreme authority; prioritise top 4 additions A1-A4 (target: *) [missed: orchestrator status=partial]
