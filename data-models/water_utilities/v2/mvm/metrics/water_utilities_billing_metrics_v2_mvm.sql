@@ -1,101 +1,95 @@
--- Metric views for domain: billing | Business: Water_Utilities | Version: 2 | Generated on: 2026-07-02 04:56:40
+-- Metric views for domain: billing | Business: Water_Utilities | Version: 2 | Generated on: 2026-07-10 20:21:36
 
 CREATE OR REPLACE VIEW `vibe_water_utilities_v1`.`_metrics`.`billing_invoice`
 WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Core billing invoice KPIs tracking revenue billed, charge composition, collection risk, and billing cycle performance for the water utility. Used by Finance and Revenue Management to steer billing operations and forecast cash flow."
+  comment: "Core billing invoice KPIs tracking revenue billed, charge composition, collection risk, and billing cycle performance. Primary steering dashboard for the billing domain."
   source: "`vibe_water_utilities_v1`.`billing`.`invoice`"
   dimensions:
     - name: "invoice_status"
       expr: invoice_status
-      comment: "Current lifecycle status of the invoice (e.g., ISSUED, PAID, OVERDUE, CANCELLED). Primary grouping for AR aging and collection analysis."
+      comment: "Current lifecycle status of the invoice (e.g. ISSUED, PAID, OVERDUE, DISPUTED, CANCELLED) — primary segmentation for AR aging and collection risk analysis."
     - name: "invoice_type"
       expr: invoice_type
-      comment: "Classification of the invoice (e.g., REGULAR, FINAL, ESTIMATED, ADJUSTMENT). Drives revenue recognition and billing process segmentation."
+      comment: "Classification of the invoice (e.g. REGULAR, FINAL, ESTIMATED, CORRECTED) — used to separate routine billing from exception billing."
     - name: "delivery_method"
       expr: delivery_method
-      comment: "How the invoice was delivered to the customer (e.g., PAPER, EMAIL, PORTAL). Used to track paperless adoption and delivery cost reduction."
+      comment: "How the invoice was delivered to the customer (e.g. PAPER, EMAIL, PORTAL) — supports paperless adoption tracking."
     - name: "is_estimated"
       expr: is_estimated
-      comment: "Flag indicating whether the invoice was generated from an estimated read rather than an actual meter read. High estimated-read rates signal meter access or AMI issues."
+      comment: "Flag indicating the invoice was generated from an estimated read rather than an actual meter read — key quality indicator for billing accuracy."
     - name: "is_final"
       expr: is_final
-      comment: "Flag indicating this is a final bill (account closure). Used to track churn and service termination volumes."
+      comment: "Flag indicating this is a final bill (account closure) — used to track churn and service termination volumes."
     - name: "dispute_flag"
       expr: dispute_flag
-      comment: "Indicates the invoice is under customer dispute. Elevated dispute rates signal billing accuracy or rate communication issues."
-    - name: "billing_period_start_date"
-      expr: DATE_TRUNC('month', billing_period_start_date)
-      comment: "Billing period start month bucket for trend analysis of billed revenue over time."
-    - name: "billing_period_end_date"
-      expr: DATE_TRUNC('month', billing_period_end_date)
-      comment: "Billing period end month bucket for aligning revenue to service delivery periods."
-    - name: "invoice_date_month"
-      expr: DATE_TRUNC('month', invoice_date)
-      comment: "Month the invoice was issued. Used for billing cycle throughput and revenue recognition timing analysis."
+      comment: "Flag indicating the invoice is under customer dispute — drives dispute resolution workload and revenue-at-risk reporting."
+    - name: "rate_schedule_code"
+      expr: rate_schedule_code
+      comment: "Rate schedule applied to the invoice — enables revenue analysis by tariff class and rate structure."
+    - name: "invoice_month"
+      expr: DATE_TRUNC('MONTH', invoice_date)
+      comment: "Calendar month of invoice issuance — primary time grain for monthly billing trend analysis."
+    - name: "billing_period_start_month"
+      expr: DATE_TRUNC('MONTH', billing_period_start_date)
+      comment: "Month the billing period began — used to align revenue to service consumption period."
     - name: "due_date_month"
-      expr: DATE_TRUNC('month', due_date)
-      comment: "Month the invoice payment is due. Used for cash flow forecasting and AR aging bucket analysis."
-    - name: "currency_code"
-      expr: currency_code
-      comment: "Currency of the invoice. Supports multi-currency reporting for utilities operating across jurisdictions."
-    - name: "generation_method"
-      expr: generation_method
-      comment: "Method used to generate the invoice (e.g., BATCH, MANUAL, SYSTEM). Identifies manual intervention rates and automation efficiency."
+      expr: DATE_TRUNC('MONTH', due_date)
+      comment: "Month payment is due — used for cash flow forecasting and AR aging bucket analysis."
   measures:
-    - name: "total_invoices_issued"
+    - name: "total_invoices"
       expr: COUNT(1)
-      comment: "Total number of invoices issued. Baseline volume metric for billing cycle throughput and operational capacity planning."
-    - name: "total_billed_amount_usd"
-      expr: SUM(CAST(total_amount_usd AS DOUBLE))
-      comment: "Total USD amount billed across all invoices. Primary revenue-billed KPI used by Finance for revenue recognition and cash flow forecasting."
-    - name: "total_balance_due_usd"
-      expr: SUM(CAST(balance_due_usd AS DOUBLE))
-      comment: "Total outstanding balance due across all invoices. Core AR metric for collections prioritization and liquidity risk assessment."
-    - name: "total_water_charge_amount"
+      comment: "Total number of invoices issued. Baseline volume metric for billing throughput and cycle completeness monitoring."
+    - name: "total_amount_due"
+      expr: SUM(CAST(total_amount_due AS DOUBLE))
+      comment: "Total dollar amount billed to customers across all invoices. Primary revenue-billed KPI for financial reporting and cash flow forecasting."
+    - name: "total_water_charge"
       expr: SUM(CAST(water_charge_amount AS DOUBLE))
-      comment: "Total water service charges billed. Used to track water revenue contribution and rate schedule effectiveness."
-    - name: "total_wastewater_charge_amount"
+      comment: "Total water service charges billed. Tracks the core water revenue stream and supports rate adequacy analysis."
+    - name: "total_wastewater_charge"
       expr: SUM(CAST(wastewater_charge_amount AS DOUBLE))
-      comment: "Total wastewater service charges billed. Used to track wastewater revenue contribution separately from water revenue."
-    - name: "total_stormwater_charge_amount"
+      comment: "Total wastewater service charges billed. Tracks the wastewater revenue stream separately for cost-of-service and regulatory reporting."
+    - name: "total_stormwater_charge"
       expr: SUM(CAST(stormwater_charge_amount AS DOUBLE))
-      comment: "Total stormwater charges billed. Tracks stormwater fee revenue for regulatory compliance and infrastructure cost recovery."
+      comment: "Total stormwater charges billed. Supports stormwater program cost recovery analysis."
     - name: "total_tax_amount"
       expr: SUM(CAST(tax_amount AS DOUBLE))
-      comment: "Total tax collected on invoices. Required for tax remittance reporting and regulatory compliance."
+      comment: "Total tax collected on invoices. Required for tax remittance reconciliation and regulatory compliance reporting."
     - name: "total_late_fee_amount"
       expr: SUM(CAST(late_fee_amount AS DOUBLE))
-      comment: "Total late fees assessed on invoices. Elevated late fees indicate collection risk and customer payment behavior trends."
+      comment: "Total late fees assessed. Indicates collection pressure and customer payment behavior trends."
     - name: "total_adjustment_amount"
       expr: SUM(CAST(adjustment_amount AS DOUBLE))
-      comment: "Total adjustment amounts applied to invoices. High adjustment volumes signal billing accuracy issues or rate dispute activity."
-    - name: "total_previous_balance_amount"
-      expr: SUM(CAST(previous_balance_amount AS DOUBLE))
-      comment: "Sum of previous balances carried forward onto new invoices. Indicates chronic non-payment and AR roll-forward risk."
-    - name: "avg_invoice_amount_usd"
-      expr: AVG(CAST(total_amount_usd AS DOUBLE))
-      comment: "Average invoice value in USD. Tracks revenue per billing event and detects anomalies in billing amounts across customer segments."
+      comment: "Total adjustments applied to invoices (credits and debits). High adjustment volumes signal billing accuracy issues or policy exceptions."
+    - name: "avg_invoice_amount"
+      expr: AVG(CAST(total_amount_due AS DOUBLE))
+      comment: "Average invoice amount per bill. Tracks average revenue per billing event and supports rate impact analysis."
     - name: "total_water_consumption_volume"
       expr: SUM(CAST(water_consumption_volume AS DOUBLE))
-      comment: "Total water consumption volume billed. Links revenue to physical consumption for rate adequacy and conservation program impact analysis."
+      comment: "Total water volume billed across all invoices. Core operational metric linking consumption to revenue for rate adequacy and conservation program evaluation."
     - name: "avg_water_consumption_volume"
       expr: AVG(CAST(water_consumption_volume AS DOUBLE))
-      comment: "Average water consumption volume per invoice. Used to benchmark per-customer usage and detect outliers or billing errors."
+      comment: "Average water consumption volume per invoice. Tracks per-customer usage trends and supports demand forecasting."
     - name: "disputed_invoice_count"
       expr: COUNT(CASE WHEN dispute_flag = TRUE THEN 1 END)
-      comment: "Number of invoices currently under dispute. Tracks billing accuracy and customer satisfaction risk."
+      comment: "Number of invoices currently under dispute. Drives dispute resolution staffing decisions and revenue-at-risk quantification."
+    - name: "disputed_amount_at_risk"
+      expr: SUM(CASE WHEN dispute_flag = TRUE THEN CAST(total_amount_due AS DOUBLE) ELSE 0 END)
+      comment: "Total billed amount on disputed invoices. Quantifies revenue at risk from billing disputes for executive risk reporting."
     - name: "estimated_invoice_count"
       expr: COUNT(CASE WHEN is_estimated = TRUE THEN 1 END)
-      comment: "Number of invoices generated from estimated reads. High counts indicate meter access problems or AMI failures requiring operational intervention."
-    - name: "final_invoice_count"
+      comment: "Number of invoices generated from estimated reads. High estimated-read rates indicate meter access or AMI issues requiring operational intervention."
+    - name: "final_bill_count"
       expr: COUNT(CASE WHEN is_final = TRUE THEN 1 END)
-      comment: "Number of final bills issued (account closures). Tracks customer churn and service termination volume."
-    - name: "distinct_customer_accounts_billed"
-      expr: COUNT(DISTINCT customer_account_id)
-      comment: "Number of unique customer accounts billed. Measures billing reach and active customer base size for a given period."
+      comment: "Number of final bills issued (account closures). Tracks customer churn volume and service termination activity."
+    - name: "total_previous_balance"
+      expr: SUM(CAST(previous_balance_amount AS DOUBLE))
+      comment: "Total carried-forward balances on invoices. Indicates the stock of unpaid prior charges entering each billing cycle — key AR health indicator."
+    - name: "total_wastewater_volume"
+      expr: SUM(CAST(wastewater_volume AS DOUBLE))
+      comment: "Total wastewater volume billed. Supports wastewater cost-of-service analysis and regulatory flow reporting."
 $$;
 
 CREATE OR REPLACE VIEW `vibe_water_utilities_v1`.`_metrics`.`billing_payment`
@@ -103,70 +97,64 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Payment collection KPIs for the water utility billing domain. Tracks payment volumes, methods, channels, NSF activity, and auto-pay adoption to steer collections strategy and reduce payment processing costs."
+  comment: "Payment collection KPIs tracking cash receipts, payment channel mix, NSF/reversal rates, and autopay adoption. Drives treasury, collections, and customer experience decisions."
   source: "`vibe_water_utilities_v1`.`billing`.`payment`"
   dimensions:
     - name: "payment_status"
       expr: payment_status
-      comment: "Current status of the payment (e.g., POSTED, REVERSED, PENDING, NSF). Primary grouping for payment success rate and collections analysis."
+      comment: "Current status of the payment (e.g. POSTED, REVERSED, PENDING, NSF) — primary segmentation for cash receipt and exception reporting."
     - name: "payment_type"
       expr: payment_type
-      comment: "Type of payment transaction (e.g., PAYMENT, CREDIT, REFUND). Used to separate inbound cash from credits and refunds."
-    - name: "method"
+      comment: "Classification of the payment (e.g. REGULAR, ADVANCE, PARTIAL) — used to distinguish full payments from partial and advance payments."
+    - name: "payment_method"
       expr: method
-      comment: "Payment method used (e.g., CHECK, ACH, CREDIT_CARD, CASH). Drives payment processing cost analysis and channel optimization."
-    - name: "channel"
+      comment: "Payment instrument used (e.g. CHECK, ACH, CREDIT_CARD, CASH) — drives channel cost analysis and digital payment adoption strategy."
+    - name: "payment_channel"
       expr: channel
-      comment: "Channel through which the payment was received (e.g., ONLINE, IVR, WALK_IN, LOCKBOX). Used to optimize self-service adoption and reduce cost-to-collect."
+      comment: "Channel through which payment was received (e.g. ONLINE, IVR, WALK_IN, LOCKBOX) — supports channel optimization and cost-to-collect analysis."
     - name: "is_auto_pay"
       expr: is_auto_pay
-      comment: "Flag indicating the payment was made via auto-pay enrollment. Auto-pay adoption reduces delinquency and collection costs."
-    - name: "is_recurring"
-      expr: is_recurring
-      comment: "Flag indicating the payment is part of a recurring payment arrangement. Tracks payment plan compliance and recurring revenue predictability."
+      comment: "Flag indicating payment was made via autopay enrollment — tracks autopay adoption rate and its impact on delinquency reduction."
     - name: "nsf_indicator"
       expr: nsf_indicator
-      comment: "Flag indicating the payment was returned for non-sufficient funds. NSF rates signal customer financial stress and collection risk."
-    - name: "payment_date_month"
-      expr: DATE_TRUNC('month', payment_date)
-      comment: "Month the payment was made. Used for cash receipt trend analysis and monthly revenue reconciliation."
-    - name: "posting_date_month"
-      expr: DATE_TRUNC('month', posting_date)
-      comment: "Month the payment was posted to the account. Used for AR reconciliation and revenue recognition timing."
-    - name: "currency_code"
-      expr: currency_code
-      comment: "Currency of the payment. Supports multi-currency cash receipt reporting."
-    - name: "card_type"
-      expr: card_type
-      comment: "Card network used for card payments (e.g., VISA, MASTERCARD). Used to analyze card processing fee exposure."
+      comment: "Flag indicating the payment returned as non-sufficient funds — drives NSF fee recovery and customer risk scoring."
+    - name: "payment_month"
+      expr: DATE_TRUNC('MONTH', payment_date)
+      comment: "Calendar month of payment receipt — primary time grain for monthly cash collection trend analysis."
+    - name: "posting_month"
+      expr: DATE_TRUNC('MONTH', posting_date)
+      comment: "Month payment was posted to the account — used for revenue recognition and period-close reconciliation."
   measures:
-    - name: "total_payments_received"
+    - name: "total_payments"
       expr: COUNT(1)
-      comment: "Total number of payment transactions received. Baseline volume metric for payment processing capacity and collections throughput."
-    - name: "total_payment_amount_usd"
-      expr: SUM(CAST(amount_usd AS DOUBLE))
-      comment: "Total USD value of payments received. Primary cash collections KPI used by Finance for daily cash position and revenue reconciliation."
+      comment: "Total number of payment transactions received. Baseline volume metric for payment processing throughput."
+    - name: "total_payment_amount"
+      expr: SUM(CAST(amount AS DOUBLE))
+      comment: "Total cash collected from customers. Primary cash receipts KPI for treasury management and AR reduction tracking."
     - name: "total_applied_amount"
       expr: SUM(CAST(applied_amount AS DOUBLE))
-      comment: "Total amount of payments applied to invoices. Measures effective AR reduction from payment activity."
+      comment: "Total payment amount successfully applied to invoices or charges. Measures effective cash application and AR clearance."
     - name: "total_unapplied_amount"
       expr: SUM(CAST(unapplied_amount AS DOUBLE))
-      comment: "Total unapplied payment balance. Elevated unapplied amounts indicate cash application backlogs and AR reconciliation risk."
-    - name: "total_nsf_fee_amount"
-      expr: SUM(CAST(nsf_fee_amount AS DOUBLE))
-      comment: "Total NSF fees assessed on returned payments. Tracks financial stress signals and fee revenue from returned payments."
-    - name: "avg_payment_amount_usd"
-      expr: AVG(CAST(amount_usd AS DOUBLE))
-      comment: "Average payment amount in USD. Detects shifts in payment behavior (e.g., partial payments increasing) that signal collection risk."
+      comment: "Total payment amount not yet applied to a specific charge. High unapplied balances indicate cash application backlog and reconciliation risk."
+    - name: "avg_payment_amount"
+      expr: AVG(CAST(amount AS DOUBLE))
+      comment: "Average payment amount per transaction. Tracks typical customer payment behavior and supports payment plan sizing decisions."
     - name: "nsf_payment_count"
       expr: COUNT(CASE WHEN nsf_indicator = TRUE THEN 1 END)
-      comment: "Number of payments returned for non-sufficient funds. Tracks customer financial distress and collection risk exposure."
-    - name: "auto_pay_payment_count"
+      comment: "Number of payments returned as non-sufficient funds. Tracks customer financial distress signals and NSF fee recovery opportunities."
+    - name: "nsf_fee_revenue"
+      expr: SUM(CAST(nsf_fee_amount AS DOUBLE))
+      comment: "Total NSF fees assessed on returned payments. Tracks fee recovery from dishonored payments and informs NSF policy decisions."
+    - name: "autopay_payment_count"
       expr: COUNT(CASE WHEN is_auto_pay = TRUE THEN 1 END)
-      comment: "Number of payments made via auto-pay. Tracks auto-pay adoption which reduces delinquency and lowers cost-to-collect."
-    - name: "distinct_paying_customers"
-      expr: COUNT(DISTINCT customer_account_id)
-      comment: "Number of unique customer accounts making payments in the period. Measures payment participation rate and active payer base."
+      comment: "Number of payments made via autopay. Tracks autopay adoption volume — autopay customers have significantly lower delinquency rates."
+    - name: "autopay_payment_amount"
+      expr: SUM(CASE WHEN is_auto_pay = TRUE THEN CAST(amount AS DOUBLE) ELSE 0 END)
+      comment: "Total cash collected via autopay. Quantifies the revenue secured through automated payment enrollment."
+    - name: "distinct_paying_accounts"
+      expr: COUNT(DISTINCT payment_plan_id)
+      comment: "Count of distinct payment plans with payments received. Proxy for active paying customer count within the payment dataset."
 $$;
 
 CREATE OR REPLACE VIEW `vibe_water_utilities_v1`.`_metrics`.`billing_account`
@@ -174,91 +162,88 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Billing account portfolio health KPIs for the water utility. Tracks AR aging, delinquency, credit risk, auto-pay adoption, and account lifecycle status to steer collections strategy and customer financial risk management."
+  comment: "Customer billing account health KPIs tracking AR aging, delinquency, collection status, and account lifecycle. Primary view for credit and collections management and customer financial health monitoring."
   source: "`vibe_water_utilities_v1`.`billing`.`billing_account`"
   dimensions:
     - name: "account_status"
       expr: account_status
-      comment: "Current status of the billing account (e.g., ACTIVE, CLOSED, SUSPENDED, FINAL). Primary segmentation for portfolio health analysis."
+      comment: "Current lifecycle status of the billing account (e.g. ACTIVE, CLOSED, SUSPENDED) — primary segmentation for portfolio health analysis."
     - name: "account_type"
       expr: account_type
-      comment: "Type of billing account (e.g., RESIDENTIAL, COMMERCIAL, INDUSTRIAL). Drives rate class segmentation and revenue mix analysis."
+      comment: "Classification of the account (e.g. RESIDENTIAL, COMMERCIAL, INDUSTRIAL) — drives rate class analysis and customer segment reporting."
     - name: "collection_status"
       expr: collection_status
-      comment: "Current collections status of the account (e.g., CURRENT, DELINQUENT, WRITE_OFF, PAYMENT_PLAN). Core metric for AR risk stratification."
+      comment: "Current collections stage of the account (e.g. CURRENT, DELINQUENT, COLLECTIONS, WRITE_OFF) — primary driver for collections prioritization."
     - name: "billing_frequency"
       expr: billing_frequency
-      comment: "How often the account is billed (e.g., MONTHLY, BIMONTHLY, QUARTERLY). Used to normalize revenue and AR metrics across billing cycles."
+      comment: "How often the account is billed (e.g. MONTHLY, BIMONTHLY, QUARTERLY) — used to normalize revenue and consumption metrics across billing cycles."
     - name: "autopay_enrolled"
       expr: autopay_enrolled
-      comment: "Whether the account is enrolled in auto-pay. Auto-pay enrollment reduces delinquency and collection costs."
+      comment: "Flag indicating the account is enrolled in autopay — key predictor of on-time payment and delinquency risk."
     - name: "budget_billing_enrolled"
       expr: budget_billing_enrolled
-      comment: "Whether the account is enrolled in budget billing (levelized payment program). Tracks program adoption and revenue smoothing."
-    - name: "paperless_billing"
-      expr: paperless_billing
-      comment: "Whether the account receives paperless bills. Tracks digital adoption and paper/postage cost reduction progress."
+      comment: "Flag indicating the account is on a budget billing plan — tracks program adoption and its impact on payment predictability."
     - name: "payment_plan_active"
       expr: payment_plan_active
-      comment: "Whether the account has an active payment plan. Accounts on payment plans represent structured delinquency resolution."
+      comment: "Flag indicating an active payment arrangement is in place — used to segment delinquent accounts by recovery strategy."
+    - name: "paperless_billing"
+      expr: paperless_billing
+      comment: "Flag indicating the account receives paperless bills — tracks digital adoption and supports cost-reduction initiatives."
     - name: "credit_rating"
       expr: credit_rating
-      comment: "Credit risk rating of the account. Used to segment AR risk and set deposit/credit limit policies."
-    - name: "tax_exempt"
-      expr: tax_exempt
-      comment: "Whether the account is tax-exempt. Used for tax compliance reporting and revenue net-of-tax calculations."
-    - name: "open_date_month"
-      expr: DATE_TRUNC('month', open_date)
-      comment: "Month the account was opened. Used for cohort analysis of new account acquisition and revenue ramp."
-    - name: "payment_terms"
-      expr: payment_terms
-      comment: "Payment terms assigned to the account (e.g., NET_15, NET_30). Used to segment AR aging expectations."
+      comment: "Credit risk classification of the account — used for deposit policy decisions and collection risk stratification."
+    - name: "account_opened_month"
+      expr: DATE_TRUNC('MONTH', opened_date)
+      comment: "Month the account was opened — used for cohort analysis and customer acquisition trend reporting."
   measures:
-    - name: "total_billing_accounts"
+    - name: "total_accounts"
       expr: COUNT(1)
-      comment: "Total number of billing accounts in the portfolio. Baseline metric for customer base size and billing operations scale."
+      comment: "Total number of billing accounts. Baseline portfolio size metric for capacity planning and market penetration analysis."
     - name: "total_current_balance"
       expr: SUM(CAST(current_balance AS DOUBLE))
-      comment: "Total outstanding current balance across all billing accounts. Primary AR portfolio balance KPI for Finance and Collections leadership."
+      comment: "Total outstanding balance across all accounts. Primary AR balance KPI for financial close and cash flow forecasting."
     - name: "total_past_due_amount"
       expr: SUM(CAST(past_due_amount AS DOUBLE))
       comment: "Total past-due balance across all accounts. Core delinquency KPI driving collections prioritization and write-off risk assessment."
     - name: "total_aging_current"
       expr: SUM(CAST(aging_current AS DOUBLE))
-      comment: "Total AR balance in the current (0-30 day) aging bucket. Used for AR aging waterfall analysis and cash flow forecasting."
+      comment: "Total current (0-30 day) AR balance. Component of AR aging waterfall for financial reporting."
     - name: "total_aging_30_days"
       expr: SUM(CAST(aging_30_days AS DOUBLE))
-      comment: "Total AR balance in the 31-60 day aging bucket. Elevated 30-day aging signals early delinquency trends requiring proactive outreach."
+      comment: "Total 30-day past-due AR balance. Early delinquency indicator used to trigger first-notice collections activity."
     - name: "total_aging_60_days"
       expr: SUM(CAST(aging_60_days AS DOUBLE))
-      comment: "Total AR balance in the 61-90 day aging bucket. Accounts in this bucket are at elevated disconnection and write-off risk."
+      comment: "Total 60-day past-due AR balance. Mid-stage delinquency indicator used to escalate collections and assess disconnection candidates."
     - name: "total_aging_90_days"
       expr: SUM(CAST(aging_90_days AS DOUBLE))
-      comment: "Total AR balance in the 91-120 day aging bucket. High balances here indicate chronic delinquency requiring escalated collections action."
+      comment: "Total 90-day past-due AR balance. Late-stage delinquency indicator driving disconnection orders and payment plan negotiations."
     - name: "total_aging_over_90_days"
       expr: SUM(CAST(aging_over_90_days AS DOUBLE))
-      comment: "Total AR balance over 90 days past due. Primary write-off risk indicator and input to bad debt reserve calculations."
-    - name: "total_credit_balance_amount"
-      expr: SUM(CAST(credit_balance_amount AS DOUBLE))
-      comment: "Total credit balances held on accounts (overpayments). Represents refund liability and cash management exposure."
-    - name: "total_payment_plan_balance"
-      expr: SUM(CAST(payment_plan_balance AS DOUBLE))
-      comment: "Total balance enrolled in active payment plans. Measures structured delinquency resolution program scale and recovery pipeline."
+      comment: "Total AR balance over 90 days past due. Highest-risk delinquency bucket — primary input to bad debt reserve and write-off decisions."
     - name: "total_deposit_on_file"
       expr: SUM(CAST(deposit_on_file AS DOUBLE))
-      comment: "Total security deposits held on file. Tracks deposit liability and credit risk mitigation coverage."
-    - name: "avg_current_balance_per_account"
-      expr: AVG(CAST(current_balance AS DOUBLE))
-      comment: "Average outstanding balance per billing account. Benchmarks per-account AR exposure and detects shifts in payment behavior."
-    - name: "autopay_enrolled_account_count"
-      expr: COUNT(CASE WHEN autopay_enrolled = TRUE THEN 1 END)
-      comment: "Number of accounts enrolled in auto-pay. Tracks auto-pay adoption progress which directly reduces delinquency rates."
-    - name: "payment_plan_active_account_count"
+      comment: "Total customer deposits held. Tracks deposit liability and informs deposit policy adequacy relative to delinquency exposure."
+    - name: "total_late_fee_assessed"
+      expr: SUM(CAST(late_fee_assessed AS DOUBLE))
+      comment: "Total late fees assessed across accounts. Tracks fee revenue and signals the scale of payment delinquency in the portfolio."
+    - name: "total_current_charges"
+      expr: SUM(CAST(current_charges AS DOUBLE))
+      comment: "Total current period charges billed to accounts. Tracks revenue billed in the current cycle for period-close reconciliation."
+    - name: "delinquent_account_count"
+      expr: COUNT(CASE WHEN past_due_amount > 0 THEN 1 END)
+      comment: "Number of accounts with any past-due balance. Tracks the breadth of delinquency across the customer portfolio."
+    - name: "payment_plan_account_count"
       expr: COUNT(CASE WHEN payment_plan_active = TRUE THEN 1 END)
-      comment: "Number of accounts with an active payment plan. Measures the scale of structured delinquency resolution in the portfolio."
-    - name: "paperless_billing_account_count"
-      expr: COUNT(CASE WHEN paperless_billing = TRUE THEN 1 END)
-      comment: "Number of accounts enrolled in paperless billing. Tracks digital adoption and paper/postage cost reduction progress."
+      comment: "Number of accounts on active payment arrangements. Tracks the scale of payment plan utilization and associated recovery risk."
+    - name: "autopay_enrolled_count"
+      expr: COUNT(CASE WHEN autopay_enrolled = TRUE THEN 1 END)
+      comment: "Number of accounts enrolled in autopay. Tracks autopay adoption — a leading indicator of reduced delinquency and lower collection costs."
+    - name: "avg_current_balance"
+      expr: AVG(CAST(current_balance AS DOUBLE))
+      comment: "Average outstanding balance per account. Tracks typical customer balance level and supports credit limit policy calibration."
+    - name: "total_payment_plan_balance"
+      expr: SUM(CAST(payment_plan_balance AS DOUBLE))
+      comment: "Total balance enrolled in active payment plans. Quantifies the deferred revenue under payment arrangements and associated collection risk."
 $$;
 
 CREATE OR REPLACE VIEW `vibe_water_utilities_v1`.`_metrics`.`billing_adjustment`
@@ -266,153 +251,70 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Billing adjustment KPIs tracking the volume, value, and nature of billing corrections for the water utility. High adjustment rates signal billing accuracy issues, rate disputes, or leak allowance program activity — all material to revenue integrity and regulatory compliance."
+  comment: "Billing adjustment KPIs tracking credit/debit volumes, adjustment reasons, regulatory compliance, and financial impact. Drives billing accuracy governance and revenue leakage detection."
   source: "`vibe_water_utilities_v1`.`billing`.`adjustment`"
   dimensions:
     - name: "adjustment_type"
       expr: adjustment_type
-      comment: "Type of billing adjustment (e.g., LEAK_ALLOWANCE, RATE_ERROR, METER_ERROR, GOODWILL). Drives root cause analysis of billing accuracy issues."
+      comment: "Type of adjustment applied (e.g. CREDIT, DEBIT, LEAK_ALLOWANCE, METER_ERROR) — primary segmentation for root cause analysis of billing corrections."
     - name: "adjustment_status"
       expr: adjustment_status
-      comment: "Current status of the adjustment (e.g., PENDING, APPROVED, APPLIED, REVERSED). Used to track adjustment pipeline and approval bottlenecks."
+      comment: "Current lifecycle status of the adjustment (e.g. PENDING, APPROVED, APPLIED, REVERSED) — tracks adjustment workflow throughput."
     - name: "reason_code"
       expr: reason_code
-      comment: "Standardized reason code for the adjustment. Used for systematic billing error categorization and process improvement targeting."
+      comment: "Standardized reason code for the adjustment — enables systematic analysis of adjustment drivers and billing error patterns."
     - name: "charge_category"
       expr: charge_category
-      comment: "Category of charge being adjusted (e.g., WATER, WASTEWATER, STORMWATER, TAX). Used to identify which service lines have the highest adjustment activity."
+      comment: "Category of charge being adjusted (e.g. WATER, WASTEWATER, STORMWATER, FEES) — supports revenue impact analysis by service line."
     - name: "service_type"
       expr: service_type
-      comment: "Service type associated with the adjustment (e.g., WATER, SEWER). Enables service-line revenue integrity analysis."
+      comment: "Service type associated with the adjustment — used to attribute adjustment impact to specific utility service lines."
     - name: "approval_required_flag"
       expr: approval_required_flag
-      comment: "Whether the adjustment required supervisory approval. Tracks high-value adjustment governance and approval workflow compliance."
-    - name: "approval_status"
-      expr: approval_status
-      comment: "Approval status of the adjustment (e.g., PENDING, APPROVED, REJECTED). Identifies approval bottlenecks impacting customer resolution timelines."
-    - name: "is_reversal"
-      expr: is_reversal
-      comment: "Flag indicating this adjustment is a reversal of a prior adjustment. Reversal rates indicate adjustment quality and rework."
+      comment: "Flag indicating the adjustment required supervisory approval — tracks governance compliance and approval workflow volumes."
+    - name: "reversal_flag"
+      expr: reversal_flag
+      comment: "Flag indicating this adjustment is a reversal of a prior adjustment — tracks correction-on-correction activity as a billing quality signal."
     - name: "leak_allowance_flag"
       expr: leak_allowance_flag
-      comment: "Flag indicating the adjustment is a leak allowance credit. Tracks leak allowance program utilization and associated revenue impact."
+      comment: "Flag indicating the adjustment is a leak allowance credit — tracks the financial impact of the utility leak forgiveness program."
     - name: "regulatory_compliance_flag"
       expr: regulatory_compliance_flag
-      comment: "Flag indicating the adjustment is required for regulatory compliance. Used for regulatory reporting and audit trail completeness."
-    - name: "adjustment_date_month"
-      expr: DATE_TRUNC('month', adjustment_date)
-      comment: "Month the adjustment was issued. Used for trend analysis of billing correction activity over time."
-    - name: "billing_period_start_date_month"
-      expr: DATE_TRUNC('month', billing_period_start_date)
-      comment: "Billing period the adjustment relates to. Used to match adjustments back to the original billing period for revenue restatement analysis."
+      comment: "Flag indicating the adjustment was made for regulatory compliance reasons — required for regulatory reporting and audit trails."
+    - name: "adjustment_month"
+      expr: DATE_TRUNC('MONTH', effective_date)
+      comment: "Month the adjustment became effective — primary time grain for monthly adjustment trend and revenue impact analysis."
   measures:
-    - name: "total_adjustments_issued"
+    - name: "total_adjustments"
       expr: COUNT(1)
-      comment: "Total number of billing adjustments issued. Baseline volume metric for billing accuracy and correction workload."
-    - name: "total_adjustment_amount_usd"
-      expr: SUM(CAST(amount_usd AS DOUBLE))
-      comment: "Total USD value of billing adjustments. Primary revenue integrity KPI — large adjustment totals signal systemic billing errors or rate disputes."
+      comment: "Total number of billing adjustments issued. Baseline volume metric for billing correction activity and quality governance."
+    - name: "total_adjustment_amount"
+      expr: SUM(CAST(amount AS DOUBLE))
+      comment: "Net total dollar value of all adjustments. Primary revenue impact KPI — large negative values indicate systematic billing errors or policy-driven credits."
+    - name: "avg_adjustment_amount"
+      expr: AVG(CAST(amount AS DOUBLE))
+      comment: "Average dollar value per adjustment. Tracks typical adjustment magnitude and helps identify outlier or high-value correction events."
     - name: "total_consumption_volume_adjusted"
       expr: SUM(CAST(consumption_volume_adjusted AS DOUBLE))
-      comment: "Total consumption volume adjusted across all billing adjustments. Measures the physical billing correction volume, key for leak allowance and meter error programs."
-    - name: "avg_adjustment_amount_usd"
-      expr: AVG(CAST(amount_usd AS DOUBLE))
-      comment: "Average adjustment amount per transaction. Tracks the typical size of billing corrections — rising averages may indicate systemic rate or meter issues."
-    - name: "leak_allowance_adjustment_count"
+      comment: "Total consumption volume corrected through adjustments. Quantifies the scale of metering or estimation errors driving billing corrections."
+    - name: "reversal_count"
+      expr: COUNT(CASE WHEN reversal_flag = TRUE THEN 1 END)
+      comment: "Number of adjustments that are reversals of prior adjustments. High reversal counts indicate systemic billing process quality issues."
+    - name: "leak_allowance_count"
       expr: COUNT(CASE WHEN leak_allowance_flag = TRUE THEN 1 END)
-      comment: "Number of adjustments issued as leak allowance credits. Tracks leak allowance program utilization and customer service responsiveness."
-    - name: "reversal_adjustment_count"
-      expr: COUNT(CASE WHEN is_reversal = TRUE THEN 1 END)
-      comment: "Number of adjustments that are reversals of prior adjustments. High reversal counts indicate adjustment quality issues and rework costs."
-    - name: "pending_approval_adjustment_count"
-      expr: COUNT(CASE WHEN approval_required_flag = TRUE AND approval_status = 'PENDING' THEN 1 END)
-      comment: "Number of adjustments awaiting supervisory approval. Tracks approval workflow bottlenecks that delay customer credit resolution."
-    - name: "distinct_customers_with_adjustments"
-      expr: COUNT(DISTINCT customer_account_id)
-      comment: "Number of unique customer accounts receiving billing adjustments. Measures the breadth of billing accuracy issues across the customer base."
-$$;
-
-CREATE OR REPLACE VIEW `vibe_water_utilities_v1`.`_metrics`.`billing_collection_notice`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Collection notice KPIs for the water utility tracking delinquency escalation, disconnection risk, customer protection holds, and collections resolution effectiveness. Critical for regulatory compliance (shutoff moratoriums, low-income protections) and revenue recovery management."
-  source: "`vibe_water_utilities_v1`.`billing`.`collection_notice`"
-  dimensions:
-    - name: "collection_notice_type"
-      expr: collection_notice_type
-      comment: "Type of collection notice issued (e.g., PAST_DUE, DISCONNECTION_WARNING, FINAL_NOTICE). Drives escalation stage analysis."
-    - name: "collection_notice_status"
-      expr: collection_notice_status
-      comment: "Current status of the collection notice (e.g., ISSUED, RESOLVED, CANCELLED, ESCALATED). Used to track collections pipeline and resolution rates."
-    - name: "escalation_level"
-      expr: escalation_level
-      comment: "Escalation stage of the collection notice. Tracks how far delinquent accounts have progressed through the collections workflow."
-    - name: "delivery_method"
-      expr: delivery_method
-      comment: "Method used to deliver the collection notice (e.g., MAIL, EMAIL, PHONE). Used to optimize notice delivery effectiveness and cost."
-    - name: "delivery_status"
-      expr: delivery_status
-      comment: "Whether the notice was successfully delivered. Undelivered notices create regulatory and legal risk for disconnection actions."
-    - name: "disconnection_scheduled_flag"
-      expr: disconnection_scheduled_flag
-      comment: "Flag indicating a disconnection has been scheduled. Tracks disconnection pipeline volume for field operations planning."
-    - name: "is_low_income_protected"
-      expr: is_low_income_protected
-      comment: "Flag indicating the account has low-income protection from disconnection. Required for regulatory compliance reporting on customer protection programs."
-    - name: "is_medical_hold"
-      expr: is_medical_hold
-      comment: "Flag indicating the account has a medical hold preventing disconnection. Tracks medical hold program compliance and volume."
-    - name: "is_winter_moratorium"
-      expr: is_winter_moratorium
-      comment: "Flag indicating the account is protected by a winter shutoff moratorium. Tracks seasonal regulatory compliance exposure."
-    - name: "is_shutoff_protected"
-      expr: is_shutoff_protected
-      comment: "Flag indicating the account has any active shutoff protection. Aggregates all protection types for total protected account reporting."
-    - name: "resolution_status"
-      expr: resolution_status
-      comment: "How the collection notice was resolved (e.g., PAID, PAYMENT_PLAN, WRITTEN_OFF, DISCONNECTED). Measures collections effectiveness by resolution pathway."
-    - name: "notice_date_month"
-      expr: DATE_TRUNC('month', notice_date)
-      comment: "Month the collection notice was issued. Used for delinquency trend analysis and seasonal collections pattern identification."
-    - name: "currency_code"
-      expr: currency_code
-      comment: "Currency of the amounts on the collection notice. Supports multi-currency collections reporting."
-  measures:
-    - name: "total_collection_notices_issued"
-      expr: COUNT(1)
-      comment: "Total number of collection notices issued. Baseline delinquency volume metric for collections operations capacity planning."
-    - name: "total_amount_due_usd"
-      expr: SUM(CAST(amount_due_usd AS DOUBLE))
-      comment: "Total USD amount due on collection notices. Measures the total delinquent AR under active collections action."
-    - name: "total_past_due_amount"
-      expr: SUM(CAST(past_due_amount AS DOUBLE))
-      comment: "Total past-due balance on collection notices. Primary delinquency exposure KPI for collections leadership and CFO reporting."
-    - name: "total_late_fee_amount"
-      expr: SUM(CAST(late_fee_amount AS DOUBLE))
-      comment: "Total late fees assessed on collection notices. Tracks late fee revenue and customer financial stress indicators."
-    - name: "avg_amount_due_usd"
-      expr: AVG(CAST(amount_due_usd AS DOUBLE))
-      comment: "Average amount due per collection notice. Tracks typical delinquency size — rising averages indicate worsening customer financial health."
-    - name: "disconnection_scheduled_count"
-      expr: COUNT(CASE WHEN disconnection_scheduled_flag = TRUE THEN 1 END)
-      comment: "Number of accounts with a disconnection scheduled. Tracks disconnection pipeline for field operations planning and regulatory exposure."
-    - name: "low_income_protected_count"
-      expr: COUNT(CASE WHEN is_low_income_protected = TRUE THEN 1 END)
-      comment: "Number of accounts with low-income disconnection protection active. Required for regulatory compliance reporting on customer protection programs."
-    - name: "medical_hold_count"
-      expr: COUNT(CASE WHEN is_medical_hold = TRUE THEN 1 END)
-      comment: "Number of accounts with a medical hold preventing disconnection. Tracks medical hold program volume for compliance and field operations."
-    - name: "winter_moratorium_count"
-      expr: COUNT(CASE WHEN is_winter_moratorium = TRUE THEN 1 END)
-      comment: "Number of accounts protected by winter shutoff moratorium. Tracks seasonal regulatory compliance exposure and deferred disconnection volume."
-    - name: "resolved_notice_count"
-      expr: COUNT(CASE WHEN resolved_flag = TRUE THEN 1 END)
-      comment: "Number of collection notices resolved. Measures collections resolution throughput and program effectiveness."
-    - name: "distinct_delinquent_accounts"
-      expr: COUNT(DISTINCT billing_account_id)
-      comment: "Number of unique billing accounts with active collection notices. Measures the breadth of delinquency across the customer portfolio."
+      comment: "Number of leak allowance credits issued. Tracks program utilization and customer service responsiveness to leak events."
+    - name: "leak_allowance_amount"
+      expr: SUM(CASE WHEN leak_allowance_flag = TRUE THEN CAST(amount AS DOUBLE) ELSE 0 END)
+      comment: "Total dollar value of leak allowance credits. Quantifies the financial cost of the leak forgiveness program for rate-setting and policy review."
+    - name: "regulatory_adjustment_count"
+      expr: COUNT(CASE WHEN regulatory_compliance_flag = TRUE THEN 1 END)
+      comment: "Number of adjustments made for regulatory compliance. Required for regulatory audit reporting and compliance program monitoring."
+    - name: "pending_approval_count"
+      expr: COUNT(CASE WHEN approval_required_flag = TRUE AND adjustment_status = 'PENDING' THEN 1 END)
+      comment: "Number of adjustments awaiting supervisory approval. Tracks approval workflow backlog and associated revenue recognition delay risk."
+    - name: "total_approval_threshold_amount"
+      expr: SUM(CAST(approval_threshold_amount AS DOUBLE))
+      comment: "Sum of approval threshold amounts across adjustments requiring approval. Indicates the total value of adjustments subject to governance controls."
 $$;
 
 CREATE OR REPLACE VIEW `vibe_water_utilities_v1`.`_metrics`.`billing_payment_plan`
@@ -420,58 +322,55 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Payment plan program KPIs for the water utility tracking enrollment, compliance, completion, and financial recovery from structured delinquency resolution programs. Used by Collections and Customer Service leadership to evaluate program effectiveness and LIHEAP/assistance program reach."
+  comment: "Payment arrangement KPIs tracking plan enrollment, compliance, balance recovery, and program effectiveness. Drives collections strategy and customer financial assistance program management."
   source: "`vibe_water_utilities_v1`.`billing`.`payment_plan`"
   dimensions:
     - name: "plan_status"
       expr: plan_status
-      comment: "Current status of the payment plan (e.g., ACTIVE, BROKEN, COMPLETED, CANCELLED). Primary segmentation for plan performance analysis."
+      comment: "Current status of the payment plan (e.g. ACTIVE, COMPLETED, BROKEN, CANCELLED) — primary segmentation for plan performance and recovery rate analysis."
     - name: "plan_type"
       expr: plan_type
-      comment: "Type of payment plan (e.g., STANDARD, LIHEAP, HARDSHIP, BUDGET). Used to evaluate program-specific enrollment and completion rates."
+      comment: "Type of payment arrangement (e.g. STANDARD, LIHEAP, HARDSHIP, BUDGET) — used to evaluate effectiveness of different assistance program types."
     - name: "installment_frequency"
       expr: installment_frequency
-      comment: "Frequency of installment payments (e.g., MONTHLY, BIWEEKLY, WEEKLY). Used to analyze plan structure and customer payment capacity."
+      comment: "Frequency of installment payments (e.g. MONTHLY, BIWEEKLY, WEEKLY) — used to analyze plan structure and customer payment capacity."
     - name: "liheap_eligible"
       expr: liheap_eligible
-      comment: "Flag indicating the customer is LIHEAP-eligible. Tracks low-income assistance program reach and regulatory compliance."
-    - name: "plan_start_date_month"
-      expr: DATE_TRUNC('month', plan_start_date)
-      comment: "Month the payment plan was initiated. Used for cohort analysis of plan enrollment and subsequent completion/breakage rates."
-    - name: "broken_reason"
-      expr: broken_reason
-      comment: "Reason the payment plan was broken (e.g., MISSED_PAYMENT, NSF, CANCELLED). Used to identify root causes of plan failure and improve program design."
+      comment: "Flag indicating the customer qualifies for LIHEAP (Low Income Home Energy Assistance Program equivalent) — tracks low-income assistance program reach."
+    - name: "plan_start_month"
+      expr: DATE_TRUNC('MONTH', plan_start_date)
+      comment: "Month the payment plan was initiated — used for cohort analysis of plan enrollment and subsequent performance."
   measures:
-    - name: "total_payment_plans"
+    - name: "total_plans"
       expr: COUNT(1)
-      comment: "Total number of payment plans created. Baseline metric for structured delinquency resolution program scale."
-    - name: "total_enrolled_balance_amount"
+      comment: "Total number of payment plans created. Baseline metric for collections program scale and customer financial distress volume."
+    - name: "total_enrolled_balance"
       expr: SUM(CAST(enrolled_balance_amount AS DOUBLE))
-      comment: "Total delinquent balance enrolled in payment plans. Measures the total AR under structured recovery and the scale of the collections program."
-    - name: "total_current_balance_amount"
+      comment: "Total delinquent balance enrolled in payment plans at inception. Quantifies the total AR placed under structured recovery arrangements."
+    - name: "total_current_plan_balance"
       expr: SUM(CAST(current_balance_amount AS DOUBLE))
-      comment: "Total remaining balance on active payment plans. Tracks outstanding recovery pipeline and expected future cash collections from plans."
+      comment: "Total remaining balance outstanding on active payment plans. Tracks the stock of deferred AR under payment arrangements at any point in time."
     - name: "total_down_payment_amount"
       expr: SUM(CAST(down_payment_amount AS DOUBLE))
-      comment: "Total down payments collected at payment plan enrollment. Measures upfront cash recovery from delinquent accounts entering structured plans."
-    - name: "total_installment_amount_usd"
-      expr: SUM(CAST(installment_amount_usd AS DOUBLE))
-      comment: "Total scheduled installment amounts across all active plans. Used for cash flow forecasting of expected payment plan receipts."
-    - name: "avg_enrolled_balance_amount"
-      expr: AVG(CAST(enrolled_balance_amount AS DOUBLE))
-      comment: "Average delinquent balance enrolled per payment plan. Tracks typical plan size and customer financial distress levels."
+      comment: "Total down payments collected at plan enrollment. Tracks upfront cash recovery from delinquent accounts entering payment arrangements."
+    - name: "avg_installment_amount"
+      expr: AVG(CAST(installment_amount AS DOUBLE))
+      comment: "Average monthly installment amount across plans. Informs plan affordability assessment and default risk modeling."
     - name: "broken_plan_count"
       expr: COUNT(CASE WHEN plan_status = 'BROKEN' THEN 1 END)
-      comment: "Number of payment plans that have been broken (missed installment). High breakage rates indicate plan terms are not aligned with customer payment capacity."
+      comment: "Number of payment plans that have been broken (missed installment). Primary plan failure KPI driving re-enrollment or escalation to disconnection."
     - name: "completed_plan_count"
       expr: COUNT(CASE WHEN plan_status = 'COMPLETED' THEN 1 END)
-      comment: "Number of payment plans successfully completed. Primary program effectiveness KPI — completion rate drives collections recovery ROI."
-    - name: "liheap_eligible_plan_count"
+      comment: "Number of payment plans successfully completed. Tracks recovery program success rate and informs plan design improvements."
+    - name: "active_plan_count"
+      expr: COUNT(CASE WHEN plan_status = 'ACTIVE' THEN 1 END)
+      comment: "Number of currently active payment plans. Tracks the live collections workload under structured payment arrangements."
+    - name: "liheap_plan_count"
       expr: COUNT(CASE WHEN liheap_eligible = TRUE THEN 1 END)
       comment: "Number of payment plans for LIHEAP-eligible customers. Tracks low-income assistance program reach and regulatory compliance with affordability mandates."
-    - name: "distinct_accounts_on_plans"
-      expr: COUNT(DISTINCT billing_account_id)
-      comment: "Number of unique billing accounts enrolled in payment plans. Measures the breadth of structured delinquency resolution across the customer portfolio."
+    - name: "total_balance_recovered"
+      expr: SUM(CAST(enrolled_balance_amount AS DOUBLE) - CAST(current_balance_amount AS DOUBLE))
+      comment: "Total balance recovered through payment plan payments (enrolled minus remaining). Measures the effectiveness of the payment arrangement program in reducing delinquent AR."
 $$;
 
 CREATE OR REPLACE VIEW `vibe_water_utilities_v1`.`_metrics`.`billing_invoice_line`
@@ -479,65 +378,124 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Invoice line-level revenue composition KPIs for the water utility. Enables granular analysis of charge type mix, taxability, proration activity, and revenue class contribution — essential for rate adequacy analysis and regulatory revenue reporting."
+  comment: "Invoice line-item KPIs providing granular revenue analysis by charge type, service type, rate component, and tax treatment. Enables detailed revenue decomposition and rate structure performance analysis."
   source: "`vibe_water_utilities_v1`.`billing`.`invoice_line`"
   dimensions:
-    - name: "charge_type"
-      expr: charge_type
-      comment: "Type of charge on the invoice line (e.g., BASE_CHARGE, VOLUMETRIC, SURCHARGE, TAX). Primary dimension for revenue composition analysis."
+    - name: "charge_type_code"
+      expr: charge_type_code
+      comment: "Standardized code for the type of charge on the line (e.g. BASE, VOLUMETRIC, SURCHARGE, TAX) — primary dimension for revenue decomposition by charge category."
     - name: "service_type"
       expr: service_type
-      comment: "Service type associated with the charge (e.g., WATER, SEWER, STORMWATER). Used to decompose revenue by service line."
+      comment: "Service type associated with the line item (e.g. WATER, WASTEWATER, STORMWATER) — enables revenue attribution by utility service line."
     - name: "revenue_class"
       expr: revenue_class
-      comment: "Revenue classification for GL and regulatory reporting (e.g., RESIDENTIAL, COMMERCIAL, INDUSTRIAL). Drives rate class revenue mix analysis."
-    - name: "is_taxable"
-      expr: is_taxable
-      comment: "Whether the line item is subject to tax. Used for tax compliance reporting and taxable revenue base analysis."
-    - name: "is_prorated"
-      expr: is_prorated
-      comment: "Whether the charge was prorated (partial period). Tracks proration activity volume and its impact on revenue recognition accuracy."
-    - name: "is_disputed"
-      expr: is_disputed
-      comment: "Whether the line item is under dispute. Disputed line items represent revenue at risk and billing accuracy issues."
+      comment: "Revenue classification for GL and regulatory reporting — maps line items to revenue accounts for financial close and rate case support."
     - name: "line_status"
       expr: line_status
-      comment: "Current status of the invoice line (e.g., ACTIVE, REVERSED, ADJUSTED). Used to filter to revenue-recognized lines."
-    - name: "billing_period_start_date_month"
-      expr: DATE_TRUNC('month', billing_period_start_date)
-      comment: "Billing period start month for the line item. Used to align revenue to service delivery periods for accrual and trend analysis."
-    - name: "unit_of_measure"
-      expr: unit_of_measure
-      comment: "Unit of measure for the billed quantity (e.g., CCF, GAL, FLAT). Used to normalize volumetric revenue analysis."
+      comment: "Current status of the invoice line (e.g. ACTIVE, REVERSED, DISPUTED) — used to filter valid revenue from corrections and disputes."
+    - name: "is_taxable"
+      expr: is_taxable
+      comment: "Flag indicating the line item is subject to tax — used for tax compliance reporting and taxable revenue analysis."
+    - name: "is_disputed"
+      expr: is_disputed
+      comment: "Flag indicating the line item is under dispute — tracks disputed revenue at the charge level for granular revenue-at-risk analysis."
+    - name: "is_prorated"
+      expr: is_prorated
+      comment: "Flag indicating the charge was prorated — used to identify partial-period billing and assess proration accuracy."
     - name: "billing_determinant"
       expr: billing_determinant
-      comment: "The billing determinant driving the charge calculation (e.g., CONSUMPTION, METER_SIZE, AREA). Used for rate structure analysis and billing accuracy validation."
+      comment: "The measured quantity or determinant driving the charge (e.g. consumption volume, meter size) — links revenue to the underlying service driver."
+    - name: "billing_period_start_month"
+      expr: DATE_TRUNC('MONTH', billing_period_start_date)
+      comment: "Month the billing period began for this line — aligns revenue to the service consumption period for accrual-basis reporting."
   measures:
-    - name: "total_invoice_lines"
+    - name: "total_line_items"
       expr: COUNT(1)
-      comment: "Total number of invoice line items. Baseline metric for billing detail volume and charge composition breadth."
-    - name: "total_line_amount_usd"
-      expr: SUM(CAST(amount_usd AS DOUBLE))
-      comment: "Total USD revenue from all invoice line items. Granular revenue KPI enabling charge-type and service-line revenue decomposition for rate adequacy analysis."
-    - name: "total_tax_amount_usd"
-      expr: SUM(CAST(tax_amount_usd AS DOUBLE))
-      comment: "Total tax collected at the invoice line level. Used for tax remittance reporting and taxable revenue base reconciliation."
-    - name: "total_quantity_billed"
-      expr: SUM(CAST(quantity_value AS DOUBLE))
-      comment: "Total quantity billed across all invoice lines. Measures total billed consumption volume for rate adequacy and conservation program impact analysis."
-    - name: "avg_line_amount_usd"
-      expr: AVG(CAST(amount_usd AS DOUBLE))
-      comment: "Average revenue per invoice line item. Tracks per-charge revenue trends and detects anomalies in charge amounts."
+      comment: "Total number of invoice line items. Baseline volume metric for billing complexity and charge item throughput."
+    - name: "total_line_amount"
+      expr: SUM(CAST(line_amount AS DOUBLE))
+      comment: "Total pre-tax line item revenue. Core revenue decomposition metric enabling analysis of revenue by charge type, service, and rate component."
+    - name: "total_line_amount_with_tax"
+      expr: SUM(CAST(total_line_amount AS DOUBLE))
+      comment: "Total line item amount including tax. Represents the full customer-facing charge for each line — used for invoice reconciliation and revenue reporting."
+    - name: "total_tax_amount"
+      expr: SUM(CAST(tax_amount AS DOUBLE))
+      comment: "Total tax collected at the line item level. Supports tax remittance reconciliation and taxable revenue compliance reporting."
     - name: "avg_unit_rate"
       expr: AVG(CAST(unit_rate AS DOUBLE))
-      comment: "Average unit rate applied across billed line items. Used to monitor effective rate levels and detect rate schedule application errors."
+      comment: "Average unit rate charged across line items. Tracks effective rate levels and supports rate schedule performance analysis."
+    - name: "avg_proration_factor"
+      expr: AVG(CAST(proration_factor AS DOUBLE))
+      comment: "Average proration factor applied to prorated line items. Tracks the extent of partial-period billing and its revenue impact."
     - name: "disputed_line_count"
       expr: COUNT(CASE WHEN is_disputed = TRUE THEN 1 END)
-      comment: "Number of invoice lines under dispute. Tracks billing accuracy at the charge level and identifies problematic charge types."
-    - name: "prorated_line_count"
-      expr: COUNT(CASE WHEN is_prorated = TRUE THEN 1 END)
-      comment: "Number of prorated invoice lines. High proration volumes indicate frequent service start/stop activity and associated revenue recognition complexity."
-    - name: "distinct_invoices_with_lines"
-      expr: COUNT(DISTINCT invoice_id)
-      comment: "Number of distinct invoices represented in the line items. Used to validate invoice-to-line completeness and detect missing charge lines."
+      comment: "Number of disputed invoice line items. Granular dispute tracking enabling root cause analysis by charge type and service."
+    - name: "disputed_line_amount"
+      expr: SUM(CASE WHEN is_disputed = TRUE THEN CAST(line_amount AS DOUBLE) ELSE 0 END)
+      comment: "Total revenue on disputed line items. Quantifies revenue at risk from billing disputes at the charge level."
+    - name: "taxable_line_amount"
+      expr: SUM(CASE WHEN is_taxable = TRUE THEN CAST(line_amount AS DOUBLE) ELSE 0 END)
+      comment: "Total revenue on taxable line items. Required for tax base calculation and compliance with tax remittance obligations."
+    - name: "avg_tax_rate_percentage"
+      expr: AVG(CAST(tax_rate_percentage AS DOUBLE))
+      comment: "Average effective tax rate applied across taxable line items. Monitors tax rate consistency and flags anomalies in tax application."
+$$;
+
+CREATE OR REPLACE VIEW `vibe_water_utilities_v1`.`_metrics`.`billing_rate_schedule`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Rate schedule governance KPIs tracking tariff structure, rate adequacy, and regulatory compliance. Supports rate case preparation, conservation program evaluation, and regulatory reporting."
+  source: "`vibe_water_utilities_v1`.`billing`.`billing_rate_schedule`"
+  dimensions:
+    - name: "billing_rate_schedule_status"
+      expr: billing_rate_schedule_status
+      comment: "Current status of the rate schedule (e.g. ACTIVE, SUPERSEDED, PENDING_APPROVAL, EXPIRED) — tracks the active rate schedule portfolio."
+    - name: "rate_structure_type"
+      expr: rate_structure_type
+      comment: "Type of rate structure (e.g. FLAT, TIERED, INCLINING_BLOCK, SEASONAL) — primary dimension for rate design analysis and conservation effectiveness."
+    - name: "service_type"
+      expr: service_type
+      comment: "Service type covered by the rate schedule (e.g. WATER, WASTEWATER, STORMWATER) — enables rate analysis by utility service line."
+    - name: "billing_frequency"
+      expr: billing_frequency
+      comment: "Billing frequency for the rate schedule (e.g. MONTHLY, BIMONTHLY) — used to normalize rate comparisons across billing cycles."
+    - name: "conservation_rate_indicator"
+      expr: conservation_rate_indicator
+      comment: "Flag indicating the rate schedule includes conservation pricing tiers — tracks the reach of conservation-oriented rate structures."
+    - name: "seasonal_indicator"
+      expr: seasonal_indicator
+      comment: "Flag indicating the rate schedule has seasonal pricing components — used to analyze seasonal rate design and demand management effectiveness."
+    - name: "drought_surcharge_applicable"
+      expr: drought_surcharge_applicable
+      comment: "Flag indicating a drought surcharge applies under this schedule — tracks drought response rate mechanism deployment."
+    - name: "jurisdiction"
+      expr: jurisdiction
+      comment: "Regulatory jurisdiction governing the rate schedule — enables rate analysis by regulatory territory for multi-jurisdiction utilities."
+    - name: "effective_start_month"
+      expr: DATE_TRUNC('MONTH', effective_start_date)
+      comment: "Month the rate schedule became effective — used to track rate change history and align revenue impacts to rate change events."
+  measures:
+    - name: "total_rate_schedules"
+      expr: COUNT(1)
+      comment: "Total number of rate schedules in the system. Tracks rate schedule portfolio complexity and supports rate rationalization initiatives."
+    - name: "active_rate_schedule_count"
+      expr: COUNT(CASE WHEN billing_rate_schedule_status = 'ACTIVE' THEN 1 END)
+      comment: "Number of currently active rate schedules. Tracks the live tariff portfolio and supports rate schedule governance."
+    - name: "avg_base_charge_amount"
+      expr: AVG(CAST(base_charge_amount AS DOUBLE))
+      comment: "Average base (fixed) charge across rate schedules. Tracks fixed cost recovery levels and informs rate adequacy analysis for infrastructure investment."
+    - name: "avg_minimum_charge_amount"
+      expr: AVG(CAST(minimum_charge_amount AS DOUBLE))
+      comment: "Average minimum bill amount across rate schedules. Tracks minimum revenue guarantee levels and their adequacy for fixed cost recovery."
+    - name: "avg_maximum_charge_amount"
+      expr: AVG(CAST(maximum_charge_amount AS DOUBLE))
+      comment: "Average maximum charge cap across rate schedules. Tracks bill protection levels and their impact on high-consumption revenue recovery."
+    - name: "conservation_rate_schedule_count"
+      expr: COUNT(CASE WHEN conservation_rate_indicator = TRUE THEN 1 END)
+      comment: "Number of rate schedules with conservation pricing. Tracks the breadth of conservation rate design deployment across the service territory."
+    - name: "drought_surcharge_schedule_count"
+      expr: COUNT(CASE WHEN drought_surcharge_applicable = TRUE THEN 1 END)
+      comment: "Number of rate schedules with drought surcharge provisions. Tracks drought response rate mechanism readiness across the tariff portfolio."
 $$;

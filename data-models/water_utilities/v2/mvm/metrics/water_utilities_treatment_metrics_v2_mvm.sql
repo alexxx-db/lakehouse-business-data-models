@@ -1,62 +1,92 @@
--- Metric views for domain: treatment | Business: Water_Utilities | Version: 2 | Generated on: 2026-07-02 04:56:40
+-- Metric views for domain: treatment | Business: Water_Utilities | Version: 2 | Generated on: 2026-07-10 20:21:36
 
 CREATE OR REPLACE VIEW `vibe_water_utilities_v1`.`_metrics`.`treatment_finished_water_production`
 WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Daily finished water production KPIs tracking treatment plant output volume, efficiency, and water quality. Core operational dashboard for plant managers and utility executives to monitor throughput, losses, and compliance with turbidity/pH targets."
+  comment: "Strategic KPI layer over daily finished water production records. Tracks treatment plant throughput, efficiency, disinfection compliance, and water quality outcomes to support operational steering and regulatory reporting."
   source: "`vibe_water_utilities_v1`.`treatment`.`finished_water_production`"
   dimensions:
-    - name: "facility_id"
-      expr: facility_id
-      comment: "Treatment facility identifier — enables per-plant performance comparison and benchmarking."
     - name: "production_date"
-      expr: DATE_TRUNC('day', production_date)
-      comment: "Daily production date — supports trend analysis, seasonal patterns, and regulatory reporting periods."
-    - name: "production_month"
-      expr: DATE_TRUNC('month', production_date)
-      comment: "Monthly production period — used for monthly operating reports and capacity planning."
-    - name: "production_year"
-      expr: YEAR(production_date)
-      comment: "Production year — supports annual capital planning and long-term capacity forecasting."
+      expr: production_date
+      comment: "Calendar date of the production record, used for daily/monthly trend analysis."
+    - name: "production_status"
+      expr: production_status
+      comment: "Operational status of the production record (e.g., Approved, Pending, Rejected) for filtering valid records."
+    - name: "treatment_process_type"
+      expr: treatment_process_type
+      comment: "Type of treatment process applied (e.g., conventional, membrane, UV) to compare efficiency across process types."
+    - name: "disinfection_method"
+      expr: disinfection_method
+      comment: "Disinfection method used (e.g., chlorination, UV, ozone) for compliance and cost benchmarking."
+    - name: "shift_code"
+      expr: shift_code
+      comment: "Operational shift identifier to support shift-level performance analysis."
+    - name: "regulatory_exceedance"
+      expr: regulatory_exceedance
+      comment: "Flag indicating whether a regulatory exceedance occurred during this production period."
     - name: "data_quality_flag"
       expr: data_quality_flag
-      comment: "Indicates whether the production record passed data quality checks — used to filter out suspect readings in regulatory submissions."
+      comment: "Flag indicating data quality issues in the production record, used to filter reliable data."
   measures:
     - name: "total_finished_water_volume_mg"
       expr: SUM(CAST(finished_water_volume_mg AS DOUBLE))
-      comment: "Total finished (treated) water delivered to distribution in million gallons. Primary throughput KPI for capacity planning and revenue assurance."
+      comment: "Total volume of finished (treated) water produced in million gallons. Core throughput KPI for capacity planning and demand management."
     - name: "total_source_water_volume_mg"
       expr: SUM(CAST(source_water_volume_mg AS DOUBLE))
-      comment: "Total raw source water withdrawn for treatment in million gallons. Compared against finished water to compute treatment losses and efficiency."
+      comment: "Total volume of raw source water withdrawn for treatment in million gallons. Used to compute plant efficiency ratio."
+    - name: "total_volume_pumped_to_distribution_mg"
+      expr: SUM(CAST(volume_pumped_to_distribution_mg AS DOUBLE))
+      comment: "Total volume of finished water delivered to the distribution system in million gallons. Measures effective supply delivery."
     - name: "total_backwash_volume_mg"
       expr: SUM(CAST(backwash_volume_mg AS DOUBLE))
-      comment: "Total water volume consumed in filter backwash operations in million gallons. High backwash volume signals filter media degradation or over-cycling."
-    - name: "total_filter_to_waste_volume_mg"
-      expr: SUM(CAST(filter_to_waste_volume_mg AS DOUBLE))
-      comment: "Total water volume wasted during filter-to-waste operations in million gallons. Tracks non-revenue water losses from treatment processes."
+      comment: "Total water volume lost to filter backwash operations in million gallons. Tracks non-revenue process water consumption."
+    - name: "total_plant_ops_water_volume_mg"
+      expr: SUM(CAST(plant_ops_water_volume_mg AS DOUBLE))
+      comment: "Total water volume consumed for plant operations (non-revenue) in million gallons. Supports operational cost and efficiency analysis."
     - name: "avg_plant_efficiency_ratio"
       expr: AVG(CAST(plant_efficiency_ratio AS DOUBLE))
-      comment: "Average plant efficiency ratio (finished water / source water). Measures how effectively the plant converts raw water to potable product — a key operational and cost efficiency KPI."
+      comment: "Average plant efficiency ratio (finished water / source water). A key operational KPI — low efficiency signals excessive process water loss."
     - name: "avg_turbidity_ntu"
       expr: AVG(CAST(turbidity_avg_ntu AS DOUBLE))
-      comment: "Average finished water turbidity in NTU across production days. Regulatory compliance threshold is typically 0.3 NTU; sustained exceedances trigger enforcement action."
+      comment: "Average finished water turbidity in NTU across production records. Regulatory compliance indicator — must remain below permitted limits."
     - name: "max_turbidity_ntu"
       expr: MAX(turbidity_max_ntu)
-      comment: "Maximum single-day turbidity peak in NTU. Used to identify worst-case compliance events and assess filter performance under peak-load conditions."
+      comment: "Maximum turbidity spike recorded in NTU. Identifies worst-case exceedance events for regulatory and operational review."
     - name: "avg_cl2_residual_mg_l"
       expr: AVG(CAST(cl2_residual_avg_mg_l AS DOUBLE))
-      comment: "Average chlorine residual in finished water (mg/L). Must remain above regulatory minimum (typically 0.2 mg/L) to ensure disinfection protection throughout the distribution system."
+      comment: "Average chlorine residual in finished water (mg/L). Critical disinfection compliance KPI — must stay within regulatory bounds."
+    - name: "min_cl2_residual_mg_l"
+      expr: MIN(cl2_residual_min_mg_l)
+      comment: "Minimum chlorine residual recorded (mg/L). Identifies periods of under-disinfection risk requiring immediate operational response."
+    - name: "avg_ct_achieved_mg_min_l"
+      expr: AVG(CAST(ct_achieved_mg_min_l AS DOUBLE))
+      comment: "Average CT value achieved (mg·min/L) for disinfection efficacy. Regulatory compliance metric for pathogen inactivation credit."
+    - name: "avg_ct_required_mg_min_l"
+      expr: AVG(CAST(ct_required_mg_min_l AS DOUBLE))
+      comment: "Average CT value required by permit (mg·min/L). Paired with avg_ct_achieved to assess compliance margin."
     - name: "avg_ph"
       expr: AVG(CAST(ph_avg AS DOUBLE))
-      comment: "Average finished water pH. Optimal range is 6.5–8.5 per EPA Secondary Standards; deviations affect corrosion control and disinfection byproduct formation."
-    - name: "avg_peak_production_rate_gpm"
-      expr: AVG(CAST(peak_production_rate_gpm AS DOUBLE))
-      comment: "Average peak production rate in gallons per minute. Indicates how close the plant operates to its design capacity ceiling — critical for capacity headroom analysis."
-    - name: "production_days"
-      expr: COUNT(DISTINCT production_date)
-      comment: "Number of distinct production days in the reporting period. Used as the denominator for daily average calculations and to detect reporting gaps."
+      comment: "Average finished water pH. Regulatory and corrosion-control KPI — deviations trigger treatment adjustments."
+    - name: "avg_fluoride_mg_l"
+      expr: AVG(CAST(fluoride_avg_mg_l AS DOUBLE))
+      comment: "Average fluoride concentration in finished water (mg/L). Public health compliance metric with strict regulatory limits."
+    - name: "avg_toc_mg_l"
+      expr: AVG(CAST(toc_avg_mg_l AS DOUBLE))
+      comment: "Average total organic carbon in finished water (mg/L). Precursor to disinfection by-product formation — drives treatment strategy decisions."
+    - name: "avg_production_rate_gpm"
+      expr: AVG(CAST(avg_production_rate_gpm AS DOUBLE))
+      comment: "Average production flow rate in gallons per minute. Operational throughput KPI for capacity utilization benchmarking."
+    - name: "peak_production_rate_gpm"
+      expr: MAX(peak_production_rate_gpm)
+      comment: "Maximum peak production rate recorded in GPM. Used for capacity headroom analysis and infrastructure investment decisions."
+    - name: "regulatory_exceedance_count"
+      expr: SUM(CASE WHEN regulatory_exceedance = TRUE THEN 1 ELSE 0 END)
+      comment: "Count of production records with a regulatory exceedance. Directly informs compliance risk posture and enforcement exposure."
+    - name: "production_record_count"
+      expr: COUNT(1)
+      comment: "Total number of production records. Baseline volume metric for normalizing other KPIs and assessing data completeness."
 $$;
 
 CREATE OR REPLACE VIEW `vibe_water_utilities_v1`.`_metrics`.`treatment_chemical_dose_event`
@@ -64,114 +94,82 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Chemical dosing performance and compliance KPIs for treatment operations. Tracks disinfectant application accuracy, CT compliance, and chemical consumption — essential for regulatory reporting and cost control."
+  comment: "Operational and compliance KPI layer over chemical dosing events. Tracks chemical consumption, cost, CT compliance, disinfection by-product risk, and dosing effectiveness to support treatment optimization and regulatory reporting."
   source: "`vibe_water_utilities_v1`.`treatment`.`chemical_dose_event`"
   dimensions:
-    - name: "facility_id"
-      expr: facility_id
-      comment: "Treatment facility — enables cross-facility chemical usage benchmarking."
-    - name: "process_unit_id"
-      expr: process_unit_id
-      comment: "Process unit where chemical was applied — supports unit-level dosing performance analysis."
-    - name: "chemical_id"
-      expr: chemical_id
-      comment: "Chemical applied — enables cost and consumption analysis by chemical type."
+    - name: "chemical_type"
+      expr: chemical_type
+      comment: "Type of chemical applied (e.g., chlorine, alum, fluoride) for cost and consumption analysis by chemical category."
+    - name: "treatment_process_stage"
+      expr: treatment_process_stage
+      comment: "Stage of the treatment process where dosing occurred (e.g., pre-treatment, primary, secondary) for process-level analysis."
+    - name: "dosing_method"
+      expr: dosing_method
+      comment: "Method used for chemical dosing (e.g., continuous, batch, slug) to compare operational approaches."
+    - name: "dose_trigger_type"
+      expr: dose_trigger_type
+      comment: "Trigger that initiated the dose event (e.g., scheduled, alarm, manual) for root-cause and automation analysis."
+    - name: "dose_event_status"
+      expr: dose_event_status
+      comment: "Status of the dose event (e.g., completed, aborted, in-progress) for operational quality filtering."
     - name: "ct_compliance_flag"
       expr: ct_compliance_flag
-      comment: "Indicates whether the dose event achieved required CT (concentration × time) for disinfection compliance. Non-compliant events require immediate regulatory notification."
-    - name: "dose_start_month"
-      expr: DATE_TRUNC('month', dose_start_timestamp)
-      comment: "Month of dose event — supports monthly chemical consumption reporting and trend analysis."
-    - name: "dose_start_date"
-      expr: CAST(dose_start_timestamp AS DATE)
-      comment: "Date of dose event — supports daily operational review of chemical application."
+      comment: "Indicates whether the CT requirement was met for this dose event. Critical regulatory compliance dimension."
+    - name: "dbp_formation_risk_flag"
+      expr: dbp_formation_risk_flag
+      comment: "Flags events with elevated disinfection by-product formation risk. Drives treatment adjustment decisions."
+    - name: "regulatory_event_flag"
+      expr: regulatory_event_flag
+      comment: "Indicates whether this dose event is subject to regulatory reporting requirements."
+    - name: "target_parameter"
+      expr: target_parameter
+      comment: "The water quality parameter targeted by the dose event (e.g., turbidity, chlorine residual, pH)."
+    - name: "dose_start_timestamp"
+      expr: DATE_TRUNC('day', dose_start_timestamp)
+      comment: "Date of dose event start, truncated to day for daily trend analysis."
   measures:
     - name: "total_chemical_mass_applied_kg"
       expr: SUM(CAST(chemical_mass_applied_kg AS DOUBLE))
-      comment: "Total chemical mass applied across all dose events in kilograms. Primary chemical consumption KPI for procurement planning and cost management."
+      comment: "Total mass of chemical applied across dose events in kilograms. Core chemical consumption KPI for procurement and cost management."
+    - name: "total_volume_applied_l"
+      expr: SUM(CAST(volume_applied_l AS DOUBLE))
+      comment: "Total volume of chemical solution applied in liters. Supports dosing efficiency and inventory drawdown analysis."
+    - name: "total_event_dose_cost_usd"
+      expr: SUM(CAST(event_dose_cost_usd AS DOUBLE))
+      comment: "Total chemical dosing cost in USD across all events. Direct operational cost KPI for treatment budget management."
     - name: "avg_dose_rate_mg_per_l"
       expr: AVG(CAST(dose_rate_mg_per_l AS DOUBLE))
-      comment: "Average chemical dose rate in mg/L. Compared against target residuals to assess dosing precision and identify over- or under-dosing patterns."
+      comment: "Average actual dose rate in mg/L. Compared against target dose rate to assess dosing precision and process control."
+    - name: "avg_target_dose_rate_mg_per_l"
+      expr: AVG(CAST(target_dose_rate_mg_per_l AS DOUBLE))
+      comment: "Average target dose rate in mg/L. Baseline for measuring dosing accuracy and process adherence."
+    - name: "avg_ct_value_mg_min_per_l"
+      expr: AVG(CAST(ct_value_mg_min_per_l AS DOUBLE))
+      comment: "Average CT value achieved during dose events (mg·min/L). Regulatory disinfection efficacy KPI."
+    - name: "avg_ct_required_mg_min_per_l"
+      expr: AVG(CAST(ct_required_mg_min_per_l AS DOUBLE))
+      comment: "Average CT value required by regulation (mg·min/L). Paired with avg_ct_value to compute compliance margin."
     - name: "avg_post_dose_residual_mg_per_l"
       expr: AVG(CAST(post_dose_residual_mg_per_l AS DOUBLE))
-      comment: "Average measured residual concentration after dosing in mg/L. Must meet regulatory minimums; persistent shortfalls indicate dosing system or contact time issues."
-    - name: "avg_target_residual_mg_per_l"
-      expr: AVG(CAST(target_residual_mg_per_l AS DOUBLE))
-      comment: "Average target residual concentration in mg/L. Baseline for computing residual achievement gap and dosing accuracy."
-    - name: "total_dose_events"
-      expr: COUNT(1)
-      comment: "Total number of chemical dose events. Used to normalize consumption metrics and assess dosing frequency relative to flow conditions."
-    - name: "ct_non_compliant_events"
+      comment: "Average chemical residual measured after dosing (mg/L). Indicates dosing effectiveness and distribution system protection."
+    - name: "avg_pre_dose_residual_mg_per_l"
+      expr: AVG(CAST(pre_dose_residual_mg_per_l AS DOUBLE))
+      comment: "Average chemical residual measured before dosing (mg/L). Baseline for assessing residual decay and dosing need."
+    - name: "avg_unit_cost_per_kg"
+      expr: AVG(CAST(unit_cost_per_kg AS DOUBLE))
+      comment: "Average unit cost of chemical per kilogram. Procurement benchmarking KPI for supplier and contract management."
+    - name: "ct_non_compliance_event_count"
       expr: SUM(CASE WHEN ct_compliance_flag = FALSE THEN 1 ELSE 0 END)
-      comment: "Count of dose events that failed CT compliance. Each non-compliant event is a potential regulatory violation requiring corrective action and reporting."
+      comment: "Count of dose events where CT compliance was not achieved. Regulatory risk KPI — high counts trigger enforcement and process review."
+    - name: "dbp_risk_event_count"
+      expr: SUM(CASE WHEN dbp_formation_risk_flag = TRUE THEN 1 ELSE 0 END)
+      comment: "Count of dose events with elevated disinfection by-product formation risk. Public health and regulatory compliance KPI."
     - name: "avg_water_flow_rate_mgd"
       expr: AVG(CAST(water_flow_rate_mgd AS DOUBLE))
-      comment: "Average water flow rate during dosing events in million gallons per day. Used to contextualize chemical consumption relative to throughput volume."
-    - name: "total_water_volume_dosed_mgd"
-      expr: SUM(CAST(water_flow_rate_mgd AS DOUBLE))
-      comment: "Sum of flow rates across all dose events in MGD. Proxy for total water volume treated with chemical — supports per-unit-volume cost calculations."
-$$;
-
-CREATE OR REPLACE VIEW `vibe_water_utilities_v1`.`_metrics`.`treatment_ct_compliance_record`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "CT (Concentration × Time) disinfection compliance KPIs required under the Surface Water Treatment Rule (SWTR). Tracks log inactivation achievement, CT ratios, and compliance status — directly tied to public health protection and regulatory standing."
-  source: "`vibe_water_utilities_v1`.`treatment`.`ct_compliance_record`"
-  dimensions:
-    - name: "facility_id"
-      expr: facility_id
-      comment: "Treatment facility — enables facility-level compliance benchmarking and regulatory reporting."
-    - name: "process_unit_id"
-      expr: process_unit_id
-      comment: "Process unit where CT was calculated — supports unit-level disinfection performance tracking."
-    - name: "compliance_status"
-      expr: compliance_status
-      comment: "Regulatory compliance status of the CT record (e.g., Compliant, Non-Compliant, Pending). Primary filter for regulatory exception reporting."
-    - name: "disinfectant_type"
-      expr: disinfectant_type
-      comment: "Type of disinfectant used (e.g., chlorine, chloramine, ozone, UV). Drives CT table lookup and required inactivation credit calculations."
-    - name: "target_organism"
-      expr: target_organism
-      comment: "Pathogen targeted for inactivation (e.g., Giardia, Cryptosporidium, viruses). Determines required log inactivation credits under SWTR/LT2ESWTR."
-    - name: "operator_verified"
-      expr: operator_verified
-      comment: "Whether a certified operator has verified the CT calculation. Unverified records may not be accepted for regulatory submission."
-    - name: "calculation_month"
-      expr: DATE_TRUNC('month', calculation_timestamp)
-      comment: "Month of CT calculation — supports monthly compliance summary reporting to primacy agencies."
-  measures:
-    - name: "total_ct_records"
+      comment: "Average water flow rate during dose events in MGD. Contextualizes chemical consumption relative to throughput."
+    - name: "dose_event_count"
       expr: COUNT(1)
-      comment: "Total CT compliance records in the reporting period. Used to assess monitoring frequency and completeness of disinfection records."
-    - name: "non_compliant_ct_records"
-      expr: SUM(CASE WHEN compliance_status = 'Non-Compliant' THEN 1 ELSE 0 END)
-      comment: "Count of CT records with non-compliant status. Each non-compliant record represents a potential SWTR violation requiring immediate corrective action and regulatory notification."
-    - name: "avg_ct_ratio"
-      expr: AVG(CAST(ct_ratio AS DOUBLE))
-      comment: "Average CT ratio (CT achieved / CT required). Values below 1.0 indicate non-compliance; values well above 1.0 may indicate over-dosing and unnecessary chemical cost."
-    - name: "min_ct_ratio"
-      expr: MIN(ct_ratio)
-      comment: "Minimum CT ratio observed in the period. The worst-case CT ratio is the most critical compliance indicator — a single value below 1.0 constitutes a violation."
-    - name: "avg_log_inactivation_achieved"
-      expr: AVG(CAST(log_inactivation_achieved AS DOUBLE))
-      comment: "Average log inactivation credit achieved. SWTR requires minimum 3-log Giardia and 4-log virus inactivation; sustained shortfalls indicate systemic treatment deficiency."
-    - name: "avg_ct_calculated"
-      expr: AVG(CAST(ct_calculated AS DOUBLE))
-      comment: "Average calculated CT value (mg/L·min). Tracks actual disinfection dose delivered — used to optimize chemical usage while maintaining compliance margin."
-    - name: "avg_ct_required"
-      expr: AVG(CAST(ct_required AS DOUBLE))
-      comment: "Average required CT value (mg/L·min) based on temperature, pH, and target organism. Baseline for compliance gap analysis."
-    - name: "avg_temperature_c"
-      expr: AVG(CAST(temperature_c AS DOUBLE))
-      comment: "Average water temperature in Celsius during CT calculations. Temperature is a primary driver of CT requirements — colder water requires higher CT to achieve the same inactivation."
-    - name: "avg_ph_value"
-      expr: AVG(CAST(ph_value AS DOUBLE))
-      comment: "Average pH during CT calculations. pH affects disinfectant efficacy (especially chlorine) and CT table lookup values — critical for accurate compliance determination."
-    - name: "unverified_ct_records"
-      expr: SUM(CASE WHEN operator_verified = FALSE THEN 1 ELSE 0 END)
-      comment: "Count of CT records not yet verified by a certified operator. Unverified records create regulatory submission risk and audit findings."
+      comment: "Total number of chemical dose events. Baseline operational volume metric for normalizing cost and compliance KPIs."
 $$;
 
 CREATE OR REPLACE VIEW `vibe_water_utilities_v1`.`_metrics`.`treatment_source_water_intake`
@@ -179,117 +177,138 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Source water quality and intake volume KPIs for treatment planning and permit compliance. Tracks raw water characteristics that drive treatment chemical demand, process adjustments, and permit compliance — essential for operations and environmental reporting."
+  comment: "Strategic KPI layer over source water intake events. Tracks raw water quality, withdrawal volumes, permit compliance, and supply risk to support source water management and regulatory reporting."
   source: "`vibe_water_utilities_v1`.`treatment`.`source_water_intake`"
   dimensions:
-    - name: "facility_id"
-      expr: facility_id
-      comment: "Treatment facility receiving the source water — enables per-facility intake analysis."
-    - name: "water_source_id"
-      expr: water_source_id
-      comment: "Source water body identifier — supports multi-source blending analysis and source-specific quality trending."
     - name: "source_type"
       expr: source_type
-      comment: "Type of source water (e.g., surface water, groundwater, purchased). Drives regulatory treatment requirements and CT obligations."
+      comment: "Type of water source (e.g., surface water, groundwater, reservoir) for supply portfolio analysis."
+    - name: "intake_status"
+      expr: intake_status
+      comment: "Operational status of the intake event (e.g., active, suspended, emergency) for availability analysis."
+    - name: "intake_method"
+      expr: intake_method
+      comment: "Method used for water intake (e.g., gravity, pumped) for operational cost benchmarking."
     - name: "permit_compliance_status"
       expr: permit_compliance_status
-      comment: "Permit compliance status for the intake event. Non-compliant intakes may violate withdrawal permits and trigger regulatory reporting."
-    - name: "data_quality_flag"
-      expr: data_quality_flag
-      comment: "Data quality indicator for the intake record — used to exclude suspect readings from regulatory calculations."
-    - name: "intake_month"
-      expr: DATE_TRUNC('month', intake_timestamp)
-      comment: "Month of intake event — supports monthly withdrawal reporting and seasonal quality trend analysis."
+      comment: "Compliance status relative to intake permit conditions. Regulatory risk dimension."
+    - name: "source_water_alert_active"
+      expr: source_water_alert_active
+      comment: "Indicates whether a source water quality alert was active during the intake event. Drives treatment escalation decisions."
+    - name: "source_water_protection_zone"
+      expr: source_water_protection_zone
+      comment: "Protection zone classification of the source water area. Informs risk-based source water management."
+    - name: "intake_timestamp"
+      expr: DATE_TRUNC('day', intake_timestamp)
+      comment: "Date of the intake event, truncated to day for daily and seasonal trend analysis."
+    - name: "weather_condition"
+      expr: weather_condition
+      comment: "Weather conditions during intake. Correlates with raw water quality variability and treatment demand."
   measures:
     - name: "total_volume_withdrawn_mg"
       expr: SUM(CAST(volume_withdrawn_mg AS DOUBLE))
-      comment: "Total source water withdrawn in million gallons. Primary metric for water rights compliance — must not exceed permitted withdrawal volumes."
-    - name: "avg_turbidity_ntu"
-      expr: AVG(CAST(turbidity_ntu AS DOUBLE))
-      comment: "Average raw water turbidity in NTU. High source turbidity drives increased coagulant demand and filter loading — a leading indicator of treatment cost and operational stress."
-    - name: "max_turbidity_ntu"
-      expr: MAX(turbidity_ntu)
-      comment: "Maximum raw water turbidity peak in NTU. Extreme turbidity events (e.g., storm runoff) can overwhelm treatment capacity and require emergency operational response."
-    - name: "avg_toc_mg_per_l"
-      expr: AVG(CAST(toc_mg_per_l AS DOUBLE))
-      comment: "Average total organic carbon in source water (mg/L). TOC is the primary precursor to disinfection byproducts (DBPs) — high TOC drives enhanced coagulation requirements under the D/DBP Rule."
-    - name: "avg_ph_level"
-      expr: AVG(CAST(ph_level AS DOUBLE))
-      comment: "Average source water pH. Drives coagulant selection, dosing optimization, and CT table requirements for disinfection compliance."
-    - name: "avg_temperature_c"
-      expr: AVG(CAST(temperature_c AS DOUBLE))
-      comment: "Average source water temperature in Celsius. Cold water increases CT requirements and slows coagulation — critical for winter operations planning."
+      comment: "Total raw water volume withdrawn in million gallons. Core supply KPI for permit compliance and demand forecasting."
     - name: "avg_flow_rate_gpm"
       expr: AVG(CAST(flow_rate_gpm AS DOUBLE))
-      comment: "Average intake flow rate in gallons per minute. Tracks withdrawal rate relative to permit limits and treatment plant capacity."
-    - name: "avg_conductivity_us_per_cm"
-      expr: AVG(CAST(conductivity_us_per_cm AS DOUBLE))
-      comment: "Average source water conductivity in µS/cm. Elevated conductivity indicates dissolved solids loading — relevant for membrane treatment processes and corrosion control."
-    - name: "permit_non_compliant_intakes"
-      expr: SUM(CASE WHEN permit_compliance_status = 'Non-Compliant' THEN 1 ELSE 0 END)
-      comment: "Count of intake events with permit non-compliance status. Each non-compliant intake is a potential water rights or environmental permit violation requiring regulatory reporting."
+      comment: "Average intake flow rate in gallons per minute. Operational throughput KPI for pump and infrastructure capacity planning."
+    - name: "avg_turbidity_ntu"
+      expr: AVG(CAST(turbidity_ntu AS DOUBLE))
+      comment: "Average raw water turbidity in NTU. Key raw water quality indicator — high turbidity increases treatment chemical demand and cost."
+    - name: "max_turbidity_ntu"
+      expr: MAX(turbidity_ntu)
+      comment: "Maximum raw water turbidity spike in NTU. Identifies worst-case raw water quality events requiring treatment escalation."
+    - name: "avg_toc_mg_per_l"
+      expr: AVG(CAST(toc_mg_per_l AS DOUBLE))
+      comment: "Average total organic carbon in raw water (mg/L). Precursor to disinfection by-product formation — drives treatment strategy."
+    - name: "avg_ph_level"
+      expr: AVG(CAST(ph_level AS DOUBLE))
+      comment: "Average raw water pH. Influences coagulation chemistry and chemical dosing requirements."
+    - name: "avg_temperature_c"
+      expr: AVG(CAST(temperature_c AS DOUBLE))
+      comment: "Average raw water temperature in Celsius. Affects disinfection efficacy (CT calculations) and seasonal treatment planning."
+    - name: "avg_dissolved_oxygen_mg_per_l"
+      expr: AVG(CAST(dissolved_oxygen_mg_per_l AS DOUBLE))
+      comment: "Average dissolved oxygen in raw water (mg/L). Indicator of source water health and biological treatment demand."
+    - name: "avg_algae_count_cells_per_ml"
+      expr: AVG(CAST(algae_count_cells_per_ml AS DOUBLE))
+      comment: "Average algae cell count in raw water (cells/mL). Elevated counts signal cyanotoxin risk and treatment escalation needs."
+    - name: "permit_non_compliance_event_count"
+      expr: SUM(CASE WHEN permit_compliance_status != 'Compliant' THEN 1 ELSE 0 END)
+      comment: "Count of intake events where permit compliance was not achieved. Regulatory risk KPI with direct enforcement implications."
+    - name: "source_water_alert_event_count"
+      expr: SUM(CASE WHEN source_water_alert_active = TRUE THEN 1 ELSE 0 END)
+      comment: "Count of intake events with an active source water quality alert. Operational risk KPI for supply security management."
+    - name: "intake_event_count"
+      expr: COUNT(1)
+      comment: "Total number of intake events. Baseline volume metric for normalizing quality and compliance KPIs."
 $$;
 
-CREATE OR REPLACE VIEW `vibe_water_utilities_v1`.`_metrics`.`treatment_process_unit`
+CREATE OR REPLACE VIEW `vibe_water_utilities_v1`.`_metrics`.`treatment_filter_unit`
 WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Treatment process unit asset performance and capacity KPIs. Tracks unit condition, capacity utilization, and operational status — essential for capital planning, maintenance prioritization, and regulatory capacity certification."
-  source: "`vibe_water_utilities_v1`.`treatment`.`process_unit`"
+  comment: "Asset performance KPI layer over treatment filter units. Tracks filtration efficiency, maintenance compliance, operational status, and capacity utilization to support asset management and regulatory reporting."
+  source: "`vibe_water_utilities_v1`.`treatment`.`filter_unit`"
   dimensions:
-    - name: "facility_id"
-      expr: facility_id
-      comment: "Treatment facility — enables facility-level asset portfolio analysis."
-    - name: "process_type"
-      expr: process_type
-      comment: "Type of treatment process (e.g., coagulation, filtration, disinfection, membrane). Supports technology-specific performance benchmarking."
-    - name: "process_stage"
-      expr: process_stage
-      comment: "Stage in the treatment train (e.g., primary, secondary, tertiary). Enables stage-level capacity and condition analysis."
-    - name: "treatment_technology"
-      expr: treatment_technology
-      comment: "Specific treatment technology deployed (e.g., GAC, UV, RO, chlorination). Drives technology-specific performance benchmarks and replacement planning."
+    - name: "filter_type"
+      expr: filter_type
+      comment: "Type of filter unit (e.g., rapid sand, slow sand, membrane) for technology-level performance benchmarking."
+    - name: "filter_media_type"
+      expr: filter_media_type
+      comment: "Filter media material (e.g., anthracite, sand, GAC) for media-level performance and replacement analysis."
     - name: "operational_status"
       expr: operational_status
-      comment: "Current operational status of the process unit (e.g., Online, Offline, Standby, Maintenance). Critical for capacity availability reporting."
-    - name: "is_online"
-      expr: is_online
-      comment: "Whether the process unit is currently online and treating water. Used to compute available treatment capacity."
-    - name: "is_redundant"
-      expr: is_redundant
-      comment: "Whether the unit provides redundant capacity. Redundancy level is a key resilience metric for AWIA risk assessments."
-    - name: "condition_rating"
-      expr: condition_rating
-      comment: "Asset condition rating (e.g., Good, Fair, Poor, Critical). Drives capital replacement prioritization and maintenance budget allocation."
+      comment: "Current operational status of the filter unit (e.g., online, offline, maintenance). Fleet availability dimension."
+    - name: "maintenance_status"
+      expr: maintenance_status
+      comment: "Current maintenance status of the filter unit. Drives maintenance scheduling and compliance decisions."
+    - name: "filter_condition"
+      expr: filter_condition
+      comment: "Physical condition rating of the filter unit. Asset health dimension for capital replacement planning."
+    - name: "is_critical"
+      expr: is_critical
+      comment: "Indicates whether the filter unit is classified as critical infrastructure. Prioritizes maintenance and monitoring resources."
+    - name: "calibration_status"
+      expr: calibration_status
+      comment: "Calibration status of the filter unit instrumentation. Regulatory data quality dimension."
+    - name: "facility_id"
+      expr: facility_id
+      comment: "Treatment facility housing the filter unit. Enables facility-level fleet performance analysis."
   measures:
-    - name: "total_process_units"
+    - name: "avg_filter_efficiency_percent"
+      expr: AVG(CAST(filter_efficiency_percent AS DOUBLE))
+      comment: "Average filtration efficiency percentage across filter units. Core treatment performance KPI — declining efficiency signals media degradation or operational issues."
+    - name: "min_filter_efficiency_percent"
+      expr: MIN(filter_efficiency_percent)
+      comment: "Minimum filter efficiency recorded. Identifies worst-performing units requiring immediate maintenance or replacement."
+    - name: "avg_flow_rate_m3_per_hour"
+      expr: AVG(CAST(flow_rate_m3_per_hour AS DOUBLE))
+      comment: "Average actual flow rate through filter units (m³/hour). Throughput KPI for capacity utilization analysis."
+    - name: "total_capacity_m3_per_hour"
+      expr: SUM(CAST(capacity_m3_per_hour AS DOUBLE))
+      comment: "Total design capacity of all filter units (m³/hour). Fleet capacity KPI for infrastructure planning."
+    - name: "avg_pressure_drop_kpa"
+      expr: AVG(CAST(pressure_drop_kpa AS DOUBLE))
+      comment: "Average pressure drop across filter units (kPa). Elevated pressure drop indicates media fouling and drives backwash or replacement decisions."
+    - name: "avg_compliance_ct_value_mg_per_l"
+      expr: AVG(CAST(compliance_ct_value_mg_per_l AS DOUBLE))
+      comment: "Average CT compliance value associated with filter units (mg·min/L). Regulatory disinfection credit KPI for filter-based CT calculations."
+    - name: "total_asset_cost_usd"
+      expr: SUM(CAST(cost_usd AS DOUBLE))
+      comment: "Total capital cost of filter unit assets in USD. Asset base KPI for depreciation, insurance, and capital planning."
+    - name: "offline_unit_count"
+      expr: SUM(CASE WHEN operational_status != 'Online' THEN 1 ELSE 0 END)
+      comment: "Count of filter units not currently online. Fleet availability KPI — high counts reduce treatment capacity and increase compliance risk."
+    - name: "overdue_maintenance_count"
+      expr: SUM(CASE WHEN next_maintenance_date < CURRENT_DATE() THEN 1 ELSE 0 END)
+      comment: "Count of filter units with overdue maintenance. Asset compliance KPI — overdue maintenance increases failure risk and regulatory exposure."
+    - name: "critical_unit_count"
+      expr: SUM(CASE WHEN is_critical = TRUE THEN 1 ELSE 0 END)
+      comment: "Count of filter units classified as critical infrastructure. Risk management KPI for prioritizing maintenance and redundancy investments."
+    - name: "filter_unit_count"
       expr: COUNT(1)
-      comment: "Total number of process units in the asset portfolio. Baseline for capacity and redundancy analysis."
-    - name: "online_process_units"
-      expr: SUM(CASE WHEN is_online = TRUE THEN 1 ELSE 0 END)
-      comment: "Count of process units currently online and operational. Compared against total units to compute availability ratio — a key reliability KPI."
-    - name: "total_design_capacity_mgd"
-      expr: SUM(CAST(design_capacity_mgd AS DOUBLE))
-      comment: "Total design treatment capacity in MGD across all process units. Baseline for capacity utilization and expansion planning."
-    - name: "total_rated_capacity_mgd"
-      expr: SUM(CAST(rated_capacity_mgd AS DOUBLE))
-      comment: "Total rated (operational) treatment capacity in MGD. Compared against design capacity to identify capacity degradation requiring rehabilitation."
-    - name: "avg_condition_score"
-      expr: AVG(CAST(condition_score AS DOUBLE))
-      comment: "Average asset condition score across process units. Declining scores signal increasing capital reinvestment need and rising failure risk."
-    - name: "avg_criticality_score"
-      expr: AVG(CAST(criticality_score AS DOUBLE))
-      comment: "Average criticality score across process units. High criticality combined with poor condition identifies assets requiring priority capital investment."
-    - name: "avg_pfas_removal_efficiency_pct"
-      expr: AVG(CAST(pfas_removal_efficiency_pct AS DOUBLE))
-      comment: "Average PFAS removal efficiency percentage across capable process units. Critical KPI given EPA PFAS MCL enforcement — tracks whether treatment meets new regulatory limits."
-    - name: "total_cumulative_volume_treated_mg"
-      expr: SUM(CAST(cumulative_volume_treated_mg AS DOUBLE))
-      comment: "Total cumulative volume treated across all process units in million gallons. Used to assess media exhaustion (e.g., GAC bed volumes) and schedule regeneration or replacement."
-    - name: "avg_design_log_removal_credit"
-      expr: AVG(CAST(design_log_removal_credit AS DOUBLE))
-      comment: "Average design log removal credit across process units. Compared against CT compliance records to verify that installed units deliver their regulatory inactivation credits."
+      comment: "Total number of filter units in the fleet. Baseline asset count for normalizing performance and maintenance KPIs."
 $$;
 
 CREATE OR REPLACE VIEW `vibe_water_utilities_v1`.`_metrics`.`treatment_process_reading`
@@ -297,130 +316,142 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Real-time and historical process monitoring KPIs for treatment operations. Tracks measured parameter values against regulatory limits, exceedance rates, and data quality — essential for SCADA-driven operations, DMR reporting, and compliance management."
+  comment: "Real-time and historical process monitoring KPI layer over treatment process readings. Tracks parameter compliance, exceedance rates, CT performance, and data quality to support operational control and regulatory reporting."
   source: "`vibe_water_utilities_v1`.`treatment`.`process_reading`"
   dimensions:
-    - name: "facility_id"
-      expr: facility_id
-      comment: "Treatment facility — enables facility-level process monitoring comparison."
     - name: "parameter_type"
       expr: parameter_type
-      comment: "Type of process parameter measured (e.g., turbidity, chlorine residual, pH, flow). Primary grouping dimension for parameter-specific compliance analysis."
+      comment: "Type of process parameter measured (e.g., turbidity, chlorine, pH, CT) for parameter-level compliance analysis."
     - name: "process_stage"
       expr: process_stage
-      comment: "Treatment process stage where the reading was taken. Enables stage-specific quality profiling across the treatment train."
+      comment: "Treatment process stage where the reading was taken (e.g., raw water, post-filtration, finished water)."
     - name: "treatment_process_type"
       expr: treatment_process_type
-      comment: "Treatment process type associated with the reading. Supports technology-specific performance benchmarking."
+      comment: "Type of treatment process associated with the reading for process-level performance benchmarking."
+    - name: "reading_status"
+      expr: reading_status
+      comment: "Status of the process reading (e.g., valid, suspect, rejected) for data quality filtering."
     - name: "is_regulatory_exceedance"
       expr: is_regulatory_exceedance
-      comment: "Flags readings that exceed regulatory limits. The primary compliance exception dimension — drives enforcement reporting and corrective action workflows."
-    - name: "regulatory_limit_type"
-      expr: regulatory_limit_type
-      comment: "Type of regulatory limit applicable (e.g., MCL, Action Level, Treatment Technique). Contextualizes exceedance severity and required response."
+      comment: "Indicates whether the reading exceeded a regulatory limit. Core compliance dimension."
     - name: "dmr_reporting_flag"
       expr: dmr_reporting_flag
-      comment: "Indicates whether the reading is required for Discharge Monitoring Report (DMR) submission. Filters the dataset to regulatory-reportable readings."
+      comment: "Indicates whether the reading is required for Discharge Monitoring Report submission."
+    - name: "is_manual_entry"
+      expr: is_manual_entry
+      comment: "Distinguishes manual entries from automated SCADA readings. Data quality and audit dimension."
     - name: "reading_date"
       expr: reading_date
-      comment: "Date of the process reading — supports daily operational review and compliance period analysis."
-    - name: "reading_month"
-      expr: DATE_TRUNC('month', reading_timestamp)
-      comment: "Month of the process reading — supports monthly compliance summary and DMR reporting periods."
-    - name: "alarm_state"
-      expr: alarm_state
-      comment: "SCADA alarm state at time of reading (e.g., Normal, High, Low, Critical). Used to correlate process alarms with compliance exceedances."
+      comment: "Date of the process reading for daily and monthly trend analysis."
+    - name: "regulatory_limit_type"
+      expr: regulatory_limit_type
+      comment: "Type of regulatory limit applicable to the reading (e.g., MCL, action level, treatment technique) for compliance categorization."
+    - name: "facility_id"
+      expr: facility_id
+      comment: "Treatment facility where the reading was recorded. Enables facility-level compliance and process performance analysis."
   measures:
-    - name: "total_readings"
-      expr: COUNT(1)
-      comment: "Total process readings in the reporting period. Used to assess monitoring completeness and SCADA data availability."
-    - name: "regulatory_exceedance_count"
-      expr: SUM(CASE WHEN is_regulatory_exceedance = TRUE THEN 1 ELSE 0 END)
-      comment: "Count of readings that exceeded regulatory limits. Each exceedance is a potential compliance violation — the primary KPI for regulatory risk management."
     - name: "avg_measured_value"
       expr: AVG(CAST(measured_value AS DOUBLE))
-      comment: "Average measured parameter value across readings. Compared against regulatory limits and target ranges to assess process stability."
+      comment: "Average measured process parameter value. Central tendency KPI for process stability and compliance margin analysis."
     - name: "max_measured_value"
       expr: MAX(measured_value)
-      comment: "Maximum measured parameter value in the period. Identifies worst-case process excursions that may trigger regulatory action."
-    - name: "avg_regulatory_limit_value"
-      expr: AVG(CAST(regulatory_limit_value AS DOUBLE))
-      comment: "Average regulatory limit value for the parameter. Provides context for interpreting measured values relative to compliance thresholds."
+      comment: "Maximum measured process parameter value. Identifies worst-case readings for exceedance risk assessment."
     - name: "avg_ct_value"
       expr: AVG(CAST(ct_value AS DOUBLE))
-      comment: "Average CT value from process readings in mg/L·min. Cross-validates CT compliance records with real-time SCADA measurements."
+      comment: "Average CT value recorded in process readings. Disinfection efficacy KPI for regulatory compliance tracking."
     - name: "avg_ct_required"
       expr: AVG(CAST(ct_required AS DOUBLE))
-      comment: "Average required CT value from process readings. Used alongside avg_ct_value to compute real-time CT compliance margin."
-    - name: "manual_entry_readings"
-      expr: SUM(CASE WHEN is_manual_entry = TRUE THEN 1 ELSE 0 END)
-      comment: "Count of manually entered readings (vs. automated SCADA). High manual entry rates indicate SCADA gaps and increase data integrity risk for regulatory submissions."
-    - name: "quality_flagged_readings"
-      expr: SUM(CASE WHEN quality_flag = TRUE THEN 1 ELSE 0 END)
-      comment: "Count of readings flagged for data quality issues. Quality-flagged readings must be reviewed before inclusion in regulatory reports — high counts signal instrumentation or data pipeline problems."
+      comment: "Average CT value required by regulation. Paired with avg_ct_value to assess disinfection compliance margin."
+    - name: "avg_regulatory_limit_value"
+      expr: AVG(CAST(regulatory_limit_value AS DOUBLE))
+      comment: "Average regulatory limit value applicable to readings. Contextualizes measured values against permitted thresholds."
+    - name: "regulatory_exceedance_count"
+      expr: SUM(CASE WHEN is_regulatory_exceedance = TRUE THEN 1 ELSE 0 END)
+      comment: "Count of process readings that exceeded a regulatory limit. Primary compliance risk KPI — drives enforcement and corrective action."
+    - name: "dmr_reportable_reading_count"
+      expr: SUM(CASE WHEN dmr_reporting_flag = TRUE THEN 1 ELSE 0 END)
+      comment: "Count of readings flagged for DMR regulatory reporting. Compliance workload and reporting completeness KPI."
+    - name: "data_quality_issue_count"
+      expr: SUM(CASE WHEN quality_flag = FALSE THEN 1 ELSE 0 END)
+      comment: "Count of readings with data quality issues. Data integrity KPI — high counts undermine regulatory reporting reliability."
+    - name: "process_reading_count"
+      expr: COUNT(1)
+      comment: "Total number of process readings. Baseline monitoring volume metric for coverage and data completeness assessment."
 $$;
 
-CREATE OR REPLACE VIEW `vibe_water_utilities_v1`.`_metrics`.`treatment_facility`
+CREATE OR REPLACE VIEW `vibe_water_utilities_v1`.`_metrics`.`treatment_permit`
 WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Treatment facility portfolio KPIs for executive and regulatory oversight. Tracks capacity utilization, operational status, energy intensity, and resilience attributes across the utility's treatment plant portfolio — essential for capital planning, AWIA compliance, and strategic investment decisions."
-  source: "`vibe_water_utilities_v1`.`treatment`.`facility`"
+  comment: "Regulatory and compliance KPI layer over treatment permits. Tracks permit status, flow limit utilization, water quality limit thresholds, and renewal risk to support regulatory compliance management and enforcement risk mitigation."
+  source: "`vibe_water_utilities_v1`.`treatment`.`treatment_permit`"
   dimensions:
+    - name: "permit_status"
+      expr: permit_status
+      comment: "Current status of the treatment permit (e.g., active, expired, under review). Core compliance posture dimension."
+    - name: "permit_type"
+      expr: permit_type
+      comment: "Type of treatment permit (e.g., NPDES, drinking water, surface water) for regulatory program segmentation."
+    - name: "permit_category"
+      expr: permit_category
+      comment: "Category of the permit for grouping and compliance reporting purposes."
+    - name: "renewal_status"
+      expr: renewal_status
+      comment: "Status of the permit renewal process. Identifies permits at risk of lapsing without timely renewal."
     - name: "facility_type"
       expr: facility_type
-      comment: "Type of treatment facility (e.g., surface water plant, groundwater plant, desalination). Drives regulatory requirements and benchmarking peer groups."
-    - name: "facility_status"
-      expr: facility_status
-      comment: "Current operational status of the facility (e.g., Active, Inactive, Decommissioned). Filters the portfolio to active assets for capacity planning."
-    - name: "primary_treatment_process"
-      expr: primary_treatment_process
-      comment: "Primary treatment process employed (e.g., conventional, direct filtration, membrane). Supports technology-specific benchmarking and capital planning."
-    - name: "disinfection_method"
-      expr: disinfection_method
-      comment: "Primary disinfection method (e.g., chlorination, UV, ozone). Drives CT requirements and DBP formation potential."
-    - name: "ownership_type"
-      expr: ownership_type
-      comment: "Ownership classification (e.g., municipal, private, authority). Relevant for rate-setting, regulatory jurisdiction, and financial reporting."
-    - name: "state_code"
-      expr: state_code
-      comment: "State where the facility is located — supports state-level regulatory reporting and primacy agency submissions."
-    - name: "backup_power_available"
-      expr: backup_power_available
-      comment: "Whether backup power is available at the facility. A critical resilience indicator under AWIA 2018 — facilities without backup power are high-priority for capital investment."
-    - name: "pfas_treatment_capable_flag"
-      expr: pfas_treatment_capable_flag
-      comment: "Whether the facility is capable of treating PFAS compounds. Critical given EPA PFAS MCL enforcement — identifies facilities requiring technology upgrades."
+      comment: "Type of facility covered by the permit (e.g., surface water treatment plant, groundwater facility)."
+    - name: "compliance_schedule_flag"
+      expr: compliance_schedule_flag
+      comment: "Indicates whether the permit includes a compliance schedule. Signals facilities under active regulatory scrutiny."
+    - name: "pfas_monitoring_required"
+      expr: pfas_monitoring_required
+      comment: "Indicates whether PFAS monitoring is required under the permit. Emerging contaminant compliance dimension."
+    - name: "npdes_major_minor_class"
+      expr: npdes_major_minor_class
+      comment: "NPDES permit classification (major or minor discharger). Determines regulatory oversight intensity."
+    - name: "expiration_date"
+      expr: expiration_date
+      comment: "Permit expiration date for renewal timeline management and lapse risk identification."
+    - name: "facility_id"
+      expr: facility_id
+      comment: "Treatment facility covered by the permit. Enables facility-level permit portfolio analysis."
   measures:
-    - name: "total_facilities"
+    - name: "avg_permitted_flow_mgd"
+      expr: AVG(CAST(permitted_flow_mgd AS DOUBLE))
+      comment: "Average permitted peak flow limit in MGD across permits. Capacity constraint KPI for infrastructure planning."
+    - name: "avg_permitted_avg_flow_mgd"
+      expr: AVG(CAST(permitted_avg_flow_mgd AS DOUBLE))
+      comment: "Average permitted average daily flow in MGD. Baseline for assessing flow utilization against permit limits."
+    - name: "avg_turbidity_limit_ntu"
+      expr: AVG(CAST(turbidity_limit_ntu AS DOUBLE))
+      comment: "Average permitted turbidity limit in NTU across permits. Regulatory stringency KPI for treatment process design."
+    - name: "avg_ct_requirement_mg_min_l"
+      expr: AVG(CAST(ct_requirement_mg_min_l AS DOUBLE))
+      comment: "Average CT requirement in mg·min/L across permits. Disinfection compliance baseline for treatment process adequacy assessment."
+    - name: "avg_chlorine_residual_limit_mg_l"
+      expr: AVG(CAST(chlorine_residual_limit_mg_l AS DOUBLE))
+      comment: "Average permitted chlorine residual limit in mg/L. Disinfection compliance threshold KPI."
+    - name: "avg_tthm_mcl_ug_l"
+      expr: AVG(CAST(tthm_mcl_ug_l AS DOUBLE))
+      comment: "Average TTHM maximum contaminant level in µg/L across permits. Disinfection by-product regulatory limit KPI."
+    - name: "avg_haa5_mcl_ug_l"
+      expr: AVG(CAST(haa5_mcl_ug_l AS DOUBLE))
+      comment: "Average HAA5 maximum contaminant level in µg/L across permits. Disinfection by-product regulatory limit KPI."
+    - name: "expiring_permit_count"
+      expr: SUM(CASE WHEN expiration_date <= ADD_MONTHS(CURRENT_DATE(), 6) THEN 1 ELSE 0 END)
+      comment: "Count of permits expiring within the next 6 months. Renewal urgency KPI — lapsed permits create immediate regulatory and operational risk."
+    - name: "active_violation_permit_count"
+      expr: SUM(CASE WHEN CAST(violation_count_active AS INT) > 0 THEN 1 ELSE 0 END)
+      comment: "Count of permits with one or more active violations. Regulatory enforcement risk KPI requiring executive attention."
+    - name: "compliance_schedule_permit_count"
+      expr: SUM(CASE WHEN compliance_schedule_flag = TRUE THEN 1 ELSE 0 END)
+      comment: "Count of permits with active compliance schedules. Indicates facilities under heightened regulatory oversight."
+    - name: "pfas_monitoring_permit_count"
+      expr: SUM(CASE WHEN pfas_monitoring_required = TRUE THEN 1 ELSE 0 END)
+      comment: "Count of permits requiring PFAS monitoring. Emerging contaminant compliance exposure KPI for regulatory risk management."
+    - name: "permit_count"
       expr: COUNT(1)
-      comment: "Total number of treatment facilities in the portfolio. Baseline for capacity and investment planning."
-    - name: "total_design_capacity_mgd"
-      expr: SUM(CAST(design_capacity_mgd AS DOUBLE))
-      comment: "Total design treatment capacity across all facilities in MGD. Primary capacity planning KPI — compared against current demand to assess system headroom."
-    - name: "total_operational_capacity_mgd"
-      expr: SUM(CAST(operational_capacity_mgd AS DOUBLE))
-      comment: "Total current operational capacity in MGD. Compared against design capacity to quantify capacity degradation requiring rehabilitation investment."
-    - name: "total_average_daily_production_mgd"
-      expr: SUM(CAST(average_daily_production_mgd AS DOUBLE))
-      comment: "Total average daily production across all facilities in MGD. Primary throughput KPI for system-wide supply adequacy assessment."
-    - name: "total_annual_operating_cost_usd"
-      expr: SUM(CAST(annual_operating_cost_usd AS DOUBLE))
-      comment: "Total annual operating cost across all treatment facilities in USD. Primary cost KPI for rate-setting, budget planning, and cost-per-gallon benchmarking."
-    - name: "total_annual_energy_kwh"
-      expr: SUM(CAST(annual_energy_kwh AS DOUBLE))
-      comment: "Total annual energy consumption across all facilities in kWh. Drives energy cost forecasting, carbon footprint reporting, and energy efficiency investment decisions."
-    - name: "avg_energy_intensity_kwh_per_mg"
-      expr: AVG(CAST(energy_intensity_kwh_per_mg AS DOUBLE))
-      comment: "Average energy intensity in kWh per million gallons treated. Industry benchmark KPI — high values indicate inefficient facilities requiring process optimization or equipment upgrades."
-    - name: "total_service_population"
-      expr: SUM(CAST(service_population AS DOUBLE))
-      comment: "Total population served by treatment facilities. Used to compute per-capita cost and capacity metrics, and to size regulatory reporting obligations."
-    - name: "facilities_without_backup_power"
-      expr: SUM(CASE WHEN backup_power_available = FALSE THEN 1 ELSE 0 END)
-      comment: "Count of facilities lacking backup power. AWIA 2018 resilience gap metric — each facility without backup power represents a public health risk during grid outages."
-    - name: "pfas_capable_facilities"
-      expr: SUM(CASE WHEN pfas_treatment_capable_flag = TRUE THEN 1 ELSE 0 END)
-      comment: "Count of facilities capable of PFAS treatment. Tracks readiness for EPA PFAS MCL compliance — gap between total facilities and this count drives the PFAS capital investment program."
+      comment: "Total number of treatment permits. Baseline portfolio metric for regulatory compliance program scope."
 $$;
