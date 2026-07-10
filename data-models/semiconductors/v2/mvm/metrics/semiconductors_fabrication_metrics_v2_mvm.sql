@@ -1,4 +1,176 @@
--- Metric views for domain: fabrication | Business: Semiconductors | Version: 2 | Generated on: 2026-06-27 11:25:39
+-- Metric views for domain: fabrication | Business: Semiconductors | Version: 2 | Generated on: 2026-07-10 14:15:10
+
+CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`fabrication_equipment_run`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Equipment Run business metrics"
+  source: "`vibe_semiconductors_v1`.`fabrication`.`equipment_run`"
+  dimensions:
+    - name: "Abort Reason"
+      expr: abort_reason
+    - name: "Alarm Count"
+      expr: alarm_count
+    - name: "Cmp Slurry Type"
+      expr: cmp_slurry_type
+    - name: "Created Timestamp"
+      expr: created_timestamp
+    - name: "Deposition Film Material"
+      expr: deposition_film_material
+    - name: "Implant Species"
+      expr: implant_species
+    - name: "Mes Transaction Code"
+      expr: mes_transaction_code
+    - name: "Process Type"
+      expr: process_type
+    - name: "Run End Timestamp"
+      expr: run_end_timestamp
+    - name: "Run Number"
+      expr: run_number
+    - name: "Run Start Timestamp"
+      expr: run_start_timestamp
+    - name: "Run Status"
+      expr: run_status
+    - name: "Wafer Count"
+      expr: wafer_count
+    - name: "Wafer Slot Map"
+      expr: wafer_slot_map
+    - name: "Created Timestamp Month"
+      expr: DATE_TRUNC('MONTH', created_timestamp)
+    - name: "Run End Timestamp Month"
+      expr: DATE_TRUNC('MONTH', run_end_timestamp)
+  measures:
+    - name: "Row Count"
+      expr: COUNT(1)
+    - name: "Distinct Equipment Run"
+      expr: COUNT(DISTINCT equipment_run_id)
+    - name: "Total Actual Pressure Torr"
+      expr: SUM(actual_pressure_torr)
+    - name: "Average Actual Pressure Torr"
+      expr: AVG(actual_pressure_torr)
+    - name: "Total Actual Temperature Celsius"
+      expr: SUM(actual_temperature_celsius)
+    - name: "Average Actual Temperature Celsius"
+      expr: AVG(actual_temperature_celsius)
+    - name: "Total Cmp Removal Rate Angstrom Per Min"
+      expr: SUM(cmp_removal_rate_angstrom_per_min)
+    - name: "Average Cmp Removal Rate Angstrom Per Min"
+      expr: AVG(cmp_removal_rate_angstrom_per_min)
+    - name: "Total Cmp Wiwnu Percent"
+      expr: SUM(cmp_wiwnu_percent)
+    - name: "Average Cmp Wiwnu Percent"
+      expr: AVG(cmp_wiwnu_percent)
+    - name: "Total Deposition Rate Angstrom Per Min"
+      expr: SUM(deposition_rate_angstrom_per_min)
+    - name: "Average Deposition Rate Angstrom Per Min"
+      expr: AVG(deposition_rate_angstrom_per_min)
+    - name: "Total Deposition Thickness Angstrom"
+      expr: SUM(deposition_thickness_angstrom)
+    - name: "Average Deposition Thickness Angstrom"
+      expr: AVG(deposition_thickness_angstrom)
+    - name: "Total Deposition Uniformity Percent"
+      expr: SUM(deposition_uniformity_percent)
+    - name: "Average Deposition Uniformity Percent"
+      expr: AVG(deposition_uniformity_percent)
+    - name: "Total Implant Dose Atoms Per Cm2"
+      expr: SUM(implant_dose_atoms_per_cm2)
+    - name: "Average Implant Dose Atoms Per Cm2"
+      expr: AVG(implant_dose_atoms_per_cm2)
+    - name: "Total Implant Energy Kev"
+      expr: SUM(implant_energy_kev)
+    - name: "Average Implant Energy Kev"
+      expr: AVG(implant_energy_kev)
+    - name: "Total Implant Tilt Angle Degrees"
+      expr: SUM(implant_tilt_angle_degrees)
+    - name: "Average Implant Tilt Angle Degrees"
+      expr: AVG(implant_tilt_angle_degrees)
+    - name: "Total Implant Twist Angle Degrees"
+      expr: SUM(implant_twist_angle_degrees)
+    - name: "Average Implant Twist Angle Degrees"
+      expr: AVG(implant_twist_angle_degrees)
+    - name: "Total Lithography Cd Measurement Nm"
+      expr: SUM(lithography_cd_measurement_nm)
+    - name: "Average Lithography Cd Measurement Nm"
+      expr: AVG(lithography_cd_measurement_nm)
+$$;
+
+CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`fabrication_fab_facility`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Fab Facility business metrics"
+  source: "`vibe_semiconductors_v1`.`fabrication`.`fab_facility`"
+  dimensions:
+    - name: "City"
+      expr: city
+    - name: "Cleanroom Class"
+      expr: cleanroom_class
+    - name: "Compliance Status"
+      expr: compliance_status
+    - name: "Contact Email"
+      expr: contact_email
+    - name: "Contact Phone"
+      expr: contact_phone
+    - name: "Country Code"
+      expr: country_code
+    - name: "End Date"
+      expr: end_date
+    - name: "Environmental Certifications"
+      expr: environmental_certifications
+    - name: "Equipment Summary"
+      expr: equipment_summary
+    - name: "Facility Code"
+      expr: facility_code
+    - name: "Facility Name"
+      expr: facility_name
+    - name: "Facility Type"
+      expr: facility_type
+    - name: "Last Audit Date"
+      expr: last_audit_date
+    - name: "Lifecycle Status"
+      expr: lifecycle_status
+    - name: "Lithography Type"
+      expr: lithography_type
+  measures:
+    - name: "Row Count"
+      expr: COUNT(1)
+    - name: "Distinct Fab Facility"
+      expr: COUNT(DISTINCT fab_facility_id)
+    - name: "Total Capacity Wafer Per Month"
+      expr: SUM(capacity_wafer_per_month)
+    - name: "Average Capacity Wafer Per Month"
+      expr: AVG(capacity_wafer_per_month)
+    - name: "Total Carbon Footprint Kgco2e"
+      expr: SUM(carbon_footprint_kgco2e)
+    - name: "Average Carbon Footprint Kgco2e"
+      expr: AVG(carbon_footprint_kgco2e)
+    - name: "Total Energy Consumption Mwh"
+      expr: SUM(energy_consumption_mwh)
+    - name: "Average Energy Consumption Mwh"
+      expr: AVG(energy_consumption_mwh)
+    - name: "Total Fab Area Sqft"
+      expr: SUM(fab_area_sqft)
+    - name: "Average Fab Area Sqft"
+      expr: AVG(fab_area_sqft)
+    - name: "Total Latitude"
+      expr: SUM(latitude)
+    - name: "Average Latitude"
+      expr: AVG(latitude)
+    - name: "Total Longitude"
+      expr: SUM(longitude)
+    - name: "Average Longitude"
+      expr: AVG(longitude)
+    - name: "Total Waste Generated Tons"
+      expr: SUM(waste_generated_tons)
+    - name: "Average Waste Generated Tons"
+      expr: AVG(waste_generated_tons)
+    - name: "Total Water Usage M3"
+      expr: SUM(water_usage_m3)
+    - name: "Average Water Usage M3"
+      expr: AVG(water_usage_m3)
+$$;
 
 CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`fabrication_fab_yield_record`
 WITH METRICS
@@ -45,6 +217,18 @@ AS $$
       expr: COUNT(1)
     - name: "Distinct Fab Yield Record"
       expr: COUNT(DISTINCT fab_yield_record_id)
+    - name: "Total Control Limit Lower"
+      expr: SUM(control_limit_lower)
+    - name: "Average Control Limit Lower"
+      expr: AVG(control_limit_lower)
+    - name: "Total Control Limit Upper"
+      expr: SUM(control_limit_upper)
+    - name: "Average Control Limit Upper"
+      expr: AVG(control_limit_upper)
+    - name: "Total Specification Limit Lower"
+      expr: SUM(specification_limit_lower)
+    - name: "Average Specification Limit Lower"
+      expr: AVG(specification_limit_lower)
     - name: "Total Yield For Lot"
       expr: SUM(yield_for_lot)
     - name: "Average Yield For Lot"
@@ -57,69 +241,6 @@ AS $$
       expr: SUM(yield_record_for_lot)
     - name: "Average Yield Record For Lot"
       expr: AVG(yield_record_for_lot)
-$$;
-
-CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`fabrication_fabrication_process_recipe`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Fabrication Process Recipe business metrics"
-  source: "`vibe_semiconductors_v1`.`fabrication`.`fabrication_process_recipe`"
-  dimensions:
-    - name: "Approval Date"
-      expr: approval_date
-    - name: "Approval Status"
-      expr: approval_status
-    - name: "Approved By"
-      expr: approved_by
-    - name: "Chamber Configuration"
-      expr: chamber_configuration
-    - name: "Change Control Reference"
-      expr: change_control_reference
-    - name: "Created Timestamp"
-      expr: created_timestamp
-    - name: "Effective End Date"
-      expr: effective_end_date
-    - name: "Effective Start Date"
-      expr: effective_start_date
-    - name: "Environmental Compliance Flag"
-      expr: environmental_compliance_flag
-    - name: "Equipment Type"
-      expr: equipment_type
-    - name: "Fmea Reference"
-      expr: fmea_reference
-    - name: "Gas Flow Parameters"
-      expr: gas_flow_parameters
-    - name: "Itar Controlled Flag"
-      expr: itar_controlled_flag
-    - name: "Last Modified Timestamp"
-      expr: last_modified_timestamp
-    - name: "Process Duration Seconds"
-      expr: process_duration_seconds
-    - name: "Process Layer Type"
-      expr: process_layer_type
-  measures:
-    - name: "Row Count"
-      expr: COUNT(1)
-    - name: "Distinct Fabrication Process Recipe"
-      expr: COUNT(DISTINCT fabrication_process_recipe_id)
-    - name: "Total Power Settings Watts"
-      expr: SUM(power_settings_watts)
-    - name: "Average Power Settings Watts"
-      expr: AVG(power_settings_watts)
-    - name: "Total Process Pressure Torr"
-      expr: SUM(process_pressure_torr)
-    - name: "Average Process Pressure Torr"
-      expr: AVG(process_pressure_torr)
-    - name: "Total Process Temperature Celsius"
-      expr: SUM(process_temperature_celsius)
-    - name: "Average Process Temperature Celsius"
-      expr: AVG(process_temperature_celsius)
-    - name: "Total Target Thickness Nm"
-      expr: SUM(target_thickness_nm)
-    - name: "Average Target Thickness Nm"
-      expr: AVG(target_thickness_nm)
 $$;
 
 CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`fabrication_fabrication_wafer_lot`
@@ -140,8 +261,6 @@ AS $$
       expr: current_process_area
     - name: "Due Date"
       expr: due_date
-    - name: "Fab Facility Code"
-      expr: fab_facility_code
     - name: "Hold Flag"
       expr: hold_flag
     - name: "Hold Reason Code"
@@ -162,6 +281,8 @@ AS $$
       expr: lot_number
     - name: "Lot Type"
       expr: lot_type
+    - name: "Lot Updated Timestamp"
+      expr: lot_updated_timestamp
   measures:
     - name: "Row Count"
       expr: COUNT(1)
@@ -305,10 +426,6 @@ AS $$
       expr: SUM(measurement_value)
     - name: "Average Measurement Value"
       expr: AVG(measurement_value)
-    - name: "Total Tracks Lot"
-      expr: SUM(tracks_lot)
-    - name: "Average Tracks Lot"
-      expr: AVG(tracks_lot)
 $$;
 
 CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`fabrication_photomask`
@@ -396,14 +513,6 @@ AS $$
       expr: approved_by
     - name: "Beol Step Count"
       expr: beol_step_count
-    - name: "Cool Optimization Mode"
-      expr: cool_optimization_mode
-    - name: "Coolant Type"
-      expr: coolant_type
-    - name: "Cooling Method"
-      expr: cooling_method
-    - name: "Cooling Optimization Mode"
-      expr: cooling_optimization_mode
     - name: "Created Timestamp"
       expr: created_timestamp
     - name: "Effective End Date"
@@ -414,12 +523,22 @@ AS $$
       expr: environmental_classification
     - name: "Export Control Classification"
       expr: export_control_classification
-    - name: "Fab Facility Code"
-      expr: fab_facility_code
+    - name: "Fabrication Process Flow Description"
+      expr: fabrication_process_flow_description
     - name: "Feol Step Count"
       expr: feol_step_count
-    - name: "Flow Code"
-      expr: flow_code
+    - name: "Flow Revision"
+      expr: flow_revision
+    - name: "Flow Status"
+      expr: flow_status
+    - name: "Flow Type"
+      expr: flow_type
+    - name: "Is Customer Specific"
+      expr: is_customer_specific
+    - name: "Last Modified By"
+      expr: last_modified_by
+    - name: "Last Modified Timestamp"
+      expr: last_modified_timestamp
   measures:
     - name: "Row Count"
       expr: COUNT(1)
@@ -433,110 +552,81 @@ AS $$
       expr: SUM(target_yield_percent)
     - name: "Average Target Yield Percent"
       expr: AVG(target_yield_percent)
-    - name: "Total Waste Elimination Target Pct"
-      expr: SUM(waste_elimination_target_pct)
-    - name: "Average Waste Elimination Target Pct"
-      expr: AVG(waste_elimination_target_pct)
 $$;
 
-CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`fabrication_process_flow_step_recipe`
+CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`fabrication_process_recipe`
 WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Process Flow Step Recipe business metrics"
-  source: "`vibe_semiconductors_v1`.`fabrication`.`process_flow_step_recipe`"
+  comment: "Process Recipe business metrics"
+  source: "`vibe_semiconductors_v1`.`fabrication`.`process_recipe`"
   dimensions:
+    - name: "Approval Date"
+      expr: approval_date
+    - name: "Approval Status"
+      expr: approval_status
+    - name: "Approved By"
+      expr: approved_by
+    - name: "Chamber Configuration"
+      expr: chamber_configuration
+    - name: "Change Control Reference"
+      expr: change_control_reference
     - name: "Created Timestamp"
       expr: created_timestamp
     - name: "Effective End Date"
       expr: effective_end_date
     - name: "Effective Start Date"
       expr: effective_start_date
-    - name: "Is Mandatory Step"
-      expr: is_mandatory_step
-    - name: "Last Modified Timestamp"
-      expr: last_modified_timestamp
-    - name: "Modified By"
-      expr: modified_by
-    - name: "Step Description"
-      expr: step_description
-    - name: "Step Sequence Number"
-      expr: step_sequence_number
-    - name: "Step Type"
-      expr: step_type
-    - name: "Created Timestamp Month"
-      expr: DATE_TRUNC('MONTH', created_timestamp)
-    - name: "Effective End Date Month"
-      expr: DATE_TRUNC('MONTH', effective_end_date)
-  measures:
-    - name: "Row Count"
-      expr: COUNT(1)
-    - name: "Distinct Process Flow Step Recipe"
-      expr: COUNT(DISTINCT process_flow_step_recipe_id)
-$$;
-
-CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`fabrication_technology_node`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Technology Node business metrics"
-  source: "`vibe_semiconductors_v1`.`fabrication`.`technology_node`"
-  dimensions:
-    - name: "Active Flag"
-      expr: active_flag
-    - name: "Created Timestamp"
-      expr: created_timestamp
-    - name: "Design Rule Complexity"
-      expr: design_rule_complexity
-    - name: "Dfm Enabled Flag"
-      expr: dfm_enabled_flag
-    - name: "Dft Enabled Flag"
-      expr: dft_enabled_flag
-    - name: "Ear Classification"
-      expr: ear_classification
-    - name: "Eol Announcement Date"
-      expr: eol_announcement_date
-    - name: "Iatf16949 Certified Flag"
-      expr: iatf16949_certified_flag
-    - name: "Iso9001 Certified Flag"
-      expr: iso9001_certified_flag
+    - name: "Environmental Compliance Flag"
+      expr: environmental_compliance_flag
+    - name: "Equipment Type"
+      expr: equipment_type
+    - name: "Fmea Reference"
+      expr: fmea_reference
+    - name: "Gas Flow Parameters"
+      expr: gas_flow_parameters
     - name: "Itar Controlled Flag"
       expr: itar_controlled_flag
     - name: "Last Modified Timestamp"
       expr: last_modified_timestamp
-    - name: "Lithography Technology"
-      expr: lithography_technology
-    - name: "Metal Layer Count"
-      expr: metal_layer_count
-    - name: "Modified By User"
-      expr: modified_by_user
-    - name: "Node Code"
-      expr: node_code
-    - name: "Node Generation"
-      expr: node_generation
+    - name: "Process Duration Seconds"
+      expr: process_duration_seconds
+    - name: "Process Layer Type"
+      expr: process_layer_type
   measures:
     - name: "Row Count"
       expr: COUNT(1)
-    - name: "Distinct Technology Node"
-      expr: COUNT(DISTINCT technology_node_id)
-    - name: "Total Mask Set Cost Usd"
-      expr: SUM(mask_set_cost_usd)
-    - name: "Average Mask Set Cost Usd"
-      expr: AVG(mask_set_cost_usd)
-    - name: "Total Minimum Feature Size Nm"
-      expr: SUM(minimum_feature_size_nm)
-    - name: "Average Minimum Feature Size Nm"
-      expr: AVG(minimum_feature_size_nm)
-    - name: "Total Nre Cost Estimate Usd"
-      expr: SUM(nre_cost_estimate_usd)
-    - name: "Average Nre Cost Estimate Usd"
-      expr: AVG(nre_cost_estimate_usd)
-    - name: "Total Target Yield Percent"
-      expr: SUM(target_yield_percent)
-    - name: "Average Target Yield Percent"
-      expr: AVG(target_yield_percent)
+    - name: "Distinct Process Recipe"
+      expr: COUNT(DISTINCT process_recipe_id)
+    - name: "Total Defect Density Target Per Cm2"
+      expr: SUM(defect_density_target_per_cm2)
+    - name: "Average Defect Density Target Per Cm2"
+      expr: AVG(defect_density_target_per_cm2)
+    - name: "Total Power Settings Watts"
+      expr: SUM(power_settings_watts)
+    - name: "Average Power Settings Watts"
+      expr: AVG(power_settings_watts)
+    - name: "Total Process Pressure Torr"
+      expr: SUM(process_pressure_torr)
+    - name: "Average Process Pressure Torr"
+      expr: AVG(process_pressure_torr)
+    - name: "Total Process Temperature Celsius"
+      expr: SUM(process_temperature_celsius)
+    - name: "Average Process Temperature Celsius"
+      expr: AVG(process_temperature_celsius)
+    - name: "Total Target Thickness Nm"
+      expr: SUM(target_thickness_nm)
+    - name: "Average Target Thickness Nm"
+      expr: AVG(target_thickness_nm)
+    - name: "Total Uniformity Target Percent"
+      expr: SUM(uniformity_target_percent)
+    - name: "Average Uniformity Target Percent"
+      expr: AVG(uniformity_target_percent)
+    - name: "Total Yield Target Percent"
+      expr: SUM(yield_target_percent)
+    - name: "Average Yield Target Percent"
+      expr: AVG(yield_target_percent)
 $$;
 
 CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`fabrication_wafer`
@@ -624,8 +714,6 @@ AS $$
       expr: doping_type
     - name: "Ear Classification"
       expr: ear_classification
-    - name: "Fab Facility Code"
-      expr: fab_facility_code
     - name: "Hold Reason Code"
       expr: hold_reason_code
     - name: "Itar Controlled Flag"
@@ -634,10 +722,6 @@ AS $$
       expr: last_modified_timestamp
     - name: "Lot Number"
       expr: lot_number
-    - name: "Nre Project Code"
-      expr: nre_project_code
-    - name: "Number"
-      expr: number
     - name: "Parent Lot Number"
       expr: parent_lot_number
     - name: "Planned Completion Date"
@@ -646,6 +730,12 @@ AS $$
       expr: priority_class
     - name: "Production Line"
       expr: production_line
+    - name: "Release Timestamp"
+      expr: release_timestamp
+    - name: "Requested Delivery Date"
+      expr: requested_delivery_date
+    - name: "Special Instructions"
+      expr: special_instructions
   measures:
     - name: "Row Count"
       expr: COUNT(1)

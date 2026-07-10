@@ -1,5 +1,5 @@
--- Schema for Domain: production | Business: Manufacturing | Version: v2_ecm
--- Generated on: 2026-07-03 05:59:35
+-- Schema for Domain: production | Business:  | Version: v2_ecm
+-- Generated on: 2026-07-10 12:59:03
 
 -- ========= DATABASE =========
 CREATE DATABASE IF NOT EXISTS `vibe_manufacturing_v1`.`production` COMMENT 'Core manufacturing execution domain governing shop floor control, work orders, routing, scheduling, WIP tracking, cycle time, takt time, throughput, and OEE. Integrates with MES (Siemens Opcenter) and ERP (SAP PP) to orchestrate production runs, machine assignments, capacity planning, and shift-level output reporting via SCADA/DCS systems.';
@@ -23,6 +23,7 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`production`.`production_work_or
     `project_header_id` BIGINT COMMENT 'Foreign key linking to project.project_header. Business justification: PROJECT COST ALLOCATION: Work orders must be tied to the capital project for cost tracking and reporting in the Project Cost Summary report.',
     `purchase_order_id` BIGINT COMMENT 'Foreign key linking to procurement.purchase_order. Business justification: Required for traceability of external component procurement to a work order, used in scheduling and cost reporting.',
     `recipe_id` BIGINT COMMENT 'Foreign key linking to automation.recipe. Business justification: Each work order follows a defined recipe; production planning and quality assurance reports need the recipe reference.',
+    `regulatory_requirement_id` BIGINT COMMENT 'Foreign key linking to compliance.regulatory_requirement. Business justification: Regulatory compliance tracking per work order requires linking each work order to its primary regulatory requirement for audit reports.',
     `order_intake_id` BIGINT COMMENT 'Foreign key linking to sales.order_intake. Business justification: Production‑to‑Sales reconciliation needs a direct FK from work order to the sales order intake that generated it, replacing the denormalized sales_order_number.',
     `shift_id` BIGINT COMMENT 'Foreign key linking to production.shift. Business justification: A work order is scheduled for a particular shift; the FK provides a proper relational link.',
     `sku_master_id` BIGINT COMMENT 'Foreign key linking to product.sku_master. Business justification: Work orders must be linked to the SKU produced for inventory, costing, and sales order fulfillment reporting.',
@@ -31,7 +32,6 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`production`.`production_work_or
     `supplier_id` BIGINT COMMENT 'Foreign key linking to supplier.supplier. Business justification: Work Order Supplier Performance Report requires linking each work order to its primary supplier for quality and delivery metrics.',
     `version_id` BIGINT COMMENT 'Foreign key linking to production.version. Business justification: A production work order is executed using a specific production version, line, and shift. Adding these FKs normalizes the model and removes the redundant string fields.',
     `warehouse_id` BIGINT COMMENT 'Reference to the warehouse or plant location where production is executed.',
-    `asset_work_order_id` BIGINT COMMENT 'Reference to SSOT owner asset.asset_work_order for work_order conflict resolution.',
     `actual_cost` DECIMAL(18,2) COMMENT 'Actual total cost incurred for this work order, including material, labor, and overhead.',
     `actual_finish_timestamp` TIMESTAMP COMMENT 'Actual date and time when production execution was completed on the shop floor.',
     `actual_quantity` DECIMAL(18,2) COMMENT 'Actual quantity of finished goods produced and confirmed, in base unit of measure.',
@@ -95,7 +95,7 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`production`.`order_confirmation
     `last_modified_timestamp` TIMESTAMP COMMENT 'The date and time when this confirmation record was last updated. Used for change tracking and data synchronization across systems.',
     `material_document_number` STRING COMMENT 'The material document number generated in ERP inventory management when this confirmation posted goods movements. Used for reconciliation between production and inventory systems.',
     `mes_transaction_code` STRING COMMENT 'The unique transaction identifier from the source MES system (e.g., Siemens Opcenter) that originated this confirmation. Used for system integration reconciliation and traceability.',
-    `operation_number` DECIMAL(18,2) COMMENT 'The specific operation sequence number within the work order routing for which this confirmation is recorded. Identifies the production step (e.g., 0010, 0020, 0030) in the manufacturing process.',
+    `operation_number` STRING COMMENT 'The specific operation sequence number within the work order routing for which this confirmation is recorded. Identifies the production step (e.g., 0010, 0020, 0030) in the manufacturing process.',
     `plant_code` STRING COMMENT 'The manufacturing plant or production facility code where this confirmation was recorded. Used for multi-site reporting and cost center assignment.',
     `posting_date` DATE COMMENT 'The accounting date on which the confirmation was posted to inventory and financial ledgers. Used for period-based cost settlement and variance analysis.',
     `quality_inspection_required_flag` BOOLEAN COMMENT 'Boolean indicator specifying whether the output from this confirmation requires quality inspection before it can be released to inventory or the next operation. Drives inspection lot creation in QM module.',
@@ -144,7 +144,7 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`production`.`production_schedul
     `planned_quantity` DECIMAL(18,2) COMMENT 'Target quantity of the material to be produced according to this schedule. Expressed in the base unit of measure for the material.',
     `planning_bucket` STRING COMMENT 'Time granularity of the schedule planning horizon. Daily for short-term detailed scheduling, weekly for medium-term planning, monthly for long-term capacity planning.. Valid values are `daily|weekly|monthly`',
     `planning_horizon_weeks` STRING COMMENT 'Number of weeks into the future that this schedule covers. Defines the forward visibility window for production planning.',
-    `planning_strategy` DECIMAL(18,2) COMMENT 'Manufacturing strategy governing how this schedule is planned and executed. Make-to-stock builds for inventory; make-to-order builds against customer orders; assemble-to-order configures from standard components; engineer-to-order designs and builds custom products.',
+    `planning_strategy` STRING COMMENT 'Manufacturing strategy governing how this schedule is planned and executed. Make-to-stock builds for inventory; make-to-order builds against customer orders; assemble-to-order configures from standard components; engineer-to-order designs and builds custom products.. Valid values are `make_to_stock|make_to_order|assemble_to_order|engineer_to_order`',
     `priority_rank` STRING COMMENT 'Relative priority of this schedule compared to other schedules. Lower numbers indicate higher priority. Used for resource allocation and sequencing decisions.',
     `released_timestamp` TIMESTAMP COMMENT 'Timestamp when this schedule was released for execution. Marks the transition from planning to active production.',
     `run_time_hours` DECIMAL(18,2) COMMENT 'Estimated time required to produce the planned quantity, excluding setup and teardown. Used for cycle time analysis.',
@@ -171,7 +171,6 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`production`.`work_center` (
     `maintenance_strategy_id` BIGINT COMMENT 'Reference to the preventive maintenance strategy applied to equipment at this work center.',
     `production_plant_id` BIGINT COMMENT 'Reference to the manufacturing plant or facility where this work center is located.',
     `work_center_group_id` BIGINT COMMENT 'Foreign key linking to production.work_center_group. Business justification: A work center belongs to a work center group; adding work_center_group_id creates the parent relationship and eliminates the need for ad‑hoc grouping logic.',
-    `shift_sequence_id` BIGINT COMMENT 'Reference to the shift sequence or shift calendar defining operating hours for this work center.',
     `available_capacity_per_shift` DECIMAL(18,2) COMMENT 'Standard available capacity of the work center per shift, measured in the capacity category unit.',
     `capacity_category` STRING COMMENT 'Unit of measure for capacity planning (e.g., machine hours, labor hours, throughput units).. Valid values are `machine_hours|labor_hours|units_per_hour|setup_hours`',
     `capacity_planning_group` STRING COMMENT 'Grouping code for aggregating work centers in capacity planning and leveling activities.. Valid values are `^[A-Z0-9]{2,8}$`',
@@ -184,7 +183,7 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`production`.`work_center` (
     `last_modified_by` STRING COMMENT 'User ID or name of the person who last modified this work center record.',
     `last_modified_timestamp` TIMESTAMP COMMENT 'Timestamp when this work center record was last modified.',
     `location_description` STRING COMMENT 'Physical location description of the work center within the plant (e.g., Building 2, Floor 3, Bay 5).',
-    `mes_integration_enabled` DECIMAL(18,2) COMMENT 'Indicates whether this work center is integrated with the MES for real-time shop floor control and data collection.',
+    `mes_integration_enabled` BOOLEAN COMMENT 'Indicates whether this work center is integrated with the MES for real-time shop floor control and data collection.',
     `work_center_name` STRING COMMENT 'Human-readable name or description of the work center (e.g., Assembly Line 3, CNC Machining Cell A, Welding Station 5).',
     `number_of_machines` STRING COMMENT 'Count of individual machines or equipment units within this work center.',
     `number_of_operators` STRING COMMENT 'Standard number of operators or workers assigned to this work center during normal operation.',
@@ -193,6 +192,7 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`production`.`work_center` (
     `quality_inspection_required` BOOLEAN COMMENT 'Indicates whether operations at this work center require mandatory quality inspection before proceeding to the next step.',
     `scada_tag_prefix` STRING COMMENT 'SCADA tag prefix used to identify real-time data points from this work center in the process control system.. Valid values are `^[A-Z0-9_]{2,20}$`',
     `scheduling_type` STRING COMMENT 'Scheduling strategy used for operations at this work center (forward scheduling, backward scheduling, or capacity-only).. Valid values are `forward|backward|midpoint|only_capacity_requirements`',
+    `shift_sequence_id` BIGINT COMMENT 'Reference to the shift sequence or shift calendar defining operating hours for this work center.',
     `standard_processing_time_minutes` DECIMAL(18,2) COMMENT 'Standard processing or cycle time in minutes per unit for operations performed at this work center.',
     `standard_queue_time_hours` DECIMAL(18,2) COMMENT 'Standard queue time in hours representing the typical wait time before an operation begins at this work center.',
     `standard_setup_time_minutes` DECIMAL(18,2) COMMENT 'Standard setup or changeover time in minutes required to prepare the work center for a new production run.',
@@ -218,7 +218,7 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`production`.`routing` (
     `base_quantity` DECIMAL(18,2) COMMENT 'Standard lot size or batch quantity for which the routing times and resource requirements are defined. All operation times are calculated relative to this base quantity.',
     `base_unit_of_measure` STRING COMMENT 'Unit of measure for the base quantity. Standard ISO unit codes such as EA (each), KG (kilogram), L (liter), M (meter).. Valid values are `^[A-Z]{2,3}$`',
     `change_number` STRING COMMENT 'Engineering Change Notice (ECN) or Engineering Change Order (ECO) number that authorized the creation or last modification of this routing. Supports traceability of process changes.. Valid values are `^[A-Z0-9]{6,20}$`',
-    `cost_currency_code` DECIMAL(18,2) COMMENT 'ISO 4217 three-letter currency code for the standard cost amount.',
+    `cost_currency_code` STRING COMMENT 'ISO 4217 three-letter currency code for the standard cost amount.. Valid values are `^[A-Z]{3}$`',
     `counter` STRING COMMENT 'Sequential counter within the routing group. Together with routing_group, forms an alternative business key.. Valid values are `^[0-9]{1,8}$`',
     `created_timestamp` TIMESTAMP COMMENT 'Timestamp when this routing record was first created in the system.',
     `routing_description` STRING COMMENT 'Detailed textual description of the routing purpose, scope, and special instructions. Provides context for production planners and shop floor operators.',
@@ -240,7 +240,7 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`production`.`routing` (
     `total_labor_time_minutes` DECIMAL(18,2) COMMENT 'Total cumulative labor time in minutes across all operations for the base quantity. Labor time may scale differently than machine time.',
     `total_lead_time_hours` DECIMAL(18,2) COMMENT 'Total cumulative lead time in hours required to complete all operations in this routing for the base quantity. Includes setup, machine, labor, and queue times.',
     `total_machine_time_minutes` DECIMAL(18,2) COMMENT 'Total cumulative machine processing time in minutes across all operations for the base quantity. Machine time scales with lot size.',
-    `total_operation_count` DECIMAL(18,2) COMMENT 'Total number of operations (steps) defined in this routing. Derived from routing operation line items.',
+    `total_operation_count` STRING COMMENT 'Total number of operations (steps) defined in this routing. Derived from routing operation line items.',
     `total_setup_time_minutes` DECIMAL(18,2) COMMENT 'Total cumulative setup time in minutes across all operations for the base quantity. Setup time is independent of lot size.',
     `usage` STRING COMMENT 'Intended application context for the routing. Standard routings are the default production method; alternative routings provide backup processes; trial routings support pilot runs; prototype routings support R&D; emergency routings address contingency scenarios.. Valid values are `standard|alternative|trial|prototype|emergency`',
     `usage_count` STRING COMMENT 'Total number of times this routing has been used in production orders or work orders. Indicates routing popularity and stability.',
@@ -269,7 +269,7 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`production`.`version` (
     `is_costing_relevant` BOOLEAN COMMENT 'Flag indicating whether this production version is used for product costing calculations. True means this version is included in standard cost estimates.',
     `is_locked` BOOLEAN COMMENT 'Flag indicating whether this production version is locked and cannot be used for new production orders. True means locked, False means available for use.',
     `is_mrp_relevant` BOOLEAN COMMENT 'Flag indicating whether this production version is considered during MRP (Material Requirements Planning) runs. True means MRP will use this version for planning.',
-    `issue_storage_location` BOOLEAN COMMENT 'Default storage location from which components are issued for production orders created with this production version. 4-character alphanumeric code.',
+    `issue_storage_location` STRING COMMENT 'Default storage location from which components are issued for production orders created with this production version. 4-character alphanumeric code.. Valid values are `^[A-Z0-9]{4}$`',
     `last_modified_by` STRING COMMENT 'User ID or name of the person who last modified this production version record.',
     `last_modified_timestamp` TIMESTAMP COMMENT 'Date and time when this production version record was last modified in the system.',
     `lot_size_from` DECIMAL(18,2) COMMENT 'Minimum production lot size (quantity) for which this production version is valid. Defines the lower bound of the lot size range.',
@@ -292,7 +292,7 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`production`.`shift` (
     `location_id` BIGINT COMMENT 'Foreign key linking to asset.asset_location. Business justification: Links shift to its site location, enabling shift‑level labor cost and safety incident aggregation per plant.',
     `employee_id` BIGINT COMMENT 'Foreign key linking to workforce.employee. Business justification: Shift supervisor employee oversees shift operations, needed for Shift Performance and Safety reports.',
     `work_center_id` BIGINT COMMENT 'Reference to the specific work center or production line where this shift is applicable. Nullable if the shift applies plant-wide. Used for capacity planning and machine-specific scheduling.',
-    `break_duration_minutes` DECIMAL(18,2) COMMENT 'Sum of all scheduled break periods (lunch, rest breaks) within the shift, in minutes. Subtracted from gross duration to calculate net available time for production.',
+    `break_duration_minutes` STRING COMMENT 'Sum of all scheduled break periods (lunch, rest breaks) within the shift, in minutes. Subtracted from gross duration to calculate net available time for production.',
     `break_schedule` STRING COMMENT 'Textual description of the break structure, including start times and durations (e.g., 10:00-10:15 (15 min), 12:00-12:30 (30 min)). Used for communication to shop floor personnel and HMI display.',
     `shift_category` STRING COMMENT 'Broad categorization of shift purpose. Production shifts are used for manufacturing execution and OEE calculation; non-production shifts (e.g., maintenance, training) are excluded from throughput metrics; mixed shifts include both activities.. Valid values are `production|non_production|mixed`',
     `changeover_allowance_minutes` STRING COMMENT 'Standard time reserved within the shift for product changeovers, tool changes, or setup activities. Used to adjust net available time for multi-product shifts and to calculate planned downtime for OEE.',
@@ -303,8 +303,8 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`production`.`shift` (
     `effective_end_date` DATE COMMENT 'Date after which this shift definition is no longer valid. Nullable for open-ended shift patterns. Used to retire obsolete shift definitions while preserving historical data.',
     `effective_start_date` DATE COMMENT 'Date from which this shift definition becomes active and can be used for production scheduling. Supports versioning of shift patterns over time.',
     `end_time` TIMESTAMP COMMENT 'Time of day when the shift ends, in HH:mm:ss format (24-hour clock). May be less than start_time for shifts that cross midnight. Used to calculate gross shift duration.',
-    `gross_duration_minutes` DECIMAL(18,2) COMMENT 'Total elapsed time of the shift from start to end, in minutes, including all breaks and non-productive time. Used as the denominator for availability calculations.',
-    `handover_duration_minutes` DECIMAL(18,2) COMMENT 'Planned overlap time between consecutive shifts for handover communication, equipment status review, and safety briefing. Subtracted from net available time if included in shift boundaries. Nullable for non-continuous operations.',
+    `gross_duration_minutes` STRING COMMENT 'Total elapsed time of the shift from start to end, in minutes, including all breaks and non-productive time. Used as the denominator for availability calculations.',
+    `handover_duration_minutes` STRING COMMENT 'Planned overlap time between consecutive shifts for handover communication, equipment status review, and safety briefing. Subtracted from net available time if included in shift boundaries. Nullable for non-continuous operations.',
     `is_continuous_operation` BOOLEAN COMMENT 'Indicates whether this shift is part of a 24/7 continuous manufacturing operation (True) or a discrete batch operation (False). Used to determine handover requirements and WIP tracking rules.',
     `labor_rate_multiplier` DECIMAL(18,2) COMMENT 'Multiplier applied to base labor rates for this shift type (e.g., 1.0 for regular, 1.5 for overtime, 2.0 for holiday). Used for labor cost calculation and variance analysis.',
     `modified_by` STRING COMMENT 'User ID or name of the person who last modified this shift definition record. Used for audit trail and change tracking.',
@@ -329,6 +329,7 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`production`.`shift` (
 
 CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`production`.`shift_report` (
     `shift_report_id` BIGINT COMMENT 'Unique identifier for the shift report record. Primary key.',
+    `asset_work_order_id` BIGINT COMMENT 'Reference to the production work order executed during this shift.',
     `employee_id` BIGINT COMMENT 'Reference to the supervisor or shift leader responsible for this production shift.',
     `location_id` BIGINT COMMENT 'Foreign key linking to asset.asset_location. Business justification: Allows shift reports to be tied to the plant location for accurate reporting of downtime and quality metrics per site.',
     `shift_id` BIGINT COMMENT 'Reference to the shift definition (e.g., Day Shift, Night Shift, Swing Shift).',
@@ -393,7 +394,7 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`production`.`wip_lot` (
     `supplier_id` BIGINT COMMENT 'Foreign key linking to supplier.supplier. Business justification: WIP lot tracking includes source supplier to support recall management and supplier quality analysis.',
     `actual_completion_timestamp` TIMESTAMP COMMENT 'Date and time when the lot actually completed all operations and was confirmed as finished. Null if lot is still in process.',
     `batch_number` STRING COMMENT 'Batch identifier for process industries where multiple lots may be grouped into a single batch for traceability or quality purposes.',
-    `current_operation_sequence` DECIMAL(18,2) COMMENT 'Sequence number of the operation currently being performed on this lot within the routing. Used to track progress through the production process.',
+    `current_operation_sequence` STRING COMMENT 'Sequence number of the operation currently being performed on this lot within the routing. Used to track progress through the production process.',
     `current_operation_start_timestamp` TIMESTAMP COMMENT 'Date and time when the lot arrived at and began processing at the current operation. Used for operation cycle time tracking.',
     `expiration_date` DATE COMMENT 'Shelf life expiration date for this lot, applicable for materials with limited shelf life such as chemicals, adhesives, or perishable components.',
     `hold_reason_code` STRING COMMENT 'Code indicating the reason why this lot is on hold, if applicable. Examples include quality issue, material shortage, engineering change, equipment failure.',
@@ -437,7 +438,6 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`production`.`production_downtim
     `shift_id` BIGINT COMMENT 'Identifier of the production shift during which the downtime event occurred. Links to shift schedule master data.',
     `tertiary_production_recorded_by_employee_id` BIGINT COMMENT 'Identifier of the operator or technician who initially recorded this downtime event. Links to employee master data.',
     `work_center_id` BIGINT COMMENT 'Identifier of the work center or production line where the downtime occurred. Links to the work center master data.',
-    `asset_downtime_event_id` BIGINT COMMENT 'Reference to SSOT owner asset.asset_downtime_event for downtime_event conflict resolution.',
     `alarm_code` STRING COMMENT 'SCADA or DCS alarm code that triggered the downtime event. Used to correlate downtime with specific equipment faults.',
     `alarm_description` STRING COMMENT 'Human-readable description of the SCADA alarm that initiated the downtime event.',
     `approval_status` STRING COMMENT 'Approval status of the downtime event record. Pending indicates awaiting supervisor review, approved indicates validated, rejected indicates disputed or incorrect entry.. Valid values are `pending|approved|rejected`',
@@ -527,6 +527,7 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`production`.`bom_consumption` (
     `engineering_bom_line_id` BIGINT COMMENT 'Reference to the specific BOM line item that defines the planned component requirement. Links actual consumption to engineering BOM specification.',
     `inspection_lot_id` BIGINT COMMENT 'Reference to the quality inspection lot if the component underwent inspection before consumption. Links consumption to quality control records.',
     `material_master_id` BIGINT COMMENT 'Reference to the component material consumed from inventory. Identifies the specific raw material, sub-assembly, or component issued to production.',
+    `production_line_id` BIGINT COMMENT 'add column production_line_id (BIGINT) with FK to production.production_line.production_line_id - BOM consumption occurs on specific production lines for traceability',
     `production_work_order_id` BIGINT COMMENT 'Reference to the parent work order for which materials were consumed. Links consumption to the manufacturing execution context.',
     `sku_master_id` BIGINT COMMENT 'Foreign key linking to product.sku_master. Business justification: Material consumption entries need the SKU to roll up costs and efficiency metrics to the final product.',
     `stock_location_id` BIGINT COMMENT 'Reference to the specific storage location or bin within the warehouse from which material was picked. Provides granular inventory tracking.',
@@ -538,7 +539,7 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`production`.`bom_consumption` (
     `consumption_notes` STRING COMMENT 'Free-text field for additional comments, observations, or special instructions related to the consumption event. Captures operator notes and exception details.',
     `consumption_status` STRING COMMENT 'Current status of the consumption record: posted (finalized in ERP), pending (awaiting confirmation), reversed (cancelled), cancelled (voided), confirmed (validated by supervisor).. Valid values are `posted|pending|reversed|cancelled|confirmed`',
     `consumption_type` STRING COMMENT 'Classification of the consumption event: planned (per BOM), unplanned (ad-hoc issue), scrap (defective material), rework (reprocessing), or sample (quality testing).. Valid values are `planned|unplanned|scrap|rework|sample`',
-    `cost_center_code` DECIMAL(18,2) COMMENT 'The cost center to which the material consumption cost is allocated. Used for internal cost accounting and variance analysis.',
+    `cost_center_code` STRING COMMENT 'The cost center to which the material consumption cost is allocated. Used for internal cost accounting and variance analysis.',
     `created_timestamp` TIMESTAMP COMMENT 'The date and time when this consumption record was first created in the data warehouse. Supports data lineage and audit trail requirements.',
     `currency_code` STRING COMMENT 'Three-letter ISO 4217 currency code for all cost amounts (e.g., USD, EUR, CNY). Ensures consistent financial reporting across global operations.. Valid values are `^[A-Z]{3}$`',
     `expiry_date` DATE COMMENT 'The expiration or shelf-life date of the consumed component material. Critical for perishable materials, chemicals, and time-sensitive components.',
@@ -546,7 +547,7 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`production`.`bom_consumption` (
     `goods_issue_timestamp` TIMESTAMP COMMENT 'The date and time when the material goods issue transaction was posted in the ERP system. Represents the official consumption event time.',
     `last_modified_timestamp` TIMESTAMP COMMENT 'The date and time when this consumption record was last updated in the data warehouse. Tracks data change history for audit and reconciliation.',
     `movement_type` STRING COMMENT 'Three-digit SAP movement type code indicating the nature of the goods issue. Common values: 261 (goods issue to order), 262 (reversal of 261).. Valid values are `^[0-9]{3}$`',
-    `operation_number` DECIMAL(18,2) COMMENT 'The routing operation sequence number at which the component was consumed. Links consumption to the specific production step in the routing.',
+    `operation_number` STRING COMMENT 'The routing operation sequence number at which the component was consumed. Links consumption to the specific production step in the routing.',
     `original_goods_issue_number` STRING COMMENT 'If this is a reversal transaction, the goods issue document number of the original transaction being reversed. Enables audit trail for corrections.',
     `planned_quantity` DECIMAL(18,2) COMMENT 'The quantity of component material planned to be consumed according to the BOM specification and work order quantity. Basis for variance analysis.',
     `posting_date` DATE COMMENT 'The accounting date on which the consumption transaction was posted to the general ledger. May differ from goods issue timestamp for period-end adjustments.',
@@ -579,10 +580,10 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`production`.`resource_tool` (
     `work_center_id` BIGINT COMMENT 'Reference to the work center or production line where this production resource tool is primarily assigned. Used for capacity planning and scheduling.',
     `acquisition_cost` DECIMAL(18,2) COMMENT 'Original purchase or fabrication cost of the production resource tool in the specified currency. Used for capital expenditure (CapEx) tracking and asset valuation.',
     `acquisition_date` DATE COMMENT 'Date when the production resource tool was acquired or placed into service. Used for depreciation calculations and lifecycle tracking.',
-    `calibration_certificate_number` DECIMAL(18,2) COMMENT 'Reference number of the most recent calibration certificate issued by the calibration laboratory. Used for quality audit trails and traceability.',
-    `calibration_interval_days` DECIMAL(18,2) COMMENT 'Standard number of days between calibration events for this production resource tool. Used to automatically calculate next calibration due date.',
+    `calibration_certificate_number` STRING COMMENT 'Reference number of the most recent calibration certificate issued by the calibration laboratory. Used for quality audit trails and traceability.',
+    `calibration_interval_days` STRING COMMENT 'Standard number of days between calibration events for this production resource tool. Used to automatically calculate next calibration due date.',
     `calibration_required_flag` BOOLEAN COMMENT 'Indicates whether this production resource tool requires periodic calibration to maintain measurement accuracy and quality compliance. True = calibration required; False = no calibration needed.',
-    `calibration_status` DECIMAL(18,2) COMMENT 'Current calibration compliance status. Current = within calibration interval; Due = approaching calibration date; Overdue = past calibration date and blocked from use; Not Applicable = calibration not required for this tool type.',
+    `calibration_status` STRING COMMENT 'Current calibration compliance status. Current = within calibration interval; Due = approaching calibration date; Overdue = past calibration date and blocked from use; Not Applicable = calibration not required for this tool type.. Valid values are `current|due|overdue|not_applicable`',
     `created_timestamp` TIMESTAMP COMMENT 'Timestamp when this production resource tool record was first created in the system. Used for audit trails and data lineage.',
     `currency_code` STRING COMMENT 'Three-letter ISO 4217 currency code for the acquisition cost (e.g., USD, EUR, CNY).. Valid values are `^[A-Z]{3}$`',
     `current_usage_cycles` STRING COMMENT 'Cumulative number of production cycles or operations this production resource tool has performed to date. Used to calculate remaining useful life and trigger replacement.',
@@ -611,8 +612,198 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`production`.`resource_tool` (
     CONSTRAINT pk_resource_tool PRIMARY KEY(`resource_tool_id`)
 ) COMMENT 'Production resource and tool (PRT) master representing jigs, fixtures, molds, dies, NC programs, and specialized equipment required during routing operations but not consumed in production. Tracks PRT number, type, description, plant, usage quantity per operation, calibration status, next calibration date, and availability status. Enables tool availability checks during scheduling and capacity planning. Maintenance lifecycle details are owned by the asset domain; this entity owns the production-scheduling view of tool readiness. Sourced from ERP PRT master (e.g., SAP PP).';
 
-CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`production`.`run` (
-    `run_id` BIGINT COMMENT 'Primary key for run',
+CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`production`.`production_line` (
+    `production_line_id` BIGINT COMMENT 'Unique identifier for the production line. Primary key for the production line master entity.',
+    `control_system_id` BIGINT COMMENT 'Foreign key linking to automation.control_system. Business justification: Line configuration & maintenance uses a specific control system; OEE and maintenance reports require linking line to its control system.',
+    `cost_center_id` BIGINT COMMENT 'Foreign key linking to finance.cost_center. Business justification: Production line overhead is budgeted and reported per cost center; the link supports line‑level cost reporting.',
+    `historian_config_id` BIGINT COMMENT 'Foreign key linking to automation.historian_config. Business justification: Performance analytics and historical data retrieval require linking each line to its historian configuration.',
+    `location_id` BIGINT COMMENT 'Foreign key linking to asset.asset_location. Business justification: Needed to associate each production line with its plant location for capacity planning and regulatory compliance.',
+    `network_segment_id` BIGINT COMMENT 'Foreign key linking to automation.network_segment. Business justification: Cybersecurity compliance and network topology reports need to know which network segment each line resides in.',
+    `employee_id` BIGINT COMMENT 'Reference to the employee responsible for supervising operations on this production line.',
+    `production_modified_by_user_employee_id` BIGINT COMMENT 'Identifier of the user or system account that last modified this production line master record.',
+    `work_center_group_id` BIGINT COMMENT 'Reference to the work center group that this production line belongs to for capacity planning and resource allocation.',
+    `actual_oee_percentage` DECIMAL(18,2) COMMENT 'Most recent calculated Overall Equipment Effectiveness percentage for this production line based on actual performance data.',
+    `automation_level` STRING COMMENT 'Degree of automation implemented on the production line, ranging from manual operations to fully automated lights-out manufacturing.. Valid values are `manual|semi_automated|fully_automated|lights_out`',
+    `capacity_constraint_flag` BOOLEAN COMMENT 'Indicates whether this production line is identified as a bottleneck or capacity constraint in the manufacturing process requiring special attention in scheduling.',
+    `changeover_time_minutes` DECIMAL(18,2) COMMENT 'Total time from last good piece of previous run to first good piece of new run, including setup and stabilization time.',
+    `commissioning_date` DATE COMMENT 'Date when the production line was first commissioned and put into operational service.',
+    `created_timestamp` TIMESTAMP COMMENT 'Timestamp when this production line master record was first created in the system.',
+    `cycle_time_seconds` DECIMAL(18,2) COMMENT 'Actual average time required to complete one production cycle on this line. Used to compare against takt time for performance analysis.',
+    `data_source_system` STRING COMMENT 'Identifier of the source system from which this production line master data originated or is synchronized.. Valid values are `SAP_PP|OPCENTER_MES|SCADA|MDM|MANUAL`',
+    `design_throughput_rate` DECIMAL(18,2) COMMENT 'Theoretical maximum production rate of the line measured in units per hour under ideal conditions. Used for capacity planning and OEE calculations.',
+    `energy_consumption_kwh_per_unit` DECIMAL(18,2) COMMENT 'Average energy consumption in kilowatt-hours required to produce one unit of output on this production line. Used for energy management and cost analysis.',
+    `environmental_compliance_flag` BOOLEAN COMMENT 'Indicates whether this production line is subject to environmental compliance monitoring and reporting requirements.',
+    `erp_work_center_code` STRING COMMENT 'Corresponding work center code in the ERP system for integration with production planning and costing modules.',
+    `last_major_upgrade_date` DATE COMMENT 'Date of the most recent major upgrade or modernization performed on the production line equipment or control systems.',
+    `last_modified_timestamp` TIMESTAMP COMMENT 'Timestamp when this production line master record was most recently updated or modified.',
+    `layout_diagram_url` STRING COMMENT 'Reference URL or document path to the physical layout diagram or CAD drawing of the production line configuration.',
+    `line_code` STRING COMMENT 'Unique business identifier code for the production line used across MES and ERP systems. Externally-known identifier for scheduling, capacity planning, and shop floor control.. Valid values are `^[A-Z0-9]{4,12}$`',
+    `line_name` STRING COMMENT 'Human-readable name of the production line for identification and reporting purposes.',
+    `line_type` STRING COMMENT 'Classification of the production line based on its primary manufacturing function. Determines the type of operations performed on this line.. Valid values are `assembly|machining|fabrication|painting|testing|packaging`',
+    `mes_line_identifier` STRING COMMENT 'Unique identifier for this production line in the Manufacturing Execution System used for shop floor control and production tracking.',
+    `mtbf_hours` DECIMAL(18,2) COMMENT 'Average time between equipment failures on this production line, used for reliability analysis and preventive maintenance planning.',
+    `mttr_hours` DECIMAL(18,2) COMMENT 'Average time required to repair and restore this production line to operational status after a failure event.',
+    `notes` STRING COMMENT 'Free-text field for additional notes, special instructions, or operational considerations specific to this production line.',
+    `number_of_stations` STRING COMMENT 'Total count of work stations or process steps configured on this production line. Defines the line configuration and complexity.',
+    `operational_status` STRING COMMENT 'Current operational state of the production line indicating availability for production scheduling and capacity planning.. Valid values are `active|inactive|maintenance|standby|decommissioned`',
+    `planned_availability_hours_per_day` DECIMAL(18,2) COMMENT 'Total hours per day that the production line is scheduled to be available for production, excluding planned maintenance windows.',
+    `planned_decommission_date` DATE COMMENT 'Planned date for decommissioning or retirement of this production line from active service.',
+    `quality_inspection_required_flag` BOOLEAN COMMENT 'Indicates whether output from this production line requires mandatory quality inspection before release to inventory.',
+    `safety_certification_required` STRING COMMENT 'List of safety certifications or compliance requirements applicable to this production line based on the products manufactured and jurisdictional regulations.',
+    `scada_system_tag` STRING COMMENT 'Unique tag identifier in the SCADA system used to monitor and control this production line in real-time.',
+    `setup_time_minutes` DECIMAL(18,2) COMMENT 'Average time required to change over the production line from one product or batch to another, including tooling changes and adjustments.',
+    `shift_pattern` STRING COMMENT 'Operating shift pattern configured for this production line defining daily operational hours and crew rotation.. Valid values are `single_shift|two_shift|three_shift|continuous|custom`',
+    `standard_operating_procedure_url` STRING COMMENT 'Reference URL or document path to the standard operating procedures governing operation of this production line.',
+    `takt_time_seconds` DECIMAL(18,2) COMMENT 'Target time interval between completion of successive units, calculated as available production time divided by customer demand. Critical metric for lean manufacturing and production scheduling.',
+    `target_oee_percentage` DECIMAL(18,2) COMMENT 'Target Overall Equipment Effectiveness percentage for this production line, representing the goal for availability, performance, and quality combined.',
+    `throughput_unit_of_measure` STRING COMMENT 'Unit of measure for the throughput rate indicating how production output is quantified for this line.. Valid values are `units_per_hour|pieces_per_hour|kg_per_hour|liters_per_hour`',
+    CONSTRAINT pk_production_line PRIMARY KEY(`production_line_id`)
+) COMMENT 'Production line master entity representing a named, configured manufacturing line within a plant, composed of an ordered set of work centers and machines. Captures line code, line name, plant, line type (assembly, machining, fabrication, painting, testing), design throughput rate (units/hour), takt time target, number of stations, automation level (manual, semi-automated, fully automated), and current operational status. The SSOT for production line configuration used in scheduling, OEE reporting, and capacity planning.';
+
+CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`production`.`work_order_allocation` (
+    `work_order_allocation_id` BIGINT COMMENT 'Primary key for the work_order_allocation association',
+    `line_id` BIGINT COMMENT 'Foreign key linking to the order line',
+    `production_work_order_id` BIGINT COMMENT 'Foreign key linking to the production work order',
+    `allocated_quantity` DECIMAL(18,2) COMMENT 'Quantity of the order line that this work order is allocated to produce',
+    `allocation_status` STRING COMMENT 'Current status of the allocation (e.g., Pending, Confirmed, Completed)',
+    `allocation_timestamp` TIMESTAMP COMMENT 'Date and time when the allocation was created or last updated',
+    CONSTRAINT pk_work_order_allocation PRIMARY KEY(`work_order_allocation_id`)
+) COMMENT 'Represents the allocation of production work orders to sales order lines. Each record links one production_work_order to one order_line and captures allocation-specific data such as quantity, status, and timestamps.. Existence Justification: A production work order can be allocated to multiple order lines, and a single order line can be fulfilled by multiple work orders when production is split across runs. Planners actively create, update, and delete allocation records that capture allocated quantity, status, and timestamps, making the allocation a managed business entity.';
+
+CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`production`.`work_center_group` (
+    `work_center_group_id` BIGINT COMMENT 'Primary key for work_center_group',
+    `location_id` BIGINT COMMENT 'Identifier of the physical location or plant where the group operates.',
+    `parent_work_center_group_id` BIGINT COMMENT 'Self-referencing FK on work_center_group (parent_work_center_group_id)',
+    `production_plant_id` BIGINT COMMENT 'Foreign key linking to production.plant. Business justification: Work center groups are defined within a plant; linking to plant provides hierarchy and enables plant‑level reporting.',
+    `capacity_per_hour` DECIMAL(18,2) COMMENT 'Maximum production capacity of the group expressed in units per hour.',
+    `cost_center_code` STRING COMMENT 'Financial cost center associated with the group.',
+    `created_timestamp` TIMESTAMP COMMENT 'Date and time when the group record was first created in the system.',
+    `default_shift_length_minutes` STRING COMMENT 'Typical length of a shift for the group in minutes.',
+    `effective_from` DATE COMMENT 'Date when the work center group becomes operational.',
+    `effective_until` DATE COMMENT 'Date when the work center group is retired or no longer valid (nullable).',
+    `group_code` STRING COMMENT 'External code or tag used to identify the group across systems.',
+    `group_name` STRING COMMENT 'Human‑readable name of the work center group.',
+    `group_type` STRING COMMENT 'Category that defines the primary purpose of the group (e.g., production, maintenance).',
+    `is_default` BOOLEAN COMMENT 'Indicates whether this group is the default selection for new work orders.',
+    `manager_email` STRING COMMENT 'Email address of the group manager.',
+    `manager_name` STRING COMMENT 'Full name of the manager responsible for the group.',
+    `manager_phone` STRING COMMENT 'Contact phone number of the group manager.',
+    `notes` STRING COMMENT 'Free‑form field for any supplemental information about the group.',
+    `oee_target_percent` DECIMAL(18,2) COMMENT 'Target OEE value the group aims to achieve, expressed as a percentage.',
+    `responsible_department` STRING COMMENT 'Organizational department that owns the work center group.',
+    `shift_pattern` STRING COMMENT 'Standard shift arrangement used by the group.',
+    `work_center_group_status` STRING COMMENT 'Current lifecycle status of the group.',
+    `total_work_centers` STRING COMMENT 'Count of individual work centers that belong to this group.',
+    `updated_timestamp` TIMESTAMP COMMENT 'Date and time of the most recent update to the group record.',
+    CONSTRAINT pk_work_center_group PRIMARY KEY(`work_center_group_id`)
+) COMMENT 'Master reference table for work_center_group. Referenced by work_center_group_id.';
+
+CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`production`.`production_plant` (
+    `production_plant_id` BIGINT COMMENT 'Primary key for plant',
+    `company_code_id` BIGINT COMMENT 'add column finance_company_code_id (BIGINT) with FK to finance.company_code.company_code_id - production plants must be assigned to a legal entity for financial consolidation',
+    `asset_plant_id` BIGINT COMMENT 'add column asset_plant_id (BIGINT) with FK to asset.plant.plant_id - production plants should reference the canonical plant definition in asset domain to avoid duplication',
+    `address_line1` STRING COMMENT 'Primary street address of the plant.',
+    `address_line2` STRING COMMENT 'Secondary address information (suite, building).',
+    `capacity_mw` DECIMAL(18,2) COMMENT 'Maximum electrical output capacity of the plant in megawatts.',
+    `carbon_emission_kg` DECIMAL(18,2) COMMENT 'Total CO₂ equivalent emissions for the plant in kilograms.',
+    `city` STRING COMMENT 'City where the plant is located.',
+    `closure_date` DATE COMMENT 'Date the plant was permanently shut down, if applicable.',
+    `country_code` STRING COMMENT 'Three‑letter ISO country code of the plant.',
+    `created_timestamp` TIMESTAMP COMMENT 'Timestamp when the plant record was first created.',
+    `production_plant_description` STRING COMMENT 'Free‑form textual description of the plants purpose and characteristics.',
+    `energy_consumption_mwh` DECIMAL(18,2) COMMENT 'Total electricity consumption for the reporting period in megawatt‑hours.',
+    `is_active` BOOLEAN COMMENT 'Indicates whether the plant record is currently active in the system.',
+    `last_inspection_date` DATE COMMENT 'Date of the most recent safety or regulatory inspection.',
+    `latitude` DECIMAL(18,2) COMMENT 'Geographic latitude of the plant site.',
+    `longitude` DECIMAL(18,2) COMMENT 'Geographic longitude of the plant site.',
+    `maintenance_cycle_days` STRING COMMENT 'Standard interval in days between routine maintenance events.',
+    `manager_email` STRING COMMENT 'Email address of the plant manager.',
+    `manager_name` STRING COMMENT 'Full name of the plant manager.',
+    `manager_phone` STRING COMMENT 'Primary contact phone number for the plant manager.',
+    `production_plant_name` STRING COMMENT 'Human‑readable name of the plant.',
+    `next_maintenance_date` DATE COMMENT 'Planned date for the next major maintenance activity.',
+    `notes` STRING COMMENT 'Supplementary information or remarks about the plant.',
+    `oee_actual` DECIMAL(18,2) COMMENT 'Measured OEE percentage achieved.',
+    `oee_target` DECIMAL(18,2) COMMENT 'Planned OEE percentage target for the plant.',
+    `operational_since` DATE COMMENT 'Date the plant began commercial operations.',
+    `plant_type` STRING COMMENT 'Category of the plant based on its primary function.',
+    `region` STRING COMMENT 'Higher‑level region (e.g., North America, EMEA) for reporting.',
+    `safety_incident_count` STRING COMMENT 'Number of recorded safety incidents in the reporting period.',
+    `safety_incident_last_date` DATE COMMENT 'Date of the most recent safety incident.',
+    `state_province` STRING COMMENT 'State or province of the plant location.',
+    `production_plant_status` STRING COMMENT 'Current operational state of the plant.',
+    `timezone` STRING COMMENT 'IANA time zone identifier for the plant location.',
+    `updated_timestamp` TIMESTAMP COMMENT 'Timestamp of the most recent update to the plant record.',
+    `waste_generated_tons` DECIMAL(18,2) COMMENT 'Quantity of waste produced by the plant in metric tons.',
+    `water_consumption_m3` DECIMAL(18,2) COMMENT 'Total water usage for the reporting period in cubic metres.',
+    CONSTRAINT pk_production_plant PRIMARY KEY(`production_plant_id`)
+) COMMENT 'Master reference table for plant. Referenced by plant_id.';
+
+CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`production`.`calendar` (
+    `calendar_id` BIGINT COMMENT 'Primary key for calendar',
+    `base_calendar_id` BIGINT COMMENT 'Self-referencing FK on calendar (base_calendar_id)',
+    `production_plant_id` BIGINT COMMENT 'add column plant_id (BIGINT) with FK to production.plant.plant_id - production calendars are plant-specific for scheduling purposes',
+    `calendar_type` STRING COMMENT 'Type of calendar definition applied to the row.',
+    `created_timestamp` TIMESTAMP COMMENT 'Timestamp when the calendar record was first inserted.',
+    `calendar_date` DATE COMMENT 'The calendar day represented by this row.',
+    `day_of_month` STRING COMMENT 'Numeric day within the month (1‑31).',
+    `day_of_week` STRING COMMENT 'Name of the weekday (e.g., Monday, Tuesday). [ENUM-REF-CANDIDATE: Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday — promote to reference product]',
+    `day_of_year` STRING COMMENT 'Ordinal day within the year (1‑366).',
+    `fiscal_month` STRING COMMENT 'Fiscal month (1‑12) for the date.',
+    `fiscal_quarter` STRING COMMENT 'Fiscal quarter (1‑4) for the date.',
+    `fiscal_year` STRING COMMENT 'Fiscal year to which the date belongs, based on the companys fiscal calendar.',
+    `fiscal_year_start_date` DATE COMMENT 'First day of the fiscal year to which the row belongs.',
+    `holiday_name` STRING COMMENT 'Name of the holiday when is_holiday is true; null otherwise.',
+    `holiday_type` STRING COMMENT 'Classification of the holiday (national, regional, or observance).',
+    `is_business_day` BOOLEAN COMMENT 'True if the date is a regular working day (not weekend or holiday).',
+    `is_holiday` BOOLEAN COMMENT 'True if the date is a recognized public or company holiday.',
+    `is_leap_year` BOOLEAN COMMENT 'True if the year of the date is a leap year.',
+    `is_weekend` BOOLEAN COMMENT 'True if the date falls on a Saturday or Sunday.',
+    `iso_week_number` STRING COMMENT 'ISO‑8601 week number (1‑53) for the date.',
+    `iso_year` STRING COMMENT 'ISO‑8601 year associated with the week number.',
+    `month` STRING COMMENT 'Numeric month of the year (1‑12).',
+    `month_name` STRING COMMENT 'Full name of the month (e.g., January). [ENUM-REF-CANDIDATE: January|February|March|April|May|June|July|August|September|October|November|December — promote to reference product]',
+    `month_start_date` DATE COMMENT 'First calendar day of the month for the row.',
+    `quarter` STRING COMMENT 'Fiscal quarter of the year (1‑4).',
+    `quarter_name` STRING COMMENT 'Label for the quarter (Q1‑Q4).',
+    `quarter_start_date` DATE COMMENT 'First calendar day of the quarter for the row.',
+    `shift_indicator` STRING COMMENT 'Designated shift for the date in production planning (day, night, or swing).',
+    `timezone` STRING COMMENT 'IANA time‑zone identifier for the date (e.g., UTC, America/New_York).',
+    `updated_timestamp` TIMESTAMP COMMENT 'Timestamp of the most recent update to the calendar record.',
+    `week_of_year` STRING COMMENT 'ISO week number within the year (1‑53).',
+    `week_start_date` DATE COMMENT 'Date of the Monday (or first day of week) for the week containing the row.',
+    `year` STRING COMMENT 'Four‑digit calendar year.',
+    CONSTRAINT pk_calendar PRIMARY KEY(`calendar_id`)
+) COMMENT 'Master reference table for calendar. Referenced by calendar_id.';
+
+CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`production`.`shift_sequence` (
+    `shift_sequence_id` BIGINT COMMENT 'Primary key for shift_sequence',
+    `production_plant_id` BIGINT COMMENT 'add column plant_id (BIGINT) with FK to production.plant.plant_id - shift sequences are plant-specific scheduling constructs',
+    `rotation_shift_sequence_id` BIGINT COMMENT 'Self-referencing FK on shift_sequence (rotation_shift_sequence_id)',
+    `work_center_id` BIGINT COMMENT 'Identifier of the work center or production line where this shift sequence is applicable.',
+    `break_count` STRING COMMENT 'Number of scheduled breaks within the shift.',
+    `break_duration_minutes` STRING COMMENT 'Total break time in minutes per shift.',
+    `shift_sequence_code` STRING COMMENT 'Short alphanumeric code used to identify the shift sequence in systems.',
+    `created_timestamp` TIMESTAMP COMMENT 'Timestamp when the shift sequence record was created.',
+    `shift_sequence_description` STRING COMMENT 'Detailed description of the shift sequence purpose and characteristics.',
+    `duration_minutes` STRING COMMENT 'Total duration of the shift in minutes.',
+    `effective_from` DATE COMMENT 'Date when the shift sequence becomes effective.',
+    `effective_until` DATE COMMENT 'Date when the shift sequence expires (null if indefinite).',
+    `end_time` TIMESTAMP COMMENT 'Scheduled end time of the shift (HH:mm, 24‑hour clock).',
+    `is_overtime_allowed` BOOLEAN COMMENT 'Indicates if overtime work is permitted during this shift.',
+    `labor_category` STRING COMMENT 'Primary labor category assigned to this shift.',
+    `max_workers` STRING COMMENT 'Maximum number of workers allowed simultaneously on this shift.',
+    `shift_sequence_name` STRING COMMENT 'Descriptive name of the shift sequence (e.g., Day Shift, Night Shift).',
+    `notes` STRING COMMENT 'Additional free‑text notes regarding the shift sequence.',
+    `shift_type` STRING COMMENT 'Category of shift based on time of day or work pattern.',
+    `start_time` TIMESTAMP COMMENT 'Scheduled start time of the shift (HH:mm, 24‑hour clock).',
+    `shift_sequence_status` STRING COMMENT 'Current lifecycle status of the shift sequence.',
+    `updated_timestamp` TIMESTAMP COMMENT 'Timestamp of the most recent update to the shift sequence record.',
+    CONSTRAINT pk_shift_sequence PRIMARY KEY(`shift_sequence_id`)
+) COMMENT 'Master reference table for shift_sequence. Referenced by shift_sequence_id.';
+
+CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`production`.`production_run` (
+    `production_run_id` BIGINT COMMENT 'Primary key for run',
     `bom_id` BIGINT COMMENT 'Reference to the Bill of Materials used for this production run, defining the component structure and recipe.',
     `customer_account_id` BIGINT COMMENT 'Reference to the customer account for whom this production run is being executed, applicable for make-to-order scenarios.',
     `equipment_register_id` BIGINT COMMENT 'Reference to the primary equipment or machine asset assigned to execute this production run.',
@@ -659,235 +850,8 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`production`.`run` (
     `unit_of_measure` STRING COMMENT 'Unit of measure for all quantity fields in this production run (e.g., EA, KG, L, M).',
     `work_order_count` STRING COMMENT 'Number of individual work orders included or consolidated within this production run campaign.',
     `yield_rate_percentage` DECIMAL(18,2) COMMENT 'Overall yield rate for the production run, calculated as (actual quantity / (actual quantity + scrap quantity)) * 100.',
-    CONSTRAINT pk_run PRIMARY KEY(`run_id`)
+    CONSTRAINT pk_production_run PRIMARY KEY(`production_run_id`)
 ) COMMENT 'Production run entity representing a continuous execution campaign on a production line or work center, potentially spanning multiple work orders for the same or similar products. Captures run number, production line, start timestamp, end timestamp, total planned quantity, total actual quantity, total scrap quantity, overall yield rate, number of work orders included, and run status (active, completed, cancelled). Sourced from Siemens Opcenter MES campaign/run management. Enables campaign-level performance analysis beyond individual work orders.';
-
-CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`production`.`production_line` (
-    `production_line_id` BIGINT COMMENT 'Unique identifier for the production line. Primary key for the production line master entity.',
-    `control_system_id` BIGINT COMMENT 'Foreign key linking to automation.control_system. Business justification: Line configuration & maintenance uses a specific control system; OEE and maintenance reports require linking line to its control system.',
-    `cost_center_id` BIGINT COMMENT 'Foreign key linking to finance.cost_center. Business justification: Production line overhead is budgeted and reported per cost center; the link supports line‑level cost reporting.',
-    `location_id` BIGINT COMMENT 'Foreign key linking to asset.asset_location. Business justification: Needed to associate each production line with its plant location for capacity planning and regulatory compliance.',
-    `network_segment_id` BIGINT COMMENT 'Foreign key linking to automation.network_segment. Business justification: Cybersecurity compliance and network topology reports need to know which network segment each line resides in.',
-    `employee_id` BIGINT COMMENT 'Reference to the employee responsible for supervising operations on this production line.',
-    `production_modified_by_user_employee_id` BIGINT COMMENT 'Identifier of the user or system account that last modified this production line master record.',
-    `work_center_group_id` BIGINT COMMENT 'Reference to the work center group that this production line belongs to for capacity planning and resource allocation.',
-    `actual_oee_percentage` DECIMAL(18,2) COMMENT 'Most recent calculated Overall Equipment Effectiveness percentage for this production line based on actual performance data.',
-    `automation_level` STRING COMMENT 'Degree of automation implemented on the production line, ranging from manual operations to fully automated lights-out manufacturing.. Valid values are `manual|semi_automated|fully_automated|lights_out`',
-    `capacity_constraint_flag` BOOLEAN COMMENT 'Indicates whether this production line is identified as a bottleneck or capacity constraint in the manufacturing process requiring special attention in scheduling.',
-    `changeover_time_minutes` DECIMAL(18,2) COMMENT 'Total time from last good piece of previous run to first good piece of new run, including setup and stabilization time.',
-    `commissioning_date` DATE COMMENT 'Date when the production line was first commissioned and put into operational service.',
-    `created_timestamp` TIMESTAMP COMMENT 'Timestamp when this production line master record was first created in the system.',
-    `cycle_time_seconds` DECIMAL(18,2) COMMENT 'Actual average time required to complete one production cycle on this line. Used to compare against takt time for performance analysis.',
-    `data_source_system` STRING COMMENT 'Identifier of the source system from which this production line master data originated or is synchronized.. Valid values are `SAP_PP|OPCENTER_MES|SCADA|MDM|MANUAL`',
-    `design_throughput_rate` DECIMAL(18,2) COMMENT 'Theoretical maximum production rate of the line measured in units per hour under ideal conditions. Used for capacity planning and OEE calculations.',
-    `energy_consumption_kwh_per_unit` DECIMAL(18,2) COMMENT 'Average energy consumption in kilowatt-hours required to produce one unit of output on this production line. Used for energy management and cost analysis.',
-    `environmental_compliance_flag` BOOLEAN COMMENT 'Indicates whether this production line is subject to environmental compliance monitoring and reporting requirements.',
-    `erp_work_center_code` STRING COMMENT 'Corresponding work center code in the ERP system for integration with production planning and costing modules.',
-    `last_major_upgrade_date` DATE COMMENT 'Date of the most recent major upgrade or modernization performed on the production line equipment or control systems.',
-    `last_modified_timestamp` TIMESTAMP COMMENT 'Timestamp when this production line master record was most recently updated or modified.',
-    `layout_diagram_url` STRING COMMENT 'Reference URL or document path to the physical layout diagram or CAD drawing of the production line configuration.',
-    `line_code` STRING COMMENT 'Unique business identifier code for the production line used across MES and ERP systems. Externally-known identifier for scheduling, capacity planning, and shop floor control.. Valid values are `^[A-Z0-9]{4,12}$`',
-    `line_name` STRING COMMENT 'Human-readable name of the production line for identification and reporting purposes.',
-    `line_type` STRING COMMENT 'Classification of the production line based on its primary manufacturing function. Determines the type of operations performed on this line.. Valid values are `assembly|machining|fabrication|painting|testing|packaging`',
-    `mes_line_identifier` STRING COMMENT 'Unique identifier for this production line in the Manufacturing Execution System used for shop floor control and production tracking.',
-    `mtbf_hours` DECIMAL(18,2) COMMENT 'Average time between equipment failures on this production line, used for reliability analysis and preventive maintenance planning.',
-    `mttr_hours` DECIMAL(18,2) COMMENT 'Average time required to repair and restore this production line to operational status after a failure event.',
-    `notes` STRING COMMENT 'Free-text field for additional notes, special instructions, or operational considerations specific to this production line.',
-    `number_of_stations` STRING COMMENT 'Total count of work stations or process steps configured on this production line. Defines the line configuration and complexity.',
-    `operational_status` DECIMAL(18,2) COMMENT 'Current operational state of the production line indicating availability for production scheduling and capacity planning.',
-    `planned_availability_hours_per_day` DECIMAL(18,2) COMMENT 'Total hours per day that the production line is scheduled to be available for production, excluding planned maintenance windows.',
-    `planned_decommission_date` DATE COMMENT 'Planned date for decommissioning or retirement of this production line from active service.',
-    `quality_inspection_required_flag` BOOLEAN COMMENT 'Indicates whether output from this production line requires mandatory quality inspection before release to inventory.',
-    `safety_certification_required` STRING COMMENT 'List of safety certifications or compliance requirements applicable to this production line based on the products manufactured and jurisdictional regulations.',
-    `scada_system_tag` STRING COMMENT 'Unique tag identifier in the SCADA system used to monitor and control this production line in real-time.',
-    `setup_time_minutes` DECIMAL(18,2) COMMENT 'Average time required to change over the production line from one product or batch to another, including tooling changes and adjustments.',
-    `shift_pattern` STRING COMMENT 'Operating shift pattern configured for this production line defining daily operational hours and crew rotation.. Valid values are `single_shift|two_shift|three_shift|continuous|custom`',
-    `standard_operating_procedure_url` STRING COMMENT 'Reference URL or document path to the standard operating procedures governing operation of this production line.',
-    `takt_time_seconds` DECIMAL(18,2) COMMENT 'Target time interval between completion of successive units, calculated as available production time divided by customer demand. Critical metric for lean manufacturing and production scheduling.',
-    `target_oee_percentage` DECIMAL(18,2) COMMENT 'Target Overall Equipment Effectiveness percentage for this production line, representing the goal for availability, performance, and quality combined.',
-    `throughput_unit_of_measure` STRING COMMENT 'Unit of measure for the throughput rate indicating how production output is quantified for this line.. Valid values are `units_per_hour|pieces_per_hour|kg_per_hour|liters_per_hour`',
-    CONSTRAINT pk_production_line PRIMARY KEY(`production_line_id`)
-) COMMENT 'Production line master entity representing a named, configured manufacturing line within a plant, composed of an ordered set of work centers and machines. Captures line code, line name, plant, line type (assembly, machining, fabrication, painting, testing), design throughput rate (units/hour), takt time target, number of stations, automation level (manual, semi-automated, fully automated), and current operational status. The SSOT for production line configuration used in scheduling, OEE reporting, and capacity planning.';
-
-CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`production`.`work_order_allocation` (
-    `work_order_allocation_id` BIGINT COMMENT 'Primary key for the work_order_allocation association',
-    `employee_id` BIGINT COMMENT 'Identifier of the employee who performed the allocation',
-    `line_id` BIGINT COMMENT 'Foreign key linking to the order line',
-    `production_work_order_id` BIGINT COMMENT 'Foreign key linking to the production work order',
-    `allocated_by` STRING COMMENT 'Identifier of the user or system that performed the allocation',
-    `allocated_by_name` STRING COMMENT 'Name of the person or entity who allocated the work order',
-    `allocated_by_user` STRING COMMENT 'allocated by user',
-    `allocated_quantity` DECIMAL(18,2) COMMENT 'Quantity of the order line that this work order is allocated to produce',
-    `allocation_date` DATE COMMENT 'The date when the work order allocation was made',
-    `allocation_notes` STRING COMMENT 'Notes related to the work order allocation',
-    `allocation_number` STRING COMMENT '',
-    `allocation_priority` STRING COMMENT '',
-    `allocation_status` STRING COMMENT 'Current status of the allocation (e.g., Pending, Confirmed, Completed)',
-    `allocation_timestamp` TIMESTAMP COMMENT 'Date and time when the allocation was created or last updated',
-    `allocation_type` STRING COMMENT '',
-    `consumed_quantity` STRING COMMENT '',
-    `created_timestamp` TIMESTAMP COMMENT '',
-    `last_modified_timestamp` TIMESTAMP COMMENT '',
-    `notes` STRING COMMENT '',
-    `planned_end_time` TIMESTAMP COMMENT '',
-    `planned_start_time` TIMESTAMP COMMENT '',
-    `priority` STRING COMMENT 'Business data attribute for work_order_allocation.',
-    `priority_rank` STRING COMMENT '',
-    `remaining_quantity` DECIMAL(18,2) COMMENT '',
-    `unit_of_measure` STRING COMMENT '',
-    CONSTRAINT pk_work_order_allocation PRIMARY KEY(`work_order_allocation_id`)
-) COMMENT 'Represents the allocation of production work orders to sales order lines. Each record links one production_work_order to one order_line and captures allocation-specific data such as quantity, status, and timestamps.. Existence Justification: A production work order can be allocated to multiple order lines, and a single order line can be fulfilled by multiple work orders when production is split across runs. Planners actively create, update, and delete allocation records that capture allocated quantity, status, and timestamps, making the allocation a managed business entity.';
-
-CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`production`.`work_center_group` (
-    `work_center_group_id` BIGINT COMMENT 'Primary key for work_center_group',
-    `location_id` BIGINT COMMENT 'Identifier of the physical location or plant where the group operates.',
-    `parent_work_center_group_id` BIGINT COMMENT 'Self-referencing FK on work_center_group (parent_work_center_group_id)',
-    `production_plant_id` BIGINT COMMENT 'Foreign key linking to production.plant. Business justification: Work center groups are defined within a plant; linking to plant provides hierarchy and enables plant‑level reporting.',
-    `capacity_per_hour` DECIMAL(18,2) COMMENT 'Maximum production capacity of the group expressed in units per hour.',
-    `cost_center_code` DECIMAL(18,2) COMMENT 'Financial cost center associated with the group.',
-    `created_timestamp` TIMESTAMP COMMENT 'Date and time when the group record was first created in the system.',
-    `default_shift_length_minutes` STRING COMMENT 'Typical length of a shift for the group in minutes.',
-    `effective_from` DATE COMMENT 'Date when the work center group becomes operational.',
-    `effective_until` DATE COMMENT 'Date when the work center group is retired or no longer valid (nullable).',
-    `group_code` STRING COMMENT 'External code or tag used to identify the group across systems.',
-    `group_name` STRING COMMENT 'Human‑readable name of the work center group.',
-    `group_type` STRING COMMENT 'Category that defines the primary purpose of the group (e.g., production, maintenance).',
-    `is_default` BOOLEAN COMMENT 'Indicates whether this group is the default selection for new work orders.',
-    `manager_email` STRING COMMENT 'Email address of the group manager.',
-    `manager_name` STRING COMMENT 'Full name of the manager responsible for the group.',
-    `manager_phone` STRING COMMENT 'Contact phone number of the group manager.',
-    `notes` STRING COMMENT 'Free‑form field for any supplemental information about the group.',
-    `oee_target_percent` DECIMAL(18,2) COMMENT 'Target OEE value the group aims to achieve, expressed as a percentage.',
-    `responsible_department` STRING COMMENT 'Organizational department that owns the work center group.',
-    `shift_pattern` STRING COMMENT 'Standard shift arrangement used by the group.',
-    `work_center_group_status` STRING COMMENT 'Current lifecycle status of the group.',
-    `total_work_centers` DECIMAL(18,2) COMMENT 'Count of individual work centers that belong to this group.',
-    `updated_timestamp` TIMESTAMP COMMENT 'Date and time of the most recent update to the group record.',
-    CONSTRAINT pk_work_center_group PRIMARY KEY(`work_center_group_id`)
-) COMMENT 'Master reference table for work_center_group. Referenced by work_center_group_id.';
-
-CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`production`.`production_plant` (
-    `production_plant_id` BIGINT COMMENT 'Primary key for plant',
-    `company_code_id` BIGINT COMMENT 'Connect finance.plant by adding column finance_company_code_id (BIGINT) with an FK to finance.company_code.company_code_id. P19: connect_table: finance.plant** - add column finance_company_code_id (BIGINT) with FK to finance.company_c',
-    `asset_plant_id` BIGINT COMMENT 'SSOT reference to canonical single source of truth.',
-    `address_line1` STRING COMMENT 'Primary street address of the plant.',
-    `address_line2` STRING COMMENT 'Secondary address information (suite, building).',
-    `capacity_mw` DECIMAL(18,2) COMMENT 'Maximum electrical output capacity of the plant in megawatts.',
-    `carbon_emission_kg` DECIMAL(18,2) COMMENT 'Total CO₂ equivalent emissions for the plant in kilograms.',
-    `city` STRING COMMENT 'City where the plant is located.',
-    `closure_date` DATE COMMENT 'Date the plant was permanently shut down, if applicable.',
-    `country_code` STRING COMMENT 'Three‑letter ISO country code of the plant.',
-    `created_timestamp` TIMESTAMP COMMENT 'Timestamp when the plant record was first created.',
-    `production_plant_description` STRING COMMENT 'Free‑form textual description of the plants purpose and characteristics.',
-    `energy_consumption_mwh` DECIMAL(18,2) COMMENT 'Total electricity consumption for the reporting period in megawatt‑hours.',
-    `is_active` BOOLEAN COMMENT 'Indicates whether the plant record is currently active in the system.',
-    `last_inspection_date` DATE COMMENT 'Date of the most recent safety or regulatory inspection.',
-    `latitude` DECIMAL(18,2) COMMENT 'Geographic latitude of the plant site.',
-    `longitude` DECIMAL(18,2) COMMENT 'Geographic longitude of the plant site.',
-    `maintenance_cycle_days` STRING COMMENT 'Standard interval in days between routine maintenance events.',
-    `manager_email` STRING COMMENT 'Email address of the plant manager.',
-    `manager_name` STRING COMMENT 'Full name of the plant manager.',
-    `manager_phone` STRING COMMENT 'Primary contact phone number for the plant manager.',
-    `production_plant_name` STRING COMMENT 'Human‑readable name of the plant.',
-    `next_maintenance_date` DATE COMMENT 'Planned date for the next major maintenance activity.',
-    `notes` STRING COMMENT 'Supplementary information or remarks about the plant.',
-    `oee_actual` DECIMAL(18,2) COMMENT 'Measured OEE percentage achieved.',
-    `oee_target` DECIMAL(18,2) COMMENT 'Planned OEE percentage target for the plant.',
-    `operational_since` DECIMAL(18,2) COMMENT 'Date the plant began commercial operations.',
-    `plant_type` STRING COMMENT 'Category of the plant based on its primary function.',
-    `region` STRING COMMENT 'Higher‑level region (e.g., North America, EMEA) for reporting.',
-    `safety_incident_count` STRING COMMENT 'Number of recorded safety incidents in the reporting period.',
-    `safety_incident_last_date` DATE COMMENT 'Date of the most recent safety incident.',
-    `state_province` STRING COMMENT 'State or province of the plant location.',
-    `production_plant_status` STRING COMMENT 'Current operational state of the plant.',
-    `timezone` STRING COMMENT 'IANA time zone identifier for the plant location.',
-    `updated_timestamp` TIMESTAMP COMMENT 'Timestamp of the most recent update to the plant record.',
-    `waste_generated_tons` DECIMAL(18,2) COMMENT 'Quantity of waste produced by the plant in metric tons.',
-    `water_consumption_m3` DECIMAL(18,2) COMMENT 'Total water usage for the reporting period in cubic metres.',
-    CONSTRAINT pk_production_plant PRIMARY KEY(`production_plant_id`)
-) COMMENT 'Master reference table for plant. Referenced by plant_id.';
-
-CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`production`.`calendar` (
-    `calendar_id` BIGINT COMMENT 'Primary key for calendar',
-    `base_calendar_id` BIGINT COMMENT 'Self-referencing FK on calendar (base_calendar_id)',
-    `calendar_type` STRING COMMENT 'Type of calendar definition applied to the row.',
-    `calendar_code` STRING COMMENT 'Unique code identifying the calendar entry',
-    `created_timestamp` TIMESTAMP COMMENT 'Timestamp when the calendar record was first inserted.',
-    `calendar_date` DATE COMMENT 'The calendar day represented by this row.',
-    `day_of_month` STRING COMMENT 'Numeric day within the month (1‑31).',
-    `day_of_week` STRING COMMENT 'Name of the weekday (e.g., Monday, Tuesday). [ENUM-REF-CANDIDATE: Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday — promote to reference product]',
-    `day_of_year` STRING COMMENT 'Ordinal day within the year (1‑366).',
-    `fiscal_month` STRING COMMENT 'Fiscal month (1‑12) for the date.',
-    `fiscal_period` STRING COMMENT 'Fiscal period designation for the calendar entry',
-    `fiscal_quarter` STRING COMMENT 'Fiscal quarter (1‑4) for the date.',
-    `fiscal_year` STRING COMMENT 'Fiscal year to which the date belongs, based on the companys fiscal calendar.',
-    `fiscal_year_start_date` DATE COMMENT 'First day of the fiscal year to which the row belongs.',
-    `holiday_name` STRING COMMENT 'Name of the holiday when is_holiday is true; null otherwise.',
-    `holiday_type` STRING COMMENT 'Classification of the holiday (national, regional, or observance).',
-    `is_business_day` BOOLEAN COMMENT 'True if the date is a regular working day (not weekend or holiday).',
-    `is_holiday` BOOLEAN COMMENT 'True if the date is a recognized public or company holiday.',
-    `is_leap_year` BOOLEAN COMMENT 'True if the year of the date is a leap year.',
-    `is_shutdown` BOOLEAN COMMENT 'Indicates whether the calendar day is a shutdown day',
-    `is_weekend` BOOLEAN COMMENT 'True if the date falls on a Saturday or Sunday.',
-    `is_working_day` BOOLEAN COMMENT '',
-    `iso_week_number` BOOLEAN COMMENT 'ISO‑8601 week number (1‑53) for the date.',
-    `iso_year` BOOLEAN COMMENT 'ISO‑8601 year associated with the week number.',
-    `last_modified_timestamp` TIMESTAMP COMMENT '',
-    `month` STRING COMMENT 'Numeric month of the year (1‑12).',
-    `month_name` STRING COMMENT 'Full name of the month (e.g., January). [ENUM-REF-CANDIDATE: January|February|March|April|May|June|July|August|September|October|November|December — promote to reference product]',
-    `month_start_date` DATE COMMENT 'First calendar day of the month for the row.',
-    `calendar_name` STRING COMMENT '',
-    `notes` STRING COMMENT '',
-    `quarter` STRING COMMENT 'Fiscal quarter of the year (1‑4).',
-    `quarter_name` STRING COMMENT 'Label for the quarter (Q1‑Q4).',
-    `quarter_start_date` DATE COMMENT 'First calendar day of the quarter for the row.',
-    `region_code` STRING COMMENT '',
-    `shift_indicator` STRING COMMENT 'Designated shift for the date in production planning (day, night, or swing).',
-    `shift_pattern` STRING COMMENT '',
-    `timezone` STRING COMMENT 'IANA time‑zone identifier for the date (e.g., UTC, America/New_York).',
-    `updated_timestamp` TIMESTAMP COMMENT 'Timestamp of the most recent update to the calendar record.',
-    `week_of_year` STRING COMMENT 'ISO week number within the year (1‑53).',
-    `week_start_date` DATE COMMENT 'Date of the Monday (or first day of week) for the week containing the row.',
-    `working_hours` DECIMAL(18,2) COMMENT '',
-    `year` STRING COMMENT 'Four‑digit calendar year.',
-    CONSTRAINT pk_calendar PRIMARY KEY(`calendar_id`)
-) COMMENT 'Master reference table for calendar. Referenced by calendar_id.';
-
-CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`production`.`shift_sequence` (
-    `shift_sequence_id` BIGINT COMMENT 'Primary key for shift_sequence',
-    `calendar_id` BIGINT COMMENT '',
-    `rotation_shift_sequence_id` BIGINT COMMENT 'Self-referencing FK on shift_sequence (rotation_shift_sequence_id)',
-    `shift_id` BIGINT COMMENT '',
-    `work_center_id` BIGINT COMMENT 'Identifier of the work center or production line where this shift sequence is applicable.',
-    `break_count` STRING COMMENT 'Number of scheduled breaks within the shift.',
-    `break_duration_minutes` DECIMAL(18,2) COMMENT 'Total break time in minutes per shift.',
-    `shift_sequence_code` STRING COMMENT 'Short alphanumeric code used to identify the shift sequence in systems.',
-    `created_timestamp` TIMESTAMP COMMENT 'Timestamp when the shift sequence record was created.',
-    `cycle_length_days` STRING COMMENT '',
-    `shift_sequence_description` STRING COMMENT 'Detailed description of the shift sequence purpose and characteristics.',
-    `duration_minutes` DECIMAL(18,2) COMMENT 'Total duration of the shift in minutes.',
-    `effective_end_date` DATE COMMENT '',
-    `effective_from` DATE COMMENT 'Date when the shift sequence becomes effective.',
-    `effective_start_date` DATE COMMENT '',
-    `effective_until` DATE COMMENT 'Date when the shift sequence expires (null if indefinite).',
-    `end_time` TIMESTAMP COMMENT 'Scheduled end time of the shift (HH:mm, 24‑hour clock).',
-    `is_active` BOOLEAN COMMENT '',
-    `is_overtime_allowed` BOOLEAN COMMENT 'Indicates if overtime work is permitted during this shift.',
-    `labor_category` STRING COMMENT 'Primary labor category assigned to this shift.',
-    `last_modified_timestamp` TIMESTAMP COMMENT '',
-    `max_workers` STRING COMMENT 'Maximum number of workers allowed simultaneously on this shift.',
-    `shift_sequence_name` STRING COMMENT 'Descriptive name of the shift sequence (e.g., Day Shift, Night Shift).',
-    `notes` STRING COMMENT 'Additional free‑text notes regarding the shift sequence.',
-    `rotation_pattern` STRING COMMENT '',
-    `sequence_code` STRING COMMENT '',
-    `sequence_name` STRING COMMENT '',
-    `sequence_number` STRING COMMENT '',
-    `shift_type` STRING COMMENT 'Category of shift based on time of day or work pattern.',
-    `start_time` TIMESTAMP COMMENT 'Scheduled start time of the shift (HH:mm, 24‑hour clock).',
-    `shift_sequence_status` STRING COMMENT 'Current lifecycle status of the shift sequence.',
-    `updated_timestamp` TIMESTAMP COMMENT 'Timestamp of the most recent update to the shift sequence record.',
-    CONSTRAINT pk_shift_sequence PRIMARY KEY(`shift_sequence_id`)
-) COMMENT 'Master reference table for shift_sequence. Referenced by shift_sequence_id.';
 
 -- ========= FOREIGN KEYS =========
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_work_order` ADD CONSTRAINT `fk_production_production_work_order_production_line_id` FOREIGN KEY (`production_line_id`) REFERENCES `vibe_manufacturing_v1`.`production`.`production_line`(`production_line_id`);
@@ -902,7 +866,6 @@ ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_schedule` ADD CONST
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_schedule` ADD CONSTRAINT `fk_production_production_schedule_work_center_id` FOREIGN KEY (`work_center_id`) REFERENCES `vibe_manufacturing_v1`.`production`.`work_center`(`work_center_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`work_center` ADD CONSTRAINT `fk_production_work_center_production_plant_id` FOREIGN KEY (`production_plant_id`) REFERENCES `vibe_manufacturing_v1`.`production`.`production_plant`(`production_plant_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`work_center` ADD CONSTRAINT `fk_production_work_center_work_center_group_id` FOREIGN KEY (`work_center_group_id`) REFERENCES `vibe_manufacturing_v1`.`production`.`work_center_group`(`work_center_group_id`);
-ALTER TABLE `vibe_manufacturing_v1`.`production`.`work_center` ADD CONSTRAINT `fk_production_work_center_shift_sequence_id` FOREIGN KEY (`shift_sequence_id`) REFERENCES `vibe_manufacturing_v1`.`production`.`shift_sequence`(`shift_sequence_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`routing` ADD CONSTRAINT `fk_production_routing_production_plant_id` FOREIGN KEY (`production_plant_id`) REFERENCES `vibe_manufacturing_v1`.`production`.`production_plant`(`production_plant_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`routing` ADD CONSTRAINT `fk_production_routing_production_line_id` FOREIGN KEY (`production_line_id`) REFERENCES `vibe_manufacturing_v1`.`production`.`production_line`(`production_line_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`version` ADD CONSTRAINT `fk_production_version_production_plant_id` FOREIGN KEY (`production_plant_id`) REFERENCES `vibe_manufacturing_v1`.`production`.`production_plant`(`production_plant_id`);
@@ -922,31 +885,26 @@ ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_downtime_event` ADD
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_goods_receipt` ADD CONSTRAINT `fk_production_production_goods_receipt_production_line_id` FOREIGN KEY (`production_line_id`) REFERENCES `vibe_manufacturing_v1`.`production`.`production_line`(`production_line_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_goods_receipt` ADD CONSTRAINT `fk_production_production_goods_receipt_production_work_order_id` FOREIGN KEY (`production_work_order_id`) REFERENCES `vibe_manufacturing_v1`.`production`.`production_work_order`(`production_work_order_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_goods_receipt` ADD CONSTRAINT `fk_production_production_goods_receipt_shift_id` FOREIGN KEY (`shift_id`) REFERENCES `vibe_manufacturing_v1`.`production`.`shift`(`shift_id`);
+ALTER TABLE `vibe_manufacturing_v1`.`production`.`bom_consumption` ADD CONSTRAINT `fk_production_bom_consumption_production_line_id` FOREIGN KEY (`production_line_id`) REFERENCES `vibe_manufacturing_v1`.`production`.`production_line`(`production_line_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`bom_consumption` ADD CONSTRAINT `fk_production_bom_consumption_production_work_order_id` FOREIGN KEY (`production_work_order_id`) REFERENCES `vibe_manufacturing_v1`.`production`.`production_work_order`(`production_work_order_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`resource_tool` ADD CONSTRAINT `fk_production_resource_tool_work_center_id` FOREIGN KEY (`work_center_id`) REFERENCES `vibe_manufacturing_v1`.`production`.`work_center`(`work_center_id`);
-ALTER TABLE `vibe_manufacturing_v1`.`production`.`run` ADD CONSTRAINT `fk_production_run_production_line_id` FOREIGN KEY (`production_line_id`) REFERENCES `vibe_manufacturing_v1`.`production`.`production_line`(`production_line_id`);
-ALTER TABLE `vibe_manufacturing_v1`.`production`.`run` ADD CONSTRAINT `fk_production_run_shift_id` FOREIGN KEY (`shift_id`) REFERENCES `vibe_manufacturing_v1`.`production`.`shift`(`shift_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_line` ADD CONSTRAINT `fk_production_production_line_work_center_group_id` FOREIGN KEY (`work_center_group_id`) REFERENCES `vibe_manufacturing_v1`.`production`.`work_center_group`(`work_center_group_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`work_order_allocation` ADD CONSTRAINT `fk_production_work_order_allocation_production_work_order_id` FOREIGN KEY (`production_work_order_id`) REFERENCES `vibe_manufacturing_v1`.`production`.`production_work_order`(`production_work_order_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`work_center_group` ADD CONSTRAINT `fk_production_work_center_group_parent_work_center_group_id` FOREIGN KEY (`parent_work_center_group_id`) REFERENCES `vibe_manufacturing_v1`.`production`.`work_center_group`(`work_center_group_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`work_center_group` ADD CONSTRAINT `fk_production_work_center_group_production_plant_id` FOREIGN KEY (`production_plant_id`) REFERENCES `vibe_manufacturing_v1`.`production`.`production_plant`(`production_plant_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`calendar` ADD CONSTRAINT `fk_production_calendar_base_calendar_id` FOREIGN KEY (`base_calendar_id`) REFERENCES `vibe_manufacturing_v1`.`production`.`calendar`(`calendar_id`);
-ALTER TABLE `vibe_manufacturing_v1`.`production`.`shift_sequence` ADD CONSTRAINT `fk_production_shift_sequence_calendar_id` FOREIGN KEY (`calendar_id`) REFERENCES `vibe_manufacturing_v1`.`production`.`calendar`(`calendar_id`);
+ALTER TABLE `vibe_manufacturing_v1`.`production`.`calendar` ADD CONSTRAINT `fk_production_calendar_production_plant_id` FOREIGN KEY (`production_plant_id`) REFERENCES `vibe_manufacturing_v1`.`production`.`production_plant`(`production_plant_id`);
+ALTER TABLE `vibe_manufacturing_v1`.`production`.`shift_sequence` ADD CONSTRAINT `fk_production_shift_sequence_production_plant_id` FOREIGN KEY (`production_plant_id`) REFERENCES `vibe_manufacturing_v1`.`production`.`production_plant`(`production_plant_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`shift_sequence` ADD CONSTRAINT `fk_production_shift_sequence_rotation_shift_sequence_id` FOREIGN KEY (`rotation_shift_sequence_id`) REFERENCES `vibe_manufacturing_v1`.`production`.`shift_sequence`(`shift_sequence_id`);
-ALTER TABLE `vibe_manufacturing_v1`.`production`.`shift_sequence` ADD CONSTRAINT `fk_production_shift_sequence_shift_id` FOREIGN KEY (`shift_id`) REFERENCES `vibe_manufacturing_v1`.`production`.`shift`(`shift_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`shift_sequence` ADD CONSTRAINT `fk_production_shift_sequence_work_center_id` FOREIGN KEY (`work_center_id`) REFERENCES `vibe_manufacturing_v1`.`production`.`work_center`(`work_center_id`);
+ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_run` ADD CONSTRAINT `fk_production_production_run_production_line_id` FOREIGN KEY (`production_line_id`) REFERENCES `vibe_manufacturing_v1`.`production`.`production_line`(`production_line_id`);
+ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_run` ADD CONSTRAINT `fk_production_production_run_shift_id` FOREIGN KEY (`shift_id`) REFERENCES `vibe_manufacturing_v1`.`production`.`shift`(`shift_id`);
 
 -- ========= TAGS =========
 ALTER SCHEMA `vibe_manufacturing_v1`.`production` SET TAGS ('dbx_division' = 'operations');
 ALTER SCHEMA `vibe_manufacturing_v1`.`production` SET TAGS ('dbx_domain' = 'production');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_work_order` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_work_order` SET TAGS ('dbx_subdomain' = 'work_execution');
-ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_work_order` SET TAGS ('dbx_ssot' = 'reference');
-ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_work_order` SET TAGS ('dbx_ssot_group' = 'work_order');
-ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_work_order` SET TAGS ('dbx_ssot_master' = 'asset.asset_work_order');
-ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_work_order` SET TAGS ('dbx_ssot_of' = 'production.production_work_order');
-ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_work_order` SET TAGS ('dbx_ssot_canonical' = 'asset.asset_work_order');
-ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_work_order` SET TAGS ('dbx_ssot_role' = 'source_of_truth');
+ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_work_order` SET TAGS ('dbx_subdomain' = 'shop_execution');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_work_order` ALTER COLUMN `production_work_order_id` SET TAGS ('dbx_business_glossary_term' = 'Production Work Order ID');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_work_order` ALTER COLUMN `cost_center_id` SET TAGS ('dbx_business_glossary_term' = 'Cost Center Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_work_order` ALTER COLUMN `customer_account_id` SET TAGS ('dbx_business_glossary_term' = 'Customer Account ID');
@@ -964,6 +922,7 @@ ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_work_order` ALTER C
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_work_order` ALTER COLUMN `project_header_id` SET TAGS ('dbx_business_glossary_term' = 'Project Header Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_work_order` ALTER COLUMN `purchase_order_id` SET TAGS ('dbx_business_glossary_term' = 'Purchase Order Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_work_order` ALTER COLUMN `recipe_id` SET TAGS ('dbx_business_glossary_term' = 'Recipe Id (Foreign Key)');
+ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_work_order` ALTER COLUMN `regulatory_requirement_id` SET TAGS ('dbx_business_glossary_term' = 'Regulatory Requirement Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_work_order` ALTER COLUMN `order_intake_id` SET TAGS ('dbx_business_glossary_term' = 'Sales Order Intake Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_work_order` ALTER COLUMN `shift_id` SET TAGS ('dbx_business_glossary_term' = 'Shift Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_work_order` ALTER COLUMN `sku_master_id` SET TAGS ('dbx_business_glossary_term' = 'Sku Master Id (Foreign Key)');
@@ -974,7 +933,6 @@ ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_work_order` ALTER C
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_work_order` ALTER COLUMN `supplier_id` SET TAGS ('dbx_business_glossary_term' = 'Vendor Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_work_order` ALTER COLUMN `version_id` SET TAGS ('dbx_business_glossary_term' = 'Version Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_work_order` ALTER COLUMN `warehouse_id` SET TAGS ('dbx_business_glossary_term' = 'Warehouse ID');
-ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_work_order` ALTER COLUMN `asset_work_order_id` SET TAGS ('dbx_ssot_reference' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_work_order` ALTER COLUMN `actual_cost` SET TAGS ('dbx_business_glossary_term' = 'Actual Cost');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_work_order` ALTER COLUMN `actual_cost` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_work_order` ALTER COLUMN `actual_finish_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Actual Finish Timestamp');
@@ -1019,7 +977,7 @@ ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_work_order` ALTER C
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_work_order` ALTER COLUMN `work_order_type` SET TAGS ('dbx_value_regex' = 'standard|rework|prototype|maintenance|sample');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_work_order` ALTER COLUMN `yield_rate_percentage` SET TAGS ('dbx_business_glossary_term' = 'Yield Rate Percentage');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`order_confirmation` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_manufacturing_v1`.`production`.`order_confirmation` SET TAGS ('dbx_subdomain' = 'work_execution');
+ALTER TABLE `vibe_manufacturing_v1`.`production`.`order_confirmation` SET TAGS ('dbx_subdomain' = 'shop_execution');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`order_confirmation` ALTER COLUMN `order_confirmation_id` SET TAGS ('dbx_business_glossary_term' = 'Order Confirmation Identifier');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`order_confirmation` ALTER COLUMN `asset_work_order_id` SET TAGS ('dbx_business_glossary_term' = 'Work Order ID');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`order_confirmation` ALTER COLUMN `cost_center_id` SET TAGS ('dbx_business_glossary_term' = 'Cost Center Id (Foreign Key)');
@@ -1075,7 +1033,7 @@ ALTER TABLE `vibe_manufacturing_v1`.`production`.`order_confirmation` ALTER COLU
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`order_confirmation` ALTER COLUMN `variance_reason_code` SET TAGS ('dbx_business_glossary_term' = 'Variance Reason Code');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`order_confirmation` ALTER COLUMN `yield_quantity` SET TAGS ('dbx_business_glossary_term' = 'Yield Quantity');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_schedule` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_schedule` SET TAGS ('dbx_subdomain' = 'shift_planning');
+ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_schedule` SET TAGS ('dbx_subdomain' = 'capacity_planning');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_schedule` ALTER COLUMN `production_schedule_id` SET TAGS ('dbx_business_glossary_term' = 'Production Schedule ID');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_schedule` ALTER COLUMN `bom_id` SET TAGS ('dbx_business_glossary_term' = 'Bill of Materials (BOM) ID');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_schedule` ALTER COLUMN `location_id` SET TAGS ('dbx_business_glossary_term' = 'Asset Location Id (Foreign Key)');
@@ -1110,6 +1068,7 @@ ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_schedule` ALTER COL
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_schedule` ALTER COLUMN `planning_bucket` SET TAGS ('dbx_value_regex' = 'daily|weekly|monthly');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_schedule` ALTER COLUMN `planning_horizon_weeks` SET TAGS ('dbx_business_glossary_term' = 'Planning Horizon in Weeks');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_schedule` ALTER COLUMN `planning_strategy` SET TAGS ('dbx_business_glossary_term' = 'Production Planning Strategy');
+ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_schedule` ALTER COLUMN `planning_strategy` SET TAGS ('dbx_value_regex' = 'make_to_stock|make_to_order|assemble_to_order|engineer_to_order');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_schedule` ALTER COLUMN `priority_rank` SET TAGS ('dbx_business_glossary_term' = 'Schedule Priority Rank');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_schedule` ALTER COLUMN `released_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Schedule Released Timestamp');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_schedule` ALTER COLUMN `run_time_hours` SET TAGS ('dbx_business_glossary_term' = 'Run Time in Hours');
@@ -1142,7 +1101,6 @@ ALTER TABLE `vibe_manufacturing_v1`.`production`.`work_center` ALTER COLUMN `emp
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`work_center` ALTER COLUMN `maintenance_strategy_id` SET TAGS ('dbx_business_glossary_term' = 'Maintenance Strategy ID');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`work_center` ALTER COLUMN `production_plant_id` SET TAGS ('dbx_business_glossary_term' = 'Plant ID');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`work_center` ALTER COLUMN `work_center_group_id` SET TAGS ('dbx_business_glossary_term' = 'Work Center Group Id (Foreign Key)');
-ALTER TABLE `vibe_manufacturing_v1`.`production`.`work_center` ALTER COLUMN `shift_sequence_id` SET TAGS ('dbx_business_glossary_term' = 'Shift Sequence ID');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`work_center` ALTER COLUMN `available_capacity_per_shift` SET TAGS ('dbx_business_glossary_term' = 'Available Capacity Per Shift');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`work_center` ALTER COLUMN `capacity_category` SET TAGS ('dbx_business_glossary_term' = 'Capacity Category');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`work_center` ALTER COLUMN `capacity_category` SET TAGS ('dbx_value_regex' = 'machine_hours|labor_hours|units_per_hour|setup_hours');
@@ -1163,21 +1121,18 @@ ALTER TABLE `vibe_manufacturing_v1`.`production`.`work_center` ALTER COLUMN `las
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`work_center` ALTER COLUMN `location_description` SET TAGS ('dbx_business_glossary_term' = 'Location Description');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`work_center` ALTER COLUMN `mes_integration_enabled` SET TAGS ('dbx_business_glossary_term' = 'Manufacturing Execution System (MES) Integration Enabled');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`work_center` ALTER COLUMN `work_center_name` SET TAGS ('dbx_business_glossary_term' = 'Work Center Name');
-ALTER TABLE `vibe_manufacturing_v1`.`production`.`work_center` ALTER COLUMN `work_center_name` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_manufacturing_v1`.`production`.`work_center` ALTER COLUMN `work_center_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`work_center` ALTER COLUMN `number_of_machines` SET TAGS ('dbx_business_glossary_term' = 'Number of Machines');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`work_center` ALTER COLUMN `number_of_operators` SET TAGS ('dbx_business_glossary_term' = 'Number of Operators');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`work_center` ALTER COLUMN `oee_baseline_target_percent` SET TAGS ('dbx_business_glossary_term' = 'Overall Equipment Effectiveness (OEE) Baseline Target Percent');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`work_center` ALTER COLUMN `plc_address` SET TAGS ('dbx_business_glossary_term' = 'Programmable Logic Controller (PLC) Address');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`work_center` ALTER COLUMN `plc_address` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`work_center` ALTER COLUMN `plc_address` SET TAGS ('dbx_pii_address' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`production`.`work_center` ALTER COLUMN `plc_address` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`production`.`work_center` ALTER COLUMN `plc_address` SET TAGS ('dbx_sensitivity' = 'pii');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`work_center` ALTER COLUMN `quality_inspection_required` SET TAGS ('dbx_business_glossary_term' = 'Quality Inspection Required');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`work_center` ALTER COLUMN `scada_tag_prefix` SET TAGS ('dbx_business_glossary_term' = 'Supervisory Control and Data Acquisition (SCADA) Tag Prefix');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`work_center` ALTER COLUMN `scada_tag_prefix` SET TAGS ('dbx_value_regex' = '^[A-Z0-9_]{2,20}$');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`work_center` ALTER COLUMN `scheduling_type` SET TAGS ('dbx_business_glossary_term' = 'Scheduling Type');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`work_center` ALTER COLUMN `scheduling_type` SET TAGS ('dbx_value_regex' = 'forward|backward|midpoint|only_capacity_requirements');
+ALTER TABLE `vibe_manufacturing_v1`.`production`.`work_center` ALTER COLUMN `shift_sequence_id` SET TAGS ('dbx_business_glossary_term' = 'Shift Sequence ID');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`work_center` ALTER COLUMN `standard_processing_time_minutes` SET TAGS ('dbx_business_glossary_term' = 'Standard Processing Time Minutes');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`work_center` ALTER COLUMN `standard_queue_time_hours` SET TAGS ('dbx_business_glossary_term' = 'Standard Queue Time Hours');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`work_center` ALTER COLUMN `standard_setup_time_minutes` SET TAGS ('dbx_business_glossary_term' = 'Standard Setup Time Minutes');
@@ -1209,6 +1164,7 @@ ALTER TABLE `vibe_manufacturing_v1`.`production`.`routing` ALTER COLUMN `base_un
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`routing` ALTER COLUMN `change_number` SET TAGS ('dbx_business_glossary_term' = 'Engineering Change Number (ECN)');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`routing` ALTER COLUMN `change_number` SET TAGS ('dbx_value_regex' = '^[A-Z0-9]{6,20}$');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`routing` ALTER COLUMN `cost_currency_code` SET TAGS ('dbx_business_glossary_term' = 'Cost Currency Code');
+ALTER TABLE `vibe_manufacturing_v1`.`production`.`routing` ALTER COLUMN `cost_currency_code` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`routing` ALTER COLUMN `counter` SET TAGS ('dbx_business_glossary_term' = 'Routing Group Counter');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`routing` ALTER COLUMN `counter` SET TAGS ('dbx_value_regex' = '^[0-9]{1,8}$');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`routing` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
@@ -1276,6 +1232,7 @@ ALTER TABLE `vibe_manufacturing_v1`.`production`.`version` ALTER COLUMN `is_cost
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`version` ALTER COLUMN `is_locked` SET TAGS ('dbx_business_glossary_term' = 'Production Version Locked Indicator');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`version` ALTER COLUMN `is_mrp_relevant` SET TAGS ('dbx_business_glossary_term' = 'Material Requirements Planning (MRP) Relevant Indicator');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`version` ALTER COLUMN `issue_storage_location` SET TAGS ('dbx_business_glossary_term' = 'Issue Storage Location');
+ALTER TABLE `vibe_manufacturing_v1`.`production`.`version` ALTER COLUMN `issue_storage_location` SET TAGS ('dbx_value_regex' = '^[A-Z0-9]{4}$');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`version` ALTER COLUMN `last_modified_by` SET TAGS ('dbx_business_glossary_term' = 'Last Modified By User');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`version` ALTER COLUMN `last_modified_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Last Modified Timestamp');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`version` ALTER COLUMN `lot_size_from` SET TAGS ('dbx_business_glossary_term' = 'Lot Size From');
@@ -1295,7 +1252,7 @@ ALTER TABLE `vibe_manufacturing_v1`.`production`.`version` ALTER COLUMN `valid_f
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`version` ALTER COLUMN `valid_to_date` SET TAGS ('dbx_business_glossary_term' = 'Valid To Date');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`version` ALTER COLUMN `created_by` SET TAGS ('dbx_business_glossary_term' = 'Created By User');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`shift` SET TAGS ('dbx_data_type' = 'reference_data');
-ALTER TABLE `vibe_manufacturing_v1`.`production`.`shift` SET TAGS ('dbx_subdomain' = 'shift_planning');
+ALTER TABLE `vibe_manufacturing_v1`.`production`.`shift` SET TAGS ('dbx_subdomain' = 'capacity_planning');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`shift` ALTER COLUMN `shift_id` SET TAGS ('dbx_business_glossary_term' = 'Shift Identifier');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`shift` ALTER COLUMN `calendar_id` SET TAGS ('dbx_business_glossary_term' = 'Factory Calendar Identifier');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`shift` ALTER COLUMN `location_id` SET TAGS ('dbx_business_glossary_term' = 'Asset Location Id (Foreign Key)');
@@ -1323,8 +1280,6 @@ ALTER TABLE `vibe_manufacturing_v1`.`production`.`shift` ALTER COLUMN `labor_rat
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`shift` ALTER COLUMN `modified_by` SET TAGS ('dbx_business_glossary_term' = 'Last Modified By User');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`shift` ALTER COLUMN `modified_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Last Modified Timestamp');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`shift` ALTER COLUMN `shift_name` SET TAGS ('dbx_business_glossary_term' = 'Shift Name');
-ALTER TABLE `vibe_manufacturing_v1`.`production`.`shift` ALTER COLUMN `shift_name` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_manufacturing_v1`.`production`.`shift` ALTER COLUMN `shift_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`shift` ALTER COLUMN `net_available_minutes` SET TAGS ('dbx_business_glossary_term' = 'Net Available Minutes');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`shift` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Shift Definition Notes');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`shift` ALTER COLUMN `number_of_breaks` SET TAGS ('dbx_business_glossary_term' = 'Number of Scheduled Breaks');
@@ -1344,8 +1299,9 @@ ALTER TABLE `vibe_manufacturing_v1`.`production`.`shift` ALTER COLUMN `unit_of_m
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`shift` ALTER COLUMN `unit_of_measure` SET TAGS ('dbx_value_regex' = '^[A-Z]{2,5}$');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`shift` ALTER COLUMN `created_by` SET TAGS ('dbx_business_glossary_term' = 'Created By User');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`shift_report` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_manufacturing_v1`.`production`.`shift_report` SET TAGS ('dbx_subdomain' = 'shift_planning');
+ALTER TABLE `vibe_manufacturing_v1`.`production`.`shift_report` SET TAGS ('dbx_subdomain' = 'capacity_planning');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`shift_report` ALTER COLUMN `shift_report_id` SET TAGS ('dbx_business_glossary_term' = 'Shift Report ID');
+ALTER TABLE `vibe_manufacturing_v1`.`production`.`shift_report` ALTER COLUMN `asset_work_order_id` SET TAGS ('dbx_business_glossary_term' = 'Work Order ID');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`shift_report` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Shift Supervisor ID');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`shift_report` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`shift_report` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
@@ -1392,7 +1348,7 @@ ALTER TABLE `vibe_manufacturing_v1`.`production`.`shift_report` ALTER COLUMN `to
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`shift_report` ALTER COLUMN `unit_of_measure` SET TAGS ('dbx_business_glossary_term' = 'Unit of Measure');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`shift_report` ALTER COLUMN `yield_rate_percentage` SET TAGS ('dbx_business_glossary_term' = 'Yield Rate Percentage');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`wip_lot` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_manufacturing_v1`.`production`.`wip_lot` SET TAGS ('dbx_subdomain' = 'work_execution');
+ALTER TABLE `vibe_manufacturing_v1`.`production`.`wip_lot` SET TAGS ('dbx_subdomain' = 'shop_execution');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`wip_lot` ALTER COLUMN `wip_lot_id` SET TAGS ('dbx_business_glossary_term' = 'Work-In-Progress (WIP) Lot Identifier');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`wip_lot` ALTER COLUMN `cost_center_id` SET TAGS ('dbx_business_glossary_term' = 'Cost Center Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`wip_lot` ALTER COLUMN `work_center_id` SET TAGS ('dbx_business_glossary_term' = 'Current Work Center Identifier');
@@ -1444,13 +1400,7 @@ ALTER TABLE `vibe_manufacturing_v1`.`production`.`wip_lot` ALTER COLUMN `special
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`wip_lot` ALTER COLUMN `storage_location_code` SET TAGS ('dbx_business_glossary_term' = 'Storage Location Code');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`wip_lot` ALTER COLUMN `unit_of_measure` SET TAGS ('dbx_business_glossary_term' = 'Unit of Measure (UOM)');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_downtime_event` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_downtime_event` SET TAGS ('dbx_subdomain' = 'shift_planning');
-ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_downtime_event` SET TAGS ('dbx_ssot' = 'reference');
-ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_downtime_event` SET TAGS ('dbx_ssot_group' = 'downtime_event');
-ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_downtime_event` SET TAGS ('dbx_ssot_master' = 'asset.asset_downtime_event');
-ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_downtime_event` SET TAGS ('dbx_ssot_of' = 'asset.asset_downtime_event');
-ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_downtime_event` SET TAGS ('dbx_ssot_canonical' = 'asset.asset_downtime_event');
-ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_downtime_event` SET TAGS ('dbx_ssot_role' = 'source_of_truth');
+ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_downtime_event` SET TAGS ('dbx_subdomain' = 'shop_execution');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_downtime_event` ALTER COLUMN `production_downtime_event_id` SET TAGS ('dbx_business_glossary_term' = 'Production Downtime Event ID');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_downtime_event` ALTER COLUMN `alarm_definition_id` SET TAGS ('dbx_business_glossary_term' = 'Alarm Definition Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_downtime_event` ALTER COLUMN `asset_work_order_id` SET TAGS ('dbx_business_glossary_term' = 'Work Order ID');
@@ -1467,7 +1417,6 @@ ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_downtime_event` ALT
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_downtime_event` ALTER COLUMN `tertiary_production_recorded_by_employee_id` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_downtime_event` ALTER COLUMN `tertiary_production_recorded_by_employee_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_downtime_event` ALTER COLUMN `work_center_id` SET TAGS ('dbx_business_glossary_term' = 'Work Center ID');
-ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_downtime_event` ALTER COLUMN `asset_downtime_event_id` SET TAGS ('dbx_ssot_reference' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_downtime_event` ALTER COLUMN `alarm_code` SET TAGS ('dbx_business_glossary_term' = 'SCADA Alarm Code');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_downtime_event` ALTER COLUMN `alarm_description` SET TAGS ('dbx_business_glossary_term' = 'SCADA Alarm Description');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_downtime_event` ALTER COLUMN `approval_status` SET TAGS ('dbx_business_glossary_term' = 'Approval Status');
@@ -1508,10 +1457,8 @@ ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_downtime_event` ALT
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_downtime_event` ALTER COLUMN `source_system_code` SET TAGS ('dbx_business_glossary_term' = 'Source System Record ID');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_downtime_event` ALTER COLUMN `start_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Downtime Start Timestamp');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_goods_receipt` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_goods_receipt` SET TAGS ('dbx_subdomain' = 'work_execution');
+ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_goods_receipt` SET TAGS ('dbx_subdomain' = 'shop_execution');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_goods_receipt` ALTER COLUMN `production_goods_receipt_id` SET TAGS ('dbx_business_glossary_term' = 'Production Goods Receipt ID');
-ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_goods_receipt` ALTER COLUMN `production_goods_receipt_id` SET TAGS ('dbx_ssot_duplicate_resolved' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_goods_receipt` ALTER COLUMN `production_goods_receipt_id` SET TAGS ('dbx_ssot_master' = 'procurement.procurement_goods_receipt');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_goods_receipt` ALTER COLUMN `cost_center_id` SET TAGS ('dbx_business_glossary_term' = 'Cost Center ID');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_goods_receipt` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Operator ID');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_goods_receipt` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
@@ -1564,7 +1511,7 @@ ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_goods_receipt` ALTE
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_goods_receipt` ALTER COLUMN `vendor_batch_number` SET TAGS ('dbx_business_glossary_term' = 'Vendor Batch Number');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_goods_receipt` ALTER COLUMN `yield_percentage` SET TAGS ('dbx_business_glossary_term' = 'Yield Percentage');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`bom_consumption` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_manufacturing_v1`.`production`.`bom_consumption` SET TAGS ('dbx_subdomain' = 'work_execution');
+ALTER TABLE `vibe_manufacturing_v1`.`production`.`bom_consumption` SET TAGS ('dbx_subdomain' = 'shop_execution');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`bom_consumption` ALTER COLUMN `bom_consumption_id` SET TAGS ('dbx_business_glossary_term' = 'Bom Consumption Identifier');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`bom_consumption` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Production Operator ID');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`bom_consumption` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
@@ -1636,6 +1583,7 @@ ALTER TABLE `vibe_manufacturing_v1`.`production`.`resource_tool` ALTER COLUMN `c
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`resource_tool` ALTER COLUMN `calibration_interval_days` SET TAGS ('dbx_business_glossary_term' = 'Calibration Interval Days');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`resource_tool` ALTER COLUMN `calibration_required_flag` SET TAGS ('dbx_business_glossary_term' = 'Calibration Required Flag');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`resource_tool` ALTER COLUMN `calibration_status` SET TAGS ('dbx_business_glossary_term' = 'Calibration Status');
+ALTER TABLE `vibe_manufacturing_v1`.`production`.`resource_tool` ALTER COLUMN `calibration_status` SET TAGS ('dbx_value_regex' = 'current|due|overdue|not_applicable');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`resource_tool` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`resource_tool` ALTER COLUMN `currency_code` SET TAGS ('dbx_business_glossary_term' = 'Currency Code');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`resource_tool` ALTER COLUMN `currency_code` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
@@ -1646,8 +1594,6 @@ ALTER TABLE `vibe_manufacturing_v1`.`production`.`resource_tool` ALTER COLUMN `e
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`resource_tool` ALTER COLUMN `last_calibration_date` SET TAGS ('dbx_business_glossary_term' = 'Last Calibration Date');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`resource_tool` ALTER COLUMN `last_modified_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Last Modified Timestamp');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`resource_tool` ALTER COLUMN `manufacturer_name` SET TAGS ('dbx_business_glossary_term' = 'Manufacturer Name');
-ALTER TABLE `vibe_manufacturing_v1`.`production`.`resource_tool` ALTER COLUMN `manufacturer_name` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_manufacturing_v1`.`production`.`resource_tool` ALTER COLUMN `manufacturer_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`resource_tool` ALTER COLUMN `manufacturer_part_number` SET TAGS ('dbx_business_glossary_term' = 'Manufacturer Part Number');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`resource_tool` ALTER COLUMN `maximum_usage_cycles` SET TAGS ('dbx_business_glossary_term' = 'Maximum Usage Cycles');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`resource_tool` ALTER COLUMN `next_calibration_date` SET TAGS ('dbx_business_glossary_term' = 'Next Calibration Date');
@@ -1669,70 +1615,12 @@ ALTER TABLE `vibe_manufacturing_v1`.`production`.`resource_tool` ALTER COLUMN `t
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`resource_tool` ALTER COLUMN `usage_quantity_per_operation` SET TAGS ('dbx_business_glossary_term' = 'Usage Quantity Per Operation');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`resource_tool` ALTER COLUMN `usage_unit_of_measure` SET TAGS ('dbx_business_glossary_term' = 'Usage Unit of Measure (UOM)');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`resource_tool` ALTER COLUMN `usage_unit_of_measure` SET TAGS ('dbx_value_regex' = '^[A-Z]{2,3}$');
-ALTER TABLE `vibe_manufacturing_v1`.`production`.`run` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_manufacturing_v1`.`production`.`run` SET TAGS ('dbx_subdomain' = 'work_execution');
-ALTER TABLE `vibe_manufacturing_v1`.`production`.`run` ALTER COLUMN `run_id` SET TAGS ('dbx_business_glossary_term' = 'Run Identifier');
-ALTER TABLE `vibe_manufacturing_v1`.`production`.`run` ALTER COLUMN `bom_id` SET TAGS ('dbx_business_glossary_term' = 'Bill of Materials (BOM) ID');
-ALTER TABLE `vibe_manufacturing_v1`.`production`.`run` ALTER COLUMN `customer_account_id` SET TAGS ('dbx_business_glossary_term' = 'Customer Account ID');
-ALTER TABLE `vibe_manufacturing_v1`.`production`.`run` ALTER COLUMN `equipment_register_id` SET TAGS ('dbx_business_glossary_term' = 'Equipment Register ID');
-ALTER TABLE `vibe_manufacturing_v1`.`production`.`run` ALTER COLUMN `material_master_id` SET TAGS ('dbx_business_glossary_term' = 'Material Master ID');
-ALTER TABLE `vibe_manufacturing_v1`.`production`.`run` ALTER COLUMN `order_header_id` SET TAGS ('dbx_business_glossary_term' = 'Sales Order Id (Foreign Key)');
-ALTER TABLE `vibe_manufacturing_v1`.`production`.`run` ALTER COLUMN `production_line_id` SET TAGS ('dbx_business_glossary_term' = 'Production Line Id');
-ALTER TABLE `vibe_manufacturing_v1`.`production`.`run` ALTER COLUMN `production_line_id` SET TAGS ('dbx_internal' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`production`.`run` ALTER COLUMN `order_intake_id` SET TAGS ('dbx_business_glossary_term' = 'Sales Order Intake Id (Foreign Key)');
-ALTER TABLE `vibe_manufacturing_v1`.`production`.`run` ALTER COLUMN `shift_id` SET TAGS ('dbx_business_glossary_term' = 'Shift Id');
-ALTER TABLE `vibe_manufacturing_v1`.`production`.`run` ALTER COLUMN `shift_id` SET TAGS ('dbx_internal' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`production`.`run` ALTER COLUMN `sku_master_id` SET TAGS ('dbx_business_glossary_term' = 'Sku Master Id (Foreign Key)');
-ALTER TABLE `vibe_manufacturing_v1`.`production`.`run` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Supervisor Employee Id (Foreign Key)');
-ALTER TABLE `vibe_manufacturing_v1`.`production`.`run` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`production`.`run` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`production`.`run` ALTER COLUMN `supplier_id` SET TAGS ('dbx_business_glossary_term' = 'Vendor Id (Foreign Key)');
-ALTER TABLE `vibe_manufacturing_v1`.`production`.`run` ALTER COLUMN `warehouse_id` SET TAGS ('dbx_business_glossary_term' = 'Warehouse ID');
-ALTER TABLE `vibe_manufacturing_v1`.`production`.`run` ALTER COLUMN `actual_cost` SET TAGS ('dbx_business_glossary_term' = 'Actual Cost');
-ALTER TABLE `vibe_manufacturing_v1`.`production`.`run` ALTER COLUMN `actual_finish_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Actual Finish Timestamp');
-ALTER TABLE `vibe_manufacturing_v1`.`production`.`run` ALTER COLUMN `actual_quantity` SET TAGS ('dbx_business_glossary_term' = 'Actual Quantity');
-ALTER TABLE `vibe_manufacturing_v1`.`production`.`run` ALTER COLUMN `actual_start_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Actual Start Timestamp');
-ALTER TABLE `vibe_manufacturing_v1`.`production`.`run` ALTER COLUMN `availability_percentage` SET TAGS ('dbx_business_glossary_term' = 'Availability Percentage');
-ALTER TABLE `vibe_manufacturing_v1`.`production`.`run` ALTER COLUMN `batch_number` SET TAGS ('dbx_business_glossary_term' = 'Batch Number');
-ALTER TABLE `vibe_manufacturing_v1`.`production`.`run` ALTER COLUMN `campaign_code` SET TAGS ('dbx_business_glossary_term' = 'Campaign Code');
-ALTER TABLE `vibe_manufacturing_v1`.`production`.`run` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
-ALTER TABLE `vibe_manufacturing_v1`.`production`.`run` ALTER COLUMN `currency_code` SET TAGS ('dbx_business_glossary_term' = 'Currency Code');
-ALTER TABLE `vibe_manufacturing_v1`.`production`.`run` ALTER COLUMN `currency_code` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
-ALTER TABLE `vibe_manufacturing_v1`.`production`.`run` ALTER COLUMN `last_modified_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Last Modified Timestamp');
-ALTER TABLE `vibe_manufacturing_v1`.`production`.`run` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Production Run Notes');
-ALTER TABLE `vibe_manufacturing_v1`.`production`.`run` ALTER COLUMN `oee_percentage` SET TAGS ('dbx_business_glossary_term' = 'Overall Equipment Effectiveness (OEE) Percentage');
-ALTER TABLE `vibe_manufacturing_v1`.`production`.`run` ALTER COLUMN `performance_percentage` SET TAGS ('dbx_business_glossary_term' = 'Performance Percentage');
-ALTER TABLE `vibe_manufacturing_v1`.`production`.`run` ALTER COLUMN `planned_finish_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Planned Finish Timestamp');
-ALTER TABLE `vibe_manufacturing_v1`.`production`.`run` ALTER COLUMN `planned_quantity` SET TAGS ('dbx_business_glossary_term' = 'Planned Quantity');
-ALTER TABLE `vibe_manufacturing_v1`.`production`.`run` ALTER COLUMN `planned_start_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Planned Start Timestamp');
-ALTER TABLE `vibe_manufacturing_v1`.`production`.`run` ALTER COLUMN `priority_code` SET TAGS ('dbx_business_glossary_term' = 'Priority Code');
-ALTER TABLE `vibe_manufacturing_v1`.`production`.`run` ALTER COLUMN `priority_code` SET TAGS ('dbx_value_regex' = 'low|normal|high|urgent|critical');
-ALTER TABLE `vibe_manufacturing_v1`.`production`.`run` ALTER COLUMN `quality_percentage` SET TAGS ('dbx_business_glossary_term' = 'Quality Percentage');
-ALTER TABLE `vibe_manufacturing_v1`.`production`.`run` ALTER COLUMN `rework_quantity` SET TAGS ('dbx_business_glossary_term' = 'Rework Quantity');
-ALTER TABLE `vibe_manufacturing_v1`.`production`.`run` ALTER COLUMN `routing_number` SET TAGS ('dbx_business_glossary_term' = 'Routing Number');
-ALTER TABLE `vibe_manufacturing_v1`.`production`.`run` ALTER COLUMN `routing_number` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`production`.`run` ALTER COLUMN `routing_number` SET TAGS ('dbx_pii_financial' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`production`.`run` ALTER COLUMN `run_number` SET TAGS ('dbx_business_glossary_term' = 'Production Run Number');
-ALTER TABLE `vibe_manufacturing_v1`.`production`.`run` ALTER COLUMN `run_status` SET TAGS ('dbx_business_glossary_term' = 'Production Run Status');
-ALTER TABLE `vibe_manufacturing_v1`.`production`.`run` ALTER COLUMN `run_status` SET TAGS ('dbx_value_regex' = 'planned|active|paused|completed|cancelled|aborted');
-ALTER TABLE `vibe_manufacturing_v1`.`production`.`run` ALTER COLUMN `run_type` SET TAGS ('dbx_business_glossary_term' = 'Production Run Type');
-ALTER TABLE `vibe_manufacturing_v1`.`production`.`run` ALTER COLUMN `run_type` SET TAGS ('dbx_value_regex' = 'standard|pilot|rework|validation|trial|campaign');
-ALTER TABLE `vibe_manufacturing_v1`.`production`.`run` ALTER COLUMN `scrap_quantity` SET TAGS ('dbx_business_glossary_term' = 'Scrap Quantity');
-ALTER TABLE `vibe_manufacturing_v1`.`production`.`run` ALTER COLUMN `scrap_rate_percentage` SET TAGS ('dbx_business_glossary_term' = 'Scrap Rate Percentage');
-ALTER TABLE `vibe_manufacturing_v1`.`production`.`run` ALTER COLUMN `standard_cost` SET TAGS ('dbx_business_glossary_term' = 'Standard Cost');
-ALTER TABLE `vibe_manufacturing_v1`.`production`.`run` ALTER COLUMN `takt_time_minutes` SET TAGS ('dbx_business_glossary_term' = 'Takt Time (Minutes)');
-ALTER TABLE `vibe_manufacturing_v1`.`production`.`run` ALTER COLUMN `throughput_rate` SET TAGS ('dbx_business_glossary_term' = 'Throughput Rate');
-ALTER TABLE `vibe_manufacturing_v1`.`production`.`run` ALTER COLUMN `total_cycle_time_minutes` SET TAGS ('dbx_business_glossary_term' = 'Total Cycle Time (Minutes)');
-ALTER TABLE `vibe_manufacturing_v1`.`production`.`run` ALTER COLUMN `total_downtime_minutes` SET TAGS ('dbx_business_glossary_term' = 'Total Downtime (Minutes)');
-ALTER TABLE `vibe_manufacturing_v1`.`production`.`run` ALTER COLUMN `total_setup_time_minutes` SET TAGS ('dbx_business_glossary_term' = 'Total Setup Time (Minutes)');
-ALTER TABLE `vibe_manufacturing_v1`.`production`.`run` ALTER COLUMN `unit_of_measure` SET TAGS ('dbx_business_glossary_term' = 'Unit of Measure (UOM)');
-ALTER TABLE `vibe_manufacturing_v1`.`production`.`run` ALTER COLUMN `work_order_count` SET TAGS ('dbx_business_glossary_term' = 'Work Order Count');
-ALTER TABLE `vibe_manufacturing_v1`.`production`.`run` ALTER COLUMN `yield_rate_percentage` SET TAGS ('dbx_business_glossary_term' = 'Yield Rate Percentage');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_line` SET TAGS ('dbx_data_type' = 'master_data');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_line` SET TAGS ('dbx_subdomain' = 'resource_master');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_line` ALTER COLUMN `production_line_id` SET TAGS ('dbx_business_glossary_term' = 'Production Line ID');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_line` ALTER COLUMN `control_system_id` SET TAGS ('dbx_business_glossary_term' = 'Control System Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_line` ALTER COLUMN `cost_center_id` SET TAGS ('dbx_business_glossary_term' = 'Cost Center Id (Foreign Key)');
+ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_line` ALTER COLUMN `historian_config_id` SET TAGS ('dbx_business_glossary_term' = 'Historian Config Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_line` ALTER COLUMN `location_id` SET TAGS ('dbx_business_glossary_term' = 'Asset Location Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_line` ALTER COLUMN `network_segment_id` SET TAGS ('dbx_business_glossary_term' = 'Network Segment Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_line` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Production Supervisor ID');
@@ -1762,8 +1650,6 @@ ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_line` ALTER COLUMN 
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_line` ALTER COLUMN `line_code` SET TAGS ('dbx_business_glossary_term' = 'Production Line Code');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_line` ALTER COLUMN `line_code` SET TAGS ('dbx_value_regex' = '^[A-Z0-9]{4,12}$');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_line` ALTER COLUMN `line_name` SET TAGS ('dbx_business_glossary_term' = 'Production Line Name');
-ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_line` ALTER COLUMN `line_name` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_line` ALTER COLUMN `line_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_line` ALTER COLUMN `line_type` SET TAGS ('dbx_business_glossary_term' = 'Production Line Type');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_line` ALTER COLUMN `line_type` SET TAGS ('dbx_value_regex' = 'assembly|machining|fabrication|painting|testing|packaging');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_line` ALTER COLUMN `mes_line_identifier` SET TAGS ('dbx_business_glossary_term' = 'MES (Manufacturing Execution System) Line Identifier');
@@ -1772,6 +1658,7 @@ ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_line` ALTER COLUMN 
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_line` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Production Line Notes');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_line` ALTER COLUMN `number_of_stations` SET TAGS ('dbx_business_glossary_term' = 'Number of Stations');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_line` ALTER COLUMN `operational_status` SET TAGS ('dbx_business_glossary_term' = 'Operational Status');
+ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_line` ALTER COLUMN `operational_status` SET TAGS ('dbx_value_regex' = 'active|inactive|maintenance|standby|decommissioned');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_line` ALTER COLUMN `planned_availability_hours_per_day` SET TAGS ('dbx_business_glossary_term' = 'Planned Availability Hours Per Day');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_line` ALTER COLUMN `planned_decommission_date` SET TAGS ('dbx_business_glossary_term' = 'Planned Decommission Date');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_line` ALTER COLUMN `quality_inspection_required_flag` SET TAGS ('dbx_business_glossary_term' = 'Quality Inspection Required Flag');
@@ -1786,15 +1673,11 @@ ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_line` ALTER COLUMN 
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_line` ALTER COLUMN `throughput_unit_of_measure` SET TAGS ('dbx_business_glossary_term' = 'Throughput Unit of Measure');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_line` ALTER COLUMN `throughput_unit_of_measure` SET TAGS ('dbx_value_regex' = 'units_per_hour|pieces_per_hour|kg_per_hour|liters_per_hour');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`work_order_allocation` SET TAGS ('dbx_data_type' = 'association_data');
-ALTER TABLE `vibe_manufacturing_v1`.`production`.`work_order_allocation` SET TAGS ('dbx_subdomain' = 'work_execution');
+ALTER TABLE `vibe_manufacturing_v1`.`production`.`work_order_allocation` SET TAGS ('dbx_subdomain' = 'shop_execution');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`work_order_allocation` SET TAGS ('dbx_association_edges' = 'production.production_work_order,order.order_line');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`work_order_allocation` ALTER COLUMN `work_order_allocation_id` SET TAGS ('dbx_business_glossary_term' = 'Work Order Allocation - Work Order Allocation Id');
-ALTER TABLE `vibe_manufacturing_v1`.`production`.`work_order_allocation` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`production`.`work_order_allocation` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`work_order_allocation` ALTER COLUMN `line_id` SET TAGS ('dbx_business_glossary_term' = 'Work Order Allocation - Order Line Id');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`work_order_allocation` ALTER COLUMN `production_work_order_id` SET TAGS ('dbx_business_glossary_term' = 'Work Order Allocation - Production Work Order Id');
-ALTER TABLE `vibe_manufacturing_v1`.`production`.`work_order_allocation` ALTER COLUMN `allocated_by_name` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_manufacturing_v1`.`production`.`work_order_allocation` ALTER COLUMN `allocated_by_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`work_order_allocation` ALTER COLUMN `allocated_quantity` SET TAGS ('dbx_business_glossary_term' = 'Allocated Quantity');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`work_order_allocation` ALTER COLUMN `allocated_quantity` SET TAGS ('dbx_financial' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`work_order_allocation` ALTER COLUMN `allocation_status` SET TAGS ('dbx_business_glossary_term' = 'Allocation Status');
@@ -1816,25 +1699,17 @@ ALTER TABLE `vibe_manufacturing_v1`.`production`.`work_center_group` ALTER COLUM
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`work_center_group` ALTER COLUMN `effective_until` SET TAGS ('dbx_business_glossary_term' = 'Effective Until');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`work_center_group` ALTER COLUMN `group_code` SET TAGS ('dbx_business_glossary_term' = 'Group Code');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`work_center_group` ALTER COLUMN `group_name` SET TAGS ('dbx_business_glossary_term' = 'Group Name');
-ALTER TABLE `vibe_manufacturing_v1`.`production`.`work_center_group` ALTER COLUMN `group_name` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_manufacturing_v1`.`production`.`work_center_group` ALTER COLUMN `group_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`work_center_group` ALTER COLUMN `group_type` SET TAGS ('dbx_business_glossary_term' = 'Group Type');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`work_center_group` ALTER COLUMN `is_default` SET TAGS ('dbx_business_glossary_term' = 'Is Default');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`work_center_group` ALTER COLUMN `manager_email` SET TAGS ('dbx_business_glossary_term' = 'Manager Email');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`work_center_group` ALTER COLUMN `manager_email` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`work_center_group` ALTER COLUMN `manager_email` SET TAGS ('dbx_pii_email' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`production`.`work_center_group` ALTER COLUMN `manager_email` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`production`.`work_center_group` ALTER COLUMN `manager_email` SET TAGS ('dbx_sensitivity' = 'pii');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`work_center_group` ALTER COLUMN `manager_name` SET TAGS ('dbx_business_glossary_term' = 'Manager Name');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`work_center_group` ALTER COLUMN `manager_name` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`work_center_group` ALTER COLUMN `manager_name` SET TAGS ('dbx_pii_name' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`production`.`work_center_group` ALTER COLUMN `manager_name` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`production`.`work_center_group` ALTER COLUMN `manager_name` SET TAGS ('dbx_sensitivity' = 'pii');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`work_center_group` ALTER COLUMN `manager_phone` SET TAGS ('dbx_business_glossary_term' = 'Manager Phone');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`work_center_group` ALTER COLUMN `manager_phone` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`work_center_group` ALTER COLUMN `manager_phone` SET TAGS ('dbx_pii_phone' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`production`.`work_center_group` ALTER COLUMN `manager_phone` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`production`.`work_center_group` ALTER COLUMN `manager_phone` SET TAGS ('dbx_sensitivity' = 'pii');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`work_center_group` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Notes');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`work_center_group` ALTER COLUMN `oee_target_percent` SET TAGS ('dbx_business_glossary_term' = 'Oee Target Percent');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`work_center_group` ALTER COLUMN `responsible_department` SET TAGS ('dbx_business_glossary_term' = 'Responsible Department');
@@ -1843,26 +1718,14 @@ ALTER TABLE `vibe_manufacturing_v1`.`production`.`work_center_group` ALTER COLUM
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`work_center_group` ALTER COLUMN `total_work_centers` SET TAGS ('dbx_business_glossary_term' = 'Total Work Centers');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`work_center_group` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Updated Timestamp');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_plant` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_plant` SET TAGS ('dbx_subdomain' = 'work_execution');
-ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_plant` SET TAGS ('dbx_ssot' = 'reference');
-ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_plant` SET TAGS ('dbx_ssot_group' = 'plant');
-ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_plant` SET TAGS ('dbx_ssot_master' = 'asset.plant');
-ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_plant` SET TAGS ('dbx_ssot_of' = 'asset.plant');
-ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_plant` SET TAGS ('dbx_ssot_canonical' = 'asset.plant');
-ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_plant` SET TAGS ('dbx_ssot_role' = 'source_of_truth');
+ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_plant` SET TAGS ('dbx_subdomain' = 'resource_master');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_plant` ALTER COLUMN `production_plant_id` SET TAGS ('dbx_business_glossary_term' = 'Plant Identifier');
-ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_plant` ALTER COLUMN `production_plant_id` SET TAGS ('dbx_ssot_ref' = 'asset.plant');
-ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_plant` ALTER COLUMN `production_plant_id` SET TAGS ('dbx_ssot_duplicate_resolved' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_plant` ALTER COLUMN `production_plant_id` SET TAGS ('dbx_ssot_master' = 'asset.asset_plant');
-ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_plant` ALTER COLUMN `asset_plant_id` SET TAGS ('dbx_ssot_ref' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_plant` ALTER COLUMN `address_line1` SET TAGS ('dbx_business_glossary_term' = 'Address Line1');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_plant` ALTER COLUMN `address_line1` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_plant` ALTER COLUMN `address_line1` SET TAGS ('dbx_pii_address' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_plant` ALTER COLUMN `address_line1` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_plant` ALTER COLUMN `address_line2` SET TAGS ('dbx_business_glossary_term' = 'Address Line2');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_plant` ALTER COLUMN `address_line2` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_plant` ALTER COLUMN `address_line2` SET TAGS ('dbx_pii_address' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_plant` ALTER COLUMN `address_line2` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_plant` ALTER COLUMN `capacity_mw` SET TAGS ('dbx_business_glossary_term' = 'Capacity Mw');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_plant` ALTER COLUMN `carbon_emission_kg` SET TAGS ('dbx_business_glossary_term' = 'Carbon Emission Kg');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_plant` ALTER COLUMN `city` SET TAGS ('dbx_business_glossary_term' = 'City');
@@ -1887,21 +1750,13 @@ ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_plant` ALTER COLUMN
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_plant` ALTER COLUMN `manager_email` SET TAGS ('dbx_business_glossary_term' = 'Manager Email');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_plant` ALTER COLUMN `manager_email` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_plant` ALTER COLUMN `manager_email` SET TAGS ('dbx_pii_email' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_plant` ALTER COLUMN `manager_email` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_plant` ALTER COLUMN `manager_email` SET TAGS ('dbx_sensitivity' = 'pii');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_plant` ALTER COLUMN `manager_name` SET TAGS ('dbx_business_glossary_term' = 'Manager Name');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_plant` ALTER COLUMN `manager_name` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_plant` ALTER COLUMN `manager_name` SET TAGS ('dbx_pii_name' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_plant` ALTER COLUMN `manager_name` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_plant` ALTER COLUMN `manager_name` SET TAGS ('dbx_sensitivity' = 'pii');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_plant` ALTER COLUMN `manager_phone` SET TAGS ('dbx_business_glossary_term' = 'Manager Phone');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_plant` ALTER COLUMN `manager_phone` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_plant` ALTER COLUMN `manager_phone` SET TAGS ('dbx_pii_phone' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_plant` ALTER COLUMN `manager_phone` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_plant` ALTER COLUMN `manager_phone` SET TAGS ('dbx_sensitivity' = 'pii');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_plant` ALTER COLUMN `production_plant_name` SET TAGS ('dbx_business_glossary_term' = 'Name');
-ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_plant` ALTER COLUMN `production_plant_name` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_plant` ALTER COLUMN `production_plant_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_plant` ALTER COLUMN `next_maintenance_date` SET TAGS ('dbx_business_glossary_term' = 'Next Maintenance Date');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_plant` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Notes');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_plant` ALTER COLUMN `oee_actual` SET TAGS ('dbx_business_glossary_term' = 'Oee Actual');
@@ -1920,7 +1775,7 @@ ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_plant` ALTER COLUMN
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_plant` ALTER COLUMN `waste_generated_tons` SET TAGS ('dbx_business_glossary_term' = 'Waste Generated Tons');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_plant` ALTER COLUMN `water_consumption_m3` SET TAGS ('dbx_business_glossary_term' = 'Water Consumption M3');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`calendar` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_manufacturing_v1`.`production`.`calendar` SET TAGS ('dbx_subdomain' = 'shift_planning');
+ALTER TABLE `vibe_manufacturing_v1`.`production`.`calendar` SET TAGS ('dbx_subdomain' = 'capacity_planning');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`calendar` ALTER COLUMN `calendar_id` SET TAGS ('dbx_business_glossary_term' = 'Calendar Identifier');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`calendar` ALTER COLUMN `base_calendar_id` SET TAGS ('dbx_business_glossary_term' = 'Base Calendar Id');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`calendar` ALTER COLUMN `base_calendar_id` SET TAGS ('dbx_self_ref_fk' = 'true');
@@ -1935,8 +1790,6 @@ ALTER TABLE `vibe_manufacturing_v1`.`production`.`calendar` ALTER COLUMN `fiscal
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`calendar` ALTER COLUMN `fiscal_year` SET TAGS ('dbx_business_glossary_term' = 'Fiscal Year');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`calendar` ALTER COLUMN `fiscal_year_start_date` SET TAGS ('dbx_business_glossary_term' = 'Fiscal Year Start Date');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`calendar` ALTER COLUMN `holiday_name` SET TAGS ('dbx_business_glossary_term' = 'Holiday Name');
-ALTER TABLE `vibe_manufacturing_v1`.`production`.`calendar` ALTER COLUMN `holiday_name` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_manufacturing_v1`.`production`.`calendar` ALTER COLUMN `holiday_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`calendar` ALTER COLUMN `holiday_type` SET TAGS ('dbx_business_glossary_term' = 'Holiday Type');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`calendar` ALTER COLUMN `is_business_day` SET TAGS ('dbx_business_glossary_term' = 'Is Business Day');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`calendar` ALTER COLUMN `is_holiday` SET TAGS ('dbx_business_glossary_term' = 'Is Holiday');
@@ -1946,14 +1799,9 @@ ALTER TABLE `vibe_manufacturing_v1`.`production`.`calendar` ALTER COLUMN `iso_we
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`calendar` ALTER COLUMN `iso_year` SET TAGS ('dbx_business_glossary_term' = 'Iso Year');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`calendar` ALTER COLUMN `month` SET TAGS ('dbx_business_glossary_term' = 'Month');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`calendar` ALTER COLUMN `month_name` SET TAGS ('dbx_business_glossary_term' = 'Month Name');
-ALTER TABLE `vibe_manufacturing_v1`.`production`.`calendar` ALTER COLUMN `month_name` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_manufacturing_v1`.`production`.`calendar` ALTER COLUMN `month_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`calendar` ALTER COLUMN `month_start_date` SET TAGS ('dbx_business_glossary_term' = 'Month Start Date');
-ALTER TABLE `vibe_manufacturing_v1`.`production`.`calendar` ALTER COLUMN `calendar_name` SET TAGS ('dbx_sensitivity' = 'pii');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`calendar` ALTER COLUMN `quarter` SET TAGS ('dbx_business_glossary_term' = 'Quarter');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`calendar` ALTER COLUMN `quarter_name` SET TAGS ('dbx_business_glossary_term' = 'Quarter Name');
-ALTER TABLE `vibe_manufacturing_v1`.`production`.`calendar` ALTER COLUMN `quarter_name` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_manufacturing_v1`.`production`.`calendar` ALTER COLUMN `quarter_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`calendar` ALTER COLUMN `quarter_start_date` SET TAGS ('dbx_business_glossary_term' = 'Quarter Start Date');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`calendar` ALTER COLUMN `shift_indicator` SET TAGS ('dbx_business_glossary_term' = 'Shift Indicator');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`calendar` ALTER COLUMN `timezone` SET TAGS ('dbx_business_glossary_term' = 'Timezone');
@@ -1962,7 +1810,7 @@ ALTER TABLE `vibe_manufacturing_v1`.`production`.`calendar` ALTER COLUMN `week_o
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`calendar` ALTER COLUMN `week_start_date` SET TAGS ('dbx_business_glossary_term' = 'Week Start Date');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`calendar` ALTER COLUMN `year` SET TAGS ('dbx_business_glossary_term' = 'Year');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`shift_sequence` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_manufacturing_v1`.`production`.`shift_sequence` SET TAGS ('dbx_subdomain' = 'shift_planning');
+ALTER TABLE `vibe_manufacturing_v1`.`production`.`shift_sequence` SET TAGS ('dbx_subdomain' = 'capacity_planning');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`shift_sequence` ALTER COLUMN `shift_sequence_id` SET TAGS ('dbx_business_glossary_term' = 'Shift Sequence Identifier');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`shift_sequence` ALTER COLUMN `rotation_shift_sequence_id` SET TAGS ('dbx_business_glossary_term' = 'Rotation Shift Sequence Id');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`shift_sequence` ALTER COLUMN `rotation_shift_sequence_id` SET TAGS ('dbx_self_ref_fk' = 'true');
@@ -1980,11 +1828,67 @@ ALTER TABLE `vibe_manufacturing_v1`.`production`.`shift_sequence` ALTER COLUMN `
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`shift_sequence` ALTER COLUMN `labor_category` SET TAGS ('dbx_business_glossary_term' = 'Labor Category');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`shift_sequence` ALTER COLUMN `max_workers` SET TAGS ('dbx_business_glossary_term' = 'Max Workers');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`shift_sequence` ALTER COLUMN `shift_sequence_name` SET TAGS ('dbx_business_glossary_term' = 'Name');
-ALTER TABLE `vibe_manufacturing_v1`.`production`.`shift_sequence` ALTER COLUMN `shift_sequence_name` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_manufacturing_v1`.`production`.`shift_sequence` ALTER COLUMN `shift_sequence_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`shift_sequence` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Notes');
-ALTER TABLE `vibe_manufacturing_v1`.`production`.`shift_sequence` ALTER COLUMN `sequence_name` SET TAGS ('dbx_sensitivity' = 'pii');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`shift_sequence` ALTER COLUMN `shift_type` SET TAGS ('dbx_business_glossary_term' = 'Shift Type');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`shift_sequence` ALTER COLUMN `start_time` SET TAGS ('dbx_business_glossary_term' = 'Start Time');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`shift_sequence` ALTER COLUMN `shift_sequence_status` SET TAGS ('dbx_business_glossary_term' = 'Status');
 ALTER TABLE `vibe_manufacturing_v1`.`production`.`shift_sequence` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Updated Timestamp');
+ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_run` SET TAGS ('dbx_data_type' = 'transactional_data');
+ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_run` SET TAGS ('dbx_subdomain' = 'shop_execution');
+ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_run` ALTER COLUMN `production_run_id` SET TAGS ('dbx_business_glossary_term' = 'Run Identifier');
+ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_run` ALTER COLUMN `bom_id` SET TAGS ('dbx_business_glossary_term' = 'Bill of Materials (BOM) ID');
+ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_run` ALTER COLUMN `customer_account_id` SET TAGS ('dbx_business_glossary_term' = 'Customer Account ID');
+ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_run` ALTER COLUMN `equipment_register_id` SET TAGS ('dbx_business_glossary_term' = 'Equipment Register ID');
+ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_run` ALTER COLUMN `material_master_id` SET TAGS ('dbx_business_glossary_term' = 'Material Master ID');
+ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_run` ALTER COLUMN `order_header_id` SET TAGS ('dbx_business_glossary_term' = 'Sales Order Id (Foreign Key)');
+ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_run` ALTER COLUMN `production_line_id` SET TAGS ('dbx_business_glossary_term' = 'Production Line Id');
+ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_run` ALTER COLUMN `production_line_id` SET TAGS ('dbx_internal' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_run` ALTER COLUMN `order_intake_id` SET TAGS ('dbx_business_glossary_term' = 'Sales Order Intake Id (Foreign Key)');
+ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_run` ALTER COLUMN `shift_id` SET TAGS ('dbx_business_glossary_term' = 'Shift Id');
+ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_run` ALTER COLUMN `shift_id` SET TAGS ('dbx_internal' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_run` ALTER COLUMN `sku_master_id` SET TAGS ('dbx_business_glossary_term' = 'Sku Master Id (Foreign Key)');
+ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_run` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Supervisor Employee Id (Foreign Key)');
+ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_run` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_run` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_run` ALTER COLUMN `supplier_id` SET TAGS ('dbx_business_glossary_term' = 'Vendor Id (Foreign Key)');
+ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_run` ALTER COLUMN `warehouse_id` SET TAGS ('dbx_business_glossary_term' = 'Warehouse ID');
+ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_run` ALTER COLUMN `actual_cost` SET TAGS ('dbx_business_glossary_term' = 'Actual Cost');
+ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_run` ALTER COLUMN `actual_finish_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Actual Finish Timestamp');
+ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_run` ALTER COLUMN `actual_quantity` SET TAGS ('dbx_business_glossary_term' = 'Actual Quantity');
+ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_run` ALTER COLUMN `actual_start_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Actual Start Timestamp');
+ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_run` ALTER COLUMN `availability_percentage` SET TAGS ('dbx_business_glossary_term' = 'Availability Percentage');
+ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_run` ALTER COLUMN `batch_number` SET TAGS ('dbx_business_glossary_term' = 'Batch Number');
+ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_run` ALTER COLUMN `campaign_code` SET TAGS ('dbx_business_glossary_term' = 'Campaign Code');
+ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_run` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
+ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_run` ALTER COLUMN `currency_code` SET TAGS ('dbx_business_glossary_term' = 'Currency Code');
+ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_run` ALTER COLUMN `currency_code` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
+ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_run` ALTER COLUMN `last_modified_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Last Modified Timestamp');
+ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_run` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Production Run Notes');
+ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_run` ALTER COLUMN `oee_percentage` SET TAGS ('dbx_business_glossary_term' = 'Overall Equipment Effectiveness (OEE) Percentage');
+ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_run` ALTER COLUMN `performance_percentage` SET TAGS ('dbx_business_glossary_term' = 'Performance Percentage');
+ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_run` ALTER COLUMN `planned_finish_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Planned Finish Timestamp');
+ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_run` ALTER COLUMN `planned_quantity` SET TAGS ('dbx_business_glossary_term' = 'Planned Quantity');
+ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_run` ALTER COLUMN `planned_start_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Planned Start Timestamp');
+ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_run` ALTER COLUMN `priority_code` SET TAGS ('dbx_business_glossary_term' = 'Priority Code');
+ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_run` ALTER COLUMN `priority_code` SET TAGS ('dbx_value_regex' = 'low|normal|high|urgent|critical');
+ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_run` ALTER COLUMN `quality_percentage` SET TAGS ('dbx_business_glossary_term' = 'Quality Percentage');
+ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_run` ALTER COLUMN `rework_quantity` SET TAGS ('dbx_business_glossary_term' = 'Rework Quantity');
+ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_run` ALTER COLUMN `routing_number` SET TAGS ('dbx_business_glossary_term' = 'Routing Number');
+ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_run` ALTER COLUMN `routing_number` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_run` ALTER COLUMN `routing_number` SET TAGS ('dbx_pii_financial' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_run` ALTER COLUMN `run_number` SET TAGS ('dbx_business_glossary_term' = 'Production Run Number');
+ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_run` ALTER COLUMN `run_status` SET TAGS ('dbx_business_glossary_term' = 'Production Run Status');
+ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_run` ALTER COLUMN `run_status` SET TAGS ('dbx_value_regex' = 'planned|active|paused|completed|cancelled|aborted');
+ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_run` ALTER COLUMN `run_type` SET TAGS ('dbx_business_glossary_term' = 'Production Run Type');
+ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_run` ALTER COLUMN `run_type` SET TAGS ('dbx_value_regex' = 'standard|pilot|rework|validation|trial|campaign');
+ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_run` ALTER COLUMN `scrap_quantity` SET TAGS ('dbx_business_glossary_term' = 'Scrap Quantity');
+ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_run` ALTER COLUMN `scrap_rate_percentage` SET TAGS ('dbx_business_glossary_term' = 'Scrap Rate Percentage');
+ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_run` ALTER COLUMN `standard_cost` SET TAGS ('dbx_business_glossary_term' = 'Standard Cost');
+ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_run` ALTER COLUMN `takt_time_minutes` SET TAGS ('dbx_business_glossary_term' = 'Takt Time (Minutes)');
+ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_run` ALTER COLUMN `throughput_rate` SET TAGS ('dbx_business_glossary_term' = 'Throughput Rate');
+ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_run` ALTER COLUMN `total_cycle_time_minutes` SET TAGS ('dbx_business_glossary_term' = 'Total Cycle Time (Minutes)');
+ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_run` ALTER COLUMN `total_downtime_minutes` SET TAGS ('dbx_business_glossary_term' = 'Total Downtime (Minutes)');
+ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_run` ALTER COLUMN `total_setup_time_minutes` SET TAGS ('dbx_business_glossary_term' = 'Total Setup Time (Minutes)');
+ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_run` ALTER COLUMN `unit_of_measure` SET TAGS ('dbx_business_glossary_term' = 'Unit of Measure (UOM)');
+ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_run` ALTER COLUMN `work_order_count` SET TAGS ('dbx_business_glossary_term' = 'Work Order Count');
+ALTER TABLE `vibe_manufacturing_v1`.`production`.`production_run` ALTER COLUMN `yield_rate_percentage` SET TAGS ('dbx_business_glossary_term' = 'Yield Rate Percentage');

@@ -1,138 +1,47 @@
--- Metric views for domain: clinical | Business: Healthcare | Version: 2 | Generated on: 2026-07-02 07:21:53
+-- Metric views for domain: clinical | Business: Healthcare | Version: 2 | Generated on: 2026-07-10 14:53:25
 
 CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`clinical_diagnosis`
 WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Diagnosis coding quality, chronicity, and risk-capture KPIs for CDI and HCC steering."
+  comment: "Clinical diagnosis KPIs for documentation quality, coding integrity, and quality-measure capture that steer CDI programs and HAC/quality risk mitigation."
   source: "`vibe_healthcare_v1`.`clinical`.`diagnosis`"
   dimensions:
     - name: "care_setting"
       expr: care_setting
-      comment: "Care setting where the diagnosis was recorded (inpatient/outpatient/ED)."
-    - name: "encounter_type"
-      expr: encounter_type
-      comment: "Encounter type classification for the diagnosis."
+      comment: "Care setting in which the diagnosis was recorded (inpatient, outpatient, ED)."
     - name: "diagnosis_type"
       expr: diagnosis_type
-      comment: "Type of diagnosis (principal, secondary, admitting, etc.)."
+      comment: "Type of diagnosis (principal, secondary, admitting) for coding analysis."
     - name: "coding_status"
       expr: coding_status
-      comment: "Current coding workflow status of the diagnosis."
+      comment: "Coding lifecycle status used to monitor coding backlog and completeness."
+    - name: "clinical_status"
+      expr: clinical_status
+      comment: "Clinical status of the diagnosis (active, resolved) for population health."
     - name: "diagnosis_month"
       expr: DATE_TRUNC('MONTH', diagnosis_date)
-      comment: "Month the diagnosis was made, for trending."
+      comment: "Diagnosis month for trending diagnosis volumes and coding turnaround."
   measures:
     - name: "Diagnosis Count"
       expr: COUNT(1)
-      comment: "Total number of diagnosis records — baseline volume."
-    - name: "Distinct Patient Count"
-      expr: COUNT(DISTINCT mpi_record_id)
-      comment: "Distinct patients with a diagnosis — population coverage."
-    - name: "Chronic Condition Rate Pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN chronic_condition_flag = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percent of diagnoses flagged chronic — drives population health and HCC risk management."
-    - name: "MCC Capture Rate Pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN mcc_flag = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percent of diagnoses that are Major Complications/Comorbidities — impacts DRG reimbursement."
+      comment: "Total number of diagnoses recorded; baseline volume for coding workload."
+    - name: "HAC Diagnosis Count"
+      expr: COUNT(CASE WHEN hac_flag = TRUE THEN 1 END)
+      comment: "Hospital-acquired condition diagnoses; directly tied to CMS penalty risk."
+    - name: "HAC Diagnosis Rate Pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN hac_flag = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Share of diagnoses flagged HAC; a leadership quality/risk steering metric."
     - name: "CDI Query Rate Pct"
       expr: ROUND(100.0 * COUNT(CASE WHEN cdi_query_flag = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percent of diagnoses that triggered a CDI query — documentation improvement opportunity."
-    - name: "HAC Rate Pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN hac_flag = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percent of diagnoses flagged as Hospital Acquired Conditions — quality/penalty risk."
-$$;
-
-CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`clinical_procedure_event`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Procedure volume, throughput, RVU productivity, and financial KPIs for OR and service-line steering."
-  source: "`vibe_healthcare_v1`.`clinical`.`procedure_event`"
-  dimensions:
-    - name: "service_line"
-      expr: service_line
-      comment: "Service line associated with the procedure."
-    - name: "procedure_category"
-      expr: procedure_category
-      comment: "Category grouping of the procedure."
-    - name: "procedure_status"
-      expr: procedure_status
-      comment: "Current status of the procedure event."
-    - name: "anesthesia_type"
-      expr: anesthesia_type
-      comment: "Type of anesthesia used."
-    - name: "care_setting"
-      expr: care_setting
-      comment: "Care setting where the procedure occurred."
-    - name: "procedure_month"
-      expr: DATE_TRUNC('MONTH', procedure_date)
-      comment: "Month the procedure was performed, for volume trending."
-  measures:
-    - name: "Procedure Count"
-      expr: COUNT(1)
-      comment: "Total procedures performed — baseline throughput volume."
-    - name: "Total Work RVU"
-      expr: SUM(CAST(rvu_work AS DOUBLE))
-      comment: "Total work RVUs — physician productivity and compensation driver."
-    - name: "Avg Work RVU"
-      expr: AVG(CAST(rvu_work AS DOUBLE))
-      comment: "Average work RVU per procedure — case complexity indicator."
-    - name: "Total Charge Amount"
-      expr: SUM(CAST(charge_amount AS DOUBLE))
-      comment: "Total charges generated by procedures — revenue driver."
-    - name: "Avg Charge Amount"
-      expr: AVG(CAST(charge_amount AS DOUBLE))
-      comment: "Average charge per procedure."
-    - name: "Consent Obtained Rate Pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN consent_obtained = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percent of procedures with documented consent — compliance and patient safety KPI."
-    - name: "Timeout Compliance Rate Pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN timeout_performed = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percent of procedures with a surgical timeout performed — patient safety compliance."
-$$;
-
-CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`clinical_hai_event`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Healthcare-associated infection surveillance KPIs for infection prevention and value-based purchasing."
-  source: "`vibe_healthcare_v1`.`clinical`.`hai_event`"
-  dimensions:
-    - name: "infection_type"
-      expr: infection_type
-      comment: "Type of healthcare-associated infection (CLABSI, CAUTI, SSI, etc.)."
-    - name: "infection_site"
-      expr: infection_site
-      comment: "Anatomical site of the infection."
-    - name: "care_setting"
-      expr: care_setting
-      comment: "Care setting where the infection was identified."
-    - name: "event_status"
-      expr: event_status
-      comment: "Status of the HAI investigation/event."
-    - name: "event_month"
-      expr: DATE_TRUNC('MONTH', event_date)
-      comment: "Month the HAI event occurred, for surveillance trending."
-  measures:
-    - name: "HAI Event Count"
-      expr: COUNT(1)
-      comment: "Total HAI events — baseline surveillance volume."
-    - name: "NHSN Definition Met Rate Pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN nhsn_definition_met = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percent of events meeting NHSN definition — reportable infection rate driver."
-    - name: "Outbreak Linked Rate Pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN outbreak_flag = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percent of HAI events tied to an outbreak — escalation and cluster detection."
-    - name: "VBP Penalty Rate Pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN vbp_penalty_flag = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percent of events carrying value-based-purchasing penalty exposure — financial risk."
-    - name: "Present On Admission Rate Pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN present_on_admission = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percent present on admission — distinguishes community vs facility-acquired infections."
+      comment: "Percent of diagnoses generating a CDI query; measures documentation gaps."
+    - name: "MCC Diagnosis Rate Pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN mcc_flag = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Share of diagnoses that are major complications/comorbidities; DRG revenue driver."
+    - name: "Quality Measure Diagnosis Rate Pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN quality_measure_flag = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percent of diagnoses linked to a quality measure; monitors quality capture."
 $$;
 
 CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`clinical_cdi_query`
@@ -140,125 +49,131 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Clinical documentation improvement query performance and reimbursement-impact KPIs."
+  comment: "Clinical Documentation Integrity query KPIs measuring physician responsiveness and financial reimbursement impact that steer CDI staffing and revenue integrity."
   source: "`vibe_healthcare_v1`.`clinical`.`cdi_query`"
   dimensions:
-    - name: "query_type"
-      expr: query_type
-      comment: "Type of CDI query issued."
-    - name: "query_category"
-      expr: query_category
-      comment: "Category of documentation opportunity."
-    - name: "query_outcome"
-      expr: query_outcome
-      comment: "Outcome of the query (agreed, disagreed, no change)."
     - name: "query_status"
       expr: query_status
-      comment: "Current status of the CDI query."
+      comment: "Lifecycle status of the CDI query (open, responded, expired)."
+    - name: "query_type"
+      expr: query_type
+      comment: "Type/classification of the CDI query for workflow analysis."
+    - name: "query_outcome"
+      expr: query_outcome
+      comment: "Outcome of the query (agreed, disagreed, no change) for effectiveness."
+    - name: "encounter_type"
+      expr: encounter_type
+      comment: "Encounter type associated with the query for service-line CDI focus."
     - name: "query_issue_month"
       expr: DATE_TRUNC('MONTH', query_issue_date)
-      comment: "Month the query was issued, for trending."
+      comment: "Month the query was issued for CDI trend analysis."
   measures:
     - name: "CDI Query Count"
       expr: COUNT(1)
-      comment: "Total CDI queries issued — program activity volume."
-    - name: "Total Expected Reimbursement Impact"
+      comment: "Total CDI queries issued; baseline CDI program volume."
+    - name: "Expected Reimbursement Impact"
       expr: SUM(CAST(expected_reimbursement_impact AS DOUBLE))
-      comment: "Sum of expected reimbursement impact from queries — financial opportunity."
-    - name: "Total Actual Reimbursement Impact"
+      comment: "Total expected reimbursement impact from CDI queries; revenue integrity driver."
+    - name: "Actual Reimbursement Impact"
       expr: SUM(CAST(actual_reimbursement_impact AS DOUBLE))
-      comment: "Sum of realized reimbursement impact — value delivered by CDI program."
+      comment: "Total realized reimbursement impact from CDI queries."
     - name: "Avg Actual Reimbursement Impact"
       expr: AVG(CAST(actual_reimbursement_impact AS DOUBLE))
-      comment: "Average realized impact per query — query efficiency."
+      comment: "Average realized reimbursement per query; measures per-query value."
     - name: "Query Response Rate Pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN query_response_date IS NOT NULL THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percent of queries receiving a physician response — engagement KPI."
-    - name: "Coding Impact Rate Pct"
+      expr: ROUND(100.0 * COUNT(query_response_date) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percent of queries that received a physician response; responsiveness KPI."
+    - name: "Coding Impact Query Rate Pct"
       expr: ROUND(100.0 * COUNT(CASE WHEN coding_impact_flag = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percent of queries that changed final coding — CDI effectiveness."
+      comment: "Percent of queries that changed coding; effectiveness of CDI program."
 $$;
 
-CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`clinical_cdi_worksheet`
+CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`clinical_hai_event`
 WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "CDI review worksheet KPIs tracking DRG weight change and documentation capture."
-  source: "`vibe_healthcare_v1`.`clinical`.`cdi_worksheet`"
+  comment: "Healthcare-associated infection KPIs tracking infection burden, NHSN reporting compliance, and mortality that steer infection prevention and VBP penalty avoidance."
+  source: "`vibe_healthcare_v1`.`clinical`.`hai_event`"
   dimensions:
-    - name: "review_type"
-      expr: review_type
-      comment: "Type of CDI review performed."
-    - name: "review_outcome"
-      expr: review_outcome
-      comment: "Outcome of the review."
+    - name: "infection_type"
+      expr: infection_type
+      comment: "Primary HAI infection type (CLABSI, CAUTI, SSI, etc.)."
+    - name: "event_status"
+      expr: event_status
+      comment: "Lifecycle status of the HAI event for surveillance tracking."
+    - name: "nhsn_reporting_status"
+      expr: nhsn_reporting_status
+      comment: "NHSN submission status for regulatory reporting compliance."
+    - name: "infection_onset_setting"
+      expr: infection_onset_setting
+      comment: "Setting where infection onset occurred for attribution analysis."
+    - name: "event_month"
+      expr: DATE_TRUNC('MONTH', event_date)
+      comment: "Month of the HAI event for infection trend surveillance."
+  measures:
+    - name: "HAI Event Count"
+      expr: COUNT(1)
+      comment: "Total HAI events; core infection prevention burden metric."
+    - name: "Distinct Patients Affected"
+      expr: COUNT(DISTINCT mpi_record_id)
+      comment: "Distinct patients with an HAI event; measures patient-level impact."
+    - name: "NHSN Definition Met Rate Pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN nhsn_definition_met = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percent of events meeting NHSN definitions; reportable-case surveillance KPI."
+    - name: "VBP Penalty Event Rate Pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN vbp_penalty_flag = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percent of HAI events flagged for VBP penalty; direct financial risk driver."
+    - name: "Outbreak-Linked Event Rate Pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN outbreak_flag = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percent of HAI events tied to an outbreak; escalation-signal metric."
+    - name: "Present On Admission Rate Pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN present_on_admission = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percent of events present on admission (not facility-attributable); attribution KPI."
+$$;
+
+CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`clinical_procedure_event`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Procedure event KPIs covering surgical volume, charge capture, RVU productivity, and safety-timeout compliance that steer OR utilization and revenue capture."
+  source: "`vibe_healthcare_v1`.`clinical`.`procedure_event`"
+  dimensions:
+    - name: "procedure_status"
+      expr: procedure_status
+      comment: "Status of the procedure (completed, cancelled, scheduled)."
+    - name: "procedure_category"
+      expr: procedure_category
+      comment: "Category of procedure for service-line volume analysis."
     - name: "service_line"
       expr: service_line
-      comment: "Service line under review."
-    - name: "payer_type"
-      expr: payer_type
-      comment: "Payer type for the reviewed encounter."
-    - name: "review_month"
-      expr: DATE_TRUNC('MONTH', review_date)
-      comment: "Month of the review, for trending."
+      comment: "Service line performing the procedure for productivity comparison."
+    - name: "anesthesia_type"
+      expr: anesthesia_type
+      comment: "Anesthesia type used, for perioperative resource analysis."
+    - name: "procedure_month"
+      expr: DATE_TRUNC('MONTH', procedure_date)
+      comment: "Month of procedure for volume and productivity trending."
   measures:
-    - name: "Worksheet Count"
+    - name: "Procedure Count"
       expr: COUNT(1)
-      comment: "Total CDI worksheets reviewed — program throughput."
-    - name: "Total DRG Weight Change"
-      expr: SUM(CAST(drg_weight_change AS DOUBLE))
-      comment: "Total DRG weight change captured — case-mix index driver."
-    - name: "Avg Final DRG Weight"
-      expr: AVG(CAST(final_drg_weight AS DOUBLE))
-      comment: "Average final DRG weight — case mix intensity."
-    - name: "Total Expected Reimbursement Impact"
-      expr: SUM(CAST(expected_reimbursement_impact AS DOUBLE))
-      comment: "Total expected reimbursement impact from reviews — financial value."
-    - name: "CC MCC Capture Rate Pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN cc_mcc_captured = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percent of worksheets capturing CC/MCC — documentation completeness."
-    - name: "Query Opportunity Rate Pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN query_opportunity_flag = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percent of reviews identifying a query opportunity — CDI targeting."
-$$;
-
-CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`clinical_care_plan_goal`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Care plan goal achievement KPIs for population health and care management effectiveness."
-  source: "`vibe_healthcare_v1`.`clinical`.`care_plan_goal`"
-  dimensions:
-    - name: "goal_status"
-      expr: goal_status
-      comment: "Current status of the care plan goal."
-    - name: "achievement_status"
-      expr: achievement_status
-      comment: "Achievement status of the goal."
-    - name: "priority"
-      expr: priority
-      comment: "Priority level of the goal."
-    - name: "care_setting"
-      expr: care_setting
-      comment: "Care setting the goal applies to."
-    - name: "target_month"
-      expr: DATE_TRUNC('MONTH', target_date)
-      comment: "Month the goal is targeted, for trending."
-  measures:
-    - name: "Goal Count"
-      expr: COUNT(1)
-      comment: "Total care plan goals — care management workload."
-    - name: "Goal Achievement Rate Pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN achievement_status = 'achieved' THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percent of goals achieved — care management effectiveness KPI."
-    - name: "Patient Agreement Rate Pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN patient_agreement = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percent of goals with patient agreement — engagement and shared decision-making."
-    - name: "Care Gap Related Rate Pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN care_gap_related = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percent of goals tied to care gaps — quality measure closure focus."
+      comment: "Total procedures performed; baseline OR/procedural volume."
+    - name: "Total Charge Amount"
+      expr: SUM(CAST(charge_amount AS DOUBLE))
+      comment: "Total charges generated by procedures; revenue capture driver."
+    - name: "Total Work RVU"
+      expr: SUM(CAST(rvu_work AS DOUBLE))
+      comment: "Total work RVUs; physician productivity and compensation driver."
+    - name: "Avg Charge Amount"
+      expr: AVG(CAST(charge_amount AS DOUBLE))
+      comment: "Average charge per procedure; case-mix and pricing insight."
+    - name: "Timeout Compliance Rate Pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN timeout_performed = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percent of procedures with a surgical safety timeout; patient-safety KPI."
+    - name: "Consent Obtained Rate Pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN consent_obtained = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percent of procedures with documented consent; compliance risk metric."
 $$;
 
 CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`clinical_immunization`
@@ -266,40 +181,110 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Immunization administration and series-completion KPIs for population health and public health reporting."
+  comment: "Immunization KPIs for administration volume, series completion, and registry reporting compliance that steer population health and public-health obligations."
   source: "`vibe_healthcare_v1`.`clinical`.`immunization`"
   dimensions:
-    - name: "series_name"
-      expr: series_name
-      comment: "Vaccine series name."
     - name: "administration_status"
       expr: administration_status
-      comment: "Administration status of the immunization."
+      comment: "Status of the immunization administration (administered, refused, not given)."
     - name: "series_completion_status"
       expr: series_completion_status
-      comment: "Completion status of the vaccine series."
-    - name: "care_setting"
-      expr: care_setting
-      comment: "Care setting where the vaccine was given."
+      comment: "Series completion status for vaccine-series tracking."
+    - name: "series_name"
+      expr: series_name
+      comment: "Vaccine series name for coverage analysis."
     - name: "administration_month"
       expr: DATE_TRUNC('MONTH', administration_timestamp)
-      comment: "Month of administration, for coverage trending."
+      comment: "Month of administration for immunization trend analysis."
   measures:
     - name: "Immunization Count"
       expr: COUNT(1)
-      comment: "Total immunization records — vaccination volume."
-    - name: "Distinct Patient Count"
+      comment: "Total immunization records; baseline administration volume."
+    - name: "Distinct Patients Immunized"
       expr: COUNT(DISTINCT mpi_record_id)
-      comment: "Distinct patients immunized — population coverage."
+      comment: "Distinct patients immunized; population coverage sizing."
     - name: "IIS Reporting Rate Pct"
       expr: ROUND(100.0 * COUNT(CASE WHEN iis_reported = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percent reported to the immunization information system — public health compliance."
-    - name: "Adverse Reaction Rate Pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN reaction_observed = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percent with observed reactions — vaccine safety surveillance."
+      comment: "Percent of immunizations reported to the state registry; compliance KPI."
     - name: "Consent Obtained Rate Pct"
       expr: ROUND(100.0 * COUNT(CASE WHEN consent_obtained = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percent with documented consent — compliance KPI."
+      comment: "Percent of immunizations with documented consent; compliance metric."
+    - name: "Reaction Rate Pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN reaction_observed = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percent of immunizations with an observed reaction; safety surveillance KPI."
+$$;
+
+CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`clinical_care_plan`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Care plan KPIs measuring active care management, review timeliness, and readmission risk stratification that steer population health and value-based care."
+  source: "`vibe_healthcare_v1`.`clinical`.`care_plan`"
+  dimensions:
+    - name: "plan_status"
+      expr: plan_status
+      comment: "Status of the care plan (active, completed, on-hold)."
+    - name: "plan_type"
+      expr: plan_type
+      comment: "Type of care plan for program-level analysis."
+    - name: "care_setting"
+      expr: care_setting
+      comment: "Care setting for the plan for coordination context."
+    - name: "readmission_risk_level"
+      expr: readmission_risk_level
+      comment: "Readmission risk stratification level for intervention targeting."
+    - name: "authored_month"
+      expr: DATE_TRUNC('MONTH', authored_date)
+      comment: "Month the plan was authored for care-management trending."
+  measures:
+    - name: "Care Plan Count"
+      expr: COUNT(1)
+      comment: "Total care plans; baseline care-management volume."
+    - name: "Patient Consent Rate Pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN patient_consent_obtained = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percent of care plans with obtained patient consent; engagement KPI."
+    - name: "ACO Attributed Rate Pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN aco_attributed = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percent of care plans attributed to an ACO; value-based-care alignment."
+    - name: "Transitions Of Care Rate Pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN transitions_of_care_flag = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percent of plans flagged for transitions of care; readmission-prevention KPI."
+$$;
+
+CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`clinical_care_plan_goal`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Care plan goal KPIs measuring goal achievement and patient agreement that steer care-coordination effectiveness and outcomes."
+  source: "`vibe_healthcare_v1`.`clinical`.`care_plan_goal`"
+  dimensions:
+    - name: "goal_status"
+      expr: goal_status
+      comment: "Current status of the goal (in-progress, achieved, cancelled)."
+    - name: "achievement_status"
+      expr: achievement_status
+      comment: "Achievement status classification for outcome measurement."
+    - name: "priority"
+      expr: priority
+      comment: "Priority of the goal for care-team focus."
+    - name: "target_month"
+      expr: DATE_TRUNC('MONTH', target_date)
+      comment: "Target month for goal-timeliness analysis."
+  measures:
+    - name: "Goal Count"
+      expr: COUNT(1)
+      comment: "Total care plan goals; baseline goal-management volume."
+    - name: "Goal Achievement Rate Pct"
+      expr: ROUND(100.0 * COUNT(achieved_date) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percent of goals with a recorded achievement date; outcome effectiveness KPI."
+    - name: "Patient Agreement Rate Pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN patient_agreement = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percent of goals with patient agreement; engagement and shared-decision KPI."
+    - name: "Care Gap Related Rate Pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN care_gap_related = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percent of goals addressing a care gap; quality-improvement targeting."
 $$;
 
 CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`clinical_note`
@@ -307,116 +292,34 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Clinical documentation timeliness and completeness KPIs for provider productivity and compliance."
+  comment: "Clinical note KPIs measuring documentation timeliness, signature/cosignature compliance, and CDI impact that steer documentation governance."
   source: "`vibe_healthcare_v1`.`clinical`.`note`"
   dimensions:
     - name: "note_type"
       expr: note_type
-      comment: "Type of clinical note."
+      comment: "Type of clinical note for documentation-mix analysis."
     - name: "note_status"
       expr: note_status
-      comment: "Current status of the note (draft, signed, etc.)."
-    - name: "author_role"
-      expr: author_role
-      comment: "Role of the note author."
-    - name: "specialty"
-      expr: specialty
-      comment: "Specialty associated with the note."
+      comment: "Status of the note (draft, signed, amended)."
+    - name: "care_setting"
+      expr: care_setting
+      comment: "Care setting where the note was authored."
     - name: "authored_month"
       expr: DATE_TRUNC('MONTH', authored_timestamp)
-      comment: "Month the note was authored, for trending."
+      comment: "Month the note was authored for documentation trending."
   measures:
     - name: "Note Count"
       expr: COUNT(1)
-      comment: "Total clinical notes — documentation volume."
+      comment: "Total clinical notes; baseline documentation volume."
     - name: "Signed Note Rate Pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN signed_timestamp IS NOT NULL THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percent of notes signed — documentation closure compliance."
+      expr: ROUND(100.0 * COUNT(signed_timestamp) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percent of notes with a signature timestamp; documentation-completeness KPI."
     - name: "Late Entry Rate Pct"
       expr: ROUND(100.0 * COUNT(CASE WHEN is_late_entry = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percent of notes flagged as late entries — documentation timeliness risk."
-    - name: "Copy Forward Rate Pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN is_copy_forwarded = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percent of notes using copy-forward — documentation integrity / audit risk."
+      comment: "Percent of notes flagged as late entries; timeliness and compliance risk KPI."
     - name: "CDI Query Rate Pct"
       expr: ROUND(100.0 * COUNT(CASE WHEN cdi_query_flag = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percent of notes triggering CDI queries — documentation improvement need."
-$$;
-
-CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`clinical_observation`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Clinical observation value and critical-result KPIs for quality and patient safety."
-  source: "`vibe_healthcare_v1`.`clinical`.`observation`"
-  dimensions:
-    - name: "observation_category"
-      expr: observation_category
-      comment: "Category of the observation."
-    - name: "observation_status"
-      expr: observation_status
-      comment: "Status of the observation."
-    - name: "body_system"
-      expr: body_system
-      comment: "Body system the observation relates to."
-    - name: "care_setting"
-      expr: care_setting
-      comment: "Care setting where the observation was recorded."
-    - name: "observed_month"
-      expr: DATE_TRUNC('MONTH', datetime)
-      comment: "Month the observation was taken, for trending."
-  measures:
-    - name: "Observation Count"
-      expr: COUNT(1)
-      comment: "Total observations recorded — clinical data volume."
-    - name: "Avg Observation Value"
-      expr: AVG(CAST(value_numeric AS DOUBLE))
-      comment: "Average numeric observation value — clinical trend monitoring."
-    - name: "Critical Value Rate Pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN is_critical_value = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percent of observations that are critical values — patient safety escalation KPI."
-    - name: "Avg Assessment Score"
-      expr: AVG(CAST(assessment_score AS DOUBLE))
-      comment: "Average assessment tool score — screening severity indicator."
-$$;
-
-CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`clinical_vital_sign`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Vital sign monitoring KPIs including abnormal-rate and remote patient monitoring adoption."
-  source: "`vibe_healthcare_v1`.`clinical`.`vital_sign`"
-  dimensions:
-    - name: "observation_type"
-      expr: observation_type
-      comment: "Type of vital sign observation."
-    - name: "vital_sign_status"
-      expr: vital_sign_status
-      comment: "Status of the vital sign record."
-    - name: "care_unit"
-      expr: care_unit
-      comment: "Care unit where the vital was captured."
-    - name: "care_setting"
-      expr: care_setting
-      comment: "Care setting for the vital measurement."
-    - name: "measurement_month"
-      expr: DATE_TRUNC('MONTH', measurement_timestamp)
-      comment: "Month of measurement, for trending."
-  measures:
-    - name: "Vital Sign Count"
-      expr: COUNT(1)
-      comment: "Total vital sign measurements — monitoring volume."
-    - name: "Avg Numeric Value"
-      expr: AVG(CAST(numeric_value AS DOUBLE))
-      comment: "Average numeric vital value — clinical trend monitoring."
-    - name: "Abnormal Rate Pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN abnormal_flag = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percent of vitals flagged abnormal — deterioration surveillance KPI."
-    - name: "RPM Sourced Rate Pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN rpm_device_source_flag = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percent of vitals from remote patient monitoring devices — digital health adoption."
+      comment: "Percent of notes generating a CDI query; documentation-quality signal."
 $$;
 
 CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`clinical_allergy`
@@ -424,75 +327,69 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Allergy documentation and reconciliation KPIs for medication safety."
+  comment: "Allergy KPIs measuring reconciliation completeness and criticality that steer medication safety and CPOE alerting."
   source: "`vibe_healthcare_v1`.`clinical`.`allergy`"
   dimensions:
-    - name: "allergen_type"
-      expr: allergen_type
-      comment: "Type of allergen."
-    - name: "allergy_category"
-      expr: allergy_category
-      comment: "Category of the allergy."
+    - name: "clinical_status"
+      expr: clinical_status
+      comment: "Clinical status of the allergy (active, inactive, resolved)."
     - name: "criticality"
       expr: criticality
-      comment: "Criticality of the allergic reaction."
-    - name: "reconciliation_status"
-      expr: reconciliation_status
-      comment: "Reconciliation status of the allergy record."
+      comment: "Criticality classification for safety-alert prioritization."
+    - name: "verification_status"
+      expr: verification_status
+      comment: "Verification status of the allergy record."
     - name: "recorded_month"
       expr: DATE_TRUNC('MONTH', recorded_date)
-      comment: "Month the allergy was recorded, for trending."
+      comment: "Month the allergy was recorded for trend analysis."
   measures:
     - name: "Allergy Count"
       expr: COUNT(1)
-      comment: "Total allergy records — documentation volume."
-    - name: "Distinct Patient Count"
-      expr: COUNT(DISTINCT mpi_record_id)
-      comment: "Distinct patients with documented allergies — safety coverage."
-    - name: "Reconciled Rate Pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN reconciliation_status = 'reconciled' THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percent of allergies reconciled — medication safety completeness."
-    - name: "High Criticality Rate Pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN criticality = 'high' THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percent of high-criticality allergies — clinical alert prioritization."
+      comment: "Total allergy records; baseline allergy-documentation volume."
+    - name: "Distinct Patients With Allergies"
+      expr: COUNT(DISTINCT demographics_id)
+      comment: "Distinct patients with documented allergies; safety-coverage sizing."
+    - name: "Reconciled Allergy Rate Pct"
+      expr: ROUND(100.0 * COUNT(reconciliation_date) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percent of allergies with a reconciliation date; medication-safety KPI."
+    - name: "Confirmed Allergy Rate Pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN verification_status = 'confirmed' THEN 1 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percent of allergies confirmed; data-quality and safety metric."
 $$;
 
-CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`clinical_problem`
+CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`clinical_outbreak`
 WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Problem list chronicity and risk-adjustment KPIs for population health."
-  source: "`vibe_healthcare_v1`.`clinical`.`problem`"
+  comment: "Outbreak KPIs tracking case burden, mortality, and containment/reporting compliance that steer infection prevention and public-health response."
+  source: "`vibe_healthcare_v1`.`clinical`.`outbreak`"
   dimensions:
-    - name: "problem_status"
-      expr: problem_status
-      comment: "Status of the problem (active, resolved, etc.)."
-    - name: "problem_type"
-      expr: problem_type
-      comment: "Type/classification of the problem."
-    - name: "priority"
-      expr: priority
-      comment: "Priority of the problem on the list."
-    - name: "care_setting"
-      expr: care_setting
-      comment: "Care setting for the problem."
-    - name: "noted_month"
-      expr: DATE_TRUNC('MONTH', noted_date)
-      comment: "Month the problem was noted, for trending."
+    - name: "outbreak_status"
+      expr: outbreak_status
+      comment: "Status of the outbreak (active, contained, resolved)."
+    - name: "pathogen_type"
+      expr: pathogen_type
+      comment: "Pathogen type driving the outbreak for response planning."
+    - name: "severity_level"
+      expr: severity_level
+      comment: "Severity level classification for escalation."
+    - name: "detection_month"
+      expr: DATE_TRUNC('MONTH', detection_date)
+      comment: "Month the outbreak was detected for surveillance trending."
   measures:
-    - name: "Problem Count"
+    - name: "Outbreak Count"
       expr: COUNT(1)
-      comment: "Total problem list entries — clinical documentation volume."
-    - name: "Distinct Patient Count"
-      expr: COUNT(DISTINCT mpi_record_id)
-      comment: "Distinct patients with problems — population size."
-    - name: "Chronic Condition Rate Pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN chronic_condition_flag = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percent of problems that are chronic — population health risk driver."
-    - name: "CDI Query Rate Pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN cdi_query_flag = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percent of problems with CDI queries — documentation improvement need."
+      comment: "Total outbreaks; baseline outbreak surveillance volume."
+    - name: "Avg Case Fatality Rate"
+      expr: AVG(CAST(case_fatality_rate AS DOUBLE))
+      comment: "Average case fatality rate across outbreaks; severity and outcome KPI."
+    - name: "Public Health Alert Rate Pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN public_health_alert_issued_flag = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percent of outbreaks with a public-health alert issued; reporting compliance KPI."
+    - name: "Source Identified Rate Pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN source_identified_flag = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percent of outbreaks with an identified source; investigation-effectiveness KPI."
 $$;
 
 CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`clinical_nursing_assessment`
@@ -500,154 +397,72 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Nursing assessment KPIs for fall/pressure-injury risk and discharge readiness."
+  comment: "Nursing assessment KPIs measuring risk-screening completion, safety compliance, and patient education that steer nursing quality and patient safety."
   source: "`vibe_healthcare_v1`.`clinical`.`nursing_assessment`"
   dimensions:
     - name: "assessment_type"
       expr: assessment_type
-      comment: "Type of nursing assessment."
-    - name: "fall_risk_category"
-      expr: fall_risk_category
-      comment: "Fall risk category assigned."
-    - name: "nursing_unit"
-      expr: nursing_unit
-      comment: "Nursing unit performing the assessment."
-    - name: "care_setting"
-      expr: care_setting
-      comment: "Care setting for the assessment."
-    - name: "assessment_month"
-      expr: DATE_TRUNC('MONTH', assessment_datetime)
-      comment: "Month of assessment, for trending."
-  measures:
-    - name: "Assessment Count"
-      expr: COUNT(1)
-      comment: "Total nursing assessments — nursing workload volume."
-    - name: "Safety Check Completion Rate Pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN safety_check_completed = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percent of assessments with completed safety checks — patient safety compliance."
-    - name: "Patient Education Rate Pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN patient_education_provided = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percent providing patient education — quality of care KPI."
-    - name: "Joint Commission Compliance Rate Pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN joint_commission_compliant = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percent compliant with Joint Commission standards — accreditation readiness."
-$$;
-
-CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`clinical_finding`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Clinical/imaging finding KPIs for critical-result follow-up and AI-assisted detection."
-  source: "`vibe_healthcare_v1`.`clinical`.`clinical_finding`"
-  dimensions:
-    - name: "finding_category"
-      expr: finding_category
-      comment: "Category of the clinical finding."
-    - name: "finding_status"
-      expr: finding_status
-      comment: "Status of the finding."
-    - name: "specialty"
-      expr: specialty
-      comment: "Specialty associated with the finding."
-    - name: "care_setting"
-      expr: care_setting
-      comment: "Care setting where the finding was documented."
-    - name: "documentation_month"
-      expr: DATE_TRUNC('MONTH', documentation_date)
-      comment: "Month the finding was documented, for trending."
-  measures:
-    - name: "Finding Count"
-      expr: COUNT(1)
-      comment: "Total clinical findings — diagnostic volume."
-    - name: "Critical Result Rate Pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN is_critical_result = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percent critical findings — patient safety escalation KPI."
-    - name: "Follow Up Recommended Rate Pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN follow_up_recommended = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percent of findings recommending follow-up — care continuity driver."
-    - name: "AI Detected Rate Pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN ai_detected_flag = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percent of findings detected via AI models — clinical AI adoption KPI."
-    - name: "Provider Notified Rate Pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN provider_notified = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percent with documented provider notification — closed-loop communication compliance."
-$$;
-
-CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`clinical_functional_status`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Functional status assessment KPIs for rehab potential and post-acute planning."
-  source: "`vibe_healthcare_v1`.`clinical`.`functional_status`"
-  dimensions:
-    - name: "assessment_type"
-      expr: assessment_type
-      comment: "Type of functional assessment."
+      comment: "Type of nursing assessment performed."
     - name: "assessment_status"
       expr: assessment_status
-      comment: "Status of the assessment."
-    - name: "rehabilitation_potential"
-      expr: rehabilitation_potential
-      comment: "Rehabilitation potential classification."
-    - name: "care_setting"
-      expr: care_setting
-      comment: "Care setting for the assessment."
+      comment: "Status of the assessment (completed, in-progress)."
+    - name: "fall_risk_category"
+      expr: fall_risk_category
+      comment: "Fall-risk category for risk-stratified nursing intervention."
     - name: "assessment_month"
-      expr: DATE_TRUNC('MONTH', assessment_date)
-      comment: "Month of assessment, for trending."
+      expr: DATE_TRUNC('MONTH', assessment_timestamp)
+      comment: "Month of assessment for nursing-quality trending."
   measures:
     - name: "Assessment Count"
       expr: COUNT(1)
-      comment: "Total functional status assessments — volume."
-    - name: "Avg ADL Score"
-      expr: AVG(CAST(adl_score AS DOUBLE))
-      comment: "Average activities-of-daily-living score — functional independence indicator."
-    - name: "Avg Cognitive Score"
-      expr: AVG(CAST(cognitive_score AS DOUBLE))
-      comment: "Average cognitive score — cognitive status monitoring."
-    - name: "Avg Mobility Score"
-      expr: AVG(CAST(mobility_score AS DOUBLE))
-      comment: "Average mobility score — fall and discharge planning input."
+      comment: "Total nursing assessments; baseline nursing-workload volume."
+    - name: "Distinct Patients Assessed"
+      expr: COUNT(DISTINCT mpi_record_id)
+      comment: "Distinct patients assessed; nursing-coverage sizing."
+    - name: "Safety Check Completion Rate Pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN safety_check_completed = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percent of assessments with a completed safety check; patient-safety KPI."
+    - name: "Patient Education Rate Pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN patient_education_provided = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percent of assessments with patient education provided; engagement KPI."
+    - name: "Joint Commission Compliance Rate Pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN joint_commission_compliant = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percent of assessments meeting Joint Commission standards; accreditation KPI."
 $$;
 
-CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`clinical_care_team_member`
+CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`clinical_observation`
 WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Care team staffing and coverage KPIs for care coordination workforce planning."
-  source: "`vibe_healthcare_v1`.`clinical`.`care_team_member`"
+  comment: "Clinical observation KPIs measuring critical-value burden and amendment rates that steer clinical safety and data-quality governance."
+  source: "`vibe_healthcare_v1`.`clinical`.`observation`"
   dimensions:
-    - name: "member_type"
-      expr: member_type
-      comment: "Type of care team member."
-    - name: "role_name"
-      expr: role_name
-      comment: "Role of the member on the care team."
-    - name: "assignment_type"
-      expr: assignment_type
-      comment: "Type of assignment."
-    - name: "care_setting"
-      expr: care_setting
-      comment: "Care setting the member serves."
-    - name: "assignment_start_month"
-      expr: DATE_TRUNC('MONTH', assignment_start_date)
-      comment: "Month the assignment started, for trending."
+    - name: "observation_category"
+      expr: observation_category
+      comment: "Category of observation for clinical-domain analysis."
+    - name: "observation_status"
+      expr: observation_status
+      comment: "Status of the observation (final, preliminary, amended)."
+    - name: "body_system"
+      expr: body_system
+      comment: "Body system observed for clinical grouping."
+    - name: "observed_month"
+      expr: DATE_TRUNC('MONTH', datetime)
+      comment: "Month of the observation for trend analysis."
   measures:
-    - name: "Member Count"
+    - name: "Observation Count"
       expr: COUNT(1)
-      comment: "Total care team member assignments — staffing volume."
-    - name: "Total FTE Allocation"
-      expr: SUM(CAST(fte_allocation AS DOUBLE))
-      comment: "Total FTE allocated to care teams — workforce capacity."
-    - name: "Active Member Rate Pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN is_active = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percent of members currently active — staffing utilization."
-    - name: "PCP Assignment Rate Pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN is_pcp = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percent of members serving as PCP — attribution coverage."
+      comment: "Total observations; baseline clinical-data volume."
+    - name: "Distinct Patients Observed"
+      expr: COUNT(DISTINCT mpi_record_id)
+      comment: "Distinct patients with observations; population sizing."
+    - name: "Critical Value Rate Pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN is_critical_value = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percent of observations that are critical values; clinical-safety escalation KPI."
+    - name: "Amendment Rate Pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN is_amended = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percent of observations amended; data-quality and integrity metric."
 $$;
 
 CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`clinical_care_plan_quality`

@@ -1,5 +1,5 @@
 -- Schema for Domain: process | Business: Semiconductors | Version: v2_mvm
--- Generated on: 2026-06-27 11:14:01
+-- Generated on: 2026-07-10 14:04:04
 
 -- ========= DATABASE =========
 CREATE DATABASE IF NOT EXISTS `vibe_semiconductors_v1`.`process` COMMENT 'Process engineering data for all semiconductor manufacturing process flows including photolithography, etch, diffusion, implant, deposition, and metrology steps. Manages SPC control charts, process capability indices, OPC rule sets, MEEF parameters, process qualification, yield optimization, and technology node readiness.';
@@ -7,19 +7,16 @@ CREATE DATABASE IF NOT EXISTS `vibe_semiconductors_v1`.`process` COMMENT 'Proces
 -- ========= TABLES =========
 CREATE OR REPLACE TABLE `vibe_semiconductors_v1`.`process`.`flow` (
     `flow_id` BIGINT COMMENT 'Unique identifier for the semiconductor manufacturing process flow definition. Primary key.',
-    `family_id` BIGINT COMMENT 'Foreign key linking to product.family. Business justification: Process flows are scoped to a product family (e.g., automotive MCU family). The plain column device_family is a denormalized string reference to product.family. A proper FK enables product family pr',
+    `family_id` BIGINT COMMENT 'Foreign key linking to product.family. Business justification: Process flows are designed and qualified for specific product families (e.g., a 7nm CMOS flow for a memory family). NPI planning, technology roadmap decisions, and process qualification scoping all re',
+    `ic_catalog_id` BIGINT COMMENT 'Foreign key linking to product.ic_catalog. Business justification: Process Flow Assignment report links each flow to the IC product it manufactures; experts expect a flow‑to‑product FK.',
     `pdk_id` BIGINT COMMENT 'Reference to the Process Design Kit (PDK) that defines the design rules, device models, and technology files associated with this process flow.',
-    `process_node_id` BIGINT COMMENT 'Foreign key linking to product.process_node. Business justification: Process flows are explicitly designed for a specific product process node — process engineers query which flows are qualified for node X? daily. The existing plain column flow_for_node is a denorm',
-    `quality_spec_id` BIGINT COMMENT 'Foreign key linking to quality.quality_spec. Business justification: A process flow is designed and qualified against specific quality specifications (defect density, CD uniformity). Quality engineers reference quality_spec when reviewing process flows for node qualifi',
     `baseline_cpk` DECIMAL(18,2) COMMENT 'Baseline process capability index (Cpk) representing the statistical process control capability of the flow at qualification.',
     `beol_step_count` STRING COMMENT 'Number of process steps in the Back End of Line (BEOL) phase, covering metal interconnect layers and passivation.',
     `flow_code` STRING COMMENT 'Unique alphanumeric code identifying the process flow in manufacturing execution systems and production planning. Used as the external business identifier.',
-    `cool_optimization_enabled` BOOLEAN COMMENT 'Whether cool optimization options are enabled for the flow.',
-    `cooling_step_count` STRING COMMENT 'Number of cooling steps in the flow.',
     `created_timestamp` TIMESTAMP COMMENT 'Timestamp when this process flow record was first created in the system.',
     `critical_layer_count` STRING COMMENT 'Number of critical layers requiring advanced lithography techniques (EUV, multi-patterning, or tight overlay control).',
     `cycle_time_days` DECIMAL(18,2) COMMENT 'Standard manufacturing cycle time in days for a wafer lot to complete the entire process flow under normal production conditions.',
-    `flow_description` STRING COMMENT 'Detailed textual description of the process flow, including key process characteristics, intended applications, and any special considerations.',
+    `device_family` STRING COMMENT 'The device family or product line for which this process flow is applicable (e.g., FinFET, GAA, Planar CMOS, DRAM, NAND Flash).',
     `dfm_rule_set_version` STRING COMMENT 'Version identifier of the Design for Manufacturability (DFM) rule set associated with this process flow.',
     `effective_end_date` DATE COMMENT 'Date when this process flow version was superseded or retired from production use. Null for currently active flows.',
     `effective_start_date` DATE COMMENT 'Date when this process flow version became effective and available for production use.',
@@ -27,32 +24,34 @@ CREATE OR REPLACE TABLE `vibe_semiconductors_v1`.`process`.`flow` (
     `fab_site_code` STRING COMMENT 'Code identifying the fabrication facility (FAB) where this process flow is qualified and executed.',
     `feol_step_count` STRING COMMENT 'Number of process steps in the Front End of Line (FEOL) phase, covering transistor formation and isolation.',
     `flow_type` STRING COMMENT 'Classification of the process flow by device application domain (logic, memory, analog, mixed-signal, power, RF, sensor). [ENUM-REF-CANDIDATE: logic|memory|analog|mixed_signal|power|rf|sensor — 7 candidates stripped; promote to reference product]',
+    `for_node` BIGINT COMMENT 'FK to process.technology_node.technology_node_id — Every process flow is designed for a specific technology node. This is the top-level classification relationship enabling node-based process management.',
     `is_baseline_flow` BOOLEAN COMMENT 'Flag indicating whether this is the baseline (reference) process flow for the technology node. True if baseline, False otherwise.',
     `last_modified_timestamp` TIMESTAMP COMMENT 'Timestamp when this process flow record was last modified or updated.',
     `lithography_layer_count` STRING COMMENT 'Total number of photolithography (patterning) layers in the complete process flow.',
     `metal_layer_count` STRING COMMENT 'Total number of metal interconnect layers defined in the BEOL portion of the process flow.',
-    `model_lineage_source` STRING COMMENT 'System of record lineage tag for v2 rebuild normalization.',
     `mol_step_count` STRING COMMENT 'Number of process steps in the Middle of Line (MOL) phase, covering contact formation and local interconnects.',
     `flow_name` STRING COMMENT 'Business name of the process flow, typically indicating the technology node and device family (e.g., 5nm FinFET Logic Flow, 28nm CMOS Analog Flow).',
     `notes` STRING COMMENT 'Additional notes, comments, or special instructions related to the process flow execution, qualification, or usage.',
     `opc_rule_set_version` STRING COMMENT 'Version identifier of the Optical Proximity Correction (OPC) rule set used for mask data preparation in this process flow.',
     `owner_organization` STRING COMMENT 'Process engineering organization or department responsible for this process flow (e.g., Advanced Logic Process, Memory Process Engineering).',
+    `process_flow_description` STRING COMMENT 'Detailed textual description of the process flow, including key process characteristics, intended applications, and any special considerations.',
     `qualification_date` DATE COMMENT 'Date when the process flow successfully completed qualification testing and was approved for production release.',
     `qualification_status` STRING COMMENT 'Current qualification and release status of the process flow. Indicates readiness for production use.. Valid values are `development|qualification|qualified|production|deprecated|obsolete`',
     `revision` STRING COMMENT 'Version or revision identifier for the process flow definition. Incremented when process steps, parameters, or sequences are modified.',
     `supports_multi_patterning` BOOLEAN COMMENT 'Flag indicating whether the process flow includes multi-patterning lithography techniques (LELE, SADP, SAQP). True if multi-patterning is used, False otherwise.',
     `target_yield_percent` DECIMAL(18,2) COMMENT 'Target die yield percentage (good dies per wafer) for production lots running this qualified process flow.',
     `total_step_count` STRING COMMENT 'Total number of unit process steps in the complete flow from wafer start through final inspection.',
-    `waste_heat_recovery_enabled` BOOLEAN COMMENT 'Whether waste heat recovery is enabled in the flow.',
     CONSTRAINT pk_flow PRIMARY KEY(`flow_id`)
 ) COMMENT 'Master definition of a semiconductor manufacturing process flow (recipe sequence) for a given technology node. Captures the ordered sequence of unit process steps from FEOL through MOL and BEOL, including process node designation (e.g., 5nm, 3nm, 28nm), flow revision, qualification status, applicable device families, and PDK linkage. SSOT for all process flow definitions used in wafer fabrication.';
 
 CREATE OR REPLACE TABLE `vibe_semiconductors_v1`.`process`.`step` (
     `step_id` BIGINT COMMENT 'Unique identifier for the individual process step within the semiconductor manufacturing process flow. Primary key.',
+    `fab_facility_id` BIGINT COMMENT 'Reference to the technology node (e.g., 7nm, 5nm, 3nm) for which this process step is designed and qualified.',
+    `material_master_id` BIGINT COMMENT 'Foreign key linking to supply.material_master. Business justification: Required for material traceability per step in Yield Loss Analysis and compliance reports; experts expect each step to reference the exact material used.',
     `fab_tool_id` BIGINT COMMENT 'Foreign key linking to equipment.fab_tool. Business justification: Production planning assigns each process step a primary fab tool; the step definition must reference the specific fab_tool for scheduling and capacity planning.',
-    `technology_node_id` BIGINT COMMENT 'Reference to the technology node (e.g., 7nm, 5nm, 3nm) for which this process step is designed and qualified.',
+    `flow_id` BIGINT COMMENT 'Foreign key linking to process.process_process_flow. Business justification: A process step belongs to a process flow; adding internal FK enables direct navigation within the process domain.',
+    `recipe_id` BIGINT COMMENT 'Reference to the nominal equipment recipe or parameter set used for this process step. Links to the detailed process control parameters.',
     `tool_chamber_id` BIGINT COMMENT 'Foreign key linking to equipment.tool_chamber. Business justification: Step definition includes the default chamber where the operation occurs; linking enables chamber allocation, maintenance, and utilization reporting.',
-    `cooling_target_temperature_celsius` DECIMAL(18,2) COMMENT 'Target temperature after cooling at this step.',
     `created_timestamp` TIMESTAMP COMMENT 'Timestamp when this process step record was first created in the system.',
     `cycle_time_target_minutes` DECIMAL(18,2) COMMENT 'Target processing time for this step in minutes, used for manufacturing planning, scheduling, and throughput optimization.',
     `step_description` STRING COMMENT 'Detailed textual description of the process step, including technical objectives, materials used, and special handling requirements.',
@@ -61,12 +60,10 @@ CREATE OR REPLACE TABLE `vibe_semiconductors_v1`.`process`.`step` (
     `effective_start_date` DATE COMMENT 'Date when this process step version became effective and available for use in production flows.',
     `energy_target_kev` DECIMAL(18,2) COMMENT 'Target ion implantation energy in kilo-electron volts (keV), controlling the depth of dopant penetration into the silicon substrate.',
     `gas_flow_rate_sccm` DECIMAL(18,2) COMMENT 'Nominal gas flow rate in standard cubic centimeters per minute (SCCM) for process steps involving gas delivery such as CVD or etch.',
-    `is_cooling_step` BOOLEAN COMMENT 'Whether this step is a cooling step.',
     `is_critical_step` BOOLEAN COMMENT 'Boolean flag indicating whether this step is classified as critical for yield, quality, or device performance, requiring enhanced monitoring and control.',
     `is_rework_allowed` BOOLEAN COMMENT 'Boolean flag indicating whether wafers can be reworked or reprocessed through this step if defects or out-of-spec conditions are detected.',
     `last_modified_timestamp` TIMESTAMP COMMENT 'Timestamp when this process step record was most recently updated, supporting audit trail and change tracking.',
     `meef_value` DECIMAL(18,2) COMMENT 'Mask Error Enhancement Factor for lithography steps, quantifying how mask CD errors are amplified on the wafer.',
-    `model_lineage_source` STRING COMMENT 'System of record lineage tag for v2 rebuild normalization.',
     `step_name` STRING COMMENT 'Human-readable name of the process step, describing the operation performed (e.g., Gate Oxide CVD, Contact Lithography, Metal 1 Etch).',
     `operation_type` STRING COMMENT 'Classification of the manufacturing operation performed in this step. Categorizes the fundamental process technology applied. [ENUM-REF-CANDIDATE: photolithography|etch|deposition|implant|diffusion|cmp|metrology|inspection|cleaning|annealing — 10 candidates stripped; promote to reference product]',
     `power_setpoint_watts` DECIMAL(18,2) COMMENT 'Nominal RF or DC power setpoint in watts for plasma-based process steps such as reactive ion etch or PECVD.',
@@ -90,8 +87,11 @@ CREATE OR REPLACE TABLE `vibe_semiconductors_v1`.`process`.`step` (
 CREATE OR REPLACE TABLE `vibe_semiconductors_v1`.`process`.`recipe` (
     `recipe_id` BIGINT COMMENT 'Primary key for recipe',
     `fab_tool_id` BIGINT COMMENT 'Foreign key linking to equipment.fab_tool. Business justification: A recipe is authored for a specific fab tool model; the FK supports recipe‑tool compatibility checks and tool‑specific parameter validation.',
-    `step_id` BIGINT COMMENT 'FK to process.process_step.process_step_id — Every recipe is defined for a specific process step (operation type + tool class). This FK connects the equipment-level parameters to the logical process step they implement.',
-    `technology_node_id` BIGINT COMMENT 'Reference to the technology node (e.g., 7nm, 5nm, 3nm) for which this recipe is qualified.',
+    `fab_facility_id` BIGINT COMMENT 'Reference to the technology node (e.g., 7nm, 5nm, 3nm) for which this recipe is qualified.',
+    `ic_catalog_id` BIGINT COMMENT 'Foreign key linking to product.ic_catalog. Business justification: Recipe Management tracks which IC product uses a recipe; required for change control and qualification.',
+    `material_master_id` BIGINT COMMENT 'Foreign key linking to supply.material_master. Business justification: Recipes define usage of specific chemicals/materials; linking to material_master enables supplier certification, lot tracking, and regulatory compliance.',
+    `tool_chamber_id` BIGINT COMMENT 'Foreign key linking to equipment.tool_chamber. Business justification: Recipes in semiconductor fabs are often chamber-specific due to chamber-to-chamber variation (gas line configuration, RF matching). A recipes primary/default chamber assignment is needed for recipe q',
+    `process_recipe_id` BIGINT COMMENT 'Reference to the process step in the overall process flow that this recipe executes.',
     `approval_status` STRING COMMENT 'Current approval and qualification state of the recipe: draft (under development), under_review (pending approval), approved (released for use), qualified (validated on production tool), deprecated (phasing out), or obsolete (no longer valid).. Valid values are `draft|under_review|approved|qualified|deprecated|obsolete`',
     `chamber_configuration` STRING COMMENT 'Specific chamber or module configuration within the tool class, including chamber ID and hardware configuration state.',
     `cmp_pad_type` STRING COMMENT 'CMP polishing pad material and type identifier. Null for non-CMP recipes.',
@@ -99,8 +99,6 @@ CREATE OR REPLACE TABLE `vibe_semiconductors_v1`.`process`.`recipe` (
     `cmp_removal_target_nm` DECIMAL(18,2) COMMENT 'Target material removal thickness in nanometers for CMP process. Null for non-CMP recipes.',
     `cmp_slurry_type` STRING COMMENT 'CMP slurry formulation identifier (e.g., oxide slurry, tungsten slurry, copper slurry). Null for non-CMP recipes.',
     `cmp_table_speed_rpm` DECIMAL(18,2) COMMENT 'Platen rotation speed in RPM during CMP. Null for non-CMP recipes.',
-    `coolant_type` STRING COMMENT 'The coolant type of the recipe record in the process domain.',
-    `cooling_rate_celsius_per_minute` DECIMAL(18,2) COMMENT 'The cooling rate celsius per minute of the recipe record in the process domain.',
     `created_timestamp` TIMESTAMP COMMENT 'Timestamp when this recipe record was first created in the manufacturing execution system.',
     `deposition_method` STRING COMMENT 'Thin film deposition technique: LPCVD (low pressure chemical vapor deposition), PECVD (plasma enhanced CVD), ALD (atomic layer deposition), PVD (physical vapor deposition), EPI (epitaxy), MOCVD (metal-organic CVD), or MBE (molecular beam epitaxy). Null for non-deposition recipes. [ENUM-REF-CANDIDATE: lpcvd|pecvd|ald|pvd|epi|mocvd|mbe — 7 candidates stripped; promote to reference product]',
     `deposition_pressure_torr` DECIMAL(18,2) COMMENT 'Process chamber pressure in Torr during deposition. Null for non-deposition recipes.',
@@ -126,7 +124,6 @@ CREATE OR REPLACE TABLE `vibe_semiconductors_v1`.`process`.`recipe` (
     `litho_numerical_aperture` DECIMAL(18,2) COMMENT 'Numerical aperture of the lithography lens system controlling resolution. Null for non-lithography recipes.',
     `litho_scanner_model` STRING COMMENT 'Photolithography scanner tool model (e.g., ASML NXT:2000i, Nikon NSR-S630D). Null for non-lithography recipes.',
     `litho_wavelength_nm` DECIMAL(18,2) COMMENT 'Exposure wavelength in nanometers (e.g., 193 for ArF DUV, 13.5 for EUV). Null for non-lithography recipes.',
-    `model_lineage_source` STRING COMMENT 'System of record lineage tag for v2 rebuild normalization.',
     `modified_timestamp` TIMESTAMP COMMENT 'Timestamp when this recipe record was last modified or updated.',
     `recipe_name` STRING COMMENT 'Human-readable name of the process recipe used for identification and reference in manufacturing execution systems.',
     `process_type` STRING COMMENT 'Primary process category that this recipe executes: implant (ion implantation), deposition (CVD/PVD/ALD/EPI), etch (dry/wet), CMP (chemical mechanical planarization), lithography (photolithography), anneal (thermal treatment), clean (wafer cleaning), or metrology (measurement). [ENUM-REF-CANDIDATE: implant|deposition|etch|cmp|lithography|anneal|clean|metrology — 8 candidates stripped; promote to reference product]',
@@ -137,17 +134,15 @@ CREATE OR REPLACE TABLE `vibe_semiconductors_v1`.`process`.`recipe` (
 
 CREATE OR REPLACE TABLE `vibe_semiconductors_v1`.`process`.`lot_process_run` (
     `lot_process_run_id` BIGINT COMMENT 'Unique identifier for the lot process run record. Primary key for this transactional event capturing a wafer lot executing a specific process step on specific equipment.',
-    `account_id` BIGINT COMMENT 'Foreign key linking to customer.account. Business justification: Needed for Order Traceability: lot process runs are executed for a specific customer account, enabling billing, compliance, and yield reporting per customer.',
-    `calibration_record_id` BIGINT COMMENT 'Foreign key linking to equipment.calibration_record. Business justification: SEMI E10/ISO 9001 traceability requires knowing which calibration was active when a lot was processed. If a calibration is later found out-of-tolerance, all lots processed under that calibration must ',
     `fab_tool_id` BIGINT COMMENT 'Reference to the specific fabrication equipment tool that processed this lot. Critical for equipment performance analysis, utilization tracking, and SPC (Statistical Process Control) correlation.',
-    `ic_catalog_id` BIGINT COMMENT 'Foreign key linking to product.ic_catalog. Business justification: A wafer lot is fabricated for a specific IC design (ic_catalog) — the die design determines the process flow, reticle set, and yield targets. Fab execution systems track lot-to-IC-design assignment fo',
-    `inspection_lot_id` BIGINT COMMENT 'Foreign key linking to quality.inspection_lot. Business justification: After a lot_process_run completes, an inspection_lot is created to inspect the wafers. This run-to-inspection traceability is fundamental to fab quality workflow — required for AQL sampling reports an',
-    `inventory_wafer_lot_id` BIGINT COMMENT 'Foreign key linking to inventory.inventory_wafer_lot. Business justification: WIP inventory reconciliation: MES process execution records must link to inventory lot records for real-time WIP tracking, lot disposition, and yield accounting. Semiconductor fabs require this link t',
-    `nonconformance_report_id` BIGINT COMMENT 'Foreign key linking to quality.nonconformance_report. Business justification: When a lot_process_run produces out-of-spec results (SPC violation, defect excursion), an NCR is raised against that run. This traceability is required for IATF 16949 corrective action workflows and f',
+    `ic_catalog_id` BIGINT COMMENT 'Foreign key linking to product.ic_catalog. Business justification: Production tracking of research experimental lots is required for yield learning and cost accounting; linking run to experimental lot enables this.',
     `recipe_id` BIGINT COMMENT 'Reference to the actual recipe executed for this process step. May differ from the planned recipe if engineering overrides or recipe revisions occurred. Links to the recipe master in the fabrication domain.',
+    `process_recipe_id` BIGINT COMMENT 'Reference to the specific process step in the technology node process flow that this lot executed. Defines the operation type (photolithography, etch, deposition, implant, CMP, metrology, etc.).',
+    `sku_id` BIGINT COMMENT 'Foreign key linking to product.sku. Business justification: Lot Traceability report ties each run to the SKU being produced, enabling yield and compliance tracking.',
     `step_id` BIGINT COMMENT 'FK to process.process_process_step.process_process_step_id — Every lot process run is an execution of a specific process step. This FK is essential for WIP tracking and SPC data collection context.',
+    `tapeout_id` BIGINT COMMENT 'Foreign key linking to design.tapeout. Business justification: Wafer lots are manufactured from a specific tapeouts mask set. Tracing lot_process_run to tapeout is essential for mask utilization tracking, wafer count reconciliation against tapeout orders, and yi',
     `tool_chamber_id` BIGINT COMMENT 'Identifier of the specific chamber or module within the equipment tool where the lot was processed. Critical for multi-chamber tools to isolate chamber-specific process variation and matching.',
-    `tool_qualification_id` BIGINT COMMENT 'Foreign key linking to equipment.tool_qualification. Business justification: Semiconductor lot traceability requires recording which tool qualification was active when a lot was processed. If a tool qualification is later found invalid, all affected lots must be identified for',
+    `tool_qualification_id` BIGINT COMMENT 'Foreign key linking to equipment.tool_qualification. Business justification: Semiconductor fab traceability requires recording which tool qualification was active when a lot ran. Customer qualification audits (IATF 16949, IATF 16949) and yield correlation reports depend on kno',
     `actual_end_timestamp` TIMESTAMP COMMENT 'Actual date and time when the lot processing completed on the equipment. Used to calculate actual process duration and equipment throughput.',
     `actual_start_timestamp` TIMESTAMP COMMENT 'Actual date and time when the lot processing began on the equipment. Captured from MES equipment interface for cycle time analysis and equipment utilization tracking.',
     `control_chart_rule_violated` STRING COMMENT 'Specific SPC rule violated if control_chart_violation_flag is true (e.g., Western Electric Rule 1: Point beyond 3-sigma, Nelson Rule 2: Nine points in a row on same side of centerline). Null if no violation.',
@@ -173,18 +168,17 @@ CREATE OR REPLACE TABLE `vibe_semiconductors_v1`.`process`.`lot_process_run` (
     `run_number` STRING COMMENT 'Business identifier for this process run event. Typically a sequential or timestamp-based identifier assigned by the MES (Manufacturing Execution System) for traceability and audit purposes.',
     `scrap_reason_code` STRING COMMENT 'Standardized code indicating the reason for lot scrap if lot_disposition is scrap. Examples include catastrophic defect, process excursion, contamination, equipment failure. Null if lot not scrapped.',
     `wafer_count` STRING COMMENT 'Number of wafers in the lot that were processed in this run. May differ from the original lot size if wafers were scrapped or held at prior steps.',
-    `waste_heat_recovered_kwh` DECIMAL(18,2) COMMENT 'The waste heat recovered kwh of the lot process run record in the process domain.',
     CONSTRAINT pk_lot_process_run PRIMARY KEY(`lot_process_run_id`)
 ) COMMENT 'Transactional record of a wafer lot executing a specific process step on a specific piece of equipment. Captures lot ID reference, process step reference, equipment ID, operator ID, actual start and end timestamps, actual recipe used, chamber ID, lot disposition (pass/hold/scrap), and any in-line measurement results collected at that step. This is the core WIP tracking event for process engineering analysis. SSOT boundary: process domain owns the process-step-level execution record for engineering analysis; fabrication domain owns the lot lifecycle (lot creation, split, merge, hold, scrap, ship) and overall WIP status. Sourced from Camstar MES and Applied SmartFactory MES lot history.';
 
 CREATE OR REPLACE TABLE `vibe_semiconductors_v1`.`process`.`spc_control_chart` (
     `spc_control_chart_id` BIGINT COMMENT 'Primary key for spc_control_chart',
+    `fab_facility_id` BIGINT COMMENT 'Reference to the technology node (e.g., 7nm, 5nm, 3nm) for which this SPC chart is defined. Links to the technology node master data.',
     `fab_tool_id` BIGINT COMMENT 'Identifier of the metrology tool or equipment used to take the measurement (e.g., KLA ICOS tool ID, inline metrology tool ID). Enables tool-to-tool variation analysis.',
-    `ic_catalog_id` BIGINT COMMENT 'Foreign key linking to product.ic_catalog. Business justification: SPC control charts in semiconductor fabs are product-specific — control limits for CD uniformity differ by IC design. Process engineers set up charts per IC catalog entry to monitor parameters critica',
-    `quality_spec_id` BIGINT COMMENT 'Foreign key linking to quality.quality_spec. Business justification: SPC control chart limits are derived from quality_spec specification limits. Quality engineers audit chart-to-spec alignment during periodic reviews and ISO 9001 audits — this link is required for tha',
+    `process_recipe_id` BIGINT COMMENT 'Reference to the specific process step (e.g., photolithography, etch, deposition, implant) being monitored by this SPC chart.',
     `step_id` BIGINT COMMENT 'FK to process.process_step.process_step_id — Every SPC control chart monitors a parameter at a specific process step. This FK is essential for SPC chart setup and process monitoring workflows.',
-    `technology_node_id` BIGINT COMMENT 'Reference to the technology node (e.g., 7nm, 5nm, 3nm) for which this SPC chart is defined. Links to the technology node master data.',
-    `tool_chamber_id` BIGINT COMMENT 'Foreign key linking to equipment.tool_chamber. Business justification: SPC charts in semiconductor fabs are frequently chamber-specific because chamber-to-chamber variation is a critical monitored parameter. Chamber-level SPC enables detection of chamber-specific process',
+    `tool_chamber_id` BIGINT COMMENT 'Foreign key linking to equipment.tool_chamber. Business justification: SPC control charts in semiconductor fabs are chamber-specific for multi-chamber tools. Chamber-to-chamber matching and chamber qualification require separate SPC charts per chamber. spc_control_chart ',
+    `wafer_id` BIGINT COMMENT 'Reference to the specific wafer within the lot from which the measurement was taken. Enables wafer-level traceability.',
     `baseline_data_points` STRING COMMENT 'Number of data points collected during the baseline period to establish initial control limits. Typically 25-30 subgroups are required for reliable limit calculation.',
     `chart_activation_date` DATE COMMENT 'Date when the SPC chart was first activated for production monitoring. Marks the beginning of the charts operational lifecycle.',
     `chart_name` STRING COMMENT 'Business-friendly name of the SPC control chart for identification and reporting purposes.',
@@ -202,7 +196,6 @@ CREATE OR REPLACE TABLE `vibe_semiconductors_v1`.`process`.`spc_control_chart` (
     `measured_value` DECIMAL(18,2) COMMENT 'Actual measured value of the monitored parameter at the time of measurement. This is the primary data point plotted on the SPC chart.',
     `measurement_sequence_number` STRING COMMENT 'Sequential number of this measurement within the SPC chart history. Used for time-series analysis and trend detection.',
     `measurement_timestamp` TIMESTAMP COMMENT 'Date and time when the measurement was taken by the metrology tool. Represents the actual measurement event time.',
-    `model_lineage_source` STRING COMMENT 'System of record lineage tag for v2 rebuild normalization.',
     `monitored_parameter_name` STRING COMMENT 'Name of the process parameter being monitored by this SPC chart (e.g., critical dimension, film thickness, overlay, etch rate, resistivity).',
     `ocap_reference_number` STRING COMMENT 'Reference number of the Out-of-Control Action Plan (OCAP) triggered by this measurement, if applicable. Links to the OCAP tracking system for root cause analysis and corrective action.',
     `parameter_unit_of_measure` STRING COMMENT 'Unit of measure for the monitored parameter (e.g., nm, angstrom, ohm-cm, percent, degrees Celsius).',
@@ -224,14 +217,18 @@ CREATE OR REPLACE TABLE `vibe_semiconductors_v1`.`process`.`spc_control_chart` (
 
 CREATE OR REPLACE TABLE `vibe_semiconductors_v1`.`process`.`spc_measurement` (
     `spc_measurement_id` BIGINT COMMENT 'Unique identifier for the SPC measurement data point. Primary key for the SPC measurement record.',
-    `equipment_process_recipe_id` BIGINT COMMENT 'Foreign key linking to equipment.equipment_process_recipe. Business justification: SPC excursion investigations require correlating out-of-control measurements with the specific equipment recipe version active at measurement time. Equipment engineers use this link to determine if re',
+    `fab_facility_id` BIGINT COMMENT 'Reference to the technology node (process generation) for which this measurement was taken. Links to the semiconductor technology node (e.g., 7nm, 5nm, 3nm) being manufactured.',
     `fab_tool_id` BIGINT COMMENT 'Reference to the metrology or inspection equipment that captured this measurement. Links to the KLA ICOS or in-line metrology tool used for data collection.',
     `fabrication_wafer_lot_id` BIGINT COMMENT 'Reference to the wafer lot being measured. Links to the fabrication lot that was sampled for this SPC measurement.',
-    `lot_process_run_id` BIGINT COMMENT 'Foreign key linking to process.lot_process_run. Business justification: An SPC measurement data point is collected during a specific lot process run. Linking spc_measurement to lot_process_run provides direct traceability from the SPC data point to the exact run that gene',
+    `flow_id` BIGINT COMMENT 'The identifier of the sampling plan that defined which wafers and sites to measure. Links to the metrology sampling strategy for this process step.',
+    `ic_catalog_id` BIGINT COMMENT 'Foreign key linking to product.ic_catalog. Business justification: SPC measurements are recorded per product for quality analysis; required by the SPC Data Analysis process.',
+    `lot_process_run_id` BIGINT COMMENT 'Foreign key linking to process.lot_process_run. Business justification: An SPC measurement is taken during a specific lot process run — the transactional execution of a lot through a process step on a tool. Linking spc_measurement to lot_process_run enables traceability f',
+    `nonconformance_report_id` BIGINT COMMENT 'Foreign key linking to quality.nonconformance_report. Business justification: SPC out-of-spec measurements directly trigger NCR creation in fab quality workflows. Linking the specific measurement to the NCR it generated provides audit-trail traceability required by IATF 16949 a',
+    `process_recipe_id` BIGINT COMMENT 'Reference to the process step at which this measurement was taken. Identifies the specific fabrication operation (photolithography, etch, deposition, implant, etc.) being monitored.',
     `recipe_id` BIGINT COMMENT 'The identifier of the process recipe that was active when this measurement was taken. Links the measurement to the specific process parameters and settings used during fabrication.',
     `spc_control_chart_id` BIGINT COMMENT 'Reference to the SPC control chart against which this measurement is plotted. Links to the control chart configuration defining control limits, chart type, and monitoring rules.',
-    `technology_node_id` BIGINT COMMENT 'Reference to the technology node (process generation) for which this measurement was taken. Links to the semiconductor technology node (e.g., 7nm, 5nm, 3nm) being manufactured.',
-    `tool_chamber_id` BIGINT COMMENT 'Foreign key linking to equipment.tool_chamber. Business justification: Individual SPC measurements must be traceable to the specific chamber used, not just the tool, because chamber-to-chamber variation is a primary source of process excursions. Chamber-level SPC measure',
+    `step_id` BIGINT COMMENT 'Foreign key linking to process.process_step. Business justification: An SPC measurement is recorded at a specific process step. While spc_measurement already links to spc_control_chart (which has process_step_id), a direct FK to process_step enables efficient querying ',
+    `tool_chamber_id` BIGINT COMMENT 'Foreign key linking to equipment.tool_chamber. Business justification: Chamber-level SPC measurement traceability is required for chamber matching qualification and root cause analysis. A measurement taken on chamber A vs. chamber B of the same tool must be distinguishab',
     `wafer_id` BIGINT COMMENT 'Reference to the specific wafer within the lot that was measured. Identifies the individual wafer substrate on which the measurement was taken.',
     `comments` STRING COMMENT 'Free-text field for operator or engineer comments regarding this measurement. Used to capture contextual information, anomalies, or special conditions observed during measurement.',
     `control_limit_lower` DECIMAL(18,2) COMMENT 'The lower control limit of the SPC chart at the time of measurement. Represents the lower boundary of acceptable process variation (typically mean - 3 sigma).',
@@ -243,7 +240,6 @@ CREATE OR REPLACE TABLE `vibe_semiconductors_v1`.`process`.`spc_measurement` (
     `measurement_status` STRING COMMENT 'The quality status of the measurement data point. Indicates whether the measurement is valid for SPC analysis or requires review, retest, or exclusion due to equipment errors or data quality issues.. Valid values are `valid|invalid|suspect|retest_required|equipment_error`',
     `measurement_timestamp` TIMESTAMP COMMENT 'Date and time when the measurement was captured by the metrology tool. Represents the real-world event time of the SPC data point collection.',
     `measurement_type` STRING COMMENT 'The category of measurement based on when and how it was taken. Distinguishes between inline production measurements, offline lab measurements, final inspection, process qualification runs, and dedicated monitor wafer measurements.. Valid values are `inline|offline|final_inspection|qualification|monitor_wafer`',
-    `model_lineage_source` STRING COMMENT 'System of record lineage tag for v2 rebuild normalization.',
     `out_of_control_flag` BOOLEAN COMMENT 'Boolean indicator of whether this measurement triggered an out-of-control condition. True if the measurement violated control limits or SPC rules requiring corrective action.',
     `out_of_spec_flag` BOOLEAN COMMENT 'Boolean indicator of whether this measurement exceeded specification limits. True if the measured value fell outside the upper or lower specification limits defined by engineering.',
     `parameter_code` STRING COMMENT 'The standardized code or abbreviation for the measured parameter. Used for system integration and cross-tool correlation (e.g., CD_GATE, THICK_OXIDE, OVL_X, RS_POLY).',
@@ -265,24 +261,24 @@ CREATE OR REPLACE TABLE `vibe_semiconductors_v1`.`process`.`spc_measurement` (
 CREATE OR REPLACE TABLE `vibe_semiconductors_v1`.`process`.`qualification` (
     `qualification_id` BIGINT COMMENT 'Unique identifier for the process qualification program record. Primary key.',
     `account_id` BIGINT COMMENT 'Foreign key linking to customer.account. Business justification: Customer-specific qualification: certain process qualifications are performed for a particular customer, required for compliance reports and customer approval tracking.',
-    `ar_invoice_id` BIGINT COMMENT 'Foreign key linking to invoice.ar_invoice. Business justification: Qualification Service Invoice ties a process qualification activity to the invoice billing the customer for qualification services.',
-    `ate_configuration_id` BIGINT COMMENT 'Foreign key linking to test.ate_configuration. Business justification: Process qualification includes electrical testing on a specific ATE configuration. The qualification package must document which ATE hardware configuration was used, as ATE changes can affect qualific',
-    `calibration_record_id` BIGINT COMMENT 'Foreign key linking to equipment.calibration_record. Business justification: Process qualification packages must document the calibration status of all tools used during qualification runs. Direct FK to calibration_record enables qualification packages to reference the specifi',
-    `contact_id` BIGINT COMMENT 'Foreign key linking to customer.contact. Business justification: Foundry process qualifications require a designated customer contact (quality engineer or program manager) to provide approval sign-off. process_qualification.requires_customer_approval and customer_a',
-    `design_win_id` BIGINT COMMENT 'Foreign key linking to customer.customer_design_win. Business justification: Process qualifications are frequently initiated to support a specific customer design win (e.g., qualifying a new process node for a customers product). This FK enables design-win-to-qualification tr',
+    `design_win_id` BIGINT COMMENT 'Foreign key linking to customer.customer_design_win. Business justification: In foundry operations, process qualifications are initiated to support specific customer design wins. Program managers track which design win triggered a qualification for milestone reporting and cust',
+    `fab_facility_id` BIGINT COMMENT 'Reference to the technology node (e.g., 7nm, 5nm, 3nm) for which this qualification applies.',
     `fab_tool_id` BIGINT COMMENT 'Foreign key linking to equipment.fab_tool. Business justification: Qualification runs are executed on a specific fab tool; the FK records which tool was qualified, supporting qualification history and tool eligibility checks.',
-    `family_id` BIGINT COMMENT 'Foreign key linking to product.family. Business justification: Process qualification sign-off is scoped to a product family in semiconductor fabs — e.g., this etch process is qualified for the 5nm automotive MCU family. Qualification reports and customer approv',
-    `ic_catalog_id` BIGINT COMMENT 'Foreign key linking to product.ic_catalog. Business justification: Process qualifications are often tied to a specific IC design — e.g., AEC-Q100 qualification for a specific automotive IC. Customer approval workflows and qualification certificates reference the spec',
-    `recipe_id` BIGINT COMMENT 'Foreign key linking to process.recipe. Business justification: A process qualification program validates a specific recipe (or set of recipe parameters) for production readiness. The qualification is often recipe-version-specific — when a recipe is modified, a ne',
-    `step_id` BIGINT COMMENT 'Foreign key linking to process.process_step. Business justification: A process qualification program can be scoped to a specific process step (e.g., qualifying a new etch or implant step independently). This 1:N relationship (one process_step can have many qualificatio',
-    `technology_node_id` BIGINT COMMENT 'Reference to the technology node (e.g., 7nm, 5nm, 3nm) for which this qualification applies.',
-    `tool_chamber_id` BIGINT COMMENT 'Foreign key linking to equipment.tool_chamber. Business justification: Process qualifications in semiconductor fabs are chamber-specific — a process qualified on chamber A is not automatically qualified on chamber B. Chamber-level process qualification tracking is requir',
-    `tool_qualification_id` BIGINT COMMENT 'Foreign key linking to equipment.tool_qualification. Business justification: Process qualification and tool qualification are formally linked in semiconductor manufacturing — a process qualification package must reference the tool qualification that was active during qualifica',
+    `family_id` BIGINT COMMENT 'Foreign key linking to product.family. Business justification: Qualification reports must be associated with the originating research program for readiness assessment and stakeholder communication.',
+    `ic_catalog_id` BIGINT COMMENT 'Foreign key linking to product.ic_catalog. Business justification: Qualification records are tied to the specific IC they qualify; needed for the Qualification Status Report.',
+    `flow_id` BIGINT COMMENT 'Foreign key linking to process.process_process_flow. Business justification: A qualification is scoped to a specific process flow; linking directly avoids cross‑domain indirection.',
+    `material_master_id` BIGINT COMMENT 'Foreign key linking to supply.material_master. Business justification: Process qualifications in semiconductor fabs are frequently material-specific — qualifying a new CMP slurry, photoresist, or process gas requires a dedicated process qualification run. This FK enables',
+    `recipe_id` BIGINT COMMENT 'Foreign key linking to process.recipe. Business justification: A process qualification program validates a specific recipe (or set of recipes) for production use. The qualification program tracks target_cpk, actual_cpk, and qualification_status which are directly',
+    `step_id` BIGINT COMMENT 'Foreign key linking to process.process_step. Business justification: A process qualification program qualifies not just a process flow but specific process steps within that flow (e.g., qualifying a new etch recipe at a specific etch step). Linking process_qualificatio',
+    `supplier_id` BIGINT COMMENT 'Foreign key linking to supply.supplier. Business justification: Fab process qualifications are routinely run to certify a specific suppliers material (e.g., new photoresist vendor). Process engineers must record which suppliers material is under qualification to',
+    `supplier_qualification_id` BIGINT COMMENT 'Foreign key linking to supply.supplier_qualification. Business justification: In semiconductor fabs, supplier material qualifications (supply domain) directly trigger process qualification runs (process domain). Linking process_qualification to supplier_qualification enables en',
+    `tertiary_process_flow_id` BIGINT COMMENT 'FK to process.process_flow.process_flow_id — Process qualifications validate a process flow or step change. This link is required for qualification status lookup during production release decisions.',
+    `tool_chamber_id` BIGINT COMMENT 'Foreign key linking to equipment.tool_chamber. Business justification: Process qualifications in semiconductor fabs are chamber-specific — each chamber of a multi-chamber tool must be individually qualified per SEMI standards and customer requirements. process_qualificat',
+    `tool_qualification_id` BIGINT COMMENT 'Foreign key linking to equipment.tool_qualification. Business justification: A process qualification depends on a valid tool qualification being in place — this is a gating dependency in semiconductor fab qualification workflows. Linking process_qualification to tool_qualifica',
     `acceptance_criteria_summary` STRING COMMENT 'High-level summary of the key acceptance criteria that must be met for qualification to pass (e.g., yield > 95%, Cpk > 1.33, defect density < 0.1/cm²).',
     `actual_completion_date` DATE COMMENT 'Actual date when the qualification program was completed. Populated when status transitions to passed, failed, waived, or cancelled.',
     `actual_cpk` DECIMAL(18,2) COMMENT 'Actual process capability index (Cpk) achieved during qualification testing. Populated upon completion of qualification runs.',
     `actual_yield_percent` DECIMAL(18,2) COMMENT 'Actual wafer yield percentage achieved during qualification testing. Populated upon completion of qualification runs.',
-    `cooling_optimization_evaluated` BOOLEAN COMMENT 'The cooling optimization evaluated of the process qualification record in the process domain.',
     `corrective_action_plan` STRING COMMENT 'Description of corrective actions planned or taken to address issues identified during qualification. Applicable for failed qualifications or qualifications requiring follow-up.',
     `created_timestamp` TIMESTAMP COMMENT 'Timestamp when this qualification record was first created in the system. Format: yyyy-MM-ddTHH:mm:ss.SSSXXX.',
     `customer_approval_status` STRING COMMENT 'Status of customer approval for this qualification: not_required (no customer approval needed), pending (awaiting customer review), approved (customer approved), rejected (customer rejected).. Valid values are `not_required|pending|approved|rejected`',
@@ -291,7 +287,6 @@ CREATE OR REPLACE TABLE `vibe_semiconductors_v1`.`process`.`qualification` (
     `failure_mode_summary` STRING COMMENT 'Summary of failure modes observed during qualification testing, if applicable. Used for failed or waived qualifications to document issues encountered.',
     `last_modified_timestamp` TIMESTAMP COMMENT 'Timestamp when this qualification record was last modified or updated. Format: yyyy-MM-ddTHH:mm:ss.SSSXXX.',
     `lot_count` STRING COMMENT 'Total number of fabrication lots planned or executed for the qualification program.',
-    `model_lineage_source` STRING COMMENT 'System of record lineage tag for v2 rebuild normalization.',
     `qualification_name` STRING COMMENT 'Descriptive name of the qualification program, identifying the process or change being qualified.',
     `notes` STRING COMMENT 'Additional notes, comments, or observations related to the qualification program. Free-text field for supplementary information.',
     `owner_engineer_name` STRING COMMENT 'Name of the process engineer responsible for managing and executing the qualification program.',
@@ -316,26 +311,27 @@ CREATE OR REPLACE TABLE `vibe_semiconductors_v1`.`process`.`qualification` (
 
 CREATE OR REPLACE TABLE `vibe_semiconductors_v1`.`process`.`yield_loss_event` (
     `yield_loss_event_id` BIGINT COMMENT 'Unique identifier for the yield loss event record. Primary key.',
-    `account_id` BIGINT COMMENT 'Reference to the customer for whom the affected wafer lot is being fabricated. Used for customer-specific yield reporting and quality metrics.',
-    `ar_invoice_id` BIGINT COMMENT 'Foreign key linking to invoice.ar_invoice. Business justification: Yield Loss Charge Invoice records the invoice that compensates the customer for a specific yield loss event.',
-    `bin_definition_id` BIGINT COMMENT 'Foreign key linking to test.bin_definition. Business justification: Yield loss events are categorized by the failing test bin. Bin-based yield loss Pareto analysis and failure mode classification require linking yield loss events to the specific bin definition that ch',
     `capa_record_id` BIGINT COMMENT 'Reference to the corrective action or OCAP (Out of Control Action Plan) initiated in response to this yield loss event. Links to corrective action tracking system.',
-    `dispute_id` BIGINT COMMENT 'Foreign key linking to invoice.dispute. Business justification: Yield loss events are the primary root cause of customer invoice disputes in semiconductor foundry operations. Linking yield_loss_event directly to dispute enables dispute resolution teams to referenc',
+    `fab_facility_id` BIGINT COMMENT 'Reference to the technology node (process generation) for the affected wafer lot. Used for node-specific yield trending and benchmarking.',
     `fab_tool_id` BIGINT COMMENT 'Reference to the fabrication equipment or tool associated with the process step where the yield loss occurred. Used for equipment-specific yield trending and FMEA.',
-    `final_test_run_id` BIGINT COMMENT 'Foreign key linking to test.final_test_run. Business justification: Yield loss events triggered by final test failures require direct traceability to the final test run for investigation. Yield loss reporting and customer quality notifications depend on linking the ev',
-    `ic_catalog_id` BIGINT COMMENT 'Foreign key linking to product.ic_catalog. Business justification: Yield loss events during wafer fabrication are tied to the IC design (die layout, design rules) — yield engineers analyze which IC designs have highest yield loss? The existing sku_id FK covers pack',
-    `ic_design_project_id` BIGINT COMMENT 'Foreign key linking to design.ic_design_project. Business justification: Yield loss events must be traced to the originating design project to determine if root cause is design-related (DFM violations, layout hotspots, IP core issues). Design engineers use yield loss data ',
-    `inventory_wafer_lot_id` BIGINT COMMENT 'Foreign key linking to inventory.inventory_wafer_lot. Business justification: Lot disposition and inventory impact: yield loss events must link directly to inventory_wafer_lot to trigger lot holds, update inventory valuation, and support disposition decisions. Fab quality engin',
-    `lot_hold_id` BIGINT COMMENT 'Foreign key linking to fabrication.fabrication_lot_hold. Business justification: yield_loss_event has lot_hold_applied (boolean flag) but no FK to the actual hold record. Yield engineers and fab managers need to navigate from a yield loss event directly to the resulting fabricatio',
-    `lot_process_run_id` BIGINT COMMENT 'Foreign key linking to process.lot_process_run. Business justification: A yield loss event is triggered by a specific lot process run execution. Linking yield_loss_event to lot_process_run enables direct traceability from the yield loss back to the exact run (equipment, r',
-    `maintenance_event_id` BIGINT COMMENT 'Foreign key linking to equipment.maintenance_event. Business justification: Yield loss events are frequently caused by maintenance activities (post-PM contamination, chamber seasoning failures, incorrect part installation). Direct FK enables yield-maintenance correlation anal',
-    `nonconformance_report_id` BIGINT COMMENT 'Foreign key linking to quality.nonconformance_report. Business justification: Significant yield loss events trigger formal NCR documentation in semiconductor fabs. This link enables traceability from yield excursions to corrective actions and is required for yield management re',
+    `final_test_run_id` BIGINT COMMENT 'Foreign key linking to test.final_test_run. Business justification: Yield loss events detected at final test must link to the final test run that identified them. This enables traceability from yield loss to the specific final test execution, supporting customer quali',
+    `ic_catalog_id` BIGINT COMMENT 'Foreign key linking to product.ic_catalog. Business justification: Yield loss events on research wafers are reported to the responsible research project for root‑cause analysis and budget impact.',
+    `ic_design_project_id` BIGINT COMMENT 'Foreign key linking to design.ic_design_project. Business justification: Yield loss events must be attributed to the specific design project to drive DFM feedback loops and design rule improvements. Design and process engineers jointly investigate yield loss by design proj',
+    `inspection_lot_id` BIGINT COMMENT 'Foreign key linking to quality.inspection_lot. Business justification: Yield loss analysis requires correlating yield loss events with the inspection lot that detected them. This link enables lot-level yield loss reporting and supports quality disposition decisions by co',
+    `inventory_wafer_lot_id` BIGINT COMMENT 'Foreign key linking to inventory.inventory_wafer_lot. Business justification: Yield loss events trigger inventory disposition actions (lot hold, scrap, rework) on the affected wafer lot. Direct FK enables automated inventory status updates and yield-to-inventory impact reportin',
+    `line_id` BIGINT COMMENT 'Foreign key linking to order.order_line. Business justification: Yield loss events must be traced to specific order lines for customer impact assessment, RMA initiation, and credit decisions. The existing order_id FK provides order-level context but order-line gran',
+    `lot_process_run_id` BIGINT COMMENT 'Foreign key linking to process.lot_process_run. Business justification: A yield loss event is identified at a specific process step execution — i.e., during a lot process run. Linking yield_loss_event to lot_process_run provides the full execution context (tool used, reci',
+    `process_recipe_id` BIGINT COMMENT 'Reference to the specific process step at which the yield loss was identified. Links to process step master data.',
     `recipe_id` BIGINT COMMENT 'Reference to the process recipe or run card that was active when the yield loss event occurred. Used for recipe-specific yield correlation and optimization.',
     `sku_id` BIGINT COMMENT 'Reference to the IC design product or device family being fabricated on the affected wafer lot. Used for product-specific yield analysis and customer impact assessment.',
-    `step_id` BIGINT COMMENT 'Foreign key linking to process.process_step. Business justification: A yield loss event is detected at a specific process step (e.g., etch step causing CD deviation, implant step causing dose non-uniformity). This is a fundamental operational relationship — root cause ',
-    `technology_node_id` BIGINT COMMENT 'Reference to the technology node (process generation) for the affected wafer lot. Used for node-specific yield trending and benchmarking.',
-    `tool_chamber_id` BIGINT COMMENT 'Foreign key linking to equipment.tool_chamber. Business justification: Yield loss events must be traceable to the specific chamber, not just the tool, because chamber-specific contamination or process drift is a primary yield loss mechanism. Chamber-level yield loss trac',
-    `wafer_probe_run_id` BIGINT COMMENT 'Foreign key linking to test.wafer_probe_run. Business justification: Yield loss events are frequently triggered by wafer probe yield failures. Root cause analysis and CAPA workflows require linking the yield loss event to the specific probe run that detected the yield ',
+    `spc_control_chart_id` BIGINT COMMENT 'Foreign key linking to process.spc_control_chart. Business justification: yield_loss_event has spc_rule_violation field indicating the yield loss was associated with an SPC rule violation on a specific control chart. Formalizing this as a FK to spc_control_chart enables dir',
+    `step_id` BIGINT COMMENT 'Reference to the inspection or metrology point where the yield loss was detected. May be inline or offline inspection station.',
+    `goods_receipt_id` BIGINT COMMENT 'Foreign key linking to supply.goods_receipt. Business justification: Yield loss investigations require tracing defects to the exact incoming material lot (goods receipt batch number). This FK enables lot-level incoming material traceability for yield events — required ',
+    `material_master_id` BIGINT COMMENT 'Foreign key linking to supply.material_master. Business justification: Yield loss root cause analysis requires linking yield events to suspect incoming materials (contaminated chemicals, out-of-spec gases). This FK enables material-yield correlation reports and supplier ',
+    `tool_chamber_id` BIGINT COMMENT 'Foreign key linking to equipment.tool_chamber. Business justification: Chamber-level yield loss attribution is critical for root cause analysis — a contaminated or drifting chamber in a multi-chamber tool is a common yield loss source. yield_loss_event links to fab_tool ',
+    `tool_downtime_id` BIGINT COMMENT 'Foreign key linking to equipment.tool_downtime. Business justification: A yield loss event may result in tool downtime when the tool is quarantined for investigation. Linking yield_loss_event to tool_downtime enables correlation of yield loss severity with downtime durati',
+    `maintenance_event_id` BIGINT COMMENT 'Foreign key linking to equipment.maintenance_event. Business justification: Post-maintenance yield loss (e.g., contamination after chamber clean or part replacement) is a well-known semiconductor fab failure mode. Linking yield_loss_event to the triggering maintenance_event e',
+    `wafer_probe_run_id` BIGINT COMMENT 'Foreign key linking to test.wafer_probe_run. Business justification: Yield loss events are often triggered or confirmed by probe yield drops. Linking yield_loss_event to wafer_probe_run enables direct traceability from a yield excursion to the probe run that detected i',
     `affected_die_count` STRING COMMENT 'Number of individual die on the wafer affected by this yield loss event. Used to calculate yield impact and prioritize corrective actions.',
     `assigned_to` STRING COMMENT 'Name or identifier of the engineer or team assigned to investigate and resolve the yield loss event. Used for workload management and escalation.',
     `cpk_value` DECIMAL(18,2) COMMENT 'Process capability index (Cpk) calculated at the time of the yield loss event. Indicates how well the process is centered and controlled relative to specification limits. Values below 1.33 typically indicate process capability issues.',
@@ -352,7 +348,6 @@ CREATE OR REPLACE TABLE `vibe_semiconductors_v1`.`process`.`yield_loss_event` (
     `last_modified_timestamp` TIMESTAMP COMMENT 'Date and time when this yield loss event record was last updated. Format: yyyy-MM-ddTHH:mm:ss.SSSXXX. Used for audit trail and change tracking.',
     `layer_name` STRING COMMENT 'Name of the process layer or mask level at which the yield loss event occurred. Examples include M1, M2, POLY, CONTACT, VIA1, etc. Aligns with GDS layer naming convention.',
     `lot_hold_applied` BOOLEAN COMMENT 'Indicates whether a lot hold was placed on the affected wafer lot as a result of this yield loss event. True if hold applied; false if no hold applied.',
-    `model_lineage_source` STRING COMMENT 'System of record lineage tag for v2 rebuild normalization.',
     `notes` STRING COMMENT 'Free-form text field for additional comments, observations, or context related to the yield loss event. May include investigation findings, lessons learned, or special handling instructions.',
     `reported_by` STRING COMMENT 'Name or identifier of the engineer, operator, or automated system that reported or logged the yield loss event. Used for accountability and follow-up.',
     `resolution_status` STRING COMMENT 'Current status of the yield loss event resolution workflow. Open indicates newly detected; under investigation indicates active RCA; root cause identified indicates RCA complete; corrective action implemented indicates fix deployed; closed indicates event resolved; deferred indicates event accepted or postponed.. Valid values are `open|under_investigation|root_cause_identified|corrective_action_implemented|closed|deferred`',
@@ -369,16 +364,18 @@ CREATE OR REPLACE TABLE `vibe_semiconductors_v1`.`process`.`yield_loss_event` (
 
 CREATE OR REPLACE TABLE `vibe_semiconductors_v1`.`process`.`defect_inspection_result` (
     `defect_inspection_result_id` BIGINT COMMENT 'Unique identifier for the defect inspection result record. Primary key.',
+    `fab_facility_id` BIGINT COMMENT 'Reference to the technology node (process generation) for which this inspection was performed, e.g., 7nm, 5nm, 3nm.',
     `fab_tool_id` BIGINT COMMENT 'Identifier of the inspection equipment used (e.g., KLA 29xx/39xx series, Applied Materials SEMVision). Tool asset identifier from equipment master.',
-    `fabrication_wafer_lot_id` BIGINT COMMENT 'Reference to the wafer lot that was inspected. Links to the fabrication wafer lot being monitored.',
     `ic_catalog_id` BIGINT COMMENT 'Foreign key linking to product.ic_catalog. Business justification: Defect inspection results are analyzed per IC product for the Defect Analysis per Product report.',
-    `inspection_lot_id` BIGINT COMMENT 'Foreign key linking to quality.inspection_lot. Business justification: A defect_inspection_result is performed as part of a quality inspection_lot. This traceability is required for AQL sampling compliance, quality gate reporting, and linking process-domain inspection da',
+    `ic_design_project_id` BIGINT COMMENT 'Foreign key linking to design.ic_design_project. Business justification: Defect inspection results are correlated to design projects to identify layout-driven defect patterns (metal density, routing hotspots) in DFM feedback loops. Design teams require per-project defect m',
+    `inspection_lot_id` BIGINT COMMENT 'Foreign key linking to quality.inspection_lot. Business justification: In-process inspection lots aggregate defect inspection results for quality gating decisions. This link enables lot-level defect summary reporting and supports disposition decisions by connecting indiv',
     `recipe_id` BIGINT COMMENT 'Identifier of the inspection recipe or program used to configure the tool for this inspection run. Defines sensitivity, scan area, and detection parameters.',
+    `inventory_wafer_lot_id` BIGINT COMMENT 'Foreign key linking to inventory.inventory_wafer_lot. Business justification: Defect inspection results determine lot disposition (pass/fail/scrap/rework) which directly drives inventory status changes on the wafer lot. Direct FK enables automated inventory disposition workflow',
     `lot_process_run_id` BIGINT COMMENT 'FK to process.lot_process_run.lot_process_run_id — Defect inspection results are captured during or after a specific lot process run at an inspection step. This FK enables defect-to-process correlation.',
-    `nonconformance_report_id` BIGINT COMMENT 'Foreign key linking to quality.nonconformance_report. Business justification: When defect_inspection_result shows an excursion (excursion_detected=true), an NCR is raised. Fab quality workflows require direct traceability from the inspection result that triggered the NCR for ro',
+    `spc_control_chart_id` BIGINT COMMENT 'Foreign key linking to process.spc_control_chart. Business justification: defect_inspection_result has spc_control_limit_lower and spc_control_limit_upper fields indicating that defect inspection results are monitored against SPC control charts. Formalizing this as a FK to ',
     `step_id` BIGINT COMMENT 'Foreign key linking to process.process_process_step. Business justification: Defect inspection results are tied to a specific process step; adding internal FK enables step‑level analysis.',
-    `technology_node_id` BIGINT COMMENT 'Reference to the technology node (process generation) for which this inspection was performed, e.g., 7nm, 5nm, 3nm.',
-    `tool_chamber_id` BIGINT COMMENT 'Foreign key linking to equipment.tool_chamber. Business justification: Defect inspection results must be traceable to the specific process chamber that produced the wafer, not just the tool. Chamber-level defect tracking enables chamber matching analysis and identificati',
+    `material_master_id` BIGINT COMMENT 'Foreign key linking to supply.material_master. Business justification: Particle and contamination defects detected during wafer inspection are frequently traced to specific incoming materials (chemicals, gases, substrates). This FK enables defect-material correlation rep',
+    `tool_chamber_id` BIGINT COMMENT 'Foreign key linking to equipment.tool_chamber. Business justification: Defect inspection results must be traceable to the specific chamber used, especially for multi-chamber inspection tools (e.g., KLA systems). Chamber-level defect trending is required for chamber quali',
     `wafer_id` BIGINT COMMENT 'Reference to the specific wafer within the lot that was inspected.',
     `created_timestamp` TIMESTAMP COMMENT 'Timestamp when this defect inspection result record was first created in the system.',
     `crystal_defect_count` STRING COMMENT 'Number of defects classified as crystal originated particles (COPs) or intrinsic silicon defects.',
@@ -410,30 +407,29 @@ CREATE OR REPLACE TABLE `vibe_semiconductors_v1`.`process`.`defect_inspection_re
     `review_timestamp` TIMESTAMP COMMENT 'Date and time when the engineering review was completed.',
     `reviewed_by` STRING COMMENT 'Name or identifier of the engineer who reviewed the inspection results, if review was performed.',
     `scratch_defect_count` STRING COMMENT 'Number of defects classified as scratches (linear surface damage).',
-    `spc_control_limit_lower` DECIMAL(18,2) COMMENT 'Lower control limit for defect density used in SPC monitoring.',
-    `spc_control_limit_upper` DECIMAL(18,2) COMMENT 'Upper control limit for defect density used in SPC monitoring. Excursions above this limit trigger alerts.',
     `total_defect_count` STRING COMMENT 'Total number of defects detected on the wafer during this inspection, including all defect types and sizes.',
     CONSTRAINT pk_defect_inspection_result PRIMARY KEY(`defect_inspection_result_id`)
 ) COMMENT 'Wafer-level defect inspection result record from in-line inspection tools (KLA brightfield/darkfield scanners, e-beam inspection) captured at process engineering inspection steps for process monitoring and excursion detection. Captures wafer lot reference, inspection step, tool ID, inspection recipe, total defect count, defect density (defects/cm²), defect map file reference, defect classification breakdown by type and size, nuisance filter applied, and disposition. SSOT boundary: process domain owns in-line defect inspection results used for process monitoring, SPC, and excursion detection during manufacturing; quality domain owns outgoing quality inspection, reliability defect analysis, and customer-reported defect records. Sourced from KLA 29xx/39xx series and Applied Materials SEMVision.';
 
 CREATE OR REPLACE TABLE `vibe_semiconductors_v1`.`process`.`metrology_measurement` (
     `metrology_measurement_id` BIGINT COMMENT 'Unique identifier for the metrology_measurement data product.',
-    `calibration_record_id` BIGINT COMMENT 'Foreign key linking to equipment.calibration_record. Business justification: Metrology measurement validity depends on the calibration status of the measurement tool. SEMI E89/ISO 17025 traceability requires linking metrology results to the active calibration record. If a cali',
     `fab_tool_id` BIGINT COMMENT 'Identifier of the metrology equipment that performed the measurement (e.g., CD-SEM, ellipsometer, overlay tool).',
     `fabrication_wafer_lot_id` BIGINT COMMENT 'Reference to the wafer lot on which this measurement was performed.',
     `ic_catalog_id` BIGINT COMMENT 'Foreign key linking to product.ic_catalog. Business justification: Metrology measurements are linked to the IC product they verify; used in Metrology Compliance reporting.',
-    `lot_process_run_id` BIGINT COMMENT 'Foreign key linking to process.lot_process_run. Business justification: In-line metrology measurements (CD, overlay, film thickness) are taken during or immediately after a specific lot process run. Linking process_metrology_measurement to lot_process_run enables direct t',
-    `nonconformance_report_id` BIGINT COMMENT 'Foreign key linking to quality.nonconformance_report. Business justification: When a metrology measurement is out-of-spec (disposition field indicates failure), an NCR is raised. Direct traceability from the measurement to the NCR is required for root cause analysis, CAPA initi',
-    `quality_spec_id` BIGINT COMMENT 'Foreign key linking to quality.quality_spec. Business justification: Metrology measurements are compared against quality_spec limits for pass/fail disposition. This link enables automated spec-check reporting, quality gate decisions, and ISO 9001 measurement traceabili',
+    `ic_design_project_id` BIGINT COMMENT 'Foreign key linking to design.ic_design_project. Business justification: Metrology measurements (CD, overlay, film thickness) must be traceable to design projects to validate process window compliance with design rules and generate per-project process capability reports. R',
+    `inspection_lot_id` BIGINT COMMENT 'Foreign key linking to quality.inspection_lot. Business justification: Inspection lots include metrology measurements for quality gating at critical process steps. This link enables lot-level measurement aggregation for pass/fail disposition and supports sampling plan co',
+    `lot_process_run_id` BIGINT COMMENT 'Foreign key linking to process.lot_process_run. Business justification: In-line metrology measurements are taken during specific lot process runs. Linking process_metrology_measurement to lot_process_run provides full traceability from metrology results (CD, overlay, film',
+    `process_recipe_id` BIGINT COMMENT 'Reference to the process step at which this metrology measurement was taken.',
+    `product_spec_id` BIGINT COMMENT 'Foreign key linking to product.product_spec. Business justification: Metrology measurements are taken against product spec limits (CD, thickness, overlay). Process capability (Cpk) reporting and spec compliance analysis require knowing which product_spec version define',
     `recipe_id` BIGINT COMMENT 'Identifier of the metrology recipe or measurement program used for this measurement.',
+    `spc_control_chart_id` BIGINT COMMENT 'Foreign key linking to process.spc_control_chart. Business justification: process_metrology_measurement has spc_rule_violation field and lower_control_limit/upper_control_limit fields indicating that metrology measurements are monitored against SPC control charts. Formalizi',
     `step_id` BIGINT COMMENT 'FK to process.process_process_step.process_process_step_id — Metrology measurements are taken at specific process steps. Step context is essential for measurement interpretation and SPC feeding.',
-    `technology_node_id` BIGINT COMMENT 'Reference to the technology node (e.g., 7nm, 5nm, 3nm) for which this measurement was performed.',
-    `tool_chamber_id` BIGINT COMMENT 'Foreign key linking to equipment.tool_chamber. Business justification: Metrology measurements (CD, thickness, overlay) must be traceable to the specific process chamber to enable chamber-to-chamber matching and uniformity analysis. Chamber-level metrology traceability is',
+    `tool_chamber_id` BIGINT COMMENT 'Foreign key linking to equipment.tool_chamber. Business justification: Metrology measurements (CD-SEM, ellipsometry, etc.) on multi-chamber tools must be traceable to the specific chamber for chamber matching and calibration compliance. process_metrology_measurement link',
     `wafer_id` BIGINT COMMENT 'Reference to the specific wafer within the lot that was measured.',
     `cp_value` DECIMAL(18,2) COMMENT 'Process capability index (Cp) calculated from this measurement, indicating the potential capability of the process without considering centering.',
     `cpk_value` DECIMAL(18,2) COMMENT 'Process capability index (Cpk) calculated from this measurement, indicating how well the process is centered and controlled within specification limits.',
     `created_timestamp` TIMESTAMP COMMENT 'Timestamp when this measurement record was first created in the system.',
-    `data_quality_flag` STRING COMMENT 'Flag indicating the quality and reliability of the measurement data. Good indicates reliable data, Suspect indicates questionable data, Bad indicates invalid data, Uncalibrated indicates tool calibration issue.. Valid values are `Good|Suspect|Bad|Uncalibrated`',
+    `data_quality_flag` BOOLEAN COMMENT 'Flag indicating the quality and reliability of the measurement data. Good indicates reliable data, Suspect indicates questionable data, Bad indicates invalid data, Uncalibrated indicates tool calibration issue.',
     `disposition` STRING COMMENT 'Pass/fail disposition of the measurement against specification limits. Pass indicates within spec, Fail indicates out of spec, Marginal indicates near limits, Rework indicates corrective action required, Hold indicates pending review.. Valid values are `Pass|Fail|Marginal|Rework|Hold`',
     `fab_site_code` STRING COMMENT 'Code identifying the fabrication facility where the measurement was performed.',
     `last_modified_timestamp` TIMESTAMP COMMENT 'Timestamp when this measurement record was last updated or modified.',
@@ -449,7 +445,6 @@ CREATE OR REPLACE TABLE `vibe_semiconductors_v1`.`process`.`metrology_measuremen
     `measurement_type` STRING COMMENT 'Type of metrology measurement performed: CD-SEM (Critical Dimension Scanning Electron Microscopy), OCD (Optical Critical Dimension), XRF (X-Ray Fluorescence), Ellipsometry, Overlay, or Film Thickness.. Valid values are `CD-SEM|OCD|XRF|Ellipsometry|Overlay|Film Thickness`',
     `median_value` DECIMAL(18,2) COMMENT 'Median value of all site measurements for this parameter.',
     `min_value` DECIMAL(18,2) COMMENT 'Minimum measured value across all sites on the wafer.',
-    `model_lineage_source` STRING COMMENT 'System of record lineage tag for v2 rebuild normalization.',
     `notes` STRING COMMENT 'Free-text notes or comments about the measurement, including any anomalies, special conditions, or operator observations.',
     `range_value` DECIMAL(18,2) COMMENT 'Difference between maximum and minimum site measurements (max - min).',
     `site_count` STRING COMMENT 'Total number of measurement sites sampled on the wafer.',
@@ -465,25 +460,95 @@ CREATE OR REPLACE TABLE `vibe_semiconductors_v1`.`process`.`metrology_measuremen
     CONSTRAINT pk_metrology_measurement PRIMARY KEY(`metrology_measurement_id`)
 ) COMMENT 'In-line metrology measurement record capturing critical dimension (CD), overlay, film thickness, resistivity, or other physical parameter measurements taken on a wafer at a specific process step. Captures measurement type (CD-SEM, OCD, XRF, ellipsometry, overlay), tool ID, wafer lot reference, wafer number, measurement site map, per-site values, mean, 3-sigma, range, and pass/fail disposition against spec limits. Sourced from KLA ICOS and in-line metrology tools.';
 
+CREATE OR REPLACE TABLE `vibe_semiconductors_v1`.`process`.`excursion` (
+    `excursion_id` BIGINT COMMENT 'Primary key for excursion',
+    `account_id` BIGINT COMMENT 'Foreign key linking to customer.account. Business justification: Excursion already has customer_notification_required and customer_notification_timestamp columns but no FK identifying which customer account to notify. Foundry contracts mandate customer notification',
+    `capa_record_id` BIGINT COMMENT 'Foreign key linking to quality.capa_record. Business justification: Systemic excursions require a CAPA to prevent recurrence. Fab quality systems mandate linking excursion records to the CAPA they drive, enabling effectiveness verification and closure tracking per IAT',
+    `fab_facility_id` BIGINT COMMENT 'Reference to the technology node of the affected product. Links to technology node master data.',
+    `fab_tool_id` BIGINT COMMENT 'Reference to the manufacturing equipment where the excursion occurred. Links to equipment master data.',
+    `ic_catalog_id` BIGINT COMMENT 'Foreign key linking to product.ic_catalog. Business justification: Excursions are recorded per IC product to assess impact; required for the Excursion Impact Report.',
+    `ic_design_project_id` BIGINT COMMENT 'Foreign key linking to design.ic_design_project. Business justification: Process excursions must be linked to affected design projects to trigger customer notification obligations and design team review of impacted lots. Excursion management workflows require knowing which',
+    `inventory_wafer_lot_id` BIGINT COMMENT 'Foreign key linking to inventory.inventory_wafer_lot. Business justification: Process excursions require immediate containment of affected wafer lots in inventory (quarantine, hold). Direct FK from excursion to inventory_wafer_lot drives lot containment workflows and excursion ',
+    `lot_process_run_id` BIGINT COMMENT 'Foreign key linking to process.lot_process_run. Business justification: A process excursion is detected during or after a specific lot process run. Linking excursion to lot_process_run enables direct traceability from the excursion event back to the specific lot execution',
+    `nonconformance_report_id` BIGINT COMMENT 'Foreign key linking to quality.nonconformance_report. Business justification: Fab excursion management requires an NCR to be opened for lot disposition and corrective action. Process engineers and quality teams use this link in MRB workflows to trace every excursion to its NCR.',
+    `order_id` BIGINT COMMENT 'Foreign key linking to order.order. Business justification: Process excursions in semiconductor fabs require direct linkage to affected customer orders for customer notification workflows (excursion.customer_notification_required/timestamp fields confirm this ',
+    `process_recipe_id` BIGINT COMMENT 'Reference to the specific process step where the excursion was detected. Links to process step master data.',
+    `spc_control_chart_id` BIGINT COMMENT 'Foreign key linking to process.spc_control_chart. Business justification: excursion has spc_rule_violated field indicating the excursion was triggered by an SPC rule violation on a specific control chart. Formalizing this as a FK to spc_control_chart enables direct navigati',
+    `step_id` BIGINT COMMENT 'Foreign key linking to process.process_step. Business justification: A process excursion occurs at a specific process step (e.g., etch rate excursion at metal etch step, overlay excursion at lithography step). Linking excursion to process_step is essential for process ',
+    `goods_receipt_id` BIGINT COMMENT 'Foreign key linking to supply.goods_receipt. Business justification: Process excursions caused by incoming material quality deviations must be traceable to the specific goods receipt (incoming lot) for containment and supplier notification. This FK supports the materia',
+    `material_master_id` BIGINT COMMENT 'Foreign key linking to supply.material_master. Business justification: Process excursions (SPC out-of-control events) are frequently triggered by incoming material quality deviations. Linking excursion to the suspect material master enables material-excursion correlation',
+    `tool_chamber_id` BIGINT COMMENT 'Foreign key linking to equipment.tool_chamber. Business justification: Excursions in semiconductor fabs are frequently chamber-specific — a single drifting chamber in a multi-chamber tool triggers the excursion. excursion links to fab_tool but not chamber, preventing cha',
+    `tool_downtime_id` BIGINT COMMENT 'Foreign key linking to equipment.tool_downtime. Business justification: An excursion detection often results in tool downtime (quarantine, investigation hold). Linking excursion to the resulting tool_downtime enables OEE impact analysis of excursion-driven downtime and su',
+    `maintenance_event_id` BIGINT COMMENT 'Foreign key linking to equipment.maintenance_event. Business justification: Excursions are frequently triggered by or correlated with maintenance events (post-PM drift, incorrect part installation). Linking excursion to maintenance_event enables post-maintenance excursion rat',
+    `wafer_probe_run_id` BIGINT COMMENT 'Foreign key linking to test.wafer_probe_run. Business justification: Process excursions are frequently detected or confirmed via probe yield drops. Linking excursion to wafer_probe_run enables direct traceability from a process excursion to the probe run that triggered',
+    `affected_die_count` STRING COMMENT 'Estimated total number of die units affected by this excursion. Used for financial impact assessment and customer notification.',
+    `affected_lot_count` STRING COMMENT 'Total number of wafer lots affected by this excursion event. Used for impact assessment and containment scope determination.',
+    `affected_wafer_count` STRING COMMENT 'Total number of individual wafers affected by this excursion across all lots. Used for yield impact calculation.',
+    `containment_action_taken` STRING COMMENT 'Immediate containment actions taken upon excursion detection. Describes steps such as lot hold, equipment quarantine, process parameter adjustment, or rework initiation.',
+    `containment_timestamp` TIMESTAMP COMMENT 'Date and time when containment actions were completed. Used to measure response time and containment effectiveness.',
+    `corrective_action_reference` STRING COMMENT 'Reference number or identifier for the corrective action plan. Links to the formal corrective and preventive action (CAPA) system or Out-of-Control Action Plan (OCAP) record.',
+    `created_timestamp` TIMESTAMP COMMENT 'Date and time when this excursion record was first created in the system. Audit trail for record creation.',
+    `customer_notification_required` BOOLEAN COMMENT 'Flag indicating whether customer notification is required for this excursion. True if the excursion impacts shipped product or customer-specific quality requirements.',
+    `customer_notification_timestamp` TIMESTAMP COMMENT 'Date and time when customer was notified of the excursion. Used for compliance tracking and customer relationship management.',
+    `defect_density_per_cm2` DECIMAL(18,2) COMMENT 'Measured defect density in defects per square centimeter for the affected wafers. Key metric for yield impact assessment.',
+    `detection_source` STRING COMMENT 'Source system or method that detected the excursion event. Indicates whether the excursion was identified through Statistical Process Control (SPC), inspection, metrology measurement, electrical test, operator observation, or automated monitoring system.. Valid values are `SPC|inspection|metrology|electrical_test|operator|automated_system`',
+    `detection_timestamp` TIMESTAMP COMMENT 'Date and time when the excursion was first detected. Represents the business event time of excursion identification.',
+    `disposition` STRING COMMENT 'Final disposition decision for the affected material. Determines whether lots are released, reworked, scrapped, returned, or require additional review.. Valid values are `use_as_is|rework|scrap|return_to_vendor|engineering_review|customer_notification`',
+    `disposition_timestamp` TIMESTAMP COMMENT 'Date and time when the final disposition decision was made. Marks the completion of the excursion investigation and material release decision.',
+    `estimated_financial_impact_usd` DECIMAL(18,2) COMMENT 'Estimated financial impact of the excursion in US dollars. Includes scrap cost, rework cost, yield loss, and potential customer claims.',
+    `estimated_yield_impact_percent` DECIMAL(18,2) COMMENT 'Estimated percentage point impact on wafer yield due to this excursion. Calculated based on defect density, affected area, and historical correlation data.',
+    `excursion_number` STRING COMMENT 'Business identifier for the excursion event. Human-readable reference number used for tracking and communication across engineering teams.',
+    `excursion_type` STRING COMMENT 'Classification of the excursion event. Categorizes whether the excursion is due to out-of-specification parameters, out-of-control process conditions, yield loss, excessive defect density, parametric drift, or equipment fault.. Valid values are `out_of_spec|out_of_control|yield_loss|defect_density|parametric_drift|equipment_fault`',
+    `investigation_status` STRING COMMENT 'Current lifecycle status of the excursion investigation. Tracks progression from initial detection through root cause analysis to closure.. Valid values are `open|investigating|root_cause_identified|corrective_action_pending|closed|cancelled`',
+    `last_modified_timestamp` TIMESTAMP COMMENT 'Date and time when this excursion record was last updated. Audit trail for tracking investigation progress and status changes.',
+    `lower_control_limit` DECIMAL(18,2) COMMENT 'Lower control limit from the Statistical Process Control (SPC) chart at the time of excursion detection. Used to determine out-of-control conditions.',
+    `measured_value` DECIMAL(18,2) COMMENT 'Actual measured value of the parameter that triggered the excursion. Used for root cause analysis and process capability assessment.',
+    `notes` STRING COMMENT 'Additional notes, comments, or observations related to the excursion investigation. Captures engineering insights and lessons learned.',
+    `owner_organization` STRING COMMENT 'Engineering organization or department responsible for this excursion. Examples include Process Integration, Lithography, Etch, Thin Films, or Metrology.',
+    `parameter_name` STRING COMMENT 'Name of the process parameter that triggered the excursion. Examples include critical dimension (CD), film thickness, overlay, resistance, or other measured characteristics.',
+    `root_cause_category` STRING COMMENT 'High-level classification of the root cause. Categories include equipment malfunction, material variation, process recipe issue, human error, environmental condition, or unknown pending investigation.. Valid values are `equipment|material|process|human|environmental|unknown`',
+    `root_cause_description` STRING COMMENT 'Detailed description of the identified root cause. Captures engineering analysis findings and technical explanation of the excursion mechanism.',
+    `severity_level` STRING COMMENT 'Severity classification of the excursion impact. Minor excursions require monitoring, major excursions require corrective action, and critical excursions require immediate containment and investigation.. Valid values are `minor|major|critical`',
+    `spc_rule_violated` STRING COMMENT 'Specific Statistical Process Control (SPC) rule that was violated to trigger the excursion. Examples include Western Electric rules, Nelson rules, or custom fab-specific control rules.',
+    `specification_lower_limit` DECIMAL(18,2) COMMENT 'Lower specification limit for the parameter. Used to determine out-of-specification conditions and product quality impact.',
+    `specification_upper_limit` DECIMAL(18,2) COMMENT 'Upper specification limit for the parameter. Used to determine out-of-specification conditions and product quality impact.',
+    `target_value` DECIMAL(18,2) COMMENT 'Target specification value for the parameter. Used to calculate deviation magnitude and assess excursion severity.',
+    `unit_of_measure` STRING COMMENT 'Unit of measure for the parameter values. Examples include nanometers (nm), angstroms, ohms, degrees Celsius, or other engineering units.',
+    `upper_control_limit` DECIMAL(18,2) COMMENT 'Upper control limit from the Statistical Process Control (SPC) chart at the time of excursion detection. Used to determine out-of-control conditions.',
+    `yield_loss_mode` STRING COMMENT 'Classification of the yield loss mechanism. Parametric indicates parameter drift, systematic indicates repeatable pattern defects, random indicates sporadic defects, electrical indicates functional test failures, none indicates no yield impact detected.. Valid values are `parametric|systematic|random|electrical|none`',
+    CONSTRAINT pk_excursion PRIMARY KEY(`excursion_id`)
+) COMMENT 'Process excursion record capturing any significant out-of-spec, out-of-control, or yield-impacting condition detected during wafer manufacturing that requires formal engineering investigation. Encompasses all yield loss events as a unified excursion type. Captures excursion detection source (SPC, inspection, metrology, electrical test), affected lot list, process step, excursion severity (minor/major/critical), yield loss mode (parametric, systematic, random, electrical), defect density, affected die count, estimated yield impact, detection timestamp, containment actions taken, root cause category, corrective action reference, investigation status, and final disposition. Serves as the single parent investigation record for all process-related yield and excursion events. Distinct from individual OCAP actions which are the immediate corrective responses. SSOT for process excursion and yield loss tracking; quality domain owns outgoing quality excursions and customer returns.';
+
 -- ========= FOREIGN KEYS =========
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`recipe` ADD CONSTRAINT `fk_process_recipe_step_id` FOREIGN KEY (`step_id`) REFERENCES `vibe_semiconductors_v1`.`process`.`step`(`step_id`);
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`step` ADD CONSTRAINT `fk_process_step_flow_id` FOREIGN KEY (`flow_id`) REFERENCES `vibe_semiconductors_v1`.`process`.`flow`(`flow_id`);
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`step` ADD CONSTRAINT `fk_process_step_recipe_id` FOREIGN KEY (`recipe_id`) REFERENCES `vibe_semiconductors_v1`.`process`.`recipe`(`recipe_id`);
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`lot_process_run` ADD CONSTRAINT `fk_process_lot_process_run_recipe_id` FOREIGN KEY (`recipe_id`) REFERENCES `vibe_semiconductors_v1`.`process`.`recipe`(`recipe_id`);
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`lot_process_run` ADD CONSTRAINT `fk_process_lot_process_run_step_id` FOREIGN KEY (`step_id`) REFERENCES `vibe_semiconductors_v1`.`process`.`step`(`step_id`);
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`spc_control_chart` ADD CONSTRAINT `fk_process_spc_control_chart_step_id` FOREIGN KEY (`step_id`) REFERENCES `vibe_semiconductors_v1`.`process`.`step`(`step_id`);
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`spc_measurement` ADD CONSTRAINT `fk_process_spc_measurement_flow_id` FOREIGN KEY (`flow_id`) REFERENCES `vibe_semiconductors_v1`.`process`.`flow`(`flow_id`);
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`spc_measurement` ADD CONSTRAINT `fk_process_spc_measurement_lot_process_run_id` FOREIGN KEY (`lot_process_run_id`) REFERENCES `vibe_semiconductors_v1`.`process`.`lot_process_run`(`lot_process_run_id`);
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`spc_measurement` ADD CONSTRAINT `fk_process_spc_measurement_recipe_id` FOREIGN KEY (`recipe_id`) REFERENCES `vibe_semiconductors_v1`.`process`.`recipe`(`recipe_id`);
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`spc_measurement` ADD CONSTRAINT `fk_process_spc_measurement_spc_control_chart_id` FOREIGN KEY (`spc_control_chart_id`) REFERENCES `vibe_semiconductors_v1`.`process`.`spc_control_chart`(`spc_control_chart_id`);
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`spc_measurement` ADD CONSTRAINT `fk_process_spc_measurement_step_id` FOREIGN KEY (`step_id`) REFERENCES `vibe_semiconductors_v1`.`process`.`step`(`step_id`);
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`qualification` ADD CONSTRAINT `fk_process_qualification_flow_id` FOREIGN KEY (`flow_id`) REFERENCES `vibe_semiconductors_v1`.`process`.`flow`(`flow_id`);
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`qualification` ADD CONSTRAINT `fk_process_qualification_recipe_id` FOREIGN KEY (`recipe_id`) REFERENCES `vibe_semiconductors_v1`.`process`.`recipe`(`recipe_id`);
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`qualification` ADD CONSTRAINT `fk_process_qualification_step_id` FOREIGN KEY (`step_id`) REFERENCES `vibe_semiconductors_v1`.`process`.`step`(`step_id`);
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`qualification` ADD CONSTRAINT `fk_process_qualification_tertiary_process_flow_id` FOREIGN KEY (`tertiary_process_flow_id`) REFERENCES `vibe_semiconductors_v1`.`process`.`flow`(`flow_id`);
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`yield_loss_event` ADD CONSTRAINT `fk_process_yield_loss_event_lot_process_run_id` FOREIGN KEY (`lot_process_run_id`) REFERENCES `vibe_semiconductors_v1`.`process`.`lot_process_run`(`lot_process_run_id`);
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`yield_loss_event` ADD CONSTRAINT `fk_process_yield_loss_event_recipe_id` FOREIGN KEY (`recipe_id`) REFERENCES `vibe_semiconductors_v1`.`process`.`recipe`(`recipe_id`);
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`yield_loss_event` ADD CONSTRAINT `fk_process_yield_loss_event_spc_control_chart_id` FOREIGN KEY (`spc_control_chart_id`) REFERENCES `vibe_semiconductors_v1`.`process`.`spc_control_chart`(`spc_control_chart_id`);
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`yield_loss_event` ADD CONSTRAINT `fk_process_yield_loss_event_step_id` FOREIGN KEY (`step_id`) REFERENCES `vibe_semiconductors_v1`.`process`.`step`(`step_id`);
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`defect_inspection_result` ADD CONSTRAINT `fk_process_defect_inspection_result_recipe_id` FOREIGN KEY (`recipe_id`) REFERENCES `vibe_semiconductors_v1`.`process`.`recipe`(`recipe_id`);
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`defect_inspection_result` ADD CONSTRAINT `fk_process_defect_inspection_result_lot_process_run_id` FOREIGN KEY (`lot_process_run_id`) REFERENCES `vibe_semiconductors_v1`.`process`.`lot_process_run`(`lot_process_run_id`);
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`defect_inspection_result` ADD CONSTRAINT `fk_process_defect_inspection_result_spc_control_chart_id` FOREIGN KEY (`spc_control_chart_id`) REFERENCES `vibe_semiconductors_v1`.`process`.`spc_control_chart`(`spc_control_chart_id`);
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`defect_inspection_result` ADD CONSTRAINT `fk_process_defect_inspection_result_step_id` FOREIGN KEY (`step_id`) REFERENCES `vibe_semiconductors_v1`.`process`.`step`(`step_id`);
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`metrology_measurement` ADD CONSTRAINT `fk_process_metrology_measurement_lot_process_run_id` FOREIGN KEY (`lot_process_run_id`) REFERENCES `vibe_semiconductors_v1`.`process`.`lot_process_run`(`lot_process_run_id`);
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`metrology_measurement` ADD CONSTRAINT `fk_process_metrology_measurement_recipe_id` FOREIGN KEY (`recipe_id`) REFERENCES `vibe_semiconductors_v1`.`process`.`recipe`(`recipe_id`);
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`metrology_measurement` ADD CONSTRAINT `fk_process_metrology_measurement_spc_control_chart_id` FOREIGN KEY (`spc_control_chart_id`) REFERENCES `vibe_semiconductors_v1`.`process`.`spc_control_chart`(`spc_control_chart_id`);
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`metrology_measurement` ADD CONSTRAINT `fk_process_metrology_measurement_step_id` FOREIGN KEY (`step_id`) REFERENCES `vibe_semiconductors_v1`.`process`.`step`(`step_id`);
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`excursion` ADD CONSTRAINT `fk_process_excursion_lot_process_run_id` FOREIGN KEY (`lot_process_run_id`) REFERENCES `vibe_semiconductors_v1`.`process`.`lot_process_run`(`lot_process_run_id`);
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`excursion` ADD CONSTRAINT `fk_process_excursion_spc_control_chart_id` FOREIGN KEY (`spc_control_chart_id`) REFERENCES `vibe_semiconductors_v1`.`process`.`spc_control_chart`(`spc_control_chart_id`);
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`excursion` ADD CONSTRAINT `fk_process_excursion_step_id` FOREIGN KEY (`step_id`) REFERENCES `vibe_semiconductors_v1`.`process`.`step`(`step_id`);
 
 -- ========= TAGS =========
 ALTER SCHEMA `vibe_semiconductors_v1`.`process` SET TAGS ('dbx_division' = 'operations');
@@ -492,18 +557,15 @@ ALTER TABLE `vibe_semiconductors_v1`.`process`.`flow` SET TAGS ('dbx_data_type' 
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`flow` SET TAGS ('dbx_subdomain' = 'recipe_engineering');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`flow` ALTER COLUMN `flow_id` SET TAGS ('dbx_business_glossary_term' = 'Process Flow ID');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`flow` ALTER COLUMN `family_id` SET TAGS ('dbx_business_glossary_term' = 'Family Id (Foreign Key)');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`flow` ALTER COLUMN `ic_catalog_id` SET TAGS ('dbx_business_glossary_term' = 'Ic Catalog Id (Foreign Key)');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`flow` ALTER COLUMN `pdk_id` SET TAGS ('dbx_business_glossary_term' = 'Process Design Kit (PDK) ID');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`flow` ALTER COLUMN `process_node_id` SET TAGS ('dbx_business_glossary_term' = 'Process Node Id (Foreign Key)');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`flow` ALTER COLUMN `quality_spec_id` SET TAGS ('dbx_business_glossary_term' = 'Quality Spec Id (Foreign Key)');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`flow` ALTER COLUMN `baseline_cpk` SET TAGS ('dbx_business_glossary_term' = 'Baseline Process Capability Index (Cpk)');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`flow` ALTER COLUMN `beol_step_count` SET TAGS ('dbx_business_glossary_term' = 'Back End of Line (BEOL) Step Count');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`flow` ALTER COLUMN `flow_code` SET TAGS ('dbx_business_glossary_term' = 'Process Flow Code');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`flow` ALTER COLUMN `cool_optimization_enabled` SET TAGS ('dbx_business_glossary_term' = 'Cool Optimization Enabled');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`flow` ALTER COLUMN `cooling_step_count` SET TAGS ('dbx_business_glossary_term' = 'Cooling Step Count');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`flow` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`flow` ALTER COLUMN `critical_layer_count` SET TAGS ('dbx_business_glossary_term' = 'Critical Layer Count');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`flow` ALTER COLUMN `cycle_time_days` SET TAGS ('dbx_business_glossary_term' = 'Cycle Time (Days)');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`flow` ALTER COLUMN `flow_description` SET TAGS ('dbx_business_glossary_term' = 'Process Flow Description');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`flow` ALTER COLUMN `device_family` SET TAGS ('dbx_business_glossary_term' = 'Device Family');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`flow` ALTER COLUMN `dfm_rule_set_version` SET TAGS ('dbx_business_glossary_term' = 'Design for Manufacturability (DFM) Rule Set Version');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`flow` ALTER COLUMN `effective_end_date` SET TAGS ('dbx_business_glossary_term' = 'Effective End Date');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`flow` ALTER COLUMN `effective_start_date` SET TAGS ('dbx_business_glossary_term' = 'Effective Start Date');
@@ -511,18 +573,18 @@ ALTER TABLE `vibe_semiconductors_v1`.`process`.`flow` ALTER COLUMN `euv_layer_co
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`flow` ALTER COLUMN `fab_site_code` SET TAGS ('dbx_business_glossary_term' = 'Fabrication (FAB) Site Code');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`flow` ALTER COLUMN `feol_step_count` SET TAGS ('dbx_business_glossary_term' = 'Front End of Line (FEOL) Step Count');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`flow` ALTER COLUMN `flow_type` SET TAGS ('dbx_business_glossary_term' = 'Process Flow Type');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`flow` ALTER COLUMN `for_node` SET TAGS ('dbx_business_glossary_term' = 'Flow For Node');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`flow` ALTER COLUMN `is_baseline_flow` SET TAGS ('dbx_business_glossary_term' = 'Is Baseline Flow');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`flow` ALTER COLUMN `last_modified_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Last Modified Timestamp');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`flow` ALTER COLUMN `lithography_layer_count` SET TAGS ('dbx_business_glossary_term' = 'Lithography Layer Count');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`flow` ALTER COLUMN `metal_layer_count` SET TAGS ('dbx_business_glossary_term' = 'Metal Layer Count');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`flow` ALTER COLUMN `model_lineage_source` SET TAGS ('dbx_business_glossary_term' = 'Model Lineage Source');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`flow` ALTER COLUMN `model_lineage_source` SET TAGS ('dbx_governance' = 'true');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`flow` ALTER COLUMN `model_lineage_source` SET TAGS ('dbx_lineage' = 'true');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`flow` ALTER COLUMN `mol_step_count` SET TAGS ('dbx_business_glossary_term' = 'Middle of Line (MOL) Step Count');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`flow` ALTER COLUMN `flow_name` SET TAGS ('dbx_business_glossary_term' = 'Process Flow Name');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`flow` ALTER COLUMN `flow_name` SET TAGS ('dbx_pii_detected' = 'true');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`flow` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Process Flow Notes');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`flow` ALTER COLUMN `opc_rule_set_version` SET TAGS ('dbx_business_glossary_term' = 'Optical Proximity Correction (OPC) Rule Set Version');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`flow` ALTER COLUMN `owner_organization` SET TAGS ('dbx_business_glossary_term' = 'Owner Organization');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`flow` ALTER COLUMN `process_flow_description` SET TAGS ('dbx_business_glossary_term' = 'Process Flow Description');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`flow` ALTER COLUMN `qualification_date` SET TAGS ('dbx_business_glossary_term' = 'Qualification Date');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`flow` ALTER COLUMN `qualification_status` SET TAGS ('dbx_business_glossary_term' = 'Qualification Status');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`flow` ALTER COLUMN `qualification_status` SET TAGS ('dbx_value_regex' = 'development|qualification|qualified|production|deprecated|obsolete');
@@ -530,14 +592,15 @@ ALTER TABLE `vibe_semiconductors_v1`.`process`.`flow` ALTER COLUMN `revision` SE
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`flow` ALTER COLUMN `supports_multi_patterning` SET TAGS ('dbx_business_glossary_term' = 'Supports Multi-Patterning');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`flow` ALTER COLUMN `target_yield_percent` SET TAGS ('dbx_business_glossary_term' = 'Target Yield Percentage');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`flow` ALTER COLUMN `total_step_count` SET TAGS ('dbx_business_glossary_term' = 'Total Step Count');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`flow` ALTER COLUMN `waste_heat_recovery_enabled` SET TAGS ('dbx_business_glossary_term' = 'Waste Heat Recovery Enabled');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`step` SET TAGS ('dbx_data_type' = 'master_data');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`step` SET TAGS ('dbx_subdomain' = 'recipe_engineering');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`step` ALTER COLUMN `step_id` SET TAGS ('dbx_business_glossary_term' = 'Process Step Identifier (ID)');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`step` ALTER COLUMN `fab_facility_id` SET TAGS ('dbx_business_glossary_term' = 'Technology Node Identifier (ID)');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`step` ALTER COLUMN `material_master_id` SET TAGS ('dbx_business_glossary_term' = 'Material Master Id (Foreign Key)');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`step` ALTER COLUMN `fab_tool_id` SET TAGS ('dbx_business_glossary_term' = 'Primary Fab Tool Id (Foreign Key)');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`step` ALTER COLUMN `technology_node_id` SET TAGS ('dbx_business_glossary_term' = 'Technology Node Identifier (ID)');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`step` ALTER COLUMN `flow_id` SET TAGS ('dbx_business_glossary_term' = 'Process Process Flow Id (Foreign Key)');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`step` ALTER COLUMN `recipe_id` SET TAGS ('dbx_business_glossary_term' = 'Recipe Identifier (ID)');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`step` ALTER COLUMN `tool_chamber_id` SET TAGS ('dbx_business_glossary_term' = 'Primary Chamber Id (Foreign Key)');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`step` ALTER COLUMN `cooling_target_temperature_celsius` SET TAGS ('dbx_business_glossary_term' = 'Cooling Target Temperature Celsius');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`step` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`step` ALTER COLUMN `cycle_time_target_minutes` SET TAGS ('dbx_business_glossary_term' = 'Cycle Time Target (Minutes)');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`step` ALTER COLUMN `step_description` SET TAGS ('dbx_business_glossary_term' = 'Step Description');
@@ -546,15 +609,12 @@ ALTER TABLE `vibe_semiconductors_v1`.`process`.`step` ALTER COLUMN `effective_en
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`step` ALTER COLUMN `effective_start_date` SET TAGS ('dbx_business_glossary_term' = 'Effective Start Date');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`step` ALTER COLUMN `energy_target_kev` SET TAGS ('dbx_business_glossary_term' = 'Energy Target (keV)');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`step` ALTER COLUMN `gas_flow_rate_sccm` SET TAGS ('dbx_business_glossary_term' = 'Gas Flow Rate (SCCM)');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`step` ALTER COLUMN `is_cooling_step` SET TAGS ('dbx_business_glossary_term' = 'Is Cooling Step');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`step` ALTER COLUMN `is_critical_step` SET TAGS ('dbx_business_glossary_term' = 'Critical Step Flag');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`step` ALTER COLUMN `is_rework_allowed` SET TAGS ('dbx_business_glossary_term' = 'Rework Allowed Flag');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`step` ALTER COLUMN `last_modified_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Last Modified Timestamp');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`step` ALTER COLUMN `meef_value` SET TAGS ('dbx_business_glossary_term' = 'Mask Error Enhancement Factor (MEEF) Value');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`step` ALTER COLUMN `model_lineage_source` SET TAGS ('dbx_business_glossary_term' = 'Model Lineage Source');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`step` ALTER COLUMN `model_lineage_source` SET TAGS ('dbx_governance' = 'true');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`step` ALTER COLUMN `model_lineage_source` SET TAGS ('dbx_lineage' = 'true');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`step` ALTER COLUMN `step_name` SET TAGS ('dbx_business_glossary_term' = 'Step Name');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`step` ALTER COLUMN `step_name` SET TAGS ('dbx_pii_detected' = 'true');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`step` ALTER COLUMN `operation_type` SET TAGS ('dbx_business_glossary_term' = 'Operation Type');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`step` ALTER COLUMN `power_setpoint_watts` SET TAGS ('dbx_business_glossary_term' = 'Power Setpoint (Watts)');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`step` ALTER COLUMN `pressure_setpoint_torr` SET TAGS ('dbx_business_glossary_term' = 'Pressure Setpoint (Torr)');
@@ -578,8 +638,11 @@ ALTER TABLE `vibe_semiconductors_v1`.`process`.`recipe` SET TAGS ('dbx_data_type
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`recipe` SET TAGS ('dbx_subdomain' = 'recipe_engineering');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`recipe` ALTER COLUMN `recipe_id` SET TAGS ('dbx_business_glossary_term' = 'Recipe Identifier');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`recipe` ALTER COLUMN `fab_tool_id` SET TAGS ('dbx_business_glossary_term' = 'Default Fab Tool Id (Foreign Key)');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`recipe` ALTER COLUMN `step_id` SET TAGS ('dbx_business_glossary_term' = 'Process Step Id');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`recipe` ALTER COLUMN `technology_node_id` SET TAGS ('dbx_business_glossary_term' = 'Technology Node Identifier (ID)');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`recipe` ALTER COLUMN `fab_facility_id` SET TAGS ('dbx_business_glossary_term' = 'Technology Node Identifier (ID)');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`recipe` ALTER COLUMN `ic_catalog_id` SET TAGS ('dbx_business_glossary_term' = 'Ic Catalog Id (Foreign Key)');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`recipe` ALTER COLUMN `material_master_id` SET TAGS ('dbx_business_glossary_term' = 'Material Master Id (Foreign Key)');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`recipe` ALTER COLUMN `tool_chamber_id` SET TAGS ('dbx_business_glossary_term' = 'Primary Tool Chamber Id (Foreign Key)');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`recipe` ALTER COLUMN `process_recipe_id` SET TAGS ('dbx_business_glossary_term' = 'Process Step Identifier (ID)');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`recipe` ALTER COLUMN `approval_status` SET TAGS ('dbx_business_glossary_term' = 'Recipe Approval Status');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`recipe` ALTER COLUMN `approval_status` SET TAGS ('dbx_value_regex' = 'draft|under_review|approved|qualified|deprecated|obsolete');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`recipe` ALTER COLUMN `chamber_configuration` SET TAGS ('dbx_business_glossary_term' = 'Chamber Configuration');
@@ -588,8 +651,6 @@ ALTER TABLE `vibe_semiconductors_v1`.`process`.`recipe` ALTER COLUMN `cmp_platen
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`recipe` ALTER COLUMN `cmp_removal_target_nm` SET TAGS ('dbx_business_glossary_term' = 'Chemical Mechanical Planarization (CMP) Removal Target (nanometers)');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`recipe` ALTER COLUMN `cmp_slurry_type` SET TAGS ('dbx_business_glossary_term' = 'Chemical Mechanical Planarization (CMP) Slurry Type');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`recipe` ALTER COLUMN `cmp_table_speed_rpm` SET TAGS ('dbx_business_glossary_term' = 'Chemical Mechanical Planarization (CMP) Table Speed (revolutions per minute)');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`recipe` ALTER COLUMN `coolant_type` SET TAGS ('dbx_business_glossary_term' = 'Coolant Type');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`recipe` ALTER COLUMN `cooling_rate_celsius_per_minute` SET TAGS ('dbx_business_glossary_term' = 'Cooling Rate Celsius Per Minute');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`recipe` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Recipe Created Timestamp');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`recipe` ALTER COLUMN `deposition_method` SET TAGS ('dbx_business_glossary_term' = 'Deposition Method');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`recipe` ALTER COLUMN `deposition_pressure_torr` SET TAGS ('dbx_business_glossary_term' = 'Deposition Pressure (Torr)');
@@ -616,26 +677,22 @@ ALTER TABLE `vibe_semiconductors_v1`.`process`.`recipe` ALTER COLUMN `litho_illu
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`recipe` ALTER COLUMN `litho_numerical_aperture` SET TAGS ('dbx_business_glossary_term' = 'Lithography Numerical Aperture (NA)');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`recipe` ALTER COLUMN `litho_scanner_model` SET TAGS ('dbx_business_glossary_term' = 'Lithography Scanner Model');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`recipe` ALTER COLUMN `litho_wavelength_nm` SET TAGS ('dbx_business_glossary_term' = 'Lithography Wavelength (nanometers)');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`recipe` ALTER COLUMN `model_lineage_source` SET TAGS ('dbx_business_glossary_term' = 'Model Lineage Source');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`recipe` ALTER COLUMN `model_lineage_source` SET TAGS ('dbx_governance' = 'true');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`recipe` ALTER COLUMN `model_lineage_source` SET TAGS ('dbx_lineage' = 'true');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`recipe` ALTER COLUMN `modified_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Recipe Modified Timestamp');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`recipe` ALTER COLUMN `recipe_name` SET TAGS ('dbx_business_glossary_term' = 'Recipe Name');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`recipe` ALTER COLUMN `recipe_name` SET TAGS ('dbx_pii_detected' = 'true');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`recipe` ALTER COLUMN `process_type` SET TAGS ('dbx_business_glossary_term' = 'Process Type');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`recipe` ALTER COLUMN `tool_class` SET TAGS ('dbx_business_glossary_term' = 'Tool Class');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`recipe` ALTER COLUMN `version` SET TAGS ('dbx_business_glossary_term' = 'Recipe Version');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`lot_process_run` SET TAGS ('dbx_data_type' = 'transactional_data');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`lot_process_run` SET TAGS ('dbx_subdomain' = 'manufacturing_execution');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`lot_process_run` ALTER COLUMN `lot_process_run_id` SET TAGS ('dbx_business_glossary_term' = 'Lot Process Run ID');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`lot_process_run` ALTER COLUMN `account_id` SET TAGS ('dbx_business_glossary_term' = 'Account Id (Foreign Key)');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`lot_process_run` ALTER COLUMN `calibration_record_id` SET TAGS ('dbx_business_glossary_term' = 'Calibration Record Id (Foreign Key)');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`lot_process_run` ALTER COLUMN `fab_tool_id` SET TAGS ('dbx_business_glossary_term' = 'Equipment ID');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`lot_process_run` ALTER COLUMN `ic_catalog_id` SET TAGS ('dbx_business_glossary_term' = 'Ic Catalog Id (Foreign Key)');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`lot_process_run` ALTER COLUMN `inspection_lot_id` SET TAGS ('dbx_business_glossary_term' = 'Inspection Lot Id (Foreign Key)');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`lot_process_run` ALTER COLUMN `inventory_wafer_lot_id` SET TAGS ('dbx_business_glossary_term' = 'Inventory Wafer Lot Id (Foreign Key)');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`lot_process_run` ALTER COLUMN `nonconformance_report_id` SET TAGS ('dbx_business_glossary_term' = 'Nonconformance Report Id (Foreign Key)');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`lot_process_run` ALTER COLUMN `ic_catalog_id` SET TAGS ('dbx_business_glossary_term' = 'Experimental Lot Id (Foreign Key)');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`lot_process_run` ALTER COLUMN `recipe_id` SET TAGS ('dbx_business_glossary_term' = 'Fabrication Process Recipe ID');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`lot_process_run` ALTER COLUMN `process_recipe_id` SET TAGS ('dbx_business_glossary_term' = 'Process Step ID');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`lot_process_run` ALTER COLUMN `sku_id` SET TAGS ('dbx_business_glossary_term' = 'Sku Id (Foreign Key)');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`lot_process_run` ALTER COLUMN `step_id` SET TAGS ('dbx_business_glossary_term' = 'Process Step Id');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`lot_process_run` ALTER COLUMN `tapeout_id` SET TAGS ('dbx_business_glossary_term' = 'Tapeout Id (Foreign Key)');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`lot_process_run` ALTER COLUMN `tool_chamber_id` SET TAGS ('dbx_business_glossary_term' = 'Process Chamber ID');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`lot_process_run` ALTER COLUMN `tool_qualification_id` SET TAGS ('dbx_business_glossary_term' = 'Tool Qualification Id (Foreign Key)');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`lot_process_run` ALTER COLUMN `actual_end_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Actual Process End Timestamp');
@@ -665,19 +722,19 @@ ALTER TABLE `vibe_semiconductors_v1`.`process`.`lot_process_run` ALTER COLUMN `r
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`lot_process_run` ALTER COLUMN `run_number` SET TAGS ('dbx_business_glossary_term' = 'Process Run Number');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`lot_process_run` ALTER COLUMN `scrap_reason_code` SET TAGS ('dbx_business_glossary_term' = 'Scrap Reason Code');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`lot_process_run` ALTER COLUMN `wafer_count` SET TAGS ('dbx_business_glossary_term' = 'Wafer Count');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`lot_process_run` ALTER COLUMN `waste_heat_recovered_kwh` SET TAGS ('dbx_business_glossary_term' = 'Waste Heat Recovered Kwh');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`spc_control_chart` SET TAGS ('dbx_data_type' = 'master_data');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`spc_control_chart` SET TAGS ('dbx_subdomain' = 'quality_monitoring');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`spc_control_chart` ALTER COLUMN `spc_control_chart_id` SET TAGS ('dbx_business_glossary_term' = 'Spc Control Chart Identifier');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`spc_control_chart` ALTER COLUMN `fab_facility_id` SET TAGS ('dbx_business_glossary_term' = 'Technology Node ID');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`spc_control_chart` ALTER COLUMN `fab_tool_id` SET TAGS ('dbx_business_glossary_term' = 'Measurement Tool ID');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`spc_control_chart` ALTER COLUMN `ic_catalog_id` SET TAGS ('dbx_business_glossary_term' = 'Ic Catalog Id (Foreign Key)');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`spc_control_chart` ALTER COLUMN `quality_spec_id` SET TAGS ('dbx_business_glossary_term' = 'Quality Spec Id (Foreign Key)');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`spc_control_chart` ALTER COLUMN `process_recipe_id` SET TAGS ('dbx_business_glossary_term' = 'Process Step ID');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`spc_control_chart` ALTER COLUMN `step_id` SET TAGS ('dbx_business_glossary_term' = 'Process Step Id');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`spc_control_chart` ALTER COLUMN `technology_node_id` SET TAGS ('dbx_business_glossary_term' = 'Technology Node ID');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`spc_control_chart` ALTER COLUMN `tool_chamber_id` SET TAGS ('dbx_business_glossary_term' = 'Tool Chamber Id (Foreign Key)');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`spc_control_chart` ALTER COLUMN `wafer_id` SET TAGS ('dbx_business_glossary_term' = 'Wafer ID');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`spc_control_chart` ALTER COLUMN `baseline_data_points` SET TAGS ('dbx_business_glossary_term' = 'Baseline Data Points');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`spc_control_chart` ALTER COLUMN `chart_activation_date` SET TAGS ('dbx_business_glossary_term' = 'Chart Activation Date');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`spc_control_chart` ALTER COLUMN `chart_name` SET TAGS ('dbx_business_glossary_term' = 'Statistical Process Control (SPC) Chart Name');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`spc_control_chart` ALTER COLUMN `chart_name` SET TAGS ('dbx_pii_detected' = 'true');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`spc_control_chart` ALTER COLUMN `chart_owner` SET TAGS ('dbx_business_glossary_term' = 'Chart Owner');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`spc_control_chart` ALTER COLUMN `chart_retirement_date` SET TAGS ('dbx_business_glossary_term' = 'Chart Retirement Date');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`spc_control_chart` ALTER COLUMN `chart_status` SET TAGS ('dbx_business_glossary_term' = 'Chart Status');
@@ -694,10 +751,8 @@ ALTER TABLE `vibe_semiconductors_v1`.`process`.`spc_control_chart` ALTER COLUMN 
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`spc_control_chart` ALTER COLUMN `measured_value` SET TAGS ('dbx_business_glossary_term' = 'Measured Value');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`spc_control_chart` ALTER COLUMN `measurement_sequence_number` SET TAGS ('dbx_business_glossary_term' = 'Measurement Sequence Number');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`spc_control_chart` ALTER COLUMN `measurement_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Measurement Timestamp');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`spc_control_chart` ALTER COLUMN `model_lineage_source` SET TAGS ('dbx_business_glossary_term' = 'Model Lineage Source');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`spc_control_chart` ALTER COLUMN `model_lineage_source` SET TAGS ('dbx_governance' = 'true');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`spc_control_chart` ALTER COLUMN `model_lineage_source` SET TAGS ('dbx_lineage' = 'true');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`spc_control_chart` ALTER COLUMN `monitored_parameter_name` SET TAGS ('dbx_business_glossary_term' = 'Monitored Parameter Name');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`spc_control_chart` ALTER COLUMN `monitored_parameter_name` SET TAGS ('dbx_pii_detected' = 'true');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`spc_control_chart` ALTER COLUMN `ocap_reference_number` SET TAGS ('dbx_business_glossary_term' = 'Out-of-Control Action Plan (OCAP) Reference Number');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`spc_control_chart` ALTER COLUMN `parameter_unit_of_measure` SET TAGS ('dbx_business_glossary_term' = 'Parameter Unit of Measure');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`spc_control_chart` ALTER COLUMN `process_action_taken` SET TAGS ('dbx_business_glossary_term' = 'Process Action Taken');
@@ -707,13 +762,7 @@ ALTER TABLE `vibe_semiconductors_v1`.`process`.`spc_control_chart` ALTER COLUMN 
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`spc_control_chart` ALTER COLUMN `sample_size` SET TAGS ('dbx_business_glossary_term' = 'Sample Size');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`spc_control_chart` ALTER COLUMN `sampling_frequency` SET TAGS ('dbx_business_glossary_term' = 'Sampling Frequency');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`spc_control_chart` ALTER COLUMN `site_x_coordinate` SET TAGS ('dbx_business_glossary_term' = 'Site X Coordinate');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`spc_control_chart` ALTER COLUMN `site_x_coordinate` SET TAGS ('dbx_pii_geolocation' = 'true');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`spc_control_chart` ALTER COLUMN `site_x_coordinate` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`spc_control_chart` ALTER COLUMN `site_x_coordinate` SET TAGS ('dbx_classification' = 'confidential');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`spc_control_chart` ALTER COLUMN `site_y_coordinate` SET TAGS ('dbx_business_glossary_term' = 'Site Y Coordinate');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`spc_control_chart` ALTER COLUMN `site_y_coordinate` SET TAGS ('dbx_pii_geolocation' = 'true');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`spc_control_chart` ALTER COLUMN `site_y_coordinate` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`spc_control_chart` ALTER COLUMN `site_y_coordinate` SET TAGS ('dbx_classification' = 'confidential');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`spc_control_chart` ALTER COLUMN `specification_lower_limit` SET TAGS ('dbx_business_glossary_term' = 'Specification Lower Limit (LSL)');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`spc_control_chart` ALTER COLUMN `specification_upper_limit` SET TAGS ('dbx_business_glossary_term' = 'Specification Upper Limit (USL)');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`spc_control_chart` ALTER COLUMN `target_value` SET TAGS ('dbx_business_glossary_term' = 'Target Value');
@@ -722,13 +771,17 @@ ALTER TABLE `vibe_semiconductors_v1`.`process`.`spc_control_chart` ALTER COLUMN 
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`spc_measurement` SET TAGS ('dbx_data_type' = 'transactional_data');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`spc_measurement` SET TAGS ('dbx_subdomain' = 'quality_monitoring');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`spc_measurement` ALTER COLUMN `spc_measurement_id` SET TAGS ('dbx_business_glossary_term' = 'Statistical Process Control (SPC) Measurement ID');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`spc_measurement` ALTER COLUMN `equipment_process_recipe_id` SET TAGS ('dbx_business_glossary_term' = 'Equipment Process Recipe Id (Foreign Key)');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`spc_measurement` ALTER COLUMN `fab_facility_id` SET TAGS ('dbx_business_glossary_term' = 'Technology Node ID');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`spc_measurement` ALTER COLUMN `fab_tool_id` SET TAGS ('dbx_business_glossary_term' = 'Metrology Tool ID');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`spc_measurement` ALTER COLUMN `fabrication_wafer_lot_id` SET TAGS ('dbx_business_glossary_term' = 'Fabrication Wafer Lot ID');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`spc_measurement` ALTER COLUMN `flow_id` SET TAGS ('dbx_business_glossary_term' = 'Sampling Plan ID');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`spc_measurement` ALTER COLUMN `ic_catalog_id` SET TAGS ('dbx_business_glossary_term' = 'Ic Catalog Id (Foreign Key)');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`spc_measurement` ALTER COLUMN `lot_process_run_id` SET TAGS ('dbx_business_glossary_term' = 'Lot Process Run Id (Foreign Key)');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`spc_measurement` ALTER COLUMN `nonconformance_report_id` SET TAGS ('dbx_business_glossary_term' = 'Nonconformance Report Id (Foreign Key)');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`spc_measurement` ALTER COLUMN `process_recipe_id` SET TAGS ('dbx_business_glossary_term' = 'Process Step ID');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`spc_measurement` ALTER COLUMN `recipe_id` SET TAGS ('dbx_business_glossary_term' = 'Recipe ID');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`spc_measurement` ALTER COLUMN `spc_control_chart_id` SET TAGS ('dbx_business_glossary_term' = 'Control Chart ID');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`spc_measurement` ALTER COLUMN `technology_node_id` SET TAGS ('dbx_business_glossary_term' = 'Technology Node ID');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`spc_measurement` ALTER COLUMN `step_id` SET TAGS ('dbx_business_glossary_term' = 'Process Step Id (Foreign Key)');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`spc_measurement` ALTER COLUMN `tool_chamber_id` SET TAGS ('dbx_business_glossary_term' = 'Tool Chamber Id (Foreign Key)');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`spc_measurement` ALTER COLUMN `wafer_id` SET TAGS ('dbx_business_glossary_term' = 'Wafer ID');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`spc_measurement` ALTER COLUMN `comments` SET TAGS ('dbx_business_glossary_term' = 'Comments');
@@ -743,25 +796,17 @@ ALTER TABLE `vibe_semiconductors_v1`.`process`.`spc_measurement` ALTER COLUMN `m
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`spc_measurement` ALTER COLUMN `measurement_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Measurement Timestamp');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`spc_measurement` ALTER COLUMN `measurement_type` SET TAGS ('dbx_business_glossary_term' = 'Measurement Type');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`spc_measurement` ALTER COLUMN `measurement_type` SET TAGS ('dbx_value_regex' = 'inline|offline|final_inspection|qualification|monitor_wafer');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`spc_measurement` ALTER COLUMN `model_lineage_source` SET TAGS ('dbx_business_glossary_term' = 'Model Lineage Source');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`spc_measurement` ALTER COLUMN `model_lineage_source` SET TAGS ('dbx_governance' = 'true');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`spc_measurement` ALTER COLUMN `model_lineage_source` SET TAGS ('dbx_lineage' = 'true');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`spc_measurement` ALTER COLUMN `out_of_control_flag` SET TAGS ('dbx_business_glossary_term' = 'Out of Control Flag');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`spc_measurement` ALTER COLUMN `out_of_spec_flag` SET TAGS ('dbx_business_glossary_term' = 'Out of Specification Flag');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`spc_measurement` ALTER COLUMN `parameter_code` SET TAGS ('dbx_business_glossary_term' = 'Parameter Code');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`spc_measurement` ALTER COLUMN `parameter_name` SET TAGS ('dbx_business_glossary_term' = 'Parameter Name');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`spc_measurement` ALTER COLUMN `parameter_name` SET TAGS ('dbx_pii_detected' = 'true');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`spc_measurement` ALTER COLUMN `process_action_taken` SET TAGS ('dbx_business_glossary_term' = 'Process Action Taken');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`spc_measurement` ALTER COLUMN `rule_violation_flags` SET TAGS ('dbx_business_glossary_term' = 'Rule Violation Flags');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`spc_measurement` ALTER COLUMN `sigma_level` SET TAGS ('dbx_business_glossary_term' = 'Sigma Level');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`spc_measurement` ALTER COLUMN `site_number` SET TAGS ('dbx_business_glossary_term' = 'Site Number');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`spc_measurement` ALTER COLUMN `site_x_coordinate` SET TAGS ('dbx_business_glossary_term' = 'Site X Coordinate');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`spc_measurement` ALTER COLUMN `site_x_coordinate` SET TAGS ('dbx_pii_geolocation' = 'true');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`spc_measurement` ALTER COLUMN `site_x_coordinate` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`spc_measurement` ALTER COLUMN `site_x_coordinate` SET TAGS ('dbx_classification' = 'confidential');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`spc_measurement` ALTER COLUMN `site_y_coordinate` SET TAGS ('dbx_business_glossary_term' = 'Site Y Coordinate');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`spc_measurement` ALTER COLUMN `site_y_coordinate` SET TAGS ('dbx_pii_geolocation' = 'true');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`spc_measurement` ALTER COLUMN `site_y_coordinate` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`spc_measurement` ALTER COLUMN `site_y_coordinate` SET TAGS ('dbx_classification' = 'confidential');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`spc_measurement` ALTER COLUMN `specification_limit_lower` SET TAGS ('dbx_business_glossary_term' = 'Lower Specification Limit (LSL)');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`spc_measurement` ALTER COLUMN `specification_limit_upper` SET TAGS ('dbx_business_glossary_term' = 'Upper Specification Limit (USL)');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`spc_measurement` ALTER COLUMN `target_value` SET TAGS ('dbx_business_glossary_term' = 'Target Value');
@@ -771,24 +816,24 @@ ALTER TABLE `vibe_semiconductors_v1`.`process`.`qualification` SET TAGS ('dbx_da
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`qualification` SET TAGS ('dbx_subdomain' = 'manufacturing_execution');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`qualification` ALTER COLUMN `qualification_id` SET TAGS ('dbx_business_glossary_term' = 'Process Qualification ID');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`qualification` ALTER COLUMN `account_id` SET TAGS ('dbx_business_glossary_term' = 'Account Id (Foreign Key)');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`qualification` ALTER COLUMN `ar_invoice_id` SET TAGS ('dbx_business_glossary_term' = 'Ar Invoice Id (Foreign Key)');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`qualification` ALTER COLUMN `ate_configuration_id` SET TAGS ('dbx_business_glossary_term' = 'Ate Configuration Id (Foreign Key)');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`qualification` ALTER COLUMN `calibration_record_id` SET TAGS ('dbx_business_glossary_term' = 'Calibration Record Id (Foreign Key)');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`qualification` ALTER COLUMN `contact_id` SET TAGS ('dbx_business_glossary_term' = 'Contact Id (Foreign Key)');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`qualification` ALTER COLUMN `design_win_id` SET TAGS ('dbx_business_glossary_term' = 'Customer Design Win Id (Foreign Key)');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`qualification` ALTER COLUMN `fab_facility_id` SET TAGS ('dbx_business_glossary_term' = 'Technology Node ID');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`qualification` ALTER COLUMN `fab_tool_id` SET TAGS ('dbx_business_glossary_term' = 'Fab Tool Id (Foreign Key)');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`qualification` ALTER COLUMN `family_id` SET TAGS ('dbx_business_glossary_term' = 'Family Id (Foreign Key)');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`qualification` ALTER COLUMN `family_id` SET TAGS ('dbx_business_glossary_term' = 'Research Program Id (Foreign Key)');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`qualification` ALTER COLUMN `ic_catalog_id` SET TAGS ('dbx_business_glossary_term' = 'Ic Catalog Id (Foreign Key)');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`qualification` ALTER COLUMN `flow_id` SET TAGS ('dbx_business_glossary_term' = 'Process Process Flow Id (Foreign Key)');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`qualification` ALTER COLUMN `material_master_id` SET TAGS ('dbx_business_glossary_term' = 'Qualified Material Master Id (Foreign Key)');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`qualification` ALTER COLUMN `recipe_id` SET TAGS ('dbx_business_glossary_term' = 'Recipe Id (Foreign Key)');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`qualification` ALTER COLUMN `step_id` SET TAGS ('dbx_business_glossary_term' = 'Process Step Id (Foreign Key)');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`qualification` ALTER COLUMN `technology_node_id` SET TAGS ('dbx_business_glossary_term' = 'Technology Node ID');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`qualification` ALTER COLUMN `supplier_id` SET TAGS ('dbx_business_glossary_term' = 'Supplier Id (Foreign Key)');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`qualification` ALTER COLUMN `supplier_qualification_id` SET TAGS ('dbx_business_glossary_term' = 'Supplier Qualification Id (Foreign Key)');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`qualification` ALTER COLUMN `tertiary_process_flow_id` SET TAGS ('dbx_business_glossary_term' = 'Process Qualification For Flow');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`qualification` ALTER COLUMN `tool_chamber_id` SET TAGS ('dbx_business_glossary_term' = 'Tool Chamber Id (Foreign Key)');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`qualification` ALTER COLUMN `tool_qualification_id` SET TAGS ('dbx_business_glossary_term' = 'Tool Qualification Id (Foreign Key)');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`qualification` ALTER COLUMN `acceptance_criteria_summary` SET TAGS ('dbx_business_glossary_term' = 'Acceptance Criteria Summary');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`qualification` ALTER COLUMN `actual_completion_date` SET TAGS ('dbx_business_glossary_term' = 'Actual Completion Date');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`qualification` ALTER COLUMN `actual_cpk` SET TAGS ('dbx_business_glossary_term' = 'Actual Process Capability Index (Cpk)');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`qualification` ALTER COLUMN `actual_yield_percent` SET TAGS ('dbx_business_glossary_term' = 'Actual Yield Percent');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`qualification` ALTER COLUMN `cooling_optimization_evaluated` SET TAGS ('dbx_business_glossary_term' = 'Cooling Optimization Evaluated');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`qualification` ALTER COLUMN `corrective_action_plan` SET TAGS ('dbx_business_glossary_term' = 'Corrective Action Plan');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`qualification` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`qualification` ALTER COLUMN `customer_approval_status` SET TAGS ('dbx_business_glossary_term' = 'Customer Approval Status');
@@ -799,12 +844,11 @@ ALTER TABLE `vibe_semiconductors_v1`.`process`.`qualification` ALTER COLUMN `fab
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`qualification` ALTER COLUMN `failure_mode_summary` SET TAGS ('dbx_business_glossary_term' = 'Failure Mode Summary');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`qualification` ALTER COLUMN `last_modified_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Last Modified Timestamp');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`qualification` ALTER COLUMN `lot_count` SET TAGS ('dbx_business_glossary_term' = 'Qualification Lot Count');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`qualification` ALTER COLUMN `model_lineage_source` SET TAGS ('dbx_business_glossary_term' = 'Model Lineage Source');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`qualification` ALTER COLUMN `model_lineage_source` SET TAGS ('dbx_governance' = 'true');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`qualification` ALTER COLUMN `model_lineage_source` SET TAGS ('dbx_lineage' = 'true');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`qualification` ALTER COLUMN `qualification_name` SET TAGS ('dbx_business_glossary_term' = 'Qualification Name');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`qualification` ALTER COLUMN `qualification_name` SET TAGS ('dbx_pii_detected' = 'true');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`qualification` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Qualification Notes');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`qualification` ALTER COLUMN `owner_engineer_name` SET TAGS ('dbx_business_glossary_term' = 'Owner Engineer Name');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`qualification` ALTER COLUMN `owner_engineer_name` SET TAGS ('dbx_pii_detected' = 'true');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`qualification` ALTER COLUMN `owner_organization` SET TAGS ('dbx_business_glossary_term' = 'Owner Organization');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`qualification` ALTER COLUMN `plan_reference` SET TAGS ('dbx_business_glossary_term' = 'Qualification Plan Reference');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`qualification` ALTER COLUMN `plm_system_source` SET TAGS ('dbx_business_glossary_term' = 'Product Lifecycle Management (PLM) System Source');
@@ -820,6 +864,7 @@ ALTER TABLE `vibe_semiconductors_v1`.`process`.`qualification` ALTER COLUMN `ris
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`qualification` ALTER COLUMN `risk_assessment` SET TAGS ('dbx_value_regex' = 'low|medium|high|critical');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`qualification` ALTER COLUMN `sign_off_date` SET TAGS ('dbx_business_glossary_term' = 'Sign-Off Date');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`qualification` ALTER COLUMN `sign_off_engineer_name` SET TAGS ('dbx_business_glossary_term' = 'Sign-Off Engineer Name');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`qualification` ALTER COLUMN `sign_off_engineer_name` SET TAGS ('dbx_pii_detected' = 'true');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`qualification` ALTER COLUMN `start_date` SET TAGS ('dbx_business_glossary_term' = 'Qualification Start Date');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`qualification` ALTER COLUMN `target_completion_date` SET TAGS ('dbx_business_glossary_term' = 'Target Completion Date');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`qualification` ALTER COLUMN `target_cpk` SET TAGS ('dbx_business_glossary_term' = 'Target Process Capability Index (Cpk)');
@@ -828,25 +873,26 @@ ALTER TABLE `vibe_semiconductors_v1`.`process`.`qualification` ALTER COLUMN `waf
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`yield_loss_event` SET TAGS ('dbx_data_type' = 'transactional_data');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`yield_loss_event` SET TAGS ('dbx_subdomain' = 'manufacturing_execution');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`yield_loss_event` ALTER COLUMN `yield_loss_event_id` SET TAGS ('dbx_business_glossary_term' = 'Yield Loss Event ID');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`yield_loss_event` ALTER COLUMN `account_id` SET TAGS ('dbx_business_glossary_term' = 'Customer ID');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`yield_loss_event` ALTER COLUMN `ar_invoice_id` SET TAGS ('dbx_business_glossary_term' = 'Ar Invoice Id (Foreign Key)');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`yield_loss_event` ALTER COLUMN `bin_definition_id` SET TAGS ('dbx_business_glossary_term' = 'Bin Definition Id (Foreign Key)');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`yield_loss_event` ALTER COLUMN `capa_record_id` SET TAGS ('dbx_business_glossary_term' = 'Corrective Action ID');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`yield_loss_event` ALTER COLUMN `dispute_id` SET TAGS ('dbx_business_glossary_term' = 'Dispute Id (Foreign Key)');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`yield_loss_event` ALTER COLUMN `fab_facility_id` SET TAGS ('dbx_business_glossary_term' = 'Technology Node ID');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`yield_loss_event` ALTER COLUMN `fab_tool_id` SET TAGS ('dbx_business_glossary_term' = 'Equipment ID');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`yield_loss_event` ALTER COLUMN `final_test_run_id` SET TAGS ('dbx_business_glossary_term' = 'Final Test Run Id (Foreign Key)');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`yield_loss_event` ALTER COLUMN `ic_catalog_id` SET TAGS ('dbx_business_glossary_term' = 'Ic Catalog Id (Foreign Key)');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`yield_loss_event` ALTER COLUMN `ic_catalog_id` SET TAGS ('dbx_business_glossary_term' = 'Research Project Id (Foreign Key)');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`yield_loss_event` ALTER COLUMN `ic_design_project_id` SET TAGS ('dbx_business_glossary_term' = 'Ic Design Project Id (Foreign Key)');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`yield_loss_event` ALTER COLUMN `inspection_lot_id` SET TAGS ('dbx_business_glossary_term' = 'Inspection Lot Id (Foreign Key)');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`yield_loss_event` ALTER COLUMN `inventory_wafer_lot_id` SET TAGS ('dbx_business_glossary_term' = 'Inventory Wafer Lot Id (Foreign Key)');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`yield_loss_event` ALTER COLUMN `lot_hold_id` SET TAGS ('dbx_business_glossary_term' = 'Fabrication Lot Hold Id (Foreign Key)');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`yield_loss_event` ALTER COLUMN `line_id` SET TAGS ('dbx_business_glossary_term' = 'Order Line Id (Foreign Key)');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`yield_loss_event` ALTER COLUMN `lot_process_run_id` SET TAGS ('dbx_business_glossary_term' = 'Lot Process Run Id (Foreign Key)');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`yield_loss_event` ALTER COLUMN `maintenance_event_id` SET TAGS ('dbx_business_glossary_term' = 'Maintenance Event Id (Foreign Key)');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`yield_loss_event` ALTER COLUMN `nonconformance_report_id` SET TAGS ('dbx_business_glossary_term' = 'Nonconformance Report Id (Foreign Key)');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`yield_loss_event` ALTER COLUMN `process_recipe_id` SET TAGS ('dbx_business_glossary_term' = 'Process Step ID');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`yield_loss_event` ALTER COLUMN `recipe_id` SET TAGS ('dbx_business_glossary_term' = 'Recipe ID');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`yield_loss_event` ALTER COLUMN `sku_id` SET TAGS ('dbx_business_glossary_term' = 'Product ID');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`yield_loss_event` ALTER COLUMN `step_id` SET TAGS ('dbx_business_glossary_term' = 'Process Step Id (Foreign Key)');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`yield_loss_event` ALTER COLUMN `technology_node_id` SET TAGS ('dbx_business_glossary_term' = 'Technology Node ID');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`yield_loss_event` ALTER COLUMN `spc_control_chart_id` SET TAGS ('dbx_business_glossary_term' = 'Spc Control Chart Id (Foreign Key)');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`yield_loss_event` ALTER COLUMN `step_id` SET TAGS ('dbx_business_glossary_term' = 'Inspection Point ID');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`yield_loss_event` ALTER COLUMN `goods_receipt_id` SET TAGS ('dbx_business_glossary_term' = 'Suspect Goods Receipt Id (Foreign Key)');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`yield_loss_event` ALTER COLUMN `material_master_id` SET TAGS ('dbx_business_glossary_term' = 'Suspect Material Master Id (Foreign Key)');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`yield_loss_event` ALTER COLUMN `tool_chamber_id` SET TAGS ('dbx_business_glossary_term' = 'Tool Chamber Id (Foreign Key)');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`yield_loss_event` ALTER COLUMN `tool_downtime_id` SET TAGS ('dbx_business_glossary_term' = 'Tool Downtime Id (Foreign Key)');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`yield_loss_event` ALTER COLUMN `maintenance_event_id` SET TAGS ('dbx_business_glossary_term' = 'Triggering Maintenance Event Id (Foreign Key)');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`yield_loss_event` ALTER COLUMN `wafer_probe_run_id` SET TAGS ('dbx_business_glossary_term' = 'Wafer Probe Run Id (Foreign Key)');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`yield_loss_event` ALTER COLUMN `affected_die_count` SET TAGS ('dbx_business_glossary_term' = 'Affected Die Count');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`yield_loss_event` ALTER COLUMN `assigned_to` SET TAGS ('dbx_business_glossary_term' = 'Assigned To');
@@ -865,10 +911,8 @@ ALTER TABLE `vibe_semiconductors_v1`.`process`.`yield_loss_event` ALTER COLUMN `
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`yield_loss_event` ALTER COLUMN `investigation_start_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Investigation Start Timestamp');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`yield_loss_event` ALTER COLUMN `last_modified_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Last Modified Timestamp');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`yield_loss_event` ALTER COLUMN `layer_name` SET TAGS ('dbx_business_glossary_term' = 'Layer Name');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`yield_loss_event` ALTER COLUMN `layer_name` SET TAGS ('dbx_pii_detected' = 'true');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`yield_loss_event` ALTER COLUMN `lot_hold_applied` SET TAGS ('dbx_business_glossary_term' = 'Lot Hold Applied');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`yield_loss_event` ALTER COLUMN `model_lineage_source` SET TAGS ('dbx_business_glossary_term' = 'Model Lineage Source');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`yield_loss_event` ALTER COLUMN `model_lineage_source` SET TAGS ('dbx_governance' = 'true');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`yield_loss_event` ALTER COLUMN `model_lineage_source` SET TAGS ('dbx_lineage' = 'true');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`yield_loss_event` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Notes');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`yield_loss_event` ALTER COLUMN `reported_by` SET TAGS ('dbx_business_glossary_term' = 'Reported By');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`yield_loss_event` ALTER COLUMN `resolution_status` SET TAGS ('dbx_business_glossary_term' = 'Resolution Status');
@@ -886,15 +930,17 @@ ALTER TABLE `vibe_semiconductors_v1`.`process`.`yield_loss_event` ALTER COLUMN `
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`defect_inspection_result` SET TAGS ('dbx_data_type' = 'transactional_data');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`defect_inspection_result` SET TAGS ('dbx_subdomain' = 'quality_monitoring');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`defect_inspection_result` ALTER COLUMN `defect_inspection_result_id` SET TAGS ('dbx_business_glossary_term' = 'Defect Inspection Result Identifier (ID)');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`defect_inspection_result` ALTER COLUMN `fab_facility_id` SET TAGS ('dbx_business_glossary_term' = 'Technology Node Identifier (ID)');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`defect_inspection_result` ALTER COLUMN `fab_tool_id` SET TAGS ('dbx_business_glossary_term' = 'Inspection Tool Identifier (ID)');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`defect_inspection_result` ALTER COLUMN `fabrication_wafer_lot_id` SET TAGS ('dbx_business_glossary_term' = 'Wafer Lot Identifier (ID)');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`defect_inspection_result` ALTER COLUMN `ic_catalog_id` SET TAGS ('dbx_business_glossary_term' = 'Ic Catalog Id (Foreign Key)');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`defect_inspection_result` ALTER COLUMN `ic_design_project_id` SET TAGS ('dbx_business_glossary_term' = 'Ic Design Project Id (Foreign Key)');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`defect_inspection_result` ALTER COLUMN `inspection_lot_id` SET TAGS ('dbx_business_glossary_term' = 'Inspection Lot Id (Foreign Key)');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`defect_inspection_result` ALTER COLUMN `recipe_id` SET TAGS ('dbx_business_glossary_term' = 'Inspection Recipe Identifier (ID)');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`defect_inspection_result` ALTER COLUMN `inventory_wafer_lot_id` SET TAGS ('dbx_business_glossary_term' = 'Inventory Wafer Lot Id (Foreign Key)');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`defect_inspection_result` ALTER COLUMN `lot_process_run_id` SET TAGS ('dbx_business_glossary_term' = 'Lot Process Run Id');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`defect_inspection_result` ALTER COLUMN `nonconformance_report_id` SET TAGS ('dbx_business_glossary_term' = 'Nonconformance Report Id (Foreign Key)');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`defect_inspection_result` ALTER COLUMN `spc_control_chart_id` SET TAGS ('dbx_business_glossary_term' = 'Spc Control Chart Id (Foreign Key)');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`defect_inspection_result` ALTER COLUMN `step_id` SET TAGS ('dbx_business_glossary_term' = 'Process Process Step Id (Foreign Key)');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`defect_inspection_result` ALTER COLUMN `technology_node_id` SET TAGS ('dbx_business_glossary_term' = 'Technology Node Identifier (ID)');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`defect_inspection_result` ALTER COLUMN `material_master_id` SET TAGS ('dbx_business_glossary_term' = 'Suspect Material Master Id (Foreign Key)');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`defect_inspection_result` ALTER COLUMN `tool_chamber_id` SET TAGS ('dbx_business_glossary_term' = 'Tool Chamber Id (Foreign Key)');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`defect_inspection_result` ALTER COLUMN `wafer_id` SET TAGS ('dbx_business_glossary_term' = 'Wafer Identifier (ID)');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`defect_inspection_result` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
@@ -921,6 +967,7 @@ ALTER TABLE `vibe_semiconductors_v1`.`process`.`defect_inspection_result` ALTER 
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`defect_inspection_result` ALTER COLUMN `killer_defect_count` SET TAGS ('dbx_business_glossary_term' = 'Killer Defect Count');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`defect_inspection_result` ALTER COLUMN `last_modified_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Last Modified Timestamp');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`defect_inspection_result` ALTER COLUMN `layer_name` SET TAGS ('dbx_business_glossary_term' = 'Layer Name');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`defect_inspection_result` ALTER COLUMN `layer_name` SET TAGS ('dbx_pii_detected' = 'true');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`defect_inspection_result` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Inspection Notes');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`defect_inspection_result` ALTER COLUMN `nuisance_defect_count` SET TAGS ('dbx_business_glossary_term' = 'Nuisance Defect Count');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`defect_inspection_result` ALTER COLUMN `nuisance_filter_applied` SET TAGS ('dbx_business_glossary_term' = 'Nuisance Filter Applied Flag');
@@ -932,34 +979,33 @@ ALTER TABLE `vibe_semiconductors_v1`.`process`.`defect_inspection_result` ALTER 
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`defect_inspection_result` ALTER COLUMN `review_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Review Timestamp');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`defect_inspection_result` ALTER COLUMN `reviewed_by` SET TAGS ('dbx_business_glossary_term' = 'Reviewed By');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`defect_inspection_result` ALTER COLUMN `scratch_defect_count` SET TAGS ('dbx_business_glossary_term' = 'Scratch Defect Count');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`defect_inspection_result` ALTER COLUMN `spc_control_limit_lower` SET TAGS ('dbx_business_glossary_term' = 'Statistical Process Control (SPC) Lower Control Limit');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`defect_inspection_result` ALTER COLUMN `spc_control_limit_upper` SET TAGS ('dbx_business_glossary_term' = 'Statistical Process Control (SPC) Upper Control Limit');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`defect_inspection_result` ALTER COLUMN `total_defect_count` SET TAGS ('dbx_business_glossary_term' = 'Total Defect Count');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`metrology_measurement` SET TAGS ('dbx_data_type' = 'transactional_data');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`metrology_measurement` SET TAGS ('dbx_subdomain' = 'quality_monitoring');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`metrology_measurement` ALTER COLUMN `metrology_measurement_id` SET TAGS ('dbx_business_glossary_term' = 'Primary Key for metrology_measurement');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`metrology_measurement` ALTER COLUMN `calibration_record_id` SET TAGS ('dbx_business_glossary_term' = 'Calibration Record Id (Foreign Key)');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`metrology_measurement` ALTER COLUMN `fab_tool_id` SET TAGS ('dbx_business_glossary_term' = 'Metrology Tool ID');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`metrology_measurement` ALTER COLUMN `fabrication_wafer_lot_id` SET TAGS ('dbx_business_glossary_term' = 'Wafer Lot ID');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`metrology_measurement` ALTER COLUMN `ic_catalog_id` SET TAGS ('dbx_business_glossary_term' = 'Ic Catalog Id (Foreign Key)');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`metrology_measurement` ALTER COLUMN `ic_design_project_id` SET TAGS ('dbx_business_glossary_term' = 'Ic Design Project Id (Foreign Key)');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`metrology_measurement` ALTER COLUMN `inspection_lot_id` SET TAGS ('dbx_business_glossary_term' = 'Inspection Lot Id (Foreign Key)');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`metrology_measurement` ALTER COLUMN `lot_process_run_id` SET TAGS ('dbx_business_glossary_term' = 'Lot Process Run Id (Foreign Key)');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`metrology_measurement` ALTER COLUMN `nonconformance_report_id` SET TAGS ('dbx_business_glossary_term' = 'Nonconformance Report Id (Foreign Key)');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`metrology_measurement` ALTER COLUMN `quality_spec_id` SET TAGS ('dbx_business_glossary_term' = 'Quality Spec Id (Foreign Key)');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`metrology_measurement` ALTER COLUMN `process_recipe_id` SET TAGS ('dbx_business_glossary_term' = 'Process Step ID');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`metrology_measurement` ALTER COLUMN `product_spec_id` SET TAGS ('dbx_business_glossary_term' = 'Product Spec Id (Foreign Key)');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`metrology_measurement` ALTER COLUMN `recipe_id` SET TAGS ('dbx_business_glossary_term' = 'Recipe ID');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`metrology_measurement` ALTER COLUMN `spc_control_chart_id` SET TAGS ('dbx_business_glossary_term' = 'Spc Control Chart Id (Foreign Key)');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`metrology_measurement` ALTER COLUMN `step_id` SET TAGS ('dbx_business_glossary_term' = 'Metrology At Step');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`metrology_measurement` ALTER COLUMN `technology_node_id` SET TAGS ('dbx_business_glossary_term' = 'Technology Node ID');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`metrology_measurement` ALTER COLUMN `tool_chamber_id` SET TAGS ('dbx_business_glossary_term' = 'Tool Chamber Id (Foreign Key)');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`metrology_measurement` ALTER COLUMN `wafer_id` SET TAGS ('dbx_business_glossary_term' = 'Wafer ID');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`metrology_measurement` ALTER COLUMN `cp_value` SET TAGS ('dbx_business_glossary_term' = 'Process Capability Index (Cp)');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`metrology_measurement` ALTER COLUMN `cpk_value` SET TAGS ('dbx_business_glossary_term' = 'Process Capability Index (Cpk)');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`metrology_measurement` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`metrology_measurement` ALTER COLUMN `data_quality_flag` SET TAGS ('dbx_business_glossary_term' = 'Data Quality Flag');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`metrology_measurement` ALTER COLUMN `data_quality_flag` SET TAGS ('dbx_value_regex' = 'Good|Suspect|Bad|Uncalibrated');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`metrology_measurement` ALTER COLUMN `disposition` SET TAGS ('dbx_business_glossary_term' = 'Disposition');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`metrology_measurement` ALTER COLUMN `disposition` SET TAGS ('dbx_value_regex' = 'Pass|Fail|Marginal|Rework|Hold');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`metrology_measurement` ALTER COLUMN `fab_site_code` SET TAGS ('dbx_business_glossary_term' = 'Fabrication (FAB) Site Code');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`metrology_measurement` ALTER COLUMN `last_modified_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Last Modified Timestamp');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`metrology_measurement` ALTER COLUMN `layer_name` SET TAGS ('dbx_business_glossary_term' = 'Layer Name');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`metrology_measurement` ALTER COLUMN `layer_name` SET TAGS ('dbx_pii_detected' = 'true');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`metrology_measurement` ALTER COLUMN `lower_control_limit` SET TAGS ('dbx_business_glossary_term' = 'Lower Control Limit (LCL)');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`metrology_measurement` ALTER COLUMN `lower_spec_limit` SET TAGS ('dbx_business_glossary_term' = 'Lower Specification Limit (LSL)');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`metrology_measurement` ALTER COLUMN `max_value` SET TAGS ('dbx_business_glossary_term' = 'Maximum Value');
@@ -974,9 +1020,6 @@ ALTER TABLE `vibe_semiconductors_v1`.`process`.`metrology_measurement` ALTER COL
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`metrology_measurement` ALTER COLUMN `measurement_type` SET TAGS ('dbx_value_regex' = 'CD-SEM|OCD|XRF|Ellipsometry|Overlay|Film Thickness');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`metrology_measurement` ALTER COLUMN `median_value` SET TAGS ('dbx_business_glossary_term' = 'Median Value');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`metrology_measurement` ALTER COLUMN `min_value` SET TAGS ('dbx_business_glossary_term' = 'Minimum Value');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`metrology_measurement` ALTER COLUMN `model_lineage_source` SET TAGS ('dbx_business_glossary_term' = 'Model Lineage Source');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`metrology_measurement` ALTER COLUMN `model_lineage_source` SET TAGS ('dbx_governance' = 'true');
-ALTER TABLE `vibe_semiconductors_v1`.`process`.`metrology_measurement` ALTER COLUMN `model_lineage_source` SET TAGS ('dbx_lineage' = 'true');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`metrology_measurement` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Notes');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`metrology_measurement` ALTER COLUMN `range_value` SET TAGS ('dbx_business_glossary_term' = 'Range Value');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`metrology_measurement` ALTER COLUMN `site_count` SET TAGS ('dbx_business_glossary_term' = 'Site Count');
@@ -989,3 +1032,69 @@ ALTER TABLE `vibe_semiconductors_v1`.`process`.`metrology_measurement` ALTER COL
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`metrology_measurement` ALTER COLUMN `upper_control_limit` SET TAGS ('dbx_business_glossary_term' = 'Upper Control Limit (UCL)');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`metrology_measurement` ALTER COLUMN `upper_spec_limit` SET TAGS ('dbx_business_glossary_term' = 'Upper Specification Limit (USL)');
 ALTER TABLE `vibe_semiconductors_v1`.`process`.`metrology_measurement` ALTER COLUMN `wafer_slot_number` SET TAGS ('dbx_business_glossary_term' = 'Wafer Slot Number');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`excursion` SET TAGS ('dbx_data_type' = 'transactional_data');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`excursion` SET TAGS ('dbx_subdomain' = 'quality_monitoring');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`excursion` ALTER COLUMN `excursion_id` SET TAGS ('dbx_business_glossary_term' = 'Excursion Identifier');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`excursion` ALTER COLUMN `account_id` SET TAGS ('dbx_business_glossary_term' = 'Account Id (Foreign Key)');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`excursion` ALTER COLUMN `capa_record_id` SET TAGS ('dbx_business_glossary_term' = 'Capa Record Id (Foreign Key)');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`excursion` ALTER COLUMN `fab_facility_id` SET TAGS ('dbx_business_glossary_term' = 'Technology Node ID');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`excursion` ALTER COLUMN `fab_tool_id` SET TAGS ('dbx_business_glossary_term' = 'Equipment ID');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`excursion` ALTER COLUMN `ic_catalog_id` SET TAGS ('dbx_business_glossary_term' = 'Ic Catalog Id (Foreign Key)');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`excursion` ALTER COLUMN `ic_design_project_id` SET TAGS ('dbx_business_glossary_term' = 'Ic Design Project Id (Foreign Key)');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`excursion` ALTER COLUMN `inventory_wafer_lot_id` SET TAGS ('dbx_business_glossary_term' = 'Inventory Wafer Lot Id (Foreign Key)');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`excursion` ALTER COLUMN `lot_process_run_id` SET TAGS ('dbx_business_glossary_term' = 'Lot Process Run Id (Foreign Key)');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`excursion` ALTER COLUMN `nonconformance_report_id` SET TAGS ('dbx_business_glossary_term' = 'Nonconformance Report Id (Foreign Key)');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`excursion` ALTER COLUMN `order_id` SET TAGS ('dbx_business_glossary_term' = 'Order Id (Foreign Key)');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`excursion` ALTER COLUMN `process_recipe_id` SET TAGS ('dbx_business_glossary_term' = 'Process Step ID');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`excursion` ALTER COLUMN `spc_control_chart_id` SET TAGS ('dbx_business_glossary_term' = 'Spc Control Chart Id (Foreign Key)');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`excursion` ALTER COLUMN `step_id` SET TAGS ('dbx_business_glossary_term' = 'Process Step Id (Foreign Key)');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`excursion` ALTER COLUMN `goods_receipt_id` SET TAGS ('dbx_business_glossary_term' = 'Suspect Goods Receipt Id (Foreign Key)');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`excursion` ALTER COLUMN `material_master_id` SET TAGS ('dbx_business_glossary_term' = 'Suspect Material Master Id (Foreign Key)');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`excursion` ALTER COLUMN `tool_chamber_id` SET TAGS ('dbx_business_glossary_term' = 'Tool Chamber Id (Foreign Key)');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`excursion` ALTER COLUMN `tool_downtime_id` SET TAGS ('dbx_business_glossary_term' = 'Tool Downtime Id (Foreign Key)');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`excursion` ALTER COLUMN `maintenance_event_id` SET TAGS ('dbx_business_glossary_term' = 'Triggering Maintenance Event Id (Foreign Key)');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`excursion` ALTER COLUMN `wafer_probe_run_id` SET TAGS ('dbx_business_glossary_term' = 'Wafer Probe Run Id (Foreign Key)');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`excursion` ALTER COLUMN `affected_die_count` SET TAGS ('dbx_business_glossary_term' = 'Affected Die Count');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`excursion` ALTER COLUMN `affected_lot_count` SET TAGS ('dbx_business_glossary_term' = 'Affected Lot Count');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`excursion` ALTER COLUMN `affected_wafer_count` SET TAGS ('dbx_business_glossary_term' = 'Affected Wafer Count');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`excursion` ALTER COLUMN `containment_action_taken` SET TAGS ('dbx_business_glossary_term' = 'Containment Action Taken');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`excursion` ALTER COLUMN `containment_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Containment Timestamp');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`excursion` ALTER COLUMN `corrective_action_reference` SET TAGS ('dbx_business_glossary_term' = 'Corrective Action Reference');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`excursion` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`excursion` ALTER COLUMN `customer_notification_required` SET TAGS ('dbx_business_glossary_term' = 'Customer Notification Required');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`excursion` ALTER COLUMN `customer_notification_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Customer Notification Timestamp');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`excursion` ALTER COLUMN `defect_density_per_cm2` SET TAGS ('dbx_business_glossary_term' = 'Defect Density Per Square Centimeter');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`excursion` ALTER COLUMN `detection_source` SET TAGS ('dbx_business_glossary_term' = 'Detection Source');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`excursion` ALTER COLUMN `detection_source` SET TAGS ('dbx_value_regex' = 'SPC|inspection|metrology|electrical_test|operator|automated_system');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`excursion` ALTER COLUMN `detection_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Detection Timestamp');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`excursion` ALTER COLUMN `disposition` SET TAGS ('dbx_business_glossary_term' = 'Disposition');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`excursion` ALTER COLUMN `disposition` SET TAGS ('dbx_value_regex' = 'use_as_is|rework|scrap|return_to_vendor|engineering_review|customer_notification');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`excursion` ALTER COLUMN `disposition_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Disposition Timestamp');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`excursion` ALTER COLUMN `estimated_financial_impact_usd` SET TAGS ('dbx_business_glossary_term' = 'Estimated Financial Impact (USD)');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`excursion` ALTER COLUMN `estimated_financial_impact_usd` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`excursion` ALTER COLUMN `estimated_yield_impact_percent` SET TAGS ('dbx_business_glossary_term' = 'Estimated Yield Impact Percent');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`excursion` ALTER COLUMN `excursion_number` SET TAGS ('dbx_business_glossary_term' = 'Excursion Number');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`excursion` ALTER COLUMN `excursion_type` SET TAGS ('dbx_business_glossary_term' = 'Excursion Type');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`excursion` ALTER COLUMN `excursion_type` SET TAGS ('dbx_value_regex' = 'out_of_spec|out_of_control|yield_loss|defect_density|parametric_drift|equipment_fault');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`excursion` ALTER COLUMN `investigation_status` SET TAGS ('dbx_business_glossary_term' = 'Investigation Status');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`excursion` ALTER COLUMN `investigation_status` SET TAGS ('dbx_value_regex' = 'open|investigating|root_cause_identified|corrective_action_pending|closed|cancelled');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`excursion` ALTER COLUMN `last_modified_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Last Modified Timestamp');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`excursion` ALTER COLUMN `lower_control_limit` SET TAGS ('dbx_business_glossary_term' = 'Lower Control Limit (LCL)');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`excursion` ALTER COLUMN `measured_value` SET TAGS ('dbx_business_glossary_term' = 'Measured Value');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`excursion` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Notes');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`excursion` ALTER COLUMN `owner_organization` SET TAGS ('dbx_business_glossary_term' = 'Owner Organization');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`excursion` ALTER COLUMN `parameter_name` SET TAGS ('dbx_business_glossary_term' = 'Parameter Name');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`excursion` ALTER COLUMN `parameter_name` SET TAGS ('dbx_pii_detected' = 'true');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`excursion` ALTER COLUMN `root_cause_category` SET TAGS ('dbx_business_glossary_term' = 'Root Cause Category');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`excursion` ALTER COLUMN `root_cause_category` SET TAGS ('dbx_value_regex' = 'equipment|material|process|human|environmental|unknown');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`excursion` ALTER COLUMN `root_cause_description` SET TAGS ('dbx_business_glossary_term' = 'Root Cause Description');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`excursion` ALTER COLUMN `severity_level` SET TAGS ('dbx_business_glossary_term' = 'Severity Level');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`excursion` ALTER COLUMN `severity_level` SET TAGS ('dbx_value_regex' = 'minor|major|critical');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`excursion` ALTER COLUMN `spc_rule_violated` SET TAGS ('dbx_business_glossary_term' = 'Statistical Process Control (SPC) Rule Violated');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`excursion` ALTER COLUMN `specification_lower_limit` SET TAGS ('dbx_business_glossary_term' = 'Specification Lower Limit (LSL)');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`excursion` ALTER COLUMN `specification_upper_limit` SET TAGS ('dbx_business_glossary_term' = 'Specification Upper Limit (USL)');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`excursion` ALTER COLUMN `target_value` SET TAGS ('dbx_business_glossary_term' = 'Target Value');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`excursion` ALTER COLUMN `unit_of_measure` SET TAGS ('dbx_business_glossary_term' = 'Unit of Measure (UOM)');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`excursion` ALTER COLUMN `upper_control_limit` SET TAGS ('dbx_business_glossary_term' = 'Upper Control Limit (UCL)');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`excursion` ALTER COLUMN `yield_loss_mode` SET TAGS ('dbx_business_glossary_term' = 'Yield Loss Mode');
+ALTER TABLE `vibe_semiconductors_v1`.`process`.`excursion` ALTER COLUMN `yield_loss_mode` SET TAGS ('dbx_value_regex' = 'parametric|systematic|random|electrical|none');

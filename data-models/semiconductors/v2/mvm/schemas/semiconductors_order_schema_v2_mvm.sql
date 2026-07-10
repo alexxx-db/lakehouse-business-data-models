@@ -1,5 +1,5 @@
 -- Schema for Domain: order | Business: Semiconductors | Version: v2_mvm
--- Generated on: 2026-06-27 11:14:00
+-- Generated on: 2026-07-10 14:04:04
 
 -- ========= DATABASE =========
 CREATE DATABASE IF NOT EXISTS `vibe_semiconductors_v1`.`order` COMMENT 'Customer orders, order fulfillment, delivery schedules, and shipment tracking. SSOT for order-to-cash lifecycle including order entry, wafer start authorizations, die bank orders, allocation, backlog management, and delivery confirmation. Manages MPW orders and production lot assignments.';
@@ -9,13 +9,20 @@ CREATE OR REPLACE TABLE `vibe_semiconductors_v1`.`order`.`order` (
     `order_id` BIGINT COMMENT 'Primary key for order',
     `account_id` BIGINT COMMENT 'Reference to the customer who placed the sales order. Links to the customer master data product.',
     `contact_id` BIGINT COMMENT 'Foreign key linking to customer.contact. Business justification: Order Management requires a primary sales contact for each order; the Order Confirmation Report pulls contact details, making this link essential.',
-    `credit_profile_id` BIGINT COMMENT 'Foreign key linking to customer.credit_profile. Business justification: Order booking in semiconductor order-to-cash validates the order against the customers credit profile before acceptance. A direct FK from order to credit_profile supports credit exposure tracking per',
-    `customer_contract_id` BIGINT COMMENT 'Foreign key linking to sales.customer_contract. Business justification: Orders in semiconductors are placed under Long Term Agreements (LTAs) / customer contracts governing pricing, volume commitments, and supply terms. Order-to-contract linkage is required for contract c',
+    `credit_profile_id` BIGINT COMMENT 'Foreign key linking to customer.credit_profile. Business justification: Order acceptance and credit hold management in semiconductor order-to-cash processes are directly governed by the customers credit profile (credit_hold flag, credit_limit). Linking orders to credit_p',
+    `customer_contract_id` BIGINT COMMENT 'Foreign key linking to sales.customer_contract. Business justification: Semiconductor LTA/blanket orders must reference the governing customer contract for pricing compliance, volume commitment tracking, and contract utilization reporting. Revenue and supply chain teams r',
+    `design_win_id` BIGINT COMMENT 'Foreign key linking to customer.customer_design_win. Business justification: Design-win-to-revenue conversion is a core semiconductor commercial metric. Linking orders to the originating design win enables design win revenue tracking, production ramp monitoring, and sales pipe',
+    `family_id` BIGINT COMMENT 'Foreign key linking to product.family. Business justification: An order may be covered by a blanket purchase agreement; adding FK from order to blanket_order captures this relationship without creating a cycle.',
+    `finished_good_id` BIGINT COMMENT 'Reference to the Salesforce CRM design-win opportunity that originated this sales order. Links the order to the customer design-in engagement, enabling design-win to revenue conversion tracking.',
+    `ic_catalog_id` BIGINT COMMENT 'Foreign key linking to product.ic_catalog. Business justification: Orders for experimental wafers require a link to the experimental lot to enable order‑to‑lot traceability in yield and research reporting.',
+    `ic_design_project_id` BIGINT COMMENT 'Reference to the Multi-Project Wafer (MPW) run associated with this order. Applicable only for MPW order types where multiple customer designs share a single wafer to reduce Non-Recurring Engineering (NRE) costs.',
+    `nre_agreement_id` BIGINT COMMENT 'Foreign key linking to sales.sales_nre_agreement. Business justification: NRE agreements generate corresponding NRE orders in semiconductor operations. Linking the order to its governing NRE agreement enables milestone billing trigger validation, NRE revenue recognition tra',
     `opportunity_id` BIGINT COMMENT 'Foreign key linking to sales.opportunity. Business justification: Order creation originates from a closed‑won opportunity; linking enables opportunity‑to‑order conversion reporting.',
-    `payment_term_id` BIGINT COMMENT 'Foreign key linking to invoice.payment_term. Business justification: Required for order processing: each order references a centrally defined payment term for financial reporting and compliance with contract terms.',
     `price_agreement_id` BIGINT COMMENT 'Foreign key linking to customer.price_agreement. Business justification: Pricing Governance applies a specific price agreement to an order; the Pricing Audit Report and revenue recognition rely on this relationship.',
+    `price_list_id` BIGINT COMMENT 'Foreign key linking to sales.price_list. Business justification: Semiconductor orders must reference the specific price list used for pricing validation, revenue recognition audit, and pricing dispute resolution. Finance and sales ops require this link to confirm w',
+    `product_ip_core_id` BIGINT COMMENT 'Foreign key linking to product.product_ip_core. Business justification: Orders for IP core licenses must reference the IP core development record to manage royalties, compliance, and licensing reporting.',
     `address_id` BIGINT COMMENT 'Foreign key linking to customer.address. Business justification: Shipping Execution process stores the exact customer address for each order; the Shipping Manifest and compliance checks depend on this link.',
-    `territory_id` BIGINT COMMENT 'Foreign key linking to sales.territory. Business justification: Every order must be attributed to a sales territory for revenue reporting, quota attainment tracking, and sales rep commission calculation. Territory-level order revenue is a standard semiconductor sa',
+    `tapeout_id` BIGINT COMMENT 'Foreign key linking to design.tapeout. Business justification: Customer orders for custom ASICs or NRE engagements are directly tied to a specific tapeout event. Order management tracks which tapeout a customer order funds for NRE billing, wafer start authorizati',
     `actual_delivery_date` DATE COMMENT 'The actual date on which the ordered products were delivered to the customer or ship-to location. Used for on-time delivery (OTD) performance analysis and customer satisfaction reporting.',
     `allocation_status` STRING COMMENT 'Current inventory or production capacity allocation status of the order. Indicates whether sufficient die, wafer, or finished goods inventory has been reserved to fulfill the order. Critical for backlog management and supply-demand balancing.. Valid values are `UNALLOCATED|PARTIALLY_ALLOCATED|FULLY_ALLOCATED|OVER_ALLOCATED`',
     `backlog_flag` BOOLEAN COMMENT 'Indicates whether this order is currently included in the active order backlog. True when the order is open and not yet fully shipped or invoiced. Used for backlog valuation, revenue forecasting, and capacity planning.',
@@ -33,13 +40,10 @@ CREATE OR REPLACE TABLE `vibe_semiconductors_v1`.`order`.`order` (
     `incoterms_code` STRING COMMENT 'International Commercial Terms (Incoterms) code defining the responsibilities of buyer and seller for delivery, risk transfer, and cost allocation. Corresponds to SAP VBAK.INCO1. [ENUM-REF-CANDIDATE: EXW|FCA|CPT|CIP|DAP|DPU|DDP|FAS|FOB|CFR|CIF — promote to reference product]',
     `incoterms_location` STRING COMMENT 'The named place or port associated with the Incoterms code, specifying where risk and cost transfer between buyer and seller (e.g., Shanghai Port, Customer Dock). Corresponds to SAP VBAK.INCO2.',
     `itar_controlled` BOOLEAN COMMENT 'Indicates whether any products in this order are subject to ITAR (International Traffic in Arms Regulations) controls. When True, additional export authorization and end-use certification requirements apply before shipment.',
-    `last_modified_timestamp` TIMESTAMP COMMENT 'The last modified timestamp of the order record in the order domain.',
     `last_updated_timestamp` TIMESTAMP COMMENT 'Timestamp of the most recent modification to the sales order record in the source system. Used for change tracking, audit compliance, and incremental data pipeline processing. Corresponds to SAP VBAK.AEDAT.',
-    `model_lineage_source` STRING COMMENT 'The model lineage source of the order record in the order domain.',
     `net_order_value` DECIMAL(18,2) COMMENT 'Net value of the sales order after application of all discounts and pricing conditions but before tax. Represents the contractually agreed revenue amount. Corresponds to SAP VBAK.NETWR. Used for revenue recognition and financial reporting.',
     `notes` STRING COMMENT 'Free-text notes or special instructions associated with the sales order, capturing customer-specific requirements, handling instructions, or internal processing notes. Corresponds to SAP order header text.',
     `nre_amount` DECIMAL(18,2) COMMENT 'Non-Recurring Engineering (NRE) charges associated with this order, covering one-time design, mask set, and process development costs. Applicable for ASIC, custom IC, and MPW order types. Reported separately from unit product revenue.',
-    `number` STRING COMMENT 'The number of the order record in the order domain.',
     `order_date` DATE COMMENT 'The calendar date on which the customer placed the sales order. Represents the principal business event date for the order-to-cash lifecycle. Corresponds to SAP VBAK.AUDAT.',
     `order_status` STRING COMMENT 'Current lifecycle status of the sales order within the order-to-cash process. Drives workflow routing, backlog reporting, and revenue recognition. [ENUM-REF-CANDIDATE: DRAFT|OPEN|IN_FULFILLMENT|SHIPPED|DELIVERED|CLOSED|CANCELLED|ON_HOLD — promote to reference product]',
     `order_type` STRING COMMENT 'Classification of the sales order by product or engagement type. Determines order processing rules, pricing, and fulfillment workflow. Values include: STANDARD_IC (standard integrated circuit), ASIC (Application-Specific Integrated Circuit), FPGA (Field-Programmable Gate Array), MPW (Multi-Project Wafer), NRE (Non-Recurring Engineering), DIE_BANK (die bank pull order), WAFER_START (wafer start authorization). [ENUM-REF-CANDIDATE: STANDARD_IC|ASIC|FPGA|MPW|NRE|DIE_BANK|WAFER_START — promote to reference product]',
@@ -52,28 +56,26 @@ CREATE OR REPLACE TABLE `vibe_semiconductors_v1`.`order`.`order` (
     `so_number` STRING COMMENT 'Externally visible sales order number as assigned by SAP S/4HANA SD module. Used in all customer-facing communications, shipping documents, and invoices. Corresponds to the VBELN field in SAP VBAK table.. Valid values are `^[A-Z0-9-]{1,20}$`',
     `source` STRING COMMENT 'The channel or system through which the customer order was received and entered. Used for order entry efficiency analysis and digital transformation tracking.. Valid values are `EDI|PORTAL|EMAIL|PHONE|SALESFORCE|MANUAL`',
     `tax_amount` DECIMAL(18,2) COMMENT 'Total tax amount applicable to the sales order, including VAT, GST, or other applicable taxes, expressed in the order currency. Required for tax reporting and financial compliance.',
-    `total_quantity` STRING COMMENT 'The total quantity of the order record in the order domain.',
     `wafer_start_authorization` BOOLEAN COMMENT 'Indicates whether this order has triggered a wafer start authorization in the fabrication facility (FAB). When True, the MES (Manufacturing Execution System) has been instructed to initiate wafer lot processing for this order.',
     CONSTRAINT pk_order PRIMARY KEY(`order_id`)
 ) COMMENT 'Master record for all customer sales orders in the semiconductor order-to-cash lifecycle. Captures order header information including customer identity, order type (standard IC, ASIC, FPGA, MPW, NRE), order date, requested delivery date, priority, incoterms, payment terms, currency, total order value, and order status. SSOT for all customer-placed orders including wafer start authorizations, die bank orders, and production lot assignments. Sourced from SAP S/4HANA SD module.';
 
-CREATE OR REPLACE TABLE `vibe_semiconductors_v1`.`order`.`order_line` (
-    `order_line_id` BIGINT COMMENT 'Unique surrogate identifier for each order line item within the Databricks Silver Layer. Serves as the primary key for the order_line data product.',
+CREATE OR REPLACE TABLE `vibe_semiconductors_v1`.`order`.`line` (
+    `line_id` BIGINT COMMENT 'Unique surrogate identifier for each order line item within the Databricks Silver Layer. Serves as the primary key for the order_line data product.',
     `account_id` BIGINT COMMENT 'Reference to the customer placing the order. Used for line-level customer attribution in multi-ship-to or multi-sold-to scenarios. Corresponds to SAP S/4HANA SD KUNNR (Customer Number).',
-    `design_win_id` BIGINT COMMENT 'Foreign key linking to customer.customer_design_win. Business justification: Design-win-to-revenue conversion is a core semiconductor KPI. Order lines for production ramp parts must be traceable to the originating design win for revenue realization reporting, design win ROI an',
-    `ic_catalog_id` BIGINT COMMENT 'Unique identifier for the ic catalog record within the order line order entity.',
-    `inventory_wafer_lot_id` BIGINT COMMENT 'Foreign key linking to inventory.inventory_wafer_lot. Business justification: REQUIRED: Order fulfillment report needs to know which wafer lot supplies each order line; linking enables traceability from line to physical wafer lot.',
+    `die_bank_id` BIGINT COMMENT 'Foreign key linking to inventory.die_bank. Business justification: order_line.die_bank_order flag indicates KGD/die bank orders. When true, the order line must reference a specific die_bank inventory record for fulfillment. Die bank order management is a named semico',
+    `final_test_run_id` BIGINT COMMENT 'Foreign key linking to test.final_test_run. Business justification: Order fulfillment quality gating: planners and customer service must confirm the specific lot assigned to an order line passed final test before committing ship dates. Distinct from test_program_id (p',
+    `finished_good_id` BIGINT COMMENT 'Foreign key linking to inventory.finished_good. Business justification: Each order line in semiconductor order management is fulfilled from a specific finished good inventory record. This link supports order fulfillment, inventory reservation at line level, and lot tracea',
+    `po_line_id` BIGINT COMMENT 'Foreign key linking to supply.po_line. Business justification: Granular back-to-back order traceability: maps a customer order line to the exact PO line procured to fulfill it. Enables line-level cost allocation, gross margin reporting, and supply risk scoring pe',
+    `purchase_order_id` BIGINT COMMENT 'Foreign key linking to supply.purchase_order. Business justification: Back-to-back PO fulfillment traceability: semiconductor distributors and IDMs link each sales order line to the purchase order placed to fulfill it. Required for OTIF reporting, margin analysis, and s',
+    `ic_catalog_id` BIGINT COMMENT 'Foreign key linking to product.ic_catalog. Business justification: Line‑item tracking of experimental lot IDs ties shipped quantities to specific research lots for detailed yield analysis.',
     `order_id` BIGINT COMMENT 'FK to order.sales_order.sales_order_id — Fundamental header-to-line relationship. Every order line must belong to exactly one sales order. This is the most critical FK in the domain — without it, order lines are orphaned.',
-    `package_type_id` BIGINT COMMENT 'Foreign key linking to packaging.package_type. Business justification: Needed for Packaging Planning; order line specifies requested package type, linking to package_type enables yield, cost, and compliance analysis per packaging family.',
-    `price_agreement_id` BIGINT COMMENT 'Unique identifier for the price agreement record within the order line order entity.',
-    `price_list_id` BIGINT COMMENT 'Unique identifier for the price list record within the order line order entity.',
-    `process_node_id` BIGINT COMMENT 'Foreign key linking to product.process_node. Business justification: Die bank and wafer start order lines in semiconductor fabs are explicitly tied to a process node for fab scheduling and capacity allocation. Wafer start authorization on order_line requires node ident',
     `quote_line_id` BIGINT COMMENT 'Foreign key linking to sales.quote_line. Business justification: Each order line is derived from a quote line; needed for line‑level margin and fulfillment analysis.',
-    `tool_chamber_id` BIGINT COMMENT 'Foreign key linking to equipment.tool_chamber. Business justification: CHAMBER_TRACEABILITY: Link order line to specific tool chamber used, enabling yield analysis and compliance reporting.',
+    `sku_id` BIGINT COMMENT 'Reference to the semiconductor product (IC, SoC, ASIC, FPGA, or discrete device) being ordered on this line. Links to the product master for SKU-level configuration details including package type, speed grade, and temperature range.',
+    `tapeout_id` BIGINT COMMENT 'Foreign key linking to design.tapeout. Business justification: Order lines for wafer or die products reference a specific tapeout to determine which GDS revision, mask set, and process node applies. Multi-tapeout orders require line-level tapeout traceability for',
     `actual_ship_date` DATE COMMENT 'The date on which the semiconductor units for this order line were physically shipped from the warehouse or OSAT facility. Populated upon goods issue posting in SAP S/4HANA. Used for on-time delivery (OTD) performance measurement.',
     `allocation_type` STRING COMMENT 'Classification of the supply allocation method applied to this order line. Standard = normal backlog allocation; Priority = customer-priority or design-win protected allocation; Strategic = long-term agreement allocation; Spot = spot market fulfillment; Buffer = safety stock draw.. Valid values are `standard|priority|strategic|spot|buffer`',
     `cancellation_reason` STRING COMMENT 'Reason code for cancellation of this order line when line_status is cancelled. Supports backlog analysis, demand planning accuracy, and customer relationship management. Populated only for cancelled lines. [ENUM-REF-CANDIDATE: customer_request|supply_constraint|end_of_life|duplicate|pricing_dispute|export_hold|other — 7 candidates stripped; promote to reference product]',
-    `confirmed_delivery_date` DATE COMMENT 'The confirmed delivery date associated with the order line order record.',
     `confirmed_quantity` DECIMAL(18,2) COMMENT 'The quantity of semiconductor units confirmed by supply chain for delivery on this order line, reflecting available inventory, wafer start authorizations, and die bank allocations. May differ from ordered quantity due to allocation constraints.',
     `confirmed_ship_date` DATE COMMENT 'The date confirmed by supply chain and manufacturing for shipment of this order line, based on available inventory, die bank status, and OSAT packaging capacity. May differ from requested ship date due to supply constraints.',
     `country_of_origin` STRING COMMENT 'ISO 3166-1 alpha-3 country code indicating the country where the semiconductor product was manufactured (FAB location). Required for customs declarations, trade compliance, tariff classification, and CHIPS Act domestic content reporting.. Valid values are `^[A-Z]{3}$`',
@@ -82,21 +84,15 @@ CREATE OR REPLACE TABLE `vibe_semiconductors_v1`.`order`.`order_line` (
     `customer_part_number` STRING COMMENT 'The customers own internal part number or cross-reference number for the ordered semiconductor product. Critical for design-win tracking, customer portal integration, and order acknowledgment matching. Sourced from Salesforce CRM design-win records.',
     `date_entered` DATE COMMENT 'The business date on which this order line was entered into the SAP S/4HANA SD system. Represents the commercial event date for backlog aging calculations and order-to-cash cycle time measurement.',
     `die_bank_order` BOOLEAN COMMENT 'Indicates whether this order line is to be fulfilled from the die bank (inventory of known good dies (KGD) awaiting packaging) rather than from finished goods or new wafer starts. True = die bank fulfillment; False = standard finished goods or new production.',
-    `discount_percent` DECIMAL(18,2) COMMENT 'The discount percent of the order line record in the order domain.',
     `export_control_classification` STRING COMMENT 'Export Administration Regulations (EAR) Export Control Classification Number (ECCN) for the semiconductor product on this order line (e.g., 3A001 for advanced ICs). Required for export compliance screening, license determination, and ITAR/EAR regulatory reporting.',
-    `extended_amount` DECIMAL(18,2) COMMENT 'The extended amount of the order line record in the order domain.',
-    `extended_price_usd` DECIMAL(18,2) COMMENT 'The extended price usd of the order line record in the order domain.',
     `incoterms_code` STRING COMMENT 'International Commercial Terms (Incoterms 2020) code defining the delivery obligations, risk transfer point, and cost responsibilities between the semiconductor company and the customer for this order line (e.g., FOB, DDP, EXW). Corresponds to SAP S/4HANA SD INCO1. [ENUM-REF-CANDIDATE: EXW|FCA|CPT|CIP|DAP|DPU|DDP|FAS|FOB|CFR|CIF — 11 candidates stripped; promote to reference product]',
     `item_category` STRING COMMENT 'SAP SD item category classification for this order line, indicating the business nature of the line (e.g., standard product sale, consignment fill-up, customer return, engineering sample, NRE charge, MPW service, evaluation unit). Drives pricing, delivery, and billing behavior. [ENUM-REF-CANDIDATE: standard|consignment|returns|sample|nre|mpw|evaluation — 7 candidates stripped; promote to reference product]',
-    `last_modified_timestamp` TIMESTAMP COMMENT 'The last modified timestamp of the order line record in the order domain.',
     `line_number` STRING COMMENT 'Sequential position number of this line item within the parent sales order. Used for ordering, display, and reference in customer-facing documents. Corresponds to SAP S/4HANA SD POSNR (Item Number of the SD Document).',
     `line_status` STRING COMMENT 'Current workflow status of this order line item within the order-to-cash lifecycle. Drives backlog management, allocation decisions, and revenue recognition. Corresponds to SAP S/4HANA SD overall delivery status at item level.. Valid values are `open|confirmed|allocated|shipped|invoiced|cancelled`',
     `lot_number` STRING COMMENT 'The manufacturing lot number assigned to the production batch fulfilling this order line. Enables traceability from customer order back to wafer fabrication lot, die bank lot, and OSAT packaging lot. Sourced from Camstar MES lot tracking.',
     `material_number` STRING COMMENT 'SAP material number (MATNR) identifying the specific semiconductor product SKU ordered on this line. Includes full part number with package, speed grade, and temperature range encoded per internal part numbering convention.',
-    `model_lineage_source` STRING COMMENT 'The model lineage source of the order line record in the order domain.',
     `mpw_order` BOOLEAN COMMENT 'Indicates whether this order line is associated with a Multi-Project Wafer (MPW) run, where multiple customer designs share a single wafer to reduce NRE costs. True = MPW order; False = dedicated production lot order.',
     `net_value` DECIMAL(18,2) COMMENT 'Total net value of this order line calculated as confirmed quantity multiplied by unit price in the transaction currency. Used for backlog reporting, revenue forecasting, and SOX-compliant revenue recognition. Corresponds to SAP S/4HANA SD NETWR (Net Value of the Order Item).',
-    `open_quantity` STRING COMMENT 'The open quantity of the order line record in the order domain.',
     `ordered_quantity` DECIMAL(18,2) COMMENT 'The quantity of semiconductor units (dies, packaged ICs, wafers, or reels) requested by the customer on this order line. Expressed in the sales unit of measure (e.g., pieces, wafers, reels). Corresponds to SAP S/4HANA SD KWMENG (Cumulative Order Quantity).',
     `partial_shipment_allowed` BOOLEAN COMMENT 'Indicates whether the customer permits partial shipments against this order line. True = partial shipments accepted; False = complete order line quantity must ship together. Drives delivery scheduling and backlog management decisions.',
     `product_revision` STRING COMMENT 'The silicon revision or stepping of the ordered semiconductor product (e.g., A0, B1, C2). Critical for tracking product change notifications (PCNs), errata management, and ensuring customers receive the correct silicon revision per their qualification.',
@@ -112,30 +108,72 @@ CREATE OR REPLACE TABLE `vibe_semiconductors_v1`.`order`.`order_line` (
     `temperature_grade` STRING COMMENT 'Operating temperature range classification for the ordered semiconductor product. Commercial (0°C to 70°C), Industrial (-40°C to 85°C), Automotive (-40°C to 125°C, AEC-Q100), Military (-55°C to 125°C). Determines qualification standard and pricing tier.. Valid values are `commercial|industrial|automotive|military|extended`',
     `unit_of_measure` STRING COMMENT 'Sales unit of measure for the ordered semiconductor product. EA = Each (individual packaged IC), WFR = Wafer, REEL = Tape-and-reel packaging, TRAY = JEDEC tray, TUBE = Tube packaging. Corresponds to SAP S/4HANA SD VRKME (Sales Unit).. Valid values are `EA|WFR|REEL|TRAY|TUBE`',
     `unit_price` DECIMAL(18,2) COMMENT 'Agreed net unit selling price for the semiconductor product on this order line, expressed in the transaction currency. Reflects negotiated pricing, volume discounts, and design-win pricing agreements. Corresponds to SAP S/4HANA SD NETPR (Net Price).',
-    `unit_price_usd` DECIMAL(18,2) COMMENT 'The unit price usd of the order line record in the order domain.',
     `updated_timestamp` TIMESTAMP COMMENT 'System timestamp of the most recent update to this order line record in the data platform. Supports change data capture (CDC), audit trail, and incremental processing in the Databricks Lakehouse Silver Layer.',
     `wafer_start_authorization` BOOLEAN COMMENT 'Indicates whether a wafer start authorization (WSA) has been issued to the fabrication facility (FAB) to initiate production of wafers for fulfilling this order line. True = WSA issued; False = pending or not required (e.g., fulfilled from die bank or finished goods inventory).',
-    CONSTRAINT pk_order_line PRIMARY KEY(`order_line_id`)
+    CONSTRAINT pk_line PRIMARY KEY(`line_id`)
 ) COMMENT 'Individual line items within a customer sales order, each representing a distinct semiconductor product SKU, quantity, unit price, requested ship date, confirmed ship date, and line-level status. Captures product configuration details such as package type, speed grade, temperature range, and special handling requirements. Supports partial shipments and line-level allocation tracking. Sourced from SAP S/4HANA SD order line items.';
+
+CREATE OR REPLACE TABLE `vibe_semiconductors_v1`.`order`.`status_history` (
+    `status_history_id` BIGINT COMMENT 'Primary key for status_history',
+    `account_id` BIGINT COMMENT 'Reference to the customer account associated with the sales order at the time of this status event. Supports customer-level backlog and escalation analytics.',
+    `allocation_record_id` BIGINT COMMENT 'Reference to the die bank or wafer allocation record when the status transitions to allocated. Captures which inventory allocation was committed to fulfill this order.',
+    `fabrication_wafer_lot_id` BIGINT COMMENT 'Reference to the wafer fabrication lot associated with this order status event. Populated when the status transition is triggered by a fab event such as wafer_started or in_fab. Links order lifecycle to WIP (Work in Process) tracking.',
+    `line_id` BIGINT COMMENT 'Foreign key linking to order.order_line. Business justification: status_history tracks status transitions at both order and line level in semiconductor order-to-cash (e.g., a specific line placed on hold, a lines allocation status changing). Currently only has pri',
+    `order_id` BIGINT COMMENT 'FK to order.sales_order.sales_order_id — Status history records track transitions for a specific order. Must reference the parent order.',
+    `shipment_id` BIGINT COMMENT 'Reference to the outbound shipment record when the status transitions to shipped. Links the order status history to the physical delivery event for shipment tracking and delivery confirmation.',
+    `status_order_id` BIGINT COMMENT 'FK to order.sales_order.sales_order_id — Status history records belong to a specific sales order. Required for audit trail integrity.',
+    `supplier_id` BIGINT COMMENT 'Reference to the OSAT (Outsourced Semiconductor Assembly and Test) partner responsible for packaging and final test of the order. Populated when the order transitions to packaging or test phases. Supports OSAT-level delivery tracking.',
+    `cancellation_type` STRING COMMENT 'Classifies the reason for order cancellation when new_status is cancelled. Values: customer_request (customer-initiated), eol (End of Life product discontinuation), capacity (fab capacity unavailable), yield_fail (unacceptable yield), export_block (export compliance hold), duplicate (duplicate order entry). Null for non-cancellation transitions.. Valid values are `customer_request|eol|capacity|yield_fail|export_block|duplicate`',
+    `change_sequence_number` STRING COMMENT 'Sequential integer representing the ordinal position of this status transition within the complete history of the sales order line. Sequence 1 is the initial entry event. Enables ordered reconstruction of the full order lifecycle.',
+    `confirmed_delivery_date` DATE COMMENT 'The internally confirmed delivery date at the time of this status transition. May differ from requested_delivery_date due to fab capacity, yield, or supply chain constraints. Tracks delivery commitment evolution across the order lifecycle.',
+    `created_timestamp` TIMESTAMP COMMENT 'The timestamp when this status history record was first written to the data platform (Silver layer ingestion time). Distinct from transition_timestamp which records the business event time. Supports data lineage and audit trail completeness.',
+    `die_bank_order_flag` BOOLEAN COMMENT 'Indicates whether this order line is fulfilled from die bank inventory (pre-fabricated, unpackaged dies held in inventory) rather than a new wafer start. Die bank orders have a compressed status lifecycle bypassing wafer_started and in_fab states.',
+    `duration_in_prior_status_hours` DECIMAL(18,2) COMMENT 'The number of hours the order line spent in the prior_status before transitioning to new_status. Calculated at ingestion time from the difference between this transition_timestamp and the previous records transition_timestamp. Supports cycle time and SLA analytics.',
+    `escalation_flag` BOOLEAN COMMENT 'Indicates whether this status transition was associated with a customer escalation event. When True, the order was under active escalation management at the time of the transition. Supports escalation tracking and priority queue analytics.',
+    `escalation_priority` STRING COMMENT 'Priority level of the customer escalation active at the time of this status transition. P1 is highest urgency (e.g., automotive line-down risk), P4 is lowest. Populated only when escalation_flag is True.. Valid values are `P1|P2|P3|P4`',
+    `export_control_flag` BOOLEAN COMMENT 'Indicates whether this status transition triggered or was subject to an export control review under EAR or ITAR regulations. When True, the order required compliance screening before proceeding to the next status.',
+    `hold_code` STRING COMMENT 'Standardized hold code applied to the order at the time of this status transition (e.g., CREDIT_HOLD, EXPORT_REVIEW, YIELD_HOLD, CAPACITY_HOLD). Null when no hold is active. Critical for backlog management and compliance review workflows. [ENUM-REF-CANDIDATE: promote to reference product]',
+    `is_current_status` BOOLEAN COMMENT 'Indicates whether this record represents the most recent (current) status of the order line. True for the latest status transition record; False for all historical records. Enables efficient current-state queries without window functions.',
+    `mpw_flag` BOOLEAN COMMENT 'Indicates whether the order line is associated with a Multi-Project Wafer (MPW) run. MPW orders share wafer capacity across multiple customers and have distinct status transition rules compared to dedicated production orders.',
+    `new_status` STRING COMMENT 'The order status assigned as a result of this transition event. Represents the current state after the change. [ENUM-REF-CANDIDATE: entered|confirmed|allocated|wafer_started|in_fab|shipped|invoiced|cancelled — promote to reference product]',
+    `ordered_quantity` DECIMAL(18,2) COMMENT 'The quantity of units (dies, wafers, or packaged devices) on the order line at the time of this status transition. Captured as a snapshot to support backlog quantity analytics across status states.',
+    `part_number` STRING COMMENT 'The semiconductor part number (IC, SoC, ASIC, or FPGA) associated with the order line at the time of this status event. Denormalized for audit trail completeness and historical accuracy even if the part number changes later.',
+    `pcn_reference_number` STRING COMMENT 'Reference to a Product Change Notification (PCN) that triggered or is associated with this status transition. Relevant when an order status changes due to a product or process change notification issued to the customer.',
+    `prior_status` STRING COMMENT 'The order status immediately before this transition event. Together with new_status, defines the state transition vector for lifecycle analytics and backlog management. [ENUM-REF-CANDIDATE: entered|confirmed|allocated|wafer_started|in_fab|shipped|invoiced|cancelled — promote to reference product]',
+    `process_node` STRING COMMENT 'The semiconductor process technology node (e.g., 5nm, 7nm, 28nm, 65nm) used to fabricate the product on this order line. Captured as a snapshot at the time of the status event for process-level backlog analytics.',
+    `quantity_unit_of_measure` STRING COMMENT 'Unit of measure for the ordered quantity: EA (each/packaged unit), WFR (wafer), DIE (individual die), or LOT (production lot). Aligns with SAP base unit of measure configuration for semiconductor products.. Valid values are `EA|WFR|DIE|LOT`',
+    `reason_code` STRING COMMENT 'Standardized reason code explaining why the status transition occurred (e.g., CUST_REQUEST, CAPACITY_HOLD, YIELD_FAIL, ALLOC_RELEASE, SHIP_CONFIRM, CANCEL_EOL). Sourced from SAP SD reason code configuration. [ENUM-REF-CANDIDATE: promote to reference product for full enumeration]',
+    `reason_description` STRING COMMENT 'Free-text narrative providing additional context for the status transition beyond the structured reason code. Captures escalation notes, customer communication references, or fab hold explanations entered by the user or system.',
+    `requested_delivery_date` DATE COMMENT 'The customer-requested delivery date on the order line at the time of this status event. Snapshot preserved in the history record to track whether delivery commitments changed across status transitions.',
+    `sla_breached_flag` BOOLEAN COMMENT 'Indicates whether the duration in the prior status exceeded the SLA target hours, constituting an SLA breach. True when duration_in_prior_status_hours > sla_target_hours. Supports escalation triggering and customer reporting.',
+    `sla_target_hours` DECIMAL(18,2) COMMENT 'The contracted or internally defined SLA target duration (in hours) for the order to remain in the prior_status before transitioning. Used to assess whether the transition was on-time or breached the SLA threshold.',
+    `source_document_number` STRING COMMENT 'The reference number of the source business document that triggered this status transition (e.g., a purchase order number, a delivery note number, an invoice number, or a MES lot release number). Provides cross-system traceability.',
+    `source_system_event_reference` STRING COMMENT 'The unique event or change document identifier from the originating operational system (e.g., SAP Change Document number CDHDR.CHANGENR, Camstar transaction ID, or Salesforce case event ID). Enables end-to-end traceability from the Silver layer back to the system of record.',
+    `transition_timestamp` TIMESTAMP COMMENT 'The precise date and time (with timezone offset) at which the status transition occurred. This is the principal business event time for this EVENT_LOG record, distinct from record audit timestamps.',
+    `transition_type` STRING COMMENT 'Classifies the nature of the status transition: forward progression through the order lifecycle, backward reversal (e.g., re-open), cancellation, or data correction. Supports lifecycle analytics and anomaly detection.. Valid values are `forward|backward|cancellation|correction`',
+    `triggered_by_system` STRING COMMENT 'The operational system of record that originated the status change event. Distinguishes between manual user-driven changes and automated system-driven transitions (e.g., MES wafer start confirmation triggering wafer_started status). [ENUM-REF-CANDIDATE: SAP_SD|MES_CAMSTAR|MES_SMARTFACTORY|SALESFORCE_CRM|AGILE_PLM|MANUAL|API_INTEGRATION — 7 candidates stripped; promote to reference product]',
+    `updated_timestamp` TIMESTAMP COMMENT 'The timestamp when this status history record was last modified in the data platform. In an ideal append-only event log this should rarely change; populated to support correction workflows and data quality monitoring.',
+    `wafer_start_authorization_number` STRING COMMENT 'The wafer start authorization number issued by the fab planning system when the order transitions to wafer_started status. Ties the commercial order to the physical manufacturing release in the MES.',
+    CONSTRAINT pk_status_history PRIMARY KEY(`status_history_id`)
+) COMMENT 'Chronological audit trail of all status transitions for a sales order throughout the order-to-cash lifecycle. Records each status change event including prior status, new status, timestamp, reason code, and the user or system that triggered the change. Supports backlog management, escalation tracking, and order lifecycle analytics. Covers statuses such as: entered, confirmed, allocated, wafer_started, in_fab, shipped, invoiced, cancelled.';
 
 CREATE OR REPLACE TABLE `vibe_semiconductors_v1`.`order`.`delivery_schedule` (
     `delivery_schedule_id` BIGINT COMMENT 'Unique surrogate identifier for each delivery schedule line record in the SAP S/4HANA SD schedule line table (VBEP). Primary key for the delivery_schedule data product in the Silver layer.',
     `account_id` BIGINT COMMENT 'Reference to the sold-to customer for whom this delivery schedule is planned. Supports customer-level delivery performance analytics and blanket order management.',
-    `storage_location_id` BIGINT COMMENT 'Unique identifier for the assigned storage location record within the delivery schedule order entity.',
-    `address_id` BIGINT COMMENT 'Foreign key linking to customer.address. Business justification: In semiconductor blanket order and call-off scenarios, individual delivery schedule lines can ship to different customer addresses than the master order. A role-prefixed delivery_ship_to_address_id FK',
+    `storage_location_id` BIGINT COMMENT 'Reference to the customers destination ship-to location (customer site, distribution center, or consignment hub) for this delivery schedule line.',
+    `fabrication_wafer_lot_id` BIGINT COMMENT 'Foreign key linking to fabrication.fabrication_wafer_lot. Business justification: Delivery schedule lines in semiconductor companies reference specific wafer lots to commit ship dates. delivery_schedule.lot_number is a denormalized reference to fabrication_wafer_lot. This link enab',
+    `inbound_shipment_id` BIGINT COMMENT 'Foreign key linking to supply.inbound_shipment. Business justification: ATP and delivery commit management: semiconductor planners tie customer delivery schedule lines to the inbound shipment expected to supply them. Required for Available-to-Promise calculations, deliver',
     `order_id` BIGINT COMMENT 'Reference to the parent sales order header from which this delivery schedule line originates. Links the schedule line back to the order-to-cash transaction header.',
-    `origin_storage_location_id` BIGINT COMMENT 'Reference to the originating ship-from location for this delivery schedule line. May be a wafer fabrication facility (FAB), OSAT (Outsourced Semiconductor Assembly and Test) site, or finished goods warehouse.',
-    `package_type_id` BIGINT COMMENT 'Foreign key linking to packaging.package_type. Business justification: delivery_schedule.packaging_type is a plain-text denormalization of the package_type entity. A proper FK enables delivery scheduling to enforce package-specific lead times, OSAT capacity constraints, ',
-    `order_line_id` BIGINT COMMENT 'Reference to the specific sales order line item (order item) for which this delivery schedule line is created. A single order line may have multiple schedule lines representing different delivery windows.',
+    `line_id` BIGINT COMMENT 'Reference to the specific sales order line item (order item) for which this delivery schedule line is created. A single order line may have multiple schedule lines representing different delivery windows.',
+    `shipping_storage_location_id` BIGINT COMMENT 'Reference to the originating ship-from location for this delivery schedule line. May be a wafer fabrication facility (FAB), OSAT (Outsourced Semiconductor Assembly and Test) site, or finished goods warehouse.',
+    `sku_id` BIGINT COMMENT 'Reference to the semiconductor product (IC, SoC, ASIC, FPGA, or packaged die) being scheduled for delivery on this schedule line.',
     `to_order_line_id` BIGINT COMMENT 'FK to order.order_line.order_line_id — Delivery schedules define delivery windows per order line. delivery_schedule.order_line_id → order_line.order_line_id.',
-    `maintenance_event_id` BIGINT COMMENT 'Foreign key linking to equipment.maintenance_event. Business justification: Maintenance-Driven Delivery Reschedule Reporting: delivery_schedule.last_reschedule_reason captures push-outs caused by tool downtime. Linking to the causative maintenance_event enables on-time delive',
     `actual_delivery_date` DATE COMMENT 'The date on which the shipment was confirmed as received at the customers ship-to location. Used for on-time delivery (OTD) KPI calculation and customer satisfaction reporting.',
     `actual_ship_date` DATE COMMENT 'The actual date on which the shipment physically departed the ship-from location. Populated upon goods issue posting in SAP. Used for on-time shipment performance measurement.',
     `allocation_priority` STRING COMMENT 'Numeric priority rank assigned to this delivery schedule line during constrained supply allocation. Lower values indicate higher priority. Used by supply chain planners to allocate limited wafer or die inventory across competing customer orders.',
     `backlog_flag` BOOLEAN COMMENT 'Indicates whether this delivery schedule line is currently in backlog status (confirmed delivery date is past due or confirmed quantity is less than ordered quantity). Used for backlog management reporting and customer escalation tracking.',
     `blanket_order_flag` BOOLEAN COMMENT 'Indicates whether this delivery schedule line is part of a blanket (framework) order with periodic call-offs. Blanket orders are common for high-volume semiconductor customers with rolling delivery schedules.',
     `call_off_number` STRING COMMENT 'The specific call-off or release number issued by the customer against a blanket order for this delivery schedule line. Identifies the periodic release instruction within the blanket order framework.',
-    `committed_date` DATE COMMENT 'The committed date associated with the delivery schedule order record.',
     `confirmed_delivery_date` DATE COMMENT 'The delivery date confirmed by the semiconductor manufacturer to the customer after availability check (ATP) and capacity validation. May differ from the requested date due to wafer fab cycle time or OSAT capacity constraints.',
     `confirmed_quantity` DECIMAL(18,2) COMMENT 'The quantity confirmed by the manufacturer for delivery on this schedule line after ATP (Available-to-Promise) check. May be less than ordered quantity due to allocation constraints or yield limitations.',
     `country_of_origin` STRING COMMENT 'ISO 3166-1 alpha-3 country code indicating the country where the semiconductor product was manufactured (wafer fab or final assembly location). Required for customs declarations, tariff classification, and export control compliance.. Valid values are `^[A-Z]{3}$`',
@@ -143,21 +181,18 @@ CREATE OR REPLACE TABLE `vibe_semiconductors_v1`.`order`.`delivery_schedule` (
     `currency_code` STRING COMMENT 'ISO 4217 three-letter currency code for the transaction value fields on this delivery schedule line (e.g., USD, EUR, JPY). Supports multi-currency semiconductor sales operations.. Valid values are `^[A-Z]{3}$`',
     `delivered_quantity` DECIMAL(18,2) COMMENT 'The actual quantity of units shipped and delivered against this schedule line. Populated from goods issue and proof-of-delivery confirmation. Used to compute open backlog.',
     `delivery_document_number` STRING COMMENT 'SAP outbound delivery document number (SD delivery order) created against this schedule line. Links the schedule line to the physical goods issue and shipping execution documents.',
-    `delivery_priority` STRING COMMENT 'The delivery priority of the delivery schedule record in the order domain.',
     `die_bank_order_number` STRING COMMENT 'Reference number for a die bank order when delivery is fulfilled from pre-tested Known Good Die (KGD) inventory rather than a new wafer start. Supports die bank fulfillment tracking in the order-to-cash lifecycle.',
     `eccn_code` STRING COMMENT 'Export Control Classification Number assigned to the semiconductor product on this schedule line per the US Commerce Control List (CCL). Determines applicable export license requirements. Examples: 3A001 (electronic components), 3E001 (technology for IC design).',
     `export_control_status` STRING COMMENT 'Export control compliance status for this delivery schedule line. Semiconductor shipments may be subject to EAR (Export Administration Regulations), ITAR (International Traffic in Arms Regulations), or CHIPS Act restrictions. blocked prevents shipment until clearance is obtained.. Valid values are `approved|pending_review|blocked|not_required`',
     `hazmat_flag` BOOLEAN COMMENT 'Indicates whether the shipment for this delivery schedule line contains hazardous materials (e.g., certain chemical compounds in semiconductor packaging). Triggers special handling, labeling, and documentation requirements per RoHS and REACH regulations.',
     `incoterms_code` STRING COMMENT 'International Commercial Terms (Incoterms 2020) code defining the transfer of risk and responsibility between the semiconductor manufacturer and the customer for this delivery. Governs freight cost allocation and insurance obligations. [ENUM-REF-CANDIDATE: EXW|FCA|CPT|CIP|DAP|DPU|DDP|FAS|FOB|CFR|CIF — 11 candidates stripped; promote to reference product]',
     `incoterms_location` STRING COMMENT 'The named place or port associated with the Incoterms code for this delivery schedule line (e.g., FOB Shanghai, DAP Austin TX). Required by ICC Incoterms 2020 to complete the delivery terms specification.',
-    `last_modified_timestamp` TIMESTAMP COMMENT 'The last modified timestamp of the delivery schedule record in the order domain.',
     `last_reschedule_reason` STRING COMMENT 'Free-text or coded reason for the most recent rescheduling of this delivery schedule line (e.g., wafer yield shortfall, OSAT capacity constraint, customer push-out request, export hold). Supports root cause analysis for delivery performance.',
     `last_updated_timestamp` TIMESTAMP COMMENT 'Timestamp of the most recent modification to this delivery schedule line record in the source SAP S/4HANA SD system. Used for incremental data pipeline processing and change detection in the Silver layer.',
-    `lot_number` STRING COMMENT 'Semiconductor production lot number (wafer lot or assembly lot) assigned to the units being delivered on this schedule line. Enables full traceability from customer delivery back to wafer fabrication and process parameters. Sourced from Camstar MES lot tracking.',
-    `model_lineage_source` STRING COMMENT 'The model lineage source of the delivery schedule record in the order domain.',
     `mpw_order_flag` BOOLEAN COMMENT 'Indicates whether this delivery schedule line is associated with a Multi-Project Wafer (MPW) order, where multiple customer designs share a single wafer run. MPW orders have distinct lead times and delivery constraints.',
     `net_value` DECIMAL(18,2) COMMENT 'Net monetary value of the confirmed quantity on this delivery schedule line in the transaction currency. Calculated as confirmed quantity multiplied by the agreed unit price. Used for revenue recognition, backlog valuation, and SOX financial reporting.',
     `ordered_quantity` DECIMAL(18,2) COMMENT 'The quantity of semiconductor units (dies, packaged ICs, wafers) originally ordered by the customer on this schedule line. Expressed in the sales unit of measure (e.g., pieces, wafers).',
+    `packaging_type` STRING COMMENT 'The physical packaging format for the semiconductor units being delivered on this schedule line. Packaging type affects handling, storage, and customer assembly line compatibility. Common formats include tape-and-reel (for SMT), tray, tube, bulk, waffle pack, and bare wafer.. Valid values are `tape_and_reel|tray|tube|bulk|waffle_pack|wafer`',
     `quantity_unit` STRING COMMENT 'Unit of measure for all quantity fields on this schedule line. Common semiconductor units include PC (pieces/individual ICs), WF (wafers), KGD (Known Good Die), LOT (production lot), REEL (tape-and-reel packaging), TRAY (tray packaging).. Valid values are `PC|WF|KGD|LOT|REEL|TRAY`',
     `requested_delivery_date` DATE COMMENT 'The delivery date originally requested by the customer for this schedule line. Represents the customers desired receipt date and is the baseline for on-time delivery (OTD) measurement.',
     `rohs_compliant_flag` BOOLEAN COMMENT 'Indicates whether the semiconductor product being delivered on this schedule line is compliant with the EU Restriction of Hazardous Substances (RoHS) Directive. Required for shipments to EU customers and increasingly mandated globally.',
@@ -165,9 +200,6 @@ CREATE OR REPLACE TABLE `vibe_semiconductors_v1`.`order`.`delivery_schedule` (
     `schedule_line_number` STRING COMMENT 'Sequential line number of this delivery schedule entry within the parent order line item. Used to order multiple delivery windows for the same order line (e.g., line 1 = 500 units on date A, line 2 = 500 units on date B).',
     `schedule_line_revision` STRING COMMENT 'Revision counter tracking how many times this delivery schedule line has been modified (date changes, quantity adjustments, rescheduling). Supports audit trail requirements and customer change notification (PCN) tracking.',
     `schedule_line_status` STRING COMMENT 'Current fulfillment lifecycle status of this delivery schedule line. Drives backlog management, delivery performance reporting, and customer communication. blocked indicates an export control or credit hold.. Valid values are `open|confirmed|partially_delivered|fully_delivered|cancelled|blocked`',
-    `schedule_status` STRING COMMENT 'The schedule status of the delivery schedule record in the order domain.',
-    `scheduled_delivery_date` DATE COMMENT 'The scheduled delivery date associated with the delivery schedule order record.',
-    `scheduled_quantity` DECIMAL(18,2) COMMENT 'The scheduled quantity of the delivery schedule record in the order domain.',
     `scheduled_ship_date` DATE COMMENT 'The planned date on which the shipment is expected to leave the ship-from location (fab, OSAT, or warehouse). Calculated by subtracting transit lead time from the confirmed delivery date.',
     `shipment_tracking_number` STRING COMMENT 'External carrier-assigned tracking number (AWB, BOL, or parcel tracking ID) for the shipment associated with this delivery schedule line. Enables real-time shipment visibility and proof-of-delivery confirmation.',
     `wafer_start_authorization_number` STRING COMMENT 'Wafer Start Authorization number linking this delivery schedule line to the authorized wafer fab start that will produce the units for this delivery. Critical for semiconductor order-to-cash lifecycle management and fab capacity planning.',
@@ -177,24 +209,23 @@ CREATE OR REPLACE TABLE `vibe_semiconductors_v1`.`order`.`delivery_schedule` (
 CREATE OR REPLACE TABLE `vibe_semiconductors_v1`.`order`.`shipment` (
     `shipment_id` BIGINT COMMENT 'Unique system-generated identifier for the shipment record. Primary key for the shipment data product in the order domain.',
     `account_id` BIGINT COMMENT 'Reference to the customer receiving this shipment. Used for delivery confirmation, revenue recognition, and customer service tracking.',
-    `inspection_lot_id` BIGINT COMMENT 'Foreign key linking to quality.inspection_lot. Business justification: Outgoing quality inspection clearance process: every semiconductor shipment must reference the inspection lot that passed final quality inspection before release. Quality engineers and shipping teams ',
-    `order_line_id` BIGINT COMMENT 'FK to order.order_line.order_line_id — Shipments fulfill order lines. After merging shipment_line into shipment, the shipment entity needs direct linkage to order lines for fulfillment tracking.',
-    `package_type_id` BIGINT COMMENT 'Foreign key linking to packaging.package_type. Business justification: shipment.package_type is a plain-text denormalization of the package_type entity. Normalizing to a FK enables carrier selection rules, hazmat/moisture sensitivity handling requirements, and shipment-l',
+    `delivery_schedule_id` BIGINT COMMENT 'Foreign key linking to order.delivery_schedule. Business justification: Shipments in semiconductor order fulfillment are dispatched against specific delivery schedule lines. Adding shipment.delivery_schedule_id -> delivery_schedule.delivery_schedule_id enables schedule-to',
+    `final_test_run_id` BIGINT COMMENT 'Foreign key linking to test.final_test_run. Business justification: Certificate of Conformance generation and outbound quality control: every semiconductor shipment must reference the final test run that qualified the shipped units. Required for customer quality audit',
+    `inspection_lot_id` BIGINT COMMENT 'Foreign key linking to quality.inspection_lot. Business justification: Outgoing Quality Inspection (OQI) process: shipments in semiconductor ops require a passing inspection_lot disposition before ship-hold release. Quality engineers and logistics teams use this link to ',
+    `line_id` BIGINT COMMENT 'FK to order.order_line.order_line_id — Shipments fulfill order lines. After merging shipment_line into shipment, the shipment entity needs direct linkage to order lines for fulfillment tracking.',
+    `storage_location_id` BIGINT COMMENT 'Foreign key linking to inventory.storage_location. Business justification: Outbound logistics and inventory depletion reporting require knowing which storage location a shipment physically departed from. origin_facility_code is a plain-text denormalization of storage_locatio',
     `order_id` BIGINT COMMENT 'Reference to the parent sales order that initiated this shipment. Links the shipment back to the order-to-cash lifecycle.',
-    `contact_id` BIGINT COMMENT 'Foreign key linking to customer.contact. Business justification: Semiconductor shipments require a designated customer receiving contact for delivery confirmation, proof-of-delivery sign-off, and shortage/damage claims. shipment has pod_signoff_reference as plain t',
-    `storage_location_id` BIGINT COMMENT 'Foreign key linking to inventory.storage_location. Business justification: Shipments originate from a specific warehouse storage location. Inventory depletion tracking, FIFO/FEFO compliance, and warehouse management require a direct FK to the originating storage location. or',
-    `address_id` BIGINT COMMENT 'Unique identifier for the ship from address record within the shipment order entity.',
-    `shipment_ship_to_address_id` BIGINT COMMENT 'Unique identifier for the ship to address record within the shipment order entity.',
+    `address_id` BIGINT COMMENT 'Foreign key linking to customer.address. Business justification: Export control compliance (ECCN, ITAR) and customs documentation require the verified customer ship-to address at shipment level, especially for drop-ship and consignee scenarios where the shipment de',
     `to_order_id` BIGINT COMMENT 'FK to order.order.order_id — Shipments fulfill customer orders. shipment.sales_order_id → order.sales_order_id. Critical for order-to-cash traceability.',
     `actual_arrival_date` DATE COMMENT 'Confirmed date the shipment physically arrived at the customer receiving location. Populated from carrier proof of delivery (POD) or customer EDI 856 acknowledgement.',
     `asn_number` STRING COMMENT 'Advance Shipment Notice (ASN) number transmitted to the customer via EDI 856 prior to physical delivery. Enables customer warehouse receiving preparation and automated goods receipt.',
+    `carrier_name` STRING COMMENT 'Name of the freight carrier or logistics service provider responsible for transporting the shipment (e.g., FedEx, DHL, UPS, Nippon Express). Used for carrier performance analytics and claims management.',
     `carrier_tracking_number` STRING COMMENT 'Carrier-assigned tracking number for the shipment. Enables real-time shipment visibility and customer self-service tracking via carrier portals.',
     `created_timestamp` TIMESTAMP COMMENT 'Timestamp when the shipment record was first created in the system. Used for audit trail and data lineage tracking.',
     `currency_code` STRING COMMENT 'ISO 4217 three-letter currency code for monetary values in this shipment record (e.g., USD, EUR, JPY). Supports multi-currency operations across global semiconductor supply chains.. Valid values are `^[A-Z]{3}$`',
     `customer_po_number` STRING COMMENT 'Customer-provided purchase order number referenced on the shipment and delivery documentation. Required for customer receiving, invoice matching, and accounts payable processing.',
     `damaged_goods_flag` BOOLEAN COMMENT 'Indicates whether the customer reported damaged goods upon delivery. Triggers carrier claims process, RMA initiation, and DPPM (Defective Parts Per Million) quality reporting.',
     `declared_value_usd` DECIMAL(18,2) COMMENT 'Declared value of the shipment contents in US dollars for customs and insurance purposes. Required for import duty calculation and export documentation under EAR/ITAR.',
-    `delivery_date` DATE COMMENT 'The delivery date associated with the shipment order record.',
     `destination_country_code` STRING COMMENT 'ISO 3166-1 alpha-3 country code of the customer delivery destination. Required for export compliance screening under EAR and ITAR regulations.. Valid values are `^[A-Z]{3}$`',
     `estimated_arrival_date` DATE COMMENT 'Carrier-provided estimated date of arrival at the customer destination. Used for delivery scheduling, customer communication, and on-time delivery (OTD) performance tracking.',
     `export_control_classification` STRING COMMENT 'Export Control Classification Number (ECCN) assigned to the semiconductor products in this shipment per the Commerce Control List (CCL). Determines applicable export license requirements.',
@@ -204,12 +235,10 @@ CREATE OR REPLACE TABLE `vibe_semiconductors_v1`.`order`.`shipment` (
     `incoterms_code` STRING COMMENT 'International Commercial Terms (Incoterms 2020) code defining the transfer of risk and responsibility between seller and buyer. Governs freight cost allocation and title transfer point. [ENUM-REF-CANDIDATE: EXW|FCA|CPT|CIP|DAP|DPU|DDP|FAS|FOB|CFR|CIF — promote to reference product]',
     `inspection_certificate_number` STRING COMMENT 'Reference number of the quality inspection certificate (Certificate of Conformance or Certificate of Analysis) accompanying the shipment. Required for automotive (IATF 16949) and aerospace customers.',
     `is_multi_leg` BOOLEAN COMMENT 'Indicates whether this shipment involves multiple transportation legs (e.g., fab to OSAT to customer, or cross-border transshipment). Enables multi-leg shipment tracking and compliance documentation.',
-    `last_modified_timestamp` TIMESTAMP COMMENT 'The last modified timestamp of the shipment record in the order domain.',
     `lot_numbers` STRING COMMENT 'Comma-separated list of manufacturing lot numbers (wafer lot IDs) included in this shipment. Enables full traceability from customer delivery back to wafer fabrication and process engineering records in Camstar MES.',
-    `model_lineage_source` STRING COMMENT 'The model lineage source of the shipment record in the order domain.',
     `notes` STRING COMMENT 'Free-text field for operational notes, special handling instructions, or customer-specific delivery requirements associated with this shipment (e.g., ESD handling, temperature-controlled transport).',
-    `number` STRING COMMENT 'Externally visible, human-readable shipment identifier used in carrier communications, customer EDI 856 ASN, and logistics documentation. Sourced from SAP S/4HANA SD outbound delivery number.. Valid values are `^SHP-[0-9]{10}$`',
     `package_count` STRING COMMENT 'Total number of physical packages (boxes, reels, trays, tubes) included in this shipment. Used for carrier manifest, customs declaration, and receiving verification.',
+    `package_type` STRING COMMENT 'Physical packaging format used for the semiconductor products in this shipment. Determines handling requirements, ESD protection, and customer assembly line compatibility.. Valid values are `tape_and_reel|jedec_tray|tube|waffle_pack|bulk|wafer_carrier`',
     `pod_confirmed_quantity` DECIMAL(18,2) COMMENT 'Quantity confirmed as received by the customer at the delivery location per the proof of delivery (POD). Compared against shipped_quantity to identify shortages or overages.',
     `pod_receipt_date` DATE COMMENT 'Date the customer confirmed receipt of the shipment as captured in the proof of delivery (POD). Triggers downstream invoice release and revenue recognition in SAP S/4HANA FI.',
     `pod_signoff_reference` STRING COMMENT 'Customer signoff reference or electronic signature identifier from the proof of delivery document. Serves as legal evidence of delivery completion for dispute resolution and revenue recognition.',
@@ -220,10 +249,9 @@ CREATE OR REPLACE TABLE `vibe_semiconductors_v1`.`order`.`shipment` (
     `rohs_compliant` BOOLEAN COMMENT 'Indicates whether all semiconductor products in this shipment comply with the EU Restriction of Hazardous Substances (RoHS) Directive. Required for EU market access and customer compliance declarations.',
     `service_level` STRING COMMENT 'Carrier service tier selected for this shipment (e.g., overnight, express, standard ground). Determines transit time commitment and freight cost.. Valid values are `standard|express|overnight|economy|priority`',
     `ship_date` DATE COMMENT 'Actual date the shipment physically departed the origin facility (fab, OSAT, or distribution center). Principal business event date for the shipment transaction.',
+    `shipment_number` STRING COMMENT 'Externally visible, human-readable shipment identifier used in carrier communications, customer EDI 856 ASN, and logistics documentation. Sourced from SAP S/4HANA SD outbound delivery number.. Valid values are `^SHP-[0-9]{10}$`',
     `shipment_status` STRING COMMENT 'Current lifecycle state of the shipment. Drives downstream processes including invoice release and revenue recognition upon delivery confirmation.. Valid values are `draft|confirmed|in_transit|delivered|cancelled|on_hold`',
     `shipped_quantity` DECIMAL(18,2) COMMENT 'Total quantity of semiconductor units (dies, packaged ICs, wafers) physically shipped in this shipment. Expressed in the base unit of measure (UOM) for the product.',
-    `total_weight_kg` DECIMAL(18,2) COMMENT 'The total weight kg of the shipment record in the order domain.',
-    `tracking_number` STRING COMMENT 'The tracking number of the shipment record in the order domain.',
     `unit_of_measure` STRING COMMENT 'Unit of measure for the shipped quantity. EA = each (packaged IC), WFR = wafer, DIE = individual die, REEL = tape-and-reel, TRAY = JEDEC tray, TUBE = IC tube.. Valid values are `EA|WFR|DIE|REEL|TRAY|TUBE`',
     `updated_timestamp` TIMESTAMP COMMENT 'Timestamp of the most recent modification to the shipment record. Supports change tracking, audit compliance, and incremental data pipeline processing.',
     `wrong_part_flag` BOOLEAN COMMENT 'Indicates whether the customer reported receipt of an incorrect part number or product. Triggers RMA process, root cause analysis, and corrective action in the quality management system.',
@@ -232,14 +260,17 @@ CREATE OR REPLACE TABLE `vibe_semiconductors_v1`.`order`.`shipment` (
 
 CREATE OR REPLACE TABLE `vibe_semiconductors_v1`.`order`.`shipment_line` (
     `shipment_line_id` BIGINT COMMENT 'Unique surrogate identifier for each shipment line record in the Silver Layer lakehouse. Primary key for the shipment_line data product.',
-    `assembly_lot_id` BIGINT COMMENT 'Foreign key linking to packaging.assembly_lot. Business justification: Shipment line traceability to assembly lot is mandatory for quality recalls, DPPM reporting, and customer complaint resolution. Semiconductor customers require lot-level traceability on shipped units;',
-    `finished_good_id` BIGINT COMMENT 'Foreign key linking to inventory.finished_good. Business justification: Finished good lot traceability at shipment line level is required for Certificate of Conformance (CoC), DPPM tracking, and RoHS/REACH regulatory compliance. Each shipment line ships a specific finishe',
-    `inspection_lot_id` BIGINT COMMENT 'Foreign key linking to quality.inspection_lot. Business justification: Lot-level quality clearance per shipment line: semiconductor shipment lines map to specific inspected lots. Direct FK enables shipment-line quality traceability reports and certificate-of-conformance ',
-    `package_type_id` BIGINT COMMENT 'Foreign key linking to packaging.package_type. Business justification: shipment_line.package_type is a plain-text denormalization of the package_type entity. A proper FK enforces referential integrity, enables package-level shipment analytics (e.g., units shipped by pack',
-    `order_line_id` BIGINT COMMENT 'Unique identifier for the primary order line record within the shipment line order entity.',
+    `allocation_record_id` BIGINT COMMENT 'Foreign key linking to order.allocation_record. Business justification: Each shipment line in semiconductor fulfillment consumes a specific allocation record (wafer lot, die bank, or finished goods allocation). Adding shipment_line.allocation_record_id -> allocation_recor',
+    `delivery_schedule_id` BIGINT COMMENT 'Foreign key linking to order.delivery_schedule. Business justification: Each shipment line fulfills a specific delivery schedule line in the semiconductor order-to-cash process. Adding shipment_line.delivery_schedule_id -> delivery_schedule.delivery_schedule_id enables li',
+    `die_bank_id` BIGINT COMMENT 'Foreign key linking to inventory.die_bank. Business justification: shipment_line.die_bank_order_number is a plain-text denormalization of die_bank inventory. Shipping die bank (KGD) orders requires direct traceability from shipment line to die bank inventory record f',
+    `final_test_run_id` BIGINT COMMENT 'Foreign key linking to test.final_test_run. Business justification: Line-level CoC and test traceability: each shipment_line represents a specific lot/part number being shipped. Linking to the qualifying final_test_run is required for Certificate of Conformance genera',
+    `finished_good_id` BIGINT COMMENT 'Foreign key linking to inventory.finished_good. Business justification: Shipment line goods issue and certificate of conformance processes require linking each shipped line to the specific finished good inventory record. Lot traceability, REACH/RoHS compliance documentati',
+    `ic_design_project_id` BIGINT COMMENT 'Identifier for the Multi-Project Wafer run from which this shipment lines product originated. Enables traceability for MPW orders where multiple customer designs share a single wafer fabrication run.',
+    `inventory_wafer_lot_id` BIGINT COMMENT 'Unique identifier for the wafer lot from which the shipped dies or packaged ICs originated. Enables fab-level traceability from customer shipment back to wafer fabrication run in the MES.',
     `shipment_id` BIGINT COMMENT 'Reference to the parent shipment header record. Links this line to the physical shipment event (HEADER_REFERENCE per TRANSACTION_LINE role).',
-    `primary_shipment_order_line_id` BIGINT COMMENT 'Reference to the customer order line that this shipment line fulfills. Enables traceability from physical shipment back to the originating sales order line in the order-to-cash lifecycle.',
+    `line_id` BIGINT COMMENT 'Reference to the customer order line that this shipment line fulfills. Enables traceability from physical shipment back to the originating sales order line in the order-to-cash lifecycle.',
     `sku_id` BIGINT COMMENT 'Reference to the semiconductor product (IC, SoC, ASIC, FPGA, etc.) being shipped on this line. RESOURCE_REFERENCE per TRANSACTION_LINE role.',
+    `tapeout_id` BIGINT COMMENT 'Foreign key linking to design.tapeout. Business justification: Shipment lines for ICs require tapeout traceability for certificate of conformance, customs export control documentation, and quality records. Tapeout identifies the specific GDS revision and mask set',
     `to_order_line_id` BIGINT COMMENT 'FK to order.order_line.order_line_id — Critical fulfillment traceability link. Each shipment line fulfills a specific order line. Required for order fulfillment tracking, partial shipment management, and revenue recognition.',
     `to_shipment_id` BIGINT COMMENT 'FK to order.shipment.shipment_id — Fundamental header-to-line relationship. Every shipment line must belong to exactly one shipment.',
     `actual_ship_date` DATE COMMENT 'Date on which the product was physically handed over to the carrier or freight forwarder. Used for on-time shipment performance, revenue recognition trigger, and export documentation.',
@@ -252,18 +283,17 @@ CREATE OR REPLACE TABLE `vibe_semiconductors_v1`.`order`.`shipment_line` (
     `customer_part_number` STRING COMMENT 'Customer-assigned part number or device designation for the shipped product. Required for customer-facing shipping documents, ASN (Advance Ship Notice), and design-in traceability.',
     `date_code` STRING COMMENT 'Manufacturing date code in YYWW format (year + work week) indicating when the product was fabricated or assembled. Required for shelf-life management, FIFO inventory rotation, and customer quality audits.. Valid values are `^[0-9]{4}[0-9]{2}$`',
     `delivery_document_number` STRING COMMENT 'Externally-visible SAP outbound delivery document number associated with this shipment line, used for customer communication and logistics coordination.',
-    `die_bank_order_number` STRING COMMENT 'Reference to the die bank order from which known good dies (KGD) were drawn for this shipment. Applicable when shipping bare dies or KGD from die bank inventory rather than packaged product.',
     `eccn_code` STRING COMMENT 'Export Control Classification Number assigned to this product line item per the US Commerce Control List (CCL). Required for EAR compliance screening and export license determination for semiconductor products.',
     `goods_issue_timestamp` TIMESTAMP COMMENT 'Precise timestamp when goods issue was posted in SAP, marking the transfer of ownership and triggering revenue recognition and inventory reduction. BUSINESS_EVENT_TIMESTAMP for this transaction line.',
     `inspection_certificate_number` STRING COMMENT 'Reference number of the quality inspection certificate (Certificate of Conformance or Certificate of Analysis) issued for this shipment line. Links to quality records from KLA ICOS inspection systems and QM module.',
     `itar_controlled` BOOLEAN COMMENT 'Indicates whether this shipment line item is subject to ITAR controls as a defense article or defense service. When true, requires State Department export license and end-use certificate.',
-    `last_modified_timestamp` TIMESTAMP COMMENT 'The last modified timestamp of the shipment line record in the order domain.',
     `line_net_value` DECIMAL(18,2) COMMENT 'Total net value of this shipment line (shipped_quantity × unit_selling_price after applicable discounts). Used for revenue recognition, invoice generation, and SOX financial reporting.',
     `line_number` STRING COMMENT 'Sequential line number within the parent shipment, used to order and reference individual line items. LINE_SEQUENCE per TRANSACTION_LINE role.',
     `line_status` STRING COMMENT 'Current fulfillment lifecycle status of this shipment line. Tracks progression from open through picking, packing, shipment, and delivery confirmation or cancellation.. Valid values are `open|picking|packed|shipped|delivered|cancelled`',
-    `model_lineage_source` STRING COMMENT 'The model lineage source of the shipment line record in the order domain.',
+    `lot_number` STRING COMMENT 'Manufacturing lot number assigned during wafer fabrication or assembly. Critical for traceability, quality dispute resolution, and RMA processing. Sourced from Camstar MES lot management.',
     `moisture_sensitivity_level` STRING COMMENT 'JEDEC moisture sensitivity level classification for the shipped packaged IC. Determines floor life, storage, and baking requirements at the customers SMT assembly facility.. Valid values are `MSL1|MSL2|MSL2a|MSL3|MSL4|MSL5`',
     `ordered_quantity` DECIMAL(18,2) COMMENT 'Original quantity requested on the customer order line for this product. Enables calculation of fulfillment rate and identification of short-ships or over-ships.',
+    `package_type` STRING COMMENT 'Semiconductor package type for the shipped product (e.g., BGA, QFN, WLCSP, InFO, CoWoS, TSOP, DIP, SOP). Determines handling, inspection, and customer board assembly requirements. [ENUM-REF-CANDIDATE: BGA|QFN|WLCSP|InFO|CoWoS|TSOP|DIP|SOP|LGA|CSP — promote to reference product]',
     `packaging_configuration` STRING COMMENT 'Physical packaging configuration used for the shipped semiconductor units. Determines handling requirements, moisture sensitivity level (MSL), and customer SMT assembly compatibility.. Valid values are `tape_and_reel|tray|tube|bulk|waffle_pack|dry_pack`',
     `part_number` STRING COMMENT 'Manufacturer part number (MPN) for the shipped semiconductor product as listed in the product catalog and on the shipping documentation. Used for customer identification and BOM matching.',
     `partial_shipment_flag` BOOLEAN COMMENT 'Indicates whether this line represents a partial shipment against the order line quantity. When true, additional shipment lines are expected to fulfill the remaining ordered quantity.',
@@ -272,7 +302,6 @@ CREATE OR REPLACE TABLE `vibe_semiconductors_v1`.`order`.`shipment_line` (
     `revision_level` STRING COMMENT 'Hardware or mask revision level of the shipped IC (e.g., A0, B1, C2). Critical for customer compatibility verification, PCN (Product Change Notification) compliance, and field failure analysis.',
     `rma_reference_number` STRING COMMENT 'RMA number associated with this shipment line if it is a replacement shipment for a previously returned or disputed lot. Enables linkage between original shipment, quality dispute, and replacement fulfillment.',
     `rohs_compliant` BOOLEAN COMMENT 'Indicates whether the shipped product complies with EU RoHS Directive restrictions on hazardous substances (lead, mercury, cadmium, etc.). Required for EU market access and customer compliance declarations.',
-    `serial_number` STRING COMMENT 'The serial number of the shipment line record in the order domain.',
     `serial_number_range_end` STRING COMMENT 'Ending serial number of the serialized unit range included in this shipment line. Used with serial_number_range_start to define the complete set of serialized units shipped.',
     `serial_number_range_start` STRING COMMENT 'Starting serial number of the serialized unit range included in this shipment line. Applicable for high-value or security-sensitive ICs requiring individual unit traceability (e.g., automotive, military-grade).',
     `shipped_quantity` DECIMAL(18,2) COMMENT 'Actual quantity of semiconductor units (dies, packaged ICs, wafers, etc.) physically shipped on this line. LINE_QUANTITY per TRANSACTION_LINE role. May differ from ordered quantity due to partial shipments or allocation constraints.',
@@ -288,24 +317,21 @@ CREATE OR REPLACE TABLE `vibe_semiconductors_v1`.`order`.`shipment_line` (
 CREATE OR REPLACE TABLE `vibe_semiconductors_v1`.`order`.`backlog_position` (
     `backlog_position_id` BIGINT COMMENT 'Unique surrogate identifier for each backlog position snapshot record in the order-to-cash lifecycle. Primary key for the backlog_position data product.',
     `account_id` BIGINT COMMENT 'Reference to the customer account associated with this backlog position. Used for customer-level backlog aggregation, escalation prioritization, and revenue forecasting.',
-    `design_win_id` BIGINT COMMENT 'Foreign key linking to customer.customer_design_win. Business justification: Backlog positions tied to design wins receive priority allocation in constrained semiconductor supply. backlog_position has design_win_flag (boolean) but no FK to the actual design win record. This FK',
-    `die_bank_id` BIGINT COMMENT 'Foreign key linking to inventory.die_bank. Business justification: Backlog positions for KGD (Known Good Die) products require direct reference to die bank inventory for supply commitment analysis. Semiconductor die backlog management explicitly tracks available die ',
-    `fabrication_wafer_lot_id` BIGINT COMMENT 'Foreign key linking to fabrication.fabrication_wafer_lot. Business justification: backlog_position.wafer_lot_number is a denormalized string referencing the wafer lot supplying the backlog. Semiconductor supply-demand matching and backlog management require tracing which specific w',
-    `ic_catalog_id` BIGINT COMMENT 'Unique identifier for the ic catalog record within the backlog position order entity.',
+    `allocation_record_id` BIGINT COMMENT 'Foreign key linking to order.allocation_record. Business justification: Backlog positions track allocation_status (STRING) as a denormalized field. Adding backlog_position.allocation_record_id -> allocation_record.allocation_record_id links each backlog snapshot to the au',
+    `design_win_id` BIGINT COMMENT 'Foreign key linking to customer.customer_design_win. Business justification: Semiconductor backlog management distinguishes design-win-driven demand from spot orders. Linking backlog positions to the originating design win (beyond the boolean design_win_flag) enables design-wi',
+    `fabrication_wafer_lot_id` BIGINT COMMENT 'Foreign key linking to fabrication.fabrication_wafer_lot. Business justification: Semiconductor order management tracks backlog positions against specific WIP wafer lots for real-time commit accuracy. backlog_position.wafer_lot_number is a denormalized reference to fabrication_wafe',
+    `family_id` BIGINT COMMENT 'Foreign key linking to product.family. Business justification: Semiconductor backlog management and fab capacity planning are performed at the product family level. Family-level backlog aggregation (by business unit, process node, lifecycle status) is a standard ',
+    `finished_good_id` BIGINT COMMENT 'Foreign key linking to inventory.finished_good. Business justification: Semiconductor backlog management reports match open demand (backlog positions) against finished good inventory to determine fulfillment feasibility and commit dates. part_number is a plain-text denorm',
     `order_id` BIGINT COMMENT 'Reference to the parent sales order header to which this backlog position belongs. Links the backlog snapshot to the originating customer order.',
-    `order_line_id` BIGINT COMMENT 'FK to order.order_line.order_line_id — Backlog positions track unshipped quantities for specific order lines. Without this FK, backlog cannot be reconciled to orders.',
-    `process_node_id` BIGINT COMMENT 'Foreign key linking to product.process_node. Business justification: Semiconductor supply/demand backlog reports are always segmented by process node for fab capacity planning and constrained-supply prioritization. backlog_position.process_node is a plain-text denormal',
-    `quality_hold_id` BIGINT COMMENT 'Foreign key linking to quality.quality_hold. Business justification: Quality-impacted backlog management: backlog_position already tracks hold_code, indicating quality holds affect backlog. Direct FK to quality_hold enables supply planners to identify and resolve quali',
+    `price_agreement_id` BIGINT COMMENT 'Foreign key linking to customer.price_agreement. Business justification: Semiconductor backlog valuation and revenue recognition reporting require knowing which price agreement governs each backlog position (net_selling_price, backlog_value). Price agreements define locked',
+    `line_id` BIGINT COMMENT 'FK to order.order_line.order_line_id — Backlog positions track unshipped quantities for specific order lines. Without this FK, backlog cannot be reconciled to orders.',
     `sku_id` BIGINT COMMENT 'Reference to the semiconductor product (IC, SoC, ASIC, FPGA, or discrete device) associated with this backlog position. Enables product-level backlog analysis and demand planning.',
-    `stock_balance_id` BIGINT COMMENT 'Foreign key linking to inventory.stock_balance. Business justification: Semiconductor backlog management requires daily reconciliation of open backlog quantity against available stock balance to determine fulfillment risk, push-out decisions, and revenue forecasting. Back',
-    `aging_days` STRING COMMENT 'The aging days of the backlog position record in the order domain.',
+    `stock_balance_id` BIGINT COMMENT 'Foreign key linking to inventory.stock_balance. Business justification: Available-to-promise (ATP) and backlog coverage reports in semiconductor operations directly join backlog positions to stock balance records to compute uncommitted inventory. This is a named operation',
     `allocated_quantity` DECIMAL(18,2) COMMENT 'The quantity from available inventory or in-process production lots that has been formally allocated to fulfill this backlog position. May be less than committed_quantity in constrained supply scenarios.',
     `allocation_status` STRING COMMENT 'Indicates the degree to which available inventory or production capacity has been allocated to fulfill this backlog position. Critical for backlog management and supply-demand balancing in constrained semiconductor supply environments.. Valid values are `unallocated|partially_allocated|fully_allocated|over_allocated`',
     `backlog_aging_days` STRING COMMENT 'Number of calendar days this order line has been in open backlog as of the snapshot date, calculated from order_entry_date. Used for customer escalation prioritization and aged backlog reporting.',
-    `backlog_quantity` DECIMAL(18,2) COMMENT 'The backlog quantity of the backlog position record in the order domain.',
     `backlog_status` STRING COMMENT 'Current workflow state of this backlog position. open = unshipped committed order; committed = confirmed with delivery date; at_risk = delivery commitment in jeopardy; pushed_out = delivery date deferred; cancelled = order line cancelled; fulfilled = shipped and closed.. Valid values are `open|committed|at_risk|pushed_out|cancelled|fulfilled`',
     `backlog_value` DECIMAL(18,2) COMMENT 'The monetary value of the unshipped committed backlog quantity, calculated as committed_quantity multiplied by the net selling price. Used for revenue forecasting, quarterly guidance, and book-to-bill ratio reporting.',
-    `backlog_value_usd` DECIMAL(18,2) COMMENT 'The backlog value usd of the backlog position record in the order domain.',
     `cancelled_quantity` DECIMAL(18,2) COMMENT 'Quantity cancelled from the original order line. Tracks cancellation impact on backlog coverage and book-to-bill ratio reporting.',
     `committed_quantity` DECIMAL(18,2) COMMENT 'The unshipped quantity (in units) that remains committed in backlog for this order line as of the snapshot date. Core metric for backlog management and production planning.',
     `created_timestamp` TIMESTAMP COMMENT 'The timestamp when this backlog position record was first created in the data platform. Used for audit trail, data lineage, and record lifecycle management.',
@@ -319,20 +345,15 @@ CREATE OR REPLACE TABLE `vibe_semiconductors_v1`.`order`.`backlog_position` (
     `export_license_number` STRING COMMENT 'The export license number issued by the Bureau of Industry and Security (BIS) or State Department authorizing shipment of controlled semiconductor products. Required when export_control_flag is true.',
     `hold_code` STRING COMMENT 'Code indicating the reason this backlog position is on hold and cannot be shipped. Examples include credit hold, export license pending, quality hold, or customer-requested hold. Null when no hold is active. [ENUM-REF-CANDIDATE: credit_hold|export_hold|quality_hold|customer_hold|compliance_hold|capacity_hold — promote to reference product]',
     `incoterms_code` STRING COMMENT 'International Commercial Terms (Incoterms 2020) code defining the delivery obligations, risk transfer point, and cost responsibilities between seller and buyer for this order line. Impacts revenue recognition timing. [ENUM-REF-CANDIDATE: EXW|FCA|CPT|CIP|DAP|DPU|DDP|FAS|FOB|CFR|CIF — 11 candidates stripped; promote to reference product]',
-    `last_modified_timestamp` TIMESTAMP COMMENT 'The last modified timestamp of the backlog position record in the order domain.',
     `last_updated_timestamp` TIMESTAMP COMMENT 'The timestamp when this backlog position record was most recently modified, reflecting the latest change to any field such as commit date revision, quantity adjustment, or status change.',
-    `model_lineage_source` STRING COMMENT 'The model lineage source of the backlog position record in the order domain.',
     `net_selling_price` DECIMAL(18,2) COMMENT 'The agreed net unit selling price for this order line after all applicable discounts and price adjustments. Used to compute backlog value and support revenue recognition under ASC 606.',
     `order_entry_date` DATE COMMENT 'The date on which the customer order was originally entered into the order management system. Used to calculate backlog aging and time-in-backlog metrics.',
     `order_type` STRING COMMENT 'Classification of the order type driving this backlog position. Distinguishes standard production orders from Multi-Project Wafer (MPW) orders, die bank orders, wafer start authorizations, sample orders, Return Material Authorizations (RMA), and consignment orders. [ENUM-REF-CANDIDATE: standard|mpw|die_bank|wafer_start|sample|rma|consignment — promote to reference product]',
     `original_order_quantity` DECIMAL(18,2) COMMENT 'The total quantity originally ordered by the customer on this order line. Used to calculate fulfillment percentage and track cancellation or reduction impacts on backlog.',
     `original_promise_date` DATE COMMENT 'The initial delivery date committed to the customer at the time of order entry. Baseline for measuring push-outs and delivery performance against original commitment.',
-    `part_number` STRING COMMENT 'The manufacturers part number (MPN) of the semiconductor product ordered. Used for product identification, cross-referencing with PLM and ERP systems, and customer-facing order documentation.',
     `priority_rank` STRING COMMENT 'Numeric priority ranking assigned to this backlog position for allocation and fulfillment sequencing. Lower values indicate higher priority. Used during supply-constrained periods to prioritize strategic customers and design-win accounts.',
-    `promised_date` DATE COMMENT 'The promised date associated with the backlog position order record.',
     `push_out_days` STRING COMMENT 'Number of calendar days the current_commit_date has been deferred beyond the original_promise_date. Positive value indicates a push-out (delay); negative value indicates a pull-in (acceleration). Key metric for delivery performance and customer satisfaction.',
     `push_out_reason_code` STRING COMMENT 'Standardized reason code explaining why the delivery commitment was pushed out or pulled in. Examples include wafer yield issue, capacity constraint, material shortage, customer request, or logistics delay. [ENUM-REF-CANDIDATE: yield_issue|capacity_constraint|material_shortage|customer_request|logistics_delay|design_change|export_hold — promote to reference product]',
-    `requested_date` DATE COMMENT 'The requested date associated with the backlog position order record.',
     `requested_delivery_date` DATE COMMENT 'The delivery date originally requested by the customer on the purchase order. May differ from the original promise date if the committed date was negotiated.',
     `revenue_recognition_flag` BOOLEAN COMMENT 'Indicates whether this backlog position meets the criteria for revenue recognition upon shipment under ASC 606 / IFRS 15. False indicates revenue deferral conditions apply (e.g., consignment, bill-and-hold arrangements).',
     `sales_region` STRING COMMENT 'Geographic sales region associated with this backlog position (e.g., Americas, EMEA, Japan, Greater China, Rest of APAC). Used for regional backlog reporting and revenue forecasting.',
@@ -346,25 +367,25 @@ CREATE OR REPLACE TABLE `vibe_semiconductors_v1`.`order`.`backlog_position` (
 CREATE OR REPLACE TABLE `vibe_semiconductors_v1`.`order`.`allocation_record` (
     `allocation_record_id` BIGINT COMMENT 'Unique system-generated surrogate key identifying a single inventory, capacity, or lot allocation record within the order fulfillment process.',
     `account_id` BIGINT COMMENT 'Reference to the customer for whom inventory or capacity is being allocated. Used for constrained supply allocation prioritization across competing customers.',
-    `assembly_lot_id` BIGINT COMMENT 'Foreign key linking to packaging.assembly_lot. Business justification: Inventory allocation in semiconductors is performed at the assembly lot level — specific packaged units from a specific lot are committed to a customer order. This FK enables allocation planners to id',
-    `design_win_id` BIGINT COMMENT 'Foreign key linking to customer.customer_design_win. Business justification: Semiconductor allocation decisions during supply constraints prioritize customers with active design wins. Linking allocation_record to customer_design_win enables design-win-priority allocation polic',
-    `die_bank_id` BIGINT COMMENT 'Unique identifier for the die bank record within the allocation record order entity.',
-    `fabrication_wafer_lot_id` BIGINT COMMENT 'Foreign key linking to fabrication.fabrication_wafer_lot. Business justification: allocation_record.lot_number is a denormalized string referencing the wafer lot being allocated. Semiconductor supply allocation requires a direct FK to the wafer lot to support constrained supply man',
-    `finished_good_id` BIGINT COMMENT 'Foreign key linking to inventory.finished_good. Business justification: Allocation of packaged IC finished good lots to order lines is a core semiconductor fulfillment process. allocation_record already references die_bank and inventory_wafer_lot but lacks a direct FK to ',
-    `inspection_lot_id` BIGINT COMMENT 'Foreign key linking to quality.inspection_lot. Business justification: Quality-gated allocation: allocation_record already tracks quality_disposition and quality_disposition_notes, indicating quality status drives allocation decisions. Direct FK to inspection_lot formali',
-    `order_id` BIGINT COMMENT 'Unique identifier for the allocation order record within the allocation record order entity.',
-    `order_line_id` BIGINT COMMENT 'FK to order.order_line.order_line_id — Allocations reserve inventory against specific order lines. This is the core link for constrained supply management.',
-    `process_node_id` BIGINT COMMENT 'Foreign key linking to product.process_node. Business justification: Semiconductor allocation decisions are node-constrained — constrained_supply_flag and allocation prioritization are driven by process node capacity. allocation_record.process_node is a plain-text deno',
-    `quality_hold_id` BIGINT COMMENT 'Foreign key linking to quality.quality_hold. Business justification: Quality-constrained allocation: allocation_record has constrained_supply_flag and quality_disposition attributes indicating quality holds constrain allocations. Direct FK to quality_hold formalizes th',
+    `delivery_schedule_id` BIGINT COMMENT 'Foreign key linking to order.delivery_schedule. Business justification: Allocation records in semiconductor order management reserve specific wafer lots, die bank inventory, or finished goods for particular delivery schedule lines. Linking allocation_record.delivery_sched',
+    `fab_facility_id` BIGINT COMMENT 'Foreign key linking to fabrication.fab_facility. Business justification: Allocation records specify which fab site will fulfill the order — fab_site_code on allocation_record is a denormalized reference to fab_facility. Semiconductor capacity planners use this link to bala',
+    `fabrication_wafer_lot_id` BIGINT COMMENT 'Foreign key linking to fabrication.fabrication_wafer_lot. Business justification: Semiconductor allocation records are directly tied to specific wafer lots — when a lot completes, its die are allocated to order lines. The allocation_record.lot_number is a denormalized reference to ',
+    `final_test_run_id` BIGINT COMMENT 'Foreign key linking to test.final_test_run. Business justification: Quality-gated allocation for finished goods: allocation_record commits packaged inventory to customer orders. Linking to final_test_run confirms the allocated units passed final test — required for qu',
+    `finished_good_id` BIGINT COMMENT 'Foreign key linking to inventory.finished_good. Business justification: Allocation records in semiconductor order management commit specific finished good inventory units to customer orders. This link supports available-to-promise (ATP) calculations, inventory reservation',
+    `ic_design_project_id` BIGINT COMMENT 'Reference to the Multi-Project Wafer run associated with this allocation, applicable when the lot type is mpw_lot. Supports MPW order and production lot assignment management.',
+    `inspection_lot_id` BIGINT COMMENT 'Foreign key linking to quality.inspection_lot. Business justification: Quality hold on allocation: in semiconductor supply chain, allocated inventory can be placed on quality hold pending inspection_lot disposition (e.g., wafer lot under review). Supply planners and qual',
+    `material_requirement_plan_id` BIGINT COMMENT 'Foreign key linking to supply.material_requirement_plan. Business justification: Supply planning audit trail: allocation records in semiconductors are authorized by MRP planning runs. Linking allocation to the MRP run that generated supply availability enables allocation audit, co',
+    `osat_work_order_id` BIGINT COMMENT 'Foreign key linking to supply.osat_work_order. Business justification: OSAT-to-customer allocation traceability: in fabless/IDM semiconductor operations, customer allocations are tied to specific OSAT assembly/test work orders producing the units. Required for delivery c',
+    `line_id` BIGINT COMMENT 'FK to order.order_line.order_line_id — Allocations reserve inventory against specific order lines. This is the core link for constrained supply management.',
+    `order_id` BIGINT COMMENT 'Reference to the parent sales order header under which this allocation record is created. Supports backlog management and order-to-cash reporting.',
     `sku_id` BIGINT COMMENT 'Reference to the semiconductor product (IC, SoC, ASIC, FPGA, packaged die, or wafer) being allocated to the customer order line.',
-    `stock_balance_id` BIGINT COMMENT 'Unique identifier for the stock balance record within the allocation record order entity.',
+    `tapeout_id` BIGINT COMMENT 'Foreign key linking to design.tapeout. Business justification: Allocation records assign specific wafer lot inventory to orders. Inventory is produced from a specific tapeout run; knowing which tapeout produced allocated inventory is critical for yield-adjusted a',
+    `wafer_probe_run_id` BIGINT COMMENT 'Foreign key linking to test.wafer_probe_run. Business justification: Yield-aware allocation and supply planning: allocation decisions for die-bank and wafer-level orders are constrained by wafer probe yield. Linking allocation_record to the wafer_probe_run that produce',
     `actual_ship_date` DATE COMMENT 'The actual date on which the allocated goods were shipped to the customer. Used for on-time delivery measurement and order fulfillment confirmation.',
     `allocated_quantity` DECIMAL(18,2) COMMENT 'The quantity of units (dies, wafers, or packaged devices) reserved against the customer order line. Expressed in the unit of measure applicable to the lot type.',
     `allocation_date` DATE COMMENT 'The business date on which the allocation was created and the inventory or capacity was reserved against the order line. Principal business event date for this transaction.',
     `allocation_number` STRING COMMENT 'Externally visible, human-readable business identifier for this allocation record. Used in customer communications, ERP transactions, and supply chain coordination.. Valid values are `^ALLOC-[0-9]{10}$`',
-    `allocation_priority` STRING COMMENT 'The allocation priority of the allocation record record in the order domain.',
     `allocation_source` STRING COMMENT 'Identifies the inventory or capacity pool from which this allocation is drawn: finished_goods (packaged inventory), die_bank (singulated die inventory), wafer_lot (in-process wafer inventory), fab_capacity (reserved fab production capacity), mpw_pool (Multi-Project Wafer shared pool).. Valid values are `finished_goods|die_bank|wafer_lot|fab_capacity|mpw_pool`',
-    `allocation_status` STRING COMMENT 'The allocation status of the allocation record record in the order domain.',
     `allocation_type` STRING COMMENT 'Categorizes the nature of the allocation: hard (firm reservation of physical inventory), soft (provisional hold pending confirmation), tentative (preliminary planning hold), capacity (fab capacity reservation), die_bank (allocation from die bank inventory), mpw (Multi-Project Wafer run allocation). [ENUM-REF-CANDIDATE: hard|soft|tentative|capacity|die_bank|mpw — promote to reference product]. Valid values are `hard|soft|tentative|capacity|die_bank|mpw`',
     `assignment_status` STRING COMMENT 'Current lifecycle state of the allocation assignment: tentative (preliminary hold), confirmed (firm allocation committed to order), shipped (goods dispatched against this allocation), cancelled (allocation voided), expired (allocation lapsed past expiry date), on_hold (allocation suspended pending resolution). [ENUM-REF-CANDIDATE: tentative|confirmed|shipped|cancelled|expired|on_hold — promote to reference product]. Valid values are `tentative|confirmed|shipped|cancelled|expired|on_hold`',
     `backlog_flag` BOOLEAN COMMENT 'Indicates whether this allocation record is part of the open order backlog (i.e., not yet shipped). Used for backlog management reporting and supply-demand balancing.',
@@ -377,17 +398,13 @@ CREATE OR REPLACE TABLE `vibe_semiconductors_v1`.`order`.`allocation_record` (
     `end_market_segment` STRING COMMENT 'Target end-market segment for the allocated product: automotive, mobile, computing, iot, aerospace, industrial, consumer. Drives allocation priority rules and regulatory traceability requirements (e.g., IATF 16949 for automotive). [ENUM-REF-CANDIDATE: automotive|mobile|computing|iot|aerospace|industrial|consumer — promote to reference product]',
     `expiry_date` DATE COMMENT 'The date after which this allocation record is no longer valid and reserved inventory or capacity is released back to available supply. Critical for managing soft allocations and tentative holds.',
     `export_control_classification` STRING COMMENT 'Export Administration Regulations (EAR) Export Control Classification Number (ECCN) applicable to the allocated product lot. Required for export compliance screening and license determination.',
-    `fab_site_code` STRING COMMENT 'Code identifying the fabrication facility (FAB) where the allocated wafer lot or die lot was manufactured. Supports supply chain traceability and export control compliance.',
     `hold_reason` STRING COMMENT 'Reason code or description explaining why this allocation is placed on hold. Populated when assignment_status is on_hold. May relate to quality holds, export control review, or customer credit issues.',
-    `inventory_batch_code` STRING COMMENT 'SAP batch management identifier for the specific inventory batch being allocated. Enables batch-level traceability and quality disposition linkage within SAP S/4HANA MM.',
     `itar_controlled` BOOLEAN COMMENT 'Indicates whether the allocated lot is subject to International Traffic in Arms Regulations (ITAR) controls. When true, additional export licensing and handling restrictions apply.',
-    `last_modified_timestamp` TIMESTAMP COMMENT 'The last modified timestamp of the allocation record record in the order domain.',
     `last_updated_timestamp` TIMESTAMP COMMENT 'System timestamp recording the most recent modification to this allocation record. Used for change tracking, audit compliance, and incremental data pipeline processing.',
     `lot_type` STRING COMMENT 'Classifies the type of manufacturing lot being allocated: wafer_lot (silicon wafer lot at fab), die_lot (singulated die inventory), packaged_goods_lot (finished packaged semiconductor units), mpw_lot (Multi-Project Wafer shared lot).. Valid values are `wafer_lot|die_lot|packaged_goods_lot|mpw_lot`',
-    `model_lineage_source` STRING COMMENT 'The model lineage source of the allocation record record in the order domain.',
     `osat_site_code` STRING COMMENT 'Code identifying the Outsourced Semiconductor Assembly and Test (OSAT) facility responsible for packaging and testing the allocated lot. Relevant for packaged goods lot allocations.',
-    `priority` STRING COMMENT 'The priority of the allocation record record in the order domain.',
     `priority_rank` STRING COMMENT 'Numeric priority rank assigned to this allocation record for constrained supply allocation decisions. Lower values indicate higher priority. Used during supply shortages to sequence allocation across competing customer orders.',
+    `process_node` STRING COMMENT 'Semiconductor manufacturing process node (e.g., 5nm, 7nm, 28nm) of the allocated lot. Used for product traceability, yield analysis, and supply planning by technology generation.',
     `quality_disposition` STRING COMMENT 'Quality disposition status of the allocated lot or inventory batch: accepted (meets all quality specifications), rejected (fails quality criteria), conditionally_accepted (accepted with documented deviations), under_review (quality evaluation in progress), scrapped (lot destroyed). Supports IATF 16949 lot-level quality traceability.. Valid values are `accepted|rejected|conditionally_accepted|under_review|scrapped`',
     `quality_disposition_notes` STRING COMMENT 'Free-text notes documenting lot-specific quality disposition findings, deviations, or conditions associated with this allocation. Supports automotive and aerospace traceability requirements.',
     `quantity_unit_of_measure` STRING COMMENT 'Unit of measure for the allocated quantity: EA (each, for packaged units), WFR (wafers), DIE (individual die), KPC (thousand pieces). Aligns with SAP base unit of measure.. Valid values are `EA|WFR|DIE|KPC`',
@@ -403,33 +420,34 @@ CREATE OR REPLACE TABLE `vibe_semiconductors_v1`.`order`.`allocation_record` (
 CREATE OR REPLACE TABLE `vibe_semiconductors_v1`.`order`.`rma` (
     `rma_id` BIGINT COMMENT 'Primary key for rma',
     `account_id` BIGINT COMMENT 'Reference to the customer initiating the return. Links RMA to the customer master record.',
-    `assembly_lot_id` BIGINT COMMENT 'Foreign key linking to packaging.assembly_lot. Business justification: RMA root cause analysis requires tracing returned parts to their originating assembly lot to identify systemic packaging defects, calculate DPPM impact, and trigger CAPA. This is a standard quality tr',
-    `ar_invoice_id` BIGINT COMMENT 'Foreign key linking to invoice.ar_invoice. Business justification: RMA processing in semiconductors generates credit memos (ar_invoice with is_credit_memo=true). Credit memo issuance and credit reconciliation reports require tracing each RMA to its resulting credit m',
-    `customer_contract_id` BIGINT COMMENT 'Foreign key linking to sales.customer_contract. Business justification: RMA processing in semiconductors requires checking the governing customer contract for warranty terms, return eligibility windows, credit memo authorization limits, and EOL/LTB clauses. Contract-drive',
+    `contact_id` BIGINT COMMENT 'Foreign key linking to customer.contact. Business justification: RMA initiation, failure analysis coordination, and warranty claim follow-up require tracking the specific customer contact who filed the return. Normalizes denormalized contact columns (customer_conta',
+    `customer_complaint_id` BIGINT COMMENT 'Foreign key linking to quality.customer_complaint. Business justification: In semiconductor ops, RMAs are operationally triggered by or formally linked to customer complaints. Customer quality teams track complaint-to-RMA resolution for DPPM reporting, warranty management, a',
+    `fabrication_wafer_lot_id` BIGINT COMMENT 'Reference to the manufacturing lot from which the returned units originated. Critical for traceability and yield impact analysis.',
     `failure_analysis_report_id` BIGINT COMMENT 'Reference to the failure analysis record if FA was performed. Links RMA to detailed root cause investigation and corrective action.',
-    `final_test_run_id` BIGINT COMMENT 'Foreign key linking to test.final_test_run. Business justification: RMA failure analysis and test escape investigation require tracing returned units to their final test run. Corrective action reports and DPPM analysis depend on knowing whether the failure was a test ',
-    `ic_catalog_id` BIGINT COMMENT 'Unique identifier for the ic catalog record within the rma order entity.',
-    `nonconformance_report_id` BIGINT COMMENT 'Foreign key linking to quality.nonconformance_report. Business justification: Customer returns process: semiconductor RMAs formally generate or reference a nonconformance report (NCR) documenting the defect. Quality and customer service teams require this link for regulatory co',
-    `order_line_id` BIGINT COMMENT 'Unique identifier for the order line record within the rma order entity.',
+    `final_test_run_id` BIGINT COMMENT 'Foreign key linking to test.final_test_run. Business justification: RMA test escape analysis: when a customer returns a part, the RMA process must trace back to the final test run that passed the returned unit. Essential for DPPM analysis, test escape investigation, a',
+    `finished_good_id` BIGINT COMMENT 'Foreign key linking to inventory.finished_good. Business justification: RMA disposition processing requires linking returned parts to specific finished good inventory records for restocking, scrapping, or rework decisions. Lot traceability and quality disposition in semic',
+    `ic_design_project_id` BIGINT COMMENT 'add column packaging_assembly_lot_id (BIGINT) with FK to packaging.assembly_lot.assembly_lot_id - RMAs trace returned material to specific assembly lots for root cause',
+    `line_id` BIGINT COMMENT 'Foreign key linking to order.order_line. Business justification: RMAs in the semiconductor industry are raised against specific order line items (specific part numbers, quantities, and lot numbers). Currently rma has no FK to order_line, only to order. Adding rma_o',
+    `nonconformance_report_id` BIGINT COMMENT 'Foreign key linking to quality.nonconformance_report. Business justification: RMA receipt triggers a Nonconformance Report (NCR) in semiconductor quality systems to document the returned material event, initiate MRB disposition, and track corrective action. Quality and customer',
+    `shipment_id` BIGINT COMMENT 'Foreign key linking to order.shipment. Business justification: RMAs are raised against specific outbound shipments in semiconductor order-to-cash. Linking rma.original_shipment_id -> shipment.shipment_id enables full traceability from customer return back to the ',
     `order_id` BIGINT COMMENT 'FK to order.order.order_id — RMAs reference the original sales order for the returned product. rma.sales_order_id → order.sales_order_id.',
-    `storage_location_id` BIGINT COMMENT 'Foreign key linking to inventory.storage_location. Business justification: RMA returns are received into a specific quarantine or inspection storage location. Tracking the receiving storage location is essential for quarantine management, quality inspection routing, and inve',
-    `address_id` BIGINT COMMENT 'Foreign key linking to customer.address. Business justification: RMA logistics require tracking the customer address from which defective semiconductor parts are returned for export control compliance, return freight management, and receiving facility routing. rma ',
-    `revision_id` BIGINT COMMENT 'Foreign key linking to design.design_revision. Business justification: RMA root cause analysis in semiconductors frequently traces field failures to a specific design revision (e.g., a known bug fixed in a later rev). Corrective action and DPPM reporting require linking ',
+    `inspection_lot_id` BIGINT COMMENT 'Foreign key linking to quality.inspection_lot. Business justification: RMA receipt inspection: returned semiconductor devices undergo incoming inspection (inspection_lot) to assess defect type, quantity, and disposition (scrap/rework/credit). Role-prefix receipt_ disti',
+    `storage_location_id` BIGINT COMMENT 'Foreign key linking to inventory.storage_location. Business justification: RMA receiving and disposition processes require knowing the exact storage location where returned goods are received. receiving_facility_code is a plain-text denormalization of storage_location. Role ',
+    `address_id` BIGINT COMMENT 'Foreign key linking to customer.address. Business justification: Reverse logistics for semiconductor RMAs requires the verified customer return-from address for export control compliance on re-imports, return shipping label generation, and customs documentation. Th',
     `rma_order_id` BIGINT COMMENT 'FK to order.sales_order.sales_order_id — RMAs reference the original sales order for the returned product. Required for credit processing and quality traceability.',
+    `sku_id` BIGINT COMMENT 'Reference to the product master record for the returned semiconductor product (IC, SoC, ASIC, FPGA, or packaged die).',
+    `supplier_id` BIGINT COMMENT 'Foreign key linking to supply.supplier. Business justification: Supplier warranty and RMA management: defective parts returned by customers in semiconductors are often escalated to the originating supplier for warranty claims or corrective action. Linking RMA to s',
+    `tapeout_id` BIGINT COMMENT 'Foreign key linking to design.tapeout. Business justification: RMA failure analysis requires identifying the originating tapeout to determine if defects are design-related (specific mask revision, layout issue) vs. process-related. Tapeout is more granular than i',
     `tertiary_rma_sales_order_id` BIGINT COMMENT 'Reference to the original sales order from which the returned product was shipped. Links RMA to the originating order transaction.',
-    `unit_test_result_id` BIGINT COMMENT 'Foreign key linking to test.unit_test_result. Business justification: For serialized RMA returns, root cause analysis requires linking the specific returned unit to its individual unit test result to determine if it passed test (field failure) or was a test escape. This',
+    `unit_test_result_id` BIGINT COMMENT 'Foreign key linking to test.unit_test_result. Business justification: Unit-level test escape investigation: for serialized or lot-traceable RMA returns, quality engineers must identify the specific unit_test_result to determine if the device was a test escape (passed te',
     `approval_date` DATE COMMENT 'Date when the RMA was approved by the quality or customer service team. Nullable if RMA is rejected or still pending.',
-    `approved_date` DATE COMMENT 'The approved date associated with the rma order record.',
     `closed_date` DATE COMMENT 'Date when the RMA was fully closed after disposition action completed (credit issued, replacement shipped, or material scrapped).',
     `corrective_action_required` BOOLEAN COMMENT 'Indicates whether a formal corrective action (CAPA) is required based on the RMA findings. True triggers CAPA workflow per ISO 9001 and IATF 16949.',
     `created_timestamp` TIMESTAMP COMMENT 'Timestamp when this RMA record was first created in the system. Audit trail for record lifecycle tracking.',
     `credit_amount` DECIMAL(18,2) COMMENT 'Monetary value of the credit issued to the customer in the transaction currency. Nullable if no credit is issued.',
+    `credit_memo_number` STRING COMMENT 'Reference number of the credit memo issued to the customer for the returned material. Nullable if no credit is issued (e.g., customer error returns).. Valid values are `^CM-[0-9]{8,12}$`',
     `currency_code` STRING COMMENT 'Three-letter ISO 4217 currency code for the credit amount (e.g., USD, EUR, JPY, CNY).. Valid values are `^[A-Z]{3}$`',
-    `customer_contact_email` STRING COMMENT 'Email address of the customer contact for RMA correspondence, status updates, and resolution communication.. Valid values are `^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+.[a-zA-Z]{2,}$`',
-    `customer_contact_name` STRING COMMENT 'Name of the customer representative who initiated or is managing the RMA on the customer side. Used for communication and escalation.',
-    `customer_contact_phone` STRING COMMENT 'Phone number of the customer contact for urgent RMA inquiries or escalation.',
     `defect_description` STRING COMMENT 'Free-text description of the defect or issue reported by the customer. Captures detailed failure symptoms, visual observations, or functional anomalies.',
-    `disposition` STRING COMMENT 'The disposition of the rma record in the order domain.',
     `disposition_instruction` STRING COMMENT 'Action to be taken with the returned material. Determines downstream workflow (credit memo, replacement order, FA request, or scrap authorization).. Valid values are `scrap|rework|credit|replacement|return_to_vendor|failure_analysis`',
     `dppm_impact_flag` BOOLEAN COMMENT 'Indicates whether this RMA should be counted in DPPM calculations. True if the defect is attributable to manufacturing or design (excludes customer-induced damage).',
     `export_control_flag` BOOLEAN COMMENT 'Indicates whether the returned product is subject to export control regulations (ITAR, EAR). True requires special handling and documentation.',
@@ -437,17 +455,14 @@ CREATE OR REPLACE TABLE `vibe_semiconductors_v1`.`order`.`rma` (
     `inspection_result` STRING COMMENT 'Outcome of the incoming inspection. Determines whether the return claim is valid and informs disposition and credit decisions.. Valid values are `defect_confirmed|no_defect_found|customer_induced|shipping_damage|inconclusive`',
     `internal_notes` STRING COMMENT 'Internal notes and comments for cross-functional coordination (quality, engineering, customer service). Not shared with customer.',
     `last_modified_timestamp` TIMESTAMP COMMENT 'Timestamp when this RMA record was last updated. Audit trail for change tracking and data lineage.',
-    `model_lineage_source` STRING COMMENT 'The model lineage source of the rma record in the order domain.',
-    `number` STRING COMMENT 'Externally-visible unique business identifier for the RMA. Used in customer communications, shipping labels, and cross-system tracking.. Valid values are `^RMA-[0-9]{8,12}$`',
     `reach_compliant` BOOLEAN COMMENT 'Indicates whether the returned product is REACH compliant. Affects material handling, disposal, and rework procedures.',
-    `reason_code` STRING COMMENT 'Coded value representing the reason code of the rma order record.',
     `received_date` DATE COMMENT 'Date when the returned material was physically received at the receiving facility or OSAT partner. Nullable until material arrives.',
     `request_date` DATE COMMENT 'Date when the customer initiated the RMA request. Principal business event timestamp for the RMA lifecycle.',
     `return_reason_code` STRING COMMENT 'Standardized code categorizing the reason for the return. Used for root cause analysis, DPPM tracking, and warranty claim classification.. Valid values are `quality_defect|shipping_damage|wrong_product|customer_error|eol_return|excess_inventory`',
     `return_shipping_carrier` STRING COMMENT 'Name of the logistics carrier used to ship the returned material (e.g., FedEx, UPS, DHL, regional freight forwarder).',
     `return_tracking_number` STRING COMMENT 'Carrier tracking number for the return shipment. Used for shipment visibility and proof of receipt.',
     `returned_quantity` STRING COMMENT 'Number of units (dies, packaged chips, or wafers) returned under this RMA. Used for DPPM calculation and inventory adjustment.',
-    `rma_date` DATE COMMENT 'The date associated with the rma order record.',
+    `rma_number` STRING COMMENT 'Externally-visible unique business identifier for the RMA. Used in customer communications, shipping labels, and cross-system tracking.. Valid values are `^RMA-[0-9]{8,12}$`',
     `rma_status` STRING COMMENT 'Current lifecycle status of the RMA. Tracks progression from customer request through receipt, inspection, and final disposition. [ENUM-REF-CANDIDATE: requested|approved|rejected|in_transit|received|inspected|closed|cancelled — 8 candidates stripped; promote to reference product]',
     `rohs_compliant` BOOLEAN COMMENT 'Indicates whether the returned product is RoHS compliant. Affects disposition options (scrap vs. rework) and environmental handling requirements.',
     `root_cause_category` STRING COMMENT 'High-level categorization of the root cause identified during inspection or FA. Used for DPPM trending and corrective action prioritization.. Valid values are `design|process|material|handling|test_escape|customer_misuse`',
@@ -457,102 +472,63 @@ CREATE OR REPLACE TABLE `vibe_semiconductors_v1`.`order`.`rma` (
     CONSTRAINT pk_rma PRIMARY KEY(`rma_id`)
 ) COMMENT 'RMA (Return Material Authorization) record managing customer returns of semiconductor products for quality issues, shipping damage, or end-of-life returns. Captures RMA number, return reason code, defect description, returned product and quantity, original order reference, disposition instruction (scrap, rework, credit, replacement), credit memo reference, and failure analysis request flag. SSOT for customer return workflows and DPPM tracking inputs.';
 
-CREATE OR REPLACE TABLE `vibe_semiconductors_v1`.`order`.`order_hold` (
-    `order_hold_id` BIGINT COMMENT 'Unique surrogate identifier for each hold record placed on a sales order or order line within the SAP S/4HANA SD order block management module. Primary key for the order.hold data product.',
-    `account_id` BIGINT COMMENT 'Foreign key linking to customer.account. Business justification: Credit holds in semiconductor order management are placed at the account level. order_hold carries credit_exposure_amount and credit_limit_amount — account-level metrics. A direct account_id FK enable',
-    `assembly_lot_id` BIGINT COMMENT 'Foreign key linking to packaging.assembly_lot. Business justification: Order holds are frequently placed due to quality issues with a specific assembly lot (e.g., assembly defect, failed inspection). Linking order_hold to assembly_lot enables quality teams to identify al',
-    `credit_profile_id` BIGINT COMMENT 'Foreign key linking to customer.credit_profile. Business justification: Credit holds are triggered by credit profile threshold breaches (credit_limit_amount, credit_exposure_amount on order_hold mirror credit_profile fields). Linking order_hold directly to the credit_prof',
-    `fab_tool_id` BIGINT COMMENT 'Foreign key linking to equipment.fab_tool. Business justification: Equipment-Triggered Order Hold Management: when a fab tool fails qualification or goes down, all affected order holds must be queried for SLA breach analysis and customer communication. The order_hold',
-    `inspection_lot_id` BIGINT COMMENT 'Reference to the quality lot or wafer lot under disposition that triggered a QUALITY hold on the order. Links to the quality domain for full traceability between order holds and quality management workflows. Null for non-quality holds.',
-    `nonconformance_report_id` BIGINT COMMENT 'Foreign key linking to quality.nonconformance_report. Business justification: NCR-triggered order holds: semiconductor order holds are frequently initiated by nonconformance reports on the underlying material. order_hold already has quality_disposition_status; direct FK to NCR ',
-    `order_line_id` BIGINT COMMENT 'Reference to the specific order line item on which this hold is placed. Null if the hold applies to the entire sales order header rather than a specific line. Enables line-level hold granularity for partial shipment scenarios.',
-    `order_id` BIGINT COMMENT 'Unique identifier for the primary order record within the order hold order entity.',
-    `quality_hold_id` BIGINT COMMENT 'Foreign key linking to quality.quality_hold. Business justification: Quality hold to order hold linkage: when a quality hold is placed on a lot, it triggers an order hold. This direct FK enables order management teams to trace which quality hold is blocking an order an',
-    `maintenance_event_id` BIGINT COMMENT 'Foreign key linking to equipment.maintenance_event. Business justification: Maintenance-Driven Order Hold Traceability: a specific maintenance event (unplanned downtime, requalification) triggers wafer start holds. Linking order_hold to the causative maintenance_event enables',
-    `chips_act_review_required` BOOLEAN COMMENT 'Indicates whether this hold requires a CHIPS Act compliance review, particularly for orders involving customers or end-uses that may conflict with CHIPS Act guardrail provisions restricting expansion of semiconductor manufacturing capacity in countries of concern.',
-    `created_timestamp` TIMESTAMP COMMENT 'Date and time when this hold record was first created in the data platform. Represents the audit trail creation timestamp for the Silver layer record, distinct from the hold_date which captures the business event time.',
-    `credit_exposure_amount` DECIMAL(18,2) COMMENT 'The customer credit exposure amount in the order currency at the time the credit hold was placed. Applicable only for CREDIT hold type. Represents the outstanding accounts receivable balance plus open order value that triggered the credit block in SAP S/4HANA FI-AR.',
-    `credit_limit_amount` DECIMAL(18,2) COMMENT 'The approved credit limit for the customer at the time the credit hold was placed. Applicable only for CREDIT hold type. Sourced from SAP S/4HANA FI-AR credit management. Used to calculate credit utilization and assess hold severity.',
-    `currency_code` STRING COMMENT 'ISO 4217 three-letter currency code for the credit exposure and credit limit amounts (e.g., USD, EUR, JPY). Ensures consistent financial reporting across multi-currency semiconductor customer accounts.. Valid values are `^[A-Z]{3}$`',
-    `customer_request_reference` STRING COMMENT 'Customer-provided reference number, purchase order amendment number, or communication reference that authorized or requested the hold. Applicable for CUSTOMER_REQUEST hold type. Enables traceability between the hold and the customers formal request documentation in Salesforce CRM.',
-    `die_bank_impacted` BOOLEAN COMMENT 'Indicates whether this hold has blocked shipment from the die bank inventory associated with the sales order. True = die bank order is impacted; False = die bank order is not affected. Used for die bank inventory management and allocation planning.',
-    `dppm_threshold` STRING COMMENT 'The Defective Parts Per Million (DPPM) threshold that was exceeded and triggered the quality hold. Captures the specific quality metric breach driving the hold for QUALITY hold types. Used for quality performance analysis and customer quality reporting.',
-    `escalation_date` TIMESTAMP COMMENT 'Date and time when the hold was escalated to senior management or a compliance officer. Null if the hold has not been escalated. Used to measure escalation response time and management intervention frequency.',
-    `escalation_flag` BOOLEAN COMMENT 'Indicates whether this hold has been escalated to senior management or a compliance officer due to complexity, duration, or business impact. True = escalated; False = not escalated. Triggers escalation workflow notifications in SAP S/4HANA.',
-    `export_control_classification` STRING COMMENT 'Export Control Classification Number (ECCN) or USML category of the product on the held order that triggered the export compliance review. Captures the specific classification driving the hold for EXPORT_COMPLIANCE hold types. Aligns with EAR/BIS and ITAR regulatory requirements.',
-    `export_license_number` STRING COMMENT 'The export license or authorization number being verified or awaited when the hold type is EXPORT_COMPLIANCE. References the specific BIS/EAR license, ITAR authorization, or equivalent export control document required before shipment can proceed. Null for non-export-compliance holds.',
-    `hold_code` STRING COMMENT 'Coded value representing the hold code of the order hold order record.',
-    `hold_date` TIMESTAMP COMMENT 'Date and time when the hold was placed on the sales order or order line. Represents the principal business event timestamp for the hold lifecycle. Sourced from SAP S/4HANA SD order block creation timestamp.',
-    `hold_number` STRING COMMENT 'Externally visible, human-readable business identifier for the hold record as assigned by SAP S/4HANA SD order block management. Used in customer communications, credit team workflows, and export compliance tracking.. Valid values are `^HLD-[0-9]{8,12}$`',
-    `hold_status` STRING COMMENT 'Current lifecycle state of the hold record. ACTIVE = hold is in effect and order processing is blocked; RELEASED = hold has been resolved and order processing may resume; ESCALATED = hold has been escalated to senior management or compliance officer; CANCELLED = hold was voided without formal release (e.g., duplicate entry).. Valid values are `ACTIVE|RELEASED|ESCALATED|CANCELLED`',
-    `hold_type` STRING COMMENT 'Classification of the hold category that determines the workflow and approval path required for release. CREDIT = credit limit exceeded or payment overdue; EXPORT_COMPLIANCE = pending export license or ITAR/EAR review; QUALITY = quality disposition pending; CUSTOMER_REQUEST = customer-initiated pause; ALLOCATION = insufficient die bank or wafer inventory; REGULATORY = RoHS/REACH/CHIPS Act compliance verification pending.. Valid values are `CREDIT|EXPORT_COMPLIANCE|QUALITY|CUSTOMER_REQUEST|ALLOCATION|REGULATORY`',
-    `itar_controlled` BOOLEAN COMMENT 'Indicates whether the hold is related to International Traffic in Arms Regulations (ITAR) controlled technology or products. True = ITAR-controlled item requiring State Department authorization; False = not ITAR-controlled. Drives export compliance workflow routing and documentation requirements.',
-    `last_modified_timestamp` TIMESTAMP COMMENT 'The last modified timestamp of the order hold record in the order domain.',
-    `model_lineage_source` STRING COMMENT 'The model lineage source of the order hold record in the order domain.',
-    `order_value_at_risk` DECIMAL(18,2) COMMENT 'Net value of the sales order or order line blocked by this hold, expressed in the order currency. Represents the revenue at risk due to the hold and is used for business impact assessment, management reporting, and prioritization of hold resolution efforts.',
-    `owner_department` STRING COMMENT 'Business department responsible for resolving the hold. Drives workflow routing and SLA assignment. CREDIT_MGMT = credit and collections team; EXPORT_COMPLIANCE = trade compliance and ITAR/EAR team; QUALITY = quality assurance and reliability team; CUSTOMER_SERVICE = order management team; SUPPLY_CHAIN = allocation and inventory team; FINANCE = accounts receivable.. Valid values are `CREDIT_MGMT|EXPORT_COMPLIANCE|QUALITY|CUSTOMER_SERVICE|SUPPLY_CHAIN|FINANCE`',
-    `owner_name` STRING COMMENT 'Full name of the employee or team responsible for managing and resolving this hold at the time it was placed. Denormalized for operational reporting and audit trail purposes without requiring a join to the workforce domain.',
-    `placed_timestamp` TIMESTAMP COMMENT 'The hold placed timestamp of the order hold record in the order domain.',
-    `quality_disposition_status` STRING COMMENT 'Current disposition decision status for the quality lot associated with a QUALITY hold. PENDING = disposition not yet determined; USE_AS_IS = lot approved for shipment as-is; REWORK = lot requires rework before shipment; SCRAP = lot scrapped, order must be re-sourced; RETURN_TO_SUPPLIER = material returned to supplier. Null for non-quality holds.. Valid values are `PENDING|USE_AS_IS|REWORK|SCRAP|RETURN_TO_SUPPLIER`',
-    `reason` STRING COMMENT 'Detailed narrative explanation of why the hold was placed on the order. Captures the specific business condition triggering the block, such as credit limit exceeded amount, export license number pending, quality lot disposition reference, or customer-requested delivery pause reason. Free-text field sourced from SAP S/4HANA SD order block reason text.',
-    `reason_code` STRING COMMENT 'Standardized SAP S/4HANA SD order block reason code (e.g., 01 = Credit Block, 02 = Export Block, 03 = Quality Block) used for systematic reporting and workflow routing. Complements the free-text hold_reason field with a machine-readable classification. [ENUM-REF-CANDIDATE: 01|02|03|04|05|06|07|08|09|10 — promote to reference product]',
-    `release_approver_name` STRING COMMENT 'Full name of the employee who approved the release of the hold at the time of release. Denormalized for audit trail and compliance reporting without requiring a join to the workforce domain.',
-    `release_date` TIMESTAMP COMMENT 'Date and time when the hold was formally released and order processing was authorized to resume. Null if the hold is still active. Used to calculate hold duration and measure order management cycle time performance.',
-    `release_reason` STRING COMMENT 'Narrative explanation of the resolution that enabled the hold to be released. Captures the specific action taken, such as credit limit increase approved, export license number obtained, quality lot disposition completed, or customer confirmation received. Free-text field for audit and compliance documentation.',
-    `release_timestamp` TIMESTAMP COMMENT 'The hold release timestamp of the order hold record in the order domain.',
-    `released_timestamp` TIMESTAMP COMMENT 'The hold released timestamp of the order hold record in the order domain.',
-    `requested_release_date` DATE COMMENT 'The date by which the hold is expected or requested to be released, as agreed with the customer or set by the hold owner. Used for proactive hold management, customer commitment tracking, and delivery schedule impact assessment.',
-    `resolution_notes` STRING COMMENT 'Extended free-text notes documenting the full resolution process, including any corrective actions taken, approvals obtained, reference documents reviewed, and follow-up actions required. Supports post-hold analysis and process improvement initiatives.',
-    `sla_breach_flag` BOOLEAN COMMENT 'Indicates whether the hold resolution exceeded the defined SLA target hours. True = SLA was breached; False = resolved within SLA. Used for order management performance reporting and customer escalation management.',
-    `sla_target_hours` STRING COMMENT 'Target number of business hours within which the hold must be resolved per the order management SLA policy. Varies by hold type: credit holds typically 24 hours, export compliance holds 72 hours, quality holds 48 hours. Used for SLA compliance monitoring and customer commitment management.',
-    `source_system_hold_reference` STRING COMMENT 'The native hold or order block identifier as recorded in the originating operational system (e.g., SAP S/4HANA SD order block number). Enables reconciliation between the Silver layer data product and the source system of record for data lineage and audit purposes.',
-    `start_timestamp` TIMESTAMP COMMENT 'The hold start timestamp of the order hold record in the order domain.',
-    `updated_timestamp` TIMESTAMP COMMENT 'Date and time when this hold record was last modified in the data platform. Tracks the most recent update to any hold attribute, supporting change data capture, audit trail requirements, and incremental data pipeline processing.',
-    `wafer_start_impacted` BOOLEAN COMMENT 'Indicates whether this hold has blocked or delayed a wafer start authorization (WSA) associated with the sales order. True = wafer start is impacted; False = wafer start is not affected. Critical for fab capacity planning and WIP management in semiconductor manufacturing.',
-    CONSTRAINT pk_order_hold PRIMARY KEY(`order_hold_id`)
-) COMMENT 'Record of holds placed on a sales order or order line that prevent further processing or shipment. Captures hold type (credit hold, export compliance hold, quality hold, customer request hold), hold reason, hold date, hold owner, release date, release approver, and resolution notes. Supports order management workflows where orders must be paused pending credit approval, export license verification, or quality disposition. Sourced from SAP S/4HANA SD order block management.';
-
 -- ========= FOREIGN KEYS =========
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`order_line` ADD CONSTRAINT `fk_order_order_line_order_id` FOREIGN KEY (`order_id`) REFERENCES `vibe_semiconductors_v1`.`order`.`order`(`order_id`);
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`line` ADD CONSTRAINT `fk_order_line_order_id` FOREIGN KEY (`order_id`) REFERENCES `vibe_semiconductors_v1`.`order`.`order`(`order_id`);
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`status_history` ADD CONSTRAINT `fk_order_status_history_allocation_record_id` FOREIGN KEY (`allocation_record_id`) REFERENCES `vibe_semiconductors_v1`.`order`.`allocation_record`(`allocation_record_id`);
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`status_history` ADD CONSTRAINT `fk_order_status_history_line_id` FOREIGN KEY (`line_id`) REFERENCES `vibe_semiconductors_v1`.`order`.`line`(`line_id`);
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`status_history` ADD CONSTRAINT `fk_order_status_history_order_id` FOREIGN KEY (`order_id`) REFERENCES `vibe_semiconductors_v1`.`order`.`order`(`order_id`);
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`status_history` ADD CONSTRAINT `fk_order_status_history_shipment_id` FOREIGN KEY (`shipment_id`) REFERENCES `vibe_semiconductors_v1`.`order`.`shipment`(`shipment_id`);
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`status_history` ADD CONSTRAINT `fk_order_status_history_status_order_id` FOREIGN KEY (`status_order_id`) REFERENCES `vibe_semiconductors_v1`.`order`.`order`(`order_id`);
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`delivery_schedule` ADD CONSTRAINT `fk_order_delivery_schedule_order_id` FOREIGN KEY (`order_id`) REFERENCES `vibe_semiconductors_v1`.`order`.`order`(`order_id`);
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`delivery_schedule` ADD CONSTRAINT `fk_order_delivery_schedule_order_line_id` FOREIGN KEY (`order_line_id`) REFERENCES `vibe_semiconductors_v1`.`order`.`order_line`(`order_line_id`);
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`delivery_schedule` ADD CONSTRAINT `fk_order_delivery_schedule_to_order_line_id` FOREIGN KEY (`to_order_line_id`) REFERENCES `vibe_semiconductors_v1`.`order`.`order_line`(`order_line_id`);
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`shipment` ADD CONSTRAINT `fk_order_shipment_order_line_id` FOREIGN KEY (`order_line_id`) REFERENCES `vibe_semiconductors_v1`.`order`.`order_line`(`order_line_id`);
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`delivery_schedule` ADD CONSTRAINT `fk_order_delivery_schedule_line_id` FOREIGN KEY (`line_id`) REFERENCES `vibe_semiconductors_v1`.`order`.`line`(`line_id`);
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`delivery_schedule` ADD CONSTRAINT `fk_order_delivery_schedule_to_order_line_id` FOREIGN KEY (`to_order_line_id`) REFERENCES `vibe_semiconductors_v1`.`order`.`line`(`line_id`);
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`shipment` ADD CONSTRAINT `fk_order_shipment_delivery_schedule_id` FOREIGN KEY (`delivery_schedule_id`) REFERENCES `vibe_semiconductors_v1`.`order`.`delivery_schedule`(`delivery_schedule_id`);
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`shipment` ADD CONSTRAINT `fk_order_shipment_line_id` FOREIGN KEY (`line_id`) REFERENCES `vibe_semiconductors_v1`.`order`.`line`(`line_id`);
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`shipment` ADD CONSTRAINT `fk_order_shipment_order_id` FOREIGN KEY (`order_id`) REFERENCES `vibe_semiconductors_v1`.`order`.`order`(`order_id`);
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`shipment` ADD CONSTRAINT `fk_order_shipment_to_order_id` FOREIGN KEY (`to_order_id`) REFERENCES `vibe_semiconductors_v1`.`order`.`order`(`order_id`);
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`shipment_line` ADD CONSTRAINT `fk_order_shipment_line_order_line_id` FOREIGN KEY (`order_line_id`) REFERENCES `vibe_semiconductors_v1`.`order`.`order_line`(`order_line_id`);
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`shipment_line` ADD CONSTRAINT `fk_order_shipment_line_allocation_record_id` FOREIGN KEY (`allocation_record_id`) REFERENCES `vibe_semiconductors_v1`.`order`.`allocation_record`(`allocation_record_id`);
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`shipment_line` ADD CONSTRAINT `fk_order_shipment_line_delivery_schedule_id` FOREIGN KEY (`delivery_schedule_id`) REFERENCES `vibe_semiconductors_v1`.`order`.`delivery_schedule`(`delivery_schedule_id`);
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`shipment_line` ADD CONSTRAINT `fk_order_shipment_line_shipment_id` FOREIGN KEY (`shipment_id`) REFERENCES `vibe_semiconductors_v1`.`order`.`shipment`(`shipment_id`);
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`shipment_line` ADD CONSTRAINT `fk_order_shipment_line_primary_shipment_order_line_id` FOREIGN KEY (`primary_shipment_order_line_id`) REFERENCES `vibe_semiconductors_v1`.`order`.`order_line`(`order_line_id`);
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`shipment_line` ADD CONSTRAINT `fk_order_shipment_line_to_order_line_id` FOREIGN KEY (`to_order_line_id`) REFERENCES `vibe_semiconductors_v1`.`order`.`order_line`(`order_line_id`);
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`shipment_line` ADD CONSTRAINT `fk_order_shipment_line_line_id` FOREIGN KEY (`line_id`) REFERENCES `vibe_semiconductors_v1`.`order`.`line`(`line_id`);
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`shipment_line` ADD CONSTRAINT `fk_order_shipment_line_to_order_line_id` FOREIGN KEY (`to_order_line_id`) REFERENCES `vibe_semiconductors_v1`.`order`.`line`(`line_id`);
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`shipment_line` ADD CONSTRAINT `fk_order_shipment_line_to_shipment_id` FOREIGN KEY (`to_shipment_id`) REFERENCES `vibe_semiconductors_v1`.`order`.`shipment`(`shipment_id`);
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`backlog_position` ADD CONSTRAINT `fk_order_backlog_position_allocation_record_id` FOREIGN KEY (`allocation_record_id`) REFERENCES `vibe_semiconductors_v1`.`order`.`allocation_record`(`allocation_record_id`);
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`backlog_position` ADD CONSTRAINT `fk_order_backlog_position_order_id` FOREIGN KEY (`order_id`) REFERENCES `vibe_semiconductors_v1`.`order`.`order`(`order_id`);
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`backlog_position` ADD CONSTRAINT `fk_order_backlog_position_order_line_id` FOREIGN KEY (`order_line_id`) REFERENCES `vibe_semiconductors_v1`.`order`.`order_line`(`order_line_id`);
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`backlog_position` ADD CONSTRAINT `fk_order_backlog_position_line_id` FOREIGN KEY (`line_id`) REFERENCES `vibe_semiconductors_v1`.`order`.`line`(`line_id`);
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`allocation_record` ADD CONSTRAINT `fk_order_allocation_record_delivery_schedule_id` FOREIGN KEY (`delivery_schedule_id`) REFERENCES `vibe_semiconductors_v1`.`order`.`delivery_schedule`(`delivery_schedule_id`);
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`allocation_record` ADD CONSTRAINT `fk_order_allocation_record_line_id` FOREIGN KEY (`line_id`) REFERENCES `vibe_semiconductors_v1`.`order`.`line`(`line_id`);
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`allocation_record` ADD CONSTRAINT `fk_order_allocation_record_order_id` FOREIGN KEY (`order_id`) REFERENCES `vibe_semiconductors_v1`.`order`.`order`(`order_id`);
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`allocation_record` ADD CONSTRAINT `fk_order_allocation_record_order_line_id` FOREIGN KEY (`order_line_id`) REFERENCES `vibe_semiconductors_v1`.`order`.`order_line`(`order_line_id`);
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`rma` ADD CONSTRAINT `fk_order_rma_order_line_id` FOREIGN KEY (`order_line_id`) REFERENCES `vibe_semiconductors_v1`.`order`.`order_line`(`order_line_id`);
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`rma` ADD CONSTRAINT `fk_order_rma_line_id` FOREIGN KEY (`line_id`) REFERENCES `vibe_semiconductors_v1`.`order`.`line`(`line_id`);
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`rma` ADD CONSTRAINT `fk_order_rma_shipment_id` FOREIGN KEY (`shipment_id`) REFERENCES `vibe_semiconductors_v1`.`order`.`shipment`(`shipment_id`);
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`rma` ADD CONSTRAINT `fk_order_rma_order_id` FOREIGN KEY (`order_id`) REFERENCES `vibe_semiconductors_v1`.`order`.`order`(`order_id`);
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`rma` ADD CONSTRAINT `fk_order_rma_rma_order_id` FOREIGN KEY (`rma_order_id`) REFERENCES `vibe_semiconductors_v1`.`order`.`order`(`order_id`);
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`rma` ADD CONSTRAINT `fk_order_rma_tertiary_rma_sales_order_id` FOREIGN KEY (`tertiary_rma_sales_order_id`) REFERENCES `vibe_semiconductors_v1`.`order`.`order`(`order_id`);
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`order_hold` ADD CONSTRAINT `fk_order_order_hold_order_line_id` FOREIGN KEY (`order_line_id`) REFERENCES `vibe_semiconductors_v1`.`order`.`order_line`(`order_line_id`);
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`order_hold` ADD CONSTRAINT `fk_order_order_hold_order_id` FOREIGN KEY (`order_id`) REFERENCES `vibe_semiconductors_v1`.`order`.`order`(`order_id`);
 
 -- ========= TAGS =========
 ALTER SCHEMA `vibe_semiconductors_v1`.`order` SET TAGS ('dbx_division' = 'business');
 ALTER SCHEMA `vibe_semiconductors_v1`.`order` SET TAGS ('dbx_domain' = 'order');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`order` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`order` SET TAGS ('dbx_subdomain' = 'sales_processing');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`order` SET TAGS ('dbx_subdomain' = 'sales_fulfillment');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`order` ALTER COLUMN `order_id` SET TAGS ('dbx_business_glossary_term' = 'Order Identifier');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`order` ALTER COLUMN `account_id` SET TAGS ('dbx_business_glossary_term' = 'Customer ID');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`order` ALTER COLUMN `contact_id` SET TAGS ('dbx_business_glossary_term' = 'Contact Id (Foreign Key)');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`order` ALTER COLUMN `contact_id` SET TAGS ('dbx_pii_detected' = 'true');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`order` ALTER COLUMN `credit_profile_id` SET TAGS ('dbx_business_glossary_term' = 'Credit Profile Id (Foreign Key)');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`order` ALTER COLUMN `customer_contract_id` SET TAGS ('dbx_business_glossary_term' = 'Customer Contract Id (Foreign Key)');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`order` ALTER COLUMN `design_win_id` SET TAGS ('dbx_business_glossary_term' = 'Customer Design Win Id (Foreign Key)');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`order` ALTER COLUMN `family_id` SET TAGS ('dbx_business_glossary_term' = 'Blanket Order Id (Foreign Key)');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`order` ALTER COLUMN `finished_good_id` SET TAGS ('dbx_business_glossary_term' = 'Design Win ID');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`order` ALTER COLUMN `ic_catalog_id` SET TAGS ('dbx_business_glossary_term' = 'Experimental Lot Id (Foreign Key)');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`order` ALTER COLUMN `ic_design_project_id` SET TAGS ('dbx_business_glossary_term' = 'Multi-Project Wafer (MPW) Run ID');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`order` ALTER COLUMN `nre_agreement_id` SET TAGS ('dbx_business_glossary_term' = 'Sales Nre Agreement Id (Foreign Key)');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`order` ALTER COLUMN `opportunity_id` SET TAGS ('dbx_business_glossary_term' = 'Opportunity Id (Foreign Key)');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`order` ALTER COLUMN `payment_term_id` SET TAGS ('dbx_business_glossary_term' = 'Payment Term Id (Foreign Key)');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`order` ALTER COLUMN `price_agreement_id` SET TAGS ('dbx_business_glossary_term' = 'Price Agreement Id (Foreign Key)');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`order` ALTER COLUMN `price_list_id` SET TAGS ('dbx_business_glossary_term' = 'Price List Id (Foreign Key)');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`order` ALTER COLUMN `product_ip_core_id` SET TAGS ('dbx_business_glossary_term' = 'Ip Core Development Id (Foreign Key)');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`order` ALTER COLUMN `address_id` SET TAGS ('dbx_business_glossary_term' = 'Shipping Address Id (Foreign Key)');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`order` ALTER COLUMN `address_id` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`order` ALTER COLUMN `address_id` SET TAGS ('dbx_pii_address' = 'true');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`order` ALTER COLUMN `territory_id` SET TAGS ('dbx_business_glossary_term' = 'Territory Id (Foreign Key)');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`order` ALTER COLUMN `tapeout_id` SET TAGS ('dbx_business_glossary_term' = 'Tapeout Id (Foreign Key)');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`order` ALTER COLUMN `actual_delivery_date` SET TAGS ('dbx_business_glossary_term' = 'Actual Delivery Date');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`order` ALTER COLUMN `allocation_status` SET TAGS ('dbx_business_glossary_term' = 'Allocation Status');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`order` ALTER COLUMN `allocation_status` SET TAGS ('dbx_value_regex' = 'UNALLOCATED|PARTIALLY_ALLOCATED|FULLY_ALLOCATED|OVER_ALLOCATED');
@@ -575,15 +551,12 @@ ALTER TABLE `vibe_semiconductors_v1`.`order`.`order` ALTER COLUMN `hold_reason` 
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`order` ALTER COLUMN `incoterms_code` SET TAGS ('dbx_business_glossary_term' = 'Incoterms Code');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`order` ALTER COLUMN `incoterms_location` SET TAGS ('dbx_business_glossary_term' = 'Incoterms Location');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`order` ALTER COLUMN `itar_controlled` SET TAGS ('dbx_business_glossary_term' = 'ITAR Controlled Flag');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`order` ALTER COLUMN `last_modified_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Last Modified Timestamp');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`order` ALTER COLUMN `last_updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Last Updated Timestamp');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`order` ALTER COLUMN `model_lineage_source` SET TAGS ('dbx_business_glossary_term' = 'Model Lineage Source');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`order` ALTER COLUMN `net_order_value` SET TAGS ('dbx_business_glossary_term' = 'Net Order Value');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`order` ALTER COLUMN `net_order_value` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`order` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Order Notes');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`order` ALTER COLUMN `nre_amount` SET TAGS ('dbx_business_glossary_term' = 'Non-Recurring Engineering (NRE) Amount');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`order` ALTER COLUMN `nre_amount` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`order` ALTER COLUMN `number` SET TAGS ('dbx_business_glossary_term' = 'Order Number');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`order` ALTER COLUMN `order_date` SET TAGS ('dbx_business_glossary_term' = 'Order Date');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`order` ALTER COLUMN `order_status` SET TAGS ('dbx_business_glossary_term' = 'Order Status');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`order` ALTER COLUMN `order_type` SET TAGS ('dbx_business_glossary_term' = 'Order Type');
@@ -602,98 +575,133 @@ ALTER TABLE `vibe_semiconductors_v1`.`order`.`order` ALTER COLUMN `source` SET T
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`order` ALTER COLUMN `source` SET TAGS ('dbx_value_regex' = 'EDI|PORTAL|EMAIL|PHONE|SALESFORCE|MANUAL');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`order` ALTER COLUMN `tax_amount` SET TAGS ('dbx_business_glossary_term' = 'Tax Amount');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`order` ALTER COLUMN `tax_amount` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`order` ALTER COLUMN `total_quantity` SET TAGS ('dbx_business_glossary_term' = 'Total Quantity');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`order` ALTER COLUMN `wafer_start_authorization` SET TAGS ('dbx_business_glossary_term' = 'Wafer Start Authorization Flag');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`order_line` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`order_line` SET TAGS ('dbx_subdomain' = 'sales_processing');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`order_line` ALTER COLUMN `order_line_id` SET TAGS ('dbx_business_glossary_term' = 'Order Line ID');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`order_line` ALTER COLUMN `account_id` SET TAGS ('dbx_business_glossary_term' = 'Customer ID');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`order_line` ALTER COLUMN `design_win_id` SET TAGS ('dbx_business_glossary_term' = 'Customer Design Win Id (Foreign Key)');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`order_line` ALTER COLUMN `ic_catalog_id` SET TAGS ('dbx_business_glossary_term' = 'Ic Catalog Id');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`order_line` ALTER COLUMN `inventory_wafer_lot_id` SET TAGS ('dbx_business_glossary_term' = 'Inventory Wafer Lot Id (Foreign Key)');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`order_line` ALTER COLUMN `order_id` SET TAGS ('dbx_business_glossary_term' = 'To Sales Order');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`order_line` ALTER COLUMN `package_type_id` SET TAGS ('dbx_business_glossary_term' = 'Package Type Id (Foreign Key)');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`order_line` ALTER COLUMN `price_agreement_id` SET TAGS ('dbx_business_glossary_term' = 'Price Agreement Id');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`order_line` ALTER COLUMN `price_list_id` SET TAGS ('dbx_business_glossary_term' = 'Price List Id');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`order_line` ALTER COLUMN `process_node_id` SET TAGS ('dbx_business_glossary_term' = 'Process Node Id (Foreign Key)');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`order_line` ALTER COLUMN `quote_line_id` SET TAGS ('dbx_business_glossary_term' = 'Quote Line Id (Foreign Key)');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`order_line` ALTER COLUMN `tool_chamber_id` SET TAGS ('dbx_business_glossary_term' = 'Tool Chamber Id (Foreign Key)');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`order_line` ALTER COLUMN `actual_ship_date` SET TAGS ('dbx_business_glossary_term' = 'Actual Ship Date');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`order_line` ALTER COLUMN `allocation_type` SET TAGS ('dbx_business_glossary_term' = 'Allocation Type');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`order_line` ALTER COLUMN `allocation_type` SET TAGS ('dbx_value_regex' = 'standard|priority|strategic|spot|buffer');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`order_line` ALTER COLUMN `cancellation_reason` SET TAGS ('dbx_business_glossary_term' = 'Cancellation Reason');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`order_line` ALTER COLUMN `confirmed_delivery_date` SET TAGS ('dbx_business_glossary_term' = 'Confirmed Delivery Date');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`order_line` ALTER COLUMN `confirmed_quantity` SET TAGS ('dbx_business_glossary_term' = 'Confirmed Quantity');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`order_line` ALTER COLUMN `confirmed_ship_date` SET TAGS ('dbx_business_glossary_term' = 'Confirmed Ship Date');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`order_line` ALTER COLUMN `country_of_origin` SET TAGS ('dbx_business_glossary_term' = 'Country of Origin');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`order_line` ALTER COLUMN `country_of_origin` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`order_line` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`order_line` ALTER COLUMN `currency_code` SET TAGS ('dbx_business_glossary_term' = 'Transaction Currency Code');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`order_line` ALTER COLUMN `currency_code` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`order_line` ALTER COLUMN `customer_part_number` SET TAGS ('dbx_business_glossary_term' = 'Customer Part Number');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`order_line` ALTER COLUMN `customer_part_number` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`order_line` ALTER COLUMN `date_entered` SET TAGS ('dbx_business_glossary_term' = 'Order Line Entry Date');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`order_line` ALTER COLUMN `die_bank_order` SET TAGS ('dbx_business_glossary_term' = 'Die Bank Order Flag');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`order_line` ALTER COLUMN `discount_percent` SET TAGS ('dbx_business_glossary_term' = 'Discount Percent');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`order_line` ALTER COLUMN `export_control_classification` SET TAGS ('dbx_business_glossary_term' = 'Export Control Classification Number (ECCN)');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`order_line` ALTER COLUMN `extended_amount` SET TAGS ('dbx_business_glossary_term' = 'Extended Amount');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`order_line` ALTER COLUMN `extended_price_usd` SET TAGS ('dbx_business_glossary_term' = 'Extended Price Usd');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`order_line` ALTER COLUMN `incoterms_code` SET TAGS ('dbx_business_glossary_term' = 'Incoterms Code');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`order_line` ALTER COLUMN `item_category` SET TAGS ('dbx_business_glossary_term' = 'Order Line Item Category');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`order_line` ALTER COLUMN `last_modified_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Last Modified Timestamp');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`order_line` ALTER COLUMN `line_number` SET TAGS ('dbx_business_glossary_term' = 'Order Line Number');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`order_line` ALTER COLUMN `line_status` SET TAGS ('dbx_business_glossary_term' = 'Order Line Status');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`order_line` ALTER COLUMN `line_status` SET TAGS ('dbx_value_regex' = 'open|confirmed|allocated|shipped|invoiced|cancelled');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`order_line` ALTER COLUMN `lot_number` SET TAGS ('dbx_business_glossary_term' = 'Production Lot Number');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`order_line` ALTER COLUMN `material_number` SET TAGS ('dbx_business_glossary_term' = 'Material Number');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`order_line` ALTER COLUMN `model_lineage_source` SET TAGS ('dbx_business_glossary_term' = 'Model Lineage Source');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`order_line` ALTER COLUMN `mpw_order` SET TAGS ('dbx_business_glossary_term' = 'Multi-Project Wafer (MPW) Order Flag');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`order_line` ALTER COLUMN `net_value` SET TAGS ('dbx_business_glossary_term' = 'Order Line Net Value');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`order_line` ALTER COLUMN `net_value` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`order_line` ALTER COLUMN `open_quantity` SET TAGS ('dbx_business_glossary_term' = 'Open Quantity');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`order_line` ALTER COLUMN `ordered_quantity` SET TAGS ('dbx_business_glossary_term' = 'Ordered Quantity');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`order_line` ALTER COLUMN `partial_shipment_allowed` SET TAGS ('dbx_business_glossary_term' = 'Partial Shipment Allowed Flag');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`order_line` ALTER COLUMN `product_revision` SET TAGS ('dbx_business_glossary_term' = 'Product Revision');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`order_line` ALTER COLUMN `reach_compliant` SET TAGS ('dbx_business_glossary_term' = 'REACH Compliant Flag');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`order_line` ALTER COLUMN `requested_delivery_date` SET TAGS ('dbx_business_glossary_term' = 'Requested Delivery Date');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`order_line` ALTER COLUMN `requested_ship_date` SET TAGS ('dbx_business_glossary_term' = 'Requested Ship Date');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`order_line` ALTER COLUMN `rohs_compliant` SET TAGS ('dbx_business_glossary_term' = 'RoHS Compliant Flag');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`order_line` ALTER COLUMN `sap_line_item_number` SET TAGS ('dbx_business_glossary_term' = 'SAP Sales Order Line Item Number');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`order_line` ALTER COLUMN `sap_line_item_number` SET TAGS ('dbx_value_regex' = '^[0-9]{6}$');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`order_line` ALTER COLUMN `ship_to_country` SET TAGS ('dbx_business_glossary_term' = 'Ship-To Country Code');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`order_line` ALTER COLUMN `ship_to_country` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`order_line` ALTER COLUMN `shipped_quantity` SET TAGS ('dbx_business_glossary_term' = 'Shipped Quantity');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`order_line` ALTER COLUMN `special_handling_code` SET TAGS ('dbx_business_glossary_term' = 'Special Handling Code');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`order_line` ALTER COLUMN `speed_grade` SET TAGS ('dbx_business_glossary_term' = 'Speed Grade');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`order_line` ALTER COLUMN `temperature_grade` SET TAGS ('dbx_business_glossary_term' = 'Temperature Grade');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`order_line` ALTER COLUMN `temperature_grade` SET TAGS ('dbx_value_regex' = 'commercial|industrial|automotive|military|extended');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`order_line` ALTER COLUMN `unit_of_measure` SET TAGS ('dbx_business_glossary_term' = 'Unit of Measure');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`order_line` ALTER COLUMN `unit_of_measure` SET TAGS ('dbx_value_regex' = 'EA|WFR|REEL|TRAY|TUBE');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`order_line` ALTER COLUMN `unit_price` SET TAGS ('dbx_business_glossary_term' = 'Unit Price');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`order_line` ALTER COLUMN `unit_price` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`order_line` ALTER COLUMN `unit_price_usd` SET TAGS ('dbx_business_glossary_term' = 'Unit Price Usd');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`order_line` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Updated Timestamp');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`order_line` ALTER COLUMN `wafer_start_authorization` SET TAGS ('dbx_business_glossary_term' = 'Wafer Start Authorization (WSA) Flag');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`line` SET TAGS ('dbx_data_type' = 'transactional_data');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`line` SET TAGS ('dbx_subdomain' = 'sales_fulfillment');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`line` ALTER COLUMN `line_id` SET TAGS ('dbx_business_glossary_term' = 'Order Line ID');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`line` ALTER COLUMN `account_id` SET TAGS ('dbx_business_glossary_term' = 'Customer ID');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`line` ALTER COLUMN `die_bank_id` SET TAGS ('dbx_business_glossary_term' = 'Die Bank Id (Foreign Key)');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`line` ALTER COLUMN `final_test_run_id` SET TAGS ('dbx_business_glossary_term' = 'Final Test Run Id (Foreign Key)');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`line` ALTER COLUMN `finished_good_id` SET TAGS ('dbx_business_glossary_term' = 'Finished Good Id (Foreign Key)');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`line` ALTER COLUMN `po_line_id` SET TAGS ('dbx_business_glossary_term' = 'Fulfillment Po Line Id (Foreign Key)');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`line` ALTER COLUMN `purchase_order_id` SET TAGS ('dbx_business_glossary_term' = 'Fulfillment Purchase Order Id (Foreign Key)');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`line` ALTER COLUMN `ic_catalog_id` SET TAGS ('dbx_business_glossary_term' = 'Experimental Lot Id (Foreign Key)');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`line` ALTER COLUMN `order_id` SET TAGS ('dbx_business_glossary_term' = 'To Sales Order');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`line` ALTER COLUMN `quote_line_id` SET TAGS ('dbx_business_glossary_term' = 'Quote Line Id (Foreign Key)');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`line` ALTER COLUMN `sku_id` SET TAGS ('dbx_business_glossary_term' = 'Product ID');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`line` ALTER COLUMN `tapeout_id` SET TAGS ('dbx_business_glossary_term' = 'Tapeout Id (Foreign Key)');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`line` ALTER COLUMN `actual_ship_date` SET TAGS ('dbx_business_glossary_term' = 'Actual Ship Date');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`line` ALTER COLUMN `allocation_type` SET TAGS ('dbx_business_glossary_term' = 'Allocation Type');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`line` ALTER COLUMN `allocation_type` SET TAGS ('dbx_value_regex' = 'standard|priority|strategic|spot|buffer');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`line` ALTER COLUMN `cancellation_reason` SET TAGS ('dbx_business_glossary_term' = 'Cancellation Reason');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`line` ALTER COLUMN `confirmed_quantity` SET TAGS ('dbx_business_glossary_term' = 'Confirmed Quantity');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`line` ALTER COLUMN `confirmed_ship_date` SET TAGS ('dbx_business_glossary_term' = 'Confirmed Ship Date');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`line` ALTER COLUMN `country_of_origin` SET TAGS ('dbx_business_glossary_term' = 'Country of Origin');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`line` ALTER COLUMN `country_of_origin` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`line` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`line` ALTER COLUMN `currency_code` SET TAGS ('dbx_business_glossary_term' = 'Transaction Currency Code');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`line` ALTER COLUMN `currency_code` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`line` ALTER COLUMN `customer_part_number` SET TAGS ('dbx_business_glossary_term' = 'Customer Part Number');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`line` ALTER COLUMN `customer_part_number` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`line` ALTER COLUMN `date_entered` SET TAGS ('dbx_business_glossary_term' = 'Order Line Entry Date');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`line` ALTER COLUMN `die_bank_order` SET TAGS ('dbx_business_glossary_term' = 'Die Bank Order Flag');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`line` ALTER COLUMN `export_control_classification` SET TAGS ('dbx_business_glossary_term' = 'Export Control Classification Number (ECCN)');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`line` ALTER COLUMN `incoterms_code` SET TAGS ('dbx_business_glossary_term' = 'Incoterms Code');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`line` ALTER COLUMN `item_category` SET TAGS ('dbx_business_glossary_term' = 'Order Line Item Category');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`line` ALTER COLUMN `line_number` SET TAGS ('dbx_business_glossary_term' = 'Order Line Number');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`line` ALTER COLUMN `line_status` SET TAGS ('dbx_business_glossary_term' = 'Order Line Status');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`line` ALTER COLUMN `line_status` SET TAGS ('dbx_value_regex' = 'open|confirmed|allocated|shipped|invoiced|cancelled');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`line` ALTER COLUMN `lot_number` SET TAGS ('dbx_business_glossary_term' = 'Production Lot Number');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`line` ALTER COLUMN `material_number` SET TAGS ('dbx_business_glossary_term' = 'Material Number');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`line` ALTER COLUMN `mpw_order` SET TAGS ('dbx_business_glossary_term' = 'Multi-Project Wafer (MPW) Order Flag');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`line` ALTER COLUMN `net_value` SET TAGS ('dbx_business_glossary_term' = 'Order Line Net Value');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`line` ALTER COLUMN `net_value` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`line` ALTER COLUMN `ordered_quantity` SET TAGS ('dbx_business_glossary_term' = 'Ordered Quantity');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`line` ALTER COLUMN `partial_shipment_allowed` SET TAGS ('dbx_business_glossary_term' = 'Partial Shipment Allowed Flag');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`line` ALTER COLUMN `product_revision` SET TAGS ('dbx_business_glossary_term' = 'Product Revision');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`line` ALTER COLUMN `reach_compliant` SET TAGS ('dbx_business_glossary_term' = 'REACH Compliant Flag');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`line` ALTER COLUMN `requested_delivery_date` SET TAGS ('dbx_business_glossary_term' = 'Requested Delivery Date');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`line` ALTER COLUMN `requested_ship_date` SET TAGS ('dbx_business_glossary_term' = 'Requested Ship Date');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`line` ALTER COLUMN `rohs_compliant` SET TAGS ('dbx_business_glossary_term' = 'RoHS Compliant Flag');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`line` ALTER COLUMN `sap_line_item_number` SET TAGS ('dbx_business_glossary_term' = 'SAP Sales Order Line Item Number');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`line` ALTER COLUMN `sap_line_item_number` SET TAGS ('dbx_value_regex' = '^[0-9]{6}$');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`line` ALTER COLUMN `ship_to_country` SET TAGS ('dbx_business_glossary_term' = 'Ship-To Country Code');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`line` ALTER COLUMN `ship_to_country` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`line` ALTER COLUMN `shipped_quantity` SET TAGS ('dbx_business_glossary_term' = 'Shipped Quantity');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`line` ALTER COLUMN `special_handling_code` SET TAGS ('dbx_business_glossary_term' = 'Special Handling Code');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`line` ALTER COLUMN `speed_grade` SET TAGS ('dbx_business_glossary_term' = 'Speed Grade');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`line` ALTER COLUMN `temperature_grade` SET TAGS ('dbx_business_glossary_term' = 'Temperature Grade');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`line` ALTER COLUMN `temperature_grade` SET TAGS ('dbx_value_regex' = 'commercial|industrial|automotive|military|extended');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`line` ALTER COLUMN `unit_of_measure` SET TAGS ('dbx_business_glossary_term' = 'Unit of Measure');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`line` ALTER COLUMN `unit_of_measure` SET TAGS ('dbx_value_regex' = 'EA|WFR|REEL|TRAY|TUBE');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`line` ALTER COLUMN `unit_price` SET TAGS ('dbx_business_glossary_term' = 'Unit Price');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`line` ALTER COLUMN `unit_price` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`line` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Updated Timestamp');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`line` ALTER COLUMN `wafer_start_authorization` SET TAGS ('dbx_business_glossary_term' = 'Wafer Start Authorization (WSA) Flag');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`status_history` SET TAGS ('dbx_data_type' = 'transactional_data');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`status_history` SET TAGS ('dbx_subdomain' = 'sales_fulfillment');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`status_history` ALTER COLUMN `status_history_id` SET TAGS ('dbx_business_glossary_term' = 'Status History Identifier');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`status_history` ALTER COLUMN `account_id` SET TAGS ('dbx_business_glossary_term' = 'Customer ID');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`status_history` ALTER COLUMN `allocation_record_id` SET TAGS ('dbx_business_glossary_term' = 'Allocation ID');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`status_history` ALTER COLUMN `fabrication_wafer_lot_id` SET TAGS ('dbx_business_glossary_term' = 'Production Lot ID');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`status_history` ALTER COLUMN `line_id` SET TAGS ('dbx_business_glossary_term' = 'Order Line Id (Foreign Key)');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`status_history` ALTER COLUMN `order_id` SET TAGS ('dbx_business_glossary_term' = 'Status Order Id');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`status_history` ALTER COLUMN `shipment_id` SET TAGS ('dbx_business_glossary_term' = 'Shipment ID');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`status_history` ALTER COLUMN `status_order_id` SET TAGS ('dbx_business_glossary_term' = 'To Sales Order');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`status_history` ALTER COLUMN `supplier_id` SET TAGS ('dbx_business_glossary_term' = 'Outsourced Semiconductor Assembly and Test (OSAT) Partner ID');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`status_history` ALTER COLUMN `cancellation_type` SET TAGS ('dbx_business_glossary_term' = 'Cancellation Type');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`status_history` ALTER COLUMN `cancellation_type` SET TAGS ('dbx_value_regex' = 'customer_request|eol|capacity|yield_fail|export_block|duplicate');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`status_history` ALTER COLUMN `change_sequence_number` SET TAGS ('dbx_business_glossary_term' = 'Status Change Sequence Number');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`status_history` ALTER COLUMN `confirmed_delivery_date` SET TAGS ('dbx_business_glossary_term' = 'Confirmed Delivery Date');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`status_history` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`status_history` ALTER COLUMN `die_bank_order_flag` SET TAGS ('dbx_business_glossary_term' = 'Die Bank Order Flag');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`status_history` ALTER COLUMN `duration_in_prior_status_hours` SET TAGS ('dbx_business_glossary_term' = 'Duration in Prior Status (Hours)');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`status_history` ALTER COLUMN `escalation_flag` SET TAGS ('dbx_business_glossary_term' = 'Escalation Flag');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`status_history` ALTER COLUMN `escalation_priority` SET TAGS ('dbx_business_glossary_term' = 'Escalation Priority Level');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`status_history` ALTER COLUMN `escalation_priority` SET TAGS ('dbx_value_regex' = 'P1|P2|P3|P4');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`status_history` ALTER COLUMN `export_control_flag` SET TAGS ('dbx_business_glossary_term' = 'Export Control Review Flag');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`status_history` ALTER COLUMN `hold_code` SET TAGS ('dbx_business_glossary_term' = 'Order Hold Code');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`status_history` ALTER COLUMN `is_current_status` SET TAGS ('dbx_business_glossary_term' = 'Is Current Status Indicator');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`status_history` ALTER COLUMN `mpw_flag` SET TAGS ('dbx_business_glossary_term' = 'Multi-Project Wafer (MPW) Flag');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`status_history` ALTER COLUMN `new_status` SET TAGS ('dbx_business_glossary_term' = 'New Order Status');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`status_history` ALTER COLUMN `ordered_quantity` SET TAGS ('dbx_business_glossary_term' = 'Ordered Quantity');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`status_history` ALTER COLUMN `part_number` SET TAGS ('dbx_business_glossary_term' = 'Part Number');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`status_history` ALTER COLUMN `pcn_reference_number` SET TAGS ('dbx_business_glossary_term' = 'Product Change Notification (PCN) Reference Number');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`status_history` ALTER COLUMN `prior_status` SET TAGS ('dbx_business_glossary_term' = 'Prior Order Status');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`status_history` ALTER COLUMN `process_node` SET TAGS ('dbx_business_glossary_term' = 'Process Node');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`status_history` ALTER COLUMN `quantity_unit_of_measure` SET TAGS ('dbx_business_glossary_term' = 'Quantity Unit of Measure');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`status_history` ALTER COLUMN `quantity_unit_of_measure` SET TAGS ('dbx_value_regex' = 'EA|WFR|DIE|LOT');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`status_history` ALTER COLUMN `reason_code` SET TAGS ('dbx_business_glossary_term' = 'Status Change Reason Code');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`status_history` ALTER COLUMN `reason_description` SET TAGS ('dbx_business_glossary_term' = 'Status Change Reason Description');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`status_history` ALTER COLUMN `requested_delivery_date` SET TAGS ('dbx_business_glossary_term' = 'Requested Delivery Date');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`status_history` ALTER COLUMN `sla_breached_flag` SET TAGS ('dbx_business_glossary_term' = 'Service Level Agreement (SLA) Breach Flag');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`status_history` ALTER COLUMN `sla_target_hours` SET TAGS ('dbx_business_glossary_term' = 'Service Level Agreement (SLA) Target Hours');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`status_history` ALTER COLUMN `source_document_number` SET TAGS ('dbx_business_glossary_term' = 'Source Document Number');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`status_history` ALTER COLUMN `source_system_event_reference` SET TAGS ('dbx_business_glossary_term' = 'Source System Event ID');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`status_history` ALTER COLUMN `transition_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Status Transition Timestamp');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`status_history` ALTER COLUMN `transition_type` SET TAGS ('dbx_business_glossary_term' = 'Status Transition Type');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`status_history` ALTER COLUMN `transition_type` SET TAGS ('dbx_value_regex' = 'forward|backward|cancellation|correction');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`status_history` ALTER COLUMN `triggered_by_system` SET TAGS ('dbx_business_glossary_term' = 'Triggered By System');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`status_history` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Updated Timestamp');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`status_history` ALTER COLUMN `wafer_start_authorization_number` SET TAGS ('dbx_business_glossary_term' = 'Wafer Start Authorization (WSA) Number');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`delivery_schedule` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`delivery_schedule` SET TAGS ('dbx_subdomain' = 'fulfillment_execution');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`delivery_schedule` SET TAGS ('dbx_subdomain' = 'sales_fulfillment');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`delivery_schedule` ALTER COLUMN `delivery_schedule_id` SET TAGS ('dbx_business_glossary_term' = 'Delivery Schedule ID');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`delivery_schedule` ALTER COLUMN `account_id` SET TAGS ('dbx_business_glossary_term' = 'Customer ID');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`delivery_schedule` ALTER COLUMN `address_id` SET TAGS ('dbx_business_glossary_term' = 'Delivery Ship To Address Id (Foreign Key)');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`delivery_schedule` ALTER COLUMN `address_id` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`delivery_schedule` ALTER COLUMN `address_id` SET TAGS ('dbx_pii_address' = 'true');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`delivery_schedule` ALTER COLUMN `storage_location_id` SET TAGS ('dbx_business_glossary_term' = 'Ship-To Location ID');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`delivery_schedule` ALTER COLUMN `fabrication_wafer_lot_id` SET TAGS ('dbx_business_glossary_term' = 'Fabrication Wafer Lot Id (Foreign Key)');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`delivery_schedule` ALTER COLUMN `inbound_shipment_id` SET TAGS ('dbx_business_glossary_term' = 'Inbound Shipment Id (Foreign Key)');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`delivery_schedule` ALTER COLUMN `order_id` SET TAGS ('dbx_business_glossary_term' = 'Sales Order ID');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`delivery_schedule` ALTER COLUMN `origin_storage_location_id` SET TAGS ('dbx_business_glossary_term' = 'Ship-From Location ID');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`delivery_schedule` ALTER COLUMN `package_type_id` SET TAGS ('dbx_business_glossary_term' = 'Package Type Id (Foreign Key)');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`delivery_schedule` ALTER COLUMN `order_line_id` SET TAGS ('dbx_business_glossary_term' = 'Sales Order Line Item ID');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`delivery_schedule` ALTER COLUMN `line_id` SET TAGS ('dbx_business_glossary_term' = 'Sales Order Line Item ID');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`delivery_schedule` ALTER COLUMN `shipping_storage_location_id` SET TAGS ('dbx_business_glossary_term' = 'Ship-From Location ID');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`delivery_schedule` ALTER COLUMN `sku_id` SET TAGS ('dbx_business_glossary_term' = 'Product ID');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`delivery_schedule` ALTER COLUMN `to_order_line_id` SET TAGS ('dbx_business_glossary_term' = 'To Order Line Id');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`delivery_schedule` ALTER COLUMN `maintenance_event_id` SET TAGS ('dbx_business_glossary_term' = 'Triggering Maintenance Event Id (Foreign Key)');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`delivery_schedule` ALTER COLUMN `actual_delivery_date` SET TAGS ('dbx_business_glossary_term' = 'Actual Delivery Date');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`delivery_schedule` ALTER COLUMN `actual_ship_date` SET TAGS ('dbx_business_glossary_term' = 'Actual Ship Date');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`delivery_schedule` ALTER COLUMN `allocation_priority` SET TAGS ('dbx_business_glossary_term' = 'Allocation Priority');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`delivery_schedule` ALTER COLUMN `backlog_flag` SET TAGS ('dbx_business_glossary_term' = 'Backlog Flag');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`delivery_schedule` ALTER COLUMN `blanket_order_flag` SET TAGS ('dbx_business_glossary_term' = 'Blanket Order Flag');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`delivery_schedule` ALTER COLUMN `call_off_number` SET TAGS ('dbx_business_glossary_term' = 'Call-Off Number');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`delivery_schedule` ALTER COLUMN `committed_date` SET TAGS ('dbx_business_glossary_term' = 'Committed Date');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`delivery_schedule` ALTER COLUMN `confirmed_delivery_date` SET TAGS ('dbx_business_glossary_term' = 'Confirmed Delivery Date');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`delivery_schedule` ALTER COLUMN `confirmed_quantity` SET TAGS ('dbx_business_glossary_term' = 'Confirmed Quantity');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`delivery_schedule` ALTER COLUMN `country_of_origin` SET TAGS ('dbx_business_glossary_term' = 'Country of Origin');
@@ -703,7 +711,6 @@ ALTER TABLE `vibe_semiconductors_v1`.`order`.`delivery_schedule` ALTER COLUMN `c
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`delivery_schedule` ALTER COLUMN `currency_code` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`delivery_schedule` ALTER COLUMN `delivered_quantity` SET TAGS ('dbx_business_glossary_term' = 'Delivered Quantity');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`delivery_schedule` ALTER COLUMN `delivery_document_number` SET TAGS ('dbx_business_glossary_term' = 'Outbound Delivery Document Number');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`delivery_schedule` ALTER COLUMN `delivery_priority` SET TAGS ('dbx_business_glossary_term' = 'Delivery Priority');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`delivery_schedule` ALTER COLUMN `die_bank_order_number` SET TAGS ('dbx_business_glossary_term' = 'Die Bank Order Number');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`delivery_schedule` ALTER COLUMN `eccn_code` SET TAGS ('dbx_business_glossary_term' = 'Export Control Classification Number (ECCN)');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`delivery_schedule` ALTER COLUMN `export_control_status` SET TAGS ('dbx_business_glossary_term' = 'Export Control Status');
@@ -711,15 +718,14 @@ ALTER TABLE `vibe_semiconductors_v1`.`order`.`delivery_schedule` ALTER COLUMN `e
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`delivery_schedule` ALTER COLUMN `hazmat_flag` SET TAGS ('dbx_business_glossary_term' = 'Hazardous Materials Flag');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`delivery_schedule` ALTER COLUMN `incoterms_code` SET TAGS ('dbx_business_glossary_term' = 'Incoterms Code');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`delivery_schedule` ALTER COLUMN `incoterms_location` SET TAGS ('dbx_business_glossary_term' = 'Incoterms Named Place');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`delivery_schedule` ALTER COLUMN `last_modified_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Last Modified Timestamp');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`delivery_schedule` ALTER COLUMN `last_reschedule_reason` SET TAGS ('dbx_business_glossary_term' = 'Last Reschedule Reason');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`delivery_schedule` ALTER COLUMN `last_updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Last Updated Timestamp');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`delivery_schedule` ALTER COLUMN `lot_number` SET TAGS ('dbx_business_glossary_term' = 'Production Lot Number');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`delivery_schedule` ALTER COLUMN `model_lineage_source` SET TAGS ('dbx_business_glossary_term' = 'Model Lineage Source');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`delivery_schedule` ALTER COLUMN `mpw_order_flag` SET TAGS ('dbx_business_glossary_term' = 'Multi-Project Wafer (MPW) Order Flag');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`delivery_schedule` ALTER COLUMN `net_value` SET TAGS ('dbx_business_glossary_term' = 'Net Schedule Line Value');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`delivery_schedule` ALTER COLUMN `net_value` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`delivery_schedule` ALTER COLUMN `ordered_quantity` SET TAGS ('dbx_business_glossary_term' = 'Ordered Quantity');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`delivery_schedule` ALTER COLUMN `packaging_type` SET TAGS ('dbx_business_glossary_term' = 'Packaging Type');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`delivery_schedule` ALTER COLUMN `packaging_type` SET TAGS ('dbx_value_regex' = 'tape_and_reel|tray|tube|bulk|waffle_pack|wafer');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`delivery_schedule` ALTER COLUMN `quantity_unit` SET TAGS ('dbx_business_glossary_term' = 'Quantity Unit of Measure');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`delivery_schedule` ALTER COLUMN `quantity_unit` SET TAGS ('dbx_value_regex' = 'PC|WF|KGD|LOT|REEL|TRAY');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`delivery_schedule` ALTER COLUMN `requested_delivery_date` SET TAGS ('dbx_business_glossary_term' = 'Requested Delivery Date');
@@ -730,31 +736,27 @@ ALTER TABLE `vibe_semiconductors_v1`.`order`.`delivery_schedule` ALTER COLUMN `s
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`delivery_schedule` ALTER COLUMN `schedule_line_revision` SET TAGS ('dbx_business_glossary_term' = 'Schedule Line Revision Number');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`delivery_schedule` ALTER COLUMN `schedule_line_status` SET TAGS ('dbx_business_glossary_term' = 'Schedule Line Status');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`delivery_schedule` ALTER COLUMN `schedule_line_status` SET TAGS ('dbx_value_regex' = 'open|confirmed|partially_delivered|fully_delivered|cancelled|blocked');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`delivery_schedule` ALTER COLUMN `schedule_status` SET TAGS ('dbx_business_glossary_term' = 'Schedule Status');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`delivery_schedule` ALTER COLUMN `scheduled_delivery_date` SET TAGS ('dbx_business_glossary_term' = 'Scheduled Delivery Date');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`delivery_schedule` ALTER COLUMN `scheduled_quantity` SET TAGS ('dbx_business_glossary_term' = 'Scheduled Quantity');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`delivery_schedule` ALTER COLUMN `scheduled_ship_date` SET TAGS ('dbx_business_glossary_term' = 'Scheduled Ship Date');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`delivery_schedule` ALTER COLUMN `shipment_tracking_number` SET TAGS ('dbx_business_glossary_term' = 'Shipment Tracking Number');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`delivery_schedule` ALTER COLUMN `wafer_start_authorization_number` SET TAGS ('dbx_business_glossary_term' = 'Wafer Start Authorization (WSA) Number');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`shipment` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`shipment` SET TAGS ('dbx_subdomain' = 'fulfillment_execution');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`shipment` SET TAGS ('dbx_subdomain' = 'logistics_execution');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`shipment` ALTER COLUMN `shipment_id` SET TAGS ('dbx_business_glossary_term' = 'Shipment ID');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`shipment` ALTER COLUMN `account_id` SET TAGS ('dbx_business_glossary_term' = 'Customer ID');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`shipment` ALTER COLUMN `delivery_schedule_id` SET TAGS ('dbx_business_glossary_term' = 'Delivery Schedule Id (Foreign Key)');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`shipment` ALTER COLUMN `final_test_run_id` SET TAGS ('dbx_business_glossary_term' = 'Final Test Run Id (Foreign Key)');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`shipment` ALTER COLUMN `inspection_lot_id` SET TAGS ('dbx_business_glossary_term' = 'Inspection Lot Id (Foreign Key)');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`shipment` ALTER COLUMN `order_line_id` SET TAGS ('dbx_business_glossary_term' = 'Order Line Id');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`shipment` ALTER COLUMN `package_type_id` SET TAGS ('dbx_business_glossary_term' = 'Package Type Id (Foreign Key)');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`shipment` ALTER COLUMN `line_id` SET TAGS ('dbx_business_glossary_term' = 'Order Line Id');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`shipment` ALTER COLUMN `storage_location_id` SET TAGS ('dbx_business_glossary_term' = 'Origin Storage Location Id (Foreign Key)');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`shipment` ALTER COLUMN `order_id` SET TAGS ('dbx_business_glossary_term' = 'Order ID');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`shipment` ALTER COLUMN `contact_id` SET TAGS ('dbx_business_glossary_term' = 'Receiving Contact Id (Foreign Key)');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`shipment` ALTER COLUMN `storage_location_id` SET TAGS ('dbx_business_glossary_term' = 'Ship From Storage Location Id (Foreign Key)');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`shipment` ALTER COLUMN `address_id` SET TAGS ('dbx_business_glossary_term' = 'Ship From Address Id');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`shipment` ALTER COLUMN `address_id` SET TAGS ('dbx_business_glossary_term' = 'Ship To Address Id (Foreign Key)');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`shipment` ALTER COLUMN `address_id` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`shipment` ALTER COLUMN `address_id` SET TAGS ('dbx_pii_address' = 'true');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`shipment` ALTER COLUMN `shipment_ship_to_address_id` SET TAGS ('dbx_business_glossary_term' = 'Ship To Address Id');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`shipment` ALTER COLUMN `shipment_ship_to_address_id` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`shipment` ALTER COLUMN `shipment_ship_to_address_id` SET TAGS ('dbx_pii_address' = 'true');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`shipment` ALTER COLUMN `to_order_id` SET TAGS ('dbx_business_glossary_term' = 'To Order Id');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`shipment` ALTER COLUMN `actual_arrival_date` SET TAGS ('dbx_business_glossary_term' = 'Actual Arrival Date');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`shipment` ALTER COLUMN `asn_number` SET TAGS ('dbx_business_glossary_term' = 'Advance Shipment Notice (ASN) Number');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`shipment` ALTER COLUMN `carrier_name` SET TAGS ('dbx_business_glossary_term' = 'Carrier Name');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`shipment` ALTER COLUMN `carrier_name` SET TAGS ('dbx_pii_detected' = 'true');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`shipment` ALTER COLUMN `carrier_tracking_number` SET TAGS ('dbx_business_glossary_term' = 'Carrier Tracking Number');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`shipment` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`shipment` ALTER COLUMN `currency_code` SET TAGS ('dbx_business_glossary_term' = 'Currency Code');
@@ -764,7 +766,6 @@ ALTER TABLE `vibe_semiconductors_v1`.`order`.`shipment` ALTER COLUMN `customer_p
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`shipment` ALTER COLUMN `damaged_goods_flag` SET TAGS ('dbx_business_glossary_term' = 'Damaged Goods Flag');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`shipment` ALTER COLUMN `declared_value_usd` SET TAGS ('dbx_business_glossary_term' = 'Declared Customs Value (USD)');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`shipment` ALTER COLUMN `declared_value_usd` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`shipment` ALTER COLUMN `delivery_date` SET TAGS ('dbx_business_glossary_term' = 'Delivery Date');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`shipment` ALTER COLUMN `destination_country_code` SET TAGS ('dbx_business_glossary_term' = 'Destination Country Code');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`shipment` ALTER COLUMN `destination_country_code` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`shipment` ALTER COLUMN `estimated_arrival_date` SET TAGS ('dbx_business_glossary_term' = 'Estimated Arrival Date');
@@ -778,13 +779,11 @@ ALTER TABLE `vibe_semiconductors_v1`.`order`.`shipment` ALTER COLUMN `hs_tariff_
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`shipment` ALTER COLUMN `incoterms_code` SET TAGS ('dbx_business_glossary_term' = 'Incoterms Code');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`shipment` ALTER COLUMN `inspection_certificate_number` SET TAGS ('dbx_business_glossary_term' = 'Inspection Certificate Number');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`shipment` ALTER COLUMN `is_multi_leg` SET TAGS ('dbx_business_glossary_term' = 'Multi-Leg Shipment Indicator');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`shipment` ALTER COLUMN `last_modified_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Last Modified Timestamp');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`shipment` ALTER COLUMN `lot_numbers` SET TAGS ('dbx_business_glossary_term' = 'Lot Numbers');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`shipment` ALTER COLUMN `model_lineage_source` SET TAGS ('dbx_business_glossary_term' = 'Model Lineage Source');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`shipment` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Shipment Notes');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`shipment` ALTER COLUMN `number` SET TAGS ('dbx_business_glossary_term' = 'Shipment Number');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`shipment` ALTER COLUMN `number` SET TAGS ('dbx_value_regex' = '^SHP-[0-9]{10}$');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`shipment` ALTER COLUMN `package_count` SET TAGS ('dbx_business_glossary_term' = 'Package Count');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`shipment` ALTER COLUMN `package_type` SET TAGS ('dbx_business_glossary_term' = 'Package Type');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`shipment` ALTER COLUMN `package_type` SET TAGS ('dbx_value_regex' = 'tape_and_reel|jedec_tray|tube|waffle_pack|bulk|wafer_carrier');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`shipment` ALTER COLUMN `pod_confirmed_quantity` SET TAGS ('dbx_business_glossary_term' = 'Proof of Delivery (POD) Confirmed Quantity');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`shipment` ALTER COLUMN `pod_receipt_date` SET TAGS ('dbx_business_glossary_term' = 'Proof of Delivery (POD) Receipt Date');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`shipment` ALTER COLUMN `pod_signoff_reference` SET TAGS ('dbx_business_glossary_term' = 'Proof of Delivery (POD) Signoff Reference');
@@ -796,26 +795,29 @@ ALTER TABLE `vibe_semiconductors_v1`.`order`.`shipment` ALTER COLUMN `rohs_compl
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`shipment` ALTER COLUMN `service_level` SET TAGS ('dbx_business_glossary_term' = 'Carrier Service Level');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`shipment` ALTER COLUMN `service_level` SET TAGS ('dbx_value_regex' = 'standard|express|overnight|economy|priority');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`shipment` ALTER COLUMN `ship_date` SET TAGS ('dbx_business_glossary_term' = 'Ship Date');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`shipment` ALTER COLUMN `shipment_number` SET TAGS ('dbx_business_glossary_term' = 'Shipment Number');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`shipment` ALTER COLUMN `shipment_number` SET TAGS ('dbx_value_regex' = '^SHP-[0-9]{10}$');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`shipment` ALTER COLUMN `shipment_status` SET TAGS ('dbx_business_glossary_term' = 'Shipment Status');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`shipment` ALTER COLUMN `shipment_status` SET TAGS ('dbx_value_regex' = 'draft|confirmed|in_transit|delivered|cancelled|on_hold');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`shipment` ALTER COLUMN `shipped_quantity` SET TAGS ('dbx_business_glossary_term' = 'Shipped Quantity');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`shipment` ALTER COLUMN `total_weight_kg` SET TAGS ('dbx_business_glossary_term' = 'Total Weight Kg');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`shipment` ALTER COLUMN `tracking_number` SET TAGS ('dbx_business_glossary_term' = 'Tracking Number');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`shipment` ALTER COLUMN `unit_of_measure` SET TAGS ('dbx_business_glossary_term' = 'Unit of Measure (UOM)');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`shipment` ALTER COLUMN `unit_of_measure` SET TAGS ('dbx_value_regex' = 'EA|WFR|DIE|REEL|TRAY|TUBE');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`shipment` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Updated Timestamp');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`shipment` ALTER COLUMN `wrong_part_flag` SET TAGS ('dbx_business_glossary_term' = 'Wrong Part Flag');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`shipment_line` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`shipment_line` SET TAGS ('dbx_subdomain' = 'fulfillment_execution');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`shipment_line` SET TAGS ('dbx_subdomain' = 'logistics_execution');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`shipment_line` ALTER COLUMN `shipment_line_id` SET TAGS ('dbx_business_glossary_term' = 'Shipment Line ID');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`shipment_line` ALTER COLUMN `assembly_lot_id` SET TAGS ('dbx_business_glossary_term' = 'Assembly Lot Id (Foreign Key)');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`shipment_line` ALTER COLUMN `allocation_record_id` SET TAGS ('dbx_business_glossary_term' = 'Allocation Record Id (Foreign Key)');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`shipment_line` ALTER COLUMN `delivery_schedule_id` SET TAGS ('dbx_business_glossary_term' = 'Delivery Schedule Id (Foreign Key)');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`shipment_line` ALTER COLUMN `die_bank_id` SET TAGS ('dbx_business_glossary_term' = 'Die Bank Id (Foreign Key)');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`shipment_line` ALTER COLUMN `final_test_run_id` SET TAGS ('dbx_business_glossary_term' = 'Final Test Run Id (Foreign Key)');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`shipment_line` ALTER COLUMN `finished_good_id` SET TAGS ('dbx_business_glossary_term' = 'Finished Good Id (Foreign Key)');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`shipment_line` ALTER COLUMN `inspection_lot_id` SET TAGS ('dbx_business_glossary_term' = 'Inspection Lot Id (Foreign Key)');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`shipment_line` ALTER COLUMN `package_type_id` SET TAGS ('dbx_business_glossary_term' = 'Package Type Id (Foreign Key)');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`shipment_line` ALTER COLUMN `order_line_id` SET TAGS ('dbx_business_glossary_term' = 'Order Line Id');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`shipment_line` ALTER COLUMN `ic_design_project_id` SET TAGS ('dbx_business_glossary_term' = 'Multi-Project Wafer (MPW) Run ID');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`shipment_line` ALTER COLUMN `inventory_wafer_lot_id` SET TAGS ('dbx_business_glossary_term' = 'Wafer Lot ID');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`shipment_line` ALTER COLUMN `shipment_id` SET TAGS ('dbx_business_glossary_term' = 'Shipment ID');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`shipment_line` ALTER COLUMN `primary_shipment_order_line_id` SET TAGS ('dbx_business_glossary_term' = 'Order Line ID');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`shipment_line` ALTER COLUMN `line_id` SET TAGS ('dbx_business_glossary_term' = 'Order Line ID');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`shipment_line` ALTER COLUMN `sku_id` SET TAGS ('dbx_business_glossary_term' = 'Product ID');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`shipment_line` ALTER COLUMN `tapeout_id` SET TAGS ('dbx_business_glossary_term' = 'Tapeout Id (Foreign Key)');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`shipment_line` ALTER COLUMN `to_order_line_id` SET TAGS ('dbx_business_glossary_term' = 'To Order Line Id');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`shipment_line` ALTER COLUMN `to_shipment_id` SET TAGS ('dbx_business_glossary_term' = 'To Shipment Id');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`shipment_line` ALTER COLUMN `actual_ship_date` SET TAGS ('dbx_business_glossary_term' = 'Actual Ship Date');
@@ -831,21 +833,20 @@ ALTER TABLE `vibe_semiconductors_v1`.`order`.`shipment_line` ALTER COLUMN `custo
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`shipment_line` ALTER COLUMN `date_code` SET TAGS ('dbx_business_glossary_term' = 'Date Code (YYWW)');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`shipment_line` ALTER COLUMN `date_code` SET TAGS ('dbx_value_regex' = '^[0-9]{4}[0-9]{2}$');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`shipment_line` ALTER COLUMN `delivery_document_number` SET TAGS ('dbx_business_glossary_term' = 'Delivery Document Number');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`shipment_line` ALTER COLUMN `die_bank_order_number` SET TAGS ('dbx_business_glossary_term' = 'Die Bank Order Number');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`shipment_line` ALTER COLUMN `eccn_code` SET TAGS ('dbx_business_glossary_term' = 'Export Control Classification Number (ECCN)');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`shipment_line` ALTER COLUMN `goods_issue_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Goods Issue Timestamp');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`shipment_line` ALTER COLUMN `inspection_certificate_number` SET TAGS ('dbx_business_glossary_term' = 'Inspection Certificate Number');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`shipment_line` ALTER COLUMN `itar_controlled` SET TAGS ('dbx_business_glossary_term' = 'International Traffic in Arms Regulations (ITAR) Controlled Flag');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`shipment_line` ALTER COLUMN `last_modified_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Last Modified Timestamp');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`shipment_line` ALTER COLUMN `line_net_value` SET TAGS ('dbx_business_glossary_term' = 'Line Net Value');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`shipment_line` ALTER COLUMN `line_net_value` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`shipment_line` ALTER COLUMN `line_number` SET TAGS ('dbx_business_glossary_term' = 'Shipment Line Number');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`shipment_line` ALTER COLUMN `line_status` SET TAGS ('dbx_business_glossary_term' = 'Shipment Line Status');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`shipment_line` ALTER COLUMN `line_status` SET TAGS ('dbx_value_regex' = 'open|picking|packed|shipped|delivered|cancelled');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`shipment_line` ALTER COLUMN `model_lineage_source` SET TAGS ('dbx_business_glossary_term' = 'Model Lineage Source');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`shipment_line` ALTER COLUMN `lot_number` SET TAGS ('dbx_business_glossary_term' = 'Production Lot Number');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`shipment_line` ALTER COLUMN `moisture_sensitivity_level` SET TAGS ('dbx_business_glossary_term' = 'Moisture Sensitivity Level (MSL)');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`shipment_line` ALTER COLUMN `moisture_sensitivity_level` SET TAGS ('dbx_value_regex' = 'MSL1|MSL2|MSL2a|MSL3|MSL4|MSL5');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`shipment_line` ALTER COLUMN `ordered_quantity` SET TAGS ('dbx_business_glossary_term' = 'Ordered Quantity');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`shipment_line` ALTER COLUMN `package_type` SET TAGS ('dbx_business_glossary_term' = 'Package Type');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`shipment_line` ALTER COLUMN `packaging_configuration` SET TAGS ('dbx_business_glossary_term' = 'Packaging Configuration');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`shipment_line` ALTER COLUMN `packaging_configuration` SET TAGS ('dbx_value_regex' = 'tape_and_reel|tray|tube|bulk|waffle_pack|dry_pack');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`shipment_line` ALTER COLUMN `part_number` SET TAGS ('dbx_business_glossary_term' = 'Part Number');
@@ -855,7 +856,6 @@ ALTER TABLE `vibe_semiconductors_v1`.`order`.`shipment_line` ALTER COLUMN `reach
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`shipment_line` ALTER COLUMN `revision_level` SET TAGS ('dbx_business_glossary_term' = 'Product Revision Level');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`shipment_line` ALTER COLUMN `rma_reference_number` SET TAGS ('dbx_business_glossary_term' = 'Return Merchandise Authorization (RMA) Reference Number');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`shipment_line` ALTER COLUMN `rohs_compliant` SET TAGS ('dbx_business_glossary_term' = 'Restriction of Hazardous Substances (RoHS) Compliant Flag');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`shipment_line` ALTER COLUMN `serial_number` SET TAGS ('dbx_business_glossary_term' = 'Serial Number');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`shipment_line` ALTER COLUMN `serial_number_range_end` SET TAGS ('dbx_business_glossary_term' = 'Serial Number Range End');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`shipment_line` ALTER COLUMN `serial_number_range_start` SET TAGS ('dbx_business_glossary_term' = 'Serial Number Range Start');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`shipment_line` ALTER COLUMN `shipped_quantity` SET TAGS ('dbx_business_glossary_term' = 'Shipped Quantity');
@@ -869,30 +869,27 @@ ALTER TABLE `vibe_semiconductors_v1`.`order`.`shipment_line` ALTER COLUMN `updat
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`shipment_line` ALTER COLUMN `wafer_start_authorization_number` SET TAGS ('dbx_business_glossary_term' = 'Wafer Start Authorization (WSA) Number');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`shipment_line` ALTER COLUMN `yield_grade` SET TAGS ('dbx_business_glossary_term' = 'Yield Grade');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`backlog_position` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`backlog_position` SET TAGS ('dbx_subdomain' = 'commitment_management');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`backlog_position` SET TAGS ('dbx_subdomain' = 'sales_fulfillment');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`backlog_position` ALTER COLUMN `backlog_position_id` SET TAGS ('dbx_business_glossary_term' = 'Backlog Position ID');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`backlog_position` ALTER COLUMN `account_id` SET TAGS ('dbx_business_glossary_term' = 'Customer ID');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`backlog_position` ALTER COLUMN `allocation_record_id` SET TAGS ('dbx_business_glossary_term' = 'Allocation Record Id (Foreign Key)');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`backlog_position` ALTER COLUMN `design_win_id` SET TAGS ('dbx_business_glossary_term' = 'Customer Design Win Id (Foreign Key)');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`backlog_position` ALTER COLUMN `die_bank_id` SET TAGS ('dbx_business_glossary_term' = 'Die Bank Id (Foreign Key)');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`backlog_position` ALTER COLUMN `fabrication_wafer_lot_id` SET TAGS ('dbx_business_glossary_term' = 'Fabrication Wafer Lot Id (Foreign Key)');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`backlog_position` ALTER COLUMN `ic_catalog_id` SET TAGS ('dbx_business_glossary_term' = 'Ic Catalog Id');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`backlog_position` ALTER COLUMN `family_id` SET TAGS ('dbx_business_glossary_term' = 'Family Id (Foreign Key)');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`backlog_position` ALTER COLUMN `finished_good_id` SET TAGS ('dbx_business_glossary_term' = 'Finished Good Id (Foreign Key)');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`backlog_position` ALTER COLUMN `order_id` SET TAGS ('dbx_business_glossary_term' = 'Order ID');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`backlog_position` ALTER COLUMN `order_line_id` SET TAGS ('dbx_business_glossary_term' = 'Primary Order Line Id');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`backlog_position` ALTER COLUMN `process_node_id` SET TAGS ('dbx_business_glossary_term' = 'Process Node Id (Foreign Key)');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`backlog_position` ALTER COLUMN `quality_hold_id` SET TAGS ('dbx_business_glossary_term' = 'Quality Hold Id (Foreign Key)');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`backlog_position` ALTER COLUMN `price_agreement_id` SET TAGS ('dbx_business_glossary_term' = 'Price Agreement Id (Foreign Key)');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`backlog_position` ALTER COLUMN `line_id` SET TAGS ('dbx_business_glossary_term' = 'Primary Order Line Id');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`backlog_position` ALTER COLUMN `sku_id` SET TAGS ('dbx_business_glossary_term' = 'Product ID');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`backlog_position` ALTER COLUMN `stock_balance_id` SET TAGS ('dbx_business_glossary_term' = 'Stock Balance Id (Foreign Key)');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`backlog_position` ALTER COLUMN `aging_days` SET TAGS ('dbx_business_glossary_term' = 'Aging Days');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`backlog_position` ALTER COLUMN `allocated_quantity` SET TAGS ('dbx_business_glossary_term' = 'Allocated Quantity');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`backlog_position` ALTER COLUMN `allocation_status` SET TAGS ('dbx_business_glossary_term' = 'Allocation Status');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`backlog_position` ALTER COLUMN `allocation_status` SET TAGS ('dbx_value_regex' = 'unallocated|partially_allocated|fully_allocated|over_allocated');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`backlog_position` ALTER COLUMN `backlog_aging_days` SET TAGS ('dbx_business_glossary_term' = 'Backlog Aging Days');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`backlog_position` ALTER COLUMN `backlog_quantity` SET TAGS ('dbx_business_glossary_term' = 'Backlog Quantity');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`backlog_position` ALTER COLUMN `backlog_status` SET TAGS ('dbx_business_glossary_term' = 'Backlog Position Status');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`backlog_position` ALTER COLUMN `backlog_status` SET TAGS ('dbx_value_regex' = 'open|committed|at_risk|pushed_out|cancelled|fulfilled');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`backlog_position` ALTER COLUMN `backlog_value` SET TAGS ('dbx_business_glossary_term' = 'Backlog Value');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`backlog_position` ALTER COLUMN `backlog_value` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`backlog_position` ALTER COLUMN `backlog_value_usd` SET TAGS ('dbx_business_glossary_term' = 'Backlog Value Usd');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`backlog_position` ALTER COLUMN `cancelled_quantity` SET TAGS ('dbx_business_glossary_term' = 'Cancelled Quantity');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`backlog_position` ALTER COLUMN `committed_quantity` SET TAGS ('dbx_business_glossary_term' = 'Committed Backlog Quantity');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`backlog_position` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
@@ -907,21 +904,16 @@ ALTER TABLE `vibe_semiconductors_v1`.`order`.`backlog_position` ALTER COLUMN `ex
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`backlog_position` ALTER COLUMN `export_license_number` SET TAGS ('dbx_business_glossary_term' = 'Export License Number');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`backlog_position` ALTER COLUMN `hold_code` SET TAGS ('dbx_business_glossary_term' = 'Order Hold Code');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`backlog_position` ALTER COLUMN `incoterms_code` SET TAGS ('dbx_business_glossary_term' = 'Incoterms Code');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`backlog_position` ALTER COLUMN `last_modified_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Last Modified Timestamp');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`backlog_position` ALTER COLUMN `last_updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Last Updated Timestamp');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`backlog_position` ALTER COLUMN `model_lineage_source` SET TAGS ('dbx_business_glossary_term' = 'Model Lineage Source');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`backlog_position` ALTER COLUMN `net_selling_price` SET TAGS ('dbx_business_glossary_term' = 'Net Selling Price');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`backlog_position` ALTER COLUMN `net_selling_price` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`backlog_position` ALTER COLUMN `order_entry_date` SET TAGS ('dbx_business_glossary_term' = 'Order Entry Date');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`backlog_position` ALTER COLUMN `order_type` SET TAGS ('dbx_business_glossary_term' = 'Order Type');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`backlog_position` ALTER COLUMN `original_order_quantity` SET TAGS ('dbx_business_glossary_term' = 'Original Order Quantity');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`backlog_position` ALTER COLUMN `original_promise_date` SET TAGS ('dbx_business_glossary_term' = 'Original Promise Date');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`backlog_position` ALTER COLUMN `part_number` SET TAGS ('dbx_business_glossary_term' = 'Part Number');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`backlog_position` ALTER COLUMN `priority_rank` SET TAGS ('dbx_business_glossary_term' = 'Backlog Priority Rank');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`backlog_position` ALTER COLUMN `promised_date` SET TAGS ('dbx_business_glossary_term' = 'Promised Date');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`backlog_position` ALTER COLUMN `push_out_days` SET TAGS ('dbx_business_glossary_term' = 'Push-Out Days');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`backlog_position` ALTER COLUMN `push_out_reason_code` SET TAGS ('dbx_business_glossary_term' = 'Push-Out Reason Code');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`backlog_position` ALTER COLUMN `requested_date` SET TAGS ('dbx_business_glossary_term' = 'Requested Date');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`backlog_position` ALTER COLUMN `requested_delivery_date` SET TAGS ('dbx_business_glossary_term' = 'Customer Requested Delivery Date');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`backlog_position` ALTER COLUMN `revenue_recognition_flag` SET TAGS ('dbx_business_glossary_term' = 'Revenue Recognition Eligible Flag');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`backlog_position` ALTER COLUMN `sales_region` SET TAGS ('dbx_business_glossary_term' = 'Sales Region');
@@ -932,30 +924,30 @@ ALTER TABLE `vibe_semiconductors_v1`.`order`.`backlog_position` ALTER COLUMN `sn
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`backlog_position` ALTER COLUMN `unit_of_measure` SET TAGS ('dbx_business_glossary_term' = 'Unit of Measure');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`backlog_position` ALTER COLUMN `unit_of_measure` SET TAGS ('dbx_value_regex' = 'EA|KU|WAFER|DIE|REEL|TRAY');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`allocation_record` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`allocation_record` SET TAGS ('dbx_subdomain' = 'commitment_management');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`allocation_record` SET TAGS ('dbx_subdomain' = 'inventory_reservation');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`allocation_record` ALTER COLUMN `allocation_record_id` SET TAGS ('dbx_business_glossary_term' = 'Allocation Record ID');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`allocation_record` ALTER COLUMN `account_id` SET TAGS ('dbx_business_glossary_term' = 'Customer ID');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`allocation_record` ALTER COLUMN `assembly_lot_id` SET TAGS ('dbx_business_glossary_term' = 'Assembly Lot Id (Foreign Key)');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`allocation_record` ALTER COLUMN `design_win_id` SET TAGS ('dbx_business_glossary_term' = 'Customer Design Win Id (Foreign Key)');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`allocation_record` ALTER COLUMN `die_bank_id` SET TAGS ('dbx_business_glossary_term' = 'Die Bank Id');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`allocation_record` ALTER COLUMN `delivery_schedule_id` SET TAGS ('dbx_business_glossary_term' = 'Delivery Schedule Id (Foreign Key)');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`allocation_record` ALTER COLUMN `fab_facility_id` SET TAGS ('dbx_business_glossary_term' = 'Fab Facility Id (Foreign Key)');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`allocation_record` ALTER COLUMN `fabrication_wafer_lot_id` SET TAGS ('dbx_business_glossary_term' = 'Fabrication Wafer Lot Id (Foreign Key)');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`allocation_record` ALTER COLUMN `final_test_run_id` SET TAGS ('dbx_business_glossary_term' = 'Final Test Run Id (Foreign Key)');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`allocation_record` ALTER COLUMN `finished_good_id` SET TAGS ('dbx_business_glossary_term' = 'Finished Good Id (Foreign Key)');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`allocation_record` ALTER COLUMN `ic_design_project_id` SET TAGS ('dbx_business_glossary_term' = 'Multi-Project Wafer (MPW) Run ID');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`allocation_record` ALTER COLUMN `inspection_lot_id` SET TAGS ('dbx_business_glossary_term' = 'Inspection Lot Id (Foreign Key)');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`allocation_record` ALTER COLUMN `order_id` SET TAGS ('dbx_business_glossary_term' = 'Order Id');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`allocation_record` ALTER COLUMN `order_line_id` SET TAGS ('dbx_business_glossary_term' = 'Primary Order Line Id');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`allocation_record` ALTER COLUMN `process_node_id` SET TAGS ('dbx_business_glossary_term' = 'Process Node Id (Foreign Key)');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`allocation_record` ALTER COLUMN `quality_hold_id` SET TAGS ('dbx_business_glossary_term' = 'Quality Hold Id (Foreign Key)');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`allocation_record` ALTER COLUMN `material_requirement_plan_id` SET TAGS ('dbx_business_glossary_term' = 'Material Requirement Plan Id (Foreign Key)');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`allocation_record` ALTER COLUMN `osat_work_order_id` SET TAGS ('dbx_business_glossary_term' = 'Osat Work Order Id (Foreign Key)');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`allocation_record` ALTER COLUMN `line_id` SET TAGS ('dbx_business_glossary_term' = 'Primary Order Line Id');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`allocation_record` ALTER COLUMN `order_id` SET TAGS ('dbx_business_glossary_term' = 'Sales Order ID');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`allocation_record` ALTER COLUMN `sku_id` SET TAGS ('dbx_business_glossary_term' = 'Product ID');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`allocation_record` ALTER COLUMN `stock_balance_id` SET TAGS ('dbx_business_glossary_term' = 'Stock Balance Id');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`allocation_record` ALTER COLUMN `tapeout_id` SET TAGS ('dbx_business_glossary_term' = 'Tapeout Id (Foreign Key)');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`allocation_record` ALTER COLUMN `wafer_probe_run_id` SET TAGS ('dbx_business_glossary_term' = 'Wafer Probe Run Id (Foreign Key)');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`allocation_record` ALTER COLUMN `actual_ship_date` SET TAGS ('dbx_business_glossary_term' = 'Actual Ship Date');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`allocation_record` ALTER COLUMN `allocated_quantity` SET TAGS ('dbx_business_glossary_term' = 'Allocated Quantity');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`allocation_record` ALTER COLUMN `allocation_date` SET TAGS ('dbx_business_glossary_term' = 'Allocation Date');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`allocation_record` ALTER COLUMN `allocation_number` SET TAGS ('dbx_business_glossary_term' = 'Allocation Number');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`allocation_record` ALTER COLUMN `allocation_number` SET TAGS ('dbx_value_regex' = '^ALLOC-[0-9]{10}$');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`allocation_record` ALTER COLUMN `allocation_priority` SET TAGS ('dbx_business_glossary_term' = 'Allocation Priority');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`allocation_record` ALTER COLUMN `allocation_source` SET TAGS ('dbx_business_glossary_term' = 'Allocation Source');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`allocation_record` ALTER COLUMN `allocation_source` SET TAGS ('dbx_value_regex' = 'finished_goods|die_bank|wafer_lot|fab_capacity|mpw_pool');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`allocation_record` ALTER COLUMN `allocation_status` SET TAGS ('dbx_business_glossary_term' = 'Allocation Status');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`allocation_record` ALTER COLUMN `allocation_type` SET TAGS ('dbx_business_glossary_term' = 'Allocation Type');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`allocation_record` ALTER COLUMN `allocation_type` SET TAGS ('dbx_value_regex' = 'hard|soft|tentative|capacity|die_bank|mpw');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`allocation_record` ALTER COLUMN `assignment_status` SET TAGS ('dbx_business_glossary_term' = 'Assignment Status');
@@ -970,18 +962,14 @@ ALTER TABLE `vibe_semiconductors_v1`.`order`.`allocation_record` ALTER COLUMN `c
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`allocation_record` ALTER COLUMN `end_market_segment` SET TAGS ('dbx_business_glossary_term' = 'End Market Segment');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`allocation_record` ALTER COLUMN `expiry_date` SET TAGS ('dbx_business_glossary_term' = 'Allocation Expiry Date');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`allocation_record` ALTER COLUMN `export_control_classification` SET TAGS ('dbx_business_glossary_term' = 'Export Control Classification Number (ECCN)');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`allocation_record` ALTER COLUMN `fab_site_code` SET TAGS ('dbx_business_glossary_term' = 'Fabrication (FAB) Site Code');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`allocation_record` ALTER COLUMN `hold_reason` SET TAGS ('dbx_business_glossary_term' = 'Hold Reason');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`allocation_record` ALTER COLUMN `inventory_batch_code` SET TAGS ('dbx_business_glossary_term' = 'Inventory Batch ID');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`allocation_record` ALTER COLUMN `itar_controlled` SET TAGS ('dbx_business_glossary_term' = 'International Traffic in Arms Regulations (ITAR) Controlled Flag');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`allocation_record` ALTER COLUMN `last_modified_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Last Modified Timestamp');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`allocation_record` ALTER COLUMN `last_updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Last Updated Timestamp');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`allocation_record` ALTER COLUMN `lot_type` SET TAGS ('dbx_business_glossary_term' = 'Lot Type');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`allocation_record` ALTER COLUMN `lot_type` SET TAGS ('dbx_value_regex' = 'wafer_lot|die_lot|packaged_goods_lot|mpw_lot');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`allocation_record` ALTER COLUMN `model_lineage_source` SET TAGS ('dbx_business_glossary_term' = 'Model Lineage Source');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`allocation_record` ALTER COLUMN `osat_site_code` SET TAGS ('dbx_business_glossary_term' = 'Outsourced Semiconductor Assembly and Test (OSAT) Site Code');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`allocation_record` ALTER COLUMN `priority` SET TAGS ('dbx_business_glossary_term' = 'Priority');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`allocation_record` ALTER COLUMN `priority_rank` SET TAGS ('dbx_business_glossary_term' = 'Priority Rank');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`allocation_record` ALTER COLUMN `process_node` SET TAGS ('dbx_business_glossary_term' = 'Process Node');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`allocation_record` ALTER COLUMN `quality_disposition` SET TAGS ('dbx_business_glossary_term' = 'Quality Disposition');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`allocation_record` ALTER COLUMN `quality_disposition` SET TAGS ('dbx_value_regex' = 'accepted|rejected|conditionally_accepted|under_review|scrapped');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`allocation_record` ALTER COLUMN `quality_disposition_notes` SET TAGS ('dbx_business_glossary_term' = 'Quality Disposition Notes');
@@ -994,46 +982,40 @@ ALTER TABLE `vibe_semiconductors_v1`.`order`.`allocation_record` ALTER COLUMN `s
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`allocation_record` ALTER COLUMN `shipped_quantity` SET TAGS ('dbx_business_glossary_term' = 'Shipped Quantity');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`allocation_record` ALTER COLUMN `wafer_start_authorization_number` SET TAGS ('dbx_business_glossary_term' = 'Wafer Start Authorization (WSA) Number');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`rma` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`rma` SET TAGS ('dbx_subdomain' = 'sales_processing');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`rma` SET TAGS ('dbx_subdomain' = 'inventory_reservation');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`rma` ALTER COLUMN `rma_id` SET TAGS ('dbx_business_glossary_term' = 'Rma Identifier');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`rma` ALTER COLUMN `account_id` SET TAGS ('dbx_business_glossary_term' = 'Customer ID');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`rma` ALTER COLUMN `assembly_lot_id` SET TAGS ('dbx_business_glossary_term' = 'Assembly Lot Id (Foreign Key)');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`rma` ALTER COLUMN `ar_invoice_id` SET TAGS ('dbx_business_glossary_term' = 'Credit Memo Ar Invoice Id (Foreign Key)');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`rma` ALTER COLUMN `customer_contract_id` SET TAGS ('dbx_business_glossary_term' = 'Customer Contract Id (Foreign Key)');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`rma` ALTER COLUMN `contact_id` SET TAGS ('dbx_business_glossary_term' = 'Contact Id (Foreign Key)');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`rma` ALTER COLUMN `customer_complaint_id` SET TAGS ('dbx_business_glossary_term' = 'Customer Complaint Id (Foreign Key)');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`rma` ALTER COLUMN `fabrication_wafer_lot_id` SET TAGS ('dbx_business_glossary_term' = 'Lot ID');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`rma` ALTER COLUMN `failure_analysis_report_id` SET TAGS ('dbx_business_glossary_term' = 'Failure Analysis (FA) ID');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`rma` ALTER COLUMN `final_test_run_id` SET TAGS ('dbx_business_glossary_term' = 'Final Test Run Id (Foreign Key)');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`rma` ALTER COLUMN `ic_catalog_id` SET TAGS ('dbx_business_glossary_term' = 'Ic Catalog Id');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`rma` ALTER COLUMN `finished_good_id` SET TAGS ('dbx_business_glossary_term' = 'Finished Good Id (Foreign Key)');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`rma` ALTER COLUMN `line_id` SET TAGS ('dbx_business_glossary_term' = 'Rma Order Line Id (Foreign Key)');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`rma` ALTER COLUMN `nonconformance_report_id` SET TAGS ('dbx_business_glossary_term' = 'Nonconformance Report Id (Foreign Key)');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`rma` ALTER COLUMN `order_line_id` SET TAGS ('dbx_business_glossary_term' = 'Order Line Id');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`rma` ALTER COLUMN `shipment_id` SET TAGS ('dbx_business_glossary_term' = 'Original Shipment Id (Foreign Key)');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`rma` ALTER COLUMN `order_id` SET TAGS ('dbx_business_glossary_term' = 'Rma Order Id');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`rma` ALTER COLUMN `inspection_lot_id` SET TAGS ('dbx_business_glossary_term' = 'Receipt Inspection Lot Id (Foreign Key)');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`rma` ALTER COLUMN `storage_location_id` SET TAGS ('dbx_business_glossary_term' = 'Receiving Storage Location Id (Foreign Key)');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`rma` ALTER COLUMN `address_id` SET TAGS ('dbx_business_glossary_term' = 'Return From Address Id (Foreign Key)');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`rma` ALTER COLUMN `address_id` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`rma` ALTER COLUMN `address_id` SET TAGS ('dbx_pii_address' = 'true');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`rma` ALTER COLUMN `revision_id` SET TAGS ('dbx_business_glossary_term' = 'Design Revision Id (Foreign Key)');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`rma` ALTER COLUMN `rma_order_id` SET TAGS ('dbx_business_glossary_term' = 'To Original Order');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`rma` ALTER COLUMN `sku_id` SET TAGS ('dbx_business_glossary_term' = 'Product ID');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`rma` ALTER COLUMN `supplier_id` SET TAGS ('dbx_business_glossary_term' = 'Supplier Id (Foreign Key)');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`rma` ALTER COLUMN `tapeout_id` SET TAGS ('dbx_business_glossary_term' = 'Tapeout Id (Foreign Key)');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`rma` ALTER COLUMN `tertiary_rma_sales_order_id` SET TAGS ('dbx_business_glossary_term' = 'Sales Order (SO) ID');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`rma` ALTER COLUMN `unit_test_result_id` SET TAGS ('dbx_business_glossary_term' = 'Unit Test Result Id (Foreign Key)');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`rma` ALTER COLUMN `approval_date` SET TAGS ('dbx_business_glossary_term' = 'Return Material Authorization (RMA) Approval Date');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`rma` ALTER COLUMN `approved_date` SET TAGS ('dbx_business_glossary_term' = 'Approved Date');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`rma` ALTER COLUMN `closed_date` SET TAGS ('dbx_business_glossary_term' = 'Return Material Authorization (RMA) Closed Date');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`rma` ALTER COLUMN `corrective_action_required` SET TAGS ('dbx_business_glossary_term' = 'Corrective Action Required Flag');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`rma` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`rma` ALTER COLUMN `credit_amount` SET TAGS ('dbx_business_glossary_term' = 'Credit Amount');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`rma` ALTER COLUMN `credit_memo_number` SET TAGS ('dbx_business_glossary_term' = 'Credit Memo Number');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`rma` ALTER COLUMN `credit_memo_number` SET TAGS ('dbx_value_regex' = '^CM-[0-9]{8,12}$');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`rma` ALTER COLUMN `currency_code` SET TAGS ('dbx_business_glossary_term' = 'Currency Code');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`rma` ALTER COLUMN `currency_code` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`rma` ALTER COLUMN `customer_contact_email` SET TAGS ('dbx_business_glossary_term' = 'Customer Contact Email Address');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`rma` ALTER COLUMN `customer_contact_email` SET TAGS ('dbx_value_regex' = '^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+.[a-zA-Z]{2,}$');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`rma` ALTER COLUMN `customer_contact_email` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`rma` ALTER COLUMN `customer_contact_email` SET TAGS ('dbx_pii_email' = 'true');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`rma` ALTER COLUMN `customer_contact_name` SET TAGS ('dbx_business_glossary_term' = 'Customer Contact Name');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`rma` ALTER COLUMN `customer_contact_name` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`rma` ALTER COLUMN `customer_contact_name` SET TAGS ('dbx_pii_name' = 'true');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`rma` ALTER COLUMN `customer_contact_phone` SET TAGS ('dbx_business_glossary_term' = 'Customer Contact Phone Number');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`rma` ALTER COLUMN `customer_contact_phone` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`rma` ALTER COLUMN `customer_contact_phone` SET TAGS ('dbx_pii_phone' = 'true');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`rma` ALTER COLUMN `defect_description` SET TAGS ('dbx_business_glossary_term' = 'Defect Description');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`rma` ALTER COLUMN `disposition` SET TAGS ('dbx_business_glossary_term' = 'Disposition');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`rma` ALTER COLUMN `disposition_instruction` SET TAGS ('dbx_business_glossary_term' = 'Disposition Instruction');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`rma` ALTER COLUMN `disposition_instruction` SET TAGS ('dbx_value_regex' = 'scrap|rework|credit|replacement|return_to_vendor|failure_analysis');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`rma` ALTER COLUMN `dppm_impact_flag` SET TAGS ('dbx_business_glossary_term' = 'Defective Parts Per Million (DPPM) Impact Flag');
@@ -1044,11 +1026,7 @@ ALTER TABLE `vibe_semiconductors_v1`.`order`.`rma` ALTER COLUMN `inspection_resu
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`rma` ALTER COLUMN `internal_notes` SET TAGS ('dbx_business_glossary_term' = 'Internal Notes');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`rma` ALTER COLUMN `internal_notes` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`rma` ALTER COLUMN `last_modified_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Last Modified Timestamp');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`rma` ALTER COLUMN `model_lineage_source` SET TAGS ('dbx_business_glossary_term' = 'Model Lineage Source');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`rma` ALTER COLUMN `number` SET TAGS ('dbx_business_glossary_term' = 'Return Material Authorization (RMA) Number');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`rma` ALTER COLUMN `number` SET TAGS ('dbx_value_regex' = '^RMA-[0-9]{8,12}$');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`rma` ALTER COLUMN `reach_compliant` SET TAGS ('dbx_business_glossary_term' = 'Registration Evaluation Authorization and Restriction of Chemicals (REACH) Compliant Flag');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`rma` ALTER COLUMN `reason_code` SET TAGS ('dbx_business_glossary_term' = 'Reason Code');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`rma` ALTER COLUMN `received_date` SET TAGS ('dbx_business_glossary_term' = 'Material Received Date');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`rma` ALTER COLUMN `request_date` SET TAGS ('dbx_business_glossary_term' = 'Return Material Authorization (RMA) Request Date');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`rma` ALTER COLUMN `return_reason_code` SET TAGS ('dbx_business_glossary_term' = 'Return Reason Code');
@@ -1056,7 +1034,8 @@ ALTER TABLE `vibe_semiconductors_v1`.`order`.`rma` ALTER COLUMN `return_reason_c
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`rma` ALTER COLUMN `return_shipping_carrier` SET TAGS ('dbx_business_glossary_term' = 'Return Shipping Carrier');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`rma` ALTER COLUMN `return_tracking_number` SET TAGS ('dbx_business_glossary_term' = 'Return Tracking Number');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`rma` ALTER COLUMN `returned_quantity` SET TAGS ('dbx_business_glossary_term' = 'Returned Quantity');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`rma` ALTER COLUMN `rma_date` SET TAGS ('dbx_business_glossary_term' = 'Rma Date');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`rma` ALTER COLUMN `rma_number` SET TAGS ('dbx_business_glossary_term' = 'Return Material Authorization (RMA) Number');
+ALTER TABLE `vibe_semiconductors_v1`.`order`.`rma` ALTER COLUMN `rma_number` SET TAGS ('dbx_value_regex' = '^RMA-[0-9]{8,12}$');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`rma` ALTER COLUMN `rma_status` SET TAGS ('dbx_business_glossary_term' = 'Return Material Authorization (RMA) Status');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`rma` ALTER COLUMN `rohs_compliant` SET TAGS ('dbx_business_glossary_term' = 'Restriction of Hazardous Substances (RoHS) Compliant Flag');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`rma` ALTER COLUMN `root_cause_category` SET TAGS ('dbx_business_glossary_term' = 'Root Cause Category');
@@ -1065,69 +1044,3 @@ ALTER TABLE `vibe_semiconductors_v1`.`order`.`rma` ALTER COLUMN `unit_of_measure
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`rma` ALTER COLUMN `unit_of_measure` SET TAGS ('dbx_value_regex' = 'EA|WFR|LOT|KIT');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`rma` ALTER COLUMN `warranty_claim_flag` SET TAGS ('dbx_business_glossary_term' = 'Warranty Claim Flag');
 ALTER TABLE `vibe_semiconductors_v1`.`order`.`rma` ALTER COLUMN `warranty_expiration_date` SET TAGS ('dbx_business_glossary_term' = 'Warranty Expiration Date');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`order_hold` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`order_hold` SET TAGS ('dbx_subdomain' = 'sales_processing');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`order_hold` ALTER COLUMN `order_hold_id` SET TAGS ('dbx_business_glossary_term' = 'Order Hold ID');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`order_hold` ALTER COLUMN `account_id` SET TAGS ('dbx_business_glossary_term' = 'Account Id (Foreign Key)');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`order_hold` ALTER COLUMN `assembly_lot_id` SET TAGS ('dbx_business_glossary_term' = 'Assembly Lot Id (Foreign Key)');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`order_hold` ALTER COLUMN `credit_profile_id` SET TAGS ('dbx_business_glossary_term' = 'Credit Profile Id (Foreign Key)');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`order_hold` ALTER COLUMN `fab_tool_id` SET TAGS ('dbx_business_glossary_term' = 'Fab Tool Id (Foreign Key)');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`order_hold` ALTER COLUMN `inspection_lot_id` SET TAGS ('dbx_business_glossary_term' = 'Quality Lot ID');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`order_hold` ALTER COLUMN `nonconformance_report_id` SET TAGS ('dbx_business_glossary_term' = 'Nonconformance Report Id (Foreign Key)');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`order_hold` ALTER COLUMN `order_line_id` SET TAGS ('dbx_business_glossary_term' = 'Order Line ID');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`order_hold` ALTER COLUMN `order_id` SET TAGS ('dbx_business_glossary_term' = 'Order Id');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`order_hold` ALTER COLUMN `quality_hold_id` SET TAGS ('dbx_business_glossary_term' = 'Quality Hold Id (Foreign Key)');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`order_hold` ALTER COLUMN `maintenance_event_id` SET TAGS ('dbx_business_glossary_term' = 'Triggering Maintenance Event Id (Foreign Key)');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`order_hold` ALTER COLUMN `chips_act_review_required` SET TAGS ('dbx_business_glossary_term' = 'CHIPS Act Compliance Review Required Flag');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`order_hold` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`order_hold` ALTER COLUMN `credit_exposure_amount` SET TAGS ('dbx_business_glossary_term' = 'Credit Exposure Amount');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`order_hold` ALTER COLUMN `credit_exposure_amount` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`order_hold` ALTER COLUMN `credit_limit_amount` SET TAGS ('dbx_business_glossary_term' = 'Customer Credit Limit Amount');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`order_hold` ALTER COLUMN `credit_limit_amount` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`order_hold` ALTER COLUMN `currency_code` SET TAGS ('dbx_business_glossary_term' = 'Currency Code');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`order_hold` ALTER COLUMN `currency_code` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`order_hold` ALTER COLUMN `customer_request_reference` SET TAGS ('dbx_business_glossary_term' = 'Customer Request Reference');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`order_hold` ALTER COLUMN `die_bank_impacted` SET TAGS ('dbx_business_glossary_term' = 'Die Bank Order Impacted Flag');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`order_hold` ALTER COLUMN `dppm_threshold` SET TAGS ('dbx_business_glossary_term' = 'Defective Parts Per Million (DPPM) Threshold');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`order_hold` ALTER COLUMN `escalation_date` SET TAGS ('dbx_business_glossary_term' = 'Hold Escalation Timestamp');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`order_hold` ALTER COLUMN `escalation_flag` SET TAGS ('dbx_business_glossary_term' = 'Hold Escalation Flag');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`order_hold` ALTER COLUMN `export_control_classification` SET TAGS ('dbx_business_glossary_term' = 'Export Control Classification Number (ECCN)');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`order_hold` ALTER COLUMN `export_license_number` SET TAGS ('dbx_business_glossary_term' = 'Export License Number');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`order_hold` ALTER COLUMN `export_license_number` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`order_hold` ALTER COLUMN `hold_code` SET TAGS ('dbx_business_glossary_term' = 'Hold Code');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`order_hold` ALTER COLUMN `hold_date` SET TAGS ('dbx_business_glossary_term' = 'Hold Placed Timestamp');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`order_hold` ALTER COLUMN `hold_number` SET TAGS ('dbx_business_glossary_term' = 'Hold Number');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`order_hold` ALTER COLUMN `hold_number` SET TAGS ('dbx_value_regex' = '^HLD-[0-9]{8,12}$');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`order_hold` ALTER COLUMN `hold_status` SET TAGS ('dbx_business_glossary_term' = 'Hold Status');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`order_hold` ALTER COLUMN `hold_status` SET TAGS ('dbx_value_regex' = 'ACTIVE|RELEASED|ESCALATED|CANCELLED');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`order_hold` ALTER COLUMN `hold_type` SET TAGS ('dbx_business_glossary_term' = 'Hold Type');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`order_hold` ALTER COLUMN `hold_type` SET TAGS ('dbx_value_regex' = 'CREDIT|EXPORT_COMPLIANCE|QUALITY|CUSTOMER_REQUEST|ALLOCATION|REGULATORY');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`order_hold` ALTER COLUMN `itar_controlled` SET TAGS ('dbx_business_glossary_term' = 'International Traffic in Arms Regulations (ITAR) Controlled Flag');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`order_hold` ALTER COLUMN `last_modified_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Last Modified Timestamp');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`order_hold` ALTER COLUMN `model_lineage_source` SET TAGS ('dbx_business_glossary_term' = 'Model Lineage Source');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`order_hold` ALTER COLUMN `order_value_at_risk` SET TAGS ('dbx_business_glossary_term' = 'Order Value at Risk');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`order_hold` ALTER COLUMN `order_value_at_risk` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`order_hold` ALTER COLUMN `owner_department` SET TAGS ('dbx_business_glossary_term' = 'Hold Owner Department');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`order_hold` ALTER COLUMN `owner_department` SET TAGS ('dbx_value_regex' = 'CREDIT_MGMT|EXPORT_COMPLIANCE|QUALITY|CUSTOMER_SERVICE|SUPPLY_CHAIN|FINANCE');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`order_hold` ALTER COLUMN `owner_name` SET TAGS ('dbx_business_glossary_term' = 'Hold Owner Name');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`order_hold` ALTER COLUMN `owner_name` SET TAGS ('dbx_pii_name' = 'true');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`order_hold` ALTER COLUMN `owner_name` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`order_hold` ALTER COLUMN `owner_name` SET TAGS ('dbx_classification' = 'confidential');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`order_hold` ALTER COLUMN `placed_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Hold Placed Timestamp');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`order_hold` ALTER COLUMN `quality_disposition_status` SET TAGS ('dbx_business_glossary_term' = 'Quality Disposition Status');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`order_hold` ALTER COLUMN `quality_disposition_status` SET TAGS ('dbx_value_regex' = 'PENDING|USE_AS_IS|REWORK|SCRAP|RETURN_TO_SUPPLIER');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`order_hold` ALTER COLUMN `reason` SET TAGS ('dbx_business_glossary_term' = 'Hold Reason');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`order_hold` ALTER COLUMN `reason_code` SET TAGS ('dbx_business_glossary_term' = 'Hold Reason Code');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`order_hold` ALTER COLUMN `release_approver_name` SET TAGS ('dbx_business_glossary_term' = 'Release Approver Name');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`order_hold` ALTER COLUMN `release_date` SET TAGS ('dbx_business_glossary_term' = 'Hold Release Timestamp');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`order_hold` ALTER COLUMN `release_reason` SET TAGS ('dbx_business_glossary_term' = 'Hold Release Reason');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`order_hold` ALTER COLUMN `release_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Hold Release Timestamp');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`order_hold` ALTER COLUMN `released_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Hold Released Timestamp');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`order_hold` ALTER COLUMN `requested_release_date` SET TAGS ('dbx_business_glossary_term' = 'Requested Hold Release Date');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`order_hold` ALTER COLUMN `resolution_notes` SET TAGS ('dbx_business_glossary_term' = 'Hold Resolution Notes');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`order_hold` ALTER COLUMN `sla_breach_flag` SET TAGS ('dbx_business_glossary_term' = 'Hold SLA Breach Flag');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`order_hold` ALTER COLUMN `sla_target_hours` SET TAGS ('dbx_business_glossary_term' = 'Hold Resolution Service Level Agreement (SLA) Target Hours');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`order_hold` ALTER COLUMN `source_system_hold_reference` SET TAGS ('dbx_business_glossary_term' = 'Source System Hold Identifier');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`order_hold` ALTER COLUMN `start_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Hold Start Timestamp');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`order_hold` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Last Updated Timestamp');
-ALTER TABLE `vibe_semiconductors_v1`.`order`.`order_hold` ALTER COLUMN `wafer_start_impacted` SET TAGS ('dbx_business_glossary_term' = 'Wafer Start Authorization Impacted Flag');

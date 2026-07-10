@@ -1,4 +1,59 @@
--- Metric views for domain: product | Business: Manufacturing | Version: 2 | Generated on: 2026-07-03 07:48:17
+-- Metric views for domain: product | Business: Manufacturing | Version: 2 | Generated on: 2026-07-10 14:43:00
+
+CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`product_bom_header`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Bom Header business metrics"
+  source: "`vibe_manufacturing_v1`.`product`.`bom_header`"
+  dimensions:
+    - name: "Alternative Bom Indicator"
+      expr: alternative_bom_indicator
+    - name: "Approval Date"
+      expr: approval_date
+    - name: "Base Unit Of Measure"
+      expr: base_unit_of_measure
+    - name: "Bom Category"
+      expr: bom_category
+    - name: "Bom Description"
+      expr: bom_description
+    - name: "Bom Number"
+      expr: bom_number
+    - name: "Bom Status"
+      expr: bom_status
+    - name: "Bom Type"
+      expr: bom_type
+    - name: "Bom Usage"
+      expr: bom_usage
+    - name: "Configuration Profile"
+      expr: configuration_profile
+    - name: "Created Date"
+      expr: created_date
+    - name: "Effective Date"
+      expr: effective_date
+    - name: "Engineering Change Notice Number"
+      expr: engineering_change_notice_number
+    - name: "Engineering Change Order Number"
+      expr: engineering_change_order_number
+    - name: "Environmental Compliance Flag"
+      expr: environmental_compliance_flag
+    - name: "Erp System Code"
+      expr: erp_system_code
+  measures:
+    - name: "Row Count"
+      expr: COUNT(1)
+    - name: "Distinct Bom Header"
+      expr: COUNT(DISTINCT bom_header_id)
+    - name: "Total Base Quantity"
+      expr: SUM(base_quantity)
+    - name: "Average Base Quantity"
+      expr: AVG(base_quantity)
+    - name: "Total Lot Size"
+      expr: SUM(lot_size)
+    - name: "Average Lot Size"
+      expr: AVG(lot_size)
+$$;
 
 CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`product_catalog_entry`
 WITH METRICS
@@ -53,156 +108,57 @@ AS $$
       expr: SUM(minimum_order_quantity)
     - name: "Average Minimum Order Quantity"
       expr: AVG(minimum_order_quantity)
-    - name: "Total Price Unit Of Measure"
-      expr: SUM(price_unit_of_measure)
-    - name: "Average Price Unit Of Measure"
-      expr: AVG(price_unit_of_measure)
 $$;
 
-CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`product_classification`
+CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`product_certification`
 WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Classification business metrics"
-  source: "`vibe_manufacturing_v1`.`product`.`classification`"
+  comment: "Certification business metrics"
+  source: "`vibe_manufacturing_v1`.`product`.`certification`"
   dimensions:
-    - name: "Application Area"
-      expr: application_area
-    - name: "Assigned By"
-      expr: assigned_by
-    - name: "Assigned Date"
-      expr: assigned_date
-    - name: "Auto Classified Flag"
-      expr: auto_classified_flag
-    - name: "Business Unit"
-      expr: business_unit
-    - name: "Class Code"
-      expr: class_code
-    - name: "Class Description"
-      expr: class_description
-    - name: "Class Level"
-      expr: class_level
-    - name: "Classification Status"
-      expr: classification_status
-    - name: "Commodity Code"
-      expr: commodity_code
-    - name: "Country Of Origin"
-      expr: country_of_origin
+    - name: "Applicable Markets"
+      expr: applicable_markets
+    - name: "Applicable Standards"
+      expr: applicable_standards
+    - name: "Audit Date"
+      expr: audit_date
+    - name: "Certificate Document Url"
+      expr: certificate_document_url
+    - name: "Certification Number"
+      expr: certification_number
+    - name: "Certification Status"
+      expr: certification_status
+    - name: "Certification Type"
+      expr: certification_type
+    - name: "Certifying Body"
+      expr: certifying_body
+    - name: "Cost Currency Code"
+      expr: cost_currency_code
     - name: "Created Timestamp"
       expr: created_timestamp
-    - name: "Customs Tariff Code"
-      expr: customs_tariff_code
-    - name: "Data Quality Status"
-      expr: data_quality_status
-    - name: "Effective End Date"
-      expr: effective_end_date
-    - name: "Effective Start Date"
-      expr: effective_start_date
+    - name: "Cybersecurity Certification"
+      expr: cybersecurity_certification
+    - name: "Declaration Of Conformity Number"
+      expr: declaration_of_conformity_number
+    - name: "Eccn Code"
+      expr: eccn_code
+    - name: "Effective Date"
+      expr: effective_date
+    - name: "Energy Efficiency Rating"
+      expr: energy_efficiency_rating
+    - name: "Environmental Certification"
+      expr: environmental_certification
   measures:
     - name: "Row Count"
       expr: COUNT(1)
-    - name: "Distinct Classification"
-      expr: COUNT(DISTINCT classification_id)
-    - name: "Total Confidence Score"
-      expr: SUM(confidence_score)
-    - name: "Average Confidence Score"
-      expr: AVG(confidence_score)
-$$;
-
-CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`product_configuration`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Configuration business metrics"
-  source: "`vibe_manufacturing_v1`.`product`.`configuration`"
-  dimensions:
-    - name: "Application Type"
-      expr: application_type
-    - name: "Approval Date"
-      expr: approval_date
-    - name: "Certification Requirements"
-      expr: certification_requirements
-    - name: "Constraint Rules"
-      expr: constraint_rules
-    - name: "Created Timestamp"
-      expr: created_timestamp
-    - name: "Currency Code"
-      expr: currency_code
-    - name: "Customer Segment"
-      expr: customer_segment
-    - name: "Effective End Date"
-      expr: effective_end_date
-    - name: "Effective Start Date"
-      expr: effective_start_date
-    - name: "Is Orderable"
-      expr: is_orderable
-    - name: "Is Quotable"
-      expr: is_quotable
-    - name: "Last Modified Timestamp"
-      expr: last_modified_timestamp
-    - name: "Lead Time Days"
-      expr: lead_time_days
-    - name: "Manufacturing Complexity"
-      expr: manufacturing_complexity
-    - name: "Minimum Order Quantity"
-      expr: minimum_order_quantity
-    - name: "Notes"
-      expr: notes
-  measures:
-    - name: "Row Count"
-      expr: COUNT(1)
-    - name: "Distinct Configuration"
-      expr: COUNT(DISTINCT configuration_id)
-    - name: "Total Base Price"
-      expr: SUM(base_price)
-    - name: "Average Base Price"
-      expr: AVG(base_price)
-    - name: "Total Code"
-      expr: SUM(code)
-    - name: "Average Code"
-      expr: AVG(code)
-    - name: "Total Configuration Status"
-      expr: SUM(configuration_status)
-    - name: "Average Configuration Status"
-      expr: AVG(configuration_status)
-    - name: "Total Configuration Type"
-      expr: SUM(configuration_type)
-    - name: "Average Configuration Type"
-      expr: AVG(configuration_type)
-    - name: "Total Description"
-      expr: SUM(description)
-    - name: "Average Description"
-      expr: AVG(description)
-    - name: "Total Dimensions Height Mm"
-      expr: SUM(dimensions_height_mm)
-    - name: "Average Dimensions Height Mm"
-      expr: AVG(dimensions_height_mm)
-    - name: "Total Dimensions Length Mm"
-      expr: SUM(dimensions_length_mm)
-    - name: "Average Dimensions Length Mm"
-      expr: AVG(dimensions_length_mm)
-    - name: "Total Dimensions Width Mm"
-      expr: SUM(dimensions_width_mm)
-    - name: "Average Dimensions Width Mm"
-      expr: AVG(dimensions_width_mm)
-    - name: "Total Name"
-      expr: SUM(name)
-    - name: "Average Name"
-      expr: AVG(name)
-    - name: "Total Power Rating Kw"
-      expr: SUM(power_rating_kw)
-    - name: "Average Power Rating Kw"
-      expr: AVG(power_rating_kw)
-    - name: "Total Price Adjustment"
-      expr: SUM(price_adjustment)
-    - name: "Average Price Adjustment"
-      expr: AVG(price_adjustment)
-    - name: "Total Total Configuration Price"
-      expr: SUM(total_configuration_price)
-    - name: "Average Total Configuration Price"
-      expr: AVG(total_configuration_price)
+    - name: "Distinct Certification"
+      expr: COUNT(DISTINCT certification_id)
+    - name: "Total Cost Amount"
+      expr: SUM(cost_amount)
+    - name: "Average Cost Amount"
+      expr: AVG(cost_amount)
 $$;
 
 CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`product_family`
@@ -254,10 +210,6 @@ AS $$
       expr: SUM(list_price)
     - name: "Average List Price"
       expr: AVG(list_price)
-    - name: "Total Manufacturing Strategy"
-      expr: SUM(manufacturing_strategy)
-    - name: "Average Manufacturing Strategy"
-      expr: AVG(manufacturing_strategy)
     - name: "Total Mean Time Between Failures"
       expr: SUM(mean_time_between_failures)
     - name: "Average Mean Time Between Failures"
@@ -266,10 +218,6 @@ AS $$
       expr: SUM(mean_time_to_repair)
     - name: "Average Mean Time To Repair"
       expr: AVG(mean_time_to_repair)
-    - name: "Total Product Portfolio Strategy"
-      expr: SUM(product_portfolio_strategy)
-    - name: "Average Product Portfolio Strategy"
-      expr: AVG(product_portfolio_strategy)
     - name: "Total Standard Cost"
       expr: SUM(standard_cost)
     - name: "Average Standard Cost"
@@ -312,201 +260,90 @@ AS $$
       expr: last_time_ship_date
     - name: "Lifecycle Decision Authority"
       expr: lifecycle_decision_authority
+    - name: "Lifecycle Decision Rationale"
+      expr: lifecycle_decision_rationale
     - name: "Lifecycle Review Date"
       expr: lifecycle_review_date
     - name: "Manufacturing Discontinuation Date"
       expr: manufacturing_discontinuation_date
     - name: "Market Demand Trend"
       expr: market_demand_trend
-    - name: "Name"
-      expr: name
   measures:
     - name: "Row Count"
       expr: COUNT(1)
     - name: "Distinct Lifecycle Stage"
       expr: COUNT(DISTINCT lifecycle_stage_id)
-    - name: "Total Lifecycle Decision Rationale"
-      expr: SUM(lifecycle_decision_rationale)
-    - name: "Average Lifecycle Decision Rationale"
-      expr: AVG(lifecycle_decision_rationale)
 $$;
 
-CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`product_order_line`
+CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`product_product_bom_line`
 WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Order Line business metrics"
-  source: "`vibe_manufacturing_v1`.`product`.`order_line`"
+  comment: "Product Bom Line business metrics"
+  source: "`vibe_manufacturing_v1`.`product`.`product_bom_line`"
   dimensions:
-    - name: "Backorder Flag"
-      expr: backorder_flag
-    - name: "Billing Status"
-      expr: billing_status
-    - name: "Cancellation Reason"
-      expr: cancellation_reason
-    - name: "Confirmed Delivery Date"
-      expr: confirmed_delivery_date
-    - name: "Created Timestamp"
-      expr: created_timestamp
-    - name: "Currency Code"
-      expr: currency_code
-    - name: "Delivery Date"
-      expr: delivery_date
-    - name: "Delivery Status"
-      expr: delivery_status
-    - name: "Fulfillment Priority"
-      expr: fulfillment_priority
-    - name: "Item Category"
-      expr: item_category
-    - name: "Last Modified Timestamp"
-      expr: last_modified_timestamp
-    - name: "Line Notes"
-      expr: line_notes
-    - name: "Line Number"
-      expr: line_number
-    - name: "Line Sequence Number"
-      expr: line_sequence_number
-    - name: "Line Status"
-      expr: line_status
-    - name: "Profit Center Code"
-      expr: profit_center_code
-  measures:
-    - name: "Row Count"
-      expr: COUNT(1)
-    - name: "Distinct Order Line"
-      expr: COUNT(DISTINCT order_line_id)
-    - name: "Total Confirmed Quantity"
-      expr: SUM(confirmed_quantity)
-    - name: "Average Confirmed Quantity"
-      expr: AVG(confirmed_quantity)
-    - name: "Total Cost Amount"
-      expr: SUM(cost_amount)
-    - name: "Average Cost Amount"
-      expr: AVG(cost_amount)
-    - name: "Total Discount Amount"
-      expr: SUM(discount_amount)
-    - name: "Average Discount Amount"
-      expr: AVG(discount_amount)
-    - name: "Total Discount Percent"
-      expr: SUM(discount_percent)
-    - name: "Average Discount Percent"
-      expr: AVG(discount_percent)
-    - name: "Total Discount Percentage"
-      expr: SUM(discount_percentage)
-    - name: "Average Discount Percentage"
-      expr: AVG(discount_percentage)
-    - name: "Total Extended Amount"
-      expr: SUM(extended_amount)
-    - name: "Average Extended Amount"
-      expr: AVG(extended_amount)
-    - name: "Total Extended Price Amount"
-      expr: SUM(extended_price_amount)
-    - name: "Average Extended Price Amount"
-      expr: AVG(extended_price_amount)
-    - name: "Total Gross Price"
-      expr: SUM(gross_price)
-    - name: "Average Gross Price"
-      expr: AVG(gross_price)
-    - name: "Total Line Amount"
-      expr: SUM(line_amount)
-    - name: "Average Line Amount"
-      expr: AVG(line_amount)
-    - name: "Total Line Total Amount"
-      expr: SUM(line_total_amount)
-    - name: "Average Line Total Amount"
-      expr: AVG(line_total_amount)
-    - name: "Total List Price"
-      expr: SUM(list_price)
-    - name: "Average List Price"
-      expr: AVG(list_price)
-    - name: "Total Margin Amount"
-      expr: SUM(margin_amount)
-    - name: "Average Margin Amount"
-      expr: AVG(margin_amount)
-$$;
-
-CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`product_plant_data`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Plant Data business metrics"
-  source: "`vibe_manufacturing_v1`.`product`.`plant_data`"
-  dimensions:
-    - name: "Abc Indicator"
-      expr: abc_indicator
-    - name: "Availability Check Group"
-      expr: availability_check_group
+    - name: "Alternative Item Group"
+      expr: alternative_item_group
+    - name: "Alternative Item Priority"
+      expr: alternative_item_priority
+    - name: "Assembly Level"
+      expr: assembly_level
     - name: "Backflush Indicator"
       expr: backflush_indicator
-    - name: "Batch Management Required"
-      expr: batch_management_required
+    - name: "Bulk Material Indicator"
+      expr: bulk_material_indicator
+    - name: "Change Number"
+      expr: change_number
+    - name: "Component Origin"
+      expr: component_origin
+    - name: "Cost Relevance Indicator"
+      expr: cost_relevance_indicator
+    - name: "Created By User"
+      expr: created_by_user
     - name: "Created Timestamp"
       expr: created_timestamp
-    - name: "Cycle Counting Indicator"
-      expr: cycle_counting_indicator
-    - name: "Discontinuation Date"
-      expr: discontinuation_date
-    - name: "Effective Out Date"
-      expr: effective_out_date
-    - name: "Gr Processing Time Days"
-      expr: gr_processing_time_days
-    - name: "In House Production Time Days"
-      expr: in_house_production_time_days
-    - name: "Inspection Setup Required"
-      expr: inspection_setup_required
-    - name: "Issue Storage Location"
-      expr: issue_storage_location
-    - name: "Last Modified Timestamp"
-      expr: last_modified_timestamp
-    - name: "Lot Size Procedure"
-      expr: lot_size_procedure
-    - name: "Material Number"
-      expr: material_number
-    - name: "Minimum Remaining Shelf Life Days"
-      expr: minimum_remaining_shelf_life_days
+    - name: "Critical Component Flag"
+      expr: critical_component_flag
+    - name: "Ecn Number"
+      expr: ecn_number
+    - name: "Eco Number"
+      expr: eco_number
+    - name: "Effective End Date"
+      expr: effective_end_date
+    - name: "Effective Start Date"
+      expr: effective_start_date
+    - name: "Fixed Quantity Indicator"
+      expr: fixed_quantity_indicator
   measures:
     - name: "Row Count"
       expr: COUNT(1)
-    - name: "Distinct Plant Data"
-      expr: COUNT(DISTINCT plant_data_id)
-    - name: "Total Fixed Lot Size"
-      expr: SUM(fixed_lot_size)
-    - name: "Average Fixed Lot Size"
-      expr: AVG(fixed_lot_size)
-    - name: "Total Maximum Lot Size"
-      expr: SUM(maximum_lot_size)
-    - name: "Average Maximum Lot Size"
-      expr: AVG(maximum_lot_size)
-    - name: "Total Maximum Stock Level"
-      expr: SUM(maximum_stock_level)
-    - name: "Average Maximum Stock Level"
-      expr: AVG(maximum_stock_level)
-    - name: "Total Minimum Lot Size"
-      expr: SUM(minimum_lot_size)
-    - name: "Average Minimum Lot Size"
-      expr: AVG(minimum_lot_size)
-    - name: "Total Reorder Point"
-      expr: SUM(reorder_point)
-    - name: "Average Reorder Point"
-      expr: AVG(reorder_point)
-    - name: "Total Rounding Value"
-      expr: SUM(rounding_value)
-    - name: "Average Rounding Value"
-      expr: AVG(rounding_value)
-    - name: "Total Safety Stock Quantity"
-      expr: SUM(safety_stock_quantity)
-    - name: "Average Safety Stock Quantity"
-      expr: AVG(safety_stock_quantity)
-    - name: "Total Scheduling Margin Key"
-      expr: SUM(scheduling_margin_key)
-    - name: "Average Scheduling Margin Key"
-      expr: AVG(scheduling_margin_key)
-    - name: "Total Shelf Life Expiration Days"
-      expr: SUM(shelf_life_expiration_days)
-    - name: "Average Shelf Life Expiration Days"
-      expr: AVG(shelf_life_expiration_days)
+    - name: "Distinct Product Bom Line"
+      expr: COUNT(DISTINCT product_bom_line_id)
+    - name: "Total Component Height Mm"
+      expr: SUM(component_height_mm)
+    - name: "Average Component Height Mm"
+      expr: AVG(component_height_mm)
+    - name: "Total Component Length Mm"
+      expr: SUM(component_length_mm)
+    - name: "Average Component Length Mm"
+      expr: AVG(component_length_mm)
+    - name: "Total Component Weight Kg"
+      expr: SUM(component_weight_kg)
+    - name: "Average Component Weight Kg"
+      expr: AVG(component_weight_kg)
+    - name: "Total Component Width Mm"
+      expr: SUM(component_width_mm)
+    - name: "Average Component Width Mm"
+      expr: AVG(component_width_mm)
+    - name: "Total Quantity Per Assembly"
+      expr: SUM(quantity_per_assembly)
+    - name: "Average Quantity Per Assembly"
+      expr: AVG(quantity_per_assembly)
+    - name: "Total Scrap Factor Percent"
+      expr: SUM(scrap_factor_percent)
+    - name: "Average Scrap Factor Percent"
+      expr: AVG(scrap_factor_percent)
 $$;
 
 CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`product_product_specification`
@@ -535,6 +372,8 @@ AS $$
       expr: expiration_date
     - name: "Frequency Rating Hz"
       expr: frequency_rating_hz
+    - name: "Humidity Rating Percent"
+      expr: humidity_rating_percent
     - name: "Installation Manual Reference"
       expr: installation_manual_reference
     - name: "Ip Rating"
@@ -547,8 +386,6 @@ AS $$
       expr: nema_rating
     - name: "Notes"
       expr: notes
-    - name: "Performance Parameter"
-      expr: performance_parameter
   measures:
     - name: "Row Count"
       expr: COUNT(1)
@@ -574,10 +411,6 @@ AS $$
       expr: SUM(dimensions_width_mm)
     - name: "Average Dimensions Width Mm"
       expr: AVG(dimensions_width_mm)
-    - name: "Total Humidity Rating Percent"
-      expr: SUM(humidity_rating_percent)
-    - name: "Average Humidity Rating Percent"
-      expr: AVG(humidity_rating_percent)
     - name: "Total Operating Temperature Max C"
       expr: SUM(operating_temperature_max_c)
     - name: "Average Operating Temperature Max C"
@@ -598,10 +431,10 @@ AS $$
       expr: SUM(storage_temperature_min_c)
     - name: "Average Storage Temperature Min C"
       expr: AVG(storage_temperature_min_c)
-    - name: "Total Vibration Resistance"
-      expr: SUM(vibration_resistance)
-    - name: "Average Vibration Resistance"
-      expr: AVG(vibration_resistance)
+    - name: "Total Weight Kg"
+      expr: SUM(weight_kg)
+    - name: "Average Weight Kg"
+      expr: AVG(weight_kg)
 $$;
 
 CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`product_sku_master`
@@ -618,6 +451,8 @@ AS $$
       expr: base_uom
     - name: "Commercial Description"
       expr: commercial_description
+    - name: "Cost Currency"
+      expr: cost_currency
     - name: "Country Of Origin"
       expr: country_of_origin
     - name: "Created Timestamp"
@@ -642,17 +477,11 @@ AS $$
       expr: lifecycle_status
     - name: "Long Description"
       expr: long_description
-    - name: "Lot Control Required"
-      expr: lot_control_required
   measures:
     - name: "Row Count"
       expr: COUNT(1)
     - name: "Distinct Sku Master"
       expr: COUNT(DISTINCT sku_master_id)
-    - name: "Total Cost Currency"
-      expr: SUM(cost_currency)
-    - name: "Average Cost Currency"
-      expr: AVG(cost_currency)
     - name: "Total Gross Weight"
       expr: SUM(gross_weight)
     - name: "Average Gross Weight"

@@ -1,5 +1,5 @@
--- Schema for Domain: automation | Business: Manufacturing | Version: v2_ecm
--- Generated on: 2026-07-03 05:59:29
+-- Schema for Domain: automation | Business:  | Version: v2_ecm
+-- Generated on: 2026-07-10 12:58:59
 
 -- ========= DATABASE =========
 CREATE DATABASE IF NOT EXISTS `vibe_manufacturing_v1`.`automation` COMMENT 'Industrial IoT, SCADA, PLC programming, and automation systems domain managing device registries, control system configurations, OPC-UA tag definitions, edge gateway data, and real-time process control parameters for smart manufacturing';
@@ -7,16 +7,16 @@ CREATE DATABASE IF NOT EXISTS `vibe_manufacturing_v1`.`automation` COMMENT 'Indu
 -- ========= TABLES =========
 CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`automation`.`device_registry` (
     `device_registry_id` BIGINT COMMENT 'System-generated unique identifier for the device registry record.',
-    `account_site_id` BIGINT COMMENT 'Foreign key linking to customer.account_site. Business justification: Site‑level device inventory needed for maintenance scheduling and site‑specific service contracts.',
     `component_id` BIGINT COMMENT 'Foreign key linking to engineering.component. Business justification: Maintenance BOM links physical components to devices for spare‑part tracking; required in Asset Maintenance Bill of Materials report.',
     `cost_center_id` BIGINT COMMENT 'Foreign key linking to finance.cost_center. Business justification: CAPEX tracking: each device is assigned to a cost center for depreciation and maintenance budgeting, required for the Asset Capitalization Report.',
     `customer_account_id` BIGINT COMMENT 'Foreign key linking to customer.customer_account. Business justification: Asset inventory report requires linking each device to its owning customer for warranty, support, and billing.',
     `equipment_register_id` BIGINT COMMENT 'FK to asset.equipment_register.equipment_register_id — Automation devices (PLCs, sensors) are physically installed on equipment assets. This link enables asset-to-device correlation for maintenance planning and OT/IT convergence queries.',
     `employee_id` BIGINT COMMENT 'Foreign key linking to workforce.employee. Business justification: Maintenance Management System requires tracking which technician is responsible for each device for compliance and OEE reporting.',
-    `network_segment_id` BIGINT COMMENT '',
     `parent_device_registry_id` BIGINT COMMENT 'Self-referencing FK on device_registry (parent_device_registry_id)',
     `asset_plant_id` BIGINT COMMENT 'Identifier of the manufacturing plant hosting the device.',
     `production_line_id` BIGINT COMMENT 'Identifier of the production line or cell where the device operates.',
+    `sku_master_id` BIGINT COMMENT 'Foreign key linking to product.sku_master. Business justification: Production scheduling assigns each device to a primary SKU; OEE and performance reports require device‑to‑SKU mapping.',
+    `stock_location_id` BIGINT COMMENT 'Foreign key linking to inventory.stock_location. Business justification: Asset Management requires each devices physical location for maintenance planning; linking device to stock_location enables location‑based work orders.',
     `supplier_id` BIGINT COMMENT 'Foreign key linking to supplier.supplier. Business justification: Procurement tracks which supplier provided each device for warranty, maintenance, and cost allocation; required for Asset Management reports.',
     `work_center_id` BIGINT COMMENT 'Identifier of the work center or station associated with the device.',
     `commissioning_date` DATE COMMENT 'Date the device was first placed into service.',
@@ -32,11 +32,9 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`automation`.`device_registry` (
     `hardware_version` STRING COMMENT 'Version identifier of the device hardware revision.',
     `ip_address` STRING COMMENT 'IPv4 address assigned to the device for network communication.. Valid values are `^((25[0-5]|2[0-4]d|[01]?dd?).){3}(25[0-5]|2[0-4]d|[01]?dd?)$`',
     `last_maintenance_date` DATE COMMENT 'Date of the most recent preventive or corrective maintenance activity.',
-    `last_modified_timestamp` TIMESTAMP COMMENT '',
     `lifecycle_status` STRING COMMENT 'Overall lifecycle stage of the device within asset management.. Valid values are `in_service|retired|pending|decommissioned|suspended`',
     `mac_address` STRING COMMENT 'Media Access Control address of the devices network interface.. Valid values are `^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$`',
     `maintenance_status` STRING COMMENT 'Current maintenance compliance status of the device.. Valid values are `up_to_date|overdue|scheduled|not_applicable`',
-    `manufacturer` STRING COMMENT '',
     `model_number` STRING COMMENT 'Vendor‑assigned model number of the device.',
     `device_registry_name` STRING COMMENT 'Human‑readable name of the automation device.',
     `network_address` STRING COMMENT 'Hostname or DNS name used to reach the device on the network.',
@@ -63,8 +61,6 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`automation`.`control_system` (
     `commissioning_date` DATE COMMENT 'Date when the control system was commissioned and first put into service.',
     `communication_protocol` STRING COMMENT 'Primary industrial communication protocol used by the system.. Valid values are `OPC-UA|Modbus|PROFIBUS|EtherNet/IP`',
     `control_program_version` STRING COMMENT 'Version identifier of the main control logic program deployed on the system.',
-    `control_system_status` STRING COMMENT '',
-    `control_system_type` STRING COMMENT '',
     `created_timestamp` TIMESTAMP COMMENT 'Date‑time when the control system record was first created in the data lake.',
     `data_retention_policy` STRING COMMENT 'Policy governing how long configuration and log data are retained.',
     `decommission_date` DATE COMMENT 'Date when the control system was retired or removed from service (nullable).',
@@ -75,16 +71,14 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`automation`.`control_system` (
     `is_critical` BOOLEAN COMMENT 'Indicates whether the control system is classified as critical to plant operation.',
     `last_audit_timestamp` TIMESTAMP COMMENT 'Date‑time of the most recent compliance audit of the control system.',
     `last_config_backup_timestamp` TIMESTAMP COMMENT 'Date‑time of the most recent configuration backup of the control system.',
-    `last_modified_timestamp` TIMESTAMP COMMENT '',
     `lifecycle_status` STRING COMMENT 'Current lifecycle stage of the control system.. Valid values are `design|installed|operational|maintenance|decommissioned|retired`',
     `mtbf_hours` DECIMAL(18,2) COMMENT 'Average elapsed time between successive failures, expressed in hours.',
     `mttr_hours` DECIMAL(18,2) COMMENT 'Average time required to restore the system after a failure.',
     `control_system_name` STRING COMMENT 'Human‑readable name of the control system as used by engineering and operations.',
     `notes` STRING COMMENT 'Additional remarks, special instructions, or historical notes.',
-    `operational_status` DECIMAL(18,2) COMMENT 'Real‑time operational state of the control system.',
+    `operational_status` STRING COMMENT 'Real‑time operational state of the control system.. Valid values are `online|offline|faulted|maintenance`',
     `plant_area` STRING COMMENT 'Physical area or production line where the control system is deployed.',
-    `redundancy_configuration` DECIMAL(18,2) COMMENT 'Describes the redundancy scheme applied to the control system.',
-    `redundancy_level` STRING COMMENT '',
+    `redundancy_configuration` STRING COMMENT 'Describes the redundancy scheme applied to the control system.. Valid values are `None|Active-Active|Active-Passive`',
     `safety_integrity_level` STRING COMMENT 'Safety certification level of the system as defined by IEC 61508.. Valid values are `SIL0|SIL1|SIL2|SIL3|SIL4`',
     `security_classification` STRING COMMENT 'Data security classification of the control system record.. Valid values are `Confidential|Restricted|Public`',
     `software_version` STRING COMMENT 'Version string of the control system runtime software.',
@@ -93,17 +87,14 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`automation`.`control_system` (
     `tag_count` STRING COMMENT 'Total number of OPC‑UA or PLC tags defined in the system.',
     `updated_timestamp` TIMESTAMP COMMENT 'Date‑time of the most recent update to the control system record.',
     `uptime_hours` BIGINT COMMENT 'Cumulative number of hours the system has been in an online state.',
-    `vendor` STRING COMMENT '',
     CONSTRAINT pk_control_system PRIMARY KEY(`control_system_id`)
 ) COMMENT 'Master record representing a discrete industrial control system instance — a named, configured automation system such as a DCS (Distributed Control System), SCADA system, PLC-based control panel, or safety instrumented system (SIS). Captures control system name, type (DCS, SCADA, PLC, SIS, ESD), vendor platform (Siemens S7, Allen-Bradley ControlLogix, ABB 800xA, Honeywell Experion), software version, redundancy configuration, safety integrity level (SIL), associated plant area, network segment, engineering workstation reference, last configuration backup date, and lifecycle status. Acts as the parent grouping entity for all devices, tag definitions, and control programs within a logical control boundary.';
 
 CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`automation`.`plc_program` (
     `plc_program_id` BIGINT COMMENT 'System-generated unique identifier for the PLC program record.',
-    `control_system_id` BIGINT COMMENT '',
     `engineering_revision_id` BIGINT COMMENT 'Foreign key linking to engineering.revision. Business justification: Traceability of PLC program releases to component revisions; needed for Change Management Release Report.',
     `parent_plc_program_id` BIGINT COMMENT 'Self-referencing FK on plc_program (parent_plc_program_id)',
-    `device_registry_id` BIGINT COMMENT '',
-    `primary_plc_device_registry_id` BIGINT COMMENT 'Identifier of the PLC or controller hardware that this program is intended for.',
+    `device_registry_id` BIGINT COMMENT 'Identifier of the PLC or controller hardware that this program is intended for.',
     `configuration_id` BIGINT COMMENT 'Foreign key linking to product.configuration. Business justification: Configuration management links each PLC program version to the product configuration it implements, ensuring correct program deployment.',
     `target_device_device_registry_id` BIGINT COMMENT 'FK to automation.device_registry',
     `author` STRING COMMENT 'Name of the engineer or developer who authored the current version of the program.',
@@ -111,20 +102,13 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`automation`.`plc_program` (
     `checksum` STRING COMMENT 'Hash value used to verify program file integrity (e.g., SHA‑256).',
     `checksum_algorithm` STRING COMMENT 'Algorithm used to generate the checksum (MD5, SHA‑1, or SHA‑256).. Valid values are `MD5|SHA1|SHA256`',
     `compatible_hardware_model` STRING COMMENT 'Model number of hardware that can run this program.',
-    `compiled_flag` BOOLEAN COMMENT '',
     `created_timestamp` TIMESTAMP COMMENT 'Date and time when the program record was first created in the system.',
     `plc_program_description` STRING COMMENT 'Free‑form description of the programs purpose, functionality, and scope.',
     `language` STRING COMMENT 'IEC 61131‑3 language used for the program: Ladder Diagram (LD), Function Block Diagram (FBD), Structured Text (ST), Sequential Function Chart (SFC), or Instruction List (IL).. Valid values are `LD|FBD|ST|SFC|IL`',
-    `last_download_timestamp` TIMESTAMP COMMENT '',
-    `last_modified_timestamp` TIMESTAMP COMMENT '',
     `plc_program_name` STRING COMMENT 'Human‑readable name of the PLC program as used by engineers and operators.',
     `plc_program_status` STRING COMMENT 'Current lifecycle state of the program: draft, tested, released, or archived.. Valid values are `draft|tested|released|archived`',
     `program_code` STRING COMMENT 'Unique alphanumeric code assigned to the PLC program for cataloguing and lookup.',
-    `program_name` STRING COMMENT '',
     `program_size_bytes` BIGINT COMMENT 'Size of the compiled program binary in bytes.',
-    `program_status` STRING COMMENT '',
-    `program_version` STRING COMMENT '',
-    `programming_language` STRING COMMENT '',
     `release_notes` STRING COMMENT 'Narrative of changes, fixes, and new features included in the release.',
     `release_timestamp` TIMESTAMP COMMENT 'Date and time when the program was officially released for production use.',
     `revision_number` STRING COMMENT 'Sequential integer incremented each time the program is revised.',
@@ -143,7 +127,6 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`automation`.`tag_definition` (
     `tag_definition_id` BIGINT COMMENT 'Unique surrogate key for the tag definition record.',
     `component_id` BIGINT COMMENT 'Foreign key linking to engineering.component. Business justification: Tag definitions map to physical sensor components; needed for Configuration Management and Safety Audits.',
     `control_system_id` BIGINT COMMENT 'FK to automation.control_system',
-    `device_registry_id` BIGINT COMMENT '',
     `parent_tag_definition_id` BIGINT COMMENT 'Self-referencing FK on tag_definition (parent_tag_definition_id)',
     `product_specification_id` BIGINT COMMENT 'Foreign key linking to product.product_specification. Business justification: Tag definitions are used to monitor compliance with product specifications (e.g., voltage, temperature).',
     `access_level` STRING COMMENT 'Permission level for reading and/or writing the tag.. Valid values are `Read|Write|ReadWrite`',
@@ -158,20 +141,16 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`automation`.`tag_definition` (
     `eu_range_high` DECIMAL(18,2) COMMENT 'Upper bound of the engineering unit range.',
     `eu_range_low` DECIMAL(18,2) COMMENT 'Lower bound of the engineering unit range.',
     `is_historian_enabled` BOOLEAN COMMENT 'Flag indicating if the tag value is captured in the historian.',
-    `max_value` DECIMAL(18,2) COMMENT '',
-    `min_value` DECIMAL(18,2) COMMENT '',
     `process_area` STRING COMMENT 'Logical area of the plant or process where the tag is located.',
     `quality_code` STRING COMMENT 'Quality indicator for the tag value (e.g., Good, Bad, Uncertain).',
     `raw_range_high` DECIMAL(18,2) COMMENT 'Upper bound of the raw sensor value range.',
     `raw_range_low` DECIMAL(18,2) COMMENT 'Lower bound of the raw sensor value range.',
     `retention_period_days` STRING COMMENT 'Number of days the tags historical data is retained.',
     `scaling_factor` DECIMAL(18,2) COMMENT 'Multiplicative factor applied to raw value to obtain engineering value.',
-    `scan_rate_ms` DECIMAL(18,2) COMMENT 'Polling interval in milliseconds for the tag.',
-    `tag_address` STRING COMMENT '',
+    `scan_rate_ms` STRING COMMENT 'Polling interval in milliseconds for the tag.',
     `tag_definition_status` STRING COMMENT 'Current lifecycle status of the tag definition.. Valid values are `active|inactive|deprecated|planned`',
     `tag_name` STRING COMMENT 'Human‑readable name of the tag as used in engineering documentation.',
     `tag_path` STRING COMMENT 'Fully qualified OPC‑UA node identifier locating the tag in the address space.',
-    `tag_status` STRING COMMENT '',
     `updated_by` STRING COMMENT 'User or system that performed the last update.',
     `updated_timestamp` TIMESTAMP COMMENT 'Timestamp of the most recent update to the tag definition.',
     `created_by` STRING COMMENT 'User or system that created the tag definition.',
@@ -183,12 +162,9 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`automation`.`edge_gateway` (
     `account_site_id` BIGINT COMMENT 'Foreign key linking to customer.account_site. Business justification: Edge gateway placement is tracked per site for network topology and maintenance planning.',
     `customer_account_id` BIGINT COMMENT 'Foreign key linking to customer.customer_account. Business justification: Remote‑monitoring service subscription is billed per customer; linking gateway to account enables usage reporting.',
     `device_registry_id` BIGINT COMMENT 'Foreign key linking to automation.device_registry. Business justification: Edge gateways are physical devices; linking to device_registry consolidates device master data and removes duplicate attributes.',
-    `network_segment_id` BIGINT COMMENT '',
     `upstream_edge_gateway_id` BIGINT COMMENT 'Self-referencing FK on edge_gateway (upstream_edge_gateway_id)',
     `connected_device_count` STRING COMMENT 'Number of field devices currently registered to the gateway.',
-    `connectivity_status` STRING COMMENT '',
     `cpu_utilization_percent` DECIMAL(18,2) COMMENT 'Average CPU utilization percentage over the last monitoring interval.',
-    `created_timestamp` TIMESTAMP COMMENT '',
     `data_throughput_mbps` DECIMAL(18,2) COMMENT 'Maximum data throughput capacity of the gateway expressed in megabits per second.',
     `decommission_date` DATE COMMENT 'Planned or actual date when the gateway is retired from service.',
     `edge_gateway_status` STRING COMMENT 'Current lifecycle status of the gateway indicating whether it is actively processing data, under maintenance, or retired.. Valid values are `active|inactive|decommissioned|maintenance`',
@@ -205,7 +181,6 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`automation`.`edge_gateway` (
     `edge_status_reason` STRING COMMENT 'Free‑text explanation for the current status, e.g., cause of maintenance mode.',
     `edge_zone` STRING COMMENT 'Logical zone within the plant where the gateway resides.',
     `firmware_version` STRING COMMENT 'Version identifier of the firmware currently installed on the gateway.',
-    `gateway_name` STRING COMMENT '',
     `gateway_type` STRING COMMENT 'Classification of the gateway based on its functional role within the IIoT architecture.. Valid values are `edge|gateway|aggregator`',
     `hardware_model` STRING COMMENT 'Model designation of the gateway hardware as defined by the vendor.',
     `installation_date` DATE COMMENT 'Date on which the gateway was installed at the deployment location.',
@@ -213,7 +188,6 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`automation`.`edge_gateway` (
     `it_protocol` STRING COMMENT 'Protocol used on the information‑technology side for cloud or enterprise integration.. Valid values are `MQTT|HTTPS|REST|AMQP`',
     `last_firmware_update_timestamp` TIMESTAMP COMMENT 'Timestamp of the most recent firmware update applied to the gateway.',
     `last_heartbeat_timestamp` TIMESTAMP COMMENT 'Timestamp of the most recent heartbeat signal received from the gateway.',
-    `last_modified_timestamp` TIMESTAMP COMMENT '',
     `mac_address` STRING COMMENT 'Media Access Control address of the gateways network interface.',
     `maintenance_window` STRING COMMENT 'Scheduled time window for routine maintenance activities.',
     `memory_usage_mb` BIGINT COMMENT 'Amount of RAM currently in use by the gateway, expressed in megabytes.',
@@ -233,8 +207,10 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`automation`.`edge_gateway` (
 
 CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`automation`.`process_parameter` (
     `process_parameter_id` BIGINT COMMENT 'Unique surrogate identifier for the process parameter record.',
+    `control_system_id` BIGINT COMMENT 'add column control_system_id (BIGINT) with FK to automation.control_system.control_system_id - process parameters belong to specific control systems',
     `derived_from_process_parameter_id` BIGINT COMMENT 'Self-referencing FK on process_parameter (derived_from_process_parameter_id)',
-    `tag_definition_id` BIGINT COMMENT '',
+    `device_registry_id` BIGINT COMMENT 'add column device_registry_id (BIGINT) with FK to automation.device_registry.device_registry_id - process parameters are measured by specific devices',
+    `project_change_request_id` BIGINT COMMENT 'Identifier of the engineering change request (ECR/ECO) that triggered the update.',
     `address` STRING COMMENT 'Network address or node identifier of the device exposing the tag (e.g., IP address or PLC slot).',
     `alarm_high` DECIMAL(18,2) COMMENT 'Value at which a high‑level alarm is raised.',
     `alarm_high_high` DECIMAL(18,2) COMMENT 'Value at which a critical high alarm is raised.',
@@ -251,20 +227,15 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`automation`.`process_parameter`
     `effective_end_date` DATE COMMENT 'Date on which the parameter configuration is retired (null if still active).',
     `effective_start_date` DATE COMMENT 'Date on which the parameter configuration becomes effective.',
     `engineering_unit` STRING COMMENT 'Unit of measure for the parameter (e.g., °C, bar, psi, %).',
-    `high_limit` DECIMAL(18,2) COMMENT '',
-    `low_limit` DECIMAL(18,2) COMMENT '',
     `lower_control_limit` DECIMAL(18,2) COMMENT 'Statistical lower control limit used for process monitoring.',
     `lower_specification_limit` DECIMAL(18,2) COMMENT 'Minimum acceptable value defined by product or process specifications.',
     `process_parameter_name` STRING COMMENT 'Human‑readable name of the control parameter as used by engineers and operators.',
     `nominal_value` DECIMAL(18,2) COMMENT 'Target or default value for the parameter under normal operating conditions.',
     `offset` DECIMAL(18,2) COMMENT 'Additive offset applied after scaling to align raw data with engineering units.',
-    `parameter_name` STRING COMMENT '',
-    `parameter_status` STRING COMMENT '',
     `parameter_type` STRING COMMENT 'Category of the parameter indicating its purpose (e.g., set‑point, limit, alarm threshold, PID tuning constant).. Valid values are `set_point|limit|alarm_threshold|pid_constant`',
     `process_area` STRING COMMENT 'Logical area of the plant or production line where the parameter is applied (e.g., furnace, mixing, packaging).',
     `process_parameter_status` STRING COMMENT 'Current lifecycle status of the parameter record.. Valid values are `active|inactive|deprecated|pending`',
     `scaling_factor` DECIMAL(18,2) COMMENT 'Multiplicative factor applied to raw sensor data to obtain engineering units.',
-    `setpoint_value` DECIMAL(18,2) COMMENT '',
     `tag_definition` STRING COMMENT 'Standardized OPC‑UA tag name that maps to the physical sensor or control point.',
     `updated_timestamp` TIMESTAMP COMMENT 'Timestamp of the most recent modification to the parameter record.',
     `upper_control_limit` DECIMAL(18,2) COMMENT 'Statistical upper control limit used for process monitoring.',
@@ -276,11 +247,8 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`automation`.`process_parameter`
 CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`automation`.`alarm_definition` (
     `alarm_definition_id` BIGINT COMMENT 'Unique identifier for the alarm definition record.',
     `parent_alarm_definition_id` BIGINT COMMENT 'Self-referencing FK on alarm_definition (parent_alarm_definition_id)',
-    `tag_definition_id` BIGINT COMMENT '',
     `acknowledgment_required` BOOLEAN COMMENT 'Indicates whether operator acknowledgment is required to clear the alarm.',
     `alarm_category` STRING COMMENT 'Higher‑level grouping of the alarm (e.g., process, equipment, environmental).',
-    `alarm_name` STRING COMMENT '',
-    `alarm_priority` STRING COMMENT '',
     `alarm_type` STRING COMMENT 'Classification of the alarm based on its origin.. Valid values are `process|equipment|safety|system`',
     `auto_reset` BOOLEAN COMMENT 'Indicates whether the alarm automatically resets after the condition clears.',
     `class` STRING COMMENT 'ISA‑18.2 classification of the alarm (A‑D).. Valid values are `A|B|C|D`',
@@ -293,7 +261,6 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`automation`.`alarm_definition` 
     `documentation_url` STRING COMMENT 'Link to detailed documentation or SOP for the alarm.',
     `effective_from` DATE COMMENT 'Date from which the alarm definition is valid.',
     `effective_until` DATE COMMENT 'Date after which the alarm definition is no longer valid (null if open‑ended).',
-    `enabled_flag` BOOLEAN COMMENT '',
     `escalation_policy` STRING COMMENT 'Textual description of escalation steps if the alarm is not addressed.',
     `last_reviewed_date` DATE COMMENT 'Date when the alarm definition was last reviewed for relevance.',
     `lifecycle_status` STRING COMMENT 'Current lifecycle state of the alarm definition.. Valid values are `active|inactive|deprecated|retired`',
@@ -304,14 +271,13 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`automation`.`alarm_definition` 
     `operator_group` STRING COMMENT 'Operator group responsible for acknowledging and handling the alarm.',
     `priority` STRING COMMENT 'Business priority indicating the impact of the alarm.. Valid values are `critical|high|medium|low`',
     `process_area` STRING COMMENT 'Logical area of the plant or process to which the alarm belongs.',
-    `rationalization_status` DECIMAL(18,2) COMMENT 'Current status of the alarm rationalization process.',
+    `rationalization_status` STRING COMMENT 'Current status of the alarm rationalization process.. Valid values are `pending|approved|rejected`',
     `related_equipment_tag` STRING COMMENT 'Tag identifier of equipment associated with the alarm.',
     `reset_delay_seconds` STRING COMMENT 'Delay before the alarm automatically resets when auto_reset is true.',
     `setpoint_unit` STRING COMMENT 'Unit of measure for the setpoint value (e.g., psi, °C, %).',
     `setpoint_value` DECIMAL(18,2) COMMENT 'Numeric setpoint that defines the alarm threshold.',
     `shelving_allowed` BOOLEAN COMMENT 'Indicates whether the alarm can be temporarily shelved by operators.',
     `suppression_rules` STRING COMMENT 'Textual description of any suppression logic applied to the alarm.',
-    `threshold_value` DECIMAL(18,2) COMMENT '',
     `trigger_condition` STRING COMMENT 'Condition that causes the alarm to fire.. Valid values are `high|low|deviation|rate_of_change`',
     `updated_timestamp` TIMESTAMP COMMENT 'Timestamp of the most recent update to the alarm definition.',
     `version` STRING COMMENT 'Version identifier for the alarm definition.',
@@ -340,18 +306,13 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`automation`.`network_segment` (
     `network_segment_name` STRING COMMENT 'Human‑readable name of the network segment or zone.',
     `network_segment_status` STRING COMMENT 'Current operational status of the segment.. Valid values are `active|inactive|planned|decommissioned`',
     `owner_contact` STRING COMMENT 'Name or identifier of the person responsible for the segment.',
-    `redundancy_configuration` DECIMAL(18,2) COMMENT 'Description of redundancy (e.g., dual‑homing, hot‑standby).',
+    `redundancy_configuration` STRING COMMENT 'Description of redundancy (e.g., dual‑homing, hot‑standby).',
     `risk_rating` STRING COMMENT 'Risk rating assigned to the segment based on security assessments.. Valid values are `low|medium|high|critical`',
     `security_level` STRING COMMENT 'Security level assigned to the segment per IEC 62443.. Valid values are `SL-1|SL-2|SL-3|SL-4`',
-    `security_zone` STRING COMMENT '',
     `segment_code` STRING COMMENT 'Enterprise‑wide code used to reference the segment in documentation and systems.',
-    `segment_name` STRING COMMENT '',
-    `segment_status` STRING COMMENT '',
-    `subnet_cidr` STRING COMMENT '',
     `topology` STRING COMMENT 'Physical or logical topology of the segment.. Valid values are `ring|star|linear|mesh|bus`',
     `updated_timestamp` TIMESTAMP COMMENT 'Date and time of the most recent update to the record.',
     `vlan_number` STRING COMMENT 'Virtual LAN identifier assigned to the segment.',
-    `vlan_tag` STRING COMMENT '',
     `zone_type` STRING COMMENT 'ISA/IEC 62443 security zone classification for the segment.. Valid values are `level_0_field|level_1_control|level_2_supervisory|level_3_operations|dmz`',
     CONSTRAINT pk_network_segment PRIMARY KEY(`network_segment_id`)
 ) COMMENT 'Master record for OT (Operational Technology) network segments and zones within the industrial automation network architecture. Captures segment name, zone type (ISA/IEC 62443 security zone: Level 0 field, Level 1 control, Level 2 supervisory, Level 3 operations, DMZ), VLAN ID, IP subnet, associated plant/facility, firewall/conduit reference, allowed protocols, connected device count, network topology (ring, star, linear), redundancy configuration, and security level (SL-1 through SL-4 per IEC 62443). Provides the network topology context for device placement and cybersecurity zone management. Distinct from IT network infrastructure managed by corporate IT.';
@@ -365,26 +326,21 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`automation`.`alarm_event` (
     `preceding_alarm_event_id` BIGINT COMMENT 'Self-referencing FK on alarm_event (preceding_alarm_event_id)',
     `work_center_id` BIGINT COMMENT 'FK to production.work_center.work_center_id — Production operators need to correlate automation alarms to specific work centers for root cause analysis during production stoppages. Without this link, alarm events are disconnected from production ',
     `acknowledged_by` STRING COMMENT 'Name of the operator who acknowledged the alarm.',
-    `acknowledged_flag` BOOLEAN COMMENT '',
-    `acknowledged_timestamp` TIMESTAMP COMMENT '',
     `acknowledgement_timestamp` TIMESTAMP COMMENT 'Date and time when the operator acknowledged the alarm.',
     `alarm_category` STRING COMMENT 'Broad category of the alarm (process, equipment, environment, safety, quality).. Valid values are `process|equipment|environment|safety|quality`',
-    `alarm_duration_seconds` DECIMAL(18,2) COMMENT 'Total time in seconds that the alarm stayed in the active state before being cleared or returned to normal.',
+    `alarm_duration_seconds` STRING COMMENT 'Total time in seconds that the alarm stayed in the active state before being cleared or returned to normal.',
     `alarm_message` STRING COMMENT 'Text message describing the alarm condition as presented to the operator.',
     `alarm_priority` STRING COMMENT 'Numeric priority (lower number = higher priority) used for alarm sorting and display.',
     `alarm_severity` STRING COMMENT 'Severity classification of the alarm according to ISA‑18.2 (critical, high, medium, low, info).. Valid values are `critical|high|medium|low|info`',
     `alarm_source_system` STRING COMMENT 'Control system type that originated the alarm (e.g., SCADA, DCS, PLC, HMI).. Valid values are `SCADA|DCS|PLC|HMI`',
     `alarm_state` STRING COMMENT 'Lifecycle state of the alarm (e.g., active, acknowledged, shelved, suppressed, returned to normal, cleared).. Valid values are `active|acknowledged|shelved|suppressed|returned_to_normal|cleared`',
-    `alarm_value` DECIMAL(18,2) COMMENT '',
-    `cleared_timestamp` TIMESTAMP COMMENT '',
-    `event_status` STRING COMMENT '',
     `event_timestamp` TIMESTAMP COMMENT 'Date and time when the alarm was generated by the control system.',
     `is_nuisance` BOOLEAN COMMENT 'True if the alarm is classified as a nuisance/alarm flood, otherwise false.',
     `operator_comment` STRING COMMENT 'Free‑form text entered by the operator providing context or actions taken.',
-    `process_value` DECIMAL(18,2) COMMENT 'Measured process variable (e.g., temperature, pressure) at the time the alarm triggered.',
+    `process_value` DOUBLE COMMENT 'Measured process variable (e.g., temperature, pressure) at the time the alarm triggered.',
     `record_audit_created` TIMESTAMP COMMENT 'Date and time when the alarm event record was ingested into the Silver layer.',
-    `setpoint_value` DECIMAL(18,2) COMMENT 'The configured setpoint or threshold that the process value exceeded to cause the alarm.',
-    `shelve_duration_seconds` DECIMAL(18,2) COMMENT 'Time in seconds that the alarm remained shelved before being re‑activated or cleared.',
+    `setpoint_value` DOUBLE COMMENT 'The configured setpoint or threshold that the process value exceeded to cause the alarm.',
+    `shelve_duration_seconds` STRING COMMENT 'Time in seconds that the alarm remained shelved before being re‑activated or cleared.',
     CONSTRAINT pk_alarm_event PRIMARY KEY(`alarm_event_id`)
 ) COMMENT 'Transactional record capturing every alarm occurrence and state transition event generated by SCADA, DCS, and PLC systems. Each record represents a discrete alarm lifecycle event (alarm active, acknowledged, shelved, suppressed, returned to normal, cleared). Captures alarm definition reference, device reference, event timestamp, alarm state (active, acknowledged, RTN, shelved), operator who acknowledged, acknowledgement timestamp, shelve duration, alarm message text, process value at alarm time, setpoint at alarm time, alarm duration (seconds), and whether the alarm was a nuisance alarm. Supports ISA-18.2 alarm performance KPI calculation (alarm rate, flood detection, standing alarms) and operator response analysis.';
 
@@ -392,7 +348,6 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`automation`.`control_mode_event
     `control_mode_event_id` BIGINT COMMENT 'System‑generated unique identifier for each control mode change event.',
     `asset_work_order_id` BIGINT COMMENT 'Reference to the work order associated with the mode change, if any.',
     `batch_execution_id` BIGINT COMMENT 'Identifier of the production batch (lot) active at the time of the event.',
-    `control_system_id` BIGINT COMMENT '',
     `device_registry_id` BIGINT COMMENT 'Unique identifier of the PLC/Controller that generated the mode change.',
     `employee_id` BIGINT COMMENT 'Identifier of the operator (human) who initiated the mode change.',
     `equipment_register_id` BIGINT COMMENT 'Identifier of the equipment (e.g., machine, robot) whose controller changed mode.',
@@ -403,7 +358,7 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`automation`.`control_mode_event
     `shift_id` BIGINT COMMENT 'Identifier of the production shift during which the event occurred.',
     `comments` STRING COMMENT 'Optional free‑text notes entered by the operator or system.',
     `compliance_status` STRING COMMENT 'Indicates whether the mode change complies with ISA‑106 and internal SOPs.. Valid values are `compliant|non_compliant|pending`',
-    `duration_seconds` DECIMAL(18,2) COMMENT 'Elapsed time the controller remained in the new mode before the next change.',
+    `duration_seconds` BIGINT COMMENT 'Elapsed time the controller remained in the new mode before the next change.',
     `event_severity` STRING COMMENT 'Severity level indicating the operational impact of the mode change.. Valid values are `info|warning|critical`',
     `event_status` STRING COMMENT 'Processing status of the event record within the data pipeline.. Valid values are `recorded|processed|rejected`',
     `event_timestamp` TIMESTAMP COMMENT 'Date‑time when the control mode change was recorded in the automation system.',
@@ -418,7 +373,6 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`automation`.`control_mode_event
     `record_audit_updated` TIMESTAMP COMMENT 'Timestamp of the most recent update to the event record.',
     `source_module` STRING COMMENT 'Specific module or application within the source system that generated the event.',
     `tag_reference` STRING COMMENT 'Human‑readable tag name or address used in the control system for the mode signal.',
-    `changed_by` STRING COMMENT '',
     CONSTRAINT pk_control_mode_event PRIMARY KEY(`control_mode_event_id`)
 ) COMMENT 'Transactional record capturing control mode change events for automation loops and controllers — transitions between automatic, manual, cascade, and remote modes. Captures controller/loop tag reference, control system reference, event timestamp, previous mode, new mode, operator ID who initiated the change, reason code, associated work order or production order reference, and duration in new mode. Critical for process safety analysis, operator behavior auditing, and identifying manual overrides that deviate from standard operating procedures. Supports ISA-106 procedural automation and operator effectiveness analysis.';
 
@@ -432,11 +386,9 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`automation`.`device_config_snap
     `checksum_algorithm` STRING COMMENT 'Algorithm used to compute the configuration checksum.. Valid values are `sha256|md5|sha1`',
     `compression_algorithm` STRING COMMENT 'Algorithm used to compress the configuration file, if applicable.. Valid values are `gzip|zip`',
     `config_file_path` STRING COMMENT 'Blob storage path or URI where the configuration file is stored.',
-    `config_hash` STRING COMMENT '',
-    `config_version` STRING COMMENT '',
-    `configuration_checksum` DECIMAL(18,2) COMMENT 'Hash value (e.g., SHA‑256) used to verify file integrity.',
-    `configuration_format` DECIMAL(18,2) COMMENT 'File format of the stored configuration (e.g., XML, JSON, CSV).',
-    `configuration_version` DECIMAL(18,2) COMMENT 'Version identifier for the configuration schema or layout.',
+    `configuration_checksum` STRING COMMENT 'Hash value (e.g., SHA‑256) used to verify file integrity.',
+    `configuration_format` STRING COMMENT 'File format of the stored configuration (e.g., XML, JSON, CSV).. Valid values are `xml|json|csv`',
+    `configuration_version` STRING COMMENT 'Version identifier for the configuration schema or layout.',
     `device_serial_number` STRING COMMENT 'Manufacturer‑assigned serial number of the device.',
     `device_type` STRING COMMENT 'Category of the automation device (Programmable Logic Controller, Human‑Machine Interface, drive, controller).. Valid values are `plc|hmi|drive|controller`',
     `file_size_bytes` BIGINT COMMENT 'Size of the stored configuration file in bytes.',
@@ -463,27 +415,23 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`automation`.`firmware_update` (
     `employee_id` BIGINT COMMENT 'Identifier of the person or system that initiated or approved the update.',
     `project_change_request_id` BIGINT COMMENT 'Link to the engineering change request that authorized the firmware change.',
     `rollback_firmware_update_id` BIGINT COMMENT 'Self-referencing FK on firmware_update (rollback_firmware_update_id)',
-    `completed_timestamp` TIMESTAMP COMMENT '',
     `completion_timestamp` TIMESTAMP COMMENT 'Exact time the firmware update finished successfully.',
     `compliance_patch_reference` BIGINT COMMENT 'Reference to the IEC 62443 compliance patch record linked to this firmware change.',
     `device_name` STRING COMMENT 'Descriptive name of the device (e.g., PLC‑01‑LineA).',
     `device_type` STRING COMMENT 'Category of the device receiving the update.. Valid values are `controller|gateway|sensor|actuator`',
     `firmware_version_after` STRING COMMENT 'Version string of the firmware installed after the update.',
     `firmware_version_before` STRING COMMENT 'Version string of the firmware installed prior to the update.',
-    `from_version` STRING COMMENT '',
     `is_critical_update` BOOLEAN COMMENT 'True if the update addresses a security vulnerability or safety issue requiring immediate deployment.',
     `lifecycle_status` STRING COMMENT 'Overall record status for retention and archival purposes.. Valid values are `active|inactive|archived`',
     `notes` STRING COMMENT 'Additional comments or observations captured by the operator.',
     `post_update_validation_status` STRING COMMENT 'Result of automated validation checks after the firmware was applied.. Valid values are `passed|failed|not_applicable`',
     `record_audit_created` TIMESTAMP COMMENT 'Timestamp when this firmware update record was first created in the system.',
     `record_audit_updated` TIMESTAMP COMMENT 'Timestamp of the most recent modification to this record.',
-    `rollback_flag` BOOLEAN COMMENT '',
     `rollback_reason` STRING COMMENT 'Free‑text description of why a rollback was required.',
     `rollback_timestamp` TIMESTAMP COMMENT 'Timestamp when a rollback to the previous firmware version was performed, if applicable.',
     `scheduled_timestamp` TIMESTAMP COMMENT 'Planned date and time when the update was scheduled to start.',
     `start_timestamp` TIMESTAMP COMMENT 'Exact time the firmware update began execution.',
-    `to_version` STRING COMMENT '',
-    `update_duration_seconds` DECIMAL(18,2) COMMENT 'Total elapsed time from start_timestamp to completion_timestamp (or rollback_timestamp).',
+    `update_duration_seconds` STRING COMMENT 'Total elapsed time from start_timestamp to completion_timestamp (or rollback_timestamp).',
     `update_method` STRING COMMENT 'Mechanism used to deliver the firmware (remote push, manual USB, or OTA).. Valid values are `remote_push|manual_usb|ota`',
     `update_package_reference` BIGINT COMMENT 'Identifier of the firmware package applied during the update.',
     `update_reference_code` STRING COMMENT 'Human‑readable code used to reference the firmware update in reports and tickets.',
@@ -495,10 +443,9 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`automation`.`firmware_update` (
 
 CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`automation`.`scada_session` (
     `scada_session_id` BIGINT COMMENT 'Unique surrogate key for the SCADA operator session record.',
-    `control_system_id` BIGINT COMMENT '',
     `device_registry_id` BIGINT COMMENT 'Identifier of the edge device or PLC that the workstation is connected to during the session.',
-    `previous_scada_session_id` BIGINT COMMENT 'Self-referencing FK on scada_session (previous_scada_session_id)',
     `employee_id` BIGINT COMMENT 'Unique identifier of the operator who logged into the SCADA system.',
+    `previous_scada_session_id` BIGINT COMMENT 'Self-referencing FK on scada_session (previous_scada_session_id)',
     `alarm_ack_count` STRING COMMENT 'Number of alarm acknowledgements performed by the operator during the session.',
     `control_action_count` STRING COMMENT 'Number of manual control actions (e.g., start/stop) executed by the operator.',
     `ip_address` STRING COMMENT 'Network IP address of the workstation at session start.',
@@ -509,19 +456,16 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`automation`.`scada_session` (
     `plant_area` STRING COMMENT 'Logical area or zone of the manufacturing plant where the session took place (e.g., Assembly, Packaging).',
     `record_audit_created` TIMESTAMP COMMENT 'Timestamp when the session record was first created in the data lake.',
     `record_audit_updated` TIMESTAMP COMMENT 'Timestamp of the most recent update to the session record.',
-    `session_duration_seconds` DECIMAL(18,2) COMMENT 'Total length of the session measured in seconds (logout_timestamp – login_timestamp).',
-    `session_end_timestamp` TIMESTAMP COMMENT '',
+    `session_duration_seconds` STRING COMMENT 'Total length of the session measured in seconds (logout_timestamp – login_timestamp).',
     `session_identifier` STRING COMMENT 'Human‑readable identifier or code for the session, often displayed in audit logs.',
     `session_notes` STRING COMMENT 'Free‑form notes entered by the operator or system during the session.',
     `session_source` STRING COMMENT 'Physical source of the session interface.. Valid values are `scada_workstation|hmi_panel|mobile_terminal`',
-    `session_start_timestamp` TIMESTAMP COMMENT '',
     `session_status` STRING COMMENT 'Current lifecycle status of the session.. Valid values are `active|closed|terminated|error`',
     `session_type` STRING COMMENT 'Classification of the session purpose.. Valid values are `operator|maintenance|automated`',
     `setpoint_change_count` STRING COMMENT 'Number of setpoint modifications made by the operator.',
     `software_version` STRING COMMENT 'Version of the SCADA application running on the workstation.',
     `termination_reason` STRING COMMENT 'Reason why the session was terminated.. Valid values are `normal_logout|timeout|forced_logout|error`',
     `user_role` STRING COMMENT 'Role of the operator within the organization for this session.. Valid values are `operator|engineer|supervisor|admin`',
-    `workstation_code` STRING COMMENT '',
     `workstation_reference` BIGINT COMMENT 'Identifier of the SCADA workstation or HMI panel used for the session.',
     CONSTRAINT pk_scada_session PRIMARY KEY(`scada_session_id`)
 ) COMMENT 'Transactional record capturing operator SCADA and HMI session activity for operational auditing and human factors analysis. Each record represents a discrete operator login session on a SCADA workstation or HMI panel. Captures operator ID, workstation/HMI device reference, session start timestamp, session end timestamp, session duration, login method (local, domain, biometric), associated plant area, number of alarm acknowledgements during session, number of control actions during session, number of setpoint changes during session, and session termination reason (normal logout, timeout, forced logout). Supports operator effectiveness analysis and ISA-101 HMI human factors compliance.';
@@ -538,21 +482,16 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`automation`.`setpoint_change` (
     `approval_status` STRING COMMENT 'Current status of the approval workflow for the setpoint change.. Valid values are `approved|rejected|pending`',
     `change_reason_code` STRING COMMENT 'Standardized code describing the business reason for the setpoint modification.. Valid values are `maintenance|quality|optimization|emergency|operator_request|system_auto`',
     `change_status` STRING COMMENT 'Result of the setpoint change operation (e.g., completed, failed, pending).. Valid values are `completed|failed|pending`',
-    `change_timestamp` TIMESTAMP COMMENT '',
     `comment` STRING COMMENT 'Free‑text field for operators or systems to add contextual notes about the change.',
     `event_timestamp` TIMESTAMP COMMENT 'Date and time when the setpoint change was applied on the control system.',
     `initiated_by_type` STRING COMMENT 'Indicates whether the change was triggered by a human operator or an automated system.. Valid values are `operator|system`',
     `is_approved` BOOLEAN COMMENT 'Indicates whether the setpoint change has received required approvals.',
-    `new_setpoint` DECIMAL(18,2) COMMENT '',
     `new_setpoint_value` DECIMAL(18,2) COMMENT 'Numeric value of the setpoint after the change.',
-    `old_setpoint` DECIMAL(18,2) COMMENT '',
     `previous_setpoint_value` DECIMAL(18,2) COMMENT 'Numeric value of the setpoint before the change was applied.',
-    `reason_code` STRING COMMENT '',
     `record_audit_created` TIMESTAMP COMMENT 'Timestamp when the setpoint change record was first created in the data lake.',
     `record_audit_updated` TIMESTAMP COMMENT 'Timestamp of the most recent update to the setpoint change record.',
     `unit_of_measure` STRING COMMENT 'Unit associated with the setpoint values (e.g., °C, bar, psi, rpm).',
     `within_normal_limits` BOOLEAN COMMENT 'True if the new setpoint remains within predefined normal operating limits; otherwise false.',
-    `changed_by` STRING COMMENT '',
     CONSTRAINT pk_setpoint_change PRIMARY KEY(`setpoint_change_id`)
 ) COMMENT 'Transactional record capturing every operator or system-initiated setpoint change event on a controlled process variable. Each record represents a discrete setpoint modification event. Captures tag definition reference, process parameter reference, control system reference, change timestamp, previous setpoint value, new setpoint value, change initiated by (operator ID or automated system), change reason code, associated production order reference, associated recipe/procedure reference, approval reference (for safety-critical setpoints requiring dual authorization), and whether the change was within normal operating limits. Provides a complete audit trail of process setpoint modifications for process safety management (PSM) and MOC (Management of Change) compliance.';
 
@@ -567,7 +506,6 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`automation`.`batch_execution` (
     `profit_center_id` BIGINT COMMENT 'Foreign key linking to finance.profit_center. Business justification: Batch revenue tracking: batches produce sellable output linked to profit centers, needed for the Production Revenue Allocation report.',
     `recipe_id` BIGINT COMMENT 'Reference to the recipe (formula) used for this batch execution.',
     `shift_id` BIGINT COMMENT 'Work‑shift during which the batch was executed.',
-    `actual_quantity` DECIMAL(18,2) COMMENT '',
     `actual_yield_quantity` DECIMAL(18,2) COMMENT 'Measured quantity of good product produced by the batch.',
     `batch_capa_action_count` STRING COMMENT 'Count of corrective and preventive actions generated from this batch.',
     `batch_co2_emissions_kg` DECIMAL(18,2) COMMENT 'Estimated CO₂ emissions attributable to the batch.',
@@ -594,7 +532,6 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`automation`.`batch_execution` (
     `end_timestamp` TIMESTAMP COMMENT 'Date‑time when the batch execution finished or was terminated.',
     `equipment_train_code` BIGINT COMMENT 'Identifier of the equipment train (set of machines) that executed the batch.',
     `exception_count` STRING COMMENT 'Number of exception events (alarms, faults) recorded during the batch.',
-    `execution_status` STRING COMMENT '',
     `maintenance_flag` BOOLEAN COMMENT 'Indicates whether maintenance activities were performed during the batch.',
     `overall_equipment_effectiveness` DECIMAL(18,2) COMMENT 'OEE percentage captured for the batch execution.',
     `plant_area` STRING COMMENT 'Physical area or cell of the plant where the batch ran.',
@@ -610,13 +547,13 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`automation`.`batch_execution` (
 CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`automation`.`recipe` (
     `recipe_id` BIGINT COMMENT 'Unique identifier for the recipe.',
     `master_recipe_id` BIGINT COMMENT 'Self-referencing FK on recipe (master_recipe_id)',
+    `production_line_id` BIGINT COMMENT 'add column production_line_id (BIGINT) with FK to production.production_line.production_line_id - recipes are validated and executed on specific production lines',
     `sku_master_id` BIGINT COMMENT 'Foreign key linking to product.sku_master. Business justification: Each recipe is tied to a specific SKU; the product_reference column is replaced by a FK for traceability.',
-    `approval_status` STRING COMMENT '',
     `approval_timestamp` TIMESTAMP COMMENT 'Date and time when the recipe was approved.',
     `approval_user` STRING COMMENT 'User identifier who approved the recipe.',
     `batch_size` DECIMAL(18,2) COMMENT 'Target batch size for the recipe execution.',
     `batch_size_uom` STRING COMMENT 'Unit of measure for batch size.. Valid values are `kg|lb|units|liters`',
-    `changeover_time` TIMESTAMP COMMENT 'Estimated time to change over equipment to this recipe.',
+    `changeover_time` DECIMAL(18,2) COMMENT 'Estimated time to change over equipment to this recipe.',
     `recipe_code` STRING COMMENT 'Unique business code for the recipe.',
     `compliance_regulation` STRING COMMENT 'Regulatory standard applicable to the recipe.. Valid values are `ISO9001|ISO14001|ISO45001|IEC62443`',
     `created_timestamp` TIMESTAMP COMMENT 'Timestamp when the recipe record was created.',
@@ -632,9 +569,7 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`automation`.`recipe` (
     `oee_target` DECIMAL(18,2) COMMENT 'Target Overall Equipment Effectiveness for this recipe.',
     `phase_sequence` STRING COMMENT 'Ordered list of phase identifiers defining the recipe flow, stored as JSON.',
     `process_time_unit` STRING COMMENT 'Time unit for total_process_time.. Valid values are `seconds|minutes|hours`',
-    `recipe_status` STRING COMMENT '',
     `recipe_type` STRING COMMENT 'ISA-88 classification of the recipe.. Valid values are `master|control|site|general`',
-    `recipe_version` STRING COMMENT '',
     `release_status` STRING COMMENT 'Current lifecycle status of the recipe.. Valid values are `draft|approved|released|obsolete`',
     `revision_number` STRING COMMENT 'Sequential revision number of the recipe.',
     `safety_integrity_level` STRING COMMENT 'Safety integrity level required for equipment executing the recipe.. Valid values are `SIL1|SIL2|SIL3|SIL4`',
@@ -653,7 +588,6 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`automation`.`equipment_phase` (
     `plc_program_id` BIGINT COMMENT 'Identifier of the PLC program that defines abort handling for the phase.',
     `equipment_plc_program_id` BIGINT COMMENT 'Identifier of the PLC program or function block that implements the phase logic.',
     `parent_equipment_phase_id` BIGINT COMMENT 'Self-referencing FK on equipment_phase (parent_equipment_phase_id)',
-    `recipe_id` BIGINT COMMENT '',
     `abortable` BOOLEAN COMMENT 'Indicates whether the phase can be safely aborted by the control system.',
     `average_execution_time_seconds` DECIMAL(18,2) COMMENT 'Statistically derived average runtime for the phase, used for scheduling.',
     `created_timestamp` TIMESTAMP COMMENT 'Date and time when the phase record was first created.',
@@ -668,21 +602,18 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`automation`.`equipment_phase` (
     `is_default_phase` BOOLEAN COMMENT 'Indicates whether this phase is the default for its equipment class.',
     `lifecycle_status` STRING COMMENT 'Lifecycle stage of the phase definition within the engineering process.. Valid values are `defined|validated|released|obsolete`',
     `max_concurrent_instances` STRING COMMENT 'Maximum number of equipment units that may run this phase simultaneously.',
-    `normal_duration_seconds` DECIMAL(18,2) COMMENT 'Typical execution time for the phase under normal conditions, expressed in seconds.',
+    `normal_duration_seconds` STRING COMMENT 'Typical execution time for the phase under normal conditions, expressed in seconds.',
     `operator_role` STRING COMMENT 'Role required to manually start or intervene in the phase.. Valid values are `operator|engineer|supervisor`',
     `output_parameters` STRING COMMENT 'JSON‑encoded list of output parameters produced by the phase.',
     `phase_code` STRING COMMENT 'Short alphanumeric code used to reference the phase in control logic.',
-    `phase_duration_seconds` DECIMAL(18,2) COMMENT '',
     `phase_name` STRING COMMENT 'Human‑readable name of the phase (e.g., "Charge", "Heat").',
-    `phase_sequence` STRING COMMENT '',
-    `phase_status` STRING COMMENT '',
     `phase_type` STRING COMMENT 'Categorical type of the phase as defined by ISA‑88.. Valid values are `charge|heat|mix|transfer|cool|drain`',
     `pressure_setpoint_bar` DECIMAL(18,2) COMMENT 'Target pressure for the phase when pressure control is required.',
     `required_skill_level` STRING COMMENT 'Skill level needed by personnel to safely execute the phase.. Valid values are `basic|intermediate|advanced`',
     `revision_number` STRING COMMENT 'Sequential revision number for change control tracking.',
     `safety_critical` BOOLEAN COMMENT 'True if the phase is designated as safety‑critical per IEC 61508/IEC 62443.',
     `temperature_setpoint_c` DECIMAL(18,2) COMMENT 'Target temperature for the phase when temperature control is required.',
-    `timeout_duration_seconds` DECIMAL(18,2) COMMENT 'Maximum allowed execution time before the phase is forced to abort, in seconds.',
+    `timeout_duration_seconds` STRING COMMENT 'Maximum allowed execution time before the phase is forced to abort, in seconds.',
     `updated_timestamp` TIMESTAMP COMMENT 'Date and time of the most recent modification to the phase record.',
     `version` STRING COMMENT 'Version label of the phase definition (e.g., "v1.0").',
     CONSTRAINT pk_equipment_phase PRIMARY KEY(`equipment_phase_id`)
@@ -711,15 +642,13 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`automation`.`opc_server` (
     `mtbf_hours` DECIMAL(18,2) COMMENT 'Average time between server failures, calculated by maintenance team.',
     `mttr_hours` DECIMAL(18,2) COMMENT 'Average time required to restore the server after a failure.',
     `opc_server_name` STRING COMMENT 'Human‑readable name of the OPC server instance.',
-    `opc_specification` STRING COMMENT '',
     `plant_area` STRING COMMENT 'Physical plant area or zone where the server is deployed.',
     `polling_interval_ms` STRING COMMENT 'Default client polling interval in milliseconds for data change monitoring.',
     `product_name` STRING COMMENT 'Commercial product name of the OPC server software.',
-    `redundancy_configuration` DECIMAL(18,2) COMMENT 'High‑availability setup for the OPC server.',
+    `redundancy_configuration` STRING COMMENT 'High‑availability setup for the OPC server.. Valid values are `active_active|active_passive|none`',
     `safety_integrity_level` STRING COMMENT 'Safety integrity classification required for the server in safety‑critical environments.. Valid values are `SIL1|SIL2|SIL3|SIL4`',
     `security_policy` STRING COMMENT 'Security policy applied to the OPC communication channel.. Valid values are `None|Basic128Rsa15|Basic256Sha256`',
     `server_code` STRING COMMENT 'Enterprise‑wide unique code assigned to the server for reference.',
-    `server_name` STRING COMMENT '',
     `server_status` STRING COMMENT 'Real‑time operational state of the OPC server.. Valid values are `running|stopped|error|maintenance`',
     `server_type` STRING COMMENT 'Protocol family implemented by the server.. Valid values are `OPC-UA|OPC-DA|OPC-HDA|OPC-AE`',
     `subscription_count` STRING COMMENT 'Number of active subscription objects on the server.',
@@ -732,6 +661,7 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`automation`.`opc_server` (
 
 CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`automation`.`historian_config` (
     `historian_config_id` BIGINT COMMENT 'System-generated unique identifier for each historian configuration record.',
+    `control_system_id` BIGINT COMMENT 'add column control_system_id (BIGINT) with FK to automation.control_system.control_system_id - historian configurations are tied to specific control systems',
     `superseded_historian_config_id` BIGINT COMMENT 'Self-referencing FK on historian_config (superseded_historian_config_id)',
     `tag_definition_id` BIGINT COMMENT 'Reference to the tag definition that this configuration applies to.',
     `alarm_enabled` BOOLEAN COMMENT 'Indicates whether alarm generation is active for tags under this configuration.',
@@ -743,9 +673,7 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`automation`.`historian_config` 
     `compression_algorithm` STRING COMMENT 'Algorithm used for data compression when compression_enabled is true.. Valid values are `gzip|lz4|none`',
     `compression_deviation` DOUBLE COMMENT 'Maximum deviation (percentage) allowed before a new compressed data point is written.',
     `compression_enabled` BOOLEAN COMMENT 'Specifies whether collected data should be compressed before storage.',
-    `compression_enabled_flag` BOOLEAN COMMENT '',
     `compression_timeout_seconds` STRING COMMENT 'Maximum time in seconds to wait before forcing a compressed write, regardless of deviation.',
-    `config_status` STRING COMMENT '',
     `created_timestamp` TIMESTAMP COMMENT 'Date and time when the configuration record was first created.',
     `data_quality_code` STRING COMMENT 'Quality classification of the collected data for this configuration.. Valid values are `good|questionable|bad`',
     `historian_config_description` STRING COMMENT 'Free‑form description of the configuration purpose and scope.',
@@ -759,10 +687,8 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`automation`.`historian_config` 
     `historian_config_name` STRING COMMENT 'Human‑readable name identifying the historian configuration.',
     `owner` STRING COMMENT 'Name or identifier of the person or team responsible for this configuration.',
     `platform` STRING COMMENT 'Underlying historian technology platform used for time‑series storage.. Valid values are `OSIsoft_PI|AspenTech_IP21|Wonderware|InfluxDB`',
-    `retention_days` STRING COMMENT '',
     `retention_period_days` STRING COMMENT 'Number of days that collected data is retained before archival or deletion.',
     `retention_policy` STRING COMMENT 'Policy governing how data is retained and purged.. Valid values are `rolling|fixed|archival`',
-    `sampling_interval_ms` STRING COMMENT '',
     `scaling_factor` DOUBLE COMMENT 'Multiplicative factor applied to raw tag values before storage.',
     `storage_resolution_ms` STRING COMMENT 'Effective resolution at which data is stored after any compression or aggregation.',
     `updated_timestamp` TIMESTAMP COMMENT 'Date and time of the most recent update to the configuration.',
@@ -774,19 +700,18 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`automation`.`automation_change_
     `automation_change_request_id` BIGINT COMMENT 'System-generated unique identifier for the automation change request record.',
     `plc_program_id` BIGINT COMMENT 'Reference to the PLC program that will be changed or replaced.',
     `asset_work_order_id` BIGINT COMMENT 'Work order that will execute or has executed the change.',
-    `employee_id` BIGINT COMMENT '',
     `control_system_id` BIGINT COMMENT 'Reference to the control system impacted by the change.',
+    `customer_account_id` BIGINT COMMENT 'Foreign key linking to customer.customer_account. Business justification: Change requests are often initiated by customers; linking provides traceability for compliance and SLA impact.',
     `device_registry_id` BIGINT COMMENT 'Reference to the specific PLC, sensor, or edge device being modified.',
     `ecn_id` BIGINT COMMENT 'Foreign key linking to engineering.ecn. Business justification: Engineering Change Notice drives automation change request; required for Regulatory Compliance Change Log.',
     `eco_id` BIGINT COMMENT 'Foreign key linking to engineering.eco. Business justification: Engineering Change Order triggers automation change request; essential for Change Impact Report linking ECO to automation actions.',
-    `primary_automation_employee_id` BIGINT COMMENT 'Identifier of the employee or stakeholder who originated the change request.',
+    `employee_id` BIGINT COMMENT 'Identifier of the employee or stakeholder who originated the change request.',
     `superseded_automation_change_request_id` BIGINT COMMENT 'Self-referencing FK on automation_change_request (superseded_automation_change_request_id)',
     `tertiary_automation_change_review_by_employee_id` BIGINT COMMENT 'Identifier of the engineer or auditor who performed the review.',
     `actual_downtime_minutes` STRING COMMENT 'Measured downtime that occurred during implementation.',
     `actual_implementation_timestamp` TIMESTAMP COMMENT 'Exact date‑time when the change was performed on the field.',
     `approval_status` STRING COMMENT 'Current status of the required approvals for the change request.. Valid values are `pending|approved|rejected`',
     `approval_timestamp` TIMESTAMP COMMENT 'Date‑time when the approval decision was recorded.',
-    `approved_timestamp` TIMESTAMP COMMENT '',
     `automation_change_request_status` STRING COMMENT 'Current workflow state of the change request.. Valid values are `draft|submitted|approved|rejected|in_progress|closed`',
     `change_audit_log_reference` STRING COMMENT 'Link or identifier to the immutable audit log entry for this change request.',
     `change_closure_date` DATE COMMENT 'Date on which the change request was formally closed.',
@@ -794,11 +719,10 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`automation`.`automation_change_
     `change_effective_timestamp` TIMESTAMP COMMENT 'Timestamp when the change became operationally effective.',
     `change_origin` STRING COMMENT 'Source of the change request: internal team, external partner, or vendor.. Valid values are `internal|external|vendor`',
     `change_priority` STRING COMMENT 'Business‑defined priority level for scheduling the change.. Valid values are `low|medium|high|critical`',
-    `change_rationale` DECIMAL(18,2) COMMENT 'Business justification for why the change is required.',
+    `change_rationale` STRING COMMENT 'Business justification for why the change is required.',
     `change_request_number` STRING COMMENT 'Human‑readable reference number assigned to the change request for tracking and communication.',
     `change_review_status` STRING COMMENT 'State of the post‑implementation review process.. Valid values are `pending|reviewed|closed`',
     `change_review_timestamp` TIMESTAMP COMMENT 'Date‑time when the review was completed.',
-    `change_status` STRING COMMENT '',
     `change_type` STRING COMMENT 'Category of automation modification being requested.. Valid values are `program_change|configuration_change|hardware_change|network_change|setpoint_change`',
     `comments` STRING COMMENT 'Free‑form notes from requestor or reviewers.',
     `compliance_standard` STRING COMMENT 'Regulatory or industry standard governing the change (e.g., ISA‑84, IEC 62443).. Valid values are `isa_84|iec_62443|none`',
@@ -810,7 +734,6 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`automation`.`automation_change_
     `pre_change_backup_reference` STRING COMMENT 'Identifier or location of the backup taken before the change (e.g., file path, archive ID).',
     `production_impact` STRING COMMENT 'Qualitative assessment of potential impact on production output or quality.. Valid values are `none|low|medium|high|critical`',
     `request_timestamp` TIMESTAMP COMMENT 'Date‑time when the change request was initially submitted.',
-    `requested_timestamp` TIMESTAMP COMMENT '',
     `risk_score` STRING COMMENT 'Numeric risk rating derived from safety and production impact assessments (0‑100).',
     `rollback_plan_reference` STRING COMMENT 'Identifier of the documented rollback procedure in case the change fails.',
     `safety_impact` STRING COMMENT 'Qualitative assessment of potential safety consequences of the change.. Valid values are `none|low|medium|high|critical`',
@@ -827,9 +750,8 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`automation`.`device_connectivit
     `preceding_device_connectivity_event_id` BIGINT COMMENT 'Self-referencing FK on device_connectivity_event (preceding_device_connectivity_event_id)',
     `production_line_id` BIGINT COMMENT 'Identifier of the production line or cell containing the device.',
     `work_center_id` BIGINT COMMENT 'Identifier of the work center or station associated with the device.',
-    `auto_recovery_attempted` TIMESTAMP COMMENT 'Flag indicating whether an automatic recovery action was triggered.',
+    `auto_recovery_attempted` BOOLEAN COMMENT 'Flag indicating whether an automatic recovery action was triggered.',
     `communication_protocol` STRING COMMENT 'Network protocol used by the device for communication.. Valid values are `OPC-UA|Modbus|Ethernet/IP|Profinet|Ethernet`',
-    `connectivity_status` STRING COMMENT '',
     `detection_source` STRING COMMENT 'Method or channel that detected the connectivity change.. Valid values are `heartbeat|opc_status|network_probe`',
     `device_connectivity_event_status` STRING COMMENT 'Current processing status of the event record within the data pipeline.. Valid values are `processed|pending|failed`',
     `device_model` STRING COMMENT 'Model designation of the device (e.g., PLC‑3000, Edge‑Gateway‑X).',
@@ -870,13 +792,11 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`automation`.`safety_function` (
     `safety_function_name` STRING COMMENT 'Human‑readable name of the safety function as used in engineering documentation.',
     `process_demand_rate` DECIMAL(18,2) COMMENT 'Average number of times per hour the safety function is demanded by the process.',
     `proof_test_interval_months` STRING COMMENT 'Planned interval, in months, between mandatory proof tests of the SIF.',
-    `response_time_ms` STRING COMMENT '',
     `risk_reduction_factor` DECIMAL(18,2) COMMENT 'Calculated factor representing the reduction in risk achieved by the SIF.',
     `safe_state_description` STRING COMMENT 'Description of the process state that the SIF drives the system into when activated.',
     `safety_function_status` STRING COMMENT 'Current lifecycle status of the safety function.. Valid values are `active|inactive|decommissioned|pending`',
     `safety_integrity_level` STRING COMMENT 'Designated SIL for the function (SIL1‑SIL4) indicating required risk reduction.. Valid values are `SIL1|SIL2|SIL3|SIL4`',
     `sif_number` STRING COMMENT 'Unique code assigned to the SIF within the safety instrumented system.',
-    `sil_level` STRING COMMENT '',
     `updated_timestamp` TIMESTAMP COMMENT 'Timestamp of the most recent modification to the safety function record.',
     `verification_method` STRING COMMENT 'Method used to verify that the SIF meets its SIL (e.g., LOPA, Fault Tree).. Valid values are `LOPA|FaultTree|FMEA|Other`',
     CONSTRAINT pk_safety_function PRIMARY KEY(`safety_function_id`)
@@ -890,7 +810,6 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`automation`.`proof_test_record`
     `device_registry_id` BIGINT COMMENT 'Identifier of the final element component involved in the SIF.',
     `proof_component_logic_solver_device_registry_id` BIGINT COMMENT 'Identifier of the logic solver component involved in the SIF.',
     `proof_device_registry_id` BIGINT COMMENT 'Identifier of the sensor component involved in the SIF.',
-    `proof_tested_by_employee_id` BIGINT COMMENT '',
     `safety_function_id` BIGINT COMMENT 'Reference to the Safety Instrumented Function (SIF) being tested.',
     `location_id` BIGINT COMMENT 'Reference to the physical location where the proof test was performed.',
     `test_procedure_id` BIGINT COMMENT 'Identifier of the documented test procedure used for this proof test.',
@@ -907,7 +826,7 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`automation`.`proof_test_record`
     `test_comments` STRING COMMENT 'Additional free‑form comments captured by the technician.',
     `test_date` DATE COMMENT 'Calendar date on which the proof test was performed.',
     `test_document_reference` STRING COMMENT 'Reference (e.g., file name or URL) to the detailed test procedure document.',
-    `test_duration_seconds` DECIMAL(18,2) COMMENT 'Total duration of the proof test in seconds.',
+    `test_duration_seconds` STRING COMMENT 'Total duration of the proof test in seconds.',
     `test_end_timestamp` TIMESTAMP COMMENT 'Exact timestamp when the proof test ended.',
     `test_environment` STRING COMMENT 'Operational environment condition during the test.. Valid values are `normal|abnormal|maintenance`',
     `test_failed_criteria` STRING COMMENT 'List of criteria that were not met during the test.',
@@ -934,16 +853,15 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`automation`.`proof_test_record`
 
 CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`automation`.`automation_project` (
     `automation_project_id` BIGINT COMMENT 'Unique identifier for the automation engineering project.',
-    `employee_id` BIGINT COMMENT '',
     `control_system_id` BIGINT COMMENT 'Reference to the control system that is the target of the automation project.',
     `cost_center_id` BIGINT COMMENT 'Foreign key linking to finance.cost_center. Business justification: Project budgeting: projects are funded from specific cost centers, required for the Project Cost Allocation Ledger.',
     `customer_account_id` BIGINT COMMENT 'Foreign key linking to customer.customer_account. Business justification: Project budgeting, status reporting, and profitability analysis require associating each automation project with its customer.',
     `parent_automation_project_id` BIGINT COMMENT 'Self-referencing FK on automation_project (parent_automation_project_id)',
-    `primary_automation_engineer_employee_id` BIGINT COMMENT 'Identifier of the lead automation engineer for the project.',
+    `employee_id` BIGINT COMMENT 'Identifier of the lead automation engineer for the project.',
     `profit_center_id` BIGINT COMMENT 'Foreign key linking to finance.profit_center. Business justification: Revenue attribution: automation projects generate revenue tracked against profit centers, needed for the Project Profitability Dashboard.',
     `project_header_id` BIGINT COMMENT 'FK to project.project_header.project_header_id — Automation engineering projects must link to the enterprise project management domain for cost tracking, resource allocation, and milestone governance. Without this, automation projects are ungoverned',
     `tertiary_automation_approved_by_employee_id` BIGINT COMMENT 'Identifier of the person who approved the project budget or scope.',
-    `actual_duration_days` DECIMAL(18,2) COMMENT 'Actual total duration of the project in days.',
+    `actual_duration_days` STRING COMMENT 'Actual total duration of the project in days.',
     `actual_end_date` DATE COMMENT 'Actual date when project was completed.',
     `actual_spend_amount` DECIMAL(18,2) COMMENT 'Total actual expenditure incurred to date.',
     `actual_start_date` DATE COMMENT 'Actual date when project work started.',
@@ -951,13 +869,12 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`automation`.`automation_project
     `automation_project_status` STRING COMMENT 'Current lifecycle status of the automation project.. Valid values are `concept|design|installation|commissioning|handed_over|closed`',
     `automation_project_type` STRING COMMENT 'Classification of the automation project based on its nature.. Valid values are `greenfield|brownfield|migration|expansion|cybersecurity_hardening`',
     `budget_amount` DECIMAL(18,2) COMMENT 'Approved budget for the project in the primary currency.',
-    `budget_currency` DECIMAL(18,2) COMMENT 'Three-letter ISO currency code for the budget amount.',
+    `budget_currency` STRING COMMENT 'Three-letter ISO currency code for the budget amount.',
     `compliance_status` STRING COMMENT 'Current compliance assessment of the project against regulatory standards.. Valid values are `compliant|non_compliant|under_review`',
     `created_timestamp` TIMESTAMP COMMENT 'Timestamp when the project record was first created in the system.',
     `automation_project_description` STRING COMMENT 'Detailed description of scope, objectives, and deliverables.',
     `documentation_url` STRING COMMENT 'Link to the central project documentation repository.',
-    `end_date` TIMESTAMP COMMENT '',
-    `estimated_duration_days` DECIMAL(18,2) COMMENT 'Estimated total duration of the project in days.',
+    `estimated_duration_days` STRING COMMENT 'Estimated total duration of the project in days.',
     `is_critical` BOOLEAN COMMENT 'Indicates whether the project is classified as critical to operations.',
     `is_cybersecurity_hardening` BOOLEAN COMMENT 'Indicates if the project includes cybersecurity hardening activities.',
     `automation_project_name` STRING COMMENT 'Descriptive name of the automation project.',
@@ -965,13 +882,11 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`automation`.`automation_project
     `planned_start_date` DATE COMMENT 'Planned date for project commencement.',
     `priority` STRING COMMENT 'Priority level assigned to the project based on business impact.. Valid values are `low|medium|high|critical`',
     `project_code` STRING COMMENT 'Unique alphanumeric code assigned to the automation project.',
-    `project_status` STRING COMMENT '',
     `risk_rating` STRING COMMENT 'Overall risk rating for the project.. Valid values are `low|medium|high|critical`',
     `safety_integrity_level` STRING COMMENT 'Safety Integrity Level assigned to the control system within the project.. Valid values are `SIL1|SIL2|SIL3|SIL4`',
     `sla_actual_hours` STRING COMMENT 'Actual hours achieved against SLA targets.',
     `sla_target_hours` STRING COMMENT 'Target hours for service level agreements related to project deliverables.',
     `stakeholder_group` STRING COMMENT 'Primary stakeholder group for the project.. Valid values are `operations|maintenance|engineering|executive|safety`',
-    `start_date` TIMESTAMP COMMENT '',
     `updated_timestamp` TIMESTAMP COMMENT 'Timestamp of the most recent update to the project record.',
     CONSTRAINT pk_automation_project PRIMARY KEY(`automation_project_id`)
 ) COMMENT 'Master record for automation engineering projects representing discrete scopes of work for designing, implementing, commissioning, or upgrading automation systems. Captures project name, project type (greenfield installation, brownfield upgrade, migration, expansion, cybersecurity hardening), associated plant/facility, project manager reference, automation engineer reference, target control system reference, project status (concept, design, procurement, installation, commissioning, FAT, SAT, handover, closed), planned start date, planned completion date, actual start date, actual completion date, budget reference, and associated change requests. Distinct from project.project_header (capital projects) — this entity is the automation-domain-specific project record for OT engineering work.';
@@ -980,10 +895,8 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`automation`.`io_mapping` (
     `io_mapping_id` BIGINT COMMENT 'Unique system-generated identifier for the I/O mapping record.',
     `control_system_id` BIGINT COMMENT 'FK to automation.control_system',
     `device_registry_id` BIGINT COMMENT 'Unique identifier for the I/O module hardware.',
-    `plc_program_id` BIGINT COMMENT '',
     `project_change_request_id` BIGINT COMMENT 'Identifier of the change request that drove the latest modification.',
     `remapped_io_mapping_id` BIGINT COMMENT 'Self-referencing FK on io_mapping (remapped_io_mapping_id)',
-    `tag_definition_id` BIGINT COMMENT '',
     `access_level` STRING COMMENT 'Permission level for reading or writing the I/O point.. Valid values are `read|write|read_write`',
     `address` STRING COMMENT 'Logical address of the I/O point within the controller (e.g., %I0.0).',
     `alarm_enabled` BOOLEAN COMMENT 'Indicates whether alarms are generated for this I/O point.',
@@ -1003,14 +916,12 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`automation`.`io_mapping` (
     `device_name` STRING COMMENT 'Name of the PLC/DCS device to which the I/O channel is assigned.',
     `engineering_unit` STRING COMMENT 'Unit of measure used for the signal (e.g., psi, °C, bar).',
     `field_instrument_tag` STRING COMMENT 'Tag number from Piping & Instrument Diagram that identifies the field device.',
-    `io_address` STRING COMMENT '',
     `io_mapping_status` STRING COMMENT 'Current operational status of the I/O mapping.. Valid values are `active|inactive|decommissioned|planned`',
     `io_module_type` STRING COMMENT 'Classification of the I/O module based on its capabilities.. Valid values are `input_module|output_module|mixed_module`',
     `io_type` STRING COMMENT 'Category of the I/O point indicating its function and signal direction.. Valid values are `digital_input|digital_output|analog_input|analog_output|pulse_input`',
     `is_historian_enabled` BOOLEAN COMMENT 'Indicates whether this I/O point is logged to the process historian.',
     `junction_box` STRING COMMENT 'Reference to the junction box used in the wiring path.',
     `last_audit_timestamp` TIMESTAMP COMMENT 'Timestamp of the most recent audit of this I/O mapping record.',
-    `mapping_status` STRING COMMENT '',
     `module_slot` STRING COMMENT 'Slot identifier within the I/O rack where the module resides.',
     `notes` STRING COMMENT 'Additional operational or engineering notes.',
     `quality_code` STRING COMMENT 'Code indicating the quality status of the I/O data (e.g., good, suspect).',
@@ -1021,7 +932,7 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`automation`.`io_mapping` (
     `scaling_factor` DECIMAL(18,2) COMMENT 'Multiplicative factor applied during signal conversion.',
     `scaling_high` DECIMAL(18,2) COMMENT 'Upper bound of the engineering unit range after scaling.',
     `scaling_low` DECIMAL(18,2) COMMENT 'Lower bound of the engineering unit range after scaling.',
-    `scan_rate_ms` DECIMAL(18,2) COMMENT 'Frequency at which the I/O point is scanned by the controller, in milliseconds.',
+    `scan_rate_ms` STRING COMMENT 'Frequency at which the I/O point is scanned by the controller, in milliseconds.',
     `signal_type` STRING COMMENT 'Physical signal standard used for the I/O point.. Valid values are `4-20mA|0-10V|24VDC|thermocouple|RTD|HART`',
     `tag_name` STRING COMMENT 'Name of the historian/tag definition linked to this I/O point.',
     `updated_timestamp` TIMESTAMP COMMENT 'Timestamp of the most recent update to the I/O mapping record.',
@@ -1050,24 +961,20 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`automation`.`fat_sat_record` (
     `expected_result` STRING COMMENT 'Target value or condition defined in the test protocol.',
     `fat_sat_record_status` STRING COMMENT 'Current lifecycle state of the test record.. Valid values are `OPEN|IN_REVIEW|CLOSED|REJECTED`',
     `record_number` STRING COMMENT 'Human‑readable sequential number assigned to the test record for traceability.',
-    `record_status` STRING COMMENT '',
     `retest_required` BOOLEAN COMMENT 'Indicates whether the test must be repeated after corrective action.',
     `test_case_description` STRING COMMENT 'Narrative description of the test case purpose and steps.',
     `test_date` DATE COMMENT 'Calendar date on which the test was performed.',
     `test_result` STRING COMMENT 'Overall outcome of the test execution.. Valid values are `PASS|FAIL|CONDITIONAL_PASS|NOT_TESTED`',
     `test_type` STRING COMMENT 'Category of the test execution (Factory Acceptance Test, Site Acceptance Test, Integrated FAT, Loop Check, Functional Test).. Valid values are `FAT|SAT|IFAT|LOOP_CHECK|FUNCTIONAL_TEST`',
     `updated_timestamp` TIMESTAMP COMMENT 'Date‑time of the most recent modification to the test record.',
-    `witnessed_by` STRING COMMENT '',
     CONSTRAINT pk_fat_sat_record PRIMARY KEY(`fat_sat_record_id`)
 ) COMMENT 'Transactional record capturing Factory Acceptance Test (FAT) and Site Acceptance Test (SAT) execution results for automation systems and control panels. Each record represents a discrete test execution event against a specific test case within a FAT or SAT test protocol. Captures test record number, test type (FAT, SAT, IFAT, loop check, functional test), associated automation project reference, control system reference, test case identifier, test case description, test date, test result (pass, fail, conditional pass, not tested), actual observed result, expected result, deviation description, corrective action required, retest required flag, tested-by reference, witnessed-by reference, and test protocol document reference. Supports formal commissioning documentation and handover packages.';
 
 CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`automation`.`batch_schedule` (
     `batch_schedule_id` BIGINT COMMENT 'Primary key for batch_schedule',
-    `control_system_id` BIGINT COMMENT '',
     `line_id` BIGINT COMMENT 'Identifier of the production line associated with the schedule.',
     `parent_batch_schedule_id` BIGINT COMMENT 'Self-referencing FK on batch_schedule (parent_batch_schedule_id)',
     `production_plant_id` BIGINT COMMENT 'Identifier of the manufacturing plant where the schedule is applied.',
-    `recipe_id` BIGINT COMMENT '',
     `audit_comment` STRING COMMENT 'Free‑form comment for audit or change‑control purposes.',
     `batch_quantity` DECIMAL(18,2) COMMENT 'Standard quantity produced per execution of the schedule.',
     `created_timestamp` TIMESTAMP COMMENT 'Timestamp when the schedule record was first created.',
@@ -1075,24 +982,20 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`automation`.`batch_schedule` (
     `effective_end_date` DATE COMMENT 'Date on which the schedule expires; null if open‑ended.',
     `effective_start_date` DATE COMMENT 'Date on which the schedule becomes valid.',
     `enabled_flag` BOOLEAN COMMENT 'Indicates whether the schedule is currently enabled for execution.',
-    `estimated_duration_minutes` DECIMAL(18,2) COMMENT 'Typical runtime expected for a batch execution.',
+    `estimated_duration_minutes` STRING COMMENT 'Typical runtime expected for a batch execution.',
     `frequency_minutes` STRING COMMENT 'Interval in minutes between successive executions when recurrence is time‑based.',
     `last_run_timestamp` TIMESTAMP COMMENT 'Timestamp of the most recent execution of this schedule.',
     `max_runtime_minutes` STRING COMMENT 'Maximum allowed runtime for a batch execution before it is flagged.',
     `min_runtime_minutes` STRING COMMENT 'Minimum expected runtime for a batch execution.',
     `next_run_timestamp` TIMESTAMP COMMENT 'Planned timestamp for the next scheduled execution.',
     `owner_email` STRING COMMENT 'Contact email for the schedule owner.',
-    `planned_quantity` DECIMAL(18,2) COMMENT '',
     `priority` STRING COMMENT 'Numeric priority used by the scheduler to resolve conflicts; higher value = higher priority.',
     `recurrence_pattern` STRING COMMENT 'Pattern (e.g., cron expression) that defines how the schedule repeats.',
     `schedule_code` STRING COMMENT 'Business code used to reference the schedule in operational systems.',
     `schedule_name` STRING COMMENT 'Human‑readable name of the batch schedule.',
     `schedule_owner` STRING COMMENT 'Name of the person or team responsible for the schedule.',
-    `schedule_status` STRING COMMENT '',
     `schedule_type` STRING COMMENT 'Classification of the schedule execution model.',
-    `scheduled_end_timestamp` TIMESTAMP COMMENT '',
     `scheduled_start_time` TIMESTAMP COMMENT 'Planned start time for the next execution of the schedule.',
-    `scheduled_start_timestamp` TIMESTAMP COMMENT '',
     `shift` STRING COMMENT 'Work shift during which the batch is scheduled to run.',
     `batch_schedule_status` STRING COMMENT 'Current lifecycle status of the schedule.',
     `tolerance_percent` DECIMAL(18,2) COMMENT 'Acceptable deviation percentage from the estimated duration.',
@@ -1105,11 +1008,10 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`automation`.`batch_schedule` (
 
 CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`automation`.`test_case` (
     `test_case_id` BIGINT COMMENT 'Primary key for test_case',
-    `automation_project_id` BIGINT COMMENT '',
     `automation_script_id` BIGINT COMMENT 'Identifier of the automation script that implements the test case logic.',
     `parent_test_case_id` BIGINT COMMENT 'Self-referencing FK on test_case (parent_test_case_id)',
     `device_registry_id` BIGINT COMMENT 'Identifier of the PLC, sensor, or edge device that the test case targets.',
-    `actual_duration_seconds` DECIMAL(18,2) COMMENT 'Measured execution time of the most recent run, in seconds.',
+    `actual_duration_seconds` STRING COMMENT 'Measured execution time of the most recent run, in seconds.',
     `test_case_category` STRING COMMENT 'Classification of the test case by testing focus.',
     `test_case_code` STRING COMMENT 'Business identifier or code used to reference the test case in documentation and tooling.',
     `compliance_requirement` STRING COMMENT 'Regulatory or safety standard that the test case helps satisfy.',
@@ -1117,8 +1019,7 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`automation`.`test_case` (
     `test_case_description` STRING COMMENT 'Detailed textual description of the test case purpose, steps, and expected outcomes.',
     `environment` STRING COMMENT 'Logical environment where the test case is intended to run.',
     `execution_result` STRING COMMENT 'Outcome of the most recent execution of the test case.',
-    `expected_duration_seconds` DECIMAL(18,2) COMMENT 'Planned maximum execution time for the test case, in seconds.',
-    `expected_result` STRING COMMENT '',
+    `expected_duration_seconds` STRING COMMENT 'Planned maximum execution time for the test case, in seconds.',
     `is_automated` BOOLEAN COMMENT 'Indicates whether the test case is executed automatically (true) or manually (false).',
     `is_critical` BOOLEAN COMMENT 'Marks the test case as critical for safety or compliance; true if failure has high impact.',
     `last_executed_by` STRING COMMENT 'User or system that performed the most recent execution.',
@@ -1133,7 +1034,6 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`automation`.`test_case` (
     `tags` STRING COMMENT 'Comma‑separated list of free‑form tags for categorization and search.',
     `test_case_type` STRING COMMENT 'Granular type of test case based on testing scope.',
     `test_data_set` STRING COMMENT 'Name or identifier of the data set used during test execution.',
-    `test_description` STRING COMMENT '',
     `updated_timestamp` TIMESTAMP COMMENT 'Date and time of the most recent modification to the test case record.',
     `version` STRING COMMENT 'Version label of the test case definition (e.g., v1.0, v2.1).',
     `created_by` STRING COMMENT 'Identifier of the user or system that created the test case.',
@@ -1143,7 +1043,6 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`automation`.`test_case` (
 CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`automation`.`test_procedure` (
     `test_procedure_id` BIGINT COMMENT 'Primary key for test_procedure',
     `parent_test_procedure_id` BIGINT COMMENT 'Self-referencing FK on test_procedure (parent_test_procedure_id)',
-    `test_case_id` BIGINT COMMENT '',
     `author` STRING COMMENT 'Name of the person or team that authored the test procedure.',
     `test_procedure_code` STRING COMMENT 'External code or catalog number used to reference the test procedure.',
     `compliance_standard` STRING COMMENT 'Regulatory or industry standard that the test procedure satisfies.',
@@ -1154,9 +1053,6 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`automation`.`test_procedure` (
     `is_automated` BOOLEAN COMMENT 'Indicates whether the test procedure can be executed automatically by an edge gateway or control system.',
     `last_reviewed_timestamp` TIMESTAMP COMMENT 'Date and time when the test procedure was last reviewed for relevance and accuracy.',
     `test_procedure_name` STRING COMMENT 'Human‑readable name of the test procedure.',
-    `procedure_name` STRING COMMENT '',
-    `procedure_status` STRING COMMENT '',
-    `procedure_steps` STRING COMMENT '',
     `procedure_type` STRING COMMENT 'Category describing the purpose of the test procedure.',
     `required_equipment` STRING COMMENT 'Comma‑separated list of equipment or devices needed to execute the test procedure.',
     `safety_rating` STRING COMMENT 'Safety risk classification associated with performing the test procedure.',
@@ -1170,7 +1066,8 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`automation`.`test_procedure` (
 CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`automation`.`automation_script` (
     `automation_script_id` BIGINT COMMENT 'Primary key for automation_script',
     `called_by_automation_script_id` BIGINT COMMENT 'Self-referencing FK on automation_script (called_by_automation_script_id)',
-    `control_system_id` BIGINT COMMENT '',
+    `control_system_id` BIGINT COMMENT 'add column control_system_id (BIGINT) with FK to automation.control_system.control_system_id - automation scripts execute on specific control systems',
+    `device_registry_id` BIGINT COMMENT 'add column device_registry_id (BIGINT) with FK to automation.device_registry.device_registry_id - scripts are deployed to specific devices',
     `author_name` STRING COMMENT 'Name of the engineer or developer who created the script.',
     `average_execution_time_ms` DECIMAL(18,2) COMMENT 'Mean duration of script execution measured in milliseconds.',
     `checksum_sha256` STRING COMMENT 'SHA‑256 hash of the script file for integrity verification.',
@@ -1195,11 +1092,7 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`automation`.`automation_script`
     `required_permissions` STRING COMMENT 'List of security permissions or roles required to run the script.',
     `runtime_environment` STRING COMMENT 'Target execution environment for the script.',
     `schedule_cron` STRING COMMENT 'Cron expression defining the periodic schedule when execution_mode is scheduled.',
-    `script_language` STRING COMMENT '',
-    `script_name` STRING COMMENT '',
-    `script_status` STRING COMMENT '',
     `script_type` STRING COMMENT 'Category of automation script based on its functional role.',
-    `script_version` STRING COMMENT '',
     `security_classification` STRING COMMENT 'Data security level assigned to the script according to corporate policy.',
     `automation_script_status` STRING COMMENT 'Current operational status of the script.',
     `tags` STRING COMMENT 'Comma‑separated list of user‑defined tags for categorization and search.',
@@ -1210,31 +1103,25 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`automation`.`automation_script`
 ) COMMENT 'Master reference table for automation_script. Referenced by automation_script_id.';
 
 -- ========= FOREIGN KEYS =========
-ALTER TABLE `vibe_manufacturing_v1`.`automation`.`device_registry` ADD CONSTRAINT `fk_automation_device_registry_network_segment_id` FOREIGN KEY (`network_segment_id`) REFERENCES `vibe_manufacturing_v1`.`automation`.`network_segment`(`network_segment_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`device_registry` ADD CONSTRAINT `fk_automation_device_registry_parent_device_registry_id` FOREIGN KEY (`parent_device_registry_id`) REFERENCES `vibe_manufacturing_v1`.`automation`.`device_registry`(`device_registry_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`control_system` ADD CONSTRAINT `fk_automation_control_system_network_segment_id` FOREIGN KEY (`network_segment_id`) REFERENCES `vibe_manufacturing_v1`.`automation`.`network_segment`(`network_segment_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`control_system` ADD CONSTRAINT `fk_automation_control_system_parent_control_system_id` FOREIGN KEY (`parent_control_system_id`) REFERENCES `vibe_manufacturing_v1`.`automation`.`control_system`(`control_system_id`);
-ALTER TABLE `vibe_manufacturing_v1`.`automation`.`plc_program` ADD CONSTRAINT `fk_automation_plc_program_control_system_id` FOREIGN KEY (`control_system_id`) REFERENCES `vibe_manufacturing_v1`.`automation`.`control_system`(`control_system_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`plc_program` ADD CONSTRAINT `fk_automation_plc_program_parent_plc_program_id` FOREIGN KEY (`parent_plc_program_id`) REFERENCES `vibe_manufacturing_v1`.`automation`.`plc_program`(`plc_program_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`plc_program` ADD CONSTRAINT `fk_automation_plc_program_device_registry_id` FOREIGN KEY (`device_registry_id`) REFERENCES `vibe_manufacturing_v1`.`automation`.`device_registry`(`device_registry_id`);
-ALTER TABLE `vibe_manufacturing_v1`.`automation`.`plc_program` ADD CONSTRAINT `fk_automation_plc_program_primary_plc_device_registry_id` FOREIGN KEY (`primary_plc_device_registry_id`) REFERENCES `vibe_manufacturing_v1`.`automation`.`device_registry`(`device_registry_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`plc_program` ADD CONSTRAINT `fk_automation_plc_program_target_device_device_registry_id` FOREIGN KEY (`target_device_device_registry_id`) REFERENCES `vibe_manufacturing_v1`.`automation`.`device_registry`(`device_registry_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`tag_definition` ADD CONSTRAINT `fk_automation_tag_definition_control_system_id` FOREIGN KEY (`control_system_id`) REFERENCES `vibe_manufacturing_v1`.`automation`.`control_system`(`control_system_id`);
-ALTER TABLE `vibe_manufacturing_v1`.`automation`.`tag_definition` ADD CONSTRAINT `fk_automation_tag_definition_device_registry_id` FOREIGN KEY (`device_registry_id`) REFERENCES `vibe_manufacturing_v1`.`automation`.`device_registry`(`device_registry_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`tag_definition` ADD CONSTRAINT `fk_automation_tag_definition_parent_tag_definition_id` FOREIGN KEY (`parent_tag_definition_id`) REFERENCES `vibe_manufacturing_v1`.`automation`.`tag_definition`(`tag_definition_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`edge_gateway` ADD CONSTRAINT `fk_automation_edge_gateway_device_registry_id` FOREIGN KEY (`device_registry_id`) REFERENCES `vibe_manufacturing_v1`.`automation`.`device_registry`(`device_registry_id`);
-ALTER TABLE `vibe_manufacturing_v1`.`automation`.`edge_gateway` ADD CONSTRAINT `fk_automation_edge_gateway_network_segment_id` FOREIGN KEY (`network_segment_id`) REFERENCES `vibe_manufacturing_v1`.`automation`.`network_segment`(`network_segment_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`edge_gateway` ADD CONSTRAINT `fk_automation_edge_gateway_upstream_edge_gateway_id` FOREIGN KEY (`upstream_edge_gateway_id`) REFERENCES `vibe_manufacturing_v1`.`automation`.`edge_gateway`(`edge_gateway_id`);
+ALTER TABLE `vibe_manufacturing_v1`.`automation`.`process_parameter` ADD CONSTRAINT `fk_automation_process_parameter_control_system_id` FOREIGN KEY (`control_system_id`) REFERENCES `vibe_manufacturing_v1`.`automation`.`control_system`(`control_system_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`process_parameter` ADD CONSTRAINT `fk_automation_process_parameter_derived_from_process_parameter_id` FOREIGN KEY (`derived_from_process_parameter_id`) REFERENCES `vibe_manufacturing_v1`.`automation`.`process_parameter`(`process_parameter_id`);
-ALTER TABLE `vibe_manufacturing_v1`.`automation`.`process_parameter` ADD CONSTRAINT `fk_automation_process_parameter_tag_definition_id` FOREIGN KEY (`tag_definition_id`) REFERENCES `vibe_manufacturing_v1`.`automation`.`tag_definition`(`tag_definition_id`);
+ALTER TABLE `vibe_manufacturing_v1`.`automation`.`process_parameter` ADD CONSTRAINT `fk_automation_process_parameter_device_registry_id` FOREIGN KEY (`device_registry_id`) REFERENCES `vibe_manufacturing_v1`.`automation`.`device_registry`(`device_registry_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`alarm_definition` ADD CONSTRAINT `fk_automation_alarm_definition_parent_alarm_definition_id` FOREIGN KEY (`parent_alarm_definition_id`) REFERENCES `vibe_manufacturing_v1`.`automation`.`alarm_definition`(`alarm_definition_id`);
-ALTER TABLE `vibe_manufacturing_v1`.`automation`.`alarm_definition` ADD CONSTRAINT `fk_automation_alarm_definition_tag_definition_id` FOREIGN KEY (`tag_definition_id`) REFERENCES `vibe_manufacturing_v1`.`automation`.`tag_definition`(`tag_definition_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`network_segment` ADD CONSTRAINT `fk_automation_network_segment_parent_network_segment_id` FOREIGN KEY (`parent_network_segment_id`) REFERENCES `vibe_manufacturing_v1`.`automation`.`network_segment`(`network_segment_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`alarm_event` ADD CONSTRAINT `fk_automation_alarm_event_alarm_definition_id` FOREIGN KEY (`alarm_definition_id`) REFERENCES `vibe_manufacturing_v1`.`automation`.`alarm_definition`(`alarm_definition_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`alarm_event` ADD CONSTRAINT `fk_automation_alarm_event_device_registry_id` FOREIGN KEY (`device_registry_id`) REFERENCES `vibe_manufacturing_v1`.`automation`.`device_registry`(`device_registry_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`alarm_event` ADD CONSTRAINT `fk_automation_alarm_event_preceding_alarm_event_id` FOREIGN KEY (`preceding_alarm_event_id`) REFERENCES `vibe_manufacturing_v1`.`automation`.`alarm_event`(`alarm_event_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`control_mode_event` ADD CONSTRAINT `fk_automation_control_mode_event_batch_execution_id` FOREIGN KEY (`batch_execution_id`) REFERENCES `vibe_manufacturing_v1`.`automation`.`batch_execution`(`batch_execution_id`);
-ALTER TABLE `vibe_manufacturing_v1`.`automation`.`control_mode_event` ADD CONSTRAINT `fk_automation_control_mode_event_control_system_id` FOREIGN KEY (`control_system_id`) REFERENCES `vibe_manufacturing_v1`.`automation`.`control_system`(`control_system_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`control_mode_event` ADD CONSTRAINT `fk_automation_control_mode_event_device_registry_id` FOREIGN KEY (`device_registry_id`) REFERENCES `vibe_manufacturing_v1`.`automation`.`device_registry`(`device_registry_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`control_mode_event` ADD CONSTRAINT `fk_automation_control_mode_event_preceding_control_mode_event_id` FOREIGN KEY (`preceding_control_mode_event_id`) REFERENCES `vibe_manufacturing_v1`.`automation`.`control_mode_event`(`control_mode_event_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`device_config_snapshot` ADD CONSTRAINT `fk_automation_device_config_snapshot_device_registry_id` FOREIGN KEY (`device_registry_id`) REFERENCES `vibe_manufacturing_v1`.`automation`.`device_registry`(`device_registry_id`);
@@ -1242,7 +1129,6 @@ ALTER TABLE `vibe_manufacturing_v1`.`automation`.`device_config_snapshot` ADD CO
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`firmware_update` ADD CONSTRAINT `fk_automation_firmware_update_device_config_snapshot_id` FOREIGN KEY (`device_config_snapshot_id`) REFERENCES `vibe_manufacturing_v1`.`automation`.`device_config_snapshot`(`device_config_snapshot_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`firmware_update` ADD CONSTRAINT `fk_automation_firmware_update_device_registry_id` FOREIGN KEY (`device_registry_id`) REFERENCES `vibe_manufacturing_v1`.`automation`.`device_registry`(`device_registry_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`firmware_update` ADD CONSTRAINT `fk_automation_firmware_update_rollback_firmware_update_id` FOREIGN KEY (`rollback_firmware_update_id`) REFERENCES `vibe_manufacturing_v1`.`automation`.`firmware_update`(`firmware_update_id`);
-ALTER TABLE `vibe_manufacturing_v1`.`automation`.`scada_session` ADD CONSTRAINT `fk_automation_scada_session_control_system_id` FOREIGN KEY (`control_system_id`) REFERENCES `vibe_manufacturing_v1`.`automation`.`control_system`(`control_system_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`scada_session` ADD CONSTRAINT `fk_automation_scada_session_device_registry_id` FOREIGN KEY (`device_registry_id`) REFERENCES `vibe_manufacturing_v1`.`automation`.`device_registry`(`device_registry_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`scada_session` ADD CONSTRAINT `fk_automation_scada_session_previous_scada_session_id` FOREIGN KEY (`previous_scada_session_id`) REFERENCES `vibe_manufacturing_v1`.`automation`.`scada_session`(`scada_session_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`setpoint_change` ADD CONSTRAINT `fk_automation_setpoint_change_control_system_id` FOREIGN KEY (`control_system_id`) REFERENCES `vibe_manufacturing_v1`.`automation`.`control_system`(`control_system_id`);
@@ -1259,9 +1145,9 @@ ALTER TABLE `vibe_manufacturing_v1`.`automation`.`equipment_phase` ADD CONSTRAIN
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`equipment_phase` ADD CONSTRAINT `fk_automation_equipment_phase_plc_program_id` FOREIGN KEY (`plc_program_id`) REFERENCES `vibe_manufacturing_v1`.`automation`.`plc_program`(`plc_program_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`equipment_phase` ADD CONSTRAINT `fk_automation_equipment_phase_equipment_plc_program_id` FOREIGN KEY (`equipment_plc_program_id`) REFERENCES `vibe_manufacturing_v1`.`automation`.`plc_program`(`plc_program_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`equipment_phase` ADD CONSTRAINT `fk_automation_equipment_phase_parent_equipment_phase_id` FOREIGN KEY (`parent_equipment_phase_id`) REFERENCES `vibe_manufacturing_v1`.`automation`.`equipment_phase`(`equipment_phase_id`);
-ALTER TABLE `vibe_manufacturing_v1`.`automation`.`equipment_phase` ADD CONSTRAINT `fk_automation_equipment_phase_recipe_id` FOREIGN KEY (`recipe_id`) REFERENCES `vibe_manufacturing_v1`.`automation`.`recipe`(`recipe_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`opc_server` ADD CONSTRAINT `fk_automation_opc_server_network_segment_id` FOREIGN KEY (`network_segment_id`) REFERENCES `vibe_manufacturing_v1`.`automation`.`network_segment`(`network_segment_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`opc_server` ADD CONSTRAINT `fk_automation_opc_server_redundant_opc_server_id` FOREIGN KEY (`redundant_opc_server_id`) REFERENCES `vibe_manufacturing_v1`.`automation`.`opc_server`(`opc_server_id`);
+ALTER TABLE `vibe_manufacturing_v1`.`automation`.`historian_config` ADD CONSTRAINT `fk_automation_historian_config_control_system_id` FOREIGN KEY (`control_system_id`) REFERENCES `vibe_manufacturing_v1`.`automation`.`control_system`(`control_system_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`historian_config` ADD CONSTRAINT `fk_automation_historian_config_superseded_historian_config_id` FOREIGN KEY (`superseded_historian_config_id`) REFERENCES `vibe_manufacturing_v1`.`automation`.`historian_config`(`historian_config_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`historian_config` ADD CONSTRAINT `fk_automation_historian_config_tag_definition_id` FOREIGN KEY (`tag_definition_id`) REFERENCES `vibe_manufacturing_v1`.`automation`.`tag_definition`(`tag_definition_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`automation_change_request` ADD CONSTRAINT `fk_automation_automation_change_request_plc_program_id` FOREIGN KEY (`plc_program_id`) REFERENCES `vibe_manufacturing_v1`.`automation`.`plc_program`(`plc_program_id`);
@@ -1283,24 +1169,19 @@ ALTER TABLE `vibe_manufacturing_v1`.`automation`.`automation_project` ADD CONSTR
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`automation_project` ADD CONSTRAINT `fk_automation_automation_project_parent_automation_project_id` FOREIGN KEY (`parent_automation_project_id`) REFERENCES `vibe_manufacturing_v1`.`automation`.`automation_project`(`automation_project_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`io_mapping` ADD CONSTRAINT `fk_automation_io_mapping_control_system_id` FOREIGN KEY (`control_system_id`) REFERENCES `vibe_manufacturing_v1`.`automation`.`control_system`(`control_system_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`io_mapping` ADD CONSTRAINT `fk_automation_io_mapping_device_registry_id` FOREIGN KEY (`device_registry_id`) REFERENCES `vibe_manufacturing_v1`.`automation`.`device_registry`(`device_registry_id`);
-ALTER TABLE `vibe_manufacturing_v1`.`automation`.`io_mapping` ADD CONSTRAINT `fk_automation_io_mapping_plc_program_id` FOREIGN KEY (`plc_program_id`) REFERENCES `vibe_manufacturing_v1`.`automation`.`plc_program`(`plc_program_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`io_mapping` ADD CONSTRAINT `fk_automation_io_mapping_remapped_io_mapping_id` FOREIGN KEY (`remapped_io_mapping_id`) REFERENCES `vibe_manufacturing_v1`.`automation`.`io_mapping`(`io_mapping_id`);
-ALTER TABLE `vibe_manufacturing_v1`.`automation`.`io_mapping` ADD CONSTRAINT `fk_automation_io_mapping_tag_definition_id` FOREIGN KEY (`tag_definition_id`) REFERENCES `vibe_manufacturing_v1`.`automation`.`tag_definition`(`tag_definition_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`fat_sat_record` ADD CONSTRAINT `fk_automation_fat_sat_record_automation_project_id` FOREIGN KEY (`automation_project_id`) REFERENCES `vibe_manufacturing_v1`.`automation`.`automation_project`(`automation_project_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`fat_sat_record` ADD CONSTRAINT `fk_automation_fat_sat_record_control_system_id` FOREIGN KEY (`control_system_id`) REFERENCES `vibe_manufacturing_v1`.`automation`.`control_system`(`control_system_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`fat_sat_record` ADD CONSTRAINT `fk_automation_fat_sat_record_retest_fat_sat_record_id` FOREIGN KEY (`retest_fat_sat_record_id`) REFERENCES `vibe_manufacturing_v1`.`automation`.`fat_sat_record`(`fat_sat_record_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`fat_sat_record` ADD CONSTRAINT `fk_automation_fat_sat_record_test_case_id` FOREIGN KEY (`test_case_id`) REFERENCES `vibe_manufacturing_v1`.`automation`.`test_case`(`test_case_id`);
-ALTER TABLE `vibe_manufacturing_v1`.`automation`.`batch_schedule` ADD CONSTRAINT `fk_automation_batch_schedule_control_system_id` FOREIGN KEY (`control_system_id`) REFERENCES `vibe_manufacturing_v1`.`automation`.`control_system`(`control_system_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`batch_schedule` ADD CONSTRAINT `fk_automation_batch_schedule_parent_batch_schedule_id` FOREIGN KEY (`parent_batch_schedule_id`) REFERENCES `vibe_manufacturing_v1`.`automation`.`batch_schedule`(`batch_schedule_id`);
-ALTER TABLE `vibe_manufacturing_v1`.`automation`.`batch_schedule` ADD CONSTRAINT `fk_automation_batch_schedule_recipe_id` FOREIGN KEY (`recipe_id`) REFERENCES `vibe_manufacturing_v1`.`automation`.`recipe`(`recipe_id`);
-ALTER TABLE `vibe_manufacturing_v1`.`automation`.`test_case` ADD CONSTRAINT `fk_automation_test_case_automation_project_id` FOREIGN KEY (`automation_project_id`) REFERENCES `vibe_manufacturing_v1`.`automation`.`automation_project`(`automation_project_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`test_case` ADD CONSTRAINT `fk_automation_test_case_automation_script_id` FOREIGN KEY (`automation_script_id`) REFERENCES `vibe_manufacturing_v1`.`automation`.`automation_script`(`automation_script_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`test_case` ADD CONSTRAINT `fk_automation_test_case_parent_test_case_id` FOREIGN KEY (`parent_test_case_id`) REFERENCES `vibe_manufacturing_v1`.`automation`.`test_case`(`test_case_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`test_case` ADD CONSTRAINT `fk_automation_test_case_device_registry_id` FOREIGN KEY (`device_registry_id`) REFERENCES `vibe_manufacturing_v1`.`automation`.`device_registry`(`device_registry_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`test_procedure` ADD CONSTRAINT `fk_automation_test_procedure_parent_test_procedure_id` FOREIGN KEY (`parent_test_procedure_id`) REFERENCES `vibe_manufacturing_v1`.`automation`.`test_procedure`(`test_procedure_id`);
-ALTER TABLE `vibe_manufacturing_v1`.`automation`.`test_procedure` ADD CONSTRAINT `fk_automation_test_procedure_test_case_id` FOREIGN KEY (`test_case_id`) REFERENCES `vibe_manufacturing_v1`.`automation`.`test_case`(`test_case_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`automation_script` ADD CONSTRAINT `fk_automation_automation_script_called_by_automation_script_id` FOREIGN KEY (`called_by_automation_script_id`) REFERENCES `vibe_manufacturing_v1`.`automation`.`automation_script`(`automation_script_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`automation_script` ADD CONSTRAINT `fk_automation_automation_script_control_system_id` FOREIGN KEY (`control_system_id`) REFERENCES `vibe_manufacturing_v1`.`automation`.`control_system`(`control_system_id`);
+ALTER TABLE `vibe_manufacturing_v1`.`automation`.`automation_script` ADD CONSTRAINT `fk_automation_automation_script_device_registry_id` FOREIGN KEY (`device_registry_id`) REFERENCES `vibe_manufacturing_v1`.`automation`.`device_registry`(`device_registry_id`);
 
 -- ========= TAGS =========
 ALTER SCHEMA `vibe_manufacturing_v1`.`automation` SET TAGS ('dbx_division' = 'operations');
@@ -1308,7 +1189,6 @@ ALTER SCHEMA `vibe_manufacturing_v1`.`automation` SET TAGS ('dbx_domain' = 'auto
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`device_registry` SET TAGS ('dbx_data_type' = 'master_data');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`device_registry` SET TAGS ('dbx_subdomain' = 'device_infrastructure');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`device_registry` ALTER COLUMN `device_registry_id` SET TAGS ('dbx_business_glossary_term' = 'Device Registry Identifier');
-ALTER TABLE `vibe_manufacturing_v1`.`automation`.`device_registry` ALTER COLUMN `account_site_id` SET TAGS ('dbx_business_glossary_term' = 'Account Site Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`device_registry` ALTER COLUMN `component_id` SET TAGS ('dbx_business_glossary_term' = 'Component Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`device_registry` ALTER COLUMN `cost_center_id` SET TAGS ('dbx_business_glossary_term' = 'Cost Center Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`device_registry` ALTER COLUMN `customer_account_id` SET TAGS ('dbx_business_glossary_term' = 'Customer Account Id (Foreign Key)');
@@ -1320,6 +1200,8 @@ ALTER TABLE `vibe_manufacturing_v1`.`automation`.`device_registry` ALTER COLUMN 
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`device_registry` ALTER COLUMN `parent_device_registry_id` SET TAGS ('dbx_self_ref_fk' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`device_registry` ALTER COLUMN `asset_plant_id` SET TAGS ('dbx_business_glossary_term' = 'Plant Identifier (Plant ID)');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`device_registry` ALTER COLUMN `production_line_id` SET TAGS ('dbx_business_glossary_term' = 'Production Line Identifier (Line ID)');
+ALTER TABLE `vibe_manufacturing_v1`.`automation`.`device_registry` ALTER COLUMN `sku_master_id` SET TAGS ('dbx_business_glossary_term' = 'Sku Master Id (Foreign Key)');
+ALTER TABLE `vibe_manufacturing_v1`.`automation`.`device_registry` ALTER COLUMN `stock_location_id` SET TAGS ('dbx_business_glossary_term' = 'Stock Location Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`device_registry` ALTER COLUMN `supplier_id` SET TAGS ('dbx_business_glossary_term' = 'Vendor Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`device_registry` ALTER COLUMN `work_center_id` SET TAGS ('dbx_business_glossary_term' = 'Work Center Identifier (WC ID)');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`device_registry` ALTER COLUMN `commissioning_date` SET TAGS ('dbx_business_glossary_term' = 'Commissioning Date');
@@ -1340,8 +1222,6 @@ ALTER TABLE `vibe_manufacturing_v1`.`automation`.`device_registry` ALTER COLUMN 
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`device_registry` ALTER COLUMN `ip_address` SET TAGS ('dbx_value_regex' = '^((25[0-5]|2[0-4]d|[01]?dd?).){3}(25[0-5]|2[0-4]d|[01]?dd?)$');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`device_registry` ALTER COLUMN `ip_address` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`device_registry` ALTER COLUMN `ip_address` SET TAGS ('dbx_pii_ip' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`automation`.`device_registry` ALTER COLUMN `ip_address` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`automation`.`device_registry` ALTER COLUMN `ip_address` SET TAGS ('dbx_sensitivity' = 'pii');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`device_registry` ALTER COLUMN `last_maintenance_date` SET TAGS ('dbx_business_glossary_term' = 'Last Maintenance Date');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`device_registry` ALTER COLUMN `lifecycle_status` SET TAGS ('dbx_business_glossary_term' = 'Lifecycle Status (Lifecycle Status)');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`device_registry` ALTER COLUMN `lifecycle_status` SET TAGS ('dbx_value_regex' = 'in_service|retired|pending|decommissioned|suspended');
@@ -1349,19 +1229,13 @@ ALTER TABLE `vibe_manufacturing_v1`.`automation`.`device_registry` ALTER COLUMN 
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`device_registry` ALTER COLUMN `mac_address` SET TAGS ('dbx_value_regex' = '^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`device_registry` ALTER COLUMN `mac_address` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`device_registry` ALTER COLUMN `mac_address` SET TAGS ('dbx_pii_device' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`automation`.`device_registry` ALTER COLUMN `mac_address` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`automation`.`device_registry` ALTER COLUMN `mac_address` SET TAGS ('dbx_sensitivity' = 'pii');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`device_registry` ALTER COLUMN `maintenance_status` SET TAGS ('dbx_business_glossary_term' = 'Maintenance Status (Maint Status)');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`device_registry` ALTER COLUMN `maintenance_status` SET TAGS ('dbx_value_regex' = 'up_to_date|overdue|scheduled|not_applicable');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`device_registry` ALTER COLUMN `model_number` SET TAGS ('dbx_business_glossary_term' = 'Model Number (Model No.)');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`device_registry` ALTER COLUMN `device_registry_name` SET TAGS ('dbx_business_glossary_term' = 'Device Name');
-ALTER TABLE `vibe_manufacturing_v1`.`automation`.`device_registry` ALTER COLUMN `device_registry_name` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_manufacturing_v1`.`automation`.`device_registry` ALTER COLUMN `device_registry_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`device_registry` ALTER COLUMN `network_address` SET TAGS ('dbx_business_glossary_term' = 'Network Address (Network Addr.)');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`device_registry` ALTER COLUMN `network_address` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`device_registry` ALTER COLUMN `network_address` SET TAGS ('dbx_pii_address' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`automation`.`device_registry` ALTER COLUMN `network_address` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`automation`.`device_registry` ALTER COLUMN `network_address` SET TAGS ('dbx_sensitivity' = 'pii');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`device_registry` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Additional Notes');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`device_registry` ALTER COLUMN `operating_temperature_c` SET TAGS ('dbx_business_glossary_term' = 'Operating Temperature (°C)');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`device_registry` ALTER COLUMN `power_rating_kw` SET TAGS ('dbx_business_glossary_term' = 'Power Rating (kW)');
@@ -1404,11 +1278,12 @@ ALTER TABLE `vibe_manufacturing_v1`.`automation`.`control_system` ALTER COLUMN `
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`control_system` ALTER COLUMN `mtbf_hours` SET TAGS ('dbx_business_glossary_term' = 'Mean Time Between Failures (Hours)');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`control_system` ALTER COLUMN `mttr_hours` SET TAGS ('dbx_business_glossary_term' = 'Mean Time To Repair (Hours)');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`control_system` ALTER COLUMN `control_system_name` SET TAGS ('dbx_business_glossary_term' = 'Control System Name');
-ALTER TABLE `vibe_manufacturing_v1`.`automation`.`control_system` ALTER COLUMN `control_system_name` SET TAGS ('dbx_sensitivity' = 'pii');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`control_system` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Control System Notes');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`control_system` ALTER COLUMN `operational_status` SET TAGS ('dbx_business_glossary_term' = 'Operational Status');
+ALTER TABLE `vibe_manufacturing_v1`.`automation`.`control_system` ALTER COLUMN `operational_status` SET TAGS ('dbx_value_regex' = 'online|offline|faulted|maintenance');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`control_system` ALTER COLUMN `plant_area` SET TAGS ('dbx_business_glossary_term' = 'Plant Area');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`control_system` ALTER COLUMN `redundancy_configuration` SET TAGS ('dbx_business_glossary_term' = 'Redundancy Configuration');
+ALTER TABLE `vibe_manufacturing_v1`.`automation`.`control_system` ALTER COLUMN `redundancy_configuration` SET TAGS ('dbx_value_regex' = 'None|Active-Active|Active-Passive');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`control_system` ALTER COLUMN `safety_integrity_level` SET TAGS ('dbx_business_glossary_term' = 'Safety Integrity Level (SIL)');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`control_system` ALTER COLUMN `safety_integrity_level` SET TAGS ('dbx_value_regex' = 'SIL0|SIL1|SIL2|SIL3|SIL4');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`control_system` ALTER COLUMN `security_classification` SET TAGS ('dbx_business_glossary_term' = 'Security Classification');
@@ -1426,7 +1301,7 @@ ALTER TABLE `vibe_manufacturing_v1`.`automation`.`plc_program` ALTER COLUMN `plc
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`plc_program` ALTER COLUMN `engineering_revision_id` SET TAGS ('dbx_business_glossary_term' = 'Revision Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`plc_program` ALTER COLUMN `parent_plc_program_id` SET TAGS ('dbx_business_glossary_term' = 'Parent Plc Program Id');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`plc_program` ALTER COLUMN `parent_plc_program_id` SET TAGS ('dbx_self_ref_fk' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`automation`.`plc_program` ALTER COLUMN `primary_plc_device_registry_id` SET TAGS ('dbx_business_glossary_term' = 'Target Device Identifier');
+ALTER TABLE `vibe_manufacturing_v1`.`automation`.`plc_program` ALTER COLUMN `device_registry_id` SET TAGS ('dbx_business_glossary_term' = 'Target Device Identifier');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`plc_program` ALTER COLUMN `configuration_id` SET TAGS ('dbx_business_glossary_term' = 'Product Configuration Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`plc_program` ALTER COLUMN `target_device_device_registry_id` SET TAGS ('dbx_business_glossary_term' = 'Target Device Device Registry Id');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`plc_program` ALTER COLUMN `target_device_device_registry_id` SET TAGS ('dbx_internal' = 'true');
@@ -1441,12 +1316,9 @@ ALTER TABLE `vibe_manufacturing_v1`.`automation`.`plc_program` ALTER COLUMN `plc
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`plc_program` ALTER COLUMN `language` SET TAGS ('dbx_business_glossary_term' = 'Programming Language (IEC 61131‑3)');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`plc_program` ALTER COLUMN `language` SET TAGS ('dbx_value_regex' = 'LD|FBD|ST|SFC|IL');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`plc_program` ALTER COLUMN `plc_program_name` SET TAGS ('dbx_business_glossary_term' = 'Program Name');
-ALTER TABLE `vibe_manufacturing_v1`.`automation`.`plc_program` ALTER COLUMN `plc_program_name` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_manufacturing_v1`.`automation`.`plc_program` ALTER COLUMN `plc_program_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`plc_program` ALTER COLUMN `plc_program_status` SET TAGS ('dbx_business_glossary_term' = 'Program Lifecycle Status');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`plc_program` ALTER COLUMN `plc_program_status` SET TAGS ('dbx_value_regex' = 'draft|tested|released|archived');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`plc_program` ALTER COLUMN `program_code` SET TAGS ('dbx_business_glossary_term' = 'Program Code');
-ALTER TABLE `vibe_manufacturing_v1`.`automation`.`plc_program` ALTER COLUMN `program_name` SET TAGS ('dbx_sensitivity' = 'pii');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`plc_program` ALTER COLUMN `program_size_bytes` SET TAGS ('dbx_business_glossary_term' = 'Program Size (Bytes)');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`plc_program` ALTER COLUMN `release_notes` SET TAGS ('dbx_business_glossary_term' = 'Release Notes');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`plc_program` ALTER COLUMN `release_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Release Timestamp');
@@ -1479,8 +1351,6 @@ ALTER TABLE `vibe_manufacturing_v1`.`automation`.`tag_definition` ALTER COLUMN `
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`tag_definition` ALTER COLUMN `deadband` SET TAGS ('dbx_business_glossary_term' = 'Deadband');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`tag_definition` ALTER COLUMN `tag_definition_description` SET TAGS ('dbx_business_glossary_term' = 'Tag Description');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`tag_definition` ALTER COLUMN `device_name` SET TAGS ('dbx_business_glossary_term' = 'Device Name');
-ALTER TABLE `vibe_manufacturing_v1`.`automation`.`tag_definition` ALTER COLUMN `device_name` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_manufacturing_v1`.`automation`.`tag_definition` ALTER COLUMN `device_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`tag_definition` ALTER COLUMN `engineering_unit` SET TAGS ('dbx_business_glossary_term' = 'Engineering Unit');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`tag_definition` ALTER COLUMN `eu_range_high` SET TAGS ('dbx_business_glossary_term' = 'Engineering Unit Range High');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`tag_definition` ALTER COLUMN `eu_range_low` SET TAGS ('dbx_business_glossary_term' = 'Engineering Unit Range Low');
@@ -1492,11 +1362,9 @@ ALTER TABLE `vibe_manufacturing_v1`.`automation`.`tag_definition` ALTER COLUMN `
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`tag_definition` ALTER COLUMN `retention_period_days` SET TAGS ('dbx_business_glossary_term' = 'Retention Period (Days)');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`tag_definition` ALTER COLUMN `scaling_factor` SET TAGS ('dbx_business_glossary_term' = 'Scaling Factor');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`tag_definition` ALTER COLUMN `scan_rate_ms` SET TAGS ('dbx_business_glossary_term' = 'Scan Rate (ms)');
-ALTER TABLE `vibe_manufacturing_v1`.`automation`.`tag_definition` ALTER COLUMN `tag_address` SET TAGS ('dbx_sensitivity' = 'pii');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`tag_definition` ALTER COLUMN `tag_definition_status` SET TAGS ('dbx_business_glossary_term' = 'Tag Status');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`tag_definition` ALTER COLUMN `tag_definition_status` SET TAGS ('dbx_value_regex' = 'active|inactive|deprecated|planned');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`tag_definition` ALTER COLUMN `tag_name` SET TAGS ('dbx_business_glossary_term' = 'Tag Name');
-ALTER TABLE `vibe_manufacturing_v1`.`automation`.`tag_definition` ALTER COLUMN `tag_name` SET TAGS ('dbx_sensitivity' = 'pii');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`tag_definition` ALTER COLUMN `tag_path` SET TAGS ('dbx_business_glossary_term' = 'Tag Path (OPC‑UA Node ID)');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`tag_definition` ALTER COLUMN `updated_by` SET TAGS ('dbx_business_glossary_term' = 'Updated By');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`tag_definition` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Updated Timestamp');
@@ -1537,7 +1405,6 @@ ALTER TABLE `vibe_manufacturing_v1`.`automation`.`edge_gateway` ALTER COLUMN `ed
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`edge_gateway` ALTER COLUMN `edge_status_reason` SET TAGS ('dbx_business_glossary_term' = 'Status Reason (STATUS_REASON)');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`edge_gateway` ALTER COLUMN `edge_zone` SET TAGS ('dbx_business_glossary_term' = 'Edge Zone (ZONE)');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`edge_gateway` ALTER COLUMN `firmware_version` SET TAGS ('dbx_business_glossary_term' = 'Firmware Version (FW_VER)');
-ALTER TABLE `vibe_manufacturing_v1`.`automation`.`edge_gateway` ALTER COLUMN `gateway_name` SET TAGS ('dbx_sensitivity' = 'pii');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`edge_gateway` ALTER COLUMN `gateway_type` SET TAGS ('dbx_business_glossary_term' = 'Gateway Type (GW_TYPE)');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`edge_gateway` ALTER COLUMN `gateway_type` SET TAGS ('dbx_value_regex' = 'edge|gateway|aggregator');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`edge_gateway` ALTER COLUMN `hardware_model` SET TAGS ('dbx_business_glossary_term' = 'Hardware Model (HW_MODEL)');
@@ -1545,8 +1412,6 @@ ALTER TABLE `vibe_manufacturing_v1`.`automation`.`edge_gateway` ALTER COLUMN `in
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`edge_gateway` ALTER COLUMN `ip_address` SET TAGS ('dbx_business_glossary_term' = 'IP Address (IP_ADDR)');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`edge_gateway` ALTER COLUMN `ip_address` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`edge_gateway` ALTER COLUMN `ip_address` SET TAGS ('dbx_pii_ip' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`automation`.`edge_gateway` ALTER COLUMN `ip_address` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`automation`.`edge_gateway` ALTER COLUMN `ip_address` SET TAGS ('dbx_sensitivity' = 'pii');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`edge_gateway` ALTER COLUMN `it_protocol` SET TAGS ('dbx_business_glossary_term' = 'IT‑Side Protocol (IT_PROTO)');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`edge_gateway` ALTER COLUMN `it_protocol` SET TAGS ('dbx_value_regex' = 'MQTT|HTTPS|REST|AMQP');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`edge_gateway` ALTER COLUMN `last_firmware_update_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Last Firmware Update Timestamp (FW_UPDATE_TS)');
@@ -1554,8 +1419,6 @@ ALTER TABLE `vibe_manufacturing_v1`.`automation`.`edge_gateway` ALTER COLUMN `la
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`edge_gateway` ALTER COLUMN `mac_address` SET TAGS ('dbx_business_glossary_term' = 'MAC Address (MAC_ADDR)');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`edge_gateway` ALTER COLUMN `mac_address` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`edge_gateway` ALTER COLUMN `mac_address` SET TAGS ('dbx_pii_device' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`automation`.`edge_gateway` ALTER COLUMN `mac_address` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`automation`.`edge_gateway` ALTER COLUMN `mac_address` SET TAGS ('dbx_sensitivity' = 'pii');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`edge_gateway` ALTER COLUMN `maintenance_window` SET TAGS ('dbx_business_glossary_term' = 'Maintenance Window (MAINT_WIN)');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`edge_gateway` ALTER COLUMN `memory_usage_mb` SET TAGS ('dbx_business_glossary_term' = 'Memory Usage (MEM_MB)');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`edge_gateway` ALTER COLUMN `network_bandwidth_limit_mbps` SET TAGS ('dbx_business_glossary_term' = 'Network Bandwidth Limit (NET_BW_LIMIT_MBPS)');
@@ -1577,10 +1440,10 @@ ALTER TABLE `vibe_manufacturing_v1`.`automation`.`process_parameter` SET TAGS ('
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`process_parameter` ALTER COLUMN `process_parameter_id` SET TAGS ('dbx_business_glossary_term' = 'Process Parameter ID');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`process_parameter` ALTER COLUMN `derived_from_process_parameter_id` SET TAGS ('dbx_business_glossary_term' = 'Derived From Process Parameter Id');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`process_parameter` ALTER COLUMN `derived_from_process_parameter_id` SET TAGS ('dbx_self_ref_fk' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`automation`.`process_parameter` ALTER COLUMN `project_change_request_id` SET TAGS ('dbx_business_glossary_term' = 'Change Request ID');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`process_parameter` ALTER COLUMN `address` SET TAGS ('dbx_business_glossary_term' = 'Device Address');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`process_parameter` ALTER COLUMN `address` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`process_parameter` ALTER COLUMN `address` SET TAGS ('dbx_pii_address' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`automation`.`process_parameter` ALTER COLUMN `address` SET TAGS ('dbx_sensitivity' = 'pii');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`process_parameter` ALTER COLUMN `alarm_high` SET TAGS ('dbx_business_glossary_term' = 'High Alarm Threshold');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`process_parameter` ALTER COLUMN `alarm_high_high` SET TAGS ('dbx_business_glossary_term' = 'High‑High Alarm Threshold');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`process_parameter` ALTER COLUMN `alarm_low` SET TAGS ('dbx_business_glossary_term' = 'Low Alarm Threshold');
@@ -1600,11 +1463,8 @@ ALTER TABLE `vibe_manufacturing_v1`.`automation`.`process_parameter` ALTER COLUM
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`process_parameter` ALTER COLUMN `lower_control_limit` SET TAGS ('dbx_business_glossary_term' = 'Lower Control Limit (LCL)');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`process_parameter` ALTER COLUMN `lower_specification_limit` SET TAGS ('dbx_business_glossary_term' = 'Lower Specification Limit (LSL)');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`process_parameter` ALTER COLUMN `process_parameter_name` SET TAGS ('dbx_business_glossary_term' = 'Parameter Name');
-ALTER TABLE `vibe_manufacturing_v1`.`automation`.`process_parameter` ALTER COLUMN `process_parameter_name` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_manufacturing_v1`.`automation`.`process_parameter` ALTER COLUMN `process_parameter_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`process_parameter` ALTER COLUMN `nominal_value` SET TAGS ('dbx_business_glossary_term' = 'Nominal Value');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`process_parameter` ALTER COLUMN `offset` SET TAGS ('dbx_business_glossary_term' = 'Offset');
-ALTER TABLE `vibe_manufacturing_v1`.`automation`.`process_parameter` ALTER COLUMN `parameter_name` SET TAGS ('dbx_sensitivity' = 'pii');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`process_parameter` ALTER COLUMN `parameter_type` SET TAGS ('dbx_business_glossary_term' = 'Parameter Type');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`process_parameter` ALTER COLUMN `parameter_type` SET TAGS ('dbx_value_regex' = 'set_point|limit|alarm_threshold|pid_constant');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`process_parameter` ALTER COLUMN `process_area` SET TAGS ('dbx_business_glossary_term' = 'Process Area');
@@ -1623,7 +1483,6 @@ ALTER TABLE `vibe_manufacturing_v1`.`automation`.`alarm_definition` ALTER COLUMN
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`alarm_definition` ALTER COLUMN `parent_alarm_definition_id` SET TAGS ('dbx_self_ref_fk' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`alarm_definition` ALTER COLUMN `acknowledgment_required` SET TAGS ('dbx_business_glossary_term' = 'Acknowledgment Required Flag');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`alarm_definition` ALTER COLUMN `alarm_category` SET TAGS ('dbx_business_glossary_term' = 'Alarm Category');
-ALTER TABLE `vibe_manufacturing_v1`.`automation`.`alarm_definition` ALTER COLUMN `alarm_name` SET TAGS ('dbx_sensitivity' = 'pii');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`alarm_definition` ALTER COLUMN `alarm_type` SET TAGS ('dbx_business_glossary_term' = 'Alarm Type (Process, Equipment, Safety, System)');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`alarm_definition` ALTER COLUMN `alarm_type` SET TAGS ('dbx_value_regex' = 'process|equipment|safety|system');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`alarm_definition` ALTER COLUMN `auto_reset` SET TAGS ('dbx_business_glossary_term' = 'Auto Reset Flag');
@@ -1643,8 +1502,6 @@ ALTER TABLE `vibe_manufacturing_v1`.`automation`.`alarm_definition` ALTER COLUMN
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`alarm_definition` ALTER COLUMN `lifecycle_status` SET TAGS ('dbx_business_glossary_term' = 'Alarm Lifecycle Status');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`alarm_definition` ALTER COLUMN `lifecycle_status` SET TAGS ('dbx_value_regex' = 'active|inactive|deprecated|retired');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`alarm_definition` ALTER COLUMN `alarm_definition_name` SET TAGS ('dbx_business_glossary_term' = 'Alarm Name');
-ALTER TABLE `vibe_manufacturing_v1`.`automation`.`alarm_definition` ALTER COLUMN `alarm_definition_name` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_manufacturing_v1`.`automation`.`alarm_definition` ALTER COLUMN `alarm_definition_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`alarm_definition` ALTER COLUMN `notification_method` SET TAGS ('dbx_business_glossary_term' = 'Notification Method');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`alarm_definition` ALTER COLUMN `notification_method` SET TAGS ('dbx_value_regex' = 'email|sms|popup|none');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`alarm_definition` ALTER COLUMN `off_delay_seconds` SET TAGS ('dbx_business_glossary_term' = 'Off‑Delay Time (Seconds)');
@@ -1654,6 +1511,7 @@ ALTER TABLE `vibe_manufacturing_v1`.`automation`.`alarm_definition` ALTER COLUMN
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`alarm_definition` ALTER COLUMN `priority` SET TAGS ('dbx_value_regex' = 'critical|high|medium|low');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`alarm_definition` ALTER COLUMN `process_area` SET TAGS ('dbx_business_glossary_term' = 'Process Area');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`alarm_definition` ALTER COLUMN `rationalization_status` SET TAGS ('dbx_business_glossary_term' = 'Alarm Rationalization Status');
+ALTER TABLE `vibe_manufacturing_v1`.`automation`.`alarm_definition` ALTER COLUMN `rationalization_status` SET TAGS ('dbx_value_regex' = 'pending|approved|rejected');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`alarm_definition` ALTER COLUMN `related_equipment_tag` SET TAGS ('dbx_business_glossary_term' = 'Related Equipment Tag Reference');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`alarm_definition` ALTER COLUMN `reset_delay_seconds` SET TAGS ('dbx_business_glossary_term' = 'Reset Delay Time (Seconds)');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`alarm_definition` ALTER COLUMN `setpoint_unit` SET TAGS ('dbx_business_glossary_term' = 'Setpoint Unit of Measure');
@@ -1671,8 +1529,6 @@ ALTER TABLE `vibe_manufacturing_v1`.`automation`.`network_segment` ALTER COLUMN 
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`network_segment` ALTER COLUMN `parent_network_segment_id` SET TAGS ('dbx_self_ref_fk' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`network_segment` ALTER COLUMN `asset_plant_id` SET TAGS ('dbx_business_glossary_term' = 'Plant Identifier');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`network_segment` ALTER COLUMN `addressing_scheme` SET TAGS ('dbx_business_glossary_term' = 'Addressing Scheme');
-ALTER TABLE `vibe_manufacturing_v1`.`automation`.`network_segment` ALTER COLUMN `addressing_scheme` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_manufacturing_v1`.`automation`.`network_segment` ALTER COLUMN `addressing_scheme` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`network_segment` ALTER COLUMN `allowed_protocols` SET TAGS ('dbx_business_glossary_term' = 'Allowed Protocols');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`network_segment` ALTER COLUMN `backup_connectivity` SET TAGS ('dbx_business_glossary_term' = 'Backup Connectivity');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`network_segment` ALTER COLUMN `change_control_reference` SET TAGS ('dbx_business_glossary_term' = 'Change Control Reference');
@@ -1688,8 +1544,6 @@ ALTER TABLE `vibe_manufacturing_v1`.`automation`.`network_segment` ALTER COLUMN 
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`network_segment` ALTER COLUMN `maintenance_window` SET TAGS ('dbx_business_glossary_term' = 'Maintenance Window');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`network_segment` ALTER COLUMN `monitoring_tool` SET TAGS ('dbx_business_glossary_term' = 'Monitoring Tool');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`network_segment` ALTER COLUMN `network_segment_name` SET TAGS ('dbx_business_glossary_term' = 'Network Segment Name');
-ALTER TABLE `vibe_manufacturing_v1`.`automation`.`network_segment` ALTER COLUMN `network_segment_name` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_manufacturing_v1`.`automation`.`network_segment` ALTER COLUMN `network_segment_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`network_segment` ALTER COLUMN `network_segment_status` SET TAGS ('dbx_business_glossary_term' = 'Network Segment Status');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`network_segment` ALTER COLUMN `network_segment_status` SET TAGS ('dbx_value_regex' = 'active|inactive|planned|decommissioned');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`network_segment` ALTER COLUMN `owner_contact` SET TAGS ('dbx_business_glossary_term' = 'Segment Owner Contact');
@@ -1699,7 +1553,6 @@ ALTER TABLE `vibe_manufacturing_v1`.`automation`.`network_segment` ALTER COLUMN 
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`network_segment` ALTER COLUMN `security_level` SET TAGS ('dbx_business_glossary_term' = 'Security Level (IEC 62443)');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`network_segment` ALTER COLUMN `security_level` SET TAGS ('dbx_value_regex' = 'SL-1|SL-2|SL-3|SL-4');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`network_segment` ALTER COLUMN `segment_code` SET TAGS ('dbx_business_glossary_term' = 'Network Segment Code');
-ALTER TABLE `vibe_manufacturing_v1`.`automation`.`network_segment` ALTER COLUMN `segment_name` SET TAGS ('dbx_sensitivity' = 'pii');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`network_segment` ALTER COLUMN `topology` SET TAGS ('dbx_business_glossary_term' = 'Network Topology');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`network_segment` ALTER COLUMN `topology` SET TAGS ('dbx_value_regex' = 'ring|star|linear|mesh|bus');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`network_segment` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Update Timestamp');
@@ -1798,6 +1651,7 @@ ALTER TABLE `vibe_manufacturing_v1`.`automation`.`device_config_snapshot` ALTER 
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`device_config_snapshot` ALTER COLUMN `config_file_path` SET TAGS ('dbx_business_glossary_term' = 'Configuration File Path');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`device_config_snapshot` ALTER COLUMN `configuration_checksum` SET TAGS ('dbx_business_glossary_term' = 'Configuration Checksum');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`device_config_snapshot` ALTER COLUMN `configuration_format` SET TAGS ('dbx_business_glossary_term' = 'Configuration Format');
+ALTER TABLE `vibe_manufacturing_v1`.`automation`.`device_config_snapshot` ALTER COLUMN `configuration_format` SET TAGS ('dbx_value_regex' = 'xml|json|csv');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`device_config_snapshot` ALTER COLUMN `configuration_version` SET TAGS ('dbx_business_glossary_term' = 'Configuration Version');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`device_config_snapshot` ALTER COLUMN `device_serial_number` SET TAGS ('dbx_business_glossary_term' = 'Device Serial Number');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`device_config_snapshot` ALTER COLUMN `device_type` SET TAGS ('dbx_business_glossary_term' = 'Device Type');
@@ -1836,8 +1690,6 @@ ALTER TABLE `vibe_manufacturing_v1`.`automation`.`firmware_update` ALTER COLUMN 
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`firmware_update` ALTER COLUMN `completion_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Update Completion Timestamp');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`firmware_update` ALTER COLUMN `compliance_patch_reference` SET TAGS ('dbx_business_glossary_term' = 'Compliance Patch Identifier');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`firmware_update` ALTER COLUMN `device_name` SET TAGS ('dbx_business_glossary_term' = 'Device Name');
-ALTER TABLE `vibe_manufacturing_v1`.`automation`.`firmware_update` ALTER COLUMN `device_name` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_manufacturing_v1`.`automation`.`firmware_update` ALTER COLUMN `device_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`firmware_update` ALTER COLUMN `device_type` SET TAGS ('dbx_business_glossary_term' = 'Device Type');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`firmware_update` ALTER COLUMN `device_type` SET TAGS ('dbx_value_regex' = 'controller|gateway|sensor|actuator');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`firmware_update` ALTER COLUMN `firmware_version_after` SET TAGS ('dbx_business_glossary_term' = 'New Firmware Version');
@@ -1867,18 +1719,16 @@ ALTER TABLE `vibe_manufacturing_v1`.`automation`.`scada_session` SET TAGS ('dbx_
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`scada_session` SET TAGS ('dbx_subdomain' = 'operational_events');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`scada_session` ALTER COLUMN `scada_session_id` SET TAGS ('dbx_business_glossary_term' = 'SCADA Session ID');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`scada_session` ALTER COLUMN `device_registry_id` SET TAGS ('dbx_business_glossary_term' = 'Device ID');
-ALTER TABLE `vibe_manufacturing_v1`.`automation`.`scada_session` ALTER COLUMN `previous_scada_session_id` SET TAGS ('dbx_business_glossary_term' = 'Previous Scada Session Id');
-ALTER TABLE `vibe_manufacturing_v1`.`automation`.`scada_session` ALTER COLUMN `previous_scada_session_id` SET TAGS ('dbx_self_ref_fk' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`scada_session` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Operator ID');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`scada_session` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`scada_session` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`automation`.`scada_session` ALTER COLUMN `previous_scada_session_id` SET TAGS ('dbx_business_glossary_term' = 'Previous Scada Session Id');
+ALTER TABLE `vibe_manufacturing_v1`.`automation`.`scada_session` ALTER COLUMN `previous_scada_session_id` SET TAGS ('dbx_self_ref_fk' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`scada_session` ALTER COLUMN `alarm_ack_count` SET TAGS ('dbx_business_glossary_term' = 'Alarm Acknowledgement Count');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`scada_session` ALTER COLUMN `control_action_count` SET TAGS ('dbx_business_glossary_term' = 'Control Action Count');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`scada_session` ALTER COLUMN `ip_address` SET TAGS ('dbx_business_glossary_term' = 'IP Address');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`scada_session` ALTER COLUMN `ip_address` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`scada_session` ALTER COLUMN `ip_address` SET TAGS ('dbx_pii_ip' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`automation`.`scada_session` ALTER COLUMN `ip_address` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`automation`.`scada_session` ALTER COLUMN `ip_address` SET TAGS ('dbx_sensitivity' = 'pii');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`scada_session` ALTER COLUMN `login_method` SET TAGS ('dbx_business_glossary_term' = 'Login Method');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`scada_session` ALTER COLUMN `login_method` SET TAGS ('dbx_value_regex' = 'local|domain|biometric');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`scada_session` ALTER COLUMN `login_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Login Timestamp');
@@ -1934,7 +1784,7 @@ ALTER TABLE `vibe_manufacturing_v1`.`automation`.`setpoint_change` ALTER COLUMN 
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`setpoint_change` ALTER COLUMN `unit_of_measure` SET TAGS ('dbx_business_glossary_term' = 'Unit of Measure');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`setpoint_change` ALTER COLUMN `within_normal_limits` SET TAGS ('dbx_business_glossary_term' = 'Within Normal Operating Limits Flag');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`batch_execution` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_manufacturing_v1`.`automation`.`batch_execution` SET TAGS ('dbx_subdomain' = 'batch_processing');
+ALTER TABLE `vibe_manufacturing_v1`.`automation`.`batch_execution` SET TAGS ('dbx_subdomain' = 'batch_production');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`batch_execution` ALTER COLUMN `batch_execution_id` SET TAGS ('dbx_business_glossary_term' = 'Batch Execution Identifier');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`batch_execution` ALTER COLUMN `batch_schedule_id` SET TAGS ('dbx_business_glossary_term' = 'Batch Schedule Identifier');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`batch_execution` ALTER COLUMN `control_system_id` SET TAGS ('dbx_business_glossary_term' = 'Control System Identifier');
@@ -2015,8 +1865,6 @@ ALTER TABLE `vibe_manufacturing_v1`.`automation`.`recipe` ALTER COLUMN `ingredie
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`recipe` ALTER COLUMN `last_modified_by` SET TAGS ('dbx_business_glossary_term' = 'Last Modified By User');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`recipe` ALTER COLUMN `max_yield` SET TAGS ('dbx_business_glossary_term' = 'Maximum Yield Percentage');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`recipe` ALTER COLUMN `recipe_name` SET TAGS ('dbx_business_glossary_term' = 'Recipe Name');
-ALTER TABLE `vibe_manufacturing_v1`.`automation`.`recipe` ALTER COLUMN `recipe_name` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_manufacturing_v1`.`automation`.`recipe` ALTER COLUMN `recipe_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`recipe` ALTER COLUMN `oee_target` SET TAGS ('dbx_business_glossary_term' = 'OEE Target Percentage');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`recipe` ALTER COLUMN `phase_sequence` SET TAGS ('dbx_business_glossary_term' = 'Phase Sequence Definition');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`recipe` ALTER COLUMN `process_time_unit` SET TAGS ('dbx_business_glossary_term' = 'Process Time Unit');
@@ -2065,8 +1913,6 @@ ALTER TABLE `vibe_manufacturing_v1`.`automation`.`equipment_phase` ALTER COLUMN 
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`equipment_phase` ALTER COLUMN `output_parameters` SET TAGS ('dbx_business_glossary_term' = 'Phase Output Parameters');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`equipment_phase` ALTER COLUMN `phase_code` SET TAGS ('dbx_business_glossary_term' = 'Equipment Phase Code');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`equipment_phase` ALTER COLUMN `phase_name` SET TAGS ('dbx_business_glossary_term' = 'Equipment Phase Name');
-ALTER TABLE `vibe_manufacturing_v1`.`automation`.`equipment_phase` ALTER COLUMN `phase_name` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_manufacturing_v1`.`automation`.`equipment_phase` ALTER COLUMN `phase_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`equipment_phase` ALTER COLUMN `phase_type` SET TAGS ('dbx_business_glossary_term' = 'Equipment Phase Type');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`equipment_phase` ALTER COLUMN `phase_type` SET TAGS ('dbx_value_regex' = 'charge|heat|mix|transfer|cool|drain');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`equipment_phase` ALTER COLUMN `pressure_setpoint_bar` SET TAGS ('dbx_business_glossary_term' = 'Pressure Setpoint (bar)');
@@ -2105,20 +1951,16 @@ ALTER TABLE `vibe_manufacturing_v1`.`automation`.`opc_server` ALTER COLUMN `life
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`opc_server` ALTER COLUMN `mtbf_hours` SET TAGS ('dbx_business_glossary_term' = 'Mean Time Between Failures (Hours)');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`opc_server` ALTER COLUMN `mttr_hours` SET TAGS ('dbx_business_glossary_term' = 'Mean Time To Repair (Hours)');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`opc_server` ALTER COLUMN `opc_server_name` SET TAGS ('dbx_business_glossary_term' = 'OPC Server Name');
-ALTER TABLE `vibe_manufacturing_v1`.`automation`.`opc_server` ALTER COLUMN `opc_server_name` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_manufacturing_v1`.`automation`.`opc_server` ALTER COLUMN `opc_server_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`opc_server` ALTER COLUMN `plant_area` SET TAGS ('dbx_business_glossary_term' = 'Plant Area');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`opc_server` ALTER COLUMN `polling_interval_ms` SET TAGS ('dbx_business_glossary_term' = 'Polling Interval (ms)');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`opc_server` ALTER COLUMN `product_name` SET TAGS ('dbx_business_glossary_term' = 'Server Product Name');
-ALTER TABLE `vibe_manufacturing_v1`.`automation`.`opc_server` ALTER COLUMN `product_name` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_manufacturing_v1`.`automation`.`opc_server` ALTER COLUMN `product_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`opc_server` ALTER COLUMN `redundancy_configuration` SET TAGS ('dbx_business_glossary_term' = 'Redundancy Configuration');
+ALTER TABLE `vibe_manufacturing_v1`.`automation`.`opc_server` ALTER COLUMN `redundancy_configuration` SET TAGS ('dbx_value_regex' = 'active_active|active_passive|none');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`opc_server` ALTER COLUMN `safety_integrity_level` SET TAGS ('dbx_business_glossary_term' = 'Safety Integrity Level (SIL)');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`opc_server` ALTER COLUMN `safety_integrity_level` SET TAGS ('dbx_value_regex' = 'SIL1|SIL2|SIL3|SIL4');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`opc_server` ALTER COLUMN `security_policy` SET TAGS ('dbx_business_glossary_term' = 'Security Policy');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`opc_server` ALTER COLUMN `security_policy` SET TAGS ('dbx_value_regex' = 'None|Basic128Rsa15|Basic256Sha256');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`opc_server` ALTER COLUMN `server_code` SET TAGS ('dbx_business_glossary_term' = 'OPC Server Code');
-ALTER TABLE `vibe_manufacturing_v1`.`automation`.`opc_server` ALTER COLUMN `server_name` SET TAGS ('dbx_sensitivity' = 'pii');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`opc_server` ALTER COLUMN `server_status` SET TAGS ('dbx_business_glossary_term' = 'Server Operational Status');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`opc_server` ALTER COLUMN `server_status` SET TAGS ('dbx_value_regex' = 'running|stopped|error|maintenance');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`opc_server` ALTER COLUMN `server_type` SET TAGS ('dbx_business_glossary_term' = 'OPC Server Type');
@@ -2154,16 +1996,12 @@ ALTER TABLE `vibe_manufacturing_v1`.`automation`.`historian_config` ALTER COLUMN
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`historian_config` ALTER COLUMN `historian_config_status` SET TAGS ('dbx_business_glossary_term' = 'Configuration Status');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`historian_config` ALTER COLUMN `historian_config_status` SET TAGS ('dbx_value_regex' = 'active|inactive|deprecated|pending');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`historian_config` ALTER COLUMN `instance_name` SET TAGS ('dbx_business_glossary_term' = 'Historian Instance Name');
-ALTER TABLE `vibe_manufacturing_v1`.`automation`.`historian_config` ALTER COLUMN `instance_name` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_manufacturing_v1`.`automation`.`historian_config` ALTER COLUMN `instance_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`historian_config` ALTER COLUMN `last_config_update_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Last Configuration Update Timestamp');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`historian_config` ALTER COLUMN `lifecycle_status` SET TAGS ('dbx_business_glossary_term' = 'Lifecycle Status');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`historian_config` ALTER COLUMN `lifecycle_status` SET TAGS ('dbx_value_regex' = 'in_service|retired|decommissioned|planned');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`historian_config` ALTER COLUMN `max_data_rate_per_sec` SET TAGS ('dbx_business_glossary_term' = 'Maximum Data Rate per Second');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`historian_config` ALTER COLUMN `max_tag_count` SET TAGS ('dbx_business_glossary_term' = 'Maximum Tag Count');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`historian_config` ALTER COLUMN `historian_config_name` SET TAGS ('dbx_business_glossary_term' = 'Historian Configuration Name');
-ALTER TABLE `vibe_manufacturing_v1`.`automation`.`historian_config` ALTER COLUMN `historian_config_name` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_manufacturing_v1`.`automation`.`historian_config` ALTER COLUMN `historian_config_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`historian_config` ALTER COLUMN `owner` SET TAGS ('dbx_business_glossary_term' = 'Configuration Owner');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`historian_config` ALTER COLUMN `platform` SET TAGS ('dbx_business_glossary_term' = 'Historian Platform');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`historian_config` ALTER COLUMN `platform` SET TAGS ('dbx_value_regex' = 'OSIsoft_PI|AspenTech_IP21|Wonderware|InfluxDB');
@@ -2175,19 +2013,18 @@ ALTER TABLE `vibe_manufacturing_v1`.`automation`.`historian_config` ALTER COLUMN
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`historian_config` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Update Timestamp');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`historian_config` ALTER COLUMN `version` SET TAGS ('dbx_business_glossary_term' = 'Configuration Version');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`automation_change_request` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_manufacturing_v1`.`automation`.`automation_change_request` SET TAGS ('dbx_subdomain' = 'safety_assurance');
+ALTER TABLE `vibe_manufacturing_v1`.`automation`.`automation_change_request` SET TAGS ('dbx_subdomain' = 'project_management');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`automation_change_request` ALTER COLUMN `automation_change_request_id` SET TAGS ('dbx_business_glossary_term' = 'Automation Change Request Identifier');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`automation_change_request` ALTER COLUMN `plc_program_id` SET TAGS ('dbx_business_glossary_term' = 'Affected PLC Program Identifier');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`automation_change_request` ALTER COLUMN `asset_work_order_id` SET TAGS ('dbx_business_glossary_term' = 'Related Work Order Identifier');
-ALTER TABLE `vibe_manufacturing_v1`.`automation`.`automation_change_request` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`automation`.`automation_change_request` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`automation_change_request` ALTER COLUMN `control_system_id` SET TAGS ('dbx_business_glossary_term' = 'Affected Control System Identifier');
+ALTER TABLE `vibe_manufacturing_v1`.`automation`.`automation_change_request` ALTER COLUMN `customer_account_id` SET TAGS ('dbx_business_glossary_term' = 'Customer Account Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`automation_change_request` ALTER COLUMN `device_registry_id` SET TAGS ('dbx_business_glossary_term' = 'Affected Device Identifier');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`automation_change_request` ALTER COLUMN `ecn_id` SET TAGS ('dbx_business_glossary_term' = 'Ecn Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`automation_change_request` ALTER COLUMN `eco_id` SET TAGS ('dbx_business_glossary_term' = 'Eco Id (Foreign Key)');
-ALTER TABLE `vibe_manufacturing_v1`.`automation`.`automation_change_request` ALTER COLUMN `primary_automation_employee_id` SET TAGS ('dbx_business_glossary_term' = 'Requestor Identifier');
-ALTER TABLE `vibe_manufacturing_v1`.`automation`.`automation_change_request` ALTER COLUMN `primary_automation_employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`automation`.`automation_change_request` ALTER COLUMN `primary_automation_employee_id` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`automation`.`automation_change_request` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Requestor Identifier');
+ALTER TABLE `vibe_manufacturing_v1`.`automation`.`automation_change_request` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`automation`.`automation_change_request` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`automation_change_request` ALTER COLUMN `superseded_automation_change_request_id` SET TAGS ('dbx_business_glossary_term' = 'Superseded Automation Change Request Id');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`automation_change_request` ALTER COLUMN `superseded_automation_change_request_id` SET TAGS ('dbx_self_ref_fk' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`automation_change_request` ALTER COLUMN `tertiary_automation_change_review_by_employee_id` SET TAGS ('dbx_business_glossary_term' = 'Change Review By Identifier');
@@ -2266,8 +2103,6 @@ ALTER TABLE `vibe_manufacturing_v1`.`automation`.`device_connectivity_event` ALT
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`device_connectivity_event` ALTER COLUMN `network_address` SET TAGS ('dbx_business_glossary_term' = 'Network Address (IP)');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`device_connectivity_event` ALTER COLUMN `network_address` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`device_connectivity_event` ALTER COLUMN `network_address` SET TAGS ('dbx_pii_ip' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`automation`.`device_connectivity_event` ALTER COLUMN `network_address` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`automation`.`device_connectivity_event` ALTER COLUMN `network_address` SET TAGS ('dbx_sensitivity' = 'pii');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`device_connectivity_event` ALTER COLUMN `new_state` SET TAGS ('dbx_business_glossary_term' = 'New Connectivity State');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`device_connectivity_event` ALTER COLUMN `new_state` SET TAGS ('dbx_value_regex' = 'online|offline|degraded|timeout|error');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`device_connectivity_event` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Notes');
@@ -2295,8 +2130,6 @@ ALTER TABLE `vibe_manufacturing_v1`.`automation`.`safety_function` ALTER COLUMN 
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`safety_function` ALTER COLUMN `logic_solver_reference` SET TAGS ('dbx_business_glossary_term' = 'Logic Solver Reference');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`safety_function` ALTER COLUMN `mean_time_to_failure_on_demand` SET TAGS ('dbx_business_glossary_term' = 'Mean Time to Failure on Demand (PFDavg)');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`safety_function` ALTER COLUMN `safety_function_name` SET TAGS ('dbx_business_glossary_term' = 'Safety Function Name');
-ALTER TABLE `vibe_manufacturing_v1`.`automation`.`safety_function` ALTER COLUMN `safety_function_name` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_manufacturing_v1`.`automation`.`safety_function` ALTER COLUMN `safety_function_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`safety_function` ALTER COLUMN `process_demand_rate` SET TAGS ('dbx_business_glossary_term' = 'Process Demand Rate (per hour)');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`safety_function` ALTER COLUMN `proof_test_interval_months` SET TAGS ('dbx_business_glossary_term' = 'Proof Test Interval (Months)');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`safety_function` ALTER COLUMN `risk_reduction_factor` SET TAGS ('dbx_business_glossary_term' = 'Risk Reduction Factor (RRF)');
@@ -2321,8 +2154,6 @@ ALTER TABLE `vibe_manufacturing_v1`.`automation`.`proof_test_record` ALTER COLUM
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`proof_test_record` ALTER COLUMN `device_registry_id` SET TAGS ('dbx_business_glossary_term' = 'Component Final Element ID');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`proof_test_record` ALTER COLUMN `proof_component_logic_solver_device_registry_id` SET TAGS ('dbx_business_glossary_term' = 'Component Logic Solver ID');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`proof_test_record` ALTER COLUMN `proof_device_registry_id` SET TAGS ('dbx_business_glossary_term' = 'Component Sensor ID');
-ALTER TABLE `vibe_manufacturing_v1`.`automation`.`proof_test_record` ALTER COLUMN `proof_tested_by_employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`automation`.`proof_test_record` ALTER COLUMN `proof_tested_by_employee_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`proof_test_record` ALTER COLUMN `safety_function_id` SET TAGS ('dbx_business_glossary_term' = 'Safety Instrumented Function ID');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`proof_test_record` ALTER COLUMN `location_id` SET TAGS ('dbx_business_glossary_term' = 'Test Location ID');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`proof_test_record` ALTER COLUMN `test_procedure_id` SET TAGS ('dbx_business_glossary_term' = 'Test Procedure ID');
@@ -2367,18 +2198,16 @@ ALTER TABLE `vibe_manufacturing_v1`.`automation`.`proof_test_record` ALTER COLUM
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`proof_test_record` ALTER COLUMN `test_version` SET TAGS ('dbx_business_glossary_term' = 'Test Procedure Version');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`proof_test_record` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Update Timestamp');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`automation_project` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_manufacturing_v1`.`automation`.`automation_project` SET TAGS ('dbx_subdomain' = 'engineering_validation');
+ALTER TABLE `vibe_manufacturing_v1`.`automation`.`automation_project` SET TAGS ('dbx_subdomain' = 'project_management');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`automation_project` ALTER COLUMN `automation_project_id` SET TAGS ('dbx_business_glossary_term' = 'Automation Project Identifier (AUTOMATION_PROJECT_ID)');
-ALTER TABLE `vibe_manufacturing_v1`.`automation`.`automation_project` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`automation`.`automation_project` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`automation_project` ALTER COLUMN `control_system_id` SET TAGS ('dbx_business_glossary_term' = 'Control System Identifier (CONTROL_SYSTEM_ID)');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`automation_project` ALTER COLUMN `cost_center_id` SET TAGS ('dbx_business_glossary_term' = 'Cost Center Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`automation_project` ALTER COLUMN `customer_account_id` SET TAGS ('dbx_business_glossary_term' = 'Customer Account Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`automation_project` ALTER COLUMN `parent_automation_project_id` SET TAGS ('dbx_business_glossary_term' = 'Parent Automation Project Id');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`automation_project` ALTER COLUMN `parent_automation_project_id` SET TAGS ('dbx_self_ref_fk' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`automation`.`automation_project` ALTER COLUMN `primary_automation_engineer_employee_id` SET TAGS ('dbx_business_glossary_term' = 'Automation Engineer Identifier (AUTOMATION_ENGINEER_ID)');
-ALTER TABLE `vibe_manufacturing_v1`.`automation`.`automation_project` ALTER COLUMN `primary_automation_engineer_employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`automation`.`automation_project` ALTER COLUMN `primary_automation_engineer_employee_id` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`automation`.`automation_project` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Automation Engineer Identifier (AUTOMATION_ENGINEER_ID)');
+ALTER TABLE `vibe_manufacturing_v1`.`automation`.`automation_project` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`automation`.`automation_project` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`automation_project` ALTER COLUMN `profit_center_id` SET TAGS ('dbx_business_glossary_term' = 'Profit Center Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`automation_project` ALTER COLUMN `project_header_id` SET TAGS ('dbx_business_glossary_term' = 'Project Header Id');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`automation_project` ALTER COLUMN `tertiary_automation_approved_by_employee_id` SET TAGS ('dbx_business_glossary_term' = 'Approved By Identifier (APPROVED_BY_ID)');
@@ -2404,8 +2233,6 @@ ALTER TABLE `vibe_manufacturing_v1`.`automation`.`automation_project` ALTER COLU
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`automation_project` ALTER COLUMN `is_critical` SET TAGS ('dbx_business_glossary_term' = 'Critical Project Flag (CRITICAL_PROJECT)');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`automation_project` ALTER COLUMN `is_cybersecurity_hardening` SET TAGS ('dbx_business_glossary_term' = 'Cybersecurity Hardening Flag (CYBERSECURITY_HARDENING)');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`automation_project` ALTER COLUMN `automation_project_name` SET TAGS ('dbx_business_glossary_term' = 'Project Name (PROJECT_NAME)');
-ALTER TABLE `vibe_manufacturing_v1`.`automation`.`automation_project` ALTER COLUMN `automation_project_name` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_manufacturing_v1`.`automation`.`automation_project` ALTER COLUMN `automation_project_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`automation_project` ALTER COLUMN `planned_end_date` SET TAGS ('dbx_business_glossary_term' = 'Planned End Date (PLANNED_END_DATE)');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`automation_project` ALTER COLUMN `planned_start_date` SET TAGS ('dbx_business_glossary_term' = 'Planned Start Date (PLANNED_START_DATE)');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`automation_project` ALTER COLUMN `priority` SET TAGS ('dbx_business_glossary_term' = 'Project Priority (PROJECT_PRIORITY)');
@@ -2434,7 +2261,6 @@ ALTER TABLE `vibe_manufacturing_v1`.`automation`.`io_mapping` ALTER COLUMN `acce
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`io_mapping` ALTER COLUMN `address` SET TAGS ('dbx_business_glossary_term' = 'PLC/DCS Address');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`io_mapping` ALTER COLUMN `address` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`io_mapping` ALTER COLUMN `address` SET TAGS ('dbx_pii_address' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`automation`.`io_mapping` ALTER COLUMN `address` SET TAGS ('dbx_sensitivity' = 'pii');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`io_mapping` ALTER COLUMN `alarm_enabled` SET TAGS ('dbx_business_glossary_term' = 'Alarm Enabled');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`io_mapping` ALTER COLUMN `alarm_priority` SET TAGS ('dbx_business_glossary_term' = 'Alarm Priority');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`io_mapping` ALTER COLUMN `alarm_priority` SET TAGS ('dbx_value_regex' = 'low|medium|high|critical');
@@ -2442,8 +2268,6 @@ ALTER TABLE `vibe_manufacturing_v1`.`automation`.`io_mapping` ALTER COLUMN `cabl
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`io_mapping` ALTER COLUMN `change_reason` SET TAGS ('dbx_business_glossary_term' = 'Change Reason');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`io_mapping` ALTER COLUMN `channel_code` SET TAGS ('dbx_business_glossary_term' = 'I/O Channel Code');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`io_mapping` ALTER COLUMN `channel_name` SET TAGS ('dbx_business_glossary_term' = 'I/O Channel Name');
-ALTER TABLE `vibe_manufacturing_v1`.`automation`.`io_mapping` ALTER COLUMN `channel_name` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_manufacturing_v1`.`automation`.`io_mapping` ALTER COLUMN `channel_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`io_mapping` ALTER COLUMN `channel_number` SET TAGS ('dbx_business_glossary_term' = 'Channel Number');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`io_mapping` ALTER COLUMN `commissioning_date` SET TAGS ('dbx_business_glossary_term' = 'Commissioning Date');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`io_mapping` ALTER COLUMN `commissioning_status` SET TAGS ('dbx_business_glossary_term' = 'Commissioning Status');
@@ -2454,11 +2278,8 @@ ALTER TABLE `vibe_manufacturing_v1`.`automation`.`io_mapping` ALTER COLUMN `dead
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`io_mapping` ALTER COLUMN `decommission_date` SET TAGS ('dbx_business_glossary_term' = 'Decommission Date');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`io_mapping` ALTER COLUMN `io_mapping_description` SET TAGS ('dbx_business_glossary_term' = 'I/O Mapping Description');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`io_mapping` ALTER COLUMN `device_name` SET TAGS ('dbx_business_glossary_term' = 'Device Name');
-ALTER TABLE `vibe_manufacturing_v1`.`automation`.`io_mapping` ALTER COLUMN `device_name` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_manufacturing_v1`.`automation`.`io_mapping` ALTER COLUMN `device_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`io_mapping` ALTER COLUMN `engineering_unit` SET TAGS ('dbx_business_glossary_term' = 'Engineering Unit');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`io_mapping` ALTER COLUMN `field_instrument_tag` SET TAGS ('dbx_business_glossary_term' = 'Field Instrument Tag');
-ALTER TABLE `vibe_manufacturing_v1`.`automation`.`io_mapping` ALTER COLUMN `io_address` SET TAGS ('dbx_sensitivity' = 'pii');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`io_mapping` ALTER COLUMN `io_mapping_status` SET TAGS ('dbx_business_glossary_term' = 'I/O Mapping Status');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`io_mapping` ALTER COLUMN `io_mapping_status` SET TAGS ('dbx_value_regex' = 'active|inactive|decommissioned|planned');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`io_mapping` ALTER COLUMN `io_module_type` SET TAGS ('dbx_business_glossary_term' = 'I/O Module Type');
@@ -2482,7 +2303,6 @@ ALTER TABLE `vibe_manufacturing_v1`.`automation`.`io_mapping` ALTER COLUMN `scan
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`io_mapping` ALTER COLUMN `signal_type` SET TAGS ('dbx_business_glossary_term' = 'Signal Type');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`io_mapping` ALTER COLUMN `signal_type` SET TAGS ('dbx_value_regex' = '4-20mA|0-10V|24VDC|thermocouple|RTD|HART');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`io_mapping` ALTER COLUMN `tag_name` SET TAGS ('dbx_business_glossary_term' = 'Tag Name');
-ALTER TABLE `vibe_manufacturing_v1`.`automation`.`io_mapping` ALTER COLUMN `tag_name` SET TAGS ('dbx_sensitivity' = 'pii');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`io_mapping` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Update Timestamp');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`io_mapping` ALTER COLUMN `version` SET TAGS ('dbx_business_glossary_term' = 'I/O Mapping Version');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`io_mapping` ALTER COLUMN `wiring_terminal` SET TAGS ('dbx_business_glossary_term' = 'Wiring Terminal');
@@ -2522,7 +2342,7 @@ ALTER TABLE `vibe_manufacturing_v1`.`automation`.`fat_sat_record` ALTER COLUMN `
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`fat_sat_record` ALTER COLUMN `test_type` SET TAGS ('dbx_value_regex' = 'FAT|SAT|IFAT|LOOP_CHECK|FUNCTIONAL_TEST');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`fat_sat_record` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Update Timestamp');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`batch_schedule` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_manufacturing_v1`.`automation`.`batch_schedule` SET TAGS ('dbx_subdomain' = 'batch_processing');
+ALTER TABLE `vibe_manufacturing_v1`.`automation`.`batch_schedule` SET TAGS ('dbx_subdomain' = 'batch_production');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`batch_schedule` ALTER COLUMN `batch_schedule_id` SET TAGS ('dbx_business_glossary_term' = 'Batch Schedule Identifier');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`batch_schedule` ALTER COLUMN `line_id` SET TAGS ('dbx_business_glossary_term' = 'Line Id');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`batch_schedule` ALTER COLUMN `parent_batch_schedule_id` SET TAGS ('dbx_business_glossary_term' = 'Parent Batch Schedule Id');
@@ -2544,14 +2364,10 @@ ALTER TABLE `vibe_manufacturing_v1`.`automation`.`batch_schedule` ALTER COLUMN `
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`batch_schedule` ALTER COLUMN `owner_email` SET TAGS ('dbx_business_glossary_term' = 'Owner Email');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`batch_schedule` ALTER COLUMN `owner_email` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`batch_schedule` ALTER COLUMN `owner_email` SET TAGS ('dbx_pii_email' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`automation`.`batch_schedule` ALTER COLUMN `owner_email` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`automation`.`batch_schedule` ALTER COLUMN `owner_email` SET TAGS ('dbx_sensitivity' = 'pii');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`batch_schedule` ALTER COLUMN `priority` SET TAGS ('dbx_business_glossary_term' = 'Priority');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`batch_schedule` ALTER COLUMN `recurrence_pattern` SET TAGS ('dbx_business_glossary_term' = 'Recurrence Pattern');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`batch_schedule` ALTER COLUMN `schedule_code` SET TAGS ('dbx_business_glossary_term' = 'Schedule Code');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`batch_schedule` ALTER COLUMN `schedule_name` SET TAGS ('dbx_business_glossary_term' = 'Schedule Name');
-ALTER TABLE `vibe_manufacturing_v1`.`automation`.`batch_schedule` ALTER COLUMN `schedule_name` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_manufacturing_v1`.`automation`.`batch_schedule` ALTER COLUMN `schedule_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`batch_schedule` ALTER COLUMN `schedule_owner` SET TAGS ('dbx_business_glossary_term' = 'Schedule Owner');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`batch_schedule` ALTER COLUMN `schedule_type` SET TAGS ('dbx_business_glossary_term' = 'Schedule Type');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`batch_schedule` ALTER COLUMN `scheduled_start_time` SET TAGS ('dbx_business_glossary_term' = 'Scheduled Start Time');
@@ -2563,7 +2379,7 @@ ALTER TABLE `vibe_manufacturing_v1`.`automation`.`batch_schedule` ALTER COLUMN `
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`batch_schedule` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Updated Timestamp');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`batch_schedule` ALTER COLUMN `created_by` SET TAGS ('dbx_business_glossary_term' = 'Created By');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`test_case` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_manufacturing_v1`.`automation`.`test_case` SET TAGS ('dbx_subdomain' = 'engineering_validation');
+ALTER TABLE `vibe_manufacturing_v1`.`automation`.`test_case` SET TAGS ('dbx_subdomain' = 'safety_assurance');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`test_case` ALTER COLUMN `test_case_id` SET TAGS ('dbx_business_glossary_term' = 'Test Case Identifier');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`test_case` ALTER COLUMN `automation_script_id` SET TAGS ('dbx_business_glossary_term' = 'Automation Script Id');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`test_case` ALTER COLUMN `parent_test_case_id` SET TAGS ('dbx_business_glossary_term' = 'Parent Test Case Id');
@@ -2584,8 +2400,6 @@ ALTER TABLE `vibe_manufacturing_v1`.`automation`.`test_case` ALTER COLUMN `last_
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`test_case` ALTER COLUMN `last_executed_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Last Executed Timestamp');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`test_case` ALTER COLUMN `last_modified_by` SET TAGS ('dbx_business_glossary_term' = 'Last Modified By');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`test_case` ALTER COLUMN `test_case_name` SET TAGS ('dbx_business_glossary_term' = 'Name');
-ALTER TABLE `vibe_manufacturing_v1`.`automation`.`test_case` ALTER COLUMN `test_case_name` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_manufacturing_v1`.`automation`.`test_case` ALTER COLUMN `test_case_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`test_case` ALTER COLUMN `owner_team` SET TAGS ('dbx_business_glossary_term' = 'Owner Team');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`test_case` ALTER COLUMN `priority` SET TAGS ('dbx_business_glossary_term' = 'Priority');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`test_case` ALTER COLUMN `risk_level` SET TAGS ('dbx_business_glossary_term' = 'Risk Level');
@@ -2598,7 +2412,7 @@ ALTER TABLE `vibe_manufacturing_v1`.`automation`.`test_case` ALTER COLUMN `updat
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`test_case` ALTER COLUMN `version` SET TAGS ('dbx_business_glossary_term' = 'Version');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`test_case` ALTER COLUMN `created_by` SET TAGS ('dbx_business_glossary_term' = 'Created By');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`test_procedure` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_manufacturing_v1`.`automation`.`test_procedure` SET TAGS ('dbx_subdomain' = 'engineering_validation');
+ALTER TABLE `vibe_manufacturing_v1`.`automation`.`test_procedure` SET TAGS ('dbx_subdomain' = 'safety_assurance');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`test_procedure` ALTER COLUMN `test_procedure_id` SET TAGS ('dbx_business_glossary_term' = 'Test Procedure Identifier');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`test_procedure` ALTER COLUMN `parent_test_procedure_id` SET TAGS ('dbx_business_glossary_term' = 'Parent Test Procedure Id');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`test_procedure` ALTER COLUMN `parent_test_procedure_id` SET TAGS ('dbx_self_ref_fk' = 'true');
@@ -2612,9 +2426,6 @@ ALTER TABLE `vibe_manufacturing_v1`.`automation`.`test_procedure` ALTER COLUMN `
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`test_procedure` ALTER COLUMN `is_automated` SET TAGS ('dbx_business_glossary_term' = 'Is Automated');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`test_procedure` ALTER COLUMN `last_reviewed_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Last Reviewed Timestamp');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`test_procedure` ALTER COLUMN `test_procedure_name` SET TAGS ('dbx_business_glossary_term' = 'Name');
-ALTER TABLE `vibe_manufacturing_v1`.`automation`.`test_procedure` ALTER COLUMN `test_procedure_name` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_manufacturing_v1`.`automation`.`test_procedure` ALTER COLUMN `test_procedure_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`automation`.`test_procedure` ALTER COLUMN `procedure_name` SET TAGS ('dbx_sensitivity' = 'pii');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`test_procedure` ALTER COLUMN `procedure_type` SET TAGS ('dbx_business_glossary_term' = 'Procedure Type');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`test_procedure` ALTER COLUMN `required_equipment` SET TAGS ('dbx_business_glossary_term' = 'Required Equipment');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`test_procedure` ALTER COLUMN `safety_rating` SET TAGS ('dbx_business_glossary_term' = 'Safety Rating');
@@ -2623,13 +2434,11 @@ ALTER TABLE `vibe_manufacturing_v1`.`automation`.`test_procedure` ALTER COLUMN `
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`test_procedure` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Updated Timestamp');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`test_procedure` ALTER COLUMN `version` SET TAGS ('dbx_business_glossary_term' = 'Version');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`automation_script` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_manufacturing_v1`.`automation`.`automation_script` SET TAGS ('dbx_subdomain' = 'engineering_validation');
+ALTER TABLE `vibe_manufacturing_v1`.`automation`.`automation_script` SET TAGS ('dbx_subdomain' = 'control_programming');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`automation_script` ALTER COLUMN `automation_script_id` SET TAGS ('dbx_business_glossary_term' = 'Automation Script Identifier');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`automation_script` ALTER COLUMN `called_by_automation_script_id` SET TAGS ('dbx_business_glossary_term' = 'Called By Automation Script Id');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`automation_script` ALTER COLUMN `called_by_automation_script_id` SET TAGS ('dbx_self_ref_fk' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`automation_script` ALTER COLUMN `author_name` SET TAGS ('dbx_business_glossary_term' = 'Author Name');
-ALTER TABLE `vibe_manufacturing_v1`.`automation`.`automation_script` ALTER COLUMN `author_name` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_manufacturing_v1`.`automation`.`automation_script` ALTER COLUMN `author_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`automation_script` ALTER COLUMN `average_execution_time_ms` SET TAGS ('dbx_business_glossary_term' = 'Average Execution Time Ms');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`automation_script` ALTER COLUMN `checksum_sha256` SET TAGS ('dbx_business_glossary_term' = 'Checksum Sha256');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`automation_script` ALTER COLUMN `compliance_requirements` SET TAGS ('dbx_business_glossary_term' = 'Compliance Requirements');
@@ -2649,13 +2458,10 @@ ALTER TABLE `vibe_manufacturing_v1`.`automation`.`automation_script` ALTER COLUM
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`automation_script` ALTER COLUMN `max_execution_time_ms` SET TAGS ('dbx_business_glossary_term' = 'Max Execution Time Ms');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`automation_script` ALTER COLUMN `min_execution_time_ms` SET TAGS ('dbx_business_glossary_term' = 'Min Execution Time Ms');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`automation_script` ALTER COLUMN `automation_script_name` SET TAGS ('dbx_business_glossary_term' = 'Name');
-ALTER TABLE `vibe_manufacturing_v1`.`automation`.`automation_script` ALTER COLUMN `automation_script_name` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_manufacturing_v1`.`automation`.`automation_script` ALTER COLUMN `automation_script_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`automation_script` ALTER COLUMN `output_parameters_schema` SET TAGS ('dbx_business_glossary_term' = 'Output Parameters Schema');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`automation_script` ALTER COLUMN `required_permissions` SET TAGS ('dbx_business_glossary_term' = 'Required Permissions');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`automation_script` ALTER COLUMN `runtime_environment` SET TAGS ('dbx_business_glossary_term' = 'Runtime Environment');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`automation_script` ALTER COLUMN `schedule_cron` SET TAGS ('dbx_business_glossary_term' = 'Schedule Cron');
-ALTER TABLE `vibe_manufacturing_v1`.`automation`.`automation_script` ALTER COLUMN `script_name` SET TAGS ('dbx_sensitivity' = 'pii');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`automation_script` ALTER COLUMN `script_type` SET TAGS ('dbx_business_glossary_term' = 'Script Type');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`automation_script` ALTER COLUMN `security_classification` SET TAGS ('dbx_business_glossary_term' = 'Security Classification');
 ALTER TABLE `vibe_manufacturing_v1`.`automation`.`automation_script` ALTER COLUMN `automation_script_status` SET TAGS ('dbx_business_glossary_term' = 'Status');

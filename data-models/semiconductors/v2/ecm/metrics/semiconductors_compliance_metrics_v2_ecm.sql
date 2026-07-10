@@ -1,165 +1,68 @@
--- Metric views for domain: compliance | Business: Semiconductors | Version: 2 | Generated on: 2026-06-28 00:14:33
+-- Metric views for domain: compliance | Business: Semiconductors | Version: 2 | Generated on: 2026-07-10 11:52:05
 
 CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`compliance_audit_event`
 WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Compliance audit performance and finding metrics for certification and regulatory adherence"
+  comment: "Operational and strategic KPIs for compliance audit events — tracks audit volume, closure rates, risk distribution, and corrective action timeliness to steer the compliance program."
   source: "`vibe_semiconductors_v1`.`compliance`.`audit_event`"
   dimensions:
+    - name: "audit_category"
+      expr: audit_category
+      comment: "Category of the audit (e.g. supplier, internal, regulatory) for segmenting audit performance."
     - name: "audit_type"
       expr: audit_type
-      comment: "Type of audit conducted (internal, external, surveillance, etc.)"
-    - name: "audit_status"
-      expr: audit_status
-      comment: "Current status of the audit"
+      comment: "Type of audit (e.g. first-party, second-party, third-party) to compare audit program composition."
     - name: "audit_standard"
       expr: audit_standard
-      comment: "Standard or regulation audited against (ISO 9001, IATF 16949, etc.)"
-    - name: "audit_conclusion"
-      expr: audit_conclusion
-      comment: "Overall conclusion of the audit"
+      comment: "Governing standard under which the audit was conducted (e.g. ISO 9001, IATF 16949)."
+    - name: "risk_level"
+      expr: risk_level
+      comment: "Risk level assigned to the audit outcome — used to prioritize follow-up actions."
+    - name: "closure_status"
+      expr: closure_status
+      comment: "Current closure status of the audit — drives open-audit aging analysis."
+    - name: "overall_result"
+      expr: overall_result
+      comment: "Pass/fail/conditional result of the audit for trend and pass-rate analysis."
+    - name: "audit_region"
+      expr: audit_region
+      comment: "Geographic region where the audit was conducted — enables regional compliance benchmarking."
+    - name: "auditing_body"
+      expr: auditing_body
+      comment: "Organization or body that conducted the audit (internal team, third-party registrar, etc.)."
+    - name: "lifecycle_status"
+      expr: lifecycle_status
+      comment: "Lifecycle stage of the audit record (open, in-review, closed, archived)."
+    - name: "audit_start_month"
+      expr: DATE_TRUNC('MONTH', audit_start_date)
+      comment: "Month the audit started — used for trend analysis of audit activity over time."
     - name: "audit_year"
-      expr: YEAR(actual_start_date)
-      comment: "Year the audit was conducted"
-    - name: "audit_quarter"
-      expr: CONCAT('Q', QUARTER(actual_start_date), '-', YEAR(actual_start_date))
-      comment: "Quarter the audit was conducted"
-    - name: "audit_month"
-      expr: DATE_TRUNC('MONTH', actual_start_date)
-      comment: "Month the audit was conducted"
+      expr: YEAR(audit_start_date)
+      comment: "Year the audit started — supports annual compliance program reporting."
   measures:
     - name: "total_audits"
       expr: COUNT(1)
-      comment: "Total number of compliance audits conducted"
-    - name: "total_findings"
-      expr: SUM(CAST(finding_count AS BIGINT))
-      comment: "Total number of audit findings across all audits"
-    - name: "avg_findings_per_audit"
-      expr: AVG(CAST(finding_count AS DOUBLE))
-      comment: "Average number of findings per audit"
-    - name: "total_major_nonconformities"
-      expr: SUM(CAST(major_nonconformity_count AS BIGINT))
-      comment: "Total number of major nonconformities identified"
-    - name: "total_minor_nonconformities"
-      expr: SUM(CAST(minor_nonconformity_count AS BIGINT))
-      comment: "Total number of minor nonconformities identified"
-    - name: "total_observations"
-      expr: SUM(CAST(observation_count AS BIGINT))
-      comment: "Total number of observations noted"
-    - name: "major_nonconformity_rate"
-      expr: ROUND(100.0 * SUM(CAST(major_nonconformity_count AS BIGINT)) / NULLIF(SUM(CAST(finding_count AS BIGINT)), 0), 2)
-      comment: "Percentage of findings that are major nonconformities"
-    - name: "audits_with_major_nc"
-      expr: SUM(CASE WHEN CAST(major_nonconformity_count AS BIGINT) > 0 THEN 1 ELSE 0 END)
-      comment: "Number of audits with at least one major nonconformity"
-    - name: "unique_sites_audited"
-      expr: COUNT(DISTINCT site_id)
-      comment: "Number of unique sites audited"
-$$;
-
-CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`compliance_certification`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Certification lifecycle and audit readiness metrics for quality and regulatory compliance"
-  source: "`vibe_semiconductors_v1`.`compliance`.`certification`"
-  dimensions:
-    - name: "certification_status"
-      expr: certification_status
-      comment: "Current status of the certification"
-    - name: "standard"
-      expr: standard
-      comment: "Certification standard (ISO 9001, IATF 16949, etc.)"
-    - name: "certifying_body"
-      expr: body
-      comment: "Certification body that issued the certificate"
-    - name: "certification_year"
-      expr: YEAR(effective_date)
-      comment: "Year the certification became effective"
-  measures:
-    - name: "total_certifications"
-      expr: COUNT(1)
-      comment: "Total number of certifications"
-    - name: "active_certifications"
-      expr: SUM(CASE WHEN certification_status = 'Active' THEN 1 ELSE 0 END)
-      comment: "Number of certifications currently active"
-    - name: "expired_certifications"
-      expr: SUM(CASE WHEN certification_status = 'Expired' THEN 1 ELSE 0 END)
-      comment: "Number of certifications that have expired"
-    - name: "total_nonconformities"
-      expr: SUM(CAST(nonconformity_count AS BIGINT))
-      comment: "Total number of nonconformities across all certifications"
-    - name: "avg_nonconformities_per_cert"
-      expr: AVG(CAST(nonconformity_count AS DOUBLE))
-      comment: "Average number of nonconformities per certification"
-    - name: "unique_sites_certified"
-      expr: COUNT(DISTINCT site_id)
-      comment: "Number of unique sites with certifications"
-    - name: "unique_products_certified"
-      expr: COUNT(DISTINCT ic_catalog_id)
-      comment: "Number of unique products covered by certifications"
-    - name: "unique_standards"
-      expr: COUNT(DISTINCT standard)
-      comment: "Number of unique certification standards held"
-$$;
-
-CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`compliance_chips_act_obligation`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "CHIPS Act funding compliance and reporting obligation metrics"
-  source: "`vibe_semiconductors_v1`.`compliance`.`chips_act_obligation`"
-  dimensions:
-    - name: "obligation_type"
-      expr: obligation_type
-      comment: "Type of CHIPS Act obligation"
-    - name: "obligation_status"
-      expr: obligation_status
-      comment: "Current status of the obligation"
-    - name: "guardrail_provision"
-      expr: guardrail_provision
-      comment: "Specific guardrail provision applicable"
-    - name: "clawback_risk"
-      expr: clawback_risk_flag
-      comment: "Whether there is clawback risk for this obligation"
-    - name: "reporting_frequency"
-      expr: reporting_frequency
-      comment: "Required reporting frequency for the obligation"
-    - name: "obligation_year"
-      expr: YEAR(compliance_deadline)
-      comment: "Year of compliance deadline"
-  measures:
-    - name: "total_obligations"
-      expr: COUNT(1)
-      comment: "Total number of CHIPS Act obligations"
-    - name: "total_funding_amount"
-      expr: SUM(CAST(funding_amount_usd AS DOUBLE))
-      comment: "Total CHIPS Act funding amount in USD"
-    - name: "avg_funding_amount"
-      expr: AVG(CAST(funding_amount_usd AS DOUBLE))
-      comment: "Average funding amount per obligation"
-    - name: "clawback_risk_count"
-      expr: SUM(CASE WHEN clawback_risk_flag = true THEN 1 ELSE 0 END)
-      comment: "Number of obligations with clawback risk"
-    - name: "clawback_risk_rate"
-      expr: ROUND(100.0 * SUM(CASE WHEN clawback_risk_flag = true THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percentage of obligations with clawback risk"
-    - name: "funding_at_risk"
-      expr: SUM(CASE WHEN clawback_risk_flag = true THEN CAST(funding_amount_usd AS DOUBLE) ELSE 0 END)
-      comment: "Total funding amount at risk of clawback"
-    - name: "compliant_obligations"
-      expr: SUM(CASE WHEN obligation_status = 'Compliant' THEN 1 ELSE 0 END)
-      comment: "Number of obligations in compliant status"
-    - name: "compliance_rate"
-      expr: ROUND(100.0 * SUM(CASE WHEN obligation_status = 'Compliant' THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percentage of obligations in compliant status"
-    - name: "unique_sites_obligated"
-      expr: COUNT(DISTINCT site_id)
-      comment: "Number of unique sites with CHIPS Act obligations"
+      comment: "Total number of audit events — baseline volume metric for compliance program coverage."
+    - name: "open_audits"
+      expr: COUNT(CASE WHEN closure_status != 'Closed' THEN 1 END)
+      comment: "Number of audits not yet closed — high open count signals compliance program backlog risk."
+    - name: "high_risk_audits"
+      expr: COUNT(CASE WHEN risk_level = 'High' THEN 1 END)
+      comment: "Count of audits rated high risk — executives use this to prioritize remediation resources."
+    - name: "audit_closure_rate_pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN closure_status = 'Closed' THEN 1 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percentage of audits that have been closed — key KPI for compliance program effectiveness and velocity."
+    - name: "audits_with_corrective_action_overdue"
+      expr: COUNT(CASE WHEN corrective_action_due_date < CURRENT_DATE AND closure_status != 'Closed' THEN 1 END)
+      comment: "Audits where the corrective action due date has passed but the audit is still open — a critical risk indicator for regulatory exposure."
+    - name: "distinct_auditing_bodies"
+      expr: COUNT(DISTINCT auditing_body)
+      comment: "Number of distinct auditing bodies engaged — reflects breadth of third-party oversight and certification coverage."
+    - name: "distinct_audit_standards_covered"
+      expr: COUNT(DISTINCT audit_standard)
+      comment: "Number of distinct standards audited against — measures compliance program scope and regulatory coverage."
 $$;
 
 CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`compliance_audit_finding`
@@ -167,173 +70,108 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Audit finding resolution and corrective action effectiveness metrics"
+  comment: "KPIs for compliance audit findings — tracks finding severity, resolution velocity, and corrective action effectiveness to drive quality and regulatory risk reduction."
   source: "`vibe_semiconductors_v1`.`compliance`.`compliance_audit_finding`"
   dimensions:
     - name: "finding_type"
       expr: finding_type
-      comment: "Type of audit finding (major nonconformity, minor nonconformity, observation, etc.)"
-    - name: "finding_status"
-      expr: finding_status
-      comment: "Current status of the finding (open, closed, overdue, etc.)"
-    - name: "risk_level"
-      expr: risk_level
-      comment: "Risk level associated with the finding"
-    - name: "effectiveness_verified"
-      expr: effectiveness_verified_flag
-      comment: "Whether corrective action effectiveness has been verified"
-    - name: "finding_year"
-      expr: YEAR(due_date)
-      comment: "Year the finding is due for closure"
-    - name: "finding_quarter"
-      expr: CONCAT('Q', QUARTER(due_date), '-', YEAR(due_date))
-      comment: "Quarter the finding is due for closure"
+      comment: "Type of finding (major non-conformance, minor non-conformance, observation) — drives prioritization."
+    - name: "risk_rating"
+      expr: risk_rating
+      comment: "Risk rating of the finding — used to triage and escalate high-risk compliance gaps."
+    - name: "compliance_audit_finding_status"
+      expr: compliance_audit_finding_status
+      comment: "Current status of the finding (open, in-progress, closed, verified) — tracks resolution pipeline."
+    - name: "clause_violated"
+      expr: clause_violated
+      comment: "Specific regulatory or standard clause violated — identifies systemic compliance weaknesses."
+    - name: "root_cause_method"
+      expr: root_cause_method
+      comment: "Root cause analysis method used (5-Why, Fishbone, etc.) — assesses rigor of corrective action."
+    - name: "target_completion_month"
+      expr: DATE_TRUNC('MONTH', target_completion_date)
+      comment: "Month the finding is targeted for closure — used for workload forecasting and deadline tracking."
+    - name: "created_month"
+      expr: DATE_TRUNC('MONTH', created_timestamp)
+      comment: "Month the finding was created — supports trend analysis of finding discovery rates."
   measures:
     - name: "total_findings"
       expr: COUNT(1)
-      comment: "Total number of audit findings"
+      comment: "Total number of audit findings — baseline measure for compliance finding volume."
     - name: "open_findings"
-      expr: SUM(CASE WHEN finding_status = 'Open' THEN 1 ELSE 0 END)
-      comment: "Number of findings currently open"
-    - name: "closed_findings"
-      expr: SUM(CASE WHEN finding_status = 'Closed' THEN 1 ELSE 0 END)
-      comment: "Number of findings that have been closed"
-    - name: "closure_rate"
-      expr: ROUND(100.0 * SUM(CASE WHEN finding_status = 'Closed' THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percentage of findings that have been closed"
+      expr: COUNT(CASE WHEN compliance_audit_finding_status NOT IN ('Closed', 'Verified') THEN 1 END)
+      comment: "Number of findings not yet closed or verified — open finding backlog is a direct regulatory risk indicator."
     - name: "overdue_findings"
-      expr: SUM(CASE WHEN finding_status = 'Overdue' THEN 1 ELSE 0 END)
-      comment: "Number of findings past their due date"
-    - name: "effectiveness_verified_count"
-      expr: SUM(CASE WHEN effectiveness_verified_flag = true THEN 1 ELSE 0 END)
-      comment: "Number of findings with verified corrective action effectiveness"
-    - name: "effectiveness_verification_rate"
-      expr: ROUND(100.0 * SUM(CASE WHEN effectiveness_verified_flag = true THEN 1 ELSE 0 END) / NULLIF(SUM(CASE WHEN finding_status = 'Closed' THEN 1 ELSE 0 END), 0), 2)
-      comment: "Percentage of closed findings with verified effectiveness"
+      expr: COUNT(CASE WHEN target_completion_date < CURRENT_DATE AND compliance_audit_finding_status NOT IN ('Closed', 'Verified') THEN 1 END)
+      comment: "Findings past their target completion date without closure — signals corrective action program failure and regulatory exposure."
+    - name: "finding_closure_rate_pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN compliance_audit_finding_status IN ('Closed', 'Verified') THEN 1 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percentage of findings that have been closed or verified — primary KPI for corrective action program effectiveness."
     - name: "high_risk_findings"
-      expr: SUM(CASE WHEN risk_level = 'High' THEN 1 ELSE 0 END)
-      comment: "Number of high-risk findings"
+      expr: COUNT(CASE WHEN risk_rating = 'High' THEN 1 END)
+      comment: "Count of high-risk findings — executives use this to assess severity of compliance gaps and prioritize remediation investment."
+    - name: "findings_with_preventive_action"
+      expr: COUNT(CASE WHEN preventive_action_plan IS NOT NULL AND preventive_action_plan != '' THEN 1 END)
+      comment: "Findings that have a documented preventive action plan — measures maturity of the compliance corrective action program."
+    - name: "findings_effectiveness_verified"
+      expr: COUNT(CASE WHEN effectiveness_verification_date IS NOT NULL THEN 1 END)
+      comment: "Findings where effectiveness of the corrective action has been verified — a quality systems maturity indicator required by ISO standards."
 $$;
 
-CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`compliance_conflict_minerals_declaration`
+CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`compliance_certification`
 WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Conflict minerals due diligence and supply chain transparency metrics"
-  source: "`vibe_semiconductors_v1`.`compliance`.`conflict_minerals_declaration`"
+  comment: "Strategic KPIs for compliance certifications — tracks certification health, expiry risk, and audit readiness across the semiconductor enterprise."
+  source: "`vibe_semiconductors_v1`.`compliance`.`certification`"
   dimensions:
-    - name: "declaration_status"
-      expr: declaration_status
-      comment: "Status of the conflict minerals declaration"
-    - name: "due_diligence_status"
-      expr: due_diligence_status
-      comment: "Status of supplier due diligence process"
-    - name: "drc_conflict_free"
-      expr: drc_conflict_free_flag
-      comment: "Whether materials are DRC conflict-free"
-    - name: "cmrt_version"
-      expr: cmrt_version
-      comment: "Version of Conflict Minerals Reporting Template used"
-    - name: "reporting_year"
-      expr: reporting_year
-      comment: "Reporting year for conflict minerals"
-    - name: "smelter_list_provided"
-      expr: smelter_list_provided_flag
-      comment: "Whether supplier provided smelter list"
+    - name: "certification_type"
+      expr: certification_type
+      comment: "Type of certification (ISO 9001, ISO 14001, IATF 16949, etc.) — used to track coverage by standard."
+    - name: "certification_status"
+      expr: certification_status
+      comment: "Current status of the certification (active, suspended, expired, pending) — primary health indicator."
+    - name: "compliance_category"
+      expr: compliance_category
+      comment: "Compliance category (quality, environmental, safety, export) — enables cross-category portfolio analysis."
+    - name: "compliance_risk_level"
+      expr: compliance_risk_level
+      comment: "Risk level associated with the certification — used to prioritize renewal and audit resources."
+    - name: "certifying_body"
+      expr: certifying_body
+      comment: "Organization that issued the certification — tracks registrar relationships and audit body diversity."
+    - name: "process_area"
+      expr: process_area
+      comment: "Process area covered by the certification — maps certifications to operational scope."
+    - name: "expiry_year"
+      expr: YEAR(expiry_date)
+      comment: "Year the certification expires — used for renewal planning and budget forecasting."
+    - name: "issue_year"
+      expr: YEAR(issue_date)
+      comment: "Year the certification was issued — supports certification age and renewal cycle analysis."
   measures:
-    - name: "total_declarations"
+    - name: "total_certifications"
       expr: COUNT(1)
-      comment: "Total number of conflict minerals declarations"
-    - name: "drc_conflict_free_count"
-      expr: SUM(CASE WHEN drc_conflict_free_flag = true THEN 1 ELSE 0 END)
-      comment: "Number of declarations certified as DRC conflict-free"
-    - name: "drc_conflict_free_rate"
-      expr: ROUND(100.0 * SUM(CASE WHEN drc_conflict_free_flag = true THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percentage of declarations that are DRC conflict-free"
-    - name: "smelter_list_provided_count"
-      expr: SUM(CASE WHEN smelter_list_provided_flag = true THEN 1 ELSE 0 END)
-      comment: "Number of declarations with smelter list provided"
-    - name: "smelter_list_compliance_rate"
-      expr: ROUND(100.0 * SUM(CASE WHEN smelter_list_provided_flag = true THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percentage of declarations with smelter list provided"
-    - name: "gold_present_count"
-      expr: SUM(CASE WHEN gold_present_flag = true THEN 1 ELSE 0 END)
-      comment: "Number of declarations with gold present"
-    - name: "tantalum_present_count"
-      expr: SUM(CASE WHEN tantalum_present_flag = true THEN 1 ELSE 0 END)
-      comment: "Number of declarations with tantalum present"
-    - name: "tin_present_count"
-      expr: SUM(CASE WHEN tin_present_flag = true THEN 1 ELSE 0 END)
-      comment: "Number of declarations with tin present"
-    - name: "tungsten_present_count"
-      expr: SUM(CASE WHEN tungsten_present_flag = true THEN 1 ELSE 0 END)
-      comment: "Number of declarations with tungsten present"
-    - name: "unique_suppliers_declaring"
-      expr: COUNT(DISTINCT supplier_id)
-      comment: "Number of unique suppliers providing conflict minerals declarations"
-    - name: "unique_products_declared"
-      expr: COUNT(DISTINCT ic_catalog_id)
-      comment: "Number of unique products with conflict minerals declarations"
-$$;
-
-CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`compliance_eccn_classification`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Export control classification KPIs — tracks ECCN classification coverage, license exception availability, and classification currency to ensure all products are properly classified before export."
-  source: "`vibe_semiconductors_v1`.`compliance`.`eccn_classification`"
-  dimensions:
-    - name: "eccn_code"
-      expr: eccn_code
-      comment: "The ECCN code assigned to the item (e.g., 3E001, EAR99), used to segment the portfolio by control level."
-    - name: "classification_status"
-      expr: classification_status
-      comment: "Current status of the classification (Active, Expired, Under Review) for portfolio health monitoring."
-    - name: "control_reason"
-      expr: control_reason
-      comment: "Reason for export control (NS, AT, MT, etc.) used to understand the regulatory basis for controls."
-    - name: "license_exception_available"
-      expr: license_exception_available
-      comment: "Whether a license exception is available for this classification, reducing licensing burden."
-    - name: "license_exception_type"
-      expr: license_exception_type
-      comment: "Type of license exception available (e.g., ENC, STA, TMP) for exception utilization analysis."
-    - name: "technology_level"
-      expr: technology_level
-      comment: "Technology level of the classified item, used to assess strategic sensitivity of the portfolio."
-    - name: "classification_year"
-      expr: YEAR(classification_date)
-      comment: "Year the classification was performed, used for classification vintage and refresh cycle analysis."
-    - name: "commodity_jurisdiction"
-      expr: commodity_jurisdiction
-      comment: "Jurisdiction governing the commodity (EAR or ITAR), the most fundamental export control segmentation."
-  measures:
-    - name: "total_classifications"
-      expr: COUNT(1)
-      comment: "Total number of ECCN classification records. Baseline measure of classification program scope."
-    - name: "active_classification_count"
-      expr: COUNT(CASE WHEN classification_status = 'Active' THEN 1 END)
-      comment: "Number of currently active ECCN classifications. Measures the size of the actively controlled product portfolio."
-    - name: "expired_classification_count"
-      expr: COUNT(CASE WHEN classification_status = 'Expired' THEN 1 END)
-      comment: "Number of expired ECCN classifications. Expired classifications create export control gaps — products may be shipped without valid authorization."
+      comment: "Total number of certifications held — baseline measure for compliance certification portfolio size."
+    - name: "active_certifications"
+      expr: COUNT(CASE WHEN certification_status = 'Active' THEN 1 END)
+      comment: "Number of currently active certifications — directly reflects the company's compliance standing with customers and regulators."
     - name: "expiring_within_90_days"
-      expr: COUNT(CASE WHEN classification_status = 'Active' AND expiry_date <= DATE_ADD(CURRENT_DATE(), 90) THEN 1 END)
-      comment: "Active classifications expiring within 90 days. Drives proactive reclassification to prevent export authorization gaps."
-    - name: "license_exception_eligible_count"
-      expr: COUNT(CASE WHEN license_exception_available = TRUE THEN 1 END)
-      comment: "Number of classifications where a license exception is available. Higher counts reduce licensing overhead and accelerate time-to-ship."
-    - name: "license_exception_eligible_rate_pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN license_exception_available = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percentage of classifications eligible for a license exception. A key efficiency metric — higher rates mean fewer individual licenses needed."
-    - name: "itar_controlled_count"
-      expr: COUNT(CASE WHEN commodity_jurisdiction = 'ITAR' THEN 1 END)
-      comment: "Number of items under ITAR jurisdiction. ITAR items carry the highest compliance burden and penalty risk, requiring dedicated executive oversight."
-    - name: "overdue_review_count"
-      expr: COUNT(CASE WHEN review_date < CURRENT_DATE() AND classification_status = 'Active' THEN 1 END)
-      comment: "Active classifications whose scheduled review date has passed. Overdue reviews indicate stale classifications that may no longer reflect current technology controls."
+      expr: COUNT(CASE WHEN expiry_date BETWEEN CURRENT_DATE AND DATE_ADD(CURRENT_DATE, 90) THEN 1 END)
+      comment: "Certifications expiring within 90 days — critical early-warning KPI for renewal risk management."
+    - name: "expired_certifications"
+      expr: COUNT(CASE WHEN expiry_date < CURRENT_DATE AND certification_status != 'Expired' THEN 1 END)
+      comment: "Certifications that have passed their expiry date but are not yet marked expired — identifies compliance data quality and governance gaps."
+    - name: "recertification_required_count"
+      expr: COUNT(CASE WHEN recertification_required = TRUE THEN 1 END)
+      comment: "Number of certifications requiring recertification — drives renewal workload planning and resource allocation."
+    - name: "internal_audit_required_count"
+      expr: COUNT(CASE WHEN internal_audit_required = TRUE THEN 1 END)
+      comment: "Certifications requiring internal audits — used to plan internal audit program capacity."
+    - name: "certification_active_rate_pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN certification_status = 'Active' THEN 1 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percentage of certifications currently active — executive-level health score for the compliance certification portfolio."
 $$;
 
 CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`compliance_export_license`
@@ -341,61 +179,49 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Strategic KPIs for export license portfolio management — tracks license value ceilings, expiry risk, and renewal pipeline to ensure uninterrupted shipment authorizations."
+  comment: "Export control KPIs — tracks license portfolio health, utilization ceiling, and expiry risk to ensure EAR/ITAR compliance and prevent shipment holds."
   source: "`vibe_semiconductors_v1`.`compliance`.`export_license`"
   dimensions:
     - name: "license_type"
       expr: license_type
-      comment: "Type of export license (e.g., EAR99, ITAR, BIS) used to segment the portfolio by regulatory regime."
+      comment: "Type of export license (STA, individual, license exception) — used to analyze license portfolio composition."
     - name: "export_license_status"
       expr: export_license_status
-      comment: "Current lifecycle status of the license (Active, Expired, Pending, Revoked) for pipeline and risk analysis."
+      comment: "Current status of the license (active, expired, revoked, pending) — primary health indicator for export compliance."
     - name: "issuing_authority"
       expr: issuing_authority
-      comment: "Regulatory body that issued the license (e.g., BIS, DDTC) for authority-level reporting."
-    - name: "authorized_countries"
-      expr: authorized_countries
-      comment: "Countries authorized under the license, enabling geographic compliance coverage analysis."
-    - name: "renewal_required"
-      expr: renewal_required
-      comment: "Boolean flag indicating whether the license requires renewal, used to prioritize renewal workload."
+      comment: "Government authority that issued the license (BIS, DDTC, etc.) — tracks regulatory body relationships."
+    - name: "registration_category"
+      expr: registration_category
+      comment: "USML or EAR registration category — used to segment licenses by controlled technology type."
     - name: "effective_from_year"
       expr: YEAR(effective_from)
-      comment: "Year the license became effective, used for cohort and vintage analysis."
-    - name: "effective_until_year"
-      expr: YEAR(effective_until)
-      comment: "Year the license expires, used to identify near-term expiry risk cohorts."
-    - name: "usml_category"
-      expr: usml_category
-      comment: "USML category of the licensed commodity, critical for ITAR compliance segmentation."
-    - name: "verification_status"
-      expr: verification_status
-      comment: "Status of the end-use verification process, indicating due-diligence completeness."
+      comment: "Year the license became effective — supports license vintage and renewal cycle analysis."
+    - name: "renewal_required"
+      expr: renewal_required
+      comment: "Whether the license requires renewal — used to plan renewal workload and avoid lapses."
   measures:
-    - name: "total_licenses"
+    - name: "total_export_licenses"
       expr: COUNT(1)
-      comment: "Total number of export licenses in the portfolio. Baseline KPI for license portfolio size and workload."
-    - name: "active_license_count"
+      comment: "Total number of export licenses in the portfolio — baseline measure for export control program scope."
+    - name: "active_export_licenses"
       expr: COUNT(CASE WHEN export_license_status = 'Active' THEN 1 END)
-      comment: "Number of currently active export licenses. Directly measures the organization's authorized export capacity."
-    - name: "expiring_within_90_days"
-      expr: COUNT(CASE WHEN export_license_status = 'Active' AND effective_until <= DATE_ADD(CURRENT_DATE(), 90) THEN 1 END)
-      comment: "Active licenses expiring within 90 days. Critical risk KPI — licenses not renewed in time halt shipments and create revenue risk."
-    - name: "total_authorized_value_usd"
+      comment: "Number of currently active export licenses — directly determines which shipments can legally proceed."
+    - name: "licenses_expiring_within_90_days"
+      expr: COUNT(CASE WHEN effective_until BETWEEN CURRENT_DATE AND DATE_ADD(CURRENT_DATE, 90) THEN 1 END)
+      comment: "Export licenses expiring within 90 days — critical risk indicator; expired licenses halt shipments and create revenue risk."
+    - name: "total_authorized_value_ceiling_usd"
       expr: SUM(CAST(value_ceiling AS DOUBLE))
-      comment: "Sum of all authorized value ceilings across the license portfolio in USD. Measures the total export authorization capacity available to the business."
-    - name: "avg_authorized_value_usd"
+      comment: "Total authorized value ceiling across all export licenses in USD — measures the aggregate export authorization capacity of the business."
+    - name: "avg_authorized_value_ceiling_usd"
       expr: AVG(CAST(value_ceiling AS DOUBLE))
-      comment: "Average authorized value ceiling per export license. Benchmarks license sizing and identifies under- or over-authorized licenses."
-    - name: "renewal_required_count"
+      comment: "Average authorized value ceiling per export license — used to benchmark license sizing and identify under-authorized licenses."
+    - name: "licenses_requiring_renewal"
       expr: COUNT(CASE WHEN renewal_required = TRUE THEN 1 END)
-      comment: "Number of licenses flagged as requiring renewal. Drives renewal workload planning and compliance calendar management."
-    - name: "unverified_license_count"
-      expr: COUNT(CASE WHEN verification_status != 'Verified' OR verification_status IS NULL THEN 1 END)
-      comment: "Licenses without a completed end-use verification. Unverified licenses represent regulatory exposure and potential enforcement risk."
-    - name: "license_active_rate_pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN export_license_status = 'Active' THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percentage of licenses that are currently active. Measures the health and utilization of the export license portfolio."
+      comment: "Number of licenses flagged for renewal — drives export compliance team workload planning."
+    - name: "distinct_issuing_authorities"
+      expr: COUNT(DISTINCT issuing_authority)
+      comment: "Number of distinct government authorities that have issued licenses — reflects regulatory jurisdiction breadth of the export program."
 $$;
 
 CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`compliance_export_license_usage`
@@ -403,61 +229,58 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Export license utilization and compliance tracking metrics for trade control and regulatory adherence"
+  comment: "Export license utilization KPIs — tracks declared value, license balance consumption, and usage patterns to prevent over-utilization and ensure EAR/ITAR compliance."
   source: "`vibe_semiconductors_v1`.`compliance`.`export_license_usage`"
   dimensions:
-    - name: "destination_country"
-      expr: destination_country_code
-      comment: "Destination country for export shipment"
-    - name: "export_control_regulation"
-      expr: export_control_regulation
-      comment: "Applicable export control regulation (EAR, ITAR, etc.)"
-    - name: "compliance_status"
-      expr: compliance_status
-      comment: "Current compliance status of the export license usage"
-    - name: "export_license_type"
-      expr: export_license_type
-      comment: "Type of export license used"
     - name: "export_license_usage_status"
       expr: export_license_usage_status
-      comment: "Status of the license usage record"
-    - name: "commodity_usml_category"
-      expr: commodity_usml_category
-      comment: "USML category for controlled commodities"
-    - name: "export_year"
-      expr: YEAR(export_date)
-      comment: "Year of export transaction"
-    - name: "export_quarter"
-      expr: CONCAT('Q', QUARTER(export_date), '-', YEAR(export_date))
-      comment: "Quarter of export transaction"
+      comment: "Status of the usage record (pending, approved, shipped, rejected) — tracks usage pipeline."
+    - name: "compliance_status"
+      expr: compliance_status
+      comment: "Compliance status of the usage transaction — identifies non-compliant shipments requiring intervention."
+    - name: "destination_country_code"
+      expr: destination_country_code
+      comment: "Destination country of the export — used for geographic risk analysis and restricted country monitoring."
+    - name: "export_license_type"
+      expr: export_license_type
+      comment: "Type of export license used for the transaction — supports license type utilization analysis."
+    - name: "export_control_regulation"
+      expr: export_control_regulation
+      comment: "Applicable export control regulation (EAR, ITAR, etc.) — segments usage by regulatory framework."
+    - name: "is_sensitive"
+      expr: is_sensitive
+      comment: "Whether the export transaction involves sensitive technology — used to flag high-risk transactions for enhanced review."
     - name: "export_month"
       expr: DATE_TRUNC('MONTH', export_date)
-      comment: "Month of export transaction"
+      comment: "Month of the export transaction — supports monthly export volume and value trend analysis."
+    - name: "currency_code"
+      expr: currency_code
+      comment: "Currency of the declared value — used for multi-currency export value analysis."
   measures:
     - name: "total_export_transactions"
       expr: COUNT(1)
-      comment: "Total number of export license usage transactions"
+      comment: "Total number of export license usage transactions — baseline volume metric for export activity."
     - name: "total_declared_value"
       expr: SUM(CAST(declared_value AS DOUBLE))
-      comment: "Total declared value of all export transactions"
-    - name: "avg_declared_value"
+      comment: "Total declared value of all export transactions — key financial metric for export program scale and license ceiling utilization."
+    - name: "avg_declared_value_per_transaction"
       expr: AVG(CAST(declared_value AS DOUBLE))
-      comment: "Average declared value per export transaction"
+      comment: "Average declared value per export transaction — used to benchmark transaction sizing and detect anomalies."
+    - name: "total_quantity_exported"
+      expr: SUM(CAST(quantity AS DOUBLE))
+      comment: "Total quantity of items exported across all transactions — measures physical export volume for license utilization tracking."
     - name: "avg_license_utilization_pct"
       expr: AVG(CAST(cumulative_license_utilization_percent AS DOUBLE))
-      comment: "Average cumulative license utilization percentage across transactions"
-    - name: "unique_destination_countries"
+      comment: "Average cumulative license utilization percentage across transactions — licenses approaching 100% require immediate renewal to prevent shipment holds."
+    - name: "total_license_balance_remaining"
+      expr: SUM(CAST(license_balance_remaining AS DOUBLE))
+      comment: "Total remaining license balance across all active usage records — measures aggregate export authorization headroom."
+    - name: "sensitive_transaction_count"
+      expr: COUNT(CASE WHEN is_sensitive = TRUE THEN 1 END)
+      comment: "Number of sensitive export transactions — high-risk transactions requiring enhanced compliance review and executive awareness."
+    - name: "distinct_destination_countries"
       expr: COUNT(DISTINCT destination_country_code)
-      comment: "Number of unique destination countries for exports"
-    - name: "unique_end_users"
-      expr: COUNT(DISTINCT end_user_name)
-      comment: "Number of unique end users receiving exports"
-    - name: "sensitive_export_count"
-      expr: SUM(CASE WHEN is_sensitive = true THEN 1 ELSE 0 END)
-      comment: "Count of exports flagged as sensitive"
-    - name: "sensitive_export_rate"
-      expr: ROUND(100.0 * SUM(CASE WHEN is_sensitive = true THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percentage of export transactions flagged as sensitive"
+      comment: "Number of distinct destination countries — measures geographic reach of exports and breadth of restricted-country screening requirements."
 $$;
 
 CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`compliance_obligation_register`
@@ -465,152 +288,120 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Regulatory obligation KPIs — tracks obligation coverage, review currency, and risk ratings to ensure the organization maintains awareness of and compliance with all applicable regulatory requirements."
+  comment: "Regulatory obligation management KPIs — tracks compliance status, remediation progress, and risk exposure across all regulatory obligations to steer the enterprise compliance program."
   source: "`vibe_semiconductors_v1`.`compliance`.`obligation_register`"
   dimensions:
-    - name: "obligation_status"
-      expr: obligation_status
-      comment: "Current status of the obligation (Active, Compliant, Non-Compliant, Under Review) for compliance posture monitoring."
+    - name: "compliance_category"
+      expr: compliance_category
+      comment: "Category of the regulatory obligation (environmental, export, labor, financial) — enables cross-category compliance portfolio analysis."
     - name: "obligation_type"
       expr: obligation_type
-      comment: "Type of regulatory obligation (Environmental, Export Control, Labor, Safety) for domain-level compliance analysis."
-    - name: "jurisdiction"
-      expr: jurisdiction
-      comment: "Legal jurisdiction of the obligation (US, EU, China, etc.) for geographic compliance coverage analysis."
+      comment: "Type of obligation (reporting, operational, financial, training) — used to segment obligations by nature."
+    - name: "current_compliance_status"
+      expr: current_compliance_status
+      comment: "Current compliance status of the obligation (compliant, non-compliant, at-risk, under-review) — primary risk indicator."
     - name: "risk_rating"
       expr: risk_rating
-      comment: "Risk rating of the obligation (High, Medium, Low) for prioritization of compliance resources."
-    - name: "obligation_source"
-      expr: obligation_source
-      comment: "Source of the obligation (Regulation, Contract, Permit, Standard) for obligation origin analysis."
-    - name: "review_frequency"
-      expr: review_frequency
-      comment: "Required review frequency (Annual, Quarterly, etc.) for compliance calendar management."
+      comment: "Risk rating of the obligation — used to prioritize remediation resources and executive attention."
+    - name: "lifecycle_status"
+      expr: lifecycle_status
+      comment: "Lifecycle stage of the obligation record — tracks active vs. retired obligations."
+    - name: "jurisdiction"
+      expr: jurisdiction
+      comment: "Legal jurisdiction of the obligation (US, EU, China, etc.) — enables geographic compliance risk analysis."
+    - name: "regulatory_body"
+      expr: regulatory_body
+      comment: "Regulatory body enforcing the obligation (SEC, EPA, BIS, etc.) — tracks regulator relationships."
+    - name: "responsible_function"
+      expr: responsible_function
+      comment: "Business function responsible for the obligation — used to allocate compliance workload and accountability."
+    - name: "next_review_month"
+      expr: DATE_TRUNC('MONTH', next_review_date)
+      comment: "Month of the next scheduled review — used for compliance calendar planning."
   measures:
     - name: "total_obligations"
       expr: COUNT(1)
-      comment: "Total number of regulatory obligations tracked. Baseline measure of the regulatory compliance program scope."
-    - name: "non_compliant_obligation_count"
-      expr: COUNT(CASE WHEN obligation_status = 'Non-Compliant' THEN 1 END)
-      comment: "Number of obligations currently in non-compliant status. Each non-compliant obligation represents active regulatory exposure with potential penalty consequences."
-    - name: "high_risk_obligation_count"
-      expr: COUNT(CASE WHEN risk_rating = 'High' THEN 1 END)
-      comment: "Number of high-risk regulatory obligations. High-risk obligations require dedicated executive oversight and resource allocation."
-    - name: "overdue_review_count"
-      expr: COUNT(CASE WHEN next_review_date < CURRENT_DATE() AND obligation_status = 'Active' THEN 1 END)
-      comment: "Active obligations whose scheduled review date has passed. Overdue reviews indicate stale obligation assessments that may miss regulatory changes."
+      comment: "Total number of regulatory obligations tracked — baseline measure for compliance program scope."
+    - name: "non_compliant_obligations"
+      expr: COUNT(CASE WHEN current_compliance_status = 'Non-Compliant' THEN 1 END)
+      comment: "Number of obligations currently in non-compliant status — the most critical compliance risk KPI; each non-compliant obligation represents potential regulatory penalty exposure."
+    - name: "at_risk_obligations"
+      expr: COUNT(CASE WHEN current_compliance_status = 'At-Risk' THEN 1 END)
+      comment: "Number of obligations flagged as at-risk — leading indicator of future non-compliance requiring proactive intervention."
     - name: "compliance_rate_pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN obligation_status = 'Compliant' THEN 1 END) / NULLIF(COUNT(CASE WHEN obligation_status IN ('Compliant', 'Non-Compliant') THEN 1 END), 0), 2)
-      comment: "Percentage of assessed obligations that are compliant. The primary regulatory compliance health metric — declining rates signal systemic compliance failures."
+      expr: ROUND(100.0 * COUNT(CASE WHEN current_compliance_status = 'Compliant' THEN 1 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percentage of obligations in compliant status — headline KPI for the enterprise compliance program reported to the board and audit committee."
+    - name: "high_risk_obligations"
+      expr: COUNT(CASE WHEN risk_rating = 'High' THEN 1 END)
+      comment: "Number of high-risk obligations — executives use this to prioritize compliance investment and remediation resources."
+    - name: "obligations_with_active_remediation"
+      expr: COUNT(CASE WHEN remediation_plan IS NOT NULL AND remediation_plan != '' THEN 1 END)
+      comment: "Obligations that have an active remediation plan — measures the organization's responsiveness to identified compliance gaps."
+    - name: "overdue_remediation_obligations"
+      expr: COUNT(CASE WHEN remediation_target_date < CURRENT_DATE AND current_compliance_status != 'Compliant' THEN 1 END)
+      comment: "Obligations where the remediation target date has passed without achieving compliance — signals systemic remediation failure and escalating regulatory risk."
     - name: "distinct_jurisdictions_covered"
       expr: COUNT(DISTINCT jurisdiction)
-      comment: "Number of distinct jurisdictions with tracked obligations. Measures the geographic breadth of the regulatory compliance program."
-    - name: "overdue_review_rate_pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN next_review_date < CURRENT_DATE() AND obligation_status = 'Active' THEN 1 END) / NULLIF(COUNT(CASE WHEN obligation_status = 'Active' THEN 1 END), 0), 2)
-      comment: "Percentage of active obligations with overdue reviews. A rising rate indicates the compliance team is falling behind on regulatory monitoring obligations."
+      comment: "Number of distinct jurisdictions with tracked obligations — measures geographic regulatory footprint of the enterprise."
 $$;
 
-CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`compliance_reach_svhc_declaration`
+CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`compliance_chips_act_obligation`
 WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "REACH SVHC substance declaration and compliance metrics for regulatory adherence"
-  source: "`vibe_semiconductors_v1`.`compliance`.`reach_svhc_declaration`"
+  comment: "CHIPS Act compliance KPIs — tracks funding utilization, compliance metric achievement, and obligation status to ensure adherence to CHIPS Act award conditions and avoid clawback risk."
+  source: "`vibe_semiconductors_v1`.`compliance`.`chips_act_obligation`"
   dimensions:
-    - name: "declaration_status"
-      expr: declaration_status
-      comment: "Status of the REACH SVHC declaration"
-    - name: "svhc_above_threshold"
-      expr: svhc_above_threshold_flag
-      comment: "Whether SVHC concentration exceeds reporting threshold"
-    - name: "svhc_substance_name"
-      expr: svhc_substance_name
-      comment: "Name of the SVHC substance declared"
-    - name: "candidate_list_version"
-      expr: candidate_list_version
-      comment: "Version of the REACH candidate list used"
-    - name: "declaration_year"
-      expr: YEAR(declaration_date)
-      comment: "Year of declaration"
-    - name: "declaration_quarter"
-      expr: CONCAT('Q', QUARTER(declaration_date), '-', YEAR(declaration_date))
-      comment: "Quarter of declaration"
+    - name: "chips_act_obligation_status"
+      expr: chips_act_obligation_status
+      comment: "Current status of the CHIPS Act obligation (active, fulfilled, at-risk, breached) — primary compliance health indicator."
+    - name: "compliance_status"
+      expr: compliance_status
+      comment: "Compliance status against the specific obligation metric — tracks whether targets are being met."
+    - name: "obligation_type"
+      expr: obligation_type
+      comment: "Type of CHIPS Act obligation (domestic production, workforce training, childcare, guardrail) — segments obligations by requirement category."
+    - name: "measurement_frequency"
+      expr: measurement_frequency
+      comment: "How frequently the obligation is measured (quarterly, annual) — used for reporting calendar planning."
+    - name: "reporting_period"
+      expr: reporting_period
+      comment: "Reporting period for the obligation — enables period-over-period compliance trend analysis."
+    - name: "funding_currency"
+      expr: funding_currency
+      comment: "Currency of the CHIPS Act funding award — used for multi-currency financial analysis."
+    - name: "clawback_condition"
+      expr: clawback_condition
+      comment: "Whether a clawback condition applies — obligations with clawback conditions require heightened monitoring."
+    - name: "effective_from_year"
+      expr: YEAR(effective_from)
+      comment: "Year the obligation became effective — supports multi-year CHIPS Act program tracking."
   measures:
-    - name: "total_declarations"
+    - name: "total_chips_obligations"
       expr: COUNT(1)
-      comment: "Total number of REACH SVHC declarations"
-    - name: "above_threshold_count"
-      expr: SUM(CASE WHEN svhc_above_threshold_flag = true THEN 1 ELSE 0 END)
-      comment: "Number of declarations with SVHC above reporting threshold"
-    - name: "above_threshold_rate"
-      expr: ROUND(100.0 * SUM(CASE WHEN svhc_above_threshold_flag = true THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percentage of declarations with SVHC above threshold"
-    - name: "avg_concentration_pct"
-      expr: AVG(CAST(concentration_percent AS DOUBLE))
-      comment: "Average SVHC concentration percentage across declarations"
-    - name: "total_article_weight"
-      expr: SUM(CAST(article_weight_grams AS DOUBLE))
-      comment: "Total weight of articles declared in grams"
-    - name: "unique_svhc_substances"
-      expr: COUNT(DISTINCT svhc_substance_name)
-      comment: "Number of unique SVHC substances declared"
-    - name: "unique_products_declared"
-      expr: COUNT(DISTINCT ic_catalog_id)
-      comment: "Number of unique products with SVHC declarations"
-    - name: "unique_suppliers_declaring"
-      expr: COUNT(DISTINCT supplier_id)
-      comment: "Number of unique suppliers providing SVHC declarations"
-$$;
-
-CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`compliance_regulatory_filing`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Regulatory filing KPIs — tracks filing submission timeliness, approval rates, and renewal pipeline to ensure continuous regulatory authorization for business operations."
-  source: "`vibe_semiconductors_v1`.`compliance`.`regulatory_filing`"
-  dimensions:
-    - name: "filing_status"
-      expr: filing_status
-      comment: "Current status of the regulatory filing (Submitted, Approved, Rejected, Pending Renewal) for pipeline monitoring."
-    - name: "filing_type"
-      expr: filing_type
-      comment: "Type of regulatory filing (Environmental Permit, Operating License, Safety Certification, etc.) for filing category analysis."
-    - name: "regulatory_body"
-      expr: regulatory_body
-      comment: "Regulatory body receiving the filing (EPA, FDA, OSHA, etc.) for authority-level compliance tracking."
-    - name: "jurisdiction"
-      expr: jurisdiction
-      comment: "Legal jurisdiction of the filing for geographic compliance coverage analysis."
-    - name: "submission_year"
-      expr: YEAR(submission_date)
-      comment: "Year of filing submission for annual regulatory activity analysis."
-    - name: "expiry_year"
-      expr: YEAR(expiry_date)
-      comment: "Year the filing/permit expires, used to identify near-term renewal requirements."
-  measures:
-    - name: "total_filings"
-      expr: COUNT(1)
-      comment: "Total number of regulatory filings. Baseline measure of regulatory compliance program scope."
-    - name: "approved_filing_count"
-      expr: COUNT(CASE WHEN filing_status = 'Approved' THEN 1 END)
-      comment: "Number of approved regulatory filings. Approved filings represent active regulatory authorizations required for business operations."
-    - name: "rejected_filing_count"
-      expr: COUNT(CASE WHEN filing_status = 'Rejected' THEN 1 END)
-      comment: "Number of rejected regulatory filings. Rejections may halt operations or require costly remediation and resubmission."
-    - name: "expiring_within_90_days"
-      expr: COUNT(CASE WHEN filing_status = 'Approved' AND expiry_date <= DATE_ADD(CURRENT_DATE(), 90) THEN 1 END)
-      comment: "Approved filings expiring within 90 days. Lapsed regulatory filings can halt manufacturing operations — a critical operational risk KPI."
-    - name: "approval_rate_pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN filing_status = 'Approved' THEN 1 END) / NULLIF(COUNT(CASE WHEN filing_status IN ('Approved', 'Rejected') THEN 1 END), 0), 2)
-      comment: "Percentage of decided filings that were approved. Measures the quality of regulatory submissions and the organization's regulatory relationship health."
-    - name: "overdue_renewal_count"
-      expr: COUNT(CASE WHEN renewal_due_date < CURRENT_DATE() AND filing_status = 'Approved' THEN 1 END)
-      comment: "Approved filings with overdue renewal submissions. Overdue renewals risk permit lapse and operational shutdown."
-    - name: "distinct_regulatory_bodies"
-      expr: COUNT(DISTINCT regulatory_body)
-      comment: "Number of distinct regulatory bodies with active filings. Measures the breadth of regulatory relationships requiring active management."
+      comment: "Total number of CHIPS Act obligations tracked — baseline measure for CHIPS Act compliance program scope."
+    - name: "total_funding_amount"
+      expr: SUM(CAST(funding_amount AS DOUBLE))
+      comment: "Total CHIPS Act funding amount across all obligations — measures aggregate federal investment and corresponding compliance commitment."
+    - name: "avg_compliance_actual"
+      expr: AVG(CAST(compliance_actual AS DOUBLE))
+      comment: "Average actual compliance metric value across obligations — measures overall achievement against CHIPS Act targets."
+    - name: "total_compliance_actual"
+      expr: SUM(CAST(compliance_actual AS DOUBLE))
+      comment: "Total actual compliance metric value — used to aggregate performance across all CHIPS Act obligation metrics."
+    - name: "total_target_value"
+      expr: SUM(CAST(target_value AS DOUBLE))
+      comment: "Total target value across all CHIPS Act obligations — denominator for aggregate compliance achievement rate."
+    - name: "obligations_with_clawback_risk"
+      expr: COUNT(CASE WHEN clawback_condition = TRUE AND chips_act_obligation_status != 'Fulfilled' THEN 1 END)
+      comment: "Obligations with clawback conditions that are not yet fulfilled — represents direct financial risk of funding recovery by the government."
+    - name: "workforce_training_obligations"
+      expr: COUNT(CASE WHEN workforce_training_requirement = TRUE THEN 1 END)
+      comment: "Number of obligations with workforce training requirements — drives HR and training program planning for CHIPS Act compliance."
+    - name: "domestic_production_obligations"
+      expr: COUNT(CASE WHEN domestic_production_commitment = TRUE THEN 1 END)
+      comment: "Number of obligations with domestic production commitments — tracks the core manufacturing mandate of CHIPS Act awards."
 $$;
 
 CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`compliance_restricted_party_screening`
@@ -618,158 +409,55 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Restricted party screening effectiveness and risk detection metrics for trade compliance"
+  comment: "Trade compliance screening KPIs — tracks screening volume, match rates, escalation rates, and risk scores to manage restricted party exposure and prevent export violations."
   source: "`vibe_semiconductors_v1`.`compliance`.`restricted_party_screening`"
   dimensions:
-    - name: "screening_result"
-      expr: screening_result
-      comment: "Result of the restricted party screening (match, no match, etc.)"
-    - name: "screening_status"
-      expr: screening_status
-      comment: "Current status of the screening record"
-    - name: "entity_type"
-      expr: entity_type
-      comment: "Type of entity screened (customer, supplier, end user, etc.)"
-    - name: "entity_country"
-      expr: entity_country
-      comment: "Country of the screened entity"
-    - name: "list_matched"
-      expr: list_matched
-      comment: "Restricted party list that triggered a match"
-    - name: "screening_provider"
-      expr: screening_provider
-      comment: "Third-party screening service provider"
-    - name: "false_positive_flag"
-      expr: false_positive_flag
-      comment: "Whether the match was determined to be a false positive"
-    - name: "screening_year"
-      expr: YEAR(screening_date)
-      comment: "Year of screening"
+    - name: "restricted_party_screening_status"
+      expr: restricted_party_screening_status
+      comment: "Current status of the screening (pending, cleared, escalated, blocked) — primary operational status for screening queue management."
+    - name: "disposition"
+      expr: disposition
+      comment: "Final disposition of the screening (cleared, denied, escalated, pending review) — used to analyze screening outcomes."
+    - name: "screened_entity_type"
+      expr: screened_entity_type
+      comment: "Type of entity screened (customer, supplier, end-user, individual) — segments screening activity by entity category."
+    - name: "risk_category"
+      expr: risk_category
+      comment: "Risk category assigned to the screened entity — used to prioritize review resources."
+    - name: "match_result"
+      expr: match_result
+      comment: "Result of the screening match (no match, potential match, confirmed match) — key indicator of restricted party exposure."
+    - name: "escalation_required"
+      expr: escalation_required
+      comment: "Whether the screening required escalation to compliance management — tracks escalation burden."
+    - name: "is_manual"
+      expr: is_manual
+      comment: "Whether the screening was performed manually vs. automated — used to assess automation coverage and manual review workload."
     - name: "screening_month"
       expr: DATE_TRUNC('MONTH', screening_date)
-      comment: "Month of screening"
+      comment: "Month the screening was performed — supports trend analysis of screening volume and match rates."
   measures:
     - name: "total_screenings"
       expr: COUNT(1)
-      comment: "Total number of restricted party screenings performed"
-    - name: "match_count"
-      expr: SUM(CASE WHEN screening_result = 'Match' THEN 1 ELSE 0 END)
-      comment: "Number of screenings that resulted in a match"
-    - name: "match_rate"
-      expr: ROUND(100.0 * SUM(CASE WHEN screening_result = 'Match' THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percentage of screenings that resulted in a match"
-    - name: "false_positive_count"
-      expr: SUM(CASE WHEN false_positive_flag = true THEN 1 ELSE 0 END)
-      comment: "Number of matches determined to be false positives"
-    - name: "false_positive_rate"
-      expr: ROUND(100.0 * SUM(CASE WHEN false_positive_flag = true THEN 1 ELSE 0 END) / NULLIF(SUM(CASE WHEN screening_result = 'Match' THEN 1 ELSE 0 END), 0), 2)
-      comment: "Percentage of matches that were false positives"
+      comment: "Total number of restricted party screenings performed — baseline volume metric for trade compliance program activity."
+    - name: "confirmed_match_count"
+      expr: COUNT(CASE WHEN match_result = 'Confirmed Match' THEN 1 END)
+      comment: "Number of screenings resulting in a confirmed restricted party match — the most critical trade compliance risk KPI; each confirmed match requires immediate action."
+    - name: "escalation_rate_pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN escalation_required = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percentage of screenings requiring escalation — high escalation rates signal either increased risk exposure or screening threshold calibration issues."
     - name: "avg_match_score"
       expr: AVG(CAST(match_score AS DOUBLE))
-      comment: "Average match confidence score across all screenings"
-    - name: "unique_entities_screened"
-      expr: COUNT(DISTINCT entity_name)
-      comment: "Number of unique entities screened"
-    - name: "unresolved_match_count"
-      expr: SUM(CASE WHEN screening_result = 'Match' AND resolution_date IS NULL THEN 1 ELSE 0 END)
-      comment: "Number of matches that remain unresolved"
-$$;
-
-CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`compliance_substance_inventory`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Chemical substance inventory KPIs — tracks SVHC, RoHS, and REACH registration status across the substance portfolio to manage chemical compliance risk and phase-out planning."
-  source: "`vibe_semiconductors_v1`.`compliance`.`substance_inventory`"
-  dimensions:
-    - name: "regulatory_status"
-      expr: regulatory_status
-      comment: "Regulatory status of the substance (Authorized, Restricted, Candidate List, Banned) for compliance risk segmentation."
-    - name: "substance_category"
-      expr: substance_category
-      comment: "Category of the substance (Solvent, Metal, Polymer, etc.) for portfolio composition analysis."
-    - name: "svhc_flag"
-      expr: svhc_flag
-      comment: "Whether the substance is on the SVHC Candidate List — the primary REACH compliance risk indicator."
-    - name: "rohs_restricted_flag"
-      expr: rohs_restricted_flag
-      comment: "Whether the substance is restricted under RoHS — critical for electronics market access in EU and other jurisdictions."
-    - name: "reach_registered_flag"
-      expr: reach_registered_flag
-      comment: "Whether the substance is registered under REACH — unregistered substances cannot be legally used above threshold quantities in the EU."
-    - name: "hazard_classification"
-      expr: hazard_classification
-      comment: "GHS/CLP hazard classification of the substance for safety and regulatory reporting."
-    - name: "phase_out_year"
-      expr: YEAR(phase_out_date)
-      comment: "Year the substance is scheduled for phase-out, used for substitution planning and supply chain transition management."
-  measures:
-    - name: "total_substances"
-      expr: COUNT(1)
-      comment: "Total number of substances in the inventory. Baseline measure of chemical compliance program scope."
-    - name: "svhc_substance_count"
-      expr: COUNT(CASE WHEN svhc_flag = TRUE THEN 1 END)
-      comment: "Number of SVHC substances in the inventory. SVHC substances require mandatory disclosure and drive REACH compliance obligations across the product portfolio."
-    - name: "rohs_restricted_substance_count"
-      expr: COUNT(CASE WHEN rohs_restricted_flag = TRUE THEN 1 END)
-      comment: "Number of RoHS-restricted substances in use. RoHS-restricted substances in products block EU market access and require urgent substitution."
-    - name: "unregistered_reach_substance_count"
-      expr: COUNT(CASE WHEN reach_registered_flag = FALSE OR reach_registered_flag IS NULL THEN 1 END)
-      comment: "Number of substances not registered under REACH. Unregistered substances above threshold quantities cannot be legally used in EU manufacturing."
-    - name: "total_annual_usage_kg"
-      expr: SUM(CAST(annual_usage_kg AS DOUBLE))
-      comment: "Total annual usage of all substances in kilograms. Measures the scale of chemical consumption and drives REACH registration tonnage band requirements."
-    - name: "svhc_annual_usage_kg"
-      expr: SUM(CASE WHEN svhc_flag = TRUE THEN CAST(annual_usage_kg AS DOUBLE) ELSE 0 END)
-      comment: "Total annual usage of SVHC substances in kilograms. Quantifies the volume of highest-risk substances in use — drives substitution priority decisions."
-    - name: "phasing_out_within_1_year"
-      expr: COUNT(CASE WHEN phase_out_date <= DATE_ADD(CURRENT_DATE(), 365) AND phase_out_date >= CURRENT_DATE() THEN 1 END)
-      comment: "Number of substances scheduled for phase-out within the next 12 months. Drives urgent supply chain substitution and qualification activities."
-    - name: "svhc_rate_pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN svhc_flag = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percentage of inventory substances that are SVHC. A rising SVHC rate indicates increasing chemical compliance risk in the manufacturing process."
-$$;
-
-CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`compliance_technology_control_plan`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Technology control plan KPIs — tracks plan coverage, review currency, and approval status to ensure controlled technologies are protected from unauthorized access and export."
-  source: "`vibe_semiconductors_v1`.`compliance`.`technology_control_plan`"
-  dimensions:
-    - name: "plan_status"
-      expr: plan_status
-      comment: "Current status of the technology control plan (Active, Under Review, Expired, Draft) for portfolio health monitoring."
-    - name: "approved_by"
-      expr: approved_by
-      comment: "Individual or role that approved the plan, used for accountability and approval authority analysis."
-    - name: "effective_year"
-      expr: YEAR(effective_date)
-      comment: "Year the plan became effective, used for plan vintage and refresh cycle analysis."
-    - name: "review_year"
-      expr: YEAR(review_date)
-      comment: "Year the plan is scheduled for review, used for review workload planning."
-  measures:
-    - name: "total_control_plans"
-      expr: COUNT(1)
-      comment: "Total number of technology control plans. Baseline measure of technology protection program scope."
-    - name: "active_plan_count"
-      expr: COUNT(CASE WHEN plan_status = 'Active' THEN 1 END)
-      comment: "Number of currently active technology control plans. Active plans are the primary mechanism for protecting controlled technologies from unauthorized access."
-    - name: "overdue_review_count"
-      expr: COUNT(CASE WHEN review_date < CURRENT_DATE() AND plan_status = 'Active' THEN 1 END)
-      comment: "Active technology control plans whose scheduled review date has passed. Overdue reviews indicate stale access controls that may no longer reflect current technology or personnel."
-    - name: "unapproved_plan_count"
-      expr: COUNT(CASE WHEN (approved_by IS NULL OR approved_by = '') AND plan_status = 'Active' THEN 1 END)
-      comment: "Active plans without a recorded approval. Unapproved active plans represent a governance gap in the technology protection program."
-    - name: "plan_active_rate_pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN plan_status = 'Active' THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percentage of technology control plans that are currently active. Measures the operational coverage of the technology protection program."
-    - name: "overdue_review_rate_pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN review_date < CURRENT_DATE() AND plan_status = 'Active' THEN 1 END) / NULLIF(COUNT(CASE WHEN plan_status = 'Active' THEN 1 END), 0), 2)
-      comment: "Percentage of active technology control plans with overdue reviews. A rising rate signals deteriorating technology protection governance."
+      comment: "Average match score across all screenings — used to calibrate screening sensitivity and assess overall restricted party risk level."
+    - name: "avg_risk_score"
+      expr: AVG(CAST(risk_score AS DOUBLE))
+      comment: "Average risk score of screened entities — measures aggregate risk level of the customer and partner portfolio."
+    - name: "manual_screening_rate_pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN is_manual = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percentage of screenings performed manually — high manual rates indicate automation gaps that increase compliance cost and cycle time."
+    - name: "distinct_entities_screened"
+      expr: COUNT(DISTINCT screened_entity_name)
+      comment: "Number of distinct entities screened — measures breadth of restricted party screening coverage across the business partner ecosystem."
 $$;
 
 CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`compliance_trade_compliance_hold`
@@ -777,53 +465,283 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Trade compliance hold and release cycle time metrics for export control"
+  comment: "Trade compliance hold KPIs — tracks hold volume, financial exposure, and resolution velocity to minimize revenue impact from export control holds."
   source: "`vibe_semiconductors_v1`.`compliance`.`trade_compliance_hold`"
   dimensions:
     - name: "hold_status"
       expr: hold_status
-      comment: "Current status of the trade compliance hold"
+      comment: "Current status of the trade compliance hold (active, released, escalated, cancelled) — primary operational status."
     - name: "hold_type"
       expr: hold_type
-      comment: "Type of compliance hold applied"
-    - name: "hold_reason"
-      expr: hold_reason
-      comment: "Reason for placing the compliance hold"
-    - name: "escalation_flag"
-      expr: escalation_flag
-      comment: "Whether the hold has been escalated"
-    - name: "hold_year"
-      expr: YEAR(placed_date)
-      comment: "Year the hold was placed"
-    - name: "hold_quarter"
-      expr: CONCAT('Q', QUARTER(placed_date), '-', YEAR(placed_date))
-      comment: "Quarter the hold was placed"
-    - name: "hold_month"
-      expr: DATE_TRUNC('MONTH', placed_date)
-      comment: "Month the hold was placed"
+      comment: "Type of hold (export control, restricted party, license required, ITAR) — used to analyze hold root causes."
+    - name: "hold_reason_code"
+      expr: hold_reason_code
+      comment: "Specific reason code for the hold — enables root cause analysis and systemic issue identification."
+    - name: "destination_country_code"
+      expr: destination_country_code
+      comment: "Destination country of the held transaction — identifies high-risk geographic corridors."
+    - name: "export_control_regulation"
+      expr: export_control_regulation
+      comment: "Export control regulation triggering the hold (EAR, ITAR, etc.) — segments holds by regulatory framework."
+    - name: "is_sensitive"
+      expr: is_sensitive
+      comment: "Whether the held transaction involves sensitive technology — used to prioritize review of high-risk holds."
+    - name: "hold_placed_month"
+      expr: DATE_TRUNC('MONTH', hold_placed_timestamp)
+      comment: "Month the hold was placed — supports trend analysis of hold frequency and financial impact over time."
+    - name: "triggering_transaction_type"
+      expr: triggering_transaction_type
+      comment: "Type of transaction that triggered the hold (order, shipment, invoice) — used to identify which transaction types generate the most compliance holds."
   measures:
     - name: "total_holds"
       expr: COUNT(1)
-      comment: "Total number of trade compliance holds placed"
+      comment: "Total number of trade compliance holds — baseline volume metric for export control hold activity."
     - name: "active_holds"
-      expr: SUM(CASE WHEN hold_status = 'Active' THEN 1 ELSE 0 END)
-      comment: "Number of holds currently active"
-    - name: "released_holds"
-      expr: SUM(CASE WHEN hold_status = 'Released' THEN 1 ELSE 0 END)
-      comment: "Number of holds that have been released"
-    - name: "escalated_holds"
-      expr: SUM(CASE WHEN escalation_flag = true THEN 1 ELSE 0 END)
-      comment: "Number of holds that have been escalated"
-    - name: "escalation_rate"
-      expr: ROUND(100.0 * SUM(CASE WHEN escalation_flag = true THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percentage of holds that required escalation"
-    - name: "unique_accounts_held"
-      expr: COUNT(DISTINCT account_id)
-      comment: "Number of unique customer accounts with compliance holds"
-    - name: "unique_orders_held"
-      expr: COUNT(DISTINCT order_reference)
-      comment: "Number of unique orders placed on compliance hold"
-    - name: "unique_shipments_held"
-      expr: COUNT(DISTINCT shipment_reference)
-      comment: "Number of unique shipments placed on compliance hold"
+      expr: COUNT(CASE WHEN hold_status = 'Active' THEN 1 END)
+      comment: "Number of currently active holds — directly represents blocked revenue and shipment pipeline."
+    - name: "total_estimated_value_held_usd"
+      expr: SUM(CAST(estimated_value_usd AS DOUBLE))
+      comment: "Total estimated value of transactions currently on hold in USD — measures the financial revenue risk from active trade compliance holds."
+    - name: "avg_estimated_value_per_hold_usd"
+      expr: AVG(CAST(estimated_value_usd AS DOUBLE))
+      comment: "Average estimated value per hold — used to assess the typical financial impact of a compliance hold event."
+    - name: "total_gross_amount_held_usd"
+      expr: SUM(CAST(gross_amount_usd AS DOUBLE))
+      comment: "Total gross amount of held transactions in USD — provides a comprehensive view of financial exposure from trade compliance holds."
+    - name: "sensitive_holds_count"
+      expr: COUNT(CASE WHEN is_sensitive = TRUE THEN 1 END)
+      comment: "Number of holds involving sensitive technology — these require priority resolution due to heightened regulatory scrutiny."
+    - name: "distinct_destination_countries_held"
+      expr: COUNT(DISTINCT destination_country_code)
+      comment: "Number of distinct destination countries with active holds — measures geographic breadth of export control risk exposure."
+$$;
+
+CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`compliance_substance_inventory`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Chemical substance compliance KPIs — tracks hazardous substance inventory, regulatory restriction status, and risk scores to manage RoHS, REACH, PFAS, and ITAR chemical compliance."
+  source: "`vibe_semiconductors_v1`.`compliance`.`substance_inventory`"
+  dimensions:
+    - name: "compliance_status"
+      expr: compliance_status
+      comment: "Compliance status of the substance (compliant, non-compliant, under-review) — primary regulatory health indicator."
+    - name: "substance_type"
+      expr: substance_type
+      comment: "Type of substance (chemical, gas, solvent, dopant) — used to segment inventory by substance category."
+    - name: "hazard_classification"
+      expr: hazard_classification
+      comment: "Hazard classification of the substance (GHS category) — used for safety and regulatory risk analysis."
+    - name: "lifecycle_status"
+      expr: lifecycle_status
+      comment: "Lifecycle status of the substance record (active, phased-out, restricted) — tracks substance portfolio health."
+    - name: "controlled_substance_category"
+      expr: controlled_substance_category
+      comment: "Category of controlled substance classification — used to segment by regulatory control type."
+    - name: "is_reach_svhc"
+      expr: is_reach_svhc
+      comment: "Whether the substance is on the REACH SVHC candidate list — REACH SVHC substances require mandatory customer disclosure."
+    - name: "is_rohs_restricted"
+      expr: is_rohs_restricted
+      comment: "Whether the substance is restricted under RoHS — RoHS restrictions directly affect product market access in the EU."
+    - name: "is_pfas"
+      expr: is_pfas
+      comment: "Whether the substance is a PFAS compound — PFAS substances face increasing global regulatory restrictions."
+    - name: "is_itar_controlled"
+      expr: is_itar_controlled
+      comment: "Whether the substance is ITAR-controlled — ITAR substances require export licenses and strict access controls."
+  measures:
+    - name: "total_substances"
+      expr: COUNT(1)
+      comment: "Total number of substances in the compliance inventory — baseline measure for chemical compliance program scope."
+    - name: "restricted_substances_count"
+      expr: COUNT(CASE WHEN is_rohs_restricted = TRUE OR is_reach_svhc = TRUE OR is_pfas = TRUE THEN 1 END)
+      comment: "Number of substances subject to major regulatory restrictions (RoHS, REACH SVHC, PFAS) — measures the regulatory risk footprint of the chemical inventory."
+    - name: "total_annual_usage_volume_kg"
+      expr: SUM(CAST(annual_usage_volume_kg AS DOUBLE))
+      comment: "Total annual usage volume of all substances in kilograms — used for regulatory reporting thresholds and environmental impact assessment."
+    - name: "avg_risk_score"
+      expr: AVG(CAST(risk_score AS DOUBLE))
+      comment: "Average risk score across all substances in inventory — measures aggregate chemical compliance risk level of the manufacturing process."
+    - name: "itar_controlled_substances"
+      expr: COUNT(CASE WHEN is_itar_controlled = TRUE THEN 1 END)
+      comment: "Number of ITAR-controlled substances — each requires strict access controls and export licensing; critical for defense-related semiconductor programs."
+    - name: "non_compliant_substances"
+      expr: COUNT(CASE WHEN compliance_status = 'Non-Compliant' THEN 1 END)
+      comment: "Number of substances in non-compliant status — non-compliant substances can block product shipments and trigger regulatory penalties."
+    - name: "avg_purity_pct"
+      expr: AVG(CAST(purity_percent AS DOUBLE))
+      comment: "Average purity percentage across substances — used for process quality and regulatory specification compliance monitoring."
+$$;
+
+CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`compliance_regulatory_filing`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Regulatory filing KPIs — tracks filing volume, status, timeliness, and impact severity to ensure on-time regulatory submissions and manage compliance obligations."
+  source: "`vibe_semiconductors_v1`.`compliance`.`regulatory_filing`"
+  dimensions:
+    - name: "regulatory_filing_status"
+      expr: regulatory_filing_status
+      comment: "Current status of the regulatory filing (submitted, acknowledged, pending, rejected) — primary operational status."
+    - name: "filing_type"
+      expr: filing_type
+      comment: "Type of regulatory filing (annual report, incident report, change notification) — used to segment filing activity by type."
+    - name: "regulatory_filing_category"
+      expr: regulatory_filing_category
+      comment: "Category of the regulatory filing — enables cross-category filing portfolio analysis."
+    - name: "agency"
+      expr: agency
+      comment: "Regulatory agency receiving the filing (SEC, EPA, BIS, CHIPS Program Office) — tracks filing activity by regulator."
+    - name: "jurisdiction"
+      expr: jurisdiction
+      comment: "Legal jurisdiction of the filing — enables geographic regulatory compliance analysis."
+    - name: "impact_severity"
+      expr: impact_severity
+      comment: "Severity of the regulatory change or filing impact — used to prioritize response and resource allocation."
+    - name: "action_status"
+      expr: action_status
+      comment: "Status of required actions associated with the filing — tracks action completion pipeline."
+    - name: "submission_year"
+      expr: YEAR(submission_date)
+      comment: "Year of filing submission — supports annual regulatory filing volume and compliance trend analysis."
+    - name: "is_confidential"
+      expr: is_confidential
+      comment: "Whether the filing is confidential — used to manage access controls and disclosure obligations."
+  measures:
+    - name: "total_filings"
+      expr: COUNT(1)
+      comment: "Total number of regulatory filings — baseline measure for regulatory filing program volume."
+    - name: "pending_filings"
+      expr: COUNT(CASE WHEN regulatory_filing_status = 'Pending' THEN 1 END)
+      comment: "Number of filings in pending status — pending filings represent unresolved regulatory obligations that may have deadlines."
+    - name: "overdue_action_filings"
+      expr: COUNT(CASE WHEN action_deadline < CURRENT_DATE AND action_status NOT IN ('Completed', 'Closed') THEN 1 END)
+      comment: "Filings with overdue required actions — missed regulatory deadlines can result in penalties, fines, or loss of operating licenses."
+    - name: "high_impact_filings"
+      expr: COUNT(CASE WHEN impact_severity = 'High' THEN 1 END)
+      comment: "Number of high-impact regulatory filings — executives use this to prioritize compliance response resources and assess regulatory risk."
+    - name: "filing_on_time_rate_pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN submission_date <= action_deadline THEN 1 END) / NULLIF(COUNT(CASE WHEN action_deadline IS NOT NULL THEN 1 END), 0), 2)
+      comment: "Percentage of filings submitted on or before the action deadline — headline KPI for regulatory filing timeliness and compliance program discipline."
+    - name: "distinct_agencies_filed_with"
+      expr: COUNT(DISTINCT agency)
+      comment: "Number of distinct regulatory agencies filed with — measures breadth of regulatory engagement and compliance program scope."
+    - name: "distinct_jurisdictions_filed"
+      expr: COUNT(DISTINCT jurisdiction)
+      comment: "Number of distinct jurisdictions with regulatory filings — measures geographic regulatory footprint."
+$$;
+
+CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`compliance_technology_control_plan`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Technology control plan KPIs — tracks export control coverage, plan health, and review compliance for controlled semiconductor technology to manage ITAR/EAR deemed export risk."
+  source: "`vibe_semiconductors_v1`.`compliance`.`technology_control_plan`"
+  dimensions:
+    - name: "technology_control_plan_status"
+      expr: technology_control_plan_status
+      comment: "Current status of the technology control plan (active, expired, under-review, superseded) — primary health indicator."
+    - name: "plan_type"
+      expr: plan_type
+      comment: "Type of technology control plan (ITAR, EAR, dual-use) — segments plans by regulatory framework."
+    - name: "compliance_status"
+      expr: compliance_status
+      comment: "Compliance status of the plan (compliant, non-compliant, at-risk) — used to identify plans requiring immediate attention."
+    - name: "regulatory_framework"
+      expr: regulatory_framework
+      comment: "Regulatory framework governing the plan (ITAR, EAR, TSCA) — enables framework-level compliance analysis."
+    - name: "review_status"
+      expr: review_status
+      comment: "Status of the most recent plan review — tracks review cycle compliance."
+    - name: "is_deemed_export"
+      expr: is_deemed_export
+      comment: "Whether the plan covers deemed export scenarios (foreign nationals accessing controlled technology) — deemed export plans require heightened controls."
+    - name: "export_license_required"
+      expr: export_license_required
+      comment: "Whether an export license is required under this plan — plans requiring licenses need active license management."
+    - name: "effective_year"
+      expr: YEAR(effective_date)
+      comment: "Year the plan became effective — supports plan vintage and review cycle analysis."
+  measures:
+    - name: "total_control_plans"
+      expr: COUNT(1)
+      comment: "Total number of technology control plans — baseline measure for export control program coverage."
+    - name: "active_control_plans"
+      expr: COUNT(CASE WHEN technology_control_plan_status = 'Active' THEN 1 END)
+      comment: "Number of currently active technology control plans — active plans represent the live export control framework protecting controlled technology."
+    - name: "plans_expiring_within_90_days"
+      expr: COUNT(CASE WHEN expiration_date BETWEEN CURRENT_DATE AND DATE_ADD(CURRENT_DATE, 90) THEN 1 END)
+      comment: "Technology control plans expiring within 90 days — expired plans create uncontrolled access to restricted technology, a critical ITAR/EAR violation risk."
+    - name: "deemed_export_plans"
+      expr: COUNT(CASE WHEN is_deemed_export = TRUE THEN 1 END)
+      comment: "Number of plans covering deemed export scenarios — deemed export violations carry severe penalties; this count drives HR and access control program requirements."
+    - name: "plans_requiring_license"
+      expr: COUNT(CASE WHEN export_license_required = TRUE THEN 1 END)
+      comment: "Number of technology control plans that require an export license — drives export license procurement and maintenance workload."
+    - name: "plans_overdue_for_review"
+      expr: COUNT(CASE WHEN next_review_date < CURRENT_DATE AND technology_control_plan_status = 'Active' THEN 1 END)
+      comment: "Active plans that are past their scheduled review date — overdue reviews represent compliance gaps that regulators can cite during audits."
+    - name: "training_required_plans"
+      expr: COUNT(CASE WHEN training_required = TRUE THEN 1 END)
+      comment: "Number of plans with mandatory training requirements — drives compliance training program planning and workforce certification tracking."
+$$;
+
+CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`compliance_conflict_minerals_declaration`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Conflict minerals compliance KPIs — tracks declaration status, conflict-free rates, and audit outcomes to meet SEC Form SD and OECD due diligence requirements."
+  source: "`vibe_semiconductors_v1`.`compliance`.`conflict_minerals_declaration`"
+  dimensions:
+    - name: "declaration_status"
+      expr: declaration_status
+      comment: "Current status of the conflict minerals declaration (filed, pending, under-review, expired) — primary compliance status."
+    - name: "declaration_type"
+      expr: declaration_type
+      comment: "Type of declaration (SEC Form SD, customer declaration, internal) — segments declarations by reporting requirement."
+    - name: "drc_conflict_free_status"
+      expr: drc_conflict_free_status
+      comment: "DRC conflict-free status (conflict-free, not conflict-free, undeterminable) — the core compliance outcome for conflict minerals reporting."
+    - name: "audit_outcome"
+      expr: audit_outcome
+      comment: "Outcome of the conflict minerals audit — used to assess supply chain due diligence effectiveness."
+    - name: "country_of_origin"
+      expr: country_of_origin
+      comment: "Country of origin of the minerals — used to identify high-risk sourcing geographies."
+    - name: "reporting_year"
+      expr: reporting_year
+      comment: "Reporting year of the declaration — supports year-over-year conflict minerals compliance trend analysis."
+    - name: "third_party_verification"
+      expr: third_party_verification
+      comment: "Whether the declaration was independently verified by a third party — third-party verification is required for SEC Form SD compliance."
+    - name: "is_conflict_free"
+      expr: is_conflict_free
+      comment: "Whether the declaration certifies conflict-free status — the primary binary compliance outcome."
+  measures:
+    - name: "total_declarations"
+      expr: COUNT(1)
+      comment: "Total number of conflict minerals declarations — baseline measure for conflict minerals compliance program scope."
+    - name: "conflict_free_declarations"
+      expr: COUNT(CASE WHEN is_conflict_free = TRUE THEN 1 END)
+      comment: "Number of declarations certified as conflict-free — the primary compliance achievement metric for conflict minerals reporting."
+    - name: "conflict_free_rate_pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN is_conflict_free = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percentage of declarations certified as conflict-free — headline KPI for conflict minerals compliance program; reported to SEC and major customers."
+    - name: "third_party_verified_rate_pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN third_party_verification = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percentage of declarations with independent third-party verification — measures rigor of the conflict minerals due diligence program."
+    - name: "avg_conflict_minerals_percentage"
+      expr: AVG(CAST(conflict_minerals_percentage AS DOUBLE))
+      comment: "Average conflict minerals percentage across declarations — measures the aggregate concentration of conflict minerals in the supply chain."
+    - name: "avg_compliance_risk_score"
+      expr: AVG(CAST(compliance_risk_score AS DOUBLE))
+      comment: "Average compliance risk score across conflict minerals declarations — measures aggregate supply chain conflict minerals risk level."
+    - name: "total_material_weight_kg"
+      expr: SUM(CAST(total_material_weight_kg AS DOUBLE))
+      comment: "Total material weight covered by conflict minerals declarations in kilograms — measures the physical scale of the conflict minerals compliance program."
 $$;

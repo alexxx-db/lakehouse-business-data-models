@@ -1,107 +1,92 @@
--- Metric views for domain: shared | Business: Semiconductors | Version: 2 | Generated on: 2026-06-28 00:14:33
+-- Metric views for domain: shared | Business: Semiconductors | Version: 2 | Generated on: 2026-07-10 11:52:05
 
 CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`shared_fab`
 WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Strategic fab facility performance metrics tracking capacity utilization, operational efficiency, environmental footprint, and facility health for executive steering and resource allocation decisions."
+  comment: "Operational and sustainability KPIs for semiconductor fabrication facilities. Covers environmental footprint, capacity, audit compliance, and facility lifecycle status to support executive steering of fab portfolio decisions."
   source: "`vibe_semiconductors_v1`.`shared`.`fab`"
   dimensions:
-    - name: "fab_code"
-      expr: fab_code
-      comment: "Unique fab facility identifier for site-level analysis"
     - name: "fab_type"
       expr: fab_type
-      comment: "Fab classification (e.g., logic, memory, foundry) for technology segment analysis"
+      comment: "Type of fabrication facility (e.g. logic, memory, foundry) used to segment KPIs by fab category."
     - name: "fab_status"
       expr: fab_status
-      comment: "Current operational status (active, idle, decommissioned) for capacity planning"
-    - name: "operational_status"
-      expr: operational_status
-      comment: "Detailed operational state for real-time monitoring"
+      comment: "Operational status of the fab (e.g. active, shutdown, under construction) for lifecycle filtering."
     - name: "technology_node_nm"
       expr: technology_node_nm
-      comment: "Process technology node in nanometers for technology roadmap tracking"
-    - name: "wafer_size_mm"
-      expr: wafer_size_mm
-      comment: "Wafer diameter in millimeters for capacity normalization"
-    - name: "region"
-      expr: region
-      comment: "Geographic region for regional performance comparison and supply chain optimization"
-    - name: "country_code"
-      expr: country_code
-      comment: "Country location for regulatory compliance and geopolitical risk analysis"
-    - name: "automation_level"
-      expr: automation_level
-      comment: "Degree of fab automation for productivity benchmarking"
-    - name: "cleanroom_class"
-      expr: cleanroom_class
-      comment: "ISO cleanroom classification for quality capability assessment"
+      comment: "Technology node name (e.g. 5nm, 7nm) enabling KPI segmentation by process generation."
+    - name: "primary_product_family"
+      expr: primary_product_family
+      comment: "Primary product family manufactured at the fab, used to align fab metrics with product portfolio."
     - name: "environmental_compliance_status"
       expr: environmental_compliance_status
-      comment: "Environmental regulatory compliance state for ESG reporting"
-    - name: "safety_certification"
-      expr: safety_certification
-      comment: "Safety certification level for risk management"
+      comment: "Environmental compliance status of the fab, critical for ESG reporting and regulatory risk segmentation."
     - name: "is_critical_facility"
       expr: is_critical_facility
-      comment: "Flag indicating strategic importance for business continuity planning"
-    - name: "commissioning_year"
-      expr: YEAR(commissioning_date)
-      comment: "Year fab was commissioned for vintage analysis"
-    - name: "commissioning_quarter"
-      expr: DATE_TRUNC('QUARTER', commissioning_date)
-      comment: "Quarter fab was commissioned for capacity ramp tracking"
+      comment: "Flag indicating whether the fab is classified as a critical facility, used to prioritize investment and risk management."
+    - name: "security_clearance_level"
+      expr: security_clearance_level
+      comment: "Security clearance level of the fab, relevant for defense/government contract compliance segmentation."
+    - name: "owner_company"
+      expr: owner_company
+      comment: "Company owning the fab, enabling multi-entity or JV portfolio analysis."
+    - name: "last_audit_date"
+      expr: DATE_TRUNC('month', last_audit_date)
+      comment: "Month of the last audit, used to track audit recency trends over time."
+    - name: "start_date_year"
+      expr: YEAR(start_date)
+      comment: "Year the fab became operational, enabling cohort analysis of fab vintage vs. performance."
   measures:
-    - name: "total_fabs"
-      expr: COUNT(DISTINCT fab_id)
-      comment: "Total number of unique fab facilities for footprint tracking"
-    - name: "total_cleanroom_area_sqm"
-      expr: SUM(CAST(cleanroom_area_sqm AS DOUBLE))
-      comment: "Total cleanroom square meters for capacity investment valuation"
-    - name: "avg_cleanroom_area_sqm"
-      expr: AVG(CAST(cleanroom_area_sqm AS DOUBLE))
-      comment: "Average cleanroom area per fab for facility size benchmarking"
-    - name: "total_facility_area_sqft"
-      expr: SUM(CAST(total_area_sqft AS DOUBLE))
-      comment: "Total facility footprint in square feet for real estate portfolio management"
-    - name: "total_annual_power_consumption_mwh"
+    - name: "active_fab_count"
+      expr: COUNT(CASE WHEN fab_status = 'active' THEN fab_id END)
+      comment: "Number of currently active fabrication facilities. Executives use this to assess operational capacity footprint and make investment decisions about new fab construction or consolidation."
+    - name: "total_annual_power_mwh"
       expr: SUM(CAST(annual_power_mwh AS DOUBLE))
-      comment: "Total annual power consumption in megawatt-hours for energy cost forecasting and carbon footprint analysis"
-    - name: "avg_annual_power_consumption_mwh"
+      comment: "Total annual power consumption in MWh across all fabs. A primary ESG and cost KPI — rising power consumption triggers energy efficiency programs and impacts operating cost forecasts."
+    - name: "avg_annual_power_mwh_per_fab"
       expr: AVG(CAST(annual_power_mwh AS DOUBLE))
-      comment: "Average annual power consumption per fab for energy efficiency benchmarking"
-    - name: "total_annual_water_usage_m3"
+      comment: "Average annual power consumption per fab in MWh. Used to benchmark individual fabs against the portfolio average and identify energy outliers for remediation."
+    - name: "total_annual_water_m3"
       expr: SUM(CAST(annual_water_m3 AS DOUBLE))
-      comment: "Total annual water consumption in cubic meters for water resource management and ESG reporting"
-    - name: "avg_annual_water_usage_m3"
+      comment: "Total annual water consumption in cubic meters across all fabs. Critical ESG metric — semiconductor fabs are major water consumers and this KPI drives water stewardship programs and regulatory compliance."
+    - name: "avg_annual_water_m3_per_fab"
       expr: AVG(CAST(annual_water_m3 AS DOUBLE))
-      comment: "Average annual water usage per fab for sustainability benchmarking"
+      comment: "Average annual water consumption per fab in cubic meters. Benchmarks water efficiency across the fab portfolio to identify high-consumption facilities for targeted reduction initiatives."
     - name: "total_carbon_footprint_tons"
       expr: SUM(CAST(carbon_footprint_tons AS DOUBLE))
-      comment: "Total carbon emissions in metric tons for corporate sustainability goals and regulatory reporting"
-    - name: "avg_carbon_footprint_tons"
+      comment: "Total carbon footprint in metric tons across all fabs. A board-level ESG KPI directly tied to net-zero commitments, carbon credit obligations, and regulatory disclosure requirements."
+    - name: "avg_carbon_footprint_tons_per_fab"
       expr: AVG(CAST(carbon_footprint_tons AS DOUBLE))
-      comment: "Average carbon footprint per fab for environmental performance benchmarking"
+      comment: "Average carbon footprint per fab in metric tons. Used to identify high-emission facilities and prioritize decarbonization capital expenditure."
     - name: "avg_audit_score"
       expr: AVG(CAST(audit_score AS DOUBLE))
-      comment: "Average audit score across fabs for quality and compliance performance tracking"
-    - name: "critical_facilities_count"
-      expr: SUM(CASE WHEN is_critical_facility = true THEN 1 ELSE 0 END)
-      comment: "Count of critical facilities for business continuity risk assessment"
-    - name: "critical_facilities_pct"
-      expr: ROUND(100.0 * SUM(CASE WHEN is_critical_facility = true THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percentage of fabs designated as critical for strategic risk concentration analysis"
-    - name: "energy_intensity_mwh_per_sqm"
-      expr: ROUND(SUM(CAST(annual_power_mwh AS DOUBLE)) / NULLIF(SUM(CAST(cleanroom_area_sqm AS DOUBLE)), 0), 4)
-      comment: "Energy consumption per cleanroom square meter for energy efficiency KPI and cost optimization"
-    - name: "water_intensity_m3_per_sqm"
-      expr: ROUND(SUM(CAST(annual_water_m3 AS DOUBLE)) / NULLIF(SUM(CAST(cleanroom_area_sqm AS DOUBLE)), 0), 4)
-      comment: "Water consumption per cleanroom square meter for water efficiency KPI and resource planning"
-    - name: "carbon_intensity_tons_per_sqm"
-      expr: ROUND(SUM(CAST(carbon_footprint_tons AS DOUBLE)) / NULLIF(SUM(CAST(cleanroom_area_sqm AS DOUBLE)), 0), 6)
-      comment: "Carbon emissions per cleanroom square meter for carbon efficiency KPI and ESG target tracking"
+      comment: "Average audit score across fabs. A governance KPI — declining audit scores signal compliance risk and trigger corrective action programs before regulatory penalties occur."
+    - name: "min_audit_score"
+      expr: MIN(audit_score)
+      comment: "Minimum audit score across the fab portfolio. Identifies the worst-performing facility from a compliance standpoint, enabling targeted remediation before audit failures escalate."
+    - name: "total_fab_area_sqft"
+      expr: SUM(CAST(total_area_sqft AS DOUBLE))
+      comment: "Total physical footprint of all fabs in square feet. Used in capacity planning, real estate portfolio management, and capital allocation decisions for expansion or consolidation."
+    - name: "avg_fab_area_sqft"
+      expr: AVG(CAST(total_area_sqft AS DOUBLE))
+      comment: "Average fab size in square feet. Benchmarks facility scale across the portfolio to inform standardization and modular expansion strategies."
+    - name: "critical_facility_count"
+      expr: COUNT(CASE WHEN is_critical_facility = TRUE THEN fab_id END)
+      comment: "Number of fabs classified as critical facilities. Drives business continuity planning, insurance coverage decisions, and priority maintenance scheduling."
+    - name: "non_compliant_fab_count"
+      expr: COUNT(CASE WHEN environmental_compliance_status != 'compliant' THEN fab_id END)
+      comment: "Number of fabs not in environmental compliance. A risk KPI — non-compliant fabs face regulatory fines, operational shutdowns, and reputational damage; executives use this to prioritize remediation spend."
+    - name: "carbon_intensity_per_sqft"
+      expr: SUM(CAST(carbon_footprint_tons AS DOUBLE)) / NULLIF(SUM(CAST(total_area_sqft AS DOUBLE)), 0)
+      comment: "Carbon footprint per square foot of fab area (tons/sqft). A normalized ESG efficiency metric that enables fair comparison across fabs of different sizes and drives green building investment decisions."
+    - name: "power_intensity_per_sqft"
+      expr: SUM(CAST(annual_power_mwh AS DOUBLE)) / NULLIF(SUM(CAST(total_area_sqft AS DOUBLE)), 0)
+      comment: "Annual power consumption per square foot of fab area (MWh/sqft). Normalizes energy efficiency across fabs of different sizes, enabling identification of energy-inefficient facilities for capital improvement."
+    - name: "water_intensity_per_sqft"
+      expr: SUM(CAST(annual_water_m3 AS DOUBLE)) / NULLIF(SUM(CAST(total_area_sqft AS DOUBLE)), 0)
+      comment: "Annual water consumption per square foot of fab area (m3/sqft). Normalized water efficiency metric used in ESG benchmarking and water stewardship program prioritization."
 $$;
 
 CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`shared_location`
@@ -109,82 +94,55 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Granular location hierarchy metrics tracking operational sites, capacity distribution, and location performance for supply chain optimization and network design decisions."
+  comment: "Operational and capacity KPIs for the shared location master. Supports real estate portfolio management, workforce distribution analysis, and facility lifecycle governance across all semiconductor operations."
   source: "`vibe_semiconductors_v1`.`shared`.`location`"
   dimensions:
-    - name: "location_code"
-      expr: location_code
-      comment: "Unique location identifier for granular site analysis"
     - name: "location_type"
       expr: location_type
-      comment: "Location classification (e.g., warehouse, office, lab) for network segmentation"
+      comment: "Type of location (e.g. fab, office, warehouse, R&D center) enabling KPI segmentation by facility category."
     - name: "location_status"
       expr: location_status
-      comment: "Current location operational status for capacity planning"
-    - name: "region"
-      expr: region
-      comment: "Geographic region for regional network analysis"
+      comment: "Operational status of the location (e.g. active, closed, under construction) for lifecycle filtering."
     - name: "country_code"
       expr: country_code
-      comment: "Country location for international operations tracking"
-    - name: "city"
-      expr: city
-      comment: "City location for local market presence"
+      comment: "Country where the location resides, enabling geographic segmentation for regional portfolio analysis."
+    - name: "region"
+      expr: region
+      comment: "Geographic region of the location (e.g. APAC, EMEA, Americas) for regional capacity and workforce planning."
     - name: "state_province"
       expr: state_province
-      comment: "State or province for regional compliance"
+      comment: "State or province of the location for sub-regional analysis and regulatory jurisdiction mapping."
     - name: "timezone"
       expr: timezone
-      comment: "Location timezone for global coordination"
-    - name: "opening_year"
+      comment: "Timezone of the location, used for operational scheduling and global shift coordination analysis."
+    - name: "opening_date_year"
       expr: YEAR(opening_date)
-      comment: "Year location opened for network evolution analysis"
-    - name: "opening_quarter"
-      expr: DATE_TRUNC('QUARTER', opening_date)
-      comment: "Quarter location opened for expansion tracking"
-    - name: "has_parent_location"
-      expr: CASE WHEN parent_location_id IS NOT NULL THEN 'Yes' ELSE 'No' END
-      comment: "Flag indicating hierarchical location structure for network topology analysis"
+      comment: "Year the location opened, enabling vintage cohort analysis of location performance and lifecycle stage."
+    - name: "closing_date_year"
+      expr: YEAR(closing_date)
+      comment: "Year the location closed, used to analyze facility retirement trends and portfolio rationalization timing."
   measures:
-    - name: "total_locations"
-      expr: COUNT(DISTINCT location_id)
-      comment: "Total number of unique locations for network footprint tracking"
+    - name: "active_location_count"
+      expr: COUNT(CASE WHEN location_status = 'active' THEN location_id END)
+      comment: "Number of currently active locations in the portfolio. Executives use this to assess global operational footprint and make real estate consolidation or expansion decisions."
     - name: "total_square_footage"
       expr: SUM(CAST(square_footage AS DOUBLE))
-      comment: "Total location square footage for real estate portfolio management"
-    - name: "avg_square_footage"
+      comment: "Total square footage across all locations. A primary real estate portfolio KPI used in capacity planning, lease management, and capital allocation for facility expansion or consolidation."
+    - name: "avg_square_footage_per_location"
       expr: AVG(CAST(square_footage AS DOUBLE))
-      comment: "Average location size for facility planning"
+      comment: "Average square footage per location. Benchmarks facility scale across the portfolio to identify undersized or oversized locations relative to operational needs."
     - name: "total_daily_capacity"
       expr: SUM(CAST(capacity_per_day AS DOUBLE))
-      comment: "Total daily throughput capacity for supply chain planning and bottleneck identification"
-    - name: "avg_daily_capacity"
+      comment: "Total daily throughput capacity across all locations. A strategic capacity planning KPI — gaps between total capacity and demand drive decisions on facility investment, shift expansion, or outsourcing."
+    - name: "avg_daily_capacity_per_location"
       expr: AVG(CAST(capacity_per_day AS DOUBLE))
-      comment: "Average daily capacity per location for productivity benchmarking"
-    - name: "total_employees"
-      expr: SUM(CAST(REGEXP_REPLACE(number_of_employees, '[^0-9]', '') AS BIGINT))
-      comment: "Total employee headcount across locations for workforce distribution analysis"
-    - name: "avg_employees_per_location"
-      expr: AVG(CAST(REGEXP_REPLACE(number_of_employees, '[^0-9]', '') AS BIGINT))
-      comment: "Average employees per location for staffing efficiency"
-    - name: "hierarchical_locations_count"
-      expr: SUM(CASE WHEN parent_location_id IS NOT NULL THEN 1 ELSE 0 END)
-      comment: "Count of locations with parent relationships for organizational structure complexity tracking"
-    - name: "hierarchical_locations_pct"
-      expr: ROUND(100.0 * SUM(CASE WHEN parent_location_id IS NOT NULL THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percentage of locations in hierarchical structure for network design analysis"
-    - name: "capacity_density_per_sqft"
-      expr: ROUND(SUM(CAST(capacity_per_day AS DOUBLE)) / NULLIF(SUM(CAST(square_footage AS DOUBLE)), 0), 4)
-      comment: "Daily capacity per square foot for space utilization efficiency KPI and facility optimization"
-    - name: "employee_density_per_sqft"
-      expr: ROUND(SUM(CAST(REGEXP_REPLACE(number_of_employees, '[^0-9]', '') AS BIGINT)) / NULLIF(SUM(CAST(square_footage AS DOUBLE)), 0), 6)
-      comment: "Employees per square foot for workspace efficiency and real estate ROI"
-    - name: "avg_latitude"
-      expr: AVG(CAST(latitude AS DOUBLE))
-      comment: "Average latitude for geographic distribution analysis"
-    - name: "avg_longitude"
-      expr: AVG(CAST(longitude AS DOUBLE))
-      comment: "Average longitude for geographic distribution analysis"
+      comment: "Average daily capacity per location. Used to identify capacity outliers and inform load-balancing decisions across the facility network."
+    - name: "location_count_by_country"
+      expr: COUNT(DISTINCT country_code)
+      comment: "Number of distinct countries with operational locations. Measures geographic diversification of the facility network, relevant for supply chain resilience and geopolitical risk management."
+    - name: "capacity_per_sqft"
+      expr: SUM(CAST(capacity_per_day AS DOUBLE)) / NULLIF(SUM(CAST(square_footage AS DOUBLE)), 0)
+      comment: "Daily capacity per square foot of location area. A space utilization efficiency KPI — low values indicate underutilized real estate, triggering consolidation or sublease decisions."
 $$;
 
 CREATE OR REPLACE VIEW `vibe_semiconductors_v1`.`_metrics`.`shared_site`
@@ -192,89 +150,74 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Enterprise site portfolio metrics tracking operational footprint, capacity, power infrastructure, and site health for real estate strategy and operational excellence decisions."
+  comment: "Strategic and operational KPIs for the shared site master, which represents the physical location hierarchy for all semiconductor operations. Supports executive decisions on site portfolio, capacity, power infrastructure, and compliance posture."
   source: "`vibe_semiconductors_v1`.`shared`.`site`"
   dimensions:
-    - name: "site_code"
-      expr: site_code
-      comment: "Unique site identifier for location-level analysis"
     - name: "site_type"
       expr: site_type
-      comment: "Site classification (e.g., fab, office, warehouse, R&D) for portfolio segmentation"
+      comment: "Type of site (e.g. fab, R&D, office, logistics hub) enabling KPI segmentation by operational category."
     - name: "site_status"
       expr: site_status
-      comment: "Current site operational status for capacity planning"
-    - name: "region"
-      expr: region
-      comment: "Geographic region for regional footprint analysis"
+      comment: "Operational status of the site (e.g. active, closed, planned) for lifecycle and portfolio filtering."
     - name: "country_code"
       expr: country_code
-      comment: "Country location for geopolitical risk and regulatory analysis"
-    - name: "city"
-      expr: city
-      comment: "City location for local market presence tracking"
-    - name: "state_province"
-      expr: state_province
-      comment: "State or province for regional compliance and tax analysis"
-    - name: "timezone"
-      expr: timezone
-      comment: "Site timezone for global operations coordination"
+      comment: "Country where the site is located, enabling geographic segmentation for regional portfolio and risk analysis."
+    - name: "region"
+      expr: region
+      comment: "Geographic region of the site (e.g. APAC, EMEA, Americas) for regional capacity and investment planning."
     - name: "compliance_status"
       expr: compliance_status
-      comment: "Regulatory compliance state for risk management"
-    - name: "environmental_certification"
-      expr: environmental_certification
-      comment: "Environmental certification level for ESG reporting"
+      comment: "Regulatory compliance status of the site, used to segment sites by compliance risk for executive risk reporting."
     - name: "security_classification"
       expr: security_classification
-      comment: "Security clearance level for access control and risk assessment"
+      comment: "Security classification level of the site, relevant for defense contracts, export control, and access management decisions."
+    - name: "environmental_certification"
+      expr: environmental_certification
+      comment: "Environmental certification held by the site (e.g. ISO 14001, LEED), used in ESG reporting and green facility benchmarking."
     - name: "data_center_flag"
       expr: data_center_flag
-      comment: "Flag indicating data center presence for IT infrastructure planning"
-    - name: "opening_year"
+      comment: "Indicates whether the site hosts a data center, enabling separate capacity and power analysis for IT infrastructure vs. manufacturing."
+    - name: "opening_date_year"
       expr: YEAR(opening_date)
-      comment: "Year site opened for portfolio age analysis"
-    - name: "opening_quarter"
-      expr: DATE_TRUNC('QUARTER', opening_date)
-      comment: "Quarter site opened for expansion timeline tracking"
+      comment: "Year the site opened, enabling vintage cohort analysis of site performance and lifecycle stage."
+    - name: "state_province"
+      expr: state_province
+      comment: "State or province of the site for sub-regional regulatory jurisdiction and incentive program mapping."
   measures:
-    - name: "total_sites"
-      expr: COUNT(DISTINCT site_id)
-      comment: "Total number of unique sites for global footprint tracking"
-    - name: "total_square_footage"
-      expr: SUM(CAST(square_footage AS DOUBLE))
-      comment: "Total site square footage for real estate portfolio valuation"
-    - name: "avg_square_footage"
-      expr: AVG(CAST(square_footage AS DOUBLE))
-      comment: "Average site size for facility planning benchmarking"
+    - name: "active_site_count"
+      expr: COUNT(CASE WHEN site_status = 'active' THEN site_id END)
+      comment: "Number of currently active sites in the portfolio. A foundational executive KPI for assessing global operational footprint and driving site consolidation or greenfield investment decisions."
     - name: "total_power_capacity_kw"
       expr: SUM(CAST(power_capacity_kw AS DOUBLE))
-      comment: "Total power capacity in kilowatts for infrastructure investment planning and energy procurement"
-    - name: "avg_power_capacity_kw"
+      comment: "Total installed power capacity in kilowatts across all sites. A critical infrastructure KPI — power capacity constrains fab expansion and drives capital investment in grid upgrades and on-site generation."
+    - name: "avg_power_capacity_kw_per_site"
       expr: AVG(CAST(power_capacity_kw AS DOUBLE))
-      comment: "Average power capacity per site for infrastructure benchmarking"
-    - name: "total_employees"
-      expr: SUM(CAST(REGEXP_REPLACE(number_of_employees, '[^0-9]', '') AS BIGINT))
-      comment: "Total employee headcount across sites for workforce planning (assumes numeric extraction from string field)"
-    - name: "avg_employees_per_site"
-      expr: AVG(CAST(REGEXP_REPLACE(number_of_employees, '[^0-9]', '') AS BIGINT))
-      comment: "Average employees per site for staffing efficiency benchmarking"
-    - name: "data_center_sites_count"
-      expr: SUM(CASE WHEN data_center_flag = true THEN 1 ELSE 0 END)
-      comment: "Count of sites with data center facilities for IT infrastructure portfolio tracking"
-    - name: "data_center_sites_pct"
-      expr: ROUND(100.0 * SUM(CASE WHEN data_center_flag = true THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percentage of sites with data centers for digital infrastructure strategy"
+      comment: "Average power capacity per site in kilowatts. Benchmarks infrastructure scale across the site portfolio to identify underpowered sites that limit production ramp."
+    - name: "total_square_footage"
+      expr: SUM(CAST(square_footage AS DOUBLE))
+      comment: "Total square footage across all sites. Used in real estate portfolio management, capacity planning, and capital allocation for facility expansion or consolidation."
+    - name: "avg_square_footage_per_site"
+      expr: AVG(CAST(square_footage AS DOUBLE))
+      comment: "Average site size in square feet. Benchmarks facility scale to inform standardization strategies and identify sites with expansion headroom."
+    - name: "non_compliant_site_count"
+      expr: COUNT(CASE WHEN compliance_status != 'compliant' THEN site_id END)
+      comment: "Number of sites not in regulatory compliance. A risk management KPI — non-compliant sites face operational shutdowns, fines, and reputational damage; executives use this to prioritize remediation investment."
+    - name: "compliant_site_pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN compliance_status = 'compliant' THEN site_id END) / NULLIF(COUNT(site_id), 0), 2)
+      comment: "Percentage of sites in regulatory compliance. A board-level governance KPI — declining compliance rates signal systemic regulatory risk and trigger enterprise-wide compliance programs."
+    - name: "data_center_site_count"
+      expr: COUNT(CASE WHEN data_center_flag = TRUE THEN site_id END)
+      comment: "Number of sites hosting data centers. Used in IT infrastructure capacity planning and digital transformation investment decisions."
     - name: "power_density_kw_per_sqft"
-      expr: ROUND(SUM(CAST(power_capacity_kw AS DOUBLE)) / NULLIF(SUM(CAST(square_footage AS DOUBLE)), 0), 4)
-      comment: "Power capacity per square foot for infrastructure efficiency KPI and facility design optimization"
-    - name: "employee_density_per_sqft"
-      expr: ROUND(SUM(CAST(REGEXP_REPLACE(number_of_employees, '[^0-9]', '') AS BIGINT)) / NULLIF(SUM(CAST(square_footage AS DOUBLE)), 0), 6)
-      comment: "Employees per square foot for space utilization efficiency and real estate optimization"
-    - name: "avg_latitude"
-      expr: AVG(CAST(latitude AS DOUBLE))
-      comment: "Average latitude for geographic center of operations analysis"
-    - name: "avg_longitude"
-      expr: AVG(CAST(longitude AS DOUBLE))
-      comment: "Average longitude for geographic center of operations analysis"
+      expr: SUM(CAST(power_capacity_kw AS DOUBLE)) / NULLIF(SUM(CAST(square_footage AS DOUBLE)), 0)
+      comment: "Power capacity per square foot of site area (kW/sqft). A facility efficiency KPI — high power density indicates advanced manufacturing or data center operations; low density may signal underutilized infrastructure."
+    - name: "distinct_country_count"
+      expr: COUNT(DISTINCT country_code)
+      comment: "Number of distinct countries with active sites. Measures geographic diversification of the site network, directly informing supply chain resilience strategy and geopolitical risk exposure assessments."
+    - name: "sites_with_env_certification_count"
+      expr: COUNT(CASE WHEN environmental_certification IS NOT NULL AND environmental_certification != '' THEN site_id END)
+      comment: "Number of sites holding an environmental certification. An ESG portfolio KPI — executives track this to demonstrate sustainability commitments to investors, customers, and regulators."
+    - name: "env_certified_site_pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN environmental_certification IS NOT NULL AND environmental_certification != '' THEN site_id END) / NULLIF(COUNT(site_id), 0), 2)
+      comment: "Percentage of sites with environmental certification. Tracks progress toward ESG certification targets and is reported in sustainability disclosures and investor ESG scorecards."
 $$;

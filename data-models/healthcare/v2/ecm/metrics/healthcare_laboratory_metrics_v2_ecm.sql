@@ -1,85 +1,53 @@
--- Metric views for domain: laboratory | Business: Healthcare | Version: 2 | Generated on: 2026-07-02 07:21:53
+-- Metric views for domain: laboratory | Business: Healthcare | Version: 2 | Generated on: 2026-07-10 14:53:25
 
 CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`laboratory_lab_order`
 WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Lab order volume, turnaround, and fulfillment KPIs for operational steering of the laboratory service line."
+  comment: "Lab order volume, turnaround, and operational efficiency KPIs for laboratory throughput and service-level steering."
   source: "`vibe_healthcare_v1`.`laboratory`.`lab_order`"
   dimensions:
     - name: "order_priority"
       expr: order_priority
-      comment: "Order priority (STAT, routine) for prioritization and TAT SLA analysis."
+      comment: "Order priority (STAT, routine) for service-level analysis."
     - name: "order_status"
       expr: order_status
-      comment: "Current order lifecycle status for backlog and completion tracking."
+      comment: "Current lifecycle status of the lab order."
     - name: "specimen_type"
       expr: specimen_type
-      comment: "Specimen type ordered, for volume mix analysis by sample category."
-    - name: "order_month"
-      expr: DATE_TRUNC('MONTH', order_timestamp)
-      comment: "Month the order was placed, for trend analysis."
+      comment: "Type of specimen collected for the order."
     - name: "is_send_out"
       expr: is_send_out
-      comment: "Whether the order was sent to a reference lab (in-house vs send-out mix)."
+      comment: "Whether the order was sent out to a reference lab."
     - name: "point_of_care_test"
       expr: point_of_care_test
       comment: "Whether the order is a point-of-care test."
+    - name: "order_month"
+      expr: DATE_TRUNC('MONTH', order_timestamp)
+      comment: "Order month bucket for trend analysis."
   measures:
-    - name: "Total Lab Orders"
+    - name: "total_orders"
       expr: COUNT(1)
-      comment: "Total number of lab orders placed — baseline volume KPI for capacity planning."
-    - name: "Distinct Patients Ordered"
+      comment: "Total number of lab orders placed."
+    - name: "distinct_patients"
       expr: COUNT(DISTINCT demographics_id)
-      comment: "Unique patients with lab orders — measures patient reach of lab services."
-    - name: "Cancelled Order Rate Pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN order_status = 'Cancelled' THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percent of orders cancelled — signals waste and workflow issues leadership acts on."
-    - name: "Send Out Order Rate Pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN is_send_out = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percent of orders sent to reference labs — drives insourcing/cost decisions."
-    - name: "STAT Order Rate Pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN order_priority = 'STAT' THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percent of STAT orders — indicates urgent workload demand and staffing needs."
-$$;
-
-CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`laboratory_specimen`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Specimen processing quality and pre-analytic KPIs including rejection rates and volumes."
-  source: "`vibe_healthcare_v1`.`laboratory`.`specimen`"
-  dimensions:
-    - name: "specimen_type"
-      expr: specimen_type
-      comment: "Type of specimen for quality analysis by sample category."
-    - name: "specimen_status"
-      expr: specimen_status
-      comment: "Lifecycle status of the specimen."
-    - name: "priority"
-      expr: priority
-      comment: "Specimen processing priority."
-    - name: "collection_month"
-      expr: DATE_TRUNC('MONTH', collection_timestamp)
-      comment: "Month of specimen collection for trending."
-    - name: "condition_at_receipt"
-      expr: condition_at_receipt
-      comment: "Condition of specimen at receipt for pre-analytic quality review."
-  measures:
-    - name: "Total Specimens"
-      expr: COUNT(1)
-      comment: "Total specimens processed — baseline lab throughput volume."
-    - name: "Specimen Rejection Rate Pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN rejection_reason IS NOT NULL THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percent of specimens rejected — key pre-analytic quality KPI that triggers process improvement."
-    - name: "Avg Volume Collected ml"
-      expr: AVG(CAST(volume_collected_ml AS DOUBLE))
-      comment: "Average specimen volume collected — informs collection adequacy and redraw risk."
-    - name: "Avg Transport Temperature C"
-      expr: AVG(CAST(transport_temperature_c AS DOUBLE))
-      comment: "Average transport temperature — monitors cold-chain integrity for specimen validity."
+      comment: "Distinct patients with lab orders, indicating reach."
+    - name: "send_out_orders"
+      expr: SUM(CASE WHEN is_send_out = TRUE THEN 1 ELSE 0 END)
+      comment: "Count of send-out orders to reference labs (cost/outsourcing driver)."
+    - name: "send_out_rate_pct"
+      expr: ROUND(100.0 * SUM(CASE WHEN is_send_out = TRUE THEN 1 ELSE 0 END) / NULLIF(COUNT(1),0),2)
+      comment: "Percentage of orders sent to external reference labs."
+    - name: "cancelled_orders"
+      expr: SUM(CASE WHEN cancelled_timestamp IS NOT NULL THEN 1 ELSE 0 END)
+      comment: "Count of cancelled orders indicating workflow waste."
+    - name: "cancellation_rate_pct"
+      expr: ROUND(100.0 * SUM(CASE WHEN cancelled_timestamp IS NOT NULL THEN 1 ELSE 0 END) / NULLIF(COUNT(1),0),2)
+      comment: "Percentage of orders cancelled."
+    - name: "stat_order_rate_pct"
+      expr: ROUND(100.0 * SUM(CASE WHEN order_priority = 'STAT' THEN 1 ELSE 0 END) / NULLIF(COUNT(1),0),2)
+      comment: "Percentage of STAT (urgent) orders driving staffing demand."
 $$;
 
 CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`laboratory_test_result`
@@ -87,148 +55,43 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Test result quality and turnaround KPIs including critical values, abnormal rates and amendments."
+  comment: "Result quality, critical value management, and amendment KPIs central to lab safety and reliability."
   source: "`vibe_healthcare_v1`.`laboratory`.`test_result`"
   dimensions:
     - name: "result_status"
       expr: result_status
-      comment: "Result lifecycle status (preliminary, final, corrected)."
-    - name: "result_interpretation"
-      expr: result_interpretation
-      comment: "Clinical interpretation of the result."
+      comment: "Result status (final, preliminary, corrected)."
+    - name: "abnormal_flag"
+      expr: abnormal_flag
+      comment: "Whether the result was flagged abnormal."
+    - name: "is_critical_value"
+      expr: is_critical_value
+      comment: "Whether the result is a critical/panic value."
     - name: "performing_lab_section"
       expr: performing_lab_section
-      comment: "Lab section that performed the test, for workload and quality by section."
-    - name: "result_month"
-      expr: DATE_TRUNC('MONTH', result_timestamp)
-      comment: "Month result was reported for trend analysis."
-    - name: "test_name"
-      expr: test_name
-      comment: "Name of the test performed."
-  measures:
-    - name: "Total Test Results"
-      expr: COUNT(1)
-      comment: "Total test results reported — baseline analytic output volume."
-    - name: "Critical Value Rate Pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN critical_flag = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percent of results flagged critical — drives patient safety and notification workflow monitoring."
-    - name: "Abnormal Result Rate Pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN abnormal_flag = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percent of abnormal results — informs population health and test utilization review."
-    - name: "Amended Result Rate Pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN is_amended = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percent of results amended after release — quality indicator leadership investigates."
-    - name: "Delta Check Rate Pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN delta_check_flag = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percent of results triggering delta checks — signals result verification burden."
-$$;
-
-CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`laboratory_microbiology_culture`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Microbiology culture KPIs for infection control including MDRO detection, HAI association and turnaround."
-  source: "`vibe_healthcare_v1`.`laboratory`.`microbiology_culture`"
-  dimensions:
-    - name: "culture_type"
-      expr: culture_type
-      comment: "Type of culture performed."
-    - name: "culture_status"
-      expr: culture_status
-      comment: "Culture lifecycle status."
-    - name: "specimen_source_code"
-      expr: specimen_source_code
-      comment: "Specimen source for infection site analysis."
+      comment: "Lab section that performed the test."
     - name: "result_month"
       expr: DATE_TRUNC('MONTH', result_datetime)
-      comment: "Month culture resulted for infection trending."
+      comment: "Result month bucket for trend analysis."
   measures:
-    - name: "Total Cultures"
+    - name: "total_results"
       expr: COUNT(1)
-      comment: "Total microbiology cultures performed — baseline micro workload."
-    - name: "MDRO Detection Rate Pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN mdro_flag = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percent of cultures positive for multidrug-resistant organisms — critical infection-control KPI."
-    - name: "HAI Associated Rate Pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN hai_associated_flag = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percent of cultures associated with healthcare-acquired infections — drives infection prevention action."
-    - name: "Avg Turnaround Time Hours"
-      expr: AVG(CAST(turnaround_time_hours AS DOUBLE))
-      comment: "Average culture turnaround time — antibiotic stewardship and TAT SLA metric."
-    - name: "Public Health Reportable Rate Pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN public_health_reportable_flag = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percent of cultures reportable to public health — compliance monitoring KPI."
-$$;
-
-CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`laboratory_qc_run`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Quality control run KPIs including QC pass rate and Westgard rule violations for analytic quality assurance."
-  source: "`vibe_healthcare_v1`.`laboratory`.`qc_run`"
-  dimensions:
-    - name: "qc_type"
-      expr: qc_type
-      comment: "Type of QC run."
-    - name: "qc_level"
-      expr: qc_level
-      comment: "QC material level."
-    - name: "qc_status"
-      expr: qc_status
-      comment: "QC run status."
-    - name: "run_month"
-      expr: DATE_TRUNC('MONTH', run_timestamp)
-      comment: "Month of QC run for trend analysis."
-  measures:
-    - name: "Total QC Runs"
-      expr: COUNT(1)
-      comment: "Total QC runs performed — baseline QA activity volume."
-    - name: "QC Pass Rate Pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN pass_fail_indicator = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percent of QC runs passing — core analytic quality KPI that triggers instrument review."
-    - name: "Westgard Violation Rate Pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN westgard_violation_flag = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percent of QC runs violating Westgard rules — flags systematic analytic error."
-    - name: "Avg PT Z Score"
-      expr: AVG(CAST(pt_z_score AS DOUBLE))
-      comment: "Average proficiency-testing z-score — external quality assessment performance metric."
-$$;
-
-CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`laboratory_transfusion_event`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Transfusion safety KPIs including reaction rates and consent compliance for blood bank governance."
-  source: "`vibe_healthcare_v1`.`laboratory`.`transfusion_event`"
-  dimensions:
-    - name: "product_type"
-      expr: product_type
-      comment: "Blood product type transfused."
-    - name: "transfusion_status"
-      expr: transfusion_status
-      comment: "Status of the transfusion event."
-    - name: "reaction_severity"
-      expr: reaction_severity
-      comment: "Severity of any transfusion reaction."
-    - name: "transfusion_month"
-      expr: DATE_TRUNC('MONTH', transfusion_start_datetime)
-      comment: "Month of transfusion for trend analysis."
-  measures:
-    - name: "Total Transfusions"
-      expr: COUNT(1)
-      comment: "Total transfusion events — baseline blood utilization volume."
-    - name: "Transfusion Reaction Rate Pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN reaction_flag = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percent of transfusions with a reaction — critical patient-safety KPI for hemovigilance."
-    - name: "Consent Compliance Rate Pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN consent_obtained_flag = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percent of transfusions with documented consent — regulatory compliance KPI."
-    - name: "Total Volume Transfused ml"
-      expr: SUM(CAST(volume_ml AS DOUBLE))
-      comment: "Total volume transfused — blood product utilization for supply planning."
+      comment: "Total number of test results produced."
+    - name: "critical_value_results"
+      expr: SUM(CASE WHEN is_critical_value = TRUE THEN 1 ELSE 0 END)
+      comment: "Count of critical value results requiring notification."
+    - name: "critical_value_rate_pct"
+      expr: ROUND(100.0 * SUM(CASE WHEN is_critical_value = TRUE THEN 1 ELSE 0 END) / NULLIF(COUNT(1),0),2)
+      comment: "Percentage of results that are critical values."
+    - name: "amended_results"
+      expr: SUM(CASE WHEN is_amended = TRUE THEN 1 ELSE 0 END)
+      comment: "Count of amended results indicating potential quality issues."
+    - name: "amendment_rate_pct"
+      expr: ROUND(100.0 * SUM(CASE WHEN is_amended = TRUE THEN 1 ELSE 0 END) / NULLIF(COUNT(1),0),2)
+      comment: "Percentage of results amended after release, a quality signal."
+    - name: "abnormal_rate_pct"
+      expr: ROUND(100.0 * SUM(CASE WHEN abnormal_flag = TRUE THEN 1 ELSE 0 END) / NULLIF(COUNT(1),0),2)
+      comment: "Percentage of abnormal results."
 $$;
 
 CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`laboratory_lab_charge`
@@ -236,104 +99,207 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Laboratory revenue and charge-capture KPIs for financial steering of lab services."
+  comment: "Laboratory revenue-cycle KPIs including charge capture, void rates, and STAT surcharges for financial steering."
   source: "`vibe_healthcare_v1`.`laboratory`.`lab_charge`"
   dimensions:
-    - name: "lab_charge_status"
-      expr: lab_charge_status
-      comment: "Charge lifecycle status (submitted, voided)."
+    - name: "charge_entry_method"
+      expr: charge_entry_method
+      comment: "Method of charge entry (auto, manual)."
     - name: "performing_lab_section"
       expr: performing_lab_section
-      comment: "Lab section that generated the charge for revenue by section."
-    - name: "charge_month"
-      expr: DATE_TRUNC('MONTH', charge_created_timestamp)
-      comment: "Month charge was created for revenue trending."
+      comment: "Lab section generating the charge."
+    - name: "point_of_care_indicator"
+      expr: point_of_care_indicator
+      comment: "Whether the charge is for a point-of-care test."
     - name: "reference_lab_indicator"
       expr: reference_lab_indicator
-      comment: "Whether charge is for a reference lab test."
+      comment: "Whether the charge is for a reference lab test."
+    - name: "charge_month"
+      expr: DATE_TRUNC('MONTH', charge_created_timestamp)
+      comment: "Charge creation month for trending."
   measures:
-    - name: "Total Charges"
+    - name: "total_charges"
       expr: COUNT(1)
-      comment: "Total lab charges — baseline billing activity volume."
-    - name: "Total STAT Surcharge Amount"
+      comment: "Total number of lab charges captured."
+    - name: "total_stat_surcharge"
       expr: SUM(CAST(stat_surcharge_amount AS DOUBLE))
-      comment: "Total STAT surcharge revenue — incremental revenue from urgent testing."
-    - name: "Voided Charge Rate Pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN charge_voided_timestamp IS NOT NULL THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percent of charges voided — revenue integrity KPI leadership monitors for leakage."
-    - name: "Point Of Care Charge Rate Pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN point_of_care_indicator = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percent of charges from point-of-care testing — service mix insight."
+      comment: "Total STAT surcharge revenue."
+    - name: "avg_stat_surcharge"
+      expr: AVG(CAST(stat_surcharge_amount AS DOUBLE))
+      comment: "Average STAT surcharge per charge."
+    - name: "voided_charges"
+      expr: SUM(CASE WHEN charge_voided_timestamp IS NOT NULL THEN 1 ELSE 0 END)
+      comment: "Count of voided charges representing lost/corrected revenue."
+    - name: "void_rate_pct"
+      expr: ROUND(100.0 * SUM(CASE WHEN charge_voided_timestamp IS NOT NULL THEN 1 ELSE 0 END) / NULLIF(COUNT(1),0),2)
+      comment: "Percentage of charges voided, a revenue integrity metric."
+    - name: "distinct_patients_charged"
+      expr: COUNT(DISTINCT demographics_id)
+      comment: "Distinct patients with lab charges."
 $$;
 
-CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`laboratory_blood_bank_unit`
+CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`laboratory_qc_run`
 WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Blood inventory KPIs including wastage/discard rate and cost for supply chain management."
-  source: "`vibe_healthcare_v1`.`laboratory`.`blood_bank_unit`"
+  comment: "Quality control performance and proficiency testing KPIs for regulatory compliance and analytical reliability."
+  source: "`vibe_healthcare_v1`.`laboratory`.`qc_run`"
   dimensions:
-    - name: "product_type"
-      expr: product_type
-      comment: "Type of blood product in inventory."
-    - name: "abo_blood_group"
-      expr: abo_blood_group
-      comment: "ABO blood group for inventory-mix analysis."
-    - name: "blood_bank_unit_status"
-      expr: blood_bank_unit_status
-      comment: "Current status of the blood unit."
-    - name: "expiration_month"
-      expr: DATE_TRUNC('MONTH', expiration_date)
-      comment: "Expiration month for inventory expiry planning."
+    - name: "qc_type"
+      expr: qc_type
+      comment: "Type of QC run (internal QC, proficiency testing)."
+    - name: "qc_level"
+      expr: qc_level
+      comment: "QC material level."
+    - name: "qc_run_status"
+      expr: qc_run_status
+      comment: "Status of the QC run."
+    - name: "pt_graded_result"
+      expr: pt_graded_result
+      comment: "Proficiency testing graded result."
+    - name: "qc_month"
+      expr: DATE_TRUNC('MONTH', created_timestamp)
+      comment: "QC run month for trend monitoring."
   measures:
-    - name: "Total Blood Units"
+    - name: "total_qc_runs"
       expr: COUNT(1)
-      comment: "Total blood units in inventory — baseline supply volume."
-    - name: "Unit Discard Rate Pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN discard_timestamp IS NOT NULL THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percent of units discarded — key wastage KPI driving inventory-management action."
-    - name: "Total Cost Amount"
-      expr: SUM(CAST(cost_amount AS DOUBLE))
-      comment: "Total cost of blood inventory — financial exposure of blood supply."
-    - name: "Temperature Alarm Rate Pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN temperature_alarm_flag = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percent of units with temperature alarms — cold-chain integrity KPI."
+      comment: "Total number of QC runs performed."
+    - name: "qc_pass_count"
+      expr: SUM(CASE WHEN pass_fail_indicator = TRUE THEN 1 ELSE 0 END)
+      comment: "Count of QC runs that passed."
+    - name: "qc_pass_rate_pct"
+      expr: ROUND(100.0 * SUM(CASE WHEN pass_fail_indicator = TRUE THEN 1 ELSE 0 END) / NULLIF(COUNT(1),0),2)
+      comment: "QC pass rate, a core analytical quality KPI."
+    - name: "avg_pt_z_score"
+      expr: AVG(CAST(pt_z_score AS DOUBLE))
+      comment: "Average proficiency testing z-score indicating accuracy vs peer group."
 $$;
 
-CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`laboratory_molecular_test`
+CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`laboratory_microbiology_culture`
 WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Molecular/genomic testing KPIs including variant detection and result completeness for precision-medicine service oversight."
-  source: "`vibe_healthcare_v1`.`laboratory`.`molecular_test`"
+  comment: "Microbiology culture KPIs for infection control, MDRO surveillance, and turnaround performance."
+  source: "`vibe_healthcare_v1`.`laboratory`.`microbiology_culture`"
   dimensions:
-    - name: "result_status"
-      expr: result_status
-      comment: "Molecular test result status."
-    - name: "test_methodology"
-      expr: test_methodology
-      comment: "Testing methodology used."
-    - name: "clinical_significance"
-      expr: clinical_significance
-      comment: "Clinical significance classification of the variant."
-    - name: "result_month"
-      expr: DATE_TRUNC('MONTH', result_datetime)
-      comment: "Month test resulted for trending."
+    - name: "culture_type"
+      expr: culture_type
+      comment: "Type of microbiology culture."
+    - name: "culture_status"
+      expr: culture_status
+      comment: "Status of the culture workflow."
+    - name: "growth_result"
+      expr: growth_result
+      comment: "Growth result of the culture."
+    - name: "mdro_flag"
+      expr: mdro_flag
+      comment: "Whether a multi-drug-resistant organism was identified."
+    - name: "hai_associated_flag"
+      expr: hai_associated_flag
+      comment: "Whether the culture is associated with a healthcare-acquired infection."
+    - name: "culture_month"
+      expr: DATE_TRUNC('MONTH', collection_datetime)
+      comment: "Collection month for surveillance trending."
   measures:
-    - name: "Total Molecular Tests"
+    - name: "total_cultures"
       expr: COUNT(1)
-      comment: "Total molecular tests performed — baseline precision-medicine volume."
-    - name: "Variant Detection Rate Pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN detected_flag = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percent of molecular tests with a detected variant — yield KPI for test utilization review."
-    - name: "Reportable Result Rate Pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN reportable_flag = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percent of results that are reportable — clinical actionability KPI."
-    - name: "Amended Test Rate Pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN amended = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percent of molecular tests amended — quality indicator."
+      comment: "Total number of microbiology cultures."
+    - name: "mdro_positive_count"
+      expr: SUM(CASE WHEN mdro_flag = TRUE THEN 1 ELSE 0 END)
+      comment: "Count of MDRO-positive cultures for stewardship escalation."
+    - name: "mdro_rate_pct"
+      expr: ROUND(100.0 * SUM(CASE WHEN mdro_flag = TRUE THEN 1 ELSE 0 END) / NULLIF(COUNT(1),0),2)
+      comment: "Percentage of cultures identifying MDROs, a key infection-control KPI."
+    - name: "hai_associated_count"
+      expr: SUM(CASE WHEN hai_associated_flag = TRUE THEN 1 ELSE 0 END)
+      comment: "Count of HAI-associated cultures."
+    - name: "avg_turnaround_hours"
+      expr: AVG(CAST(turnaround_time_hours AS DOUBLE))
+      comment: "Average culture turnaround time in hours."
+    - name: "critical_value_count"
+      expr: SUM(CASE WHEN critical_value_flag = TRUE THEN 1 ELSE 0 END)
+      comment: "Count of cultures with critical values requiring notification."
+$$;
+
+CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`laboratory_specimen`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Specimen collection and pre-analytical quality KPIs including rejection rates driving lab quality and redraw costs."
+  source: "`vibe_healthcare_v1`.`laboratory`.`specimen`"
+  dimensions:
+    - name: "specimen_type"
+      expr: specimen_type
+      comment: "Type of specimen."
+    - name: "accession_status"
+      expr: accession_status
+      comment: "Accession status of the specimen."
+    - name: "rejection_reason"
+      expr: rejection_reason
+      comment: "Reason a specimen was rejected."
+    - name: "priority"
+      expr: priority
+      comment: "Specimen processing priority."
+    - name: "collection_month"
+      expr: DATE_TRUNC('MONTH', collection_datetime)
+      comment: "Collection month for trending."
+  measures:
+    - name: "total_specimens"
+      expr: COUNT(1)
+      comment: "Total number of specimens collected."
+    - name: "rejected_specimens"
+      expr: SUM(CASE WHEN rejection_reason IS NOT NULL THEN 1 ELSE 0 END)
+      comment: "Count of rejected specimens driving redraws and delays."
+    - name: "rejection_rate_pct"
+      expr: ROUND(100.0 * SUM(CASE WHEN rejection_reason IS NOT NULL THEN 1 ELSE 0 END) / NULLIF(COUNT(1),0),2)
+      comment: "Specimen rejection rate, a pre-analytical quality KPI."
+    - name: "distinct_patients"
+      expr: COUNT(DISTINCT mpi_record_id)
+      comment: "Distinct patients with collected specimens."
+$$;
+
+CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`laboratory_transfusion_event`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Blood transfusion safety KPIs including reaction rates and hemovigilance for patient safety steering."
+  source: "`vibe_healthcare_v1`.`laboratory`.`transfusion_event`"
+  dimensions:
+    - name: "transfusion_status"
+      expr: transfusion_status
+      comment: "Status of the transfusion event."
+    - name: "transfusion_reaction_occurred"
+      expr: transfusion_reaction_occurred
+      comment: "Whether a transfusion reaction occurred."
+    - name: "reaction_severity"
+      expr: reaction_severity
+      comment: "Severity of the transfusion reaction."
+    - name: "crossmatch_result"
+      expr: crossmatch_result
+      comment: "Crossmatch compatibility result."
+    - name: "transfusion_month"
+      expr: DATE_TRUNC('MONTH', transfusion_start_datetime)
+      comment: "Transfusion month for trending."
+  measures:
+    - name: "total_transfusions"
+      expr: COUNT(1)
+      comment: "Total number of transfusion events."
+    - name: "reaction_count"
+      expr: SUM(CASE WHEN transfusion_reaction_occurred = TRUE THEN 1 ELSE 0 END)
+      comment: "Count of transfusion reactions, a critical safety event."
+    - name: "reaction_rate_pct"
+      expr: ROUND(100.0 * SUM(CASE WHEN transfusion_reaction_occurred = TRUE THEN 1 ELSE 0 END) / NULLIF(COUNT(1),0),2)
+      comment: "Transfusion reaction rate, key patient safety KPI."
+    - name: "hemovigilance_reported_count"
+      expr: SUM(CASE WHEN hemovigilance_reported = TRUE THEN 1 ELSE 0 END)
+      comment: "Count of events reported to hemovigilance."
+    - name: "avg_volume_transfused_ml"
+      expr: AVG(CAST(transfusion_rate AS DOUBLE))
+      comment: "Average transfusion rate (ml) across events."
 $$;
 
 CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`laboratory_susceptibility_result`
@@ -341,104 +307,34 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Antimicrobial susceptibility KPIs including resistance rate for antibiotic stewardship steering."
+  comment: "Antimicrobial susceptibility KPIs supporting antibiotic stewardship and resistance surveillance."
   source: "`vibe_healthcare_v1`.`laboratory`.`susceptibility_result`"
   dimensions:
     - name: "antibiotic_class"
       expr: antibiotic_class
-      comment: "Antibiotic class tested for stewardship analysis."
-    - name: "antibiotic_name"
-      expr: antibiotic_name
-      comment: "Specific antibiotic agent tested."
+      comment: "Class of antibiotic tested."
     - name: "susceptibility_interpretation"
       expr: susceptibility_interpretation
-      comment: "Interpretation (S/I/R) of the susceptibility result."
+      comment: "Interpretation (susceptible, intermediate, resistant)."
+    - name: "result_status"
+      expr: result_status
+      comment: "Status of the susceptibility result."
     - name: "result_month"
       expr: DATE_TRUNC('MONTH', result_timestamp)
-      comment: "Month result reported for resistance trending."
+      comment: "Result month for resistance trending."
   measures:
-    - name: "Total Susceptibility Results"
+    - name: "total_susceptibility_results"
       expr: COUNT(1)
-      comment: "Total susceptibility results — baseline stewardship data volume."
-    - name: "Resistance Rate Pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN resistance_flag = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percent of results showing resistance — antibiogram KPI steering empiric therapy policy."
-    - name: "Inducible Resistance Rate Pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN inducible_resistance_flag = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percent showing inducible resistance — advanced resistance-monitoring KPI."
-    - name: "Avg MIC Value"
-      expr: AVG(CAST(mic_value AS DOUBLE))
-      comment: "Average minimum inhibitory concentration — quantitative resistance trend indicator."
-$$;
-
-CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`laboratory_instrument`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Lab instrument fleet KPIs including downtime and operational availability for capital and maintenance decisions."
-  source: "`vibe_healthcare_v1`.`laboratory`.`instrument`"
-  dimensions:
-    - name: "instrument_type"
-      expr: instrument_type
-      comment: "Type of laboratory instrument."
-    - name: "lab_section"
-      expr: lab_section
-      comment: "Lab section where instrument is deployed."
-    - name: "operational_status"
-      expr: operational_status
-      comment: "Current operational status of the instrument."
-    - name: "manufacturer"
-      expr: manufacturer
-      comment: "Instrument manufacturer for vendor performance analysis."
-  measures:
-    - name: "Total Instruments"
-      expr: COUNT(1)
-      comment: "Total instruments in the fleet — baseline capital-asset count."
-    - name: "Total Downtime Hours"
-      expr: SUM(CAST(total_downtime_hours AS DOUBLE))
-      comment: "Total instrument downtime — operational availability KPI driving maintenance investment."
-    - name: "Avg Acquisition Cost"
-      expr: AVG(CAST(acquisition_cost AS DOUBLE))
-      comment: "Average instrument acquisition cost — capital planning input."
-    - name: "Non Operational Rate Pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN operational_status <> 'Operational' THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percent of instruments not operational — fleet availability KPI leadership acts on."
-$$;
-
-CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`laboratory_point_of_care_test`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Point-of-care testing KPIs including QC compliance and critical results for decentralized testing oversight."
-  source: "`vibe_healthcare_v1`.`laboratory`.`point_of_care_test`"
-  dimensions:
-    - name: "test_category"
-      expr: test_category
-      comment: "Category of point-of-care test."
-    - name: "device_type"
-      expr: device_type
-      comment: "POC device type used."
-    - name: "performing_location_name"
-      expr: performing_location_name
-      comment: "Location where POC test was performed."
-    - name: "test_month"
-      expr: DATE_TRUNC('MONTH', test_datetime)
-      comment: "Month POC test performed for trending."
-  measures:
-    - name: "Total POC Tests"
-      expr: COUNT(1)
-      comment: "Total point-of-care tests — baseline decentralized testing volume."
-    - name: "QC Pass Rate Pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN qc_passed_flag = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percent of POC tests with passing QC — compliance KPI for CLIA-waived testing oversight."
-    - name: "Critical Value Rate Pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN critical_value_flag = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percent of POC tests with critical values — patient safety KPI."
-    - name: "EHR Transmission Failure Rate Pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN ehr_transmission_status <> 'Success' THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percent of POC results failing EHR transmission — interoperability KPI for result-integration monitoring."
+      comment: "Total susceptibility results reported."
+    - name: "resistant_count"
+      expr: SUM(CASE WHEN susceptibility_interpretation = 'Resistant' THEN 1 ELSE 0 END)
+      comment: "Count of resistant interpretations for stewardship."
+    - name: "resistance_rate_pct"
+      expr: ROUND(100.0 * SUM(CASE WHEN susceptibility_interpretation = 'Resistant' THEN 1 ELSE 0 END) / NULLIF(COUNT(1),0),2)
+      comment: "Resistance rate, a core antimicrobial resistance surveillance KPI."
+    - name: "reportable_public_health_count"
+      expr: SUM(CASE WHEN reportable_to_public_health_flag = TRUE THEN 1 ELSE 0 END)
+      comment: "Count of results reportable to public health authorities."
 $$;
 
 CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`laboratory_reagent_lot`
@@ -446,34 +342,37 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Reagent inventory KPIs including recall exposure, QC validation and cost for supply-chain management."
+  comment: "Reagent inventory and cost KPIs supporting supply management and waste reduction in the lab."
   source: "`vibe_healthcare_v1`.`laboratory`.`reagent_lot`"
   dimensions:
-    - name: "reagent_type"
-      expr: reagent_type
-      comment: "Type of reagent."
     - name: "lot_status"
       expr: lot_status
-      comment: "Reagent lot status."
-    - name: "manufacturer"
-      expr: manufacturer
-      comment: "Reagent manufacturer for vendor analysis."
-    - name: "expiration_month"
-      expr: DATE_TRUNC('MONTH', expiration_date)
-      comment: "Expiration month for inventory expiry planning."
+      comment: "Status of the reagent lot."
+    - name: "qc_validation_status"
+      expr: qc_validation_status
+      comment: "QC validation status of the lot."
+    - name: "hazardous_material_flag"
+      expr: hazardous_material_flag
+      comment: "Whether the reagent is hazardous."
+    - name: "receipt_month"
+      expr: DATE_TRUNC('MONTH', receipt_date)
+      comment: "Receipt month for inventory trending."
   measures:
-    - name: "Total Reagent Lots"
+    - name: "total_lots"
       expr: COUNT(1)
-      comment: "Total reagent lots tracked — baseline reagent inventory count."
-    - name: "Recall Rate Pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN recall_flag = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percent of lots under recall — supply-risk KPI driving remediation action."
-    - name: "QC Validation Rate Pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN qc_validated_flag = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percent of lots QC-validated before use — analytic quality compliance KPI."
-    - name: "Total Reagent Value"
-      expr: SUM(CAST(unit_cost AS DOUBLE))
-      comment: "Total reagent inventory value — cost control input for lab operations."
+      comment: "Total number of reagent lots."
+    - name: "total_lot_cost"
+      expr: SUM(CAST(total_lot_cost AS DOUBLE))
+      comment: "Total reagent lot cost for spend management."
+    - name: "total_quantity_on_hand"
+      expr: SUM(CAST(quantity_on_hand AS DOUBLE))
+      comment: "Total reagent quantity on hand."
+    - name: "quarantined_lots"
+      expr: SUM(CASE WHEN quarantine_date IS NOT NULL THEN 1 ELSE 0 END)
+      comment: "Count of quarantined lots indicating quality holds."
+    - name: "avg_cost_per_unit"
+      expr: AVG(CAST(cost_per_unit AS DOUBLE))
+      comment: "Average reagent cost per unit."
 $$;
 
 CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`laboratory_pathology_report`
@@ -481,67 +380,199 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Anatomic pathology KPIs including critical findings, cancer reporting and amendments for diagnostic quality."
+  comment: "Anatomic pathology KPIs including cancer reporting, amendments, and critical value management."
   source: "`vibe_healthcare_v1`.`laboratory`.`pathology_report`"
   dimensions:
+    - name: "report_status"
+      expr: report_status
+      comment: "Status of the pathology report."
     - name: "report_type"
       expr: report_type
       comment: "Type of pathology report."
-    - name: "report_status"
-      expr: report_status
-      comment: "Report lifecycle status."
-    - name: "tumor_site"
-      expr: tumor_site
-      comment: "Anatomic tumor site for oncology analysis."
+    - name: "cancer_registry_reportable_flag"
+      expr: cancer_registry_reportable_flag
+      comment: "Whether the case is reportable to the cancer registry."
+    - name: "tumor_board_reviewed_flag"
+      expr: tumor_board_reviewed_flag
+      comment: "Whether the case was reviewed at tumor board."
     - name: "received_month"
       expr: DATE_TRUNC('MONTH', received_date)
-      comment: "Month case received for trending."
+      comment: "Received month for trending."
   measures:
-    - name: "Total Pathology Reports"
+    - name: "total_reports"
       expr: COUNT(1)
-      comment: "Total pathology reports — baseline anatomic pathology volume."
-    - name: "Cancer Registry Reportable Rate Pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN cancer_registry_reportable_flag = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percent of reports reportable to cancer registry — regulatory compliance KPI."
-    - name: "Amended Report Rate Pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN amended_timestamp IS NOT NULL THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percent of pathology reports amended — diagnostic quality KPI."
-    - name: "Tumor Board Review Rate Pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN tumor_board_reviewed_flag = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percent of cases reviewed at tumor board — multidisciplinary care quality KPI."
+      comment: "Total number of pathology reports."
+    - name: "cancer_reportable_count"
+      expr: SUM(CASE WHEN cancer_registry_reportable_flag = TRUE THEN 1 ELSE 0 END)
+      comment: "Count of cancer-registry-reportable cases."
+    - name: "amended_reports"
+      expr: SUM(CASE WHEN amended_timestamp IS NOT NULL THEN 1 ELSE 0 END)
+      comment: "Count of amended reports, a quality signal."
+    - name: "amendment_rate_pct"
+      expr: ROUND(100.0 * SUM(CASE WHEN amended_timestamp IS NOT NULL THEN 1 ELSE 0 END) / NULLIF(COUNT(1),0),2)
+      comment: "Percentage of amended pathology reports."
+    - name: "critical_value_count"
+      expr: SUM(CASE WHEN critical_value_flag = TRUE THEN 1 ELSE 0 END)
+      comment: "Count of reports with critical values."
 $$;
 
-CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`laboratory_clia_certificate`
+CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`laboratory_blood_bank_unit`
 WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "CLIA certification compliance KPIs including sanctions, inspection outcomes and PT enrollment for regulatory risk oversight."
-  source: "`vibe_healthcare_v1`.`laboratory`.`clia_certificate`"
+  comment: "Blood bank inventory KPIs including discard rates and cost for supply and waste management."
+  source: "`vibe_healthcare_v1`.`laboratory`.`blood_bank_unit`"
   dimensions:
-    - name: "certificate_type"
-      expr: certificate_type
-      comment: "Type of CLIA certificate."
-    - name: "certificate_status"
-      expr: certificate_status
-      comment: "Certificate status."
-    - name: "testing_complexity_level"
-      expr: testing_complexity_level
-      comment: "Testing complexity level authorized."
-    - name: "expiration_month"
-      expr: DATE_TRUNC('MONTH', expiration_date)
-      comment: "Certificate expiration month for renewal planning."
+    - name: "product_type"
+      expr: product_type
+      comment: "Type of blood product."
+    - name: "unit_status"
+      expr: unit_status
+      comment: "Status of the blood bank unit."
+    - name: "abo_blood_group"
+      expr: abo_blood_group
+      comment: "ABO blood group."
+    - name: "rh_type"
+      expr: rh_type
+      comment: "Rh type."
+    - name: "donation_month"
+      expr: DATE_TRUNC('MONTH', donation_date)
+      comment: "Donation month for inventory trending."
   measures:
-    - name: "Total Certificates"
+    - name: "total_units"
       expr: COUNT(1)
-      comment: "Total CLIA certificates tracked — baseline regulatory footprint."
-    - name: "Sanctioned Rate Pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN sanctions_imposed = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percent of certificates with sanctions — critical regulatory-risk KPI for executive oversight."
-    - name: "PT Enrollment Rate Pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN proficiency_testing_enrollment = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percent enrolled in proficiency testing — compliance readiness KPI."
-    - name: "Total Annual Fees"
-      expr: SUM(CAST(annual_fee_amount AS DOUBLE))
-      comment: "Total annual CLIA fees — regulatory cost of doing lab business."
+      comment: "Total number of blood bank units."
+    - name: "discarded_units"
+      expr: SUM(CASE WHEN discard_timestamp IS NOT NULL THEN 1 ELSE 0 END)
+      comment: "Count of discarded units representing wasted product."
+    - name: "discard_rate_pct"
+      expr: ROUND(100.0 * SUM(CASE WHEN discard_timestamp IS NOT NULL THEN 1 ELSE 0 END) / NULLIF(COUNT(1),0),2)
+      comment: "Blood product discard rate, a key waste KPI."
+    - name: "total_cost_amount"
+      expr: SUM(CAST(cost_amount AS DOUBLE))
+      comment: "Total cost of blood bank units."
+    - name: "total_volume_ml"
+      expr: SUM(CAST(volume_ml AS DOUBLE))
+      comment: "Total blood volume in inventory."
+$$;
+
+CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`laboratory_molecular_test`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Molecular/genomic testing KPIs including variant detection, turnaround, and companion diagnostics."
+  source: "`vibe_healthcare_v1`.`laboratory`.`molecular_test`"
+  dimensions:
+    - name: "test_category"
+      expr: test_category
+      comment: "Category of molecular test."
+    - name: "test_status"
+      expr: test_status
+      comment: "Status of the molecular test."
+    - name: "variant_detected"
+      expr: variant_detected
+      comment: "Whether a variant was detected."
+    - name: "companion_diagnostic"
+      expr: companion_diagnostic
+      comment: "Whether the test is a companion diagnostic."
+    - name: "reported_month"
+      expr: DATE_TRUNC('MONTH', result_reported_timestamp)
+      comment: "Result reported month for trending."
+  measures:
+    - name: "total_tests"
+      expr: COUNT(1)
+      comment: "Total number of molecular tests."
+    - name: "variant_detected_count"
+      expr: SUM(CASE WHEN variant_detected = TRUE THEN 1 ELSE 0 END)
+      comment: "Count of tests detecting a variant."
+    - name: "variant_detection_rate_pct"
+      expr: ROUND(100.0 * SUM(CASE WHEN variant_detected = TRUE THEN 1 ELSE 0 END) / NULLIF(COUNT(1),0),2)
+      comment: "Variant detection rate."
+    - name: "avg_quality_score"
+      expr: AVG(CAST(quality_score AS DOUBLE))
+      comment: "Average sequencing quality score."
+    - name: "avg_coverage_pct"
+      expr: AVG(CAST(coverage_percentage AS DOUBLE))
+      comment: "Average genomic coverage percentage."
+$$;
+
+CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`laboratory_point_of_care_test`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Point-of-care testing KPIs including QC compliance and abnormal result rates for decentralized testing oversight."
+  source: "`vibe_healthcare_v1`.`laboratory`.`point_of_care_test`"
+  dimensions:
+    - name: "test_category"
+      expr: test_category
+      comment: "Category of POC test."
+    - name: "test_status"
+      expr: test_status
+      comment: "Status of the POC test."
+    - name: "qc_status"
+      expr: qc_status
+      comment: "QC status at time of test."
+    - name: "clia_waived_flag"
+      expr: clia_waived_flag
+      comment: "Whether the test is CLIA-waived."
+    - name: "test_month"
+      expr: DATE_TRUNC('MONTH', test_datetime)
+      comment: "Test month for trending."
+  measures:
+    - name: "total_poc_tests"
+      expr: COUNT(1)
+      comment: "Total number of point-of-care tests."
+    - name: "abnormal_count"
+      expr: SUM(CASE WHEN abnormal_flag = TRUE THEN 1 ELSE 0 END)
+      comment: "Count of abnormal POC results."
+    - name: "critical_value_count"
+      expr: SUM(CASE WHEN critical_value_flag = TRUE THEN 1 ELSE 0 END)
+      comment: "Count of critical POC results."
+    - name: "corrected_result_count"
+      expr: SUM(CASE WHEN corrected_result_flag = TRUE THEN 1 ELSE 0 END)
+      comment: "Count of corrected POC results, a quality signal."
+    - name: "corrected_result_rate_pct"
+      expr: ROUND(100.0 * SUM(CASE WHEN corrected_result_flag = TRUE THEN 1 ELSE 0 END) / NULLIF(COUNT(1),0),2)
+      comment: "Percentage of POC results corrected."
+$$;
+
+CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`laboratory_instrument`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Lab instrument fleet KPIs including operational status and downtime for capacity and maintenance planning."
+  source: "`vibe_healthcare_v1`.`laboratory`.`instrument`"
+  dimensions:
+    - name: "instrument_type"
+      expr: instrument_type
+      comment: "Type of laboratory instrument."
+    - name: "operational_status"
+      expr: operational_status
+      comment: "Operational status of the instrument."
+    - name: "lab_section"
+      expr: lab_section
+      comment: "Lab section where instrument is deployed."
+    - name: "manufacturer"
+      expr: manufacturer
+      comment: "Instrument manufacturer."
+  measures:
+    - name: "total_instruments"
+      expr: COUNT(1)
+      comment: "Total number of instruments in the fleet."
+    - name: "total_downtime_hours"
+      expr: SUM(CAST(total_downtime_hours AS DOUBLE))
+      comment: "Total instrument downtime hours affecting capacity."
+    - name: "avg_downtime_hours"
+      expr: AVG(CAST(total_downtime_hours AS DOUBLE))
+      comment: "Average downtime hours per instrument."
+    - name: "total_acquisition_cost"
+      expr: SUM(CAST(acquisition_cost AS DOUBLE))
+      comment: "Total acquisition cost of the instrument fleet."
+    - name: "active_instrument_count"
+      expr: SUM(CASE WHEN operational_status = 'Active' THEN 1 ELSE 0 END)
+      comment: "Count of active instruments for capacity planning."
 $$;

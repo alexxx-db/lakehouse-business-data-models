@@ -1,188 +1,50 @@
--- Metric views for domain: consent | Business: Healthcare | Version: 2 | Generated on: 2026-07-02 07:21:53
+-- Metric views for domain: consent | Business: Healthcare | Version: 2 | Generated on: 2026-07-10 14:53:25
 
-CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`consent_session`
+CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`consent_record`
 WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Consent capture session KPIs measuring completion, understanding confirmation, interpreter usage, and channel/modality mix. Steers operational efficiency and compliance quality of the consenting workflow."
-  source: "`vibe_healthcare_v1`.`consent`.`consent_session`"
+  comment: "KPI layer over consent records — the SSOT for patient consent lifecycle. Enables leadership to monitor consent capture completeness, revocation rates, witness/interpreter compliance, and HIPAA authorization coverage that directly drive regulatory risk and care-access decisions."
+  source: "`vibe_healthcare_v1`.`consent`.`consent_record`"
   dimensions:
-    - name: "session_status"
-      expr: session_status
-      comment: "Lifecycle status of the consent session (e.g. completed, in-progress, cancelled)."
-    - name: "session_channel"
-      expr: session_channel
-      comment: "Channel through which the session was conducted (portal, in-person, phone)."
-    - name: "session_mode"
-      expr: session_mode
-      comment: "Mode of the consent session (electronic, paper, verbal)."
-    - name: "session_type"
-      expr: session_type
-      comment: "Type/category of consent session."
-    - name: "session_outcome"
-      expr: session_outcome
-      comment: "Recorded outcome of the consent session."
-    - name: "language_code"
-      expr: language_code
-      comment: "Language in which the session was conducted."
-    - name: "behavioral_health_protected"
-      expr: behavioral_health_protected_flag
-      comment: "Whether the session involves 42 CFR Part 2 / behavioral health protected data."
-    - name: "session_month"
-      expr: DATE_TRUNC('MONTH', session_date)
-      comment: "Month bucket of session date for trending."
+    - name: "consent_status"
+      expr: consent_status
+      comment: "Lifecycle state of the consent (active, expired, revoked, pending) — primary segmentation for compliance dashboards."
+    - name: "consent_type"
+      expr: consent_type
+      comment: "Type/category of consent (treatment, research, HIPAA, etc.) used to compare capture and revocation across consent programs."
+    - name: "consent_decision"
+      expr: consent_decision
+      comment: "Patient's recorded decision (granted/declined) — used to track opt-in vs opt-out rates."
+    - name: "consent_method"
+      expr: consent_method
+      comment: "Method by which consent was obtained (electronic, wet signature, verbal) — steers e-signature adoption programs."
+    - name: "consent_obtained_month"
+      expr: DATE_TRUNC('MONTH', consent_obtained_datetime)
+      comment: "Month consent was obtained — trend axis for consent volume and compliance over time."
   measures:
-    - name: "Consent Session Count"
+    - name: "Total Consent Records"
       expr: COUNT(1)
-      comment: "Total number of consent sessions — volume baseline for consenting throughput."
-    - name: "Distinct Patients Consented"
+      comment: "Total number of consent records — denominator for all consent compliance and coverage rates."
+    - name: "Distinct Patients With Consent"
       expr: COUNT(DISTINCT mpi_record_id)
-      comment: "Distinct patients engaged in consent sessions — reach of consent operations."
-    - name: "Understanding Confirmed Rate Pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN patient_understanding_confirmed = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percent of sessions where patient understanding was confirmed — quality/compliance signal for informed consent."
-    - name: "Signature Capture Rate Pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN signature_captured = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percent of sessions with a captured signature — completion quality of the consent process."
-    - name: "Interpreter Utilization Rate Pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN interpreter_used = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percent of sessions using an interpreter — language access / health equity indicator."
-    - name: "Witness Present Rate Pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN witness_present = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percent of sessions with a witness present — regulatory documentation completeness."
-$$;
-
-CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`consent_hipaa_authorization`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "HIPAA authorization KPIs measuring signature obtainment, active vs expired posture, personal representative use, and behavioral-health protected mix. Steers privacy compliance and audit readiness."
-  source: "`vibe_healthcare_v1`.`consent`.`hipaa_authorization`"
-  dimensions:
-    - name: "authorization_status"
-      expr: authorization_status
-      comment: "Current status of the HIPAA authorization."
-    - name: "authorization_purpose"
-      expr: authorization_purpose
-      comment: "Purpose category of the authorization (treatment, research, marketing)."
-    - name: "phi_category"
-      expr: phi_category
-      comment: "Category of PHI covered by the authorization."
-    - name: "signature_method"
-      expr: signature_method
-      comment: "Method used to obtain signature (electronic, wet)."
-    - name: "behavioral_health_protected"
-      expr: behavioral_health_protected_flag
-      comment: "Whether authorization covers behavioral health protected data (42 CFR Part 2)."
-    - name: "signed_month"
-      expr: DATE_TRUNC('MONTH', signed_date)
-      comment: "Month bucket of the signed date for trending."
-  measures:
-    - name: "HIPAA Authorization Count"
-      expr: COUNT(1)
-      comment: "Total HIPAA authorizations — volume baseline for privacy authorization workload."
-    - name: "Distinct Authorized Patients"
-      expr: COUNT(DISTINCT mpi_record_id)
-      comment: "Distinct patients with a HIPAA authorization — coverage of authorized disclosure."
-    - name: "Signature Obtained Rate Pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN signature_obtained_flag = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percent of authorizations with signature obtained — compliance completeness of authorization capture."
-    - name: "Expired Authorization Rate Pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN expiration_date < CURRENT_DATE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percent of authorizations already past expiration — risk indicator for disclosures against expired consent."
-    - name: "Personal Representative Rate Pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN personal_representative_flag = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percent of authorizations executed by a personal representative — verification/audit focus area."
-    - name: "Behavioral Health Protected Rate Pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN behavioral_health_protected_flag = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percent of authorizations touching 42 CFR Part 2 protected data — elevated compliance scrutiny."
-$$;
-
-CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`consent_disclosure_log`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "PHI disclosure KPIs measuring accounting-of-disclosures obligations, minimum-necessary adherence, TPO vs non-TPO mix, and patient notification. Core HIPAA accountability metrics."
-  source: "`vibe_healthcare_v1`.`consent`.`disclosure_log`"
-  dimensions:
-    - name: "disclosure_status"
-      expr: disclosure_status
-      comment: "Status of the disclosure event."
-    - name: "disclosure_purpose_category"
-      expr: disclosure_purpose_category
-      comment: "Category of disclosure purpose (treatment, payment, operations, legal)."
-    - name: "recipient_type"
-      expr: recipient_type
-      comment: "Type of recipient receiving the PHI."
-    - name: "disclosure_method"
-      expr: disclosure_method
-      comment: "Method of disclosure (electronic, fax, mail)."
-    - name: "behavioral_health_protected"
-      expr: behavioral_health_protected_flag
-      comment: "Whether the disclosure involved behavioral health protected data."
-    - name: "disclosure_month"
-      expr: DATE_TRUNC('MONTH', disclosure_date)
-      comment: "Month bucket of disclosure date for trending."
-  measures:
-    - name: "Disclosure Event Count"
-      expr: COUNT(1)
-      comment: "Total PHI disclosure events — baseline for disclosure volume and audit scope."
-    - name: "Distinct Patients Disclosed"
-      expr: COUNT(DISTINCT mpi_record_id)
-      comment: "Distinct patients whose PHI was disclosed — breadth of disclosure activity."
-    - name: "Accounting Required Rate Pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN is_accounting_required = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percent of disclosures requiring accounting-of-disclosures — HIPAA reporting obligation load."
-    - name: "Minimum Necessary Applied Rate Pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN minimum_necessary_applied = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percent of disclosures where minimum-necessary standard was applied — privacy compliance quality."
-    - name: "Non TPO Disclosure Rate Pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN is_tpo_disclosure = FALSE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percent of disclosures that are NOT treatment/payment/operations — these generally require patient authorization and carry higher risk."
-    - name: "Patient Notification Required Rate Pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN patient_notification_required = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percent of disclosures requiring patient notification — tracks notification obligation backlog."
-$$;
-
-CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`consent_deficiency`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Consent documentation deficiency KPIs measuring open backlog, escalations, resolution posture, and overdue items. Steers HIM/compliance remediation operations."
-  source: "`vibe_healthcare_v1`.`consent`.`deficiency`"
-  dimensions:
-    - name: "deficiency_status"
-      expr: deficiency_status
-      comment: "Current status of the deficiency (open, resolved, escalated)."
-    - name: "deficiency_type"
-      expr: deficiency_type
-      comment: "Type/category of documentation deficiency."
-    - name: "priority_level"
-      expr: priority_level
-      comment: "Priority level assigned to the deficiency."
-    - name: "resolution_status"
-      expr: resolution_status
-      comment: "Resolution state of the deficiency."
-    - name: "identified_month"
-      expr: DATE_TRUNC('MONTH', identified_date)
-      comment: "Month bucket of when the deficiency was identified for trending."
-  measures:
-    - name: "Deficiency Count"
-      expr: COUNT(1)
-      comment: "Total consent documentation deficiencies — remediation workload baseline."
-    - name: "Escalated Deficiency Rate Pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN escalation_flag = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percent of deficiencies escalated — signals severity and process breakdown."
-    - name: "Resolved Deficiency Rate Pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN resolution_date IS NOT NULL THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percent of deficiencies with a resolution date — closure/throughput of remediation."
-    - name: "Overdue Deficiency Rate Pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN due_date < CURRENT_DATE AND resolution_date IS NULL THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percent of deficiencies past due date and still unresolved — compliance risk backlog."
+      comment: "Unique patients who have at least one consent record — measures consent coverage across the patient population."
+    - name: "Revoked Consent Count"
+      expr: COUNT(CASE WHEN consent_revocation_datetime IS NOT NULL THEN 1 END)
+      comment: "Consents that have been revoked — a leading indicator of patient trust and data-sharing risk."
+    - name: "Revocation Rate Pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN consent_revocation_datetime IS NOT NULL THEN 1 END) / NULLIF(COUNT(1),0),2)
+      comment: "Percent of consents revoked — leadership watches this to intervene on communication or trust issues."
+    - name: "HIPAA Authorization Coverage Pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN hipaa_authorization_flag = TRUE THEN 1 END) / NULLIF(COUNT(1),0),2)
+      comment: "Percent of consents carrying a valid HIPAA authorization — direct compliance KPI for privacy audits."
+    - name: "Witness Compliance Pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN witness_required_flag = TRUE AND witness_signature_datetime IS NOT NULL THEN 1 END) / NULLIF(COUNT(CASE WHEN witness_required_flag = TRUE THEN 1 END),0),2)
+      comment: "Of consents requiring a witness, percent that captured a witness signature — closes a common audit gap."
+    - name: "Capacity Assessment Completion Pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN capacity_assessment_performed_flag = TRUE THEN 1 END) / NULLIF(COUNT(1),0),2)
+      comment: "Percent of consents with a documented capacity assessment — flags decisional-capacity documentation risk."
 $$;
 
 CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`consent_revocation`
@@ -190,239 +52,34 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Consent revocation KPIs measuring volume, enforcement timeliness (data access restriction, disclosure halting), legal review, and patient notification. Steers privacy enforcement responsiveness."
+  comment: "KPI layer over consent revocations. Revocation processing speed and legal-review completeness are operational risk indicators leadership uses to ensure disclosures are halted and data access restricted promptly."
   source: "`vibe_healthcare_v1`.`consent`.`revocation`"
   dimensions:
     - name: "revocation_status"
       expr: revocation_status
-      comment: "Status of the revocation request."
+      comment: "Processing status of the revocation — segments backlog vs completed work."
     - name: "revocation_reason"
-      expr: revocation_reason
-      comment: "Stated reason for the revocation."
-    - name: "method"
-      expr: method
-      comment: "Method by which the revocation was submitted."
-    - name: "behavioral_health_protected"
-      expr: behavioral_health_protected_flag
-      comment: "Whether the revocation involves behavioral health protected data."
+      expr: reason
+      comment: "Stated reason for revocation — informs root-cause analysis of why patients withdraw consent."
     - name: "revocation_month"
       expr: DATE_TRUNC('MONTH', revocation_date)
-      comment: "Month bucket of revocation date for trending."
+      comment: "Month of revocation — trend axis for revocation volume."
   measures:
-    - name: "Revocation Count"
+    - name: "Total Revocations"
       expr: COUNT(1)
-      comment: "Total consent revocations — baseline for revocation volume and enforcement demand."
-    - name: "Distinct Patients Revoking"
-      expr: COUNT(DISTINCT mpi_record_id)
-      comment: "Distinct patients who revoked consent — patient trust / churn signal."
-    - name: "Disclosures Halted Rate Pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN disclosures_halted_flag = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percent of revocations where disclosures were halted — enforcement effectiveness."
-    - name: "Data Access Restricted Rate Pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN data_access_restricted_flag = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percent of revocations resulting in restricted data access — enforcement completeness."
-    - name: "Legal Review Completed Rate Pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN legal_review_completed_flag = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percent of revocations with completed legal review — governance oversight coverage."
-    - name: "Patient Notification Sent Rate Pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN patient_notification_sent_flag = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percent of revocations where patient notification was sent — closing-the-loop compliance."
-$$;
-
-CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`consent_restriction_request`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Patient restriction-request KPIs measuring approval outcomes, out-of-pocket payment verification, system enforcement, and behavioral-health protection. Steers HIPAA right-to-restrict operations."
-  source: "`vibe_healthcare_v1`.`consent`.`restriction_request`"
-  dimensions:
-    - name: "request_status"
-      expr: request_status
-      comment: "Status of the restriction request."
-    - name: "restriction_type"
-      expr: restriction_type
-      comment: "Type of restriction requested."
-    - name: "organization_decision"
-      expr: organization_decision
-      comment: "Organization's decision on the restriction request."
-    - name: "restricted_phi_category"
-      expr: restricted_phi_category
-      comment: "PHI category subject to the restriction."
-    - name: "behavioral_health_protected"
-      expr: behavioral_health_protected_flag
-      comment: "Whether the restriction covers behavioral health protected data."
-    - name: "request_month"
-      expr: DATE_TRUNC('MONTH', request_date)
-      comment: "Month bucket of request date for trending."
-  measures:
-    - name: "Restriction Request Count"
-      expr: COUNT(1)
-      comment: "Total restriction requests — baseline demand for right-to-restrict processing."
-    - name: "Distinct Patients Requesting"
-      expr: COUNT(DISTINCT mpi_record_id)
-      comment: "Distinct patients requesting restrictions — reach of restriction activity."
-    - name: "Out Of Pocket Payment Verified Rate Pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN out_of_pocket_payment_verified = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percent of restrictions with verified out-of-pocket payment — mandatory-restriction eligibility validation."
-    - name: "System Enforced Rate Pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN system_enforcement_flag = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percent of restrictions enforced by system controls — automation/enforcement effectiveness."
-$$;
-
-CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`consent_substance_use_consent`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "42 CFR Part 2 substance-use disclosure consent KPIs measuring Part 2 coverage, active/revoked posture, redisclosure notice compliance. Steers SUD confidentiality governance."
-  source: "`vibe_healthcare_v1`.`consent`.`substance_use_consent`"
-  dimensions:
-    - name: "consent_status"
-      expr: consent_status
-      comment: "Status of the substance-use disclosure consent."
-    - name: "disclosure_purpose"
-      expr: disclosure_purpose
-      comment: "Purpose of the authorized disclosure."
-    - name: "expiration_condition"
-      expr: expiration_condition
-      comment: "Condition governing consent expiration."
-    - name: "signed_month"
-      expr: DATE_TRUNC('MONTH', signed_date)
-      comment: "Month bucket of the signed date for trending."
-  measures:
-    - name: "Substance Use Consent Count"
-      expr: COUNT(1)
-      comment: "Total substance-use disclosure consents — baseline for 42 CFR Part 2 consent volume."
-    - name: "Distinct SUD Patients"
-      expr: COUNT(DISTINCT mpi_record_id)
-      comment: "Distinct patients with substance-use disclosure consent — protected population size."
-    - name: "Part 2 Covered Rate Pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN part2_covered_flag = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percent of consents covered under 42 CFR Part 2 — scope of heightened confidentiality controls."
-    - name: "Redisclosure Notice Provided Rate Pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN redisclosure_notice_provided = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percent of consents where redisclosure notice was provided — mandatory Part 2 compliance element."
-    - name: "Revoked Consent Rate Pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN revocation_date IS NOT NULL THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percent of substance-use consents that have been revoked — revocation posture for SUD data sharing."
-$$;
-
-CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`consent_research_consent`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Research consent KPIs measuring reconsent obligations, comprehension assessment, LAR usage, and biospecimen/genetic authorizations. Steers IRB and research compliance."
-  source: "`vibe_healthcare_v1`.`consent`.`research_consent`"
-  dimensions:
-    - name: "consent_status"
-      expr: consent_status
-      comment: "Status of the research consent."
-    - name: "consent_method"
-      expr: consent_method
-      comment: "Method used to obtain research consent."
-    - name: "study_arm"
-      expr: study_arm
-      comment: "Study arm associated with the consent."
-    - name: "signed_month"
-      expr: DATE_TRUNC('MONTH', signed_date)
-      comment: "Month bucket of the signed date for trending."
-  measures:
-    - name: "Research Consent Count"
-      expr: COUNT(1)
-      comment: "Total research consents — baseline for study enrollment consent volume."
-    - name: "Distinct Research Subjects"
-      expr: COUNT(DISTINCT mpi_record_id)
-      comment: "Distinct patients consented to research — subject reach across studies."
-    - name: "Reconsent Required Rate Pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN reconsent_required = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percent of consents flagged for reconsent — protocol amendment / risk-change follow-up load."
-    - name: "Comprehension Assessed Rate Pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN subject_comprehension_assessed = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percent of consents where subject comprehension was assessed — informed-consent quality indicator."
-    - name: "LAR Used Rate Pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN lar_used = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percent of consents obtained via legally authorized representative — vulnerable-population oversight."
-    - name: "Biospecimen Authorized Rate Pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN biospecimen_collection_authorized = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percent of consents authorizing biospecimen collection — biobank/genomics pipeline sizing."
-$$;
-
-CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`consent_amendment_request`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Record-amendment request KPIs measuring acceptance rate, HIPAA amendment share, and review throughput. Steers HIPAA right-to-amend operations."
-  source: "`vibe_healthcare_v1`.`consent`.`amendment_request`"
-  dimensions:
-    - name: "amendment_status"
-      expr: amendment_status
-      comment: "Current status of the amendment request."
-    - name: "amendment_type"
-      expr: amendment_type
-      comment: "Type of record amendment requested."
-    - name: "decision"
-      expr: decision
-      comment: "Decision rendered on the amendment request."
-    - name: "request_month"
-      expr: DATE_TRUNC('MONTH', request_date)
-      comment: "Month bucket of request date for trending."
-  measures:
-    - name: "Amendment Request Count"
-      expr: COUNT(1)
-      comment: "Total record-amendment requests — baseline for right-to-amend workload."
-    - name: "Distinct Patients Amending"
-      expr: COUNT(DISTINCT mpi_record_id)
-      comment: "Distinct patients requesting record amendments — reach of amendment activity."
-    - name: "Amendment Accepted Rate Pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN accepted_flag = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percent of amendment requests accepted — approval outcome and data-quality signal."
-    - name: "HIPAA Amendment Rate Pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN hipaa_amendment_flag = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percent of requests classified as HIPAA amendments — regulatory scope of amendment activity."
-    - name: "Decision Rendered Rate Pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN decision_date IS NOT NULL THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percent of requests with a decision rendered — throughput of amendment review process."
-$$;
-
-CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`consent_npp_acknowledgment`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Notice of Privacy Practices acknowledgment KPIs measuring signature capture, good-faith-effort fallbacks, and first-service compliance. Steers HIPAA NPP obligation adherence."
-  source: "`vibe_healthcare_v1`.`consent`.`npp_acknowledgment`"
-  dimensions:
-    - name: "acknowledgment_status"
-      expr: acknowledgment_status
-      comment: "Status of the NPP acknowledgment."
-    - name: "acknowledgment_method"
-      expr: acknowledgment_method
-      comment: "Method used to obtain the acknowledgment."
-    - name: "delivery_method"
-      expr: delivery_method
-      comment: "Method by which the NPP was delivered to the patient."
-    - name: "language_code"
-      expr: language_code
-      comment: "Language of the acknowledgment."
-    - name: "acknowledgment_month"
-      expr: DATE_TRUNC('MONTH', acknowledgment_date)
-      comment: "Month bucket of acknowledgment date for trending."
-  measures:
-    - name: "NPP Acknowledgment Count"
-      expr: COUNT(1)
-      comment: "Total NPP acknowledgments — baseline for privacy notice acknowledgment volume."
-    - name: "Distinct Patients Acknowledging"
-      expr: COUNT(DISTINCT mpi_record_id)
-      comment: "Distinct patients acknowledging the NPP — reach of privacy notice distribution."
-    - name: "Signature Captured Rate Pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN signature_captured = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percent of acknowledgments with signature captured — documentation completeness."
-    - name: "First Service Acknowledgment Rate Pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN is_first_service_acknowledgment = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percent captured at first service — timeliness against HIPAA first-encounter requirement."
+      comment: "Total revocation requests — baseline volume for revocation operations."
+    - name: "Data Access Restricted Pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN data_access_restricted_flag = TRUE THEN 1 END) / NULLIF(COUNT(1),0),2)
+      comment: "Percent of revocations where downstream data access was actually restricted — critical enforcement KPI."
+    - name: "Disclosures Halted Pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN disclosures_halted_flag = TRUE THEN 1 END) / NULLIF(COUNT(1),0),2)
+      comment: "Percent of revocations that halted ongoing disclosures — measures follow-through on patient wishes."
+    - name: "Legal Review Completion Pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN legal_review_required_flag = TRUE AND legal_review_completed_flag = TRUE THEN 1 END) / NULLIF(COUNT(CASE WHEN legal_review_required_flag = TRUE THEN 1 END),0),2)
+      comment: "Of revocations requiring legal review, percent completed — surfaces legal bottlenecks."
+    - name: "Patient Notification Pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN patient_notification_sent_flag = TRUE THEN 1 END) / NULLIF(COUNT(1),0),2)
+      comment: "Percent of revocations where the patient was notified of processing — patient-experience compliance metric."
 $$;
 
 CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`consent_expiration_alert`
@@ -430,37 +87,262 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Consent expiration alert KPIs measuring renewal initiation and notification delivery to prevent lapses. Steers proactive consent lifecycle management."
+  comment: "KPI layer over consent expiration alerts. SLA breach and resolution rates drive staffing and workflow decisions to prevent care-impacting consent lapses."
   source: "`vibe_healthcare_v1`.`consent`.`expiration_alert`"
   dimensions:
     - name: "alert_status"
       expr: alert_status
-      comment: "Status of the expiration alert."
+      comment: "Current status of the expiration alert — separates open, escalated, and resolved work."
+    - name: "alert_priority"
+      expr: alert_priority
+      comment: "Priority tier of the alert — used to focus staff on high-urgency consent expirations."
     - name: "alert_type"
       expr: alert_type
-      comment: "Type of expiration alert."
-    - name: "notification_method"
-      expr: notification_method
-      comment: "Method used to notify about the impending expiration."
+      comment: "Type of expiration alert — segments alert volume by trigger category."
+    - name: "alert_month"
+      expr: DATE_TRUNC('MONTH', alert_generation_date)
+      comment: "Month the alert was generated — trend axis for alert workload."
+  measures:
+    - name: "Total Alerts"
+      expr: COUNT(1)
+      comment: "Total expiration alerts generated — baseline workload for consent renewal operations."
+    - name: "SLA Breach Rate Pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN sla_breach_flag = TRUE THEN 1 END) / NULLIF(COUNT(1),0),2)
+      comment: "Percent of alerts breaching SLA — directly triggers staffing and workflow escalation decisions."
+    - name: "Escalation Rate Pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN escalation_flag = TRUE THEN 1 END) / NULLIF(COUNT(1),0),2)
+      comment: "Percent of alerts escalated — signals process friction and unresolved consent risk."
+    - name: "Care Impact Alert Pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN care_impact_flag = TRUE THEN 1 END) / NULLIF(COUNT(1),0),2)
+      comment: "Percent of alerts flagged as care-impacting — prioritizes clinically urgent consent lapses."
+    - name: "Notification Delivery Pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN notification_sent_flag = TRUE THEN 1 END) / NULLIF(COUNT(1),0),2)
+      comment: "Percent of alerts with a notification sent — measures outreach reliability for renewals."
+$$;
+
+CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`consent_deficiency`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "KPI layer over consent documentation deficiencies. Remediation and escalation rates are quality/compliance KPIs that surface systemic documentation gaps for corrective action."
+  source: "`vibe_healthcare_v1`.`consent`.`deficiency`"
+  dimensions:
+    - name: "deficiency_status"
+      expr: deficiency_status
+      comment: "Status of the deficiency — separates open, remediated, and waived items."
+    - name: "deficiency_type"
+      expr: deficiency_type
+      comment: "Type of deficiency — categorizes documentation gaps for root-cause review."
+    - name: "severity_level"
+      expr: severity_level
+      comment: "Severity of the deficiency — used to prioritize remediation effort."
+    - name: "discovery_month"
+      expr: DATE_TRUNC('MONTH', discovery_date)
+      comment: "Month the deficiency was discovered — trend axis for quality monitoring."
+  measures:
+    - name: "Total Deficiencies"
+      expr: COUNT(1)
+      comment: "Total documented consent deficiencies — baseline quality volume."
+    - name: "Remediation Rate Pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN remediation_required_flag = TRUE AND remediation_date IS NOT NULL THEN 1 END) / NULLIF(COUNT(CASE WHEN remediation_required_flag = TRUE THEN 1 END),0),2)
+      comment: "Of deficiencies requiring remediation, percent remediated — measures closure of compliance gaps."
+    - name: "Escalation Rate Pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN escalation_required_flag = TRUE THEN 1 END) / NULLIF(COUNT(1),0),2)
+      comment: "Percent of deficiencies requiring escalation — flags severity of documentation problems."
+    - name: "Patient Safety Impact Pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN patient_safety_impact_flag = TRUE THEN 1 END) / NULLIF(COUNT(1),0),2)
+      comment: "Percent of deficiencies with patient-safety impact — high-priority signal for leadership intervention."
+    - name: "Regulatory Impact Pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN regulatory_impact_flag = TRUE THEN 1 END) / NULLIF(COUNT(1),0),2)
+      comment: "Percent of deficiencies with regulatory impact — quantifies audit/regulatory exposure."
+$$;
+
+CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`consent_disclosure_log`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "KPI layer over PHI disclosure logging. Minimum-necessary application and accounting-of-disclosure rates are core HIPAA compliance KPIs for privacy governance."
+  source: "`vibe_healthcare_v1`.`consent`.`disclosure_log`"
+  dimensions:
+    - name: "disclosure_status"
+      expr: disclosure_status
+      comment: "Status of the disclosure record — segments processing state."
+    - name: "disclosure_purpose_category"
+      expr: disclosure_purpose_category
+      comment: "Category of disclosure purpose (TPO vs non-TPO) — key privacy segmentation."
     - name: "recipient_type"
       expr: recipient_type
-      comment: "Type of recipient receiving the alert."
-    - name: "alert_month"
-      expr: DATE_TRUNC('MONTH', alert_date)
-      comment: "Month bucket of alert date for trending."
+      comment: "Type of recipient receiving PHI — used to monitor external vs internal disclosures."
+    - name: "disclosure_month"
+      expr: DATE_TRUNC('MONTH', disclosure_date)
+      comment: "Month of disclosure — trend axis for disclosure volume."
   measures:
-    - name: "Expiration Alert Count"
+    - name: "Total Disclosures"
       expr: COUNT(1)
-      comment: "Total consent expiration alerts — baseline for lifecycle risk monitoring."
-    - name: "Distinct Patients Alerted"
+      comment: "Total PHI disclosures logged — baseline for privacy monitoring."
+    - name: "Distinct Patients Disclosed"
       expr: COUNT(DISTINCT mpi_record_id)
-      comment: "Distinct patients with expiring consents — population at risk of consent lapse."
-    - name: "Renewal Initiated Rate Pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN renewal_initiated = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percent of alerts that triggered renewal initiation — proactive lifecycle management effectiveness."
-    - name: "Notification Sent Rate Pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN notification_sent_date IS NOT NULL THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percent of alerts with a notification sent — outreach execution coverage."
+      comment: "Unique patients whose PHI was disclosed — measures breadth of disclosure exposure."
+    - name: "Minimum Necessary Applied Pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN minimum_necessary_applied = TRUE THEN 1 END) / NULLIF(COUNT(1),0),2)
+      comment: "Percent of disclosures applying the minimum-necessary standard — core HIPAA compliance KPI."
+    - name: "Accounting Required Pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN is_accounting_required = TRUE THEN 1 END) / NULLIF(COUNT(1),0),2)
+      comment: "Percent of disclosures requiring accounting-of-disclosure — sizes the accounting obligation."
+    - name: "Non TPO Disclosure Pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN is_tpo_disclosure = FALSE THEN 1 END) / NULLIF(COUNT(1),0),2)
+      comment: "Percent of disclosures that are NOT for treatment/payment/operations — these carry higher authorization risk."
+$$;
+
+CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`consent_verification`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "KPI layer over consent verification checks at point of care/exchange. Compliance and override rates directly measure whether active consents are honored before PHI use."
+  source: "`vibe_healthcare_v1`.`consent`.`consent_verification`"
+  dimensions:
+    - name: "verification_result"
+      expr: verification_result
+      comment: "Outcome of the verification check — passes vs fails segmentation."
+    - name: "verification_method"
+      expr: verification_method
+      comment: "Method used to verify consent — compares automated vs manual verification."
+    - name: "consent_type"
+      expr: consent_type
+      comment: "Type of consent being verified — segments verification by consent program."
+    - name: "verification_month"
+      expr: DATE_TRUNC('MONTH', verification_timestamp)
+      comment: "Month of verification — trend axis for verification activity."
+  measures:
+    - name: "Total Verifications"
+      expr: COUNT(1)
+      comment: "Total consent verification checks — baseline volume for point-of-use enforcement."
+    - name: "Compliance Rate Pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN compliance_flag = TRUE THEN 1 END) / NULLIF(COUNT(1),0),2)
+      comment: "Percent of verifications flagged compliant — headline consent-enforcement KPI."
+    - name: "Override Rate Pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN override_flag = TRUE THEN 1 END) / NULLIF(COUNT(1),0),2)
+      comment: "Percent of verifications overridden — overrides bypass consent and are a governance red flag."
+    - name: "Restriction Encounter Pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN restriction_flag = TRUE THEN 1 END) / NULLIF(COUNT(1),0),2)
+      comment: "Percent of verifications hitting a patient restriction — sizes operational impact of restrictions."
+    - name: "Avg Verification Duration Seconds"
+      expr: AVG(CAST(duration_seconds AS DOUBLE))
+      comment: "Average verification latency in seconds — measures friction the consent check adds to workflows."
+$$;
+
+CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`consent_session`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "KPI layer over consent-collection sessions. Completion rate and interpreter usage steer patient-experience and language-access (Title VI) investments."
+  source: "`vibe_healthcare_v1`.`consent`.`consent_session`"
+  dimensions:
+    - name: "session_status"
+      expr: session_status
+      comment: "Status of the consent session — completed vs abandoned segmentation."
+    - name: "session_type"
+      expr: session_type
+      comment: "Type of consent session — segments by workflow context."
+    - name: "consent_collection_channel"
+      expr: consent_collection_channel
+      comment: "Channel used to collect consent (portal, kiosk, in-person) — steers digital consent adoption."
+    - name: "session_start_month"
+      expr: DATE_TRUNC('MONTH', session_start_timestamp)
+      comment: "Month the session started — trend axis for session volume."
+  measures:
+    - name: "Total Sessions"
+      expr: COUNT(1)
+      comment: "Total consent-collection sessions — baseline throughput of consent operations."
+    - name: "All Consents Obtained Pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN all_consents_obtained_flag = TRUE THEN 1 END) / NULLIF(COUNT(1),0),2)
+      comment: "Percent of sessions where all required consents were captured — session completion KPI."
+    - name: "Interpreter Required Pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN interpreter_required_flag = TRUE THEN 1 END) / NULLIF(COUNT(1),0),2)
+      comment: "Percent of sessions requiring an interpreter — sizes language-access demand for staffing."
+    - name: "Regulatory Compliance Pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN regulatory_compliance_flag = TRUE THEN 1 END) / NULLIF(COUNT(1),0),2)
+      comment: "Percent of sessions meeting regulatory compliance — surfaces process gaps for remediation."
+$$;
+
+CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`consent_translation`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "KPI layer over consent translation/interpretation services. Cost, LEP compliance, and Title VI compliance rates inform language-access budget and vendor decisions."
+  source: "`vibe_healthcare_v1`.`consent`.`consent_translation`"
+  dimensions:
+    - name: "interpreter_type"
+      expr: interpreter_type
+      comment: "Type of interpreter/translation service — compares in-person vs remote vs vendor."
+    - name: "target_language_name"
+      expr: target_language_name
+      comment: "Target language of translation — identifies highest-demand languages for resourcing."
+    - name: "translation_method"
+      expr: translation_method
+      comment: "Method of translation — segments delivery approach."
+    - name: "translation_month"
+      expr: DATE_TRUNC('MONTH', start_timestamp)
+      comment: "Month of translation service — trend axis for language-access demand."
+  measures:
+    - name: "Total Translations"
+      expr: COUNT(1)
+      comment: "Total translation/interpretation events — baseline language-access volume."
+    - name: "Total Translation Cost"
+      expr: SUM(CAST(cost_amount AS DOUBLE))
+      comment: "Total cost of translation services — direct spend leadership manages for language access."
+    - name: "Avg Translation Cost"
+      expr: AVG(CAST(cost_amount AS DOUBLE))
+      comment: "Average cost per translation event — unit-economics input for vendor negotiations."
+    - name: "Avg Duration Minutes"
+      expr: AVG(CAST(duration_minutes AS DOUBLE))
+      comment: "Average duration per translation session — capacity-planning input."
+    - name: "Title VI Compliance Pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN title_vi_compliance_flag = TRUE THEN 1 END) / NULLIF(COUNT(1),0),2)
+      comment: "Percent of translations meeting Title VI compliance — civil-rights compliance KPI."
+    - name: "LEP Compliance Pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN lep_compliance_flag = TRUE THEN 1 END) / NULLIF(COUNT(1),0),2)
+      comment: "Percent of translations meeting Limited-English-Proficiency compliance — regulatory access KPI."
+$$;
+
+CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`consent_amendment_request`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "KPI layer over patient record amendment requests (HIPAA right to amend). Approval/denial and extension rates measure responsiveness to patient rights requests."
+  source: "`vibe_healthcare_v1`.`consent`.`amendment_request`"
+  dimensions:
+    - name: "request_status"
+      expr: request_status
+      comment: "Status of the amendment request — open, decided, withdrawn segmentation."
+    - name: "organization_decision"
+      expr: organization_decision
+      comment: "Organization's decision on the amendment (approved/denied) — outcome segmentation."
+    - name: "amendment_type"
+      expr: amendment_type
+      comment: "Type of amendment requested — categorizes request drivers."
+    - name: "request_month"
+      expr: DATE_TRUNC('MONTH', request_date)
+      comment: "Month of request — trend axis for patient-rights request volume."
+  measures:
+    - name: "Total Amendment Requests"
+      expr: COUNT(1)
+      comment: "Total record amendment requests — baseline for patient-rights workload."
+    - name: "Extension Granted Pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN extension_granted_flag = TRUE THEN 1 END) / NULLIF(COUNT(1),0),2)
+      comment: "Percent of requests where a response extension was granted — signals throughput/timeliness pressure."
+    - name: "Third Party Notification Pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN third_party_notification_required_flag = TRUE THEN 1 END) / NULLIF(COUNT(1),0),2)
+      comment: "Percent of amendments requiring third-party notification — sizes downstream propagation effort."
+    - name: "Distinct Patients Requesting"
+      expr: COUNT(DISTINCT mpi_record_id)
+      comment: "Unique patients submitting amendment requests — measures reach of the patient-rights process."
 $$;
 
 CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`consent_capacity_assessment`
@@ -468,34 +350,37 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Decision-making capacity assessment KPIs measuring surrogate requirement, reassessment recommendations, and determination mix. Steers informed-consent integrity for vulnerable patients."
+  comment: "KPI layer over decisional capacity assessments. Reassessment and surrogate-engagement rates are clinical-ethics KPIs ensuring consent is obtained from capable decision-makers."
   source: "`vibe_healthcare_v1`.`consent`.`capacity_assessment`"
   dimensions:
-    - name: "assessment_result"
-      expr: assessment_result
-      comment: "Result of the capacity assessment."
     - name: "capacity_determination"
       expr: capacity_determination
-      comment: "Final capacity determination."
-    - name: "assessment_type"
-      expr: assessment_type
-      comment: "Type of capacity assessment performed."
+      comment: "Outcome of the capacity assessment (has capacity / lacks capacity) — core clinical segmentation."
+    - name: "assessment_status"
+      expr: assessment_status
+      comment: "Status of the assessment — completed vs pending."
+    - name: "assessment_tool_used"
+      expr: assessment_tool_used
+      comment: "Standardized tool used for the assessment — supports methodology consistency review."
     - name: "assessment_month"
       expr: DATE_TRUNC('MONTH', assessment_date)
-      comment: "Month bucket of assessment date for trending."
+      comment: "Month of assessment — trend axis for capacity-assessment volume."
   measures:
-    - name: "Capacity Assessment Count"
+    - name: "Total Assessments"
       expr: COUNT(1)
-      comment: "Total capacity assessments — baseline for decision-capacity evaluation volume."
-    - name: "Distinct Patients Assessed"
-      expr: COUNT(DISTINCT mpi_record_id)
-      comment: "Distinct patients assessed for decision-making capacity — reach of capacity evaluation."
-    - name: "Surrogate Required Rate Pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN surrogate_required = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percent of assessments requiring a surrogate decision-maker — substituted-judgment workload."
-    - name: "Reassessment Recommended Rate Pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN reassessment_recommended = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percent of assessments recommending reassessment — ongoing monitoring demand."
+      comment: "Total capacity assessments performed — baseline clinical-ethics workload."
+    - name: "Avg Capacity Score"
+      expr: AVG(CAST(capacity_score AS DOUBLE))
+      comment: "Average standardized capacity score — trends decisional-capacity of the assessed population."
+    - name: "Surrogate Engaged Pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN surrogate_decision_maker_engaged_flag = TRUE THEN 1 END) / NULLIF(COUNT(1),0),2)
+      comment: "Percent of assessments engaging a surrogate decision-maker — ensures proper consent chain for incapacitated patients."
+    - name: "Reassessment Recommended Pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN reassessment_recommended_flag = TRUE THEN 1 END) / NULLIF(COUNT(1),0),2)
+      comment: "Percent of assessments recommending reassessment — drives follow-up scheduling and workload forecasting."
+    - name: "Ethics Consultation Pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN ethics_consultation_obtained_flag = TRUE THEN 1 END) / NULLIF(COUNT(1),0),2)
+      comment: "Percent of assessments obtaining ethics consultation — sizes complex-case ethics involvement."
 $$;
 
 CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`consent_policy`
@@ -531,4 +416,27 @@ AS $$
     - name: "revocation_allowed_policies"
       expr: SUM(CASE WHEN revocation_allowed_flag THEN 1 ELSE 0 END)
       comment: "Policies that allow revocation by the patient."
+$$;
+
+CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`consent_research_consent`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Research consent participation metrics to gauge patient enrollment in studies."
+  source: "`vibe_healthcare_v1`.`consent`.`research_consent`"
+  dimensions:
+    - name: "research_study_id"
+      expr: research_study_id
+      comment: "Identifier of the research study associated with the consent."
+    - name: "created_date"
+      expr: DATE_TRUNC('day', created_timestamp)
+      comment: "Date the research consent was recorded."
+  measures:
+    - name: "total_research_consents"
+      expr: COUNT(1)
+      comment: "Total research consent records captured."
+    - name: "patients_with_consent"
+      expr: COUNT(DISTINCT mpi_record_id)
+      comment: "Distinct patients who have provided research consent."
 $$;

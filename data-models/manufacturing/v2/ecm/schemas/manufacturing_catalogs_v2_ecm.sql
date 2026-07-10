@@ -1,4 +1,4 @@
--- Catalog DDL for Business: Manufacturing | Version: v2_ecm
--- Generated on: 2026-07-03 05:59:40
+-- Catalog DDL for Business:  | Version: v2_ecm
+-- Generated on: 2026-07-10 12:59:06
 
 CREATE CATALOG IF NOT EXISTS `vibe_manufacturing_v1`;

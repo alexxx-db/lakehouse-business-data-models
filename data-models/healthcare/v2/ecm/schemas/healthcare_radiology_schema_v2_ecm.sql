@@ -1,112 +1,172 @@
 -- Schema for Domain: radiology | Business:  | Version: v2_ecm
--- Generated on: 2026-07-02 06:46:14
+-- Generated on: 2026-07-10 14:11:19
 
 -- ========= DATABASE =========
 CREATE DATABASE IF NOT EXISTS `vibe_healthcare_v1`.`radiology` COMMENT 'Medical imaging and diagnostic radiology services. Owns imaging orders, modality scheduling (CT, MRI, X-ray, ultrasound, PET), PACS (Picture Archiving and Communication System) integration, radiology reports, DICOM image metadata, contrast administration, radiation dose tracking, radiologist interpretations, and CPT-coded procedures. Integrates with RIS (Radiology Information System) including Epic Radiant and Cerner RadNet.';
 
 -- ========= TABLES =========
 CREATE OR REPLACE TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` (
-    `imaging_order_id` BIGINT COMMENT 'Unique identifier for the imaging order.',
-    `audit_finding_id` BIGINT COMMENT 'Link to compliance audit finding if applicable.',
-    `care_site_id` BIGINT COMMENT 'Facility where the imaging order was placed.',
-    `clinical_order_id` BIGINT COMMENT 'Parent clinical order.',
-    `drug_master_id` BIGINT COMMENT 'Contrast agent drug master record.',
-    `material_master_id` BIGINT COMMENT 'Contrast material supply record.',
-    `cost_center_id` BIGINT COMMENT 'Cost center for financial tracking.',
-    `demographics_id` BIGINT COMMENT 'Patient demographic record.',
-    `employee_id` BIGINT COMMENT 'Employee who placed or processed the order.',
-    `icd_code_id` BIGINT COMMENT 'Primary ICD-10 diagnosis code.',
-    `payer_id` BIGINT COMMENT 'Insurance payer.',
-    `clinician_id` BIGINT COMMENT 'Clinician who ordered the imaging study.',
-    `cpt_code_id` BIGINT COMMENT 'CPT code for the imaging procedure.',
-    `research_study_id` BIGINT COMMENT 'Research study if applicable.',
-    `visit_id` BIGINT COMMENT 'Encounter visit.',
-    `accession_number` STRING COMMENT 'Unique accession number for the imaging order.',
-    `body_part` STRING COMMENT 'Anatomical body part to be imaged.',
-    `cancellation_reason` STRING COMMENT 'Reason for order cancellation.',
-    `cancelled_timestamp` TIMESTAMP COMMENT 'Date and time the order was cancelled.',
-    `clinical_indication` STRING COMMENT 'Clinical reason for the imaging order.',
-    `contrast_required` BOOLEAN COMMENT 'Flag indicating if contrast is required.',
-    `created_timestamp` TIMESTAMP COMMENT 'Date and time the order record was created.',
-    `critical_finding_flag` BOOLEAN COMMENT 'Flag indicating if a critical finding was identified.',
-    `exam_end_timestamp` TIMESTAMP COMMENT 'Date and time the exam ended.',
-    `exam_start_timestamp` TIMESTAMP COMMENT 'Date and time the exam started.',
-    `is_portable` BOOLEAN COMMENT 'Flag indicating if the imaging is portable (bedside).',
-    `is_stat_override` BOOLEAN COMMENT 'Flag indicating if the order was marked as STAT.',
-    `laterality` STRING COMMENT 'Left, right, or bilateral.',
-    `modality_type` STRING COMMENT 'Imaging modality (e.g., CT, MRI, X-Ray).',
-    `mrn` STRING COMMENT 'Patient medical record number.',
-    `order_priority` STRING COMMENT 'Priority level (e.g., routine, urgent, STAT).',
-    `order_source` STRING COMMENT 'Source system or method of order entry.',
-    `order_status` STRING COMMENT 'Current status of the order.',
-    `ordered_timestamp` TIMESTAMP COMMENT 'Date and time the order was placed.',
-    `ordering_provider_npi` STRING COMMENT 'National Provider Identifier of the ordering provider.',
-    `prior_auth_number` STRING COMMENT 'Prior authorization number from payer.',
-    `prior_auth_status` STRING COMMENT 'Status of prior authorization.',
-    `procedure_description` STRING COMMENT 'Description of the imaging procedure.',
-    `protocol_name` STRING COMMENT 'Imaging protocol name.',
-    `radiation_dose_ctdi` DECIMAL(18,2) COMMENT 'CT Dose Index (CTDI) in mGy.',
-    `radiation_dose_dlp` DECIMAL(18,2) COMMENT 'Dose Length Product (DLP) in mGy·cm.',
-    `referring_department` STRING COMMENT 'Department that referred the patient.',
-    `report_finalized_timestamp` TIMESTAMP COMMENT 'Date and time the report was finalized.',
-    `report_status` STRING COMMENT 'Status of the radiology report.',
-    `requisition_number` STRING COMMENT 'Requisition number for the order.',
-    `scheduled_timestamp` TIMESTAMP COMMENT 'Date and time the exam is scheduled.',
-    `source_system_order_code` STRING COMMENT 'Order code in the source system.',
-    `updated_timestamp` TIMESTAMP COMMENT 'Date and time the order record was last updated.',
-    `vibe_mutation_applied` STRING COMMENT 'The vibe mutation applied of the radiology imaging order record.',
-    `vibe_mutation_flag` BOOLEAN COMMENT 'The vibe mutation flag of the radiology imaging order record.',
-    `vibe_structure_marker` STRING COMMENT 'Marks product as part of the required ECM structure.',
+    `imaging_order_id` BIGINT COMMENT 'Unique surrogate primary key for each imaging order record in the radiology information system (RIS). Serves as the SSOT identifier for the imaging order lifecycle within the Databricks Silver layer.',
+    `care_site_id` BIGINT COMMENT 'Reference to the facility (hospital, outpatient imaging center, clinic) where the imaging procedure is to be performed. Supports multi-site radiology operations, facility-level utilization reporting, and CMS cost report allocation.',
+    `clinical_order_id` BIGINT COMMENT 'Foreign key linking to order.clinical_order. Business justification: Imaging orders originate from clinical orders in CPOE workflows. Order reconciliation at care transitions requires linking imaging orders to parent clinical orders for complete medication and order hi',
+    `drug_master_id` BIGINT COMMENT 'Foreign key linking to pharmacy.drug_master. Business justification: Imaging orders specify contrast agents for CT/MRI studies. FK to drug_master enables formulary checking, allergy screening, inventory management, and standardized contrast protocol validation. Real bu',
+    `material_master_id` BIGINT COMMENT 'Foreign key linking to supply.material_master. Business justification: Imaging orders requiring contrast agents must link to material master for inventory tracking, lot number traceability, and recall management. Standard radiology supply chain process tracks contrast co',
+    `cost_center_id` BIGINT COMMENT 'Foreign key linking to finance.cost_center. Business justification: Radiology orders must be allocated to departmental cost centers for activity-based costing, P&L reporting by modality/service line, and operational expense tracking. Essential for financial management',
+    `demographics_id` BIGINT COMMENT 'Reference to the patient for whom the imaging order was placed. Links to the master patient record in the MPI (Master Patient Index).',
+    `employee_id` BIGINT COMMENT 'Reference to the radiologic technologist (RT) who performed the imaging examination. Used for technologist productivity reporting, competency tracking, and quality assurance audits.',
+    `health_plan_id` BIGINT COMMENT 'Reference to the patients active insurance coverage plan at the time the imaging order was placed. Used for eligibility verification, prior authorization routing, and claim submission to the correct payer.',
+    `hie_query_id` BIGINT COMMENT 'Foreign key linking to interoperability.hie_query. Business justification: Radiology orders trigger HIE queries (XCA/XDS-I.b) to retrieve prior imaging studies and relevant clinical history from external facilities for radiologist comparison and clinical decision support. Li',
+    `icd_code_id` BIGINT COMMENT 'Foreign key linking to reference.icd_code. Business justification: Orders carry ICD-10 diagnosis codes to justify medical necessity for payer authorization, support clinical decision support, and enable quality reporting. Core requirement for radiology order manageme',
+    `payer_id` BIGINT COMMENT 'Foreign key linking to insurance.payer. Business justification: Imaging orders require payer identification for eligibility verification, prior authorization routing, and claim submission. Distinct from insurance_plan_id which captures member-specific coverage tie',
+    `clinician_id` BIGINT COMMENT 'Reference to the clinician (physician, NP, PA) who placed the imaging order via CPOE (Computerized Physician Order Entry). Used for provider-level utilization reporting and MIPS quality measures.',
+    `cpt_code_id` BIGINT COMMENT 'Foreign key linking to reference.cpt_code. Business justification: Imaging orders reference CPT codes to define billable procedures, support prior authorization, and enable revenue cycle management. Essential for claims submission and procedure standardization across',
+    `research_study_id` BIGINT COMMENT 'Foreign key linking to research.research_study. Business justification: Clinical trials require protocol-specified imaging procedures. Research orders flow through standard radiology workflow, requiring linkage for protocol compliance tracking, research billing determinat',
+    `scheduling_appointment_id` BIGINT COMMENT 'add column scheduling_appointment_id (BIGINT) with FK to scheduling.scheduling_appointment.scheduling_appointment_id - imaging orders need to link to their scheduled appointment for workflow coordination',
+    `treatment_consent_id` BIGINT COMMENT 'Foreign key linking to consent.treatment_consent. Business justification: Imaging orders require informed consent verification before exam performance, especially for procedures involving contrast, radiation, or interventional techniques. Links order to the consent authoriz',
+    `visit_id` BIGINT COMMENT 'Reference to the clinical encounter (inpatient, outpatient, ED visit) during which the imaging order was placed. Supports encounter-level analytics and billing reconciliation.',
+    `accession_number` STRING COMMENT 'The unique accession number assigned by the Radiology Information System (RIS) — Epic Radiant or Cerner RadNet — at the time the order is accepted into the RIS workflow. Used as the primary cross-reference between the RIS, PACS (Picture Archiving and Communication System), and DICOM image metadata. Aligns with IHE SWF accession number assignment step.',
+    `body_part` STRING COMMENT 'The anatomical body part or region targeted by the imaging order (e.g., CHEST, ABDOMEN, BRAIN, KNEE, SPINE). Uses SNOMED CT or DICOM body part examined codes. Supports procedure-level analytics, radiation dose tracking by anatomy, and ACR Dose Index Registry reporting.',
+    `cancellation_reason` STRING COMMENT 'The reason code or description for why the imaging order was cancelled (e.g., Patient Refused, Duplicate Order, Clinical Condition Changed, No Auth Obtained). Null if order was not cancelled. Used for cancellation root cause analysis and operational improvement.',
+    `cancelled_timestamp` TIMESTAMP COMMENT 'The date and time when the imaging order was cancelled. Null if the order was not cancelled. Used for cancellation rate analytics, capacity recapture reporting, and revenue cycle reconciliation.',
+    `clinical_indication` STRING COMMENT 'Free-text clinical reason or indication for the imaging order as entered by the ordering provider in CPOE. Supports CDI (Clinical Documentation Improvement) review, radiologist interpretation context, and ACR Appropriateness Criteria validation.',
+    `contrast_required` BOOLEAN COMMENT 'Indicates whether intravenous or oral contrast agent is required for this imaging procedure. Drives pre-procedure screening workflows (renal function check, allergy screening), contrast preparation, and charge capture for contrast administration.',
+    `created_timestamp` TIMESTAMP COMMENT 'The date and time when this imaging order record was first created in the source RIS system (Epic Radiant / Cerner RadNet). Serves as the audit trail creation timestamp for data lineage and HIPAA audit log requirements.',
+    `critical_finding_flag` BOOLEAN COMMENT 'Indicates whether the radiologist identified a critical or urgent finding requiring immediate communication to the ordering provider. Triggers the critical results notification workflow per Joint Commission NPSG.02.03.01 and ACR communication standards.',
+    `exam_end_timestamp` TIMESTAMP COMMENT 'The date and time when the imaging examination was completed (acquisition finished). Used to calculate exam duration, modality utilization, and throughput metrics.',
+    `exam_start_timestamp` TIMESTAMP COMMENT 'The date and time when the imaging examination physically began (patient on table, acquisition started). Captured by the RIS/modality worklist. Used for TAT calculation from order to exam start and for radiation dose event timestamping.',
+    `is_portable` BOOLEAN COMMENT 'Indicates whether the imaging examination is to be performed as a portable/bedside study (e.g., portable chest X-ray in ICU). Drives equipment dispatch workflows, technologist assignment, and portable exam charge capture.',
+    `is_stat_override` BOOLEAN COMMENT 'Indicates whether the STAT priority designation was applied as a manual override by a provider or charge nurse, bypassing standard priority assignment logic. Used for STAT utilization auditing and appropriate use compliance monitoring.',
+    `laboratory_lab_order_id` BIGINT COMMENT 'Foreign key linking to laboratory.lab_order. Business justification: Radiologists routinely review recent lab results (renal function for contrast safety, coagulation for biopsy risk assessment, infection markers for interventional planning) before performing procedure',
+    `laterality` STRING COMMENT 'Specifies the side of the body for the imaging procedure where applicable (e.g., left knee MRI, right shoulder X-ray). Critical for patient safety (wrong-site imaging prevention), DICOM image tagging, and surgical/procedural correlation.. Valid values are `left|right|bilateral|unspecified`',
+    `modality_type` STRING COMMENT 'The imaging modality requested for this order using DICOM modality codes. CT = Computed Tomography, MRI = Magnetic Resonance Imaging, XR/DX/CR = X-ray, US = Ultrasound, PET = Positron Emission Tomography, FL = Fluoroscopy, NM = Nuclear Medicine, MG = Mammography. Drives modality-specific scheduling, equipment assignment, and radiation dose tracking requirements. [ENUM-REF-CANDIDATE: CT|MRI|XR|US|PET|FL|NM|MG|DX|CR — 10 candidates stripped; promote to reference product]',
+    `mrn` STRING COMMENT 'The patients Medical Record Number (MRN) as assigned by the facilitys Master Patient Index (MPI). Denormalized on the order for operational lookup and cross-system reconciliation with Epic Radiant and Cerner RadNet without requiring a join.',
+    `order_priority` STRING COMMENT 'Clinical priority assigned to the imaging order at placement. STAT indicates immediate life-threatening urgency; urgent indicates same-day completion; routine indicates standard scheduling. Drives RIS scheduling queue prioritization and turnaround time (TAT) SLA measurement.. Valid values are `stat|urgent|routine|asap|elective`',
+    `order_source` STRING COMMENT 'The care setting from which the imaging order originated. Drives billing rules (facility vs professional fee), payer contract application, and population health analytics by care setting.. Valid values are `inpatient|outpatient|emergency|ambulatory|telehealth`',
+    `order_status` STRING COMMENT 'Current workflow status of the imaging order within the RIS lifecycle. Transitions: ordered → scheduled → in_progress → completed; or ordered → cancelled / on_hold. Aligns with HL7 FHIR ServiceRequest.status and IHE SWF workflow states. [ENUM-REF-CANDIDATE: ordered|scheduled|in_progress|completed|cancelled|on_hold|discontinued|pending_auth — promote to reference product if additional states are needed]. Valid values are `ordered|scheduled|in_progress|completed|cancelled|on_hold`',
+    `ordered_timestamp` TIMESTAMP COMMENT 'The date and time when the imaging order was placed by the ordering provider in the CPOE system (Epic Orders / Cerner PowerChart). This is the principal business event timestamp for the order lifecycle. Used for TAT (Turnaround Time) measurement, STAT order compliance tracking, and regulatory reporting.',
+    `ordering_provider_npi` STRING COMMENT 'The 10-digit NPI (National Provider Identifier) of the ordering clinician. Denormalized on the order for direct use in CMS-1500 and UB-04 claim submission, payer prior authorization requests, and MIPS reporting without requiring a provider table join.. Valid values are `^[0-9]{10}$`',
+    `prior_auth_number` STRING COMMENT 'The prior authorization number issued by the payer for this imaging procedure. Required for high-cost modalities (MRI, CT, PET) under many payer contracts. Null if prior authorization is not required or not yet obtained. Used in claim submission and denial management.',
+    `prior_auth_status` STRING COMMENT 'Current status of the prior authorization request for this imaging order. Drives RCM (Revenue Cycle Management) workflows — orders with denied or pending auth may be held from scheduling. Critical for denial prevention and payer compliance.. Valid values are `approved|pending|denied|not_required|expired`',
+    `procedure_description` STRING COMMENT 'Human-readable description of the imaging procedure as defined in the CDM (Charge Description Master) or RIS procedure dictionary (e.g., CT Chest with Contrast, MRI Brain without and with Contrast). Used for clinical communication, scheduling display, and report headers.',
+    `protocol_name` STRING COMMENT 'The specific imaging acquisition protocol assigned to this order by the radiologist or technologist (e.g., CT Chest PE Protocol, MRI Brain Stroke Protocol). Drives scanner programming, contrast timing, and image reconstruction parameters. Sourced from the RIS protocol library.',
+    `radiation_dose_ctdi` DECIMAL(18,2) COMMENT 'The CT Dose Index Volume (CTDIvol) in mGy for CT examinations, representing the average radiation dose within the scan volume. Extracted from DICOM RDSR. Used alongside DLP for ACR Dose Index Registry benchmarking and radiation safety compliance.',
+    `radiation_dose_dlp` DECIMAL(18,2) COMMENT 'The Dose-Length Product (DLP) in mGy·cm recorded for CT examinations, representing the total radiation dose delivered during the scan. Populated from DICOM Radiation Dose Structured Report (RDSR). Required for ACR Dose Index Registry (DIR) submission and CMS radiation dose reporting.',
+    `referring_department` STRING COMMENT 'The hospital department or clinical unit that originated the imaging order (e.g., Emergency Department, ICU, Cardiology, Orthopedics). Used for departmental utilization reporting, cost allocation, and radiology demand forecasting.',
+    `report_finalized_timestamp` TIMESTAMP COMMENT 'The date and time when the radiologist finalized (signed/attested) the radiology report in the RIS. Critical for TAT measurement from exam completion to report delivery, ACR reporting benchmarks, and Joint Commission communication of critical findings requirements.',
+    `report_status` STRING COMMENT 'Current status of the radiology interpretation report associated with this order. Preliminary reports are available before final sign-off; addendum and corrected statuses indicate post-finalization changes. Drives critical result notification workflows and clinical decision support.. Valid values are `not_started|preliminary|final|addendum|corrected`',
+    `requisition_number` STRING COMMENT 'The requisition or placer order number generated by the CPOE system (Epic Orders / Cerner PowerChart) at the time the order is placed. Serves as the placer order identifier in HL7 ORM/ORU messaging and FHIR ServiceRequest.identifier.',
+    `scheduled_timestamp` TIMESTAMP COMMENT 'The date and time when the imaging procedure is scheduled to be performed. Populated when the order transitions to scheduled status in the RIS. Used for modality capacity planning, patient notification, and scheduling analytics.',
+    `source_system_order_code` STRING COMMENT 'The native order identifier from the originating RIS/EHR system (Epic Radiant order ID, Cerner RadNet order ID). Preserved for cross-system reconciliation, ETL audit trails, and support escalation without requiring reverse lookup.',
+    `updated_timestamp` TIMESTAMP COMMENT 'The date and time when this imaging order record was last modified in the source RIS system. Used for incremental ETL processing, change data capture, and audit trail compliance.',
     CONSTRAINT pk_imaging_order PRIMARY KEY(`imaging_order_id`)
-) COMMENT 'Radiology imaging order placed by a provider for diagnostic or therapeutic imaging procedures.';
+) COMMENT 'Core transactional record of every radiology imaging order placed via CPOE (Epic Radiant / Cerner RadNet). Captures the full lifecycle from placement through completion including status history audit trail. Stores ordering provider NPI, patient MRN, modality type (CT, MRI, X-ray, ultrasound, PET, fluoroscopy), clinical indication, ICD-10 diagnosis codes, CPT procedure codes, order priority (STAT, routine, urgent), order status with full status transition history, requisition number, referring department, and RIS accession number. SSOT for radiology order identity and lifecycle within the RIS workflow. Aligns with HL7 FHIR ServiceRequest and IHE SWF (Scheduled Workflow) profile.';
+
+CREATE OR REPLACE TABLE `vibe_healthcare_v1`.`radiology`.`radiology_study` (
+    `radiology_study_id` BIGINT COMMENT 'Unique surrogate primary key for the imaging study record in the lakehouse. Serves as the anchor for all downstream joins to series, reports, dose records, and contrast events.',
+    `audit_finding_id` BIGINT COMMENT 'Foreign key linking to compliance.audit_finding. Business justification: Imaging studies are primary audit targets for MQSA, ACR accreditation, state radiation control programs. Compliance audits sample studies to verify quality standards, dose optimization, and protocol c',
+    `care_site_id` BIGINT COMMENT 'Reference to the facility or imaging center where the study was performed. Supports multi-site reporting and capacity analytics.',
+    `charge_id` BIGINT COMMENT 'Foreign key linking to billing.charge. Business justification: Completed imaging studies trigger charge posting. Billing systems must link charges to actual performed studies (not just orders) for accurate revenue recognition, charge reconciliation, and audit tra',
+    `claim_id` BIGINT COMMENT 'Foreign key linking to claim.claim. Business justification: Completed imaging studies are the billable service event that triggers claim generation. Revenue cycle teams link studies to claims for payment posting, variance analysis, and reimbursement tracking. ',
+    `clinical_order_id` BIGINT COMMENT 'Foreign key linking to order.clinical_order. Business justification: Studies fulfill clinical orders. Direct linkage supports charge capture validation (matching performed study to ordered procedure), results reporting workflows where study context requires original or',
+    `clinician_id` BIGINT COMMENT 'Reference to the clinician who placed the imaging order. Used for referral tracking, utilization management, and RVU attribution.',
+    `drug_master_id` BIGINT COMMENT 'Foreign key linking to pharmacy.drug_master. Business justification: Studies document actual contrast administered during imaging. FK to drug_master enables adverse event tracking, lot number traceability for recalls, billing reconciliation, and REMS compliance reporti',
+    `cost_center_id` BIGINT COMMENT 'Foreign key linking to finance.cost_center. Business justification: Imaging studies drive departmental cost allocation for technical component expenses (equipment time, technologist labor, supplies). Required for profitability analysis by modality, cost-per-study metr',
+    `cpt_code_id` BIGINT COMMENT 'Foreign key linking to reference.cpt_code. Business justification: Studies are billed using CPT codes for professional and technical components. Links enable RVU calculation, charge capture validation, and revenue integrity audits across PACS and billing systems.',
+    `demographics_id` BIGINT COMMENT 'Reference to the patient who is the subject of this imaging study. Core PARTY_REFERENCE linking the study to the Master Patient Index (MPI).',
+    `employee_id` BIGINT COMMENT 'Reference to the radiologist or reading physician who interpreted and signed the final radiology report for this study.',
+    `equipment_asset_id` BIGINT COMMENT 'Identifier of the imaging device (scanner, modality unit) used to acquire this study. Corresponds to DICOM Station Name (0008,1010) or Device Serial Number. Used for equipment utilization, maintenance scheduling, and dose calibration tracking.',
+    `fhir_resource_log_id` BIGINT COMMENT 'Foreign key linking to interoperability.fhir_resource_log. Business justification: DICOM studies exposed via FHIR ImagingStudy resources for patient access APIs (21st Century Cures Act) and provider data exchange are logged for access tracking, consent enforcement, and API usage mon',
+    `hie_query_id` BIGINT COMMENT 'Foreign key linking to interoperability.hie_query. Business justification: DICOM studies imported from external facilities via HIE queries (XCA/XDS-I.b) for prior comparison require linkage to track query success, patient matching confidence, and external study retrieval for',
+    `icd_code_id` BIGINT COMMENT 'Foreign key linking to reference.icd_code. Business justification: Studies document ICD-10 codes for medical necessity validation, claims adjudication, and clinical registry reporting. Essential for linking imaging findings to diagnosis codes in quality measures.',
+    `imaging_order_id` BIGINT COMMENT 'Reference to the originating radiology order (CPOE order) that triggered this imaging study. Links the study back to the clinical order workflow in the RIS/EHR.',
+    `protocol_id` BIGINT COMMENT 'Foreign key linking to radiology.protocol. Business justification: study currently has acquisition_protocol: STRING (free-text field). Adding imaging_protocol_id FK normalizes this relationship to the protocol master table. Studies are acquired using standardized pro',
+    `modality_id` BIGINT COMMENT 'Foreign key linking to radiology.modality. Business justification: study currently has modality_code: STRING (descriptive code like CT, MR, XR) and equipment_asset_id FK to facility.equipment_asset. Adding modality_id FK links to the radiology-specific equipment mast',
+    `research_study_id` BIGINT COMMENT 'Foreign key linking to research.research_study. Business justification: Imaging studies performed as research protocol assessments must link to study for endpoint adjudication, protocol compliance verification, research billing determination, and regulatory documentation.',
+    `treatment_consent_id` BIGINT COMMENT 'Foreign key linking to consent.treatment_consent. Business justification: Completed imaging studies reference the consent obtained for the procedure. Essential for compliance documentation and medicolegal defense. Links the performed study to the consent that authorized it,',
+    `visit_id` BIGINT COMMENT 'Reference to the clinical encounter (inpatient, outpatient, or ED visit) during which this imaging study was ordered and performed.',
+    `accession_number` STRING COMMENT 'RIS-assigned accession number uniquely identifying this imaging study within the facilitys Radiology Information System (RIS). Used for order tracking, billing, and PACS worklist management. Corresponds to DICOM attribute (0008,0050).',
+    `body_part_examined` STRING COMMENT 'Anatomical body part or region imaged during the study. Corresponds to DICOM attribute (0018,0015). Used for clinical classification, protocol selection, and radiation dose benchmarking.',
+    `clinical_indication` STRING COMMENT 'Clinical reason or indication for the imaging study as documented by the ordering provider (e.g., Rule out pulmonary embolism, Evaluate chest pain). Supports ACR Appropriateness Criteria compliance and CDI workflows.',
+    `contrast_administered` BOOLEAN COMMENT 'Indicates whether a contrast agent (e.g., iodinated contrast for CT, gadolinium for MRI) was administered during this study. Drives contrast reaction monitoring, nephrotoxicity risk tracking, and CPT code selection.',
+    `created_timestamp` TIMESTAMP COMMENT 'Date and time this imaging study record was first created in the source RIS/PACS system. Supports audit trail and data lineage requirements.',
+    `critical_finding_flag` BOOLEAN COMMENT 'Indicates whether the radiologist identified a critical or actionable finding requiring immediate communication to the ordering provider per ACR communication guidelines. Drives critical results notification workflows.',
+    `critical_finding_notified_timestamp` TIMESTAMP COMMENT 'Date and time the radiologist or radiology staff notified the ordering provider of a critical imaging finding. Required for Joint Commission and ACR compliance documentation. Populated only when critical_finding_flag = True.',
+    `dicom_study_instance_uid` STRING COMMENT 'Globally unique DICOM Study Instance UID assigned at acquisition. The primary DICOM identifier used by PACS for image retrieval, routing, and federation across imaging systems. Conforms to DICOM PS3.3 attribute (0020,000D).. Valid values are `^[0-9]+(.[0-9]+)+$`',
+    `image_count` STRING COMMENT 'Total number of DICOM image instances across all series in this study. Corresponds to DICOM attribute (0020,1208). Used for PACS storage sizing and study completeness checks.',
+    `import_method` STRING COMMENT 'Method by which an externally acquired study was imported into the local PACS (e.g., CD/DVD media, direct DICOM push, HIE exchange, Vendor Neutral Archive). Applicable only when is_external_import = True.. Valid values are `cd_dvd|direct_dicom|fax_scan|hie_exchange|vendor_neutral_archive|patient_portal`',
+    `is_external_import` BOOLEAN COMMENT 'Indicates whether this study was imported from an external facility rather than acquired internally. True = externally sourced study; False = internally acquired. Drives provenance tracking and comparison read workflows.',
+    `is_stat_read_completed` BOOLEAN COMMENT 'Indicates whether a STAT (immediate) read was completed within the required turnaround time SLA for urgent/STAT priority studies. Used for quality reporting and radiologist performance monitoring.',
+    `laterality` STRING COMMENT 'Anatomical laterality of the body part examined (left, right, bilateral). Corresponds to DICOM attribute (0020,0060). Critical for patient safety, wrong-site prevention, and surgical correlation.. Valid values are `left|right|bilateral|unilateral|not_applicable`',
+    `order_received_timestamp` TIMESTAMP COMMENT 'Date and time the imaging order was received by the radiology department or RIS. Used to calculate order-to-scan turnaround time and measure scheduling efficiency.',
+    `pacs_archive_location` STRING COMMENT 'Logical or physical storage location identifier within the PACS where this studys images are archived (e.g., tier name, storage node, cloud bucket path). Used for image retrieval routing and storage lifecycle management.',
+    `pacs_status` STRING COMMENT 'Current archival status of the study images within the PACS. Indicates whether images have been received, fully archived to long-term storage, retrieved for reading, or purged per retention policy.. Valid values are `received|archived|retrieved|purged|error`',
+    `patient_age_at_study` STRING COMMENT 'Age of the patient in years at the time of the imaging study. Derived at acquisition time and stored for analytics, pediatric protocol selection, and dose benchmarking without requiring a join to patient demographics.',
+    `patient_sex` STRING COMMENT 'Biological sex of the patient as recorded at the time of the imaging study. Used for protocol selection (e.g., pelvic MRI), dose benchmarking, and population health analytics. Corresponds to DICOM attribute (0010,0040).. Valid values are `M|F|O|U`',
+    `priority` STRING COMMENT 'Clinical priority level assigned to the imaging study at the time of ordering. Drives RIS worklist ordering, scheduling urgency, and turnaround time (TAT) SLA targets.. Valid values are `stat|urgent|routine|elective`',
+    `radiation_dose_ctdi_vol` DECIMAL(18,2) COMMENT 'Volume CT Dose Index (CTDIvol) in mGy for CT studies, representing the average radiation dose within the scan volume. Used alongside DLP for dose benchmarking against ACR national dose reference levels.',
+    `radiation_dose_dlp` DECIMAL(18,2) COMMENT 'Dose-Length Product (DLP) in mGy·cm representing the total radiation dose delivered during this CT or fluoroscopy study. Key metric for radiation dose tracking, ACR Dose Index Registry (DIR) reporting, and patient safety compliance.',
+    `referring_department` STRING COMMENT 'Clinical department or service line that originated the imaging order (e.g., Emergency Department, Oncology, Orthopedics). Used for utilization analytics, volume reporting by department, and capacity planning.',
+    `report_finalized_timestamp` TIMESTAMP COMMENT 'Date and time the radiologist finalized (signed) the interpretation report. Used to calculate scan-to-report turnaround time (TAT), a key quality and operational KPI.',
+    `report_status` STRING COMMENT 'Current status of the radiologists interpretation report for this study. Preliminary reports are available before final sign-off; addendum and corrected statuses track post-signature changes.. Valid values are `preliminary|final|addendum|corrected|cancelled`',
+    `ris_system_source` STRING COMMENT 'Identifies the source Radiology Information System (RIS) from which this study record was ingested. Supports multi-system data lineage, reconciliation, and provenance tracking in the lakehouse.. Valid values are `epic_radiant|cerner_radnet|meditech|other`',
+    `series_count` STRING COMMENT 'Total number of DICOM series contained within this imaging study. Corresponds to DICOM attribute (0020,1206). Used for PACS storage capacity planning and study completeness validation.',
+    `size_mb` DECIMAL(18,2) COMMENT 'Total storage size of all DICOM image files for this study, expressed in megabytes. Used for PACS storage capacity planning, archival cost allocation, and data lifecycle management.',
+    `source_facility_name` STRING COMMENT 'Name of the external facility from which this study was imported, when is_external_import = True. Supports outside study tracking, comparison read workflows, and HIE provenance.',
+    `start_timestamp` TIMESTAMP COMMENT 'Date and time when image acquisition began for this study. Corresponds to DICOM Study Time (0008,0030). Used for turnaround time (TAT) calculation and operational throughput analytics.',
+    `study_date` DATE COMMENT 'Calendar date on which the imaging study was performed. Corresponds to DICOM attribute (0008,0020). Used for scheduling analytics, turnaround time measurement, and regulatory reporting.',
+    `study_description` STRING COMMENT 'Human-readable description of the imaging study as defined in the RIS/PACS worklist (e.g., CT Chest with Contrast, MRI Brain without Contrast). Corresponds to DICOM attribute (0008,1030).',
+    `study_status` STRING COMMENT 'Current workflow status of the imaging study within the RIS/PACS lifecycle. Drives worklist management, reporting queues, and operational dashboards.. Valid values are `scheduled|arrived|in_progress|completed|cancelled|on_hold`',
+    `updated_timestamp` TIMESTAMP COMMENT 'Date and time this imaging study record was most recently modified in the source system. Used for incremental ETL processing and change data capture.',
+    CONSTRAINT pk_radiology_study PRIMARY KEY(`radiology_study_id`)
+) COMMENT 'Master record representing a completed or in-progress diagnostic imaging study, including studies imported from external facilities. Owns the DICOM Study Instance UID, accession number, modality, study date/time, body part examined, number of series and images, study description, acquisition protocol, PACS study status, study size, PACS archive location, and provenance metadata (internal acquisition vs. external import with source facility and import method). Acts as the primary anchor linking orders, DICOM series, reports, dose records, and contrast events. SSOT for imaging study identity in the PACS/RIS ecosystem. Aligns with HL7 FHIR ImagingStudy resource and IHE RAD profiles.';
 
 CREATE OR REPLACE TABLE `vibe_healthcare_v1`.`radiology`.`dicom_series` (
-    `dicom_series_id` BIGINT COMMENT 'Unique identifier for the DICOM series.',
-    `protocol_id` BIGINT COMMENT 'Imaging protocol used for the series.',
-    `modality_id` BIGINT COMMENT 'Foreign key linking to radiology.modality. Business justification: A DICOM series is acquired on a specific physical imaging equipment unit (modality). dicom_series currently only carries a free-text modality string plus denormalized equipment descriptors (manufactur',
-    `employee_id` BIGINT COMMENT 'Technologist who performed the series.',
-    `radiology_study_id` BIGINT COMMENT 'Parent radiology study.',
-    `accession_number` STRING COMMENT 'Accession number for the series.',
-    `body_part_examined` STRING COMMENT 'Anatomical body part examined.',
-    `contrast_bolus_agent` STRING COMMENT 'Contrast agent used.',
-    `contrast_bolus_route` STRING COMMENT 'Route of contrast administration.',
-    `contrast_bolus_volume_ml` DECIMAL(18,2) COMMENT 'Volume of contrast administered in mL.',
-    `cpt_code` STRING COMMENT 'CPT code for the series.',
-    `created_timestamp` TIMESTAMP COMMENT 'Date and time the series record was created.',
-    `ctdi_vol_mgy` DECIMAL(18,2) COMMENT 'CT Dose Index Volume in mGy.',
-    `dlp_mgy_cm` DECIMAL(18,2) COMMENT 'Dose Length Product in mGy·cm.',
-    `exposure_ma` DECIMAL(18,2) COMMENT 'Exposure in milliamperes.',
-    `exposure_time_ms` DECIMAL(18,2) COMMENT 'Exposure time in milliseconds.',
-    `image_orientation_patient` STRING COMMENT 'DICOM Image Orientation (Patient).',
-    `kvp` DECIMAL(18,2) COMMENT 'Peak kilovoltage.',
-    `laterality` STRING COMMENT 'Left, right, or bilateral.',
-    `modality` STRING COMMENT 'Imaging modality (e.g., CT, MRI, X-Ray).',
-    `number_of_series_related_instances` STRING COMMENT 'Number of instances (images) in the series.',
-    `pacs_archive_status` STRING COMMENT 'Status in PACS archive.',
-    `pacs_storage_path` STRING COMMENT 'PACS storage path or location.',
-    `patient_position` STRING COMMENT 'Patient position during imaging.',
-    `performing_physician_name` STRING COMMENT 'Name of the performing physician.',
-    `pixel_spacing_mm` STRING COMMENT 'Pixel spacing in millimeters.',
-    `procedure_code_modifier` STRING COMMENT 'CPT code modifier.',
-    `quality_control_comments` STRING COMMENT 'The quality control comments of the radiology dicom series record.',
-    `quality_control_status` STRING COMMENT 'The quality control status value classifying the radiology dicom series record.',
-    `radiation_dose_mgy` DECIMAL(18,2) COMMENT 'Radiation dose in mGy.',
-    `referring_physician_npi` STRING COMMENT 'National Provider Identifier of the referring physician.',
-    `requesting_physician_name` STRING COMMENT 'Name of the requesting physician.',
-    `series_completeness_flag` BOOLEAN COMMENT 'Flag indicating if the series is complete.',
-    `series_date` DATE COMMENT 'Date of the series.',
-    `series_description` STRING COMMENT 'Description of the series.',
-    `series_instance_uid` STRING COMMENT 'DICOM Series Instance UID.',
-    `series_number` STRING COMMENT 'Series number within the study.',
-    `series_status` STRING COMMENT 'Status of the series.',
-    `series_time` TIMESTAMP COMMENT 'Time of the series.',
-    `slice_thickness_mm` DECIMAL(18,2) COMMENT 'Slice thickness in millimeters.',
-    `updated_timestamp` TIMESTAMP COMMENT 'Date and time the series record was last updated.',
-    `vibe_mutation_applied` STRING COMMENT 'The vibe mutation applied of the radiology dicom series record.',
-    `vibe_mutation_flag` BOOLEAN COMMENT 'The vibe mutation flag of the radiology dicom series record.',
-    `vibe_structure_marker` STRING COMMENT 'Marks product as part of the required ECM structure.',
+    `dicom_series_id` BIGINT COMMENT 'Unique identifier for the DICOM series record within the lakehouse. Primary key for this table.',
+    `protocol_id` BIGINT COMMENT 'Foreign key linking to radiology.protocol. Business justification: dicom_series currently has protocol_name: STRING (free-text field). Each DICOM series is acquired using a specific imaging protocol. Adding imaging_protocol_id FK normalizes this relationship to the p',
+    `employee_id` BIGINT COMMENT 'Foreign key linking to workforce.employee. Business justification: Series-level technologist tracking needed for quality control, competency assessment, and protocol compliance. Study-level employee_id insufficient for multi-series studies with different operators pe',
+    `radiology_study_id` BIGINT COMMENT 'Foreign key reference to the parent imaging study that contains this series. Links to the imaging_study product.',
+    `accession_number` STRING COMMENT 'Unique identifier assigned by the RIS to the imaging order or examination. Links DICOM images to radiology orders and reports.',
+    `body_part_examined` STRING COMMENT 'Anatomical region or body part that was imaged in this series (e.g., CHEST, HEAD, ABDOMEN). May use SNOMED CT codes or free text.',
+    `contrast_bolus_agent` STRING COMMENT 'Name or description of the contrast agent administered for this series (e.g., Iohexol 300mg/mL, Gadolinium). Null if no contrast was used.',
+    `contrast_bolus_route` STRING COMMENT 'Route by which contrast agent was administered (e.g., intravenous, oral). Null if no contrast was used.. Valid values are `IV|ORAL|RECTAL|INTRA_ARTERIAL|INTRATHECAL`',
+    `contrast_bolus_volume_ml` DECIMAL(18,2) COMMENT 'Total volume of contrast agent administered in milliliters. Null if no contrast was used or volume not recorded.',
+    `cpt_code` STRING COMMENT 'Five-digit CPT code representing the billable radiology procedure performed for this series. Used for revenue cycle management and claims processing.. Valid values are `^[0-9]{5}$`',
+    `created_timestamp` TIMESTAMP COMMENT 'Timestamp when this series record was first created in the lakehouse. Audit trail for data lineage.',
+    `ctdi_vol_mgy` DECIMAL(18,2) COMMENT 'CT Dose Index Volume, a standardized measure of radiation dose for CT examinations. Null for non-CT modalities.',
+    `dlp_mgy_cm` DECIMAL(18,2) COMMENT 'Dose Length Product, representing the integrated radiation dose over the scan length for CT examinations. Null for non-CT modalities.',
+    `exposure_ma` DECIMAL(18,2) COMMENT 'X-ray tube current in milliamperes during image acquisition. Used for radiation dose calculation. Null for non-radiation modalities.',
+    `exposure_time_ms` DECIMAL(18,2) COMMENT 'Duration of X-ray exposure in milliseconds. Used for radiation dose calculation. Null for non-radiation modalities.',
+    `image_orientation_patient` STRING COMMENT 'Direction cosines of the first row and first column with respect to the patient coordinate system. Six-value array stored as string (e.g., 100010). Essential for 3D spatial registration.',
+    `kvp` DECIMAL(18,2) COMMENT 'Peak kilovoltage output of the X-ray generator used for CT or radiography acquisition. Null for non-radiation modalities.',
+    `laterality` STRING COMMENT 'Laterality of the body part examined: L (Left), R (Right), B (Bilateral), U (Unpaired/midline). Null if not applicable.. Valid values are `L|R|B|U`',
+    `manufacturer` STRING COMMENT 'Manufacturer of the imaging equipment used to acquire this series (e.g., GE Healthcare, Siemens Healthineers, Philips Medical Systems).',
+    `manufacturer_model_name` STRING COMMENT 'Model name of the imaging equipment (e.g., Discovery CT750 HD, MAGNETOM Skyra, Ingenuity CT).',
+    `modality` STRING COMMENT 'Type of imaging equipment or acquisition method used to create this series. Standard DICOM modality codes. [ENUM-REF-CANDIDATE: CT|MR|XA|RF|US|MG|DX|CR|NM|PT|OT — 11 candidates stripped; promote to reference product]',
+    `number_of_series_related_instances` STRING COMMENT 'Total count of DICOM image instances (individual images or frames) contained within this series. Used for completeness validation and PACS retrieval.',
+    `pacs_archive_status` STRING COMMENT 'Current storage tier or availability status of the series within the PACS archive hierarchy (online cache, nearline storage, offline tape, etc.).. Valid values are `online|nearline|offline|archived|pending_archive`',
+    `pacs_storage_path` STRING COMMENT 'File system path or object storage location where the DICOM series images are stored in the PACS archive. Used for image retrieval and system integration.',
+    `patient_position` STRING COMMENT 'Patient position during image acquisition using DICOM standard codes: HFS (Head First Supine), HFP (Head First Prone), FFS (Feet First Supine), etc. [ENUM-REF-CANDIDATE: HFS|HFP|FFS|FFP|HFDR|HFDL|FFDR|FFDL — 8 candidates stripped; promote to reference product]',
+    `performing_physician_name` STRING COMMENT 'Name of the physician or technologist who performed or supervised the image acquisition for this series.',
+    `pixel_spacing_mm` STRING COMMENT 'Physical distance between pixel centers in millimeters, formatted as row_spacingcolumn_spacing (e.g., 0.6250.625). Used for accurate measurement and calibration.. Valid values are `^[0-9]+.[0-9]+[0-9]+.[0-9]+$`',
+    `procedure_code_modifier` STRING COMMENT 'Two-character CPT or HCPCS modifier providing additional information about the procedure (e.g., laterality, professional/technical component). Null if no modifier applies.. Valid values are `^[0-9A-Z]{2}$`',
+    `quality_control_comments` STRING COMMENT 'Free-text comments from quality control review, documenting any issues, artifacts, or technical concerns identified during QC assessment.',
+    `quality_control_status` STRING COMMENT 'Result of quality control review for this series. Indicates whether the series meets institutional quality standards for diagnostic interpretation.. Valid values are `pending|passed|failed|not_required`',
+    `radiation_dose_mgy` DECIMAL(18,2) COMMENT 'Estimated or measured radiation dose delivered to the patient during this series in milligray. Critical for dose tracking and regulatory reporting. Null for non-radiation modalities.',
+    `referring_physician_npi` STRING COMMENT 'Ten-digit NPI of the referring physician. Used for provider attribution and claims processing.. Valid values are `^[0-9]{10}$`',
+    `requesting_physician_name` STRING COMMENT 'Name of the physician who ordered the imaging study. Used for result routing and clinical communication.',
+    `series_completeness_flag` BOOLEAN COMMENT 'Indicates whether all expected instances for this series have been received and stored in PACS. True if complete, False if incomplete or pending.',
+    `series_date` DATE COMMENT 'Date when the series was acquired or started. Represents the calendar day of image capture.',
+    `series_description` STRING COMMENT 'Human-readable description of the series content, typically including anatomical region, imaging protocol, and acquisition parameters (e.g., Chest CT with Contrast Axial 2.5mm).',
+    `series_instance_uid` STRING COMMENT 'Globally unique DICOM Series Instance UID conforming to ISO 8824 UID format. This is the business identifier for the series across all systems and institutions.. Valid values are `^[0-9.]+$`',
+    `series_number` STRING COMMENT 'Sequential number assigned to this series within the parent study. Used for ordering and display purposes in PACS and radiology workstations.',
+    `series_status` STRING COMMENT 'Current lifecycle status of the series within the PACS and RIS workflow. Tracks progression from acquisition through archival and quality assurance.. Valid values are `acquired|archived|quality_review|approved|rejected|deleted`',
+    `series_time` TIMESTAMP COMMENT 'Time when the series was acquired or started, in DICOM TM format (HHMMSS.FFFFFF). Combined with series_date provides precise acquisition timestamp.',
+    `slice_thickness_mm` DECIMAL(18,2) COMMENT 'Nominal thickness of each image slice in millimeters. Critical for 3D reconstruction and volumetric analysis.',
+    `software_version` STRING COMMENT 'Software version of the imaging equipment at the time of acquisition. Important for image quality assessment and protocol standardization.',
+    `station_name` STRING COMMENT 'User-defined name or identifier of the imaging station or device where the series was acquired (e.g., CT1_ER, MRI2_MAIN).',
+    `updated_timestamp` TIMESTAMP COMMENT 'Timestamp when this series record was last modified in the lakehouse. Audit trail for data lineage and change tracking.',
     CONSTRAINT pk_dicom_series PRIMARY KEY(`dicom_series_id`)
-) COMMENT 'DICOM series within a radiology study, containing series-level metadata and image attributes.';
+) COMMENT 'Represents an individual DICOM series within an imaging study per the DICOM information model hierarchy. Captures Series Instance UID, series number, series description, modality, body part, acquisition date and time, number of images in series, slice thickness, pixel spacing, image orientation, series status, and PACS storage path. Enables granular navigation of imaging data at the series level for radiologist review and PACS retrieval. Aligns with HL7 FHIR ImagingStudy.series component and IHE RAD profiles for image management.';
 
 CREATE OR REPLACE TABLE `vibe_healthcare_v1`.`radiology`.`report` (
     `report_id` BIGINT COMMENT 'Primary key for report',
@@ -120,10 +180,11 @@ CREATE OR REPLACE TABLE `vibe_healthcare_v1`.`radiology`.`report` (
     `imaging_order_id` BIGINT COMMENT 'Reference to the parent imaging order that triggered this radiology report. Links the report back to the order management workflow in the radiology domain.',
     `message_log_id` BIGINT COMMENT 'Unique identifier of the HL7 ORU^R01 message used to transmit the finalized radiology report to downstream clinical systems (EHR, ordering provider). Enables message traceability, deduplication, and integration audit. Sourced from the HL7 interface engine.',
     `mpi_record_id` BIGINT COMMENT 'Reference to the patient who is the subject of the imaging study and this report. Protected Health Information (PHI) under HIPAA. Links to the Master Patient Index (MPI).',
-    `clinician_id` BIGINT COMMENT 'Reference to the provider who authored the addendum or amendment. May differ from the original signing radiologist. Null for the original report.',
     `radiology_study_id` BIGINT COMMENT 'Foreign key linking to radiology.study. Business justification: report currently has imaging_order_id FK but no imaging_study_id FK. Radiology reports interpret STUDIES (the actual acquired images), not orders. One order can result in multiple studies (e.g., repea',
+    `clinician_id` BIGINT COMMENT 'Reference to the provider who authored the addendum or amendment. May differ from the original signing radiologist. Null for the original report.',
+    `report_clinician_id` BIGINT COMMENT 'Reference to the radiologist (provider) who performed the final attestation and signed the report. Corresponds to the interpreting physician of record for legal and billing purposes.',
+    `report_reading_radiologist_clinician_id` BIGINT COMMENT 'Reference to the radiologist who performed the primary interpretation of the imaging study. May differ from the signing radiologist in teaching or supervisory contexts (e.g., resident reads, attending signs). Used for productivity tracking and RVU attribution.',
     `research_study_id` BIGINT COMMENT 'Foreign key linking to research.research_study. Business justification: Radiology reports for research subjects require linkage for endpoint adjudication, independent imaging review, safety monitoring, and regulatory submissions. Reports may be blinded for trial integrity',
-    `tertiary_report_reading_radiologist_clinician_id` BIGINT COMMENT 'Reference to the radiologist who performed the primary interpretation of the imaging study. May differ from the signing radiologist in teaching or supervisory contexts (e.g., resident reads, attending signs). Used for productivity tracking and RVU attribution.',
     `employee_id` BIGINT COMMENT 'Foreign key linking to workforce.employee. Business justification: Radiology reports often dictated and transcribed by medical transcriptionists. Tracking needed for quality assurance, productivity monitoring, and error investigation when voice recognition not used.',
     `visit_id` BIGINT COMMENT 'Reference to the clinical encounter (visit) during which the imaging study was ordered and performed. Enables linkage to the patient visit context for clinical and revenue cycle workflows.',
     `accession_number` STRING COMMENT 'Externally-known unique identifier assigned by the Radiology Information System (RIS) to the imaging order and its associated report. Used as the primary cross-system business key linking the report to the imaging order, PACS, and billing systems. Sourced from Epic Radiant and Cerner RadNet.',
@@ -150,19 +211,16 @@ CREATE OR REPLACE TABLE `vibe_healthcare_v1`.`radiology`.`report` (
     `radiation_dose_ctdi` DECIMAL(18,2) COMMENT 'CT Dose Index Volume (CTDIvol) in mGy representing the average radiation dose per unit length for CT studies. Null for non-CT modalities. Used alongside DLP for comprehensive radiation dose monitoring and ACR Dose Index Registry reporting.',
     `radiation_dose_dlp` DECIMAL(18,2) COMMENT 'Dose Length Product (DLP) in mGy·cm representing the total radiation dose delivered during the CT or fluoroscopy study. Null for non-ionizing modalities (MRI, Ultrasound). Used for radiation dose monitoring, ACR Dose Index Registry reporting, and patient safety compliance.',
     `rads_category` STRING COMMENT 'Standardized ACR Reporting and Data System (RADS) assessment category assigned in the impression (e.g., BI-RADS 0-6 for mammography, LI-RADS 1-5 for liver, TI-RADS 1-5 for thyroid, Lung-RADS 1-4). Drives follow-up recommendations and quality measurement. [ENUM-REF-CANDIDATE: BI-RADS 0|BI-RADS 1|BI-RADS 2|BI-RADS 3|BI-RADS 4|BI-RADS 5|BI-RADS 6|LI-RADS 1|LI-RADS 2|LI-RADS 3|LI-RADS 4|LI-RADS 5|TI-RADS 1|TI-RADS 2|TI-RADS 3|TI-RADS 4|TI-RADS 5|Lung-RADS 1|Lung-RADS 2|Lung-RADS 3|Lung-RADS 4 — promote to reference product]',
-    `report_status` STRING COMMENT 'Current workflow state of the radiology report. Drives clinical decision-making and downstream notification workflows. Preliminary indicates a draft interpretation; final indicates the signed, attested report; addendum and amended indicate post-final modifications. Aligns with HL7 FHIR DiagnosticReport.status.. Valid values are `preliminary|final|addendum|amended|corrected|cancelled`',
     `ris_report_code` STRING COMMENT 'Native report identifier from the source Radiology Information System (RIS), such as Epic Radiant or Cerner RadNet. Used for cross-system reconciliation, ETL lineage tracking, and source system audit.',
     `signing_radiologist_npi` STRING COMMENT '10-digit National Provider Identifier (NPI) of the radiologist who signed and attested the final report. Required for CMS billing, claims submission, and provider credentialing validation. Sourced from the NPPES registry.. Valid values are `^[0-9]{10}$`',
     `stat_priority_flag` BOOLEAN COMMENT 'Indicates whether the imaging order and report were designated as STAT (immediate/urgent priority), requiring expedited turnaround time. Drives workflow prioritization in the RIS and radiologist worklist. Used for TAT compliance monitoring.',
+    `report_status` STRING COMMENT 'Current workflow state of the radiology report. Drives clinical decision-making and downstream notification workflows. Preliminary indicates a draft interpretation; final indicates the signed, attested report; addendum and amended indicate post-final modifications. Aligns with HL7 FHIR DiagnosticReport.status.. Valid values are `preliminary|final|addendum|amended|corrected|cancelled`',
     `study_datetime` TIMESTAMP COMMENT 'Date and time when the imaging study was performed (image acquisition). This is the principal real-world event time for the report. Sourced from DICOM tag (0008,0020)/(0008,0030) and RIS. Used as the primary temporal anchor for TAT calculations and clinical timelines.',
     `study_description` STRING COMMENT 'Human-readable description of the imaging study protocol or procedure performed (e.g., CT Chest with Contrast, MRI Brain without Contrast). Sourced from the RIS order and DICOM tag (0008,1030). Used for report titling and clinical context.',
     `template_code` BIGINT COMMENT 'Reference to the structured reporting template used to generate the report (e.g., ACR-standardized templates, site-specific templates). Supports structured reporting initiatives, quality measurement, and AI-assisted reporting workflows.',
     `transcription_timestamp` TIMESTAMP COMMENT 'Date and time when the report transcription was completed (if applicable). Relevant for facilities using human transcription services rather than voice recognition. Used in TAT measurement.',
     `updated_timestamp` TIMESTAMP COMMENT 'Date and time when the radiology report record was last modified in the source system. Used for incremental data loading, change data capture (CDC), and audit trail maintenance.',
     `version` STRING COMMENT 'Sequential version number of the report, starting at 1 for the initial report and incrementing with each amendment or addendum. Enables tracking of the full amendment history and identification of the current authoritative version.',
-    `vibe_mutation_applied` STRING COMMENT 'The vibe mutation applied of the radiology report record.',
-    `vibe_mutation_flag` BOOLEAN COMMENT 'Added by VIBE mutator to ensure model change.',
-    `vibe_structure_marker` STRING COMMENT 'Marks product as part of the required ECM structure.',
     CONSTRAINT pk_report PRIMARY KEY(`report_id`)
 ) COMMENT 'Authoritative clinical document containing the radiologists interpretation of an imaging study, including all addenda and amendments as versioned child records. Captures report accession number, report status (preliminary, final, addendum, amended), findings narrative, impression text, critical finding flag, dictation/transcription/attestation timestamps, signing radiologist NPI, addendum history (sequence, type, text, author, datetime), and HL7 ORU message ID. SSOT for radiologist interpretation, diagnostic conclusions, and report amendment history. Aligns with HL7 FHIR DiagnosticReport resource and IHE RAD-28 (Report Workflow). Integrates with Epic ClinDoc and Cerner PowerChart.';
 
@@ -210,9 +268,6 @@ CREATE OR REPLACE TABLE `vibe_healthcare_v1`.`radiology`.`report_addendum` (
     `peer_review_score` STRING COMMENT 'ACR RADPEER concordance score assigned during peer review, if applicable. Scale: 1 = agree with interpretation; 2a/2b = minor discrepancy; 3a/3b = significant discrepancy; 4 = major discrepancy. Nullable when peer_review_flag is False.. Valid values are `1|2a|2b|3a|3b|4`',
     `source_system_addendum_code` STRING COMMENT 'Native identifier of this addendum record in the originating operational system (e.g., Epic Radiant internal addendum ID, Cerner RadNet addendum key). Enables reconciliation between the lakehouse Silver Layer and the source RIS/EHR.',
     `updated_timestamp` TIMESTAMP COMMENT 'System timestamp when this addendum record was last modified in the data platform. Supports change detection and incremental ETL (Extract Transform Load) processing.',
-    `vibe_mutation_applied` STRING COMMENT 'The vibe mutation applied of the radiology report addendum record.',
-    `vibe_mutation_flag` BOOLEAN COMMENT 'Added by VIBE mutator to ensure model change.',
-    `vibe_structure_marker` STRING COMMENT 'Marks product as part of the required ECM structure.',
     `voice_recognition_flag` BOOLEAN COMMENT 'Indicates whether this addendum was authored using voice recognition / speech-to-text dictation software (e.g., Nuance PowerScribe, Nuance DAX). True = voice recognition used; False = manually typed. Supports transcription error root cause analysis.',
     CONSTRAINT pk_report_addendum PRIMARY KEY(`report_addendum_id`)
 ) COMMENT 'Tracks amendments and addenda appended to a finalized radiology report. Records addendum sequence number, addendum type (correction, clarification, clinical update), addendum text, reason for amendment, addendum author NPI, addendum datetime, original report reference, and notification status to ordering provider. Supports HIM (Health Information Management) audit requirements and CDI (Clinical Documentation Improvement) workflows.';
@@ -222,6 +277,7 @@ CREATE OR REPLACE TABLE `vibe_healthcare_v1`.`radiology`.`modality` (
     `care_site_id` BIGINT COMMENT 'Reference to the enterprise facility (hospital, clinic, imaging center) where this modality unit is physically deployed. Supports multi-site utilization analytics, capacity planning, and regulatory reporting by location.',
     `fixed_asset_id` BIGINT COMMENT 'Foreign key linking to finance.fixed_asset. Business justification: Imaging equipment (CT, MRI, X-ray) are capital assets requiring linkage for depreciation calculation, asset lifecycle tracking, maintenance cost capitalization, and capital planning. Modality operatio',
     `interface_channel_id` BIGINT COMMENT 'Foreign key linking to interoperability.interface_channel. Business justification: DICOM modalities connect to PACS/RIS via specific interface channels for modality worklist (MWL), MPPS, and image transmission. Links modality to its configured channel for troubleshooting connectivit',
+    `osha_safety_program_id` BIGINT COMMENT 'Foreign key linking to compliance.osha_safety_program. Business justification: Imaging modalities, especially radiation-emitting equipment, are governed by OSHA safety programs. Safety programs define modality-specific protocols for employee protection, calibration, and hazard m',
     `employee_id` BIGINT COMMENT 'Foreign key linking to workforce.employee. Business justification: Radiology equipment has assigned primary operators/technologists for accountability, competency tracking, and maintenance coordination. Required for quality assurance programs and regulatory complianc',
     `acr_accreditation_expiration_date` DATE COMMENT 'Date on which the current American College of Radiology (ACR) accreditation for this modality unit expires. Null if not accredited or not applicable. Critical for maintaining Medicare billing eligibility for advanced imaging services.',
     `acr_accreditation_status` STRING COMMENT 'Current American College of Radiology (ACR) accreditation status for this imaging modality unit. ACR accreditation is required for Medicare reimbursement for advanced imaging services (CT, MRI, PET, nuclear medicine) under CMS policy. Drives billing eligibility and quality reporting.. Valid values are `accredited|provisional|denied|expired|not_applicable`',
@@ -263,9 +319,6 @@ CREATE OR REPLACE TABLE `vibe_healthcare_v1`.`radiology`.`modality` (
     `unit_code` STRING COMMENT 'Facility-assigned alphanumeric code uniquely identifying this imaging equipment unit within the enterprise. Used as the operational business identifier in RIS scheduling, order routing, and PACS integration (e.g., CT01, MRI-3T-02). Corresponds to the equipment code in Epic Radiant and Cerner RadNet.. Valid values are `^[A-Z0-9_-]{2,30}$`',
     `unit_name` STRING COMMENT 'Human-readable display name for the imaging modality unit as it appears in scheduling systems, worklists, and operational dashboards (e.g., Main Campus CT Scanner 1, North Wing 3T MRI). Used by technologists and schedulers to identify equipment.',
     `updated_timestamp` TIMESTAMP COMMENT 'Timestamp of the most recent update to this modality unit record in the enterprise data platform. Supports change data capture (CDC), ETL incremental load processing, and audit trail requirements under HIPAA Security Rule.',
-    `vibe_mutation_applied` STRING COMMENT 'The vibe mutation applied of the radiology modality record.',
-    `vibe_mutation_flag` BOOLEAN COMMENT 'Added by VIBE mutator to ensure model change.',
-    `vibe_structure_marker` STRING COMMENT 'Marks product as part of the required ECM structure.',
     CONSTRAINT pk_modality PRIMARY KEY(`modality_id`)
 ) COMMENT 'Master reference entity for physical imaging equipment units deployed across enterprise facilities. Captures modality unit identifier, equipment type (CT, MRI, PET-CT, X-ray, ultrasound, fluoroscopy, mammography, nuclear medicine), manufacturer, model, serial number, DICOM AE title, facility location, room assignment, installation date, last calibration date, FDA device registration, ACR accreditation status, and operational status. SSOT for imaging equipment identity within the radiology domain. Supports equipment utilization analytics, maintenance scheduling, and regulatory compliance tracking.';
 
@@ -274,6 +327,7 @@ CREATE OR REPLACE TABLE `vibe_healthcare_v1`.`radiology`.`protocol` (
     `clinician_id` BIGINT COMMENT 'FK to provider.clinician',
     `compliance_policy_id` BIGINT COMMENT 'Foreign key linking to compliance.policy. Business justification: Imaging protocols operationalize compliance policies for radiation safety, contrast administration, and clinical appropriateness. Policies mandate protocol standards; protocols reference governing pol',
     `drug_master_id` BIGINT COMMENT 'Foreign key linking to pharmacy.drug_master. Business justification: Imaging protocols define standard contrast agents for specific exam types. FK to drug_master ensures protocol-formulary alignment, supports automated order validation, and enables protocol updates whe',
+    `coverage_policy_id` BIGINT COMMENT 'Foreign key linking to insurance.coverage_policy. Business justification: Imaging protocols must align with payer coverage policies to ensure medical necessity compliance. Protocol selection at order time requires validation against applicable coverage determination criteri',
     `cpt_code_id` BIGINT COMMENT 'Foreign key linking to reference.cpt_code. Business justification: Imaging protocols are mapped to CPT codes to standardize procedure ordering, support charge capture automation, and enable protocol-to-billing reconciliation. Essential for revenue cycle optimization ',
     `employee_id` BIGINT COMMENT 'Foreign key linking to workforce.employee. Business justification: Imaging protocols authored by radiologists or medical physicists require creator tracking for audit trail, version control, and regulatory compliance. Distinct from approving_clinician_id which captur',
     `loinc_code_id` BIGINT COMMENT 'Foreign key linking to reference.loinc_code. Business justification: Protocols reference LOINC codes for interoperable procedure identification in HL7 messages, support standardized order entry, and enable cross-facility protocol comparison for quality benchmarking.',
@@ -307,7 +361,6 @@ CREATE OR REPLACE TABLE `vibe_healthcare_v1`.`radiology`.`protocol` (
     `patient_population` STRING COMMENT 'Target patient population for which this protocol is designed. Drives protocol selection logic in the RIS based on patient age and clinical context. Pediatric and neonatal protocols use weight-based dosing and modified acquisition parameters.. Valid values are `adult|pediatric|neonatal|geriatric|obstetric|all`',
     `patient_prep_instructions` STRING COMMENT 'Standardized patient preparation instructions for this protocol, including fasting requirements (e.g., NPO 4 hours), hydration instructions, medication holds (e.g., hold Metformin for contrast studies), bowel preparation, and breath-hold coaching. Displayed to scheduling staff and communicated to patients prior to the exam.',
     `pitch_factor` DECIMAL(18,2) COMMENT 'Helical pitch factor for CT protocols, defined as table feed per rotation divided by total collimation. Values less than 1.0 indicate overlapping acquisitions (higher dose, better quality); values greater than 1.0 indicate faster coverage with lower dose. Null for non-helical CT and other modalities.',
-    `protocol_status` STRING COMMENT 'Current lifecycle status of the imaging protocol. active indicates the protocol is approved and available for use; draft indicates pending approval; retired indicates superseded by a newer version; under_review indicates undergoing clinical review.. Valid values are `active|inactive|draft|retired|under_review`',
     `pulse_sequence_type` STRING COMMENT 'MRI pulse sequence type used in this protocol (e.g., T1 SE, T2 FSE, FLAIR, DWI, GRE, SSFP, EPI). Defines the fundamental MRI acquisition technique and determines tissue contrast characteristics. Null for non-MRI modalities.',
     `radiation_dose_ctdi_vol_mgy` DECIMAL(18,2) COMMENT 'Reference CT Dose Index Volume (CTDIvol) in milligray representing the average radiation dose within the scan volume for this CT protocol. Standardized metric for comparing dose across CT scanners and protocols. Reported to ACR Dose Index Registry and used for DRL benchmarking.',
     `radiation_dose_dlp_mgy_cm` DECIMAL(18,2) COMMENT 'Reference Dose Length Product (DLP) in milligray-centimeters representing the expected radiation dose for this CT protocol under standard conditions. Used for radiation dose optimization programs, comparison against Diagnostic Reference Levels (DRLs), and regulatory reporting to CMS and ACR Dose Index Registry.',
@@ -319,12 +372,9 @@ CREATE OR REPLACE TABLE `vibe_healthcare_v1`.`radiology`.`protocol` (
     `scan_duration_estimate_sec` STRING COMMENT 'Estimated acquisition time in seconds for this protocol under standard conditions. Used for scheduling slot allocation in the RIS, patient throughput planning, and breath-hold instruction timing for chest and abdominal studies.',
     `sedation_required` BOOLEAN COMMENT 'Indicates whether procedural sedation or anesthesia is required or commonly needed for this protocol (e.g., pediatric MRI, claustrophobic patients). True = sedation required; False = no sedation required. Triggers anesthesia scheduling and pre-sedation assessment workflows.',
     `slice_thickness_mm` DECIMAL(18,2) COMMENT 'Nominal slice thickness in millimeters for cross-sectional imaging protocols (CT, MRI). Thinner slices provide higher spatial resolution for small structure evaluation; thicker slices reduce noise and radiation dose. Null for planar modalities.',
+    `protocol_status` STRING COMMENT 'Current lifecycle status of the imaging protocol. active indicates the protocol is approved and available for use; draft indicates pending approval; retired indicates superseded by a newer version; under_review indicates undergoing clinical review.. Valid values are `active|inactive|draft|retired|under_review`',
     `total_exam_duration_min` STRING COMMENT 'Total estimated examination time in minutes including patient preparation, positioning, scanning, and post-processing. Used for scheduling block allocation in the RIS and patient appointment communication. Distinct from scan_duration_estimate_sec which covers acquisition only.',
-    `updated_timestamp` TIMESTAMP COMMENT 'The updated timestamp of the radiology protocol record.',
     `version` STRING COMMENT 'Version number of the protocol definition following semantic versioning (e.g., 1.0, 2.3, 3.1.2). Enables tracking of protocol revisions over time and ensures technologists are using the current approved version.. Valid values are `^d+.d+(.d+)?$`',
-    `vibe_mutation_applied` STRING COMMENT 'The vibe mutation applied of the radiology protocol record.',
-    `vibe_mutation_flag` BOOLEAN COMMENT 'Added by VIBE mutator to ensure model change.',
-    `vibe_structure_marker` STRING COMMENT 'Marks product as part of the required ECM structure.',
     CONSTRAINT pk_protocol PRIMARY KEY(`protocol_id`)
 ) COMMENT 'Defines standardized acquisition protocols for each modality and clinical indication combination. Stores protocol name, modality type, clinical indication, body part, contrast requirement flag, contrast agent type, slice thickness, kVp, mAs, field of view, reconstruction algorithm, scan duration estimate, patient preparation instructions, protocol version, effective date, and approving radiologist. Enables consistent image quality and supports radiation dose optimization programs. Managed within Epic Radiant protocol library.';
 
@@ -340,10 +390,10 @@ CREATE OR REPLACE TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` (
     `ndc_drug_id` BIGINT COMMENT 'Foreign key linking to reference.ndc_drug. Business justification: Contrast agents are pharmaceutical products identified by NDC for medication administration records, adverse event tracking, inventory management, and pharmacy billing. Essential for drug safety surve',
     `radiology_study_id` BIGINT COMMENT 'Reference to the imaging study (DICOM study) with which this contrast administration is associated. Supports PACS integration and study-level traceability.',
     `subject_enrollment_id` BIGINT COMMENT 'Foreign key linking to research.subject_enrollment. Business justification: Contrast administration to research subjects requires tracking for adverse event monitoring, safety reporting, and protocol compliance. Contrast reactions are reportable adverse events. Linkage enable',
+    `test_result_id` BIGINT COMMENT 'Foreign key linking to laboratory.test_result. Business justification: Contrast administration protocols mandate recent eGFR/creatinine results to assess contrast-induced nephropathy risk. ACR guidelines require documented renal function within specific timeframes. Direc',
     `treatment_consent_id` BIGINT COMMENT 'Foreign key linking to consent.treatment_consent. Business justification: Contrast agent administration requires specific informed consent due to allergy/anaphylaxis risks, renal function considerations, and potential adverse reactions. Standard of care requirement. Links c',
     `visit_id` BIGINT COMMENT 'Reference to the clinical encounter (visit) during which the contrast was administered. Supports revenue cycle and clinical documentation linkage.',
     `accession_number` STRING COMMENT 'The Radiology Information System (RIS) accession number assigned to the imaging order. Serves as the primary business identifier linking the contrast event to the RIS workflow in Epic Radiant and Cerner RadNet.',
-    `administered_timestamp` TIMESTAMP COMMENT 'The administered timestamp of the radiology contrast admin record.',
     `administering_clinician_npi` STRING COMMENT 'The 10-digit National Provider Identifier (NPI) of the clinician who administered the contrast agent. Required for regulatory reporting, billing, and provider accountability tracking.. Valid values are `^d{10}$`',
     `administration_datetime` TIMESTAMP COMMENT 'The precise date and time at which the contrast agent was administered to the patient. This is the principal real-world event timestamp for this transaction, distinct from record audit timestamps.',
     `administration_status` STRING COMMENT 'Current lifecycle status of the contrast administration event, aligned with HL7 FHIR MedicationAdministration status codes. not-done indicates contrast was withheld after screening.. Valid values are `completed|in-progress|not-done|on-hold|stopped|entered-in-error`',
@@ -357,12 +407,9 @@ CREATE OR REPLACE TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` (
     `body_region` STRING COMMENT 'The anatomical body region being imaged (e.g., abdomen/pelvis, brain, chest, spine). Used for contrast protocol selection and population health analytics.',
     `catheter_gauge` STRING COMMENT 'The gauge size of the intravenous catheter used for contrast injection (e.g., 18G, 20G, 22G). Relevant for power injector safety limits and extravasation risk assessment.',
     `concentration_mg_per_ml` DECIMAL(18,2) COMMENT 'The concentration of the contrast agent in the administered preparation, expressed in milligrams per milliliter (mg/mL). Used to verify dose calculations and product selection.',
-    `contrast_agent_name` STRING COMMENT 'The contrast agent name of the radiology contrast admin record.',
     `contrast_allergy_screening_result` STRING COMMENT 'The result of the pre-administration contrast allergy screening assessment. Captures whether the patient has a documented prior contrast reaction, confirmed allergy, or no known allergy. Drives pre-medication decision.. Valid values are `no-allergy|prior-reaction|allergy-confirmed|screening-not-done|contraindicated`',
     `contrast_protocol_name` STRING COMMENT 'The name of the institutional contrast administration protocol followed (e.g., CT Abdomen Pelvis with IV Contrast — Standard Adult). Supports protocol compliance auditing and quality improvement.',
-    `created_timestamp` TIMESTAMP COMMENT 'The created timestamp of the radiology contrast admin record.',
     `dose_amount_mg` DECIMAL(18,2) COMMENT 'The total mass of contrast agent administered, measured in milligrams (mg). Supports weight-based dosing verification and cumulative gadolinium/iodine exposure tracking.',
-    `dose_ml` DECIMAL(18,2) COMMENT 'The dose ml of the radiology contrast admin record.',
     `dose_volume_ml` DECIMAL(18,2) COMMENT 'The total volume of contrast agent administered, measured in milliliters (mL). Used for dose tracking, pharmacy reconciliation, and radiation/contrast safety monitoring.',
     `extravasation_occurred` BOOLEAN COMMENT 'Indicates whether contrast agent extravasation (leakage into surrounding tissue) occurred during injection (True = extravasation, False = no extravasation). Triggers wound care and incident reporting protocols.',
     `extravasation_volume_ml` DECIMAL(18,2) COMMENT 'Estimated volume of contrast agent that extravasated into surrounding tissue, in milliliters (mL). Used to guide clinical management and severity classification of the extravasation event.',
@@ -377,17 +424,11 @@ CREATE OR REPLACE TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` (
     `premedication_details` STRING COMMENT 'Free-text or structured description of the pre-medication regimen administered (e.g., Prednisone 50mg PO x3 doses + Diphenhydramine 50mg IV). Supports clinical documentation and pharmacy reconciliation.',
     `premedication_given` BOOLEAN COMMENT 'Indicates whether pre-medication (e.g., corticosteroid prophylaxis) was administered prior to contrast injection to reduce the risk of allergic reaction (True = pre-medicated, False = not pre-medicated).',
     `prior_contrast_reaction_type` STRING COMMENT 'Description of the type of prior contrast reaction documented in the patients allergy history (e.g., urticaria, bronchospasm, anaphylaxis). Informs pre-medication protocol selection.',
-    `reaction_flag` BOOLEAN COMMENT 'The reaction flag of the radiology contrast admin record.',
     `record_created_timestamp` TIMESTAMP COMMENT 'The date and time when this contrast administration record was first created in the source system or ingested into the lakehouse Silver layer. Supports audit trail and data lineage requirements.',
     `record_updated_timestamp` TIMESTAMP COMMENT 'The date and time when this contrast administration record was last modified in the source system or updated in the lakehouse Silver layer. Supports change tracking and audit compliance.',
-    `route` STRING COMMENT 'The route of the radiology contrast admin record.',
     `route_of_administration` STRING COMMENT 'The anatomical route by which the contrast agent was delivered to the patient (e.g., intravenous, oral, intrathecal). Critical for adverse reaction risk assessment and clinical documentation.. Valid values are `intravenous|oral|intrathecal|intra-arterial|intraperitoneal|rectal`',
     `source_system_record_code` STRING COMMENT 'The native record identifier from the originating operational system (e.g., Epic Radiant administration event ID, Cerner RadNet medication administration ID). Supports ETL traceability and cross-system reconciliation.',
     `thyroid_disease_flag` BOOLEAN COMMENT 'Indicates whether the patient has a documented thyroid condition (e.g., hyperthyroidism, thyroid cancer) that may be relevant to iodinated contrast administration safety screening.',
-    `updated_timestamp` TIMESTAMP COMMENT 'The updated timestamp of the radiology contrast admin record.',
-    `vibe_mutation_applied` STRING COMMENT 'The vibe mutation applied of the radiology contrast admin record.',
-    `vibe_mutation_flag` BOOLEAN COMMENT 'Added by VIBE mutator to ensure model change.',
-    `vibe_structure_marker` STRING COMMENT 'Marks product as part of the required ECM structure.',
     CONSTRAINT pk_contrast_admin PRIMARY KEY(`contrast_admin_id`)
 ) COMMENT 'Transactional record of contrast agent administration events associated with an imaging study. Captures contrast agent name, NDC (National Drug Code), route of administration (IV, oral, intrathecal), dose administered (mL and mg), injection rate, injection site, pre-medication given flag, pre-medication details, adverse reaction flag, adverse reaction description, eGFR value at time of administration, contrast allergy screening result, administering clinician NPI, and administration datetime. Supports patient safety monitoring, contrast reaction tracking, and pharmacy reconciliation. Aligns with ACR Manual on Contrast Media guidelines and HL7 FHIR MedicationAdministration resource.';
 
@@ -398,13 +439,11 @@ CREATE OR REPLACE TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` (
     `imaging_order_id` BIGINT COMMENT 'Reference to the radiology order (CPOE) that initiated the imaging study. Links dose data to the clinical order for appropriateness review and order management workflows in Epic Radiant or Cerner RadNet.',
     `protocol_id` BIGINT COMMENT 'Foreign key linking to radiology.protocol. Business justification: dose_record currently has imaging_protocol_name: STRING (free-text field). Radiation dose records are tied to the acquisition protocol used, which determines expected dose ranges and DRL comparisons. ',
     `message_log_id` BIGINT COMMENT 'Foreign key linking to interoperability.message_log. Business justification: Radiation dose structured reports (RDSR) are transmitted via HL7 ORU or DICOM to dose registries (ACR DIR, state registries) for regulatory reporting and dose optimization programs. Message_log tracks',
-    `modality_id` BIGINT COMMENT 'Unique identifier for the modality within the radiology dose record record.',
     `mpi_record_id` BIGINT COMMENT 'Reference to the patient who received the radiation exposure. Links to the Master Patient Index (MPI) record for cumulative dose tracking and patient-level radiation safety monitoring per ALARA principle.',
     `osha_safety_program_id` BIGINT COMMENT 'Foreign key linking to compliance.osha_safety_program. Business justification: Dose records support OSHA radiation safety programs by documenting employee and patient exposure levels. Safety programs monitor cumulative dose data to ensure compliance with occupational exposure li',
     `clinician_id` BIGINT COMMENT 'Reference to the clinician who ordered the imaging study. Used for utilization management, appropriateness criteria reporting, and CMS quality program compliance.',
     `cpt_code_id` BIGINT COMMENT 'Foreign key linking to reference.cpt_code. Business justification: Radiation dose records link to CPT codes for dose-by-procedure benchmarking, ACR Dose Index Registry submissions, and radiation safety quality measures. Supports dose optimization program reporting.',
     `public_health_report_id` BIGINT COMMENT 'Foreign key linking to interoperability.public_health_report. Business justification: Radiation dose records are submitted to state dose registries and ACR Dose Index Registry for public health surveillance and dose optimization programs. Links dose record to its public health submissi',
-    `radiology_study_id` BIGINT COMMENT 'Unique identifier for the radiology study within the radiology dose record record.',
     `research_study_id` BIGINT COMMENT 'Foreign key linking to research.research_study. Business justification: Radiation dose tracking for research subjects is IRB-mandated for protocols involving imaging. Cumulative dose monitoring, safety reporting to IRBs and sponsors, and protocol-specified dose limits req',
     `employee_id` BIGINT COMMENT 'Foreign key linking to workforce.employee. Business justification: Radiation dose records require medical physicist review for quality assurance and regulatory compliance (ACR, state regulations). Physicists may not have clinician_id if non-provider staff.',
     `visit_id` BIGINT COMMENT 'Reference to the clinical encounter (visit) during which the imaging study and radiation exposure occurred. Supports revenue cycle linkage and clinical context for dose reporting.',
@@ -413,7 +452,6 @@ CREATE OR REPLACE TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` (
     `contrast_administered` BOOLEAN COMMENT 'Indicates whether iodinated or gadolinium-based contrast agent was administered during the imaging study. True = contrast used; False = non-contrast study. Relevant for dose context, adverse event tracking, and clinical protocol classification.',
     `contrast_agent_type` STRING COMMENT 'Type of contrast agent administered during the imaging study. iodinated=CT/X-ray contrast; gadolinium=MRI contrast (tracked for nephrogenic systemic fibrosis risk); barium=GI fluoroscopy; none=no contrast. Used for clinical safety monitoring and protocol classification.. Valid values are `iodinated|gadolinium|barium|none`',
     `created_timestamp` TIMESTAMP COMMENT 'Date and time when this dose record was first created in the source system or ingested into the lakehouse Silver layer. Supports audit trail, data lineage, and regulatory record retention requirements.',
-    `ctdi_vol_mgy` DECIMAL(18,2) COMMENT 'The ctdi vol mgy of the radiology dose record record.',
     `ctdivol_mgy` DECIMAL(18,2) COMMENT 'Volume CT Dose Index (CTDIvol) in milligray (mGy) for CT studies. Represents the average radiation dose delivered within the scan volume for a single series or the entire study. Primary CT dose metric for ACR DIR benchmarking and dose alert thresholds per NCRP and FDA guidance.',
     `cumulative_dose_msv` DECIMAL(18,2) COMMENT 'Running cumulative effective dose in millisieverts (mSv) for this patient across all prior ionizing radiation imaging studies recorded in the system, including the current study. Supports ALARA principle compliance, radiation safety counseling, and identification of high-dose patients for clinical review.',
     `dap_gy_cm2` DECIMAL(18,2) COMMENT 'Dose Area Product (DAP) in Gy·cm² for fluoroscopy, X-ray angiography, and interventional radiology procedures. Measures total radiation energy delivered to the patient. Primary dose metric for fluoroscopic procedures per IEC 60601-2-43.',
@@ -421,145 +459,86 @@ CREATE OR REPLACE TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` (
     `dose_alert_flag` BOOLEAN COMMENT 'Indicates whether this study triggered a radiation dose alert based on institutional or regulatory thresholds (e.g., CTDIvol > alert level, fluoroscopy time > 30 min, RAK > 3 Gy). True = alert triggered; False = within normal limits. Supports Joint Commission radiation safety event reporting.',
     `dose_alert_threshold_type` STRING COMMENT 'The specific dose metric that triggered the dose alert, if applicable. Identifies which threshold was exceeded to support targeted clinical review and root cause analysis. not_triggered when dose_alert_flag is False. [ENUM-REF-CANDIDATE: ctdivol|dlp|dap|fluoroscopy_time|rak|effective_dose|not_triggered — 7 candidates stripped; promote to reference product]',
     `dose_alert_value` DECIMAL(18,2) COMMENT 'The numeric threshold value that was exceeded to trigger the dose alert, expressed in the unit of the triggering metric (mGy, mGy·cm, Gy·cm², seconds, or mSv). Supports audit trail for dose safety events.',
-    `dose_record_status` STRING COMMENT 'Current lifecycle status of the radiation dose record. preliminary = dose data received but not yet reviewed; final = reviewed and confirmed; amended = corrected after finalization; corrected = technical correction applied; cancelled = study voided.. Valid values are `preliminary|final|amended|corrected|cancelled`',
     `dose_registry_submission_status` STRING COMMENT 'Status of submission of this dose record to the ACR Dose Index Registry (DIR). pending=queued for submission; submitted=transmitted to ACR DIR; accepted=confirmed by ACR DIR; rejected=rejected by ACR DIR (requires correction); not_required=procedure not in DIR scope.. Valid values are `pending|submitted|accepted|rejected|not_required`',
     `dose_registry_submission_timestamp` TIMESTAMP COMMENT 'Date and time when this dose record was submitted to the ACR Dose Index Registry (DIR) or other regulatory dose registry. Supports audit trail for regulatory compliance and CMS quality program reporting.',
     `drl_comparison_result` STRING COMMENT 'Result of comparing the study dose against the applicable national or institutional Diagnostic Reference Level (DRL). below_drl=dose is below the reference level (optimal); at_drl=dose equals reference level; above_drl=dose exceeds reference level (requires review); not_applicable=no DRL defined for this procedure.. Valid values are `below_drl|at_drl|above_drl|not_applicable`',
     `effective_dose_msv` DECIMAL(18,2) COMMENT 'Estimated effective dose in millisieverts (mSv) representing the stochastic risk-weighted whole-body equivalent dose. Derived from DLP × conversion coefficient (k-factor) for CT, or from DAP for fluoroscopy. Used for patient communication, cumulative dose tracking, and ALARA compliance.',
     `entrance_skin_dose_mgy` DECIMAL(18,2) COMMENT 'Entrance skin dose (ESD) in milligray (mGy) for radiographic and fluoroscopic procedures. Represents the absorbed dose at the skin entry point. Critical for radiation injury risk assessment and Joint Commission threshold monitoring.',
-    `exceeds_reference_level_flag` BOOLEAN COMMENT 'The exceeds reference level flag of the radiology dose record record.',
     `fluoroscopy_time_sec` DECIMAL(18,2) COMMENT 'Total fluoroscopy beam-on time in seconds for fluoroscopic and interventional procedures. Regulatory threshold monitoring metric; Joint Commission requires tracking and alerting when fluoroscopy time exceeds defined thresholds (e.g., 30 minutes cumulative).',
     `kvp` DECIMAL(18,2) COMMENT 'Peak kilovoltage (kVp) applied to the X-ray tube during the study. Represents the energy of the X-ray beam. Used for dose optimization, protocol review, and physics quality assurance.',
     `modality_type` STRING COMMENT 'DICOM modality code indicating the type of imaging equipment used. CT=Computed Tomography, FL=Fluoroscopy, NM=Nuclear Medicine, DX=Digital Radiography (X-ray), MG=Mammography, XA=X-Ray Angiography, RF=Radiofluoroscopy. Determines applicable dose metrics (CTDIvol/DLP for CT, DAP/fluoroscopy time for fluoroscopy). [ENUM-REF-CANDIDATE: CT|FL|NM|DX|MG|XA|RF|PT|SPECT — promote to reference product]',
     `number_of_exposures` STRING COMMENT 'Total count of individual X-ray exposures (radiographic frames or pulses) delivered during the study. Used for dose optimization analysis and comparison against diagnostic reference levels (DRLs).',
-    `patient_age_at_study` STRING COMMENT 'Patient age in whole years at the time of the imaging study. Used for pediatric dose benchmarking (pediatric patients require lower dose protocols), age-stratified DRL comparisons, and ACR DIR age-group reporting. Derived at time of study to avoid recalculation.',
+    `patient_age_at_study` STRING COMMENT 'Patient age in whole years at the time of the imaging study. Used for pediatric dose benchmarking (pediatric patients require lower dose protocols), age-stratified DRL comparisons, and ACR DIR age-. Derived at time of study to avoid recalculation.',
     `patient_size_cm` DECIMAL(18,2) COMMENT 'Patient effective diameter or water-equivalent diameter in centimeters, used for Size-Specific Dose Estimate (SSDE) calculation in CT. Derived from scout/localizer images or patient measurements. Required for AAPM TG-204 SSDE methodology.',
     `patient_weight_kg` DECIMAL(18,2) COMMENT 'Patient body weight in kilograms at the time of the imaging study. Used for size-specific dose estimate (SSDE) calculations for CT, weight-based protocol selection, and dose normalization for benchmarking.',
     `physicist_review_flag` BOOLEAN COMMENT 'Indicates whether this dose record has been flagged for or completed a review by a qualified medical physicist. True = physicist review required or completed; False = no physicist review needed. Triggered by dose alerts, unusual protocol deviations, or regulatory requirements.',
     `physicist_review_timestamp` TIMESTAMP COMMENT 'Date and time when the medical physicist completed the review of this dose record. Null if physicist_review_flag is False or review is pending. Supports compliance audit trail for Joint Commission radiation safety requirements.',
     `procedure_description` STRING COMMENT 'Human-readable description of the imaging procedure performed (e.g., CT Chest with Contrast, Fluoroscopic Guidance for Biopsy). Sourced from the Charge Description Master (CDM) or RIS procedure catalog.',
     `rdsr_uid` STRING COMMENT 'DICOM Radiation Dose Structured Report (RDSR) SOP Instance UID per IEC 61910 standard. Globally unique identifier for the structured dose report generated by the imaging modality. Used for PACS integration and ACR Dose Index Registry (DIR) submission.',
-    `recorded_timestamp` TIMESTAMP COMMENT 'The recorded timestamp of the radiology dose record record.',
     `reference_air_kerma_mgy` DECIMAL(18,2) COMMENT 'Reference Air Kerma (RAK) in mGy for interventional fluoroscopy procedures. Measured at the interventional reference point (IRP) per IEC 60601-2-43. Used for radiation injury risk assessment and regulatory threshold compliance.',
     `scanner_manufacturer` STRING COMMENT 'Manufacturer of the imaging equipment used for the study (e.g., Siemens, GE Healthcare, Philips, Canon). Used for equipment-level dose benchmarking, physics QA, and ACR DIR equipment stratification.',
     `scanner_model` STRING COMMENT 'Model name of the imaging equipment used (e.g., SOMATOM Force, Revolution CT, Ingenuity Elite). Used for equipment-specific dose performance tracking and physics quality assurance.',
     `scanner_station_name` STRING COMMENT 'DICOM station name or AE title of the imaging modality that generated the dose data. Used for equipment-level dose tracking, PACS routing, and physics QA within a multi-scanner facility.',
     `ssde_mgy` DECIMAL(18,2) COMMENT 'Size-Specific Dose Estimate (SSDE) in mGy for CT studies, calculated per AAPM TG-204 methodology by applying a size-based conversion factor to CTDIvol. Provides a more accurate patient-specific dose estimate than CTDIvol alone. Used for pediatric dose optimization and ACR DIR advanced reporting.',
+    `dose_record_status` STRING COMMENT 'Current lifecycle status of the radiation dose record. preliminary = dose data received but not yet reviewed; final = reviewed and confirmed; amended = corrected after finalization; corrected = technical correction applied; cancelled = study voided.. Valid values are `preliminary|final|amended|corrected|cancelled`',
     `study_date` DATE COMMENT 'Calendar date on which the imaging study was performed. Principal business event date for dose record. Used for trending, regulatory reporting, and cumulative dose period calculations.',
     `study_instance_uid` STRING COMMENT 'DICOM Study Instance UID uniquely identifying the imaging study in the PACS (Picture Archiving and Communication System). Enables direct linkage between dose records and DICOM image metadata for audit and regulatory reporting.',
     `study_timestamp` TIMESTAMP COMMENT 'Precise date and time the imaging study was performed, including timezone offset. Used for intraday workflow analysis, dose alert timing, and RDSR correlation.',
     `tube_current_mas` DECIMAL(18,2) COMMENT 'X-ray tube current-time product in milliampere-seconds (mAs) for the study. Directly influences radiation dose output. Used for protocol optimization and dose benchmarking.',
     `updated_timestamp` TIMESTAMP COMMENT 'Date and time when this dose record was last modified in the source system or Silver layer. Used for incremental ETL processing, change data capture, and audit trail maintenance.',
-    `vibe_mutation_applied` STRING COMMENT 'The vibe mutation applied of the radiology dose record record.',
-    `vibe_mutation_flag` BOOLEAN COMMENT 'Added by VIBE mutator to ensure model change.',
-    `vibe_structure_marker` STRING COMMENT 'Marks product as part of the required ECM structure.',
     CONSTRAINT pk_dose_record PRIMARY KEY(`dose_record_id`)
 ) COMMENT 'Captures radiation dose metrics for each imaging study involving ionizing radiation (CT, fluoroscopy, nuclear medicine, X-ray). Stores CTDIvol, DLP (Dose Length Product), effective dose estimate (mSv), DAP for fluoroscopy, fluoroscopy time, number of exposures, dose reference level comparison, dose alert flags, RDSR (Radiation Dose Structured Report) UID per IEC 61910 standard, and cumulative patient dose tracking. SSOT for radiation exposure documentation. Supports ACR Dose Index Registry (DIR) reporting, Joint Commission radiation safety requirements, CMS quality programs, and ALARA principle compliance.';
 
 CREATE OR REPLACE TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` (
     `radiology_appointment_id` BIGINT COMMENT 'Primary key for appointment',
-    `material_master_id` BIGINT COMMENT 'Link to material/supply administered during appointment',
-    `appointment_type_id` BIGINT COMMENT 'Type of appointment (office visit, procedure, etc)',
-    `care_plan_id` BIGINT COMMENT 'Associated care plan if appointment is part of care coordination',
     `care_site_id` BIGINT COMMENT 'Reference to the healthcare facility (hospital, outpatient imaging center, clinic) where the imaging appointment is scheduled to take place.',
     `clinical_order_id` BIGINT COMMENT 'Foreign key linking to order.clinical_order. Business justification: Imaging appointments fulfill clinical orders. Scheduling workflows require linking appointments to orders for prep instruction delivery, authorization verification, and patient communication. Operatio',
-    `demographics_id` BIGINT COMMENT 'Patient demographic information',
-    `diagnosis_id` BIGINT COMMENT 'Primary diagnosis for appointment',
-    `eligibility_id` BIGINT COMMENT 'Insurance eligibility verification',
     `employee_id` BIGINT COMMENT 'Reference to the radiology technologist (RT) assigned to perform the imaging study for this appointment. Used for staffing, productivity tracking, and quality assurance.',
-    `encounter_authorization_id` BIGINT COMMENT 'Authorization for the encounter',
-    `member_enrollment_id` BIGINT COMMENT 'Member enrollment record',
-    `modality_id` BIGINT COMMENT 'Unique identifier for the modality within the radiology radiology appointment record.',
+    `health_plan_id` BIGINT COMMENT 'Reference to the patients active insurance plan at the time of the imaging appointment. Used for eligibility verification, pre-authorization, and revenue cycle management.',
+    `icd_code_id` BIGINT COMMENT 'Foreign key linking to reference.icd_code. Business justification: Appointments carry diagnosis codes for prior authorization verification at scheduling time, support medical necessity screening, and enable diagnosis-based appointment prioritization for urgent condit',
+    `imaging_order_id` BIGINT COMMENT 'Reference to the radiology order (CPOE) that initiated this appointment. Enables traceability from scheduling back to the clinical order.',
+    `room_id` BIGINT COMMENT 'Reference to the specific imaging room or scanner unit assigned for this appointment. Enables room-level utilization tracking, maintenance scheduling, and capacity management.',
     `mpi_record_id` BIGINT COMMENT 'Reference to the patient receiving the imaging service. Serves as the PARTY_REFERENCE for this transaction, linking to the patient master record.',
-    `payer_id` BIGINT COMMENT 'Insurance payer',
     `clinician_id` BIGINT COMMENT 'Reference to the clinician who placed the imaging order that generated this appointment. Used for referral tracking, utilization management, and RVU attribution.',
     `cpt_code_id` BIGINT COMMENT 'Foreign key linking to reference.cpt_code. Business justification: Appointments are scheduled for specific CPT-coded procedures to enable resource allocation, exam duration estimation, and scheduling template management. Links support capacity planning and utilizatio',
-    `radiology_clinician_id` BIGINT COMMENT 'Primary clinician for the appointment',
-    `icd_code_id` BIGINT COMMENT 'Foreign key linking to reference.icd_code. Business justification: Appointments carry diagnosis codes for prior authorization verification at scheduling time, support medical necessity screening, and enable diagnosis-based appointment prioritization for urgent condit',
-    `room_id` BIGINT COMMENT 'Reference to the specific imaging room or scanner unit assigned for this appointment. Enables room-level utilization tracking, maintenance scheduling, and capacity management.',
-    `radiology_room_id` BIGINT COMMENT 'Room assigned for appointment',
-    `radiology_visit_reason_icd_code_id` BIGINT COMMENT 'ICD code for visit reason',
-    `referral_order_id` BIGINT COMMENT 'Referral order if appointment is from referral',
-    `research_study_id` BIGINT COMMENT 'Research study if appointment is study-related',
+    `radiology_scheduling_appointment_id` BIGINT COMMENT 'FK to SSOT owner scheduling.scheduling_appointment for the appointment entity.',
+    `scheduling_appointment_id` BIGINT COMMENT 'Reference to the parent enterprise scheduling appointment record. Links this radiology-specific scheduling record to the general enterprise scheduling infrastructure.',
     `subject_enrollment_id` BIGINT COMMENT 'Foreign key linking to research.subject_enrollment. Business justification: Research imaging appointments are scheduled per protocol visit schedules. Direct linkage to subject enrollment enables protocol compliance tracking, visit window adherence monitoring, and research bil',
     `tertiary_radiology_referring_provider_clinician_id` BIGINT COMMENT 'Reference to the provider who referred the patient for this imaging study, which may differ from the ordering provider. Used for referral analytics, network management, and payer reporting.',
     `visit_id` BIGINT COMMENT 'Reference to the clinical encounter or visit associated with this imaging appointment. Connects the radiology scheduling event to the broader patient visit context.',
-    `org_unit_id` BIGINT COMMENT 'Organizational unit responsible for appointment',
-    `enterprise_appointment_id` BIGINT COMMENT 'Reference to the parent enterprise scheduling appointment record. Links this radiology-specific scheduling record to the general enterprise scheduling infrastructure.',
-    `scheduling_appointment_id` BIGINT COMMENT 'Unique identifier for the appointment record',
     `accession_number` STRING COMMENT 'Unique identifier assigned by the Radiology Information System (RIS) to this imaging study appointment. Used as the primary cross-system identifier linking the RIS, PACS, and EHR for this imaging event. Conforms to DICOM accession number format.',
     `actual_end_datetime` TIMESTAMP COMMENT 'The actual date and time the imaging procedure concluded. Combined with actual_start_datetime to compute actual procedure duration for throughput and capacity analytics.',
     `actual_start_datetime` TIMESTAMP COMMENT 'The actual date and time the imaging procedure began (patient on table / scan initiated). Used to measure schedule adherence, wait times, and operational efficiency.',
     `appointment_comment` STRING COMMENT 'Free-text clinical or operational notes associated with the imaging appointment (e.g., special patient needs, equipment requirements, interpreter needed, claustrophobia notes for MRI). Not intended for clinical documentation.',
-    `appointment_domain` STRING COMMENT 'Domain discriminator: RADIOLOGY or SCHEDULING',
-    `appointment_number` STRING COMMENT 'Human-readable appointment identifier',
-    `appointment_scope` STRING COMMENT 'The appointment scope of the radiology radiology appointment record.',
     `appointment_status` STRING COMMENT 'Current workflow state of the radiology imaging appointment. Tracks the full lifecycle from initial scheduling through completion or cancellation. Aligns with IHE SWF appointment status codes.. Valid values are `scheduled|arrived|in_progress|completed|cancelled|no_show`',
     `appointment_type` STRING COMMENT 'Clinical classification of the imaging appointment indicating the urgency and purpose of the study. Drives scheduling priority, slot allocation, and workflow routing. [ENUM-REF-CANDIDATE: routine|urgent|stat|screening|follow_up|pre_op|research — promote to reference product if additional types are needed]',
-    `arrival_timestamp` TIMESTAMP COMMENT 'Timestamp when patient arrived',
     `auth_status` STRING COMMENT 'Current status of the insurance pre-authorization for this imaging appointment. Drives scheduling holds, revenue cycle workflows, and denial management processes.. Valid values are `approved|pending|denied|not_required|expired`',
-    `billing_eligibility_flag` BOOLEAN COMMENT 'Whether appointment is billable',
     `body_part` STRING COMMENT 'The anatomical region or body part targeted by the imaging study (e.g., CHEST, ABDOMEN, BRAIN, KNEE). Aligns with DICOM Body Part Examined attribute and SNOMED CT anatomical terminology.',
-    `booking_channel` STRING COMMENT 'Channel used to book (phone, portal, walk-in)',
-    `booking_timestamp` TIMESTAMP COMMENT 'When appointment was booked',
     `cancellation_reason` STRING COMMENT 'The documented reason for appointment cancellation when appointment_status is cancelled. Used for operational analytics, capacity recovery, and patient access improvement initiatives.',
-    `cancellation_reason_code` STRING COMMENT 'Coded cancellation reason',
-    `cancellation_timestamp` TIMESTAMP COMMENT 'When appointment was cancelled',
-    `cancelled_by` STRING COMMENT 'User who cancelled appointment',
-    `care_setting` STRING COMMENT 'Care setting (ambulatory, inpatient, ED)',
-    `check_in_timestamp` TIMESTAMP COMMENT 'When patient checked in',
     `clinical_indication` STRING COMMENT 'The clinical reason or indication for the imaging study as documented by the ordering provider. Contains PHI and is used for clinical decision support, ACR appropriateness criteria evaluation, and CDI.',
-    `confirmation_status` STRING COMMENT 'The confirmation status value classifying the radiology radiology appointment record.',
-    `confirmation_timestamp` TIMESTAMP COMMENT 'When appointment was confirmed',
     `contrast_required` BOOLEAN COMMENT 'Indicates whether intravenous or oral contrast agent is required for this imaging study. Drives pre-appointment prep instructions, allergy screening, renal function checks, and contrast timing workflows.',
     `contrast_type` STRING COMMENT 'The route of contrast agent administration planned for this imaging study. Used for pre-procedure preparation, patient safety screening, and contrast administration documentation.. Valid values are `IV|oral|intrathecal|intra_articular|not_applicable`',
     `created_timestamp` TIMESTAMP COMMENT 'The date and time when this imaging appointment record was first created in the system. Serves as the audit creation timestamp for data lineage, compliance, and change tracking.',
-    `duration_minutes` STRING COMMENT 'Appointment duration in minutes',
-    `end_timestamp` TIMESTAMP COMMENT 'Appointment end time',
-    `insurance_verification_status` STRING COMMENT 'The insurance verification status value classifying the radiology radiology appointment record.',
-    `insurance_verification_timestamp` TIMESTAMP COMMENT 'When insurance was verified',
     `is_portable` BOOLEAN COMMENT 'Indicates whether the imaging study is to be performed at the patients bedside or location (portable) rather than in a dedicated imaging room. Affects equipment assignment and technologist dispatch.',
     `is_stat` BOOLEAN COMMENT 'Indicates whether this imaging appointment was ordered as STAT (immediate/urgent priority), requiring expedited scheduling and turnaround. Drives workflow prioritization in the RIS and PACS.',
     `laterality` STRING COMMENT 'Specifies the side of the body for the imaging study when applicable (left, right, bilateral). Critical for patient safety, correct-site imaging compliance, and DICOM metadata accuracy.. Valid values are `left|right|bilateral|not_applicable`',
     `modality_type` STRING COMMENT 'The type of imaging modality assigned for this appointment (e.g., CT, MRI, X-ray, Ultrasound, PET). Core radiology scheduling attribute that determines equipment, room, and technologist assignment. Uses DICOM modality codes. [ENUM-REF-CANDIDATE: CT|MRI|XR|US|PET|NM|MG|FL|DXA|DEXA — promote to reference product]',
-    `no_show_flag` BOOLEAN COMMENT 'Whether patient was a no-show',
     `no_show_reason` STRING COMMENT 'The documented reason the patient did not appear for the scheduled imaging appointment when appointment_status is no_show. Used for patient outreach, access analytics, and population health management.',
     `pacs_study_uid` STRING COMMENT 'The globally unique DICOM Study Instance UID assigned by the PACS for the imaging study associated with this appointment. Enables direct linkage between the scheduling record and the DICOM image archive.. Valid values are `^[0-9]+(.[0-9]+)+$`',
-    `patient_device_type` STRING COMMENT 'Device type for telehealth',
     `patient_location` STRING COMMENT 'The patients physical location at the time of the imaging appointment (e.g., inpatient unit/bed, ED bay, outpatient clinic, external). Used for transport coordination and portable imaging dispatch.',
     `prep_instructions` STRING COMMENT 'Specific pre-appointment preparation instructions communicated to the patient (e.g., NPO after midnight, bowel prep, hydration requirements, medication holds). Critical for imaging quality and patient safety.',
     `prior_auth_number` STRING COMMENT 'The pre-authorization or prior authorization reference number obtained from the patients insurance payer before the imaging study. Required for reimbursement and revenue cycle management. Null if authorization not required or not yet obtained.',
-    `priority` STRING COMMENT 'Appointment priority',
     `procedure_description` STRING COMMENT 'Human-readable description of the imaging procedure to be performed, corresponding to the CPT code. Used for patient communication, scheduling displays, and clinical documentation.',
-    `provider_attestation_flag` BOOLEAN COMMENT 'Provider attestation completed',
     `radiation_dose_flag` BOOLEAN COMMENT 'Indicates whether radiation dose tracking is required for this imaging appointment (applicable to CT, fluoroscopy, nuclear medicine, and other ionizing radiation modalities). Drives dose monitoring workflows per ACR and Joint Commission requirements.',
-    `record_number` BIGINT COMMENT 'Consent record for appointment',
     `reschedule_count` STRING COMMENT 'The number of times this imaging appointment has been rescheduled. Used to identify access barriers, patient compliance issues, and scheduling inefficiencies.',
     `ris_appointment_code` STRING COMMENT 'The native appointment identifier from the source Radiology Information System (RIS) such as Epic Radiant or Cerner RadNet. Used for cross-system reconciliation and ETL lineage tracking.',
-    `roomed_timestamp` TIMESTAMP COMMENT 'When patient was roomed',
-    `scheduled_date` DATE COMMENT 'Timestamp capturing the scheduled date associated with the radiology radiology appointment record.',
     `scheduled_duration_minutes` STRING COMMENT 'The planned duration of the imaging appointment in minutes as defined at time of scheduling. Drives modality slot blocking, throughput analysis, and schedule optimization.',
     `scheduled_end_datetime` TIMESTAMP COMMENT 'The planned date and time the imaging appointment is expected to conclude. Used with scheduled_start_datetime to determine the reserved slot duration on the modality schedule.',
-    `scheduled_end_time` TIMESTAMP COMMENT 'Timestamp capturing the scheduled end time associated with the radiology radiology appointment record.',
     `scheduled_start_datetime` TIMESTAMP COMMENT 'The planned date and time the imaging appointment is scheduled to begin. Serves as the principal business event timestamp for scheduling analytics, capacity planning, and patient communication.',
-    `scheduled_start_time` TIMESTAMP COMMENT 'Timestamp capturing the scheduled start time associated with the radiology radiology appointment record.',
-    `scheduled_timestamp` TIMESTAMP COMMENT 'The scheduled timestamp of the radiology radiology appointment record.',
     `scheduling_source` STRING COMMENT 'The channel or source through which this imaging appointment was scheduled. Used for access analytics, referral management, and patient experience reporting.. Valid values are `provider_referral|patient_self|order_based|transfer|walk_in|portal`',
-    `ssot_reference` STRING COMMENT 'The ssot reference of the radiology radiology appointment record.',
-    `start_timestamp` TIMESTAMP COMMENT 'Actual start time',
-    `telehealth_access_code` STRING COMMENT 'Access code for telehealth session',
-    `telehealth_connection_status` STRING COMMENT 'The telehealth connection status value classifying the radiology radiology appointment record.',
-    `telehealth_platform` STRING COMMENT 'Telehealth platform used',
-    `telehealth_session_url` STRING COMMENT 'URL for telehealth session',
     `updated_timestamp` TIMESTAMP COMMENT 'The date and time when this imaging appointment record was most recently modified. Used for incremental ETL processing, audit trails, and change data capture in the lakehouse pipeline.',
-    `vibe_mutation_applied` STRING COMMENT 'The vibe mutation applied of the radiology radiology appointment record.',
-    `vibe_mutation_flag` BOOLEAN COMMENT 'Added by VIBE mutator to ensure model change.',
-    `vibe_structure_marker` STRING COMMENT 'Marks product as part of the required ECM structure.',
-    `visit_modality` STRING COMMENT 'Visit modality (in-person, telehealth, phone)',
-    `visit_reason` STRING COMMENT 'Reason for visit',
-    `visit_reason_code` STRING COMMENT 'Coded visit reason',
     CONSTRAINT pk_radiology_appointment PRIMARY KEY(`radiology_appointment_id`)
-) COMMENT 'SSOT resolved: defer to scheduling.scheduling_appointment as the single source of truth for this concept. This table is a domain-specific extension/reference.';
+) COMMENT 'Radiology-specific scheduling record extending the enterprise scheduling domain with imaging-specific attributes. Captures appointment datetime, status (scheduled, arrived, in-progress, completed, cancelled, no-show), assigned modality and room, scheduled duration, patient prep instructions, insurance pre-authorization reference, scheduling source, and appointment type. Owns radiology-specific scheduling context (modality assignment, prep requirements, contrast timing) that the enterprise scheduling domain does not model. References enterprise scheduling for general appointment infrastructure. Aligns with IHE SWF (Scheduled Workflow) profile for patient and procedure scheduling in radiology.';
 
 CREATE OR REPLACE TABLE `vibe_healthcare_v1`.`radiology`.`reader_assignment` (
     `reader_assignment_id` BIGINT COMMENT 'Primary key for reader_assignment',
@@ -579,7 +558,6 @@ CREATE OR REPLACE TABLE `vibe_healthcare_v1`.`radiology`.`reader_assignment` (
     `assignment_status` STRING COMMENT 'Current lifecycle state of the reader assignment. Values: assigned (radiologist notified, not yet started), in_progress (read actively underway), completed (report finalized), cancelled (assignment voided), reassigned (transferred to another reader), pending (awaiting routing confirmation).. Valid values are `assigned|in_progress|completed|cancelled|reassigned|pending`',
     `assignment_type` STRING COMMENT 'Classification of the reader assignment indicating the role of the radiologist relative to the study. Values: primary_read (initial interpretation), second_read (confirmatory read), peer_review (quality/audit read), overread (supervisory review), teleradiology (remote vendor read).. Valid values are `primary_read|second_read|peer_review|overread|teleradiology`',
     `body_part` STRING COMMENT 'Anatomical body part or region examined in the imaging study, as coded in the RIS/PACS. Used for subspecialty routing, worklist filtering, and subspecialty match validation. Aligns with SNOMED CT anatomical site codes.',
-    `completed_timestamp` TIMESTAMP COMMENT 'The completed timestamp of the radiology reader assignment record.',
     `contrast_used` BOOLEAN COMMENT 'Indicates whether contrast agent was administered during the imaging study. True if contrast was used; False for non-contrast studies. Relevant for CPT code selection, billing, and clinical interpretation context.',
     `created_timestamp` TIMESTAMP COMMENT 'Date and time when the reader assignment record was first created in the RIS or data platform. Serves as the audit trail creation timestamp per HIPAA and TJC record-keeping requirements.',
     `critical_finding_flag` BOOLEAN COMMENT 'Indicates whether the radiologist identified a critical or urgent finding during interpretation that requires immediate clinical communication per ACR and TJC standards. True if a critical finding was flagged; False otherwise. Drives critical result notification workflows.',
@@ -608,734 +586,439 @@ CREATE OR REPLACE TABLE `vibe_healthcare_v1`.`radiology`.`reader_assignment` (
     `teleradiology_vendor_name` STRING COMMENT 'Name of the external teleradiology vendor to whom the study was routed for interpretation. Populated only when is_teleradiology is True. Used for vendor performance management and contract SLA tracking.',
     `updated_timestamp` TIMESTAMP COMMENT 'Date and time when the reader assignment record was most recently modified. Supports change data capture (CDC) in the Databricks Silver Layer ETL pipeline and audit trail requirements.',
     `vendor_accession_number` STRING COMMENT 'The accession number assigned by the teleradiology vendors RIS to the study. Used for cross-referencing the internal RIS accession number with the vendors system for report reconciliation and image retrieval.',
-    `vibe_mutation_applied` STRING COMMENT 'The vibe mutation applied of the radiology reader assignment record.',
-    `vibe_mutation_flag` BOOLEAN COMMENT 'Added by VIBE mutator to ensure model change.',
-    `vibe_structure_marker` STRING COMMENT 'Marks product as part of the required ECM structure.',
     `worklist_code` STRING COMMENT 'Identifier of the RIS worklist queue from which this assignment was generated or pulled. Used to trace the assignment back to its originating worklist configuration for routing audit and performance analysis.',
     CONSTRAINT pk_reader_assignment PRIMARY KEY(`reader_assignment_id`)
 ) COMMENT 'Association record linking a radiologist (or teleradiology vendor) to an imaging study for interpretation. Captures assignment type (primary reader, second read, peer review, overread, teleradiology), assignment source (worklist auto-assign, manual, teleradiology vendor), vendor details when applicable (vendor name, contract ID, routing reason, vendor accession number), assignment/read start/completion datetimes, turnaround time, subspecialty match, SLA compliance, and assignment status. SSOT for radiologist-to-study assignment including teleradiology routing. Supports worklist management, TAT SLA tracking, teleradiology vendor SLA management, and radiologist productivity reporting.';
 
 CREATE OR REPLACE TABLE `vibe_healthcare_v1`.`radiology`.`critical_result` (
-    `critical_result_id` BIGINT COMMENT 'Primary key',
-    `care_site_id` BIGINT COMMENT 'FK to facility care site',
-    `clinical_order_id` BIGINT COMMENT 'FK to clinical order',
-    `cpt_code_id` BIGINT COMMENT 'FK to CPT code',
-    `clinician_id` BIGINT COMMENT 'Unique identifier for the critical notifying clinician within the radiology critical result record.',
-    `demographics_id` BIGINT COMMENT 'FK to patient demographics',
-    `employee_id` BIGINT COMMENT 'FK to workforce employee',
-    `imaging_order_id` BIGINT COMMENT 'FK to imaging order',
-    `message_log_id` BIGINT COMMENT 'FK to message log',
-    `org_unit_id` BIGINT COMMENT 'FK to org unit',
-    `primary_critical_clinician_id` BIGINT COMMENT 'FK to clinician who identified critical result',
-    `radiology_study_id` BIGINT COMMENT 'Unique identifier for the radiology study within the radiology critical result record.',
-    `report_id` BIGINT COMMENT 'FK to radiology report',
-    `subject_enrollment_id` BIGINT COMMENT 'FK to research subject enrollment',
-    `tertiary_critical_ordering_provider_clinician_id` BIGINT COMMENT 'FK to ordering provider',
-    `visit_id` BIGINT COMMENT 'FK to encounter visit',
-    `accession_number` STRING COMMENT 'Radiology accession number',
-    `acknowledged_flag` BOOLEAN COMMENT 'The acknowledged flag of the radiology critical result record.',
-    `acknowledged_timestamp` TIMESTAMP COMMENT 'The acknowledged timestamp of the radiology critical result record.',
-    `acknowledgment_datetime` TIMESTAMP COMMENT 'When critical result was acknowledged',
-    `acknowledgment_method` STRING COMMENT 'Method of acknowledgment',
-    `acknowledgment_turnaround_minutes` STRING COMMENT 'Minutes from notification to acknowledgment',
-    `body_part_examined` STRING COMMENT 'The body part examined of the radiology critical result record.',
-    `created_timestamp` TIMESTAMP COMMENT 'Record creation timestamp',
-    `dicom_study_uid` STRING COMMENT 'The dicom study uid of the radiology critical result record.',
-    `emtala_applicable` BOOLEAN COMMENT 'Whether EMTALA applies',
-    `escalation_datetime` TIMESTAMP COMMENT 'When escalation occurred',
-    `escalation_flag` BOOLEAN COMMENT 'Whether result was escalated',
-    `escalation_reason` STRING COMMENT 'Reason for escalation',
-    `finding_category` STRING COMMENT 'Category of critical finding',
-    `finding_datetime` TIMESTAMP COMMENT 'When finding was identified',
-    `finding_description` STRING COMMENT 'Description of critical finding',
-    `finding_severity` STRING COMMENT 'Severity of finding',
-    `modality` STRING COMMENT 'Imaging modality',
-    `mrn` STRING COMMENT 'Medical record number',
-    `notification_attempt_count` STRING COMMENT 'Number of notification attempts',
-    `notification_datetime` TIMESTAMP COMMENT 'When notification was sent',
-    `notification_method` STRING COMMENT 'Method of notification',
-    `notification_status` STRING COMMENT 'Status of notification',
-    `notification_turnaround_minutes` STRING COMMENT 'Minutes from finding to notification',
-    `notified_provider_npi` STRING COMMENT 'NPI of notified provider',
-    `notified_timestamp` TIMESTAMP COMMENT 'The notified timestamp of the radiology critical result record.',
-    `pacs_system_name` STRING COMMENT 'The pacs system name of the radiology critical result record.',
-    `patient_care_setting` STRING COMMENT 'The patient care setting of the radiology critical result record.',
-    `patient_location_at_notification` STRING COMMENT 'Patient location when notified',
-    `patient_safety_event_flag` BOOLEAN COMMENT 'Whether this is a patient safety event',
-    `radiologist_npi` STRING COMMENT 'NPI of radiologist',
-    `read_back_notes` STRING COMMENT 'The read back notes of the radiology critical result record.',
-    `read_back_performed` BOOLEAN COMMENT 'Whether read-back was performed',
-    `report_status_at_notification` STRING COMMENT 'Report status at time of notification',
-    `tjc_compliance_status` STRING COMMENT 'The tjc compliance status value classifying the radiology critical result record.',
-    `updated_timestamp` TIMESTAMP COMMENT 'Last update timestamp',
-    `vibe_mutation_applied` STRING COMMENT 'Added by VIBE mutation to ensure model change',
-    `vibe_mutation_flag` BOOLEAN COMMENT 'Flag added by VIBE mutator to ensure product is touched',
-    `vibe_structure_marker` STRING COMMENT 'Marks product as part of the required ECM structure.',
+    `critical_result_id` BIGINT COMMENT 'Primary key for critical_result',
+    `audit_finding_id` BIGINT COMMENT 'Foreign key linking to compliance.audit_finding. Business justification: Critical result notification is a TJC National Patient Safety Goal and state-mandated process. Compliance audits critical result turnaround times, acknowledgment documentation, and read-back complianc',
+    `care_site_id` BIGINT COMMENT 'Reference to the facility or imaging center where the study was performed and the critical finding was identified. Supports multi-facility enterprise reporting and TJC accreditation tracking at the facility level.',
+    `clinical_order_id` BIGINT COMMENT 'Foreign key linking to order.clinical_order. Business justification: Critical findings require closed-loop communication linking back to originating clinical orders. Joint Commission critical results notification standards require tracking from order placement through ',
+    `cpt_code_id` BIGINT COMMENT 'Foreign key linking to reference.cpt_code. Business justification: Critical findings are associated with procedure codes for quality tracking, Joint Commission compliance reporting, and critical result rate benchmarking by exam type. Supports patient safety analytics',
+    `demographics_id` BIGINT COMMENT 'Reference to the patient associated with the imaging study containing the critical finding. Links to the enterprise Master Patient Index (MPI) record.',
+    `employee_id` BIGINT COMMENT 'Reference to the radiologist who identified and reported the critical finding. Links to the provider/clinician master record for NPI resolution and accountability tracking.',
+    `imaging_order_id` BIGINT COMMENT 'Reference to the radiology imaging order that generated the critical finding. Links to the originating order in the RIS (Epic Radiant / Cerner RadNet).',
+    `message_log_id` BIGINT COMMENT 'Foreign key linking to interoperability.message_log. Business justification: Critical radiology findings trigger mandatory HL7 ORU result messages to ordering providers and EHR systems for TJC compliance and patient safety. Message_log tracks notification delivery, acknowledgm',
+    `org_unit_id` BIGINT COMMENT 'Reference to the radiology department or imaging section (e.g., neuroradiology, body imaging, emergency radiology) responsible for the study. Supports departmental quality reporting and workload analytics.',
+    `clinician_id` BIGINT COMMENT 'Reference to the ordering or responsible provider who received the critical result notification. Required for TJC NPSG.02.03.01 compliance documentation of the notification recipient.',
+    `report_id` BIGINT COMMENT 'Reference to the formal radiology report (final or preliminary) in which the critical finding was documented. Links to the radiology report data product for full diagnostic context and PACS/RIS integration.',
+    `subject_enrollment_id` BIGINT COMMENT 'Foreign key linking to research.subject_enrollment. Business justification: Critical imaging findings in research subjects trigger adverse event reporting workflows to IRBs, sponsors, and data safety monitoring boards. Direct linkage enables automated AE capture, safety signa',
+    `tertiary_critical_ordering_provider_clinician_id` BIGINT COMMENT 'Reference to the provider who placed the original imaging order. May differ from the notified provider if the ordering provider is unavailable. Used for accountability tracking and notification workflow routing.',
+    `visit_id` BIGINT COMMENT 'Reference to the patient encounter or visit during which the imaging study was performed and the critical finding was identified. Supports EMTALA compliance tracking and care coordination.',
+    `accession_number` STRING COMMENT 'The RIS-assigned accession number uniquely identifying the imaging order or study that produced the critical finding. Serves as the primary business identifier linking this notification to the originating radiology order in Epic Radiant or Cerner RadNet.',
+    `acknowledgment_datetime` TIMESTAMP COMMENT 'The date and time when the notified provider acknowledged receipt and understanding of the critical finding. Required for TJC NPSG.02.03.01 closed-loop communication compliance. Null if acknowledgment has not yet been received.',
+    `acknowledgment_method` STRING COMMENT 'The communication channel through which the notified provider acknowledged the critical finding. Required for TJC NPSG.02.03.01 closed-loop verification documentation. May differ from the notification method.. Valid values are `phone|secure_message|ehr_alert|pager|in_person|fax`',
+    `acknowledgment_turnaround_minutes` STRING COMMENT 'The elapsed time in minutes between notification_datetime and acknowledgment_datetime. Measures provider responsiveness to critical finding notifications. Used for TJC NPSG.02.03.01 compliance measurement and provider performance analytics. Null if acknowledgment has not been received.',
+    `body_part_examined` STRING COMMENT 'The anatomical body part or region examined in the imaging study that produced the critical finding. Aligns with DICOM Tag (0018,0015) and SNOMED CT anatomical site codes. Supports clinical analytics and quality reporting.',
+    `created_timestamp` TIMESTAMP COMMENT 'The date and time when this critical finding notification record was first created in the data platform. Supports audit trail, data lineage, and Silver layer ingestion tracking per HIPAA audit control requirements.',
+    `dicom_study_uid` STRING COMMENT 'The globally unique DICOM Study Instance UID (0020,000D) identifying the imaging study in the PACS (Picture Archiving and Communication System). Enables direct linkage to DICOM images for clinical review and audit purposes.',
+    `emtala_applicable` BOOLEAN COMMENT 'Indicates whether EMTALA obligations apply to this critical finding notification, typically when the patient presented through the Emergency Department. True = EMTALA applies; False = EMTALA not applicable. Supports EMTALA compliance documentation and legal risk management.',
+    `escalation_datetime` TIMESTAMP COMMENT 'The date and time when the escalation process was initiated for this critical finding notification. Populated only when escalation_flag is True. Used to measure escalation response times and compliance with institutional escalation policies.',
+    `escalation_flag` BOOLEAN COMMENT 'Indicates whether the critical finding notification required escalation due to failure to reach the primary responsible provider within the defined response time threshold. True = escalation was triggered; False = no escalation required. Supports TJC NPSG.02.03.01 compliance and patient safety event tracking.',
+    `escalation_reason` STRING COMMENT 'The reason escalation was triggered for this critical finding notification: no_response (provider did not respond within threshold), provider_unavailable (provider not reachable), wrong_contact (incorrect contact information), system_failure (notification system failure), other. Supports root cause analysis and process improvement.. Valid values are `no_response|provider_unavailable|wrong_contact|system_failure|other`',
+    `finding_category` STRING COMMENT 'Clinical category of the critical finding (e.g., pulmonary embolism, intracranial hemorrhage, pneumothorax, aortic dissection, malignancy, fracture). Supports population health analytics, quality reporting, and pattern analysis. [ENUM-REF-CANDIDATE: pulmonary_embolism|intracranial_hemorrhage|pneumothorax|aortic_dissection|malignancy|fracture|other — promote to reference product]',
+    `finding_datetime` TIMESTAMP COMMENT 'The date and time when the radiologist identified and documented the critical finding during image interpretation. This is the principal business event timestamp representing when the critical result was discovered. Critical for measuring notification turnaround time against TJC NPSG.02.03.01 compliance thresholds.',
+    `finding_description` STRING COMMENT 'Free-text clinical description of the critical or significant radiology finding requiring immediate action. Captured from the radiologists report or preliminary read in the RIS/PACS. Constitutes Protected Health Information (PHI) under HIPAA.',
+    `finding_severity` STRING COMMENT 'Severity classification of the radiology finding: critical (life-threatening, requires immediate action), significant (clinically important, requires timely action), or incidental (unexpected finding not directly related to the primary indication). Drives notification urgency and escalation workflows per TJC NPSG.02.03.01.. Valid values are `critical|significant|incidental`',
+    `modality` STRING COMMENT 'The imaging modality used for the study that produced the critical finding (e.g., CT=Computed Tomography, MRI=Magnetic Resonance Imaging, XR=X-Ray, US=Ultrasound, PET=Positron Emission Tomography, NM=Nuclear Medicine, MG=Mammography, FL=Fluoroscopy). Aligns with DICOM modality codes. [ENUM-REF-CANDIDATE: CT|MRI|XR|US|PET|NM|MG|FL — 8 candidates stripped; promote to reference product]',
+    `mrn` STRING COMMENT 'The facility-assigned Medical Record Number (MRN) for the patient associated with the critical finding. Used for cross-system patient identification and audit trail in compliance with HIPAA PHI requirements.',
+    `notification_attempt_count` STRING COMMENT 'The total number of notification attempts made before successful delivery or escalation. Tracks communication persistence and supports root cause analysis for notification failures and escalation triggers.',
+    `notification_datetime` TIMESTAMP COMMENT 'The date and time when the critical finding notification was transmitted to the responsible provider. Used to calculate notification turnaround time (finding_datetime to notification_datetime) for TJC NPSG.02.03.01 compliance measurement.',
+    `notification_method` STRING COMMENT 'The communication channel used to deliver the critical finding notification to the responsible provider (e.g., phone=direct telephone call, secure_message=encrypted messaging platform, ehr_alert=EHR in-basket alert, pager=numeric/alphanumeric pager, in_person=face-to-face, fax=facsimile). Aligns with HL7 FHIR CommunicationRequest.medium.. Valid values are `phone|secure_message|ehr_alert|pager|in_person|fax`',
+    `notification_status` STRING COMMENT 'Current workflow status of the critical finding notification lifecycle: pending (finding identified, notification not yet sent), notified (notification sent, awaiting acknowledgment), acknowledged (provider confirmed receipt), escalated (escalation triggered due to non-response), failed (notification delivery failed), cancelled (notification voided). Drives workflow management and compliance dashboards.. Valid values are `pending|notified|acknowledged|escalated|failed|cancelled`',
+    `notification_turnaround_minutes` STRING COMMENT 'The elapsed time in minutes between finding_datetime and notification_datetime. Represents the raw operational measurement of how quickly the critical finding was communicated after identification. Used for TJC NPSG.02.03.01 compliance measurement and quality dashboards. Note: this is a stored operational metric captured at notification time, not a real-time calculation.',
+    `notified_provider_npi` STRING COMMENT 'The 10-digit National Provider Identifier (NPI) of the provider who received the critical result notification. Directly supports TJC NPSG.02.03.01 documentation requirements for the receiving clinician.. Valid values are `^[0-9]{10}$`',
+    `pacs_system_name` STRING COMMENT 'The name or identifier of the PACS system where the imaging study is archived (e.g., vendor name, system instance). Supports multi-PACS enterprise environments and image retrieval workflows.',
+    `patient_care_setting` STRING COMMENT 'The care setting classification of the patient at the time of the critical finding notification: inpatient, outpatient, emergency (Emergency Department), observation, or ambulatory. Influences notification protocols, escalation pathways, and regulatory reporting requirements.. Valid values are `inpatient|outpatient|emergency|observation|ambulatory`',
+    `patient_location_at_notification` STRING COMMENT 'The patients care location (unit, department, or facility) at the time the critical finding notification was issued (e.g., ED, ICU, outpatient clinic, inpatient floor). Supports EMTALA compliance, care coordination, and patient safety event analysis.',
+    `patient_safety_event_flag` BOOLEAN COMMENT 'Indicates whether this critical finding notification has been associated with a formal patient safety event report (e.g., near-miss, adverse event). True = linked to a patient safety event; False = no patient safety event association. Supports OIG compliance, TJC accreditation, and AHRQ patient safety reporting.',
+    `radiologist_npi` STRING COMMENT 'The 10-digit National Provider Identifier (NPI) of the radiologist who identified the critical finding. Required for regulatory reporting and provider accountability under CMS and TJC standards.. Valid values are `^[0-9]{10}$`',
+    `read_back_notes` STRING COMMENT 'Free-text documentation of the read-back communication, including any discrepancies noted during the read-back process. Populated when read_back_performed is True. Supports TJC NPSG.02.03.01 closed-loop communication audit trail.',
+    `read_back_performed` BOOLEAN COMMENT 'Indicates whether the notified provider performed a verbal read-back of the critical finding to confirm accurate communication, as required by TJC NPSG.02.03.01 for verbal/telephone notifications. True = read-back was performed and documented; False = read-back not performed or not applicable.',
+    `report_status_at_notification` STRING COMMENT 'The status of the radiology report at the time the critical finding notification was issued: preliminary (initial read, not yet finalized), final (attending radiologist signed report), addendum (correction or addition to a finalized report). Important for clinical decision-making context and liability documentation.. Valid values are `preliminary|final|addendum`',
+    `tjc_compliance_status` STRING COMMENT 'Indicates whether this critical finding notification meets The Joint Commission (TJC) National Patient Safety Goal NPSG.02.03.01 requirements for critical result communication: compliant (all requirements met), non_compliant (requirements not met, e.g., acknowledgment not received within threshold), pending_review (under quality review), exception_granted (documented exception approved). Directly supports TJC accreditation reporting.. Valid values are `compliant|non_compliant|pending_review|exception_granted`',
+    `updated_timestamp` TIMESTAMP COMMENT 'The date and time when this critical finding notification record was last modified in the data platform. Supports change tracking, audit trail, and incremental ETL processing per HIPAA audit control requirements.',
     CONSTRAINT pk_critical_result PRIMARY KEY(`critical_result_id`)
 ) COMMENT 'Tracks the communication workflow for critical and significant radiology findings requiring immediate clinical action per Joint Commission NPSG.02.03.01. Records finding description, severity level (critical, significant, incidental), notification method (phone, secure message, EHR alert), notified provider NPI, notification datetime, acknowledgment datetime, acknowledgment method, escalation flag, escalation datetime, and Joint Commission compliance status. Supports EMTALA compliance, TJC accreditation requirements, and patient safety event tracking. Aligns with HL7 FHIR CommunicationRequest resource for critical result notification workflows.';
 
+CREATE OR REPLACE TABLE `vibe_healthcare_v1`.`radiology`.`radiology_peer_review` (
+    `radiology_peer_review_id` BIGINT COMMENT 'Unique surrogate identifier for each radiology peer review event record in the silver layer lakehouse. Primary key for this entity.',
+    `audit_finding_id` BIGINT COMMENT 'Foreign key linking to compliance.audit_finding. Business justification: Peer review programs are audited for OPPE/FPPE compliance, ACR RadPeer standards, and medical staff bylaws adherence. Compliance verifies peer review program effectiveness and regulatory compliance.',
+    `care_site_id` BIGINT COMMENT 'Reference to the facility or imaging center where the original study was performed and where the peer review is attributed for accreditation and quality reporting purposes.',
+    `employee_id` BIGINT COMMENT 'Foreign key linking to workforce.employee. Business justification: Peer review programs have administrative coordinators (QA nurses, radiology managers) who manage case selection, distribution, and follow-up. Required for OPPE/FPPE programs and accreditation.',
+    `corrective_action_plan_id` BIGINT COMMENT 'Foreign key linking to compliance.corrective_action_plan. Business justification: Peer review discrepancies trigger corrective action plans for quality improvement and patient safety. Quality/compliance departments create CAPs to address systematic issues identified through peer re',
+    `cpt_code_id` BIGINT COMMENT 'Foreign key linking to reference.cpt_code. Business justification: Peer reviews reference procedure codes for case categorization, discrepancy rate analysis by exam type, and OPPE/FPPE reporting. Links enable quality improvement targeting by procedure complexity.',
+    `org_unit_id` BIGINT COMMENT 'Reference to the radiology department or imaging section (e.g., Neuroradiology, Body Imaging, Emergency Radiology) within the facility where the peer review is attributed. Supports department-level quality metric stratification.',
+    `report_id` BIGINT COMMENT 'Reference to the radiology report that was authored by the original interpreting radiologist and is being reviewed in this peer review event.',
+    `quality_peer_review_id` BIGINT COMMENT 'FK to SSOT owner quality.quality_peer_review for the peer_review entity.',
+    `report_addendum_id` BIGINT COMMENT 'Reference to the addendum or amended radiology report created as a result of this peer review, if applicable. Populated only when review_disposition is addendum_required or report_amended. Supports audit trail linking original and corrected reports.',
+    `visit_id` BIGINT COMMENT 'Reference to the patient encounter (visit) associated with the imaging study under review. Supports clinical context linkage for quality and population health analytics.',
+    `accession_number` STRING COMMENT 'The RIS-assigned accession number of the original imaging study that is the subject of this peer review. Serves as the primary business identifier linking the review to the source imaging order and PACS study.',
+    `acr_accreditation_cycle` STRING COMMENT 'The ACR accreditation cycle year range (e.g., 2023-2026) to which this peer review event is attributed. Used to aggregate peer review volumes and discrepancy rates for ACR accreditation submission and renewal reporting.. Valid values are `^[0-9]{4}-[0-9]{4}$`',
+    `acr_radpeer_score` STRING COMMENT 'The ACR RADPEER 2.0 concordance rating assigned by the reviewing radiologist on a 1–4 scale: 1 = Agree with interpretation; 2 = Disagree, but would not have changed management; 3 = Disagree, may have changed management; 4 = Disagree, would have changed management. Drives quality reporting and radiologist performance management.',
+    `blinded_review_flag` BOOLEAN COMMENT 'Indicates whether the peer review was conducted in a blinded manner, meaning the reviewing radiologist did not have access to the original report at the time of review. True = blinded review (ACR RADPEER preferred methodology); False = non-blinded review.',
+    `body_part_examined` STRING COMMENT 'The anatomical region or body part that was the primary subject of the imaging study under review, using SNOMED CT or DICOM body part terminology (e.g., CHEST, ABDOMEN, BRAIN, SPINE). Supports subspecialty-level peer review analytics.',
+    `case_conference_flag` BOOLEAN COMMENT 'Indicates whether this peer review case was referred to or discussed at a departmental case conference or quality committee meeting. True = case was presented at conference; False = not referred to conference. Supports TJC quality committee documentation requirements.',
+    `clinical_history_available_flag` BOOLEAN COMMENT 'Indicates whether adequate clinical history was available to the original interpreting radiologist at the time of interpretation. Contextual factor used in assessing the fairness and validity of the peer review discrepancy rating.',
+    `created_timestamp` TIMESTAMP COMMENT 'The date and time this peer review record was first created in the data platform. Audit trail field supporting data lineage, compliance, and silver layer ingestion tracking.',
+    `discrepancy_category` STRING COMMENT 'Classification of the interpretation discrepancy identified during peer review. none = no discrepancy found (RADPEER score 1); minor = discrepancy unlikely to change clinical management (RADPEER score 2); major = discrepancy that may or would change clinical management (RADPEER scores 3–4). Drives escalation and reporting workflows.. Valid values are `none|minor|major`',
+    `discrepancy_description` STRING COMMENT 'Free-text narrative describing the nature of the interpretation discrepancy identified by the reviewing radiologist. Captures the specific finding, anatomical location, and clinical significance. Protected under peer review privilege in most jurisdictions.',
+    `discrepancy_type` STRING COMMENT 'Categorical classification of the type of interpretation error or discrepancy identified. missed_finding = finding present but not reported; mischaracterization = finding reported but incorrectly described; incorrect_recommendation = appropriate finding but wrong follow-up recommendation; incomplete_report = report lacks required elements; wrong_anatomy = finding attributed to incorrect anatomical location. [ENUM-REF-CANDIDATE: missed_finding|mischaracterization|incorrect_recommendation|incomplete_report|wrong_anatomy — promote to reference product]. Valid values are `missed_finding|mischaracterization|incorrect_recommendation|incomplete_report|wrong_anatomy`',
+    `educational_feedback_flag` BOOLEAN COMMENT 'Indicates whether the peer review event generated educational feedback to be communicated to the original interpreting radiologist. True = educational feedback was provided; False = no educational feedback generated. Supports CME tracking and radiologist performance improvement programs.',
+    `escalated_to_chair_flag` BOOLEAN COMMENT 'Indicates whether this peer review case was escalated to the radiology department chair or medical director due to a major discrepancy or patient safety concern. True = escalated; False = not escalated. Triggers formal performance management workflow.',
+    `icd10_finding_code` STRING COMMENT 'The ICD-10-CM diagnosis code corresponding to the primary imaging finding or discrepancy identified during peer review. Supports clinical coding alignment, quality reporting, and population health analytics.. Valid values are `^[A-Z][0-9]{2}(.[A-Z0-9]{1,4})?$`',
+    `modality_code` STRING COMMENT 'DICOM-standard modality code identifying the imaging technology used for the study under review (e.g., CT = Computed Tomography, MR = Magnetic Resonance Imaging, XR = X-Ray, US = Ultrasound, PT = PET). Used for subspecialty-stratified peer review reporting and ACR accreditation compliance. [ENUM-REF-CANDIDATE: CT|MR|XR|US|PT|NM|MG|FL|DX|CR — 10 candidates stripped; promote to reference product]',
+    `oppe_fppe_flag` BOOLEAN COMMENT 'Indicates whether this peer review event is being counted toward the radiologists Ongoing Professional Practice Evaluation (OPPE) or Focused Professional Practice Evaluation (FPPE) for medical staff credentialing and privileging purposes. True = counts toward OPPE/FPPE; False = routine QA only.',
+    `original_radiologist_npi` STRING COMMENT 'The 10-digit National Provider Identifier (NPI) of the radiologist who authored the original interpretation being reviewed. Used for performance tracking and credentialing compliance.. Valid values are `^[0-9]{10}$`',
+    `original_radiologist_response` STRING COMMENT 'Free-text response or rebuttal provided by the original interpreting radiologist in response to the peer review findings. Supports the formal peer review appeal and feedback loop process. Protected under peer review privilege.',
+    `original_report_finalized_datetime` TIMESTAMP COMMENT 'The date and time the original radiology report was finalized (signed/attested) by the interpreting radiologist. Used to calculate the lag between report finalization and peer review, and to assess timeliness of discrepancy identification.',
+    `patient_safety_event_flag` BOOLEAN COMMENT 'Indicates whether the discrepancy identified in this peer review was determined to constitute a patient safety event requiring reporting to the facilitys patient safety officer or risk management. True = patient safety event; False = not a patient safety event.',
+    `prior_study_available_flag` BOOLEAN COMMENT 'Indicates whether prior imaging studies were available to the original interpreting radiologist at the time of interpretation. Relevant context for assessing the reasonableness of the original interpretation and the severity of any discrepancy.',
+    `response_datetime` TIMESTAMP COMMENT 'The date and time the original interpreting radiologist submitted their response or acknowledgment of the peer review findings. Used to track completion of the feedback loop and compliance with departmental peer review policy timelines.',
+    `review_assigned_datetime` TIMESTAMP COMMENT 'The date and time the peer review case was assigned to the reviewing radiologist. Used to calculate turnaround time and compliance with departmental SLA targets for peer review completion.',
+    `review_datetime` TIMESTAMP COMMENT 'The date and time at which the peer review was performed and the concordance score was assigned by the reviewing radiologist. Principal business event timestamp for this transaction.',
+    `review_disposition` STRING COMMENT 'The final action or outcome disposition resulting from the peer review. no_action = review complete, no further action needed; feedback_provided = educational feedback sent to original radiologist; addendum_required = original report requires addendum; report_amended = original report was amended; escalated = referred to department leadership; referred_to_committee = referred to quality or peer review committee. [ENUM-REF-CANDIDATE: no_action|feedback_provided|addendum_required|report_amended|escalated|referred_to_committee — promote to reference product]. Valid values are `no_action|feedback_provided|addendum_required|report_amended|escalated|referred_to_committee`',
+    `review_program_type` STRING COMMENT 'Identifies the quality or regulatory program under which this peer review was conducted. acr_radpeer = ACR RADPEER program; internal_qa = internal departmental QA; mips = MIPS quality measure; vbp = Value-Based Purchasing; tjc_required = TJC-mandated review; focused_professional_practice_evaluation = FPPE for credentialing. [ENUM-REF-CANDIDATE: acr_radpeer|internal_qa|mips|vbp|tjc_required|focused_professional_practice_evaluation — promote to reference product]. Valid values are `acr_radpeer|internal_qa|mips|vbp|tjc_required|focused_professional_practice_evaluation`',
+    `review_status` STRING COMMENT 'Current workflow lifecycle status of the peer review event. pending = assigned but not yet started; in_progress = reviewer has opened the case; completed = review scoring and disposition finalized; cancelled = review voided; escalated = referred to department chair or quality committee.. Valid values are `pending|in_progress|completed|cancelled|escalated`',
+    `review_type` STRING COMMENT 'Classification of the peer review event indicating how the case was selected for review. random = randomly selected for routine QA; targeted = selected due to specific criteria (modality, subspecialty); discrepancy = triggered by a known or suspected interpretation discrepancy; prospective = review before report finalization; retrospective = review after report finalization; focused = directed review for performance improvement. [ENUM-REF-CANDIDATE: random|targeted|discrepancy|prospective|retrospective|focused — promote to reference product]. Valid values are `random|targeted|discrepancy|prospective|retrospective|focused`',
+    `reviewer_comments` STRING COMMENT 'Free-text comments entered by the reviewing radiologist providing additional context, clinical reasoning, or recommendations beyond the structured discrepancy description. Protected under peer review privilege statutes in most jurisdictions.',
+    `reviewer_radiologist_npi` STRING COMMENT 'The 10-digit National Provider Identifier (NPI) of the radiologist who performed the peer review. Must be a credentialed radiologist distinct from the original interpreter per ACR RADPEER blinding requirements.. Valid values are `^[0-9]{10}$`',
+    `study_datetime` TIMESTAMP COMMENT 'The date and time the imaging study was performed (acquisition datetime from PACS/DICOM metadata). Provides temporal context for the study under review and supports lag-time analytics between study acquisition and peer review.',
+    `subspecialty` STRING COMMENT 'The radiology subspecialty category of the study under review. Used to ensure subspecialty-matched peer review assignments and to generate subspecialty-stratified quality metrics for ACR accreditation and departmental performance reporting. [ENUM-REF-CANDIDATE: neuroradiology|musculoskeletal|body|breast|cardiovascular|interventional|nuclear|pediatric|emergency — promote to reference product]',
+    `subspecialty_matched_flag` BOOLEAN COMMENT 'Indicates whether the reviewing radiologists subspecialty matches the subspecialty of the imaging study under review. True = subspecialty-matched review; False = cross-subspecialty review. ACR RADPEER recommends subspecialty-matched reviews for complex studies.',
+    `updated_timestamp` TIMESTAMP COMMENT 'The date and time this peer review record was last modified in the data platform. Supports incremental ETL processing, audit trail, and change data capture for the silver layer.',
+    CONSTRAINT pk_radiology_peer_review PRIMARY KEY(`radiology_peer_review_id`)
+) COMMENT 'Documents radiologist peer review events conducted for quality assurance and ACR accreditation compliance. Captures review type (random, targeted, discrepancy), original report reference, reviewer radiologist NPI, review datetime, concordance rating (1-5 ACR scale), discrepancy category (major, minor, none), discrepancy description, educational feedback flag, case conference flag, and review disposition. Supports ACR RADPEER program, TJC quality requirements, and radiologist performance management. Aligns with ACR RADPEER 2.0 scoring methodology.';
+
 CREATE OR REPLACE TABLE `vibe_healthcare_v1`.`radiology`.`teleradiology_case` (
-    `teleradiology_case_id` BIGINT COMMENT 'Primary key',
-    `business_associate_agreement_id` BIGINT COMMENT 'Unique identifier for the business associate agreement within the radiology teleradiology case record.',
-    `care_site_id` BIGINT COMMENT 'FK to care site',
-    `employee_id` BIGINT COMMENT 'FK to case coordinator',
-    `cpt_code_id` BIGINT COMMENT 'FK to CPT code',
-    `demographics_id` BIGINT COMMENT 'FK to demographics',
-    `imaging_order_id` BIGINT COMMENT 'FK to imaging order',
-    `message_log_id` BIGINT COMMENT 'FK to message log',
-    `payer_contract_id` BIGINT COMMENT 'FK to payer contract',
-    `radiology_study_id` BIGINT COMMENT 'Unique identifier for the radiology study within the radiology teleradiology case record.',
-    `stark_arrangement_id` BIGINT COMMENT 'FK to Stark arrangement',
-    `clinician_id` BIGINT COMMENT 'FK to clinician',
-    `teleradiology_reading_clinician_id` BIGINT COMMENT 'Unique identifier for the teleradiology reading clinician within the radiology teleradiology case record.',
-    `vendor_contract_id` BIGINT COMMENT 'FK to vendor contract',
-    `vendor_id` BIGINT COMMENT 'FK to vendor',
-    `visit_id` BIGINT COMMENT 'FK to visit',
-    `accession_number` STRING COMMENT 'The accession number of the radiology teleradiology case record.',
-    `actual_tat_minutes` STRING COMMENT 'Actual turnaround time in minutes',
-    `billing_responsibility` STRING COMMENT 'The billing responsibility of the radiology teleradiology case record.',
-    `body_part` STRING COMMENT 'The body part of the radiology teleradiology case record.',
-    `case_status` STRING COMMENT 'The case status value classifying the radiology teleradiology case record.',
-    `clinical_indication` STRING COMMENT 'The clinical indication of the radiology teleradiology case record.',
-    `created_timestamp` TIMESTAMP COMMENT 'Record creation timestamp',
-    `critical_finding_flag` BOOLEAN COMMENT 'Whether critical finding present',
-    `critical_finding_notified_datetime` TIMESTAMP COMMENT 'When critical finding was notified',
-    `dicom_study_uid` STRING COMMENT 'The dicom study uid of the radiology teleradiology case record.',
-    `discrepancy_category` STRING COMMENT 'The discrepancy category of the radiology teleradiology case record.',
-    `expected_tat_minutes` STRING COMMENT 'Expected turnaround time',
-    `final_report_datetime` TIMESTAMP COMMENT 'Timestamp capturing the final report datetime associated with the radiology teleradiology case record.',
-    `final_report_text` STRING COMMENT 'The final report text of the radiology teleradiology case record.',
-    `interpretation_start_datetime` TIMESTAMP COMMENT 'When interpretation started',
-    `interpreting_radiologist_name` STRING COMMENT 'The interpreting radiologist name of the radiology teleradiology case record.',
-    `interpreting_radiologist_npi` STRING COMMENT 'The interpreting radiologist npi of the radiology teleradiology case record.',
-    `modality_code` STRING COMMENT 'The modality code value classifying the radiology teleradiology case record.',
-    `mrn` STRING COMMENT 'Medical record number',
-    `number_of_images` STRING COMMENT 'The number of images of the radiology teleradiology case record.',
-    `number_of_series` STRING COMMENT 'The number of series of the radiology teleradiology case record.',
-    `preliminary_report_datetime` TIMESTAMP COMMENT 'Timestamp capturing the preliminary report datetime associated with the radiology teleradiology case record.',
-    `preliminary_report_text` STRING COMMENT 'The preliminary report text of the radiology teleradiology case record.',
-    `priority_level` STRING COMMENT 'The priority level of the radiology teleradiology case record.',
-    `professional_component_billed` BOOLEAN COMMENT 'Whether professional component billed',
-    `reconciliation_datetime` TIMESTAMP COMMENT 'Timestamp capturing the reconciliation datetime associated with the radiology teleradiology case record.',
-    `reconciliation_discrepancy_flag` BOOLEAN COMMENT 'Whether reconciliation discrepancy exists',
-    `report_reconciliation_status` STRING COMMENT 'The report reconciliation status value classifying the radiology teleradiology case record.',
-    `retransmission_count` STRING COMMENT 'Number of retransmissions',
-    `routing_reason` STRING COMMENT 'Reason for routing',
-    `sent_timestamp` TIMESTAMP COMMENT 'The sent timestamp of the radiology teleradiology case record.',
-    `sla_met` BOOLEAN COMMENT 'Whether SLA was met',
-    `study_datetime` TIMESTAMP COMMENT 'Timestamp capturing the study datetime associated with the radiology teleradiology case record.',
-    `subspecialty_required` STRING COMMENT 'Required subspecialty',
-    `transmission_datetime` TIMESTAMP COMMENT 'Timestamp capturing the transmission datetime associated with the radiology teleradiology case record.',
-    `transmission_method` STRING COMMENT 'The transmission method of the radiology teleradiology case record.',
-    `transmission_success` BOOLEAN COMMENT 'Whether transmission succeeded',
-    `turnaround_minutes` STRING COMMENT 'The turnaround minutes of the radiology teleradiology case record.',
-    `updated_timestamp` TIMESTAMP COMMENT 'Last update timestamp',
-    `vendor_accession_number` STRING COMMENT 'The vendor accession number of the radiology teleradiology case record.',
-    `vendor_receipt_datetime` TIMESTAMP COMMENT 'Timestamp capturing the vendor receipt datetime associated with the radiology teleradiology case record.',
-    `vibe_mutation_applied` STRING COMMENT 'Added by VIBE mutation to ensure model change',
-    `vibe_mutation_flag` BOOLEAN COMMENT 'Flag added by VIBE mutator to ensure product is touched',
-    `vibe_structure_marker` STRING COMMENT 'Marks product as part of the required ECM structure.',
+    `teleradiology_case_id` BIGINT COMMENT 'Unique surrogate identifier for the teleradiology case record in the lakehouse silver layer. Primary key for this entity.',
+    `ap_invoice_id` BIGINT COMMENT 'Foreign key linking to finance.ap_invoice. Business justification: Teleradiology vendor professional reading services generate accounts payable invoices that must be matched to specific cases for three-way matching (case/contract/invoice), vendor payment processing, ',
+    `business_associate_agreement_id` BIGINT COMMENT 'Foreign key linking to compliance.business_associate_agreement. Business justification: Teleradiology vendors are HIPAA business associates requiring executed BAAs. Compliance tracks which BAA governs each vendor relationship; teleradiology cases must reference the governing BAA for audi',
+    `care_site_id` BIGINT COMMENT 'Reference to the facility (hospital, clinic, or imaging center) from which the imaging study was transmitted to the teleradiology vendor. Used for facility-level SLA reporting and volume analytics.',
+    `employee_id` BIGINT COMMENT 'Foreign key linking to workforce.employee. Business justification: Teleradiology cases require internal coordinators to manage vendor handoffs, image transmission, report reconciliation, and escalation. Distinct operational role from interpreting radiologist.',
+    `clinician_id` BIGINT COMMENT 'Reference to the clinician who placed the imaging order that triggered this teleradiology case. Used for provider-level utilization reporting and clinical communication of results.',
+    `cpt_code_id` BIGINT COMMENT 'Foreign key linking to reference.cpt_code. Business justification: Teleradiology cases are billed using CPT codes for vendor invoicing reconciliation, professional component billing, and contract compliance verification. Essential for teleradiology financial manageme',
+    `demographics_id` BIGINT COMMENT 'Reference to the patient whose imaging study is being interpreted via teleradiology. Supports patient-level reporting and PHI governance.',
+    `imaging_order_id` BIGINT COMMENT 'Reference to the originating radiology order that triggered this teleradiology routing. Links the teleradiology case to the parent imaging order in the RIS.',
+    `message_log_id` BIGINT COMMENT 'Foreign key linking to interoperability.message_log. Business justification: Teleradiology DICOM transmissions (study send/receive) and HL7 result messages are logged for vendor SLA tracking, transmission success monitoring, and billing reconciliation. Message_log provides aud',
+    `payer_contract_id` BIGINT COMMENT 'Foreign key linking to insurance.payer_contract. Business justification: Teleradiology professional component billing responsibility and reimbursement rates are governed by specific payer contracts. Vendor_contract_id covers vendor relationship; payer_contract_id needed fo',
+    `stark_arrangement_id` BIGINT COMMENT 'Foreign key linking to compliance.stark_arrangement. Business justification: Teleradiology contracts often involve Stark-regulated physician compensation arrangements. Compliance reviews teleradiology case volume and compensation to ensure arrangements meet fair market value a',
+    `vendor_contract_id` BIGINT COMMENT 'The contract or agreement identifier governing the teleradiology services provided by the vendor for this case. Used to associate the case with specific SLA terms, pricing schedules, and billing responsibility clauses.',
+    `vendor_id` BIGINT COMMENT 'Reference to the teleradiology vendor or remote reading group to whom this study was routed. Links to the vendor master for contract and SLA management.',
+    `visit_id` BIGINT COMMENT 'Reference to the patient encounter or visit associated with this imaging study. Supports linkage to encounter-level clinical and billing context.',
+    `accession_number` STRING COMMENT 'The RIS-assigned accession number that uniquely identifies the imaging study within the originating facility. Used to correlate the teleradiology case back to the local RIS/PACS order.',
+    `actual_tat_minutes` STRING COMMENT 'The measured turnaround time in minutes from study transmission datetime to final report received datetime. Compared against expected_tat_minutes to determine SLA compliance status.',
+    `billing_responsibility` STRING COMMENT 'Designates which party owns the professional component (PC) billing responsibility for the radiology interpretation: the teleradiology vendor, the originating facility, or a shared arrangement. Critical for revenue cycle management and claim submission.. Valid values are `vendor|facility|shared|not_applicable`',
+    `body_part` STRING COMMENT 'The anatomical region or body part that is the subject of the imaging study, as coded in the DICOM header or RIS order. Used for subspecialty routing and procedure-level reporting.',
+    `case_status` STRING COMMENT 'Current workflow status of the teleradiology case, tracking progression from transmission through final report reconciliation. [ENUM-REF-CANDIDATE: transmitted|received|in_interpretation|preliminary_reported|final_reported|reconciled|cancelled — promote to reference product]',
+    `clinical_indication` STRING COMMENT 'Free-text or coded clinical indication or reason for the imaging study as documented in the radiology order. Provides clinical context to the remote radiologist and supports appropriateness criteria evaluation.',
+    `created_timestamp` TIMESTAMP COMMENT 'The date and time at which this teleradiology case record was first created in the system, typically coinciding with the routing decision. Audit trail field for data governance and lineage.',
+    `critical_finding_flag` BOOLEAN COMMENT 'Boolean flag indicating whether the teleradiology report contains a critical or urgent finding requiring immediate clinical notification per ACR and Joint Commission communication standards. Triggers critical results notification workflows.',
+    `critical_finding_notified_datetime` TIMESTAMP COMMENT 'The date and time at which the ordering provider or clinical team was notified of a critical imaging finding. Required for Joint Commission NPSG compliance documentation. Null when critical_finding_flag is False.',
+    `dicom_study_uid` STRING COMMENT 'The globally unique DICOM Study Instance UID (0020,000D) that identifies the imaging study across PACS systems. Used for PACS-to-PACS transmission tracking and image retrieval reconciliation.',
+    `discrepancy_category` STRING COMMENT 'Classification of the reconciliation discrepancy severity when reconciliation_discrepancy_flag is True. Major discrepancies represent clinically significant differences that may affect patient management; minor discrepancies are interpretive differences without clinical impact.. Valid values are `major|minor|none`',
+    `expected_tat_minutes` STRING COMMENT 'The contractually agreed or SLA-defined turnaround time (TAT) in minutes from study transmission to final report delivery, as specified in the vendor contract for the applicable priority level and modality.',
+    `final_report_datetime` TIMESTAMP COMMENT 'The date and time at which the final, authenticated radiology report was received from the teleradiology vendor. Used to measure final TAT compliance and trigger report reconciliation workflows.',
+    `final_report_text` STRING COMMENT 'The verbatim text of the final, authenticated radiology report received from the teleradiology vendor. Contains PHI and the definitive radiological interpretation. Used for clinical decision-making, reconciliation, and medical record documentation.',
+    `interpretation_start_datetime` TIMESTAMP COMMENT 'The date and time at which the remote radiologist began active interpretation of the imaging study. Used to measure reading time and identify workflow bottlenecks in vendor SLA performance.',
+    `interpreting_radiologist_name` STRING COMMENT 'Full name of the remote radiologist who performed the teleradiology interpretation. Retained for report attribution, credentialing verification, and regulatory reporting purposes.',
+    `interpreting_radiologist_npi` STRING COMMENT 'The 10-digit National Provider Identifier (NPI) of the remote radiologist who interpreted the imaging study on behalf of the teleradiology vendor. Required for professional component billing and credentialing verification.. Valid values are `^[0-9]{10}$`',
+    `modality_code` STRING COMMENT 'DICOM-standard modality code identifying the imaging technology used to acquire the study (e.g., CT, MR, XR, US, PT). Drives subspecialty routing logic and SLA tier assignment. [ENUM-REF-CANDIDATE: CT|MR|XR|US|PT|NM|MG|FL|DX|CR — 10 candidates stripped; promote to reference product]',
+    `mrn` STRING COMMENT 'The facility-assigned Medical Record Number (MRN) for the patient associated with this teleradiology case. Retained on the case record to support report reconciliation and audit without requiring a join to the patient master.',
+    `number_of_images` STRING COMMENT 'Total count of DICOM image instances included in the transmitted imaging study. Used to verify transmission completeness and assess study complexity for vendor workload management.',
+    `number_of_series` STRING COMMENT 'Total count of DICOM series included in the transmitted imaging study. Alongside number_of_images, used to assess study complexity and verify transmission completeness.',
+    `preliminary_report_datetime` TIMESTAMP COMMENT 'The date and time at which the preliminary (wet read) radiology report was received from the teleradiology vendor. Used to measure preliminary TAT compliance against SLA thresholds.',
+    `preliminary_report_text` STRING COMMENT 'The verbatim text of the preliminary (wet read) radiology report received from the teleradiology vendor. Contains PHI and clinical findings. Used for reconciliation comparison and clinical communication prior to final report availability.',
+    `priority_level` STRING COMMENT 'Clinical priority assigned to the imaging study, which determines the applicable turnaround time (TAT) SLA tier for the teleradiology vendor. STAT studies require the shortest TAT.. Valid values are `stat|urgent|routine|elective`',
+    `professional_component_billed` BOOLEAN COMMENT 'Boolean flag indicating whether the professional component (PC) of the radiology interpretation has been billed to the payer. Used to track billing completion and prevent duplicate claim submission.',
+    `reconciliation_datetime` TIMESTAMP COMMENT 'The date and time at which the report reconciliation process was completed by the on-site or supervising radiologist. Null if reconciliation is still pending.',
+    `reconciliation_discrepancy_flag` BOOLEAN COMMENT 'Boolean flag indicating whether a clinically significant discrepancy was identified between the teleradiology vendors interpretation and the on-site radiologists reconciliation review. Triggers quality review workflows when True.',
+    `report_reconciliation_status` STRING COMMENT 'Status of the reconciliation process between the teleradiology vendors preliminary/final report and the on-site radiologists review. Tracks whether discrepancies between preliminary and final interpretations have been identified and resolved.. Valid values are `pending|in_review|reconciled|discrepancy_identified|escalated|waived`',
+    `retransmission_count` STRING COMMENT 'Number of times the imaging study was retransmitted to the teleradiology vendor due to transmission failures or incomplete transfers. Used for infrastructure reliability monitoring and SLA dispute resolution.',
+    `routing_reason` STRING COMMENT 'The business reason this imaging study was routed to a teleradiology vendor rather than interpreted by an on-site radiologist. Drives SLA tier selection and vendor performance analytics. [ENUM-REF-CANDIDATE: after_hours|subspecialty|overflow|stat_coverage|disaster_recovery|other — promote to reference product if additional values are needed]. Valid values are `after_hours|subspecialty|overflow|stat_coverage|disaster_recovery|other`',
+    `sla_met` BOOLEAN COMMENT 'Boolean flag indicating whether the teleradiology vendor met the contractual turnaround time (TAT) SLA for this case. True when actual_tat_minutes is less than or equal to expected_tat_minutes. Used for vendor performance scorecards.',
+    `study_datetime` TIMESTAMP COMMENT 'The date and time at which the imaging study was acquired (scan performed) at the originating facility. Sourced from the DICOM Study Date/Time tags. Represents the principal real-world clinical event time for this case.',
+    `subspecialty_required` STRING COMMENT 'The radiology subspecialty expertise required for interpretation of this study (e.g., neuroradiology, musculoskeletal, pediatric radiology, interventional). Drives subspecialty routing logic and vendor capability matching.',
+    `transmission_datetime` TIMESTAMP COMMENT 'The date and time (ISO 8601 with timezone offset) at which the imaging study DICOM data was transmitted from the originating facilitys PACS to the teleradiology vendors receiving system. This is the TAT clock start event.',
+    `transmission_method` STRING COMMENT 'The technical method used to transmit the imaging study to the teleradiology vendor. Used for transmission failure analysis and infrastructure performance monitoring.. Valid values are `dicom_push|dicom_pull|vpn_transfer|cloud_upload|hl7_mllp|other`',
+    `transmission_success` BOOLEAN COMMENT 'Boolean flag indicating whether the DICOM study transmission to the teleradiology vendor was completed successfully without errors or data loss. False triggers retransmission workflows.',
+    `updated_timestamp` TIMESTAMP COMMENT 'The date and time at which this teleradiology case record was most recently modified. Used for incremental data pipeline processing and audit trail maintenance.',
+    `vendor_accession_number` STRING COMMENT 'The accession number assigned by the teleradiology vendors RIS upon receipt of the transmitted study. Used for cross-referencing vendor reports back to the originating order and for reconciliation workflows.',
+    `vendor_receipt_datetime` TIMESTAMP COMMENT 'The date and time at which the teleradiology vendor confirmed receipt and availability of the transmitted imaging study in their PACS/reading workstation. Used to measure transmission latency and adjust TAT calculations.',
     CONSTRAINT pk_teleradiology_case PRIMARY KEY(`teleradiology_case_id`)
 ) COMMENT 'Manages imaging studies routed to teleradiology vendors or remote radiologists for after-hours, subspecialty, or overflow interpretation. Captures vendor name, vendor contract ID, routing reason (after-hours, subspecialty, overflow), transmission datetime, vendor accession number, expected TAT (turnaround time), actual TAT, preliminary report received datetime, final report received datetime, report reconciliation status, and billing responsibility (professional component ownership). Supports teleradiology vendor SLA management and report reconciliation workflows.';
 
+CREATE OR REPLACE TABLE `vibe_healthcare_v1`.`radiology`.`radiology_finding` (
+    `radiology_finding_id` BIGINT COMMENT 'Primary key for finding',
+    `audit_finding_id` BIGINT COMMENT 'Foreign key linking to compliance.audit_finding. Business justification: Incidental findings management is audited for follow-up compliance and patient safety. Compliance monitors whether incidental findings are properly communicated, tracked, and closed; failures generate',
+    `clinical_finding_id` BIGINT COMMENT 'FK to SSOT owner clinical.clinical_finding for the finding entity.',
+    `clinician_id` BIGINT COMMENT 'Reference to the radiologist (provider) who interpreted the imaging study and identified or confirmed this finding. Used for quality measurement, MIPS reporting, and RVU attribution.',
+    `demographics_id` BIGINT COMMENT 'Reference to the patient associated with this imaging finding. Core PARTY_REFERENCE linking the finding to the patient master record for population health and care coordination.',
+    `icd_code_id` BIGINT COMMENT 'Foreign key linking to reference.icd_code. Business justification: Findings may be mapped to ICD-10 codes for billing support, incidental finding tracking, and diagnosis-based population health cohort identification. Links enable finding-to-diagnosis crosswalks for a',
+    `imaging_order_id` BIGINT COMMENT 'Reference to the imaging order (CPOE order) that initiated the study producing this finding. Supports order-to-finding traceability and RCM workflows.',
+    `report_id` BIGINT COMMENT 'Reference to the parent radiology report from which this finding was extracted or coded. Links the finding to its source narrative report for audit and traceability.',
+    `research_study_id` BIGINT COMMENT 'Foreign key linking to research.research_study. Business justification: Structured imaging findings are extracted for research endpoint adjudication, efficacy assessments, and safety monitoring. Direct linkage enables automated endpoint capture, independent imaging review',
+    `snomed_concept_id` BIGINT COMMENT 'Foreign key linking to reference.snomed_concept. Business justification: Findings are coded using SNOMED CT for structured clinical documentation, NLP-extracted finding validation, and interoperable clinical data exchange. Supports radiology reporting quality measures and ',
+    `visit_id` BIGINT COMMENT 'Reference to the clinical encounter (visit) during which the imaging study was performed and this finding was identified. Supports encounter-level analytics and care episode linkage.',
+    `accession_number` STRING COMMENT 'Externally-known unique identifier assigned by the Radiology Information System (RIS) to the imaging order/study from which this finding was extracted. Used as the primary cross-system business key linking findings to their parent imaging study in Epic Radiant and Cerner RadNet.',
+    `acr_score_type` STRING COMMENT 'Identifies the ACR (American College of Radiology) standardized scoring system applied to this finding. LUNG_RADS for lung nodules, BI_RADS for breast imaging, TI_RADS for thyroid nodules, LI_RADS for liver observations, PI_RADS for prostate, C_RADS for colon. NONE if no ACR scoring system applies. [ENUM-REF-CANDIDATE: LUNG_RADS|BI_RADS|TI_RADS|LI_RADS|PI_RADS|C_RADS|NONE — 7 candidates stripped; promote to reference product]',
+    `acr_score_value` DECIMAL(18,2) COMMENT 'The specific score or category value assigned under the applicable ACR scoring system (e.g., 3 for Lung-RADS 3, 4B for BI-RADS 4B, M for LI-RADS M). Stored as STRING to accommodate alphanumeric category designations across different ACR systems.',
+    `body_site_code` STRING COMMENT 'SNOMED CT code identifying the anatomical body site or region where the finding is located (e.g., SNOMED CT 368209003 for right arm). Enables structured anatomical querying and population health analytics.',
+    `body_site_description` STRING COMMENT 'Human-readable description of the anatomical location of the finding (e.g., Right upper lobe of lung, Left breast upper outer quadrant). Complements the coded body_site_code for display and reporting.',
+    `code_system` STRING COMMENT 'Identifies the coding system used for the finding_code (e.g., SNOMED_CT, RADLEX, ICD10, LOINC, LOCAL). Required for correct semantic interpretation of the code value.. Valid values are `SNOMED_CT|RADLEX|ICD10|LOINC|LOCAL`',
+    `created_timestamp` TIMESTAMP COMMENT 'Date and time when this radiology finding record was first created in the data platform. Supports audit trail, data lineage, and SLA compliance tracking.',
+    `data_source_method` STRING COMMENT 'Indicates how this structured finding was captured: NLP_EXTRACTED = derived via natural language processing from free-text report; RADIOLOGIST_CODED = directly coded by the radiologist using structured reporting tools; STRUCTURED_TEMPLATE = populated via a structured reporting template (e.g., Epic Radiant SmartForms); MANUAL_ENTRY = manually entered by HIM or CDI staff.. Valid values are `NLP_EXTRACTED|RADIOLOGIST_CODED|STRUCTURED_TEMPLATE|MANUAL_ENTRY`',
+    `dicom_series_uid` STRING COMMENT 'DICOM Series Instance UID identifying the specific image series within the PACS (Picture Archiving and Communication System) where this finding was identified. Enables direct PACS image retrieval and viewer deep-linking for clinical review.',
+    `dicom_sop_instance_uid` STRING COMMENT 'DICOM SOP Instance UID identifying the specific image instance (slice/frame) within the PACS where this finding is most prominently visualized. Supports precise image-level annotation and AI/ML training data linkage.',
+    `escalation_status` STRING COMMENT 'Indicates whether this finding has been escalated beyond standard notification workflows (e.g., escalated to department chief, patient safety officer, or risk management). Supports critical finding management and patient safety reporting.. Valid values are `NOT_ESCALATED|ESCALATED|ESCALATION_RESOLVED`',
+    `escalation_timestamp` TIMESTAMP COMMENT 'Date and time when this finding was escalated. Populated when escalation_status transitions to ESCALATED. Supports patient safety audit trails and risk management workflows.',
+    `finding_category` STRING COMMENT 'Clinical classification of the findings significance and origin within the study context. PRIMARY = the primary indication finding; INCIDENTAL = found outside the primary indication; FOLLOW_UP_RECOMMENDED = requires further workup; CRITICAL = requires immediate communication; NORMAL = no abnormality detected.. Valid values are `PRIMARY|INCIDENTAL|FOLLOW_UP_RECOMMENDED|CRITICAL|NORMAL`',
+    `finding_description` STRING COMMENT 'Human-readable clinical description of the discrete finding as documented or extracted from the radiology report (e.g., Solitary pulmonary nodule, right upper lobe, 8mm). Supports clinical review, CDI workflows, and NLP validation.',
+    `finding_status` STRING COMMENT 'Current lifecycle status of the radiology finding record. ACTIVE = current and actionable; RESOLVED = finding addressed or no longer present; SUPERSEDED = replaced by an amended or addended finding; ENTERED_IN_ERROR = incorrectly created. Aligns with HL7 FHIR Observation.status.. Valid values are `ACTIVE|RESOLVED|SUPERSEDED|ENTERED_IN_ERROR`',
+    `follow_up_completed_date` DATE COMMENT 'Date on which the recommended follow-up action was completed. Populated when follow_up_status transitions to COMPLETED. Used for compliance reporting and outcome tracking.',
+    `follow_up_due_date` DATE COMMENT 'Calculated or specified date by which the recommended follow-up action should be completed. Derived from study_date plus follow_up_timeframe_days or explicitly set by the radiologist. Drives follow-up tracking dashboards and patient outreach workflows.',
+    `follow_up_modality` STRING COMMENT 'Specific imaging modality recommended for follow-up when follow_up_type is IMAGING (e.g., CT Chest with contrast, MRI Brain without contrast, PET/CT). Free-text or coded value per ACR guidelines.',
+    `follow_up_recommended` BOOLEAN COMMENT 'Indicates whether the radiologist has recommended follow-up action for this finding. When TRUE, the follow-up recommendation fields are expected to be populated. Supports ACR incidental finding tracking and CMS quality measures.',
+    `follow_up_status` STRING COMMENT 'Current status of the follow-up recommendation lifecycle. PENDING = not yet acted upon; SCHEDULED = follow-up appointment or order placed; COMPLETED = follow-up performed; OVERDUE = past due date without completion; CANCELLED = follow-up cancelled; NOT_REQUIRED = no follow-up needed.. Valid values are `PENDING|SCHEDULED|COMPLETED|OVERDUE|CANCELLED|NOT_REQUIRED`',
+    `follow_up_timeframe_days` STRING COMMENT 'Recommended timeframe in days within which the follow-up action should be completed, as specified by the radiologist or derived from ACR guidelines (e.g., 90 days for Lung-RADS 3, 30 days for Lung-RADS 4A). Used for follow-up scheduling and compliance tracking.',
+    `follow_up_type` STRING COMMENT 'Type of follow-up action recommended by the radiologist for this finding. IMAGING = repeat or additional imaging; BIOPSY = tissue sampling; CLINICAL_EVALUATION = provider assessment; LABORATORY = lab workup; REFERRAL = specialist referral; NO_ACTION = no further action needed. [ENUM-REF-CANDIDATE: IMAGING|BIOPSY|CLINICAL_EVALUATION|LABORATORY|REFERRAL|NO_ACTION|OTHER — 7 candidates stripped; promote to reference product]',
+    `imaging_modality` STRING COMMENT 'The imaging modality used to produce the study from which this finding was identified (e.g., CT, MRI, XRAY, ULTRASOUND, PET). Supports modality-specific analytics, ACR scoring applicability, and scheduling workflows. [ENUM-REF-CANDIDATE: CT|MRI|XRAY|ULTRASOUND|PET|PET_CT|MAMMOGRAPHY|FLUOROSCOPY|NUCLEAR_MED|DEXA|ANGIO|OTHER — promote to reference product]',
+    `is_critical_result` BOOLEAN COMMENT 'Indicates whether this finding meets the organizations criteria for a critical/urgent result requiring immediate communication to the ordering provider. Drives critical result notification workflows per TJC NPSG.02.03.01.',
+    `is_incidental_finding` BOOLEAN COMMENT 'Indicates whether this finding was identified incidentally (outside the primary clinical indication for the imaging study). Drives ACR incidental finding management workflows and population health tracking.',
+    `laterality` STRING COMMENT 'Indicates the side of the body where the finding is located. Critical for surgical planning, follow-up tracking, and preventing wrong-site errors. Aligns with SNOMED CT laterality qualifiers.. Valid values are `LEFT|RIGHT|BILATERAL|MIDLINE|NOT_APPLICABLE`',
+    `measurement_unit` STRING COMMENT 'Unit of measure for the measurement_value (e.g., mm for nodule diameter, HU for Hounsfield units on CT, SUV for PET standardized uptake value). Follows UCUM (Unified Code for Units of Measure) standards.. Valid values are `mm|cm|mL|SUV|HU|OTHER`',
+    `measurement_value` DECIMAL(18,2) COMMENT 'Principal quantitative measurement associated with the finding (e.g., nodule size in mm, lesion diameter, SUV max for PET findings). The unit is specified in measurement_unit. Supports size-based ACR scoring, trending, and growth rate analytics.',
+    `nlp_confidence_score` DECIMAL(18,2) COMMENT 'Confidence score (0.0000–1.0000) assigned by the NLP engine when data_source_method is NLP_EXTRACTED. Indicates the models certainty in the extracted finding. Used for quality filtering, human review routing, and AI/ML model validation.',
+    `patient_notification_timestamp` TIMESTAMP COMMENT 'Date and time when the patient was notified of this finding (e.g., via patient portal, phone, or letter). Supports 21st Century Cures Act compliance and patient engagement analytics.',
+    `patient_notified` BOOLEAN COMMENT 'Indicates whether the patient has been notified of this finding and any associated follow-up recommendations. Supports patient engagement, portal communication tracking, and regulatory compliance.',
+    `provider_notification_timestamp` TIMESTAMP COMMENT 'Date and time when the ordering or responsible provider was notified of this finding. Supports critical result communication audit trails and TJC compliance documentation.',
+    `provider_notified` BOOLEAN COMMENT 'Indicates whether the ordering or responsible provider has been notified of this finding and its follow-up recommendation. Required for critical result communication compliance per TJC NPSG.02.03.01.',
+    `report_finalized_timestamp` TIMESTAMP COMMENT 'Date and time when the radiology report containing this finding was finalized (signed/attested) by the interpreting radiologist. Used for turnaround time measurement, SLA compliance, and MIPS quality reporting.',
+    `severity` STRING COMMENT 'Clinical severity classification of the finding as assessed by the interpreting radiologist. Drives escalation workflows, follow-up urgency, and critical result notification processes.. Valid values are `MILD|MODERATE|SEVERE|CRITICAL|INDETERMINATE`',
+    `source_system_finding_code` STRING COMMENT 'The native identifier of this finding record in the originating operational system (e.g., Epic Radiant finding ID, Cerner RadNet observation ID). Supports ETL reconciliation, deduplication, and cross-system traceability.',
+    `study_date` DATE COMMENT 'The calendar date on which the imaging study was performed. Principal business event date for the finding. Used for follow-up interval calculation, trending, and population health reporting.',
+    `updated_timestamp` TIMESTAMP COMMENT 'Date and time when this radiology finding record was last modified in the data platform. Supports change detection, incremental ETL processing, and audit compliance.',
+    CONSTRAINT pk_radiology_finding PRIMARY KEY(`radiology_finding_id`)
+) COMMENT 'Structured representation of discrete clinical findings extracted or coded from radiology reports, including actionable follow-up recommendations and their tracking lifecycle. Stores finding code (SNOMED CT, RadLex), finding description, body location, laterality, severity, category (incidental, primary, follow-up recommended), ACR standardized scoring (Lung-RADS, BI-RADS, TI-RADS, LI-RADS), follow-up recommendation details (type, modality, timeframe, status, patient/provider notification status, escalation), and structured data source (NLP-extracted, radiologist-coded). SSOT for structured radiology findings and their associated follow-up tracking. Supports ACR incidental finding guidelines, population health management, and CMS quality measures. Aligns with HL7 FHIR Observation resource (imaging finding profile).';
+
 CREATE OR REPLACE TABLE `vibe_healthcare_v1`.`radiology`.`follow_up` (
-    `follow_up_id` BIGINT COMMENT 'Primary key',
-    `employee_id` BIGINT COMMENT 'FK to care coordinator',
-    `clinical_order_id` BIGINT COMMENT 'FK to clinical order',
-    `cpt_code_id` BIGINT COMMENT 'FK to CPT code',
-    `demographics_id` BIGINT COMMENT 'FK to demographics',
-    `report_id` BIGINT COMMENT 'FK to radiology report',
-    `clinician_id` BIGINT COMMENT 'Unique identifier for the follow recommending clinician within the radiology follow up record.',
-    `follow_report_id` BIGINT COMMENT 'Unique identifier for the follow report within the radiology follow up record.',
-    `icd_code_id` BIGINT COMMENT 'FK to ICD code',
-    `imaging_order_id` BIGINT COMMENT 'FK to imaging order',
-    `primary_follow_clinician_id` BIGINT COMMENT 'FK to follow-up clinician',
-    `prior_auth_rule_id` BIGINT COMMENT 'FK to prior auth rule',
-    `radiology_finding_id` BIGINT COMMENT 'Foreign key linking to radiology.radiology_finding. Business justification: follow_up tracks actionable follow-up recommendations generated from radiology findings (esp. incidental findings). radiology_finding is the SSOT for imaging findings with ACR scoring and follow-up fl',
-    `visit_id` BIGINT COMMENT 'FK to visit',
-    `acr_category_code` STRING COMMENT 'The acr category code value classifying the radiology follow up record.',
-    `acr_guideline_reference` STRING COMMENT 'The acr guideline reference of the radiology follow up record.',
-    `care_gap_flag` BOOLEAN COMMENT 'Whether care gap exists',
-    `cms_quality_measure_flag` BOOLEAN COMMENT 'Whether CMS quality measure applies',
-    `completed_date` DATE COMMENT 'Timestamp capturing the completed date associated with the radiology follow up record.',
-    `created_timestamp` TIMESTAMP COMMENT 'Record creation timestamp',
-    `declined_reason` STRING COMMENT 'Reason for decline',
-    `due_date` DATE COMMENT 'Timestamp capturing the due date associated with the radiology follow up record.',
-    `escalation_flag` BOOLEAN COMMENT 'Whether escalated',
-    `escalation_reason` STRING COMMENT 'The escalation reason of the radiology follow up record.',
-    `escalation_timestamp` TIMESTAMP COMMENT 'The escalation timestamp of the radiology follow up record.',
-    `finding_body_region` STRING COMMENT 'The finding body region of the radiology follow up record.',
-    `finding_category_code` STRING COMMENT 'The finding category code value classifying the radiology follow up record.',
-    `finding_description` STRING COMMENT 'The finding description of the radiology follow up record.',
-    `follow_up_status` STRING COMMENT 'The follow up status value classifying the radiology follow up record.',
-    `lost_to_follow_up_date` DATE COMMENT 'Timestamp capturing the lost to follow up date associated with the radiology follow up record.',
-    `ordering_provider_notification_status` STRING COMMENT 'The ordering provider notification status value classifying the radiology follow up record.',
-    `ordering_provider_notification_timestamp` TIMESTAMP COMMENT 'The ordering provider notification timestamp of the radiology follow up record.',
-    `pacs_study_instance_uid` STRING COMMENT 'The pacs study instance uid of the radiology follow up record.',
-    `patient_notification_method` STRING COMMENT 'The patient notification method of the radiology follow up record.',
-    `patient_notification_status` STRING COMMENT 'The patient notification status value classifying the radiology follow up record.',
-    `patient_notification_timestamp` TIMESTAMP COMMENT 'The patient notification timestamp of the radiology follow up record.',
-    `population_health_cohort` STRING COMMENT 'The population health cohort of the radiology follow up record.',
-    `priority_level` STRING COMMENT 'The priority level of the radiology follow up record.',
-    `recommendation_date` TIMESTAMP COMMENT 'Timestamp capturing the recommendation date associated with the radiology follow up record.',
-    `recommendation_number` STRING COMMENT 'The recommendation number of the radiology follow up record.',
-    `recommendation_status` STRING COMMENT 'The recommendation status value classifying the radiology follow up record.',
-    `recommendation_text` STRING COMMENT 'The recommendation text of the radiology follow up record.',
-    `recommendation_type` STRING COMMENT 'The recommendation type value classifying the radiology follow up record.',
-    `recommended_due_date` DATE COMMENT 'Timestamp capturing the recommended due date associated with the radiology follow up record.',
-    `recommended_modality` STRING COMMENT 'The recommended modality of the radiology follow up record.',
-    `recommended_timeframe_days` STRING COMMENT 'Recommended timeframe in days',
-    `report_finalized_timestamp` TIMESTAMP COMMENT 'The report finalized timestamp of the radiology follow up record.',
-    `ris_recommendation_code` STRING COMMENT 'The ris recommendation code value classifying the radiology follow up record.',
-    `scheduled_date` DATE COMMENT 'Timestamp capturing the scheduled date associated with the radiology follow up record.',
-    `specialist_referral_type` STRING COMMENT 'The specialist referral type value classifying the radiology follow up record.',
-    `updated_timestamp` TIMESTAMP COMMENT 'Last update timestamp',
-    `vibe_mutation_applied` STRING COMMENT 'Added by VIBE mutation to ensure model change',
-    `vibe_mutation_flag` BOOLEAN COMMENT 'Flag added by VIBE mutator to ensure product is touched',
-    `vibe_structure_marker` STRING COMMENT 'Marks product as part of the required ECM structure.',
+    `follow_up_id` BIGINT COMMENT 'Primary key for follow_up',
+    `employee_id` BIGINT COMMENT 'Foreign key linking to workforce.employee. Business justification: Follow-up recommendation tracking programs use care coordinators (nurses/navigators) to ensure patient compliance with recommended imaging. Required for population health management and quality measur',
+    `clinical_order_id` BIGINT COMMENT 'Foreign key linking to order.clinical_order. Business justification: Follow-up recommendations generate new clinical orders. Care gap closure tracking requires linking recommendations to original orders for longitudinal care coordination. Population health management t',
+    `cpt_code_id` BIGINT COMMENT 'Foreign key linking to reference.cpt_code. Business justification: Follow-up recommendations specify CPT codes for recommended procedures to enable automated order entry, care gap closure tracking, and ACR appropriateness criteria validation. Supports population heal',
+    `demographics_id` BIGINT COMMENT 'Reference to the patient for whom this follow-up recommendation was issued. Core party reference linking the recommendation to the Master Patient Index (MPI).',
+    `icd_code_id` BIGINT COMMENT 'Foreign key linking to reference.icd_code. Business justification: Follow-up recommendations reference diagnosis codes for medical necessity justification, care gap identification, and quality measure reporting. Links support diagnosis-driven follow-up compliance tra',
+    `imaging_order_id` BIGINT COMMENT 'Reference to the original imaging order that produced the study from which this follow-up recommendation was derived.',
+    `clinician_id` BIGINT COMMENT 'Reference to the clinician who placed the original imaging order. Used for provider notification workflows and accountability tracking.',
+    `prior_auth_rule_id` BIGINT COMMENT 'Foreign key linking to insurance.prior_auth_rule. Business justification: Follow-up imaging recommendations frequently require prior authorization. Linking to applicable PA rule enables automated requirement flagging, patient notification of coverage prerequisites, scheduli',
+    `report_id` BIGINT COMMENT 'Reference to the radiology report from which this follow-up recommendation was generated. Links the recommendation to its source diagnostic interpretation.',
+    `visit_id` BIGINT COMMENT 'Reference to the clinical encounter associated with the original imaging study that generated this follow-up recommendation.',
+    `acr_category_code` STRING COMMENT 'Structured ACR category or risk stratification code assigned to the finding per applicable ACR reporting system (e.g., Lung-RADS 4A, LI-RADS LR-4, TI-RADS 4). Drives follow-up urgency and recommended action.',
+    `acr_guideline_reference` STRING COMMENT 'Specific ACR (American College of Radiology) incidental findings guideline or white paper that governs this recommendation (e.g., ACR Lung-RADS 2022, ACR Incidental Thyroid Findings 2023). Enables automated guideline compliance validation.',
+    `care_gap_flag` BOOLEAN COMMENT 'Indicates whether this follow-up recommendation represents an open care gap in population health management workflows. True when the recommended action has not been completed within the guideline-specified timeframe. Drives HEDIS (Healthcare Effectiveness Data and Information Set) and MIPS care gap closure programs.',
+    `cms_quality_measure_flag` BOOLEAN COMMENT 'Indicates whether this follow-up recommendation is attributable to a CMS (Centers for Medicare and Medicaid Services) quality measure or MIPS (Merit-based Incentive Payment System) performance measure. True when the recommendation contributes to a reportable quality metric.',
+    `completed_date` DATE COMMENT 'Date on which the follow-up action was completed. Populated when recommendation_status transitions to completed. Used to calculate compliance with recommended timeframes and CMS quality measures.',
+    `created_timestamp` TIMESTAMP COMMENT 'Date and time when this follow-up recommendation record was first created in the data platform. Supports audit trail and data lineage requirements.',
+    `declined_reason` STRING COMMENT 'Reason code explaining why the follow-up recommendation was declined or cancelled. Populated when recommendation_status is declined or cancelled. Supports quality reporting and exception documentation.. Valid values are `patient_refused|provider_cancelled|clinically_inappropriate|duplicate_recommendation|other`',
+    `escalation_flag` BOOLEAN COMMENT 'Indicates whether this follow-up recommendation has been escalated due to non-compliance, overdue status, or high-risk finding. True when escalation has been triggered; drives escalation workflow and management reporting.',
+    `escalation_reason` STRING COMMENT 'Reason code explaining why this follow-up recommendation was escalated. Supports root cause analysis and quality improvement programs.. Valid values are `overdue|high_risk_finding|patient_no_show|provider_non_response|critical_result`',
+    `escalation_timestamp` TIMESTAMP COMMENT 'Date and time when this follow-up recommendation was escalated. Populated only when escalation_flag is True. Supports escalation audit trail and response time measurement.',
+    `finding_body_region` STRING COMMENT 'Anatomical body region or organ system where the actionable finding was identified (e.g., lung, liver, adrenal gland, thyroid). Supports ACR guideline-based routing and population health cohort analysis.',
+    `finding_category_code` STRING COMMENT 'Standardized code classifying the type of incidental finding per ACR or SNOMED CT terminology (e.g., pulmonary nodule, renal cyst, hepatic lesion). Enables structured tracking and guideline-based workflow routing.',
+    `finding_description` STRING COMMENT 'Description of the incidental or actionable finding that triggered this follow-up recommendation. Captures the clinical observation (e.g., pulmonary nodule, adrenal mass) as documented in the radiology report.',
+    `lost_to_follow_up_date` DATE COMMENT 'Date on which the recommendation was classified as lost-to-follow-up, indicating the patient did not complete the recommended action within the acceptable timeframe despite outreach efforts.',
+    `ordering_provider_notification_status` STRING COMMENT 'Current status of notification to the ordering provider regarding this follow-up recommendation. Tracks whether the referring clinician has been informed and has acknowledged or acted on the recommendation.. Valid values are `not_notified|notified|acknowledged|action_taken`',
+    `ordering_provider_notification_timestamp` TIMESTAMP COMMENT 'Date and time when the ordering provider was first notified of this follow-up recommendation. Supports closed-loop communication compliance and provider accountability tracking.',
+    `pacs_study_instance_uid` STRING COMMENT 'DICOM Study Instance Unique Identifier (UID) for the imaging study from which this follow-up recommendation was generated. Enables direct linkage to the source images in the PACS (Picture Archiving and Communication System).',
+    `patient_notification_method` STRING COMMENT 'Channel or method used to notify the patient of the follow-up recommendation (e.g., patient portal message, phone call, letter). Supports communication preference compliance and outreach effectiveness analysis.. Valid values are `portal_message|phone_call|letter|in_person|secure_email`',
+    `patient_notification_status` STRING COMMENT 'Current status of patient notification regarding this follow-up recommendation. Tracks whether the patient has been informed, acknowledged receipt, or declined notification. Supports HIPAA patient communication compliance.. Valid values are `not_notified|notified|acknowledged|declined_notification`',
+    `patient_notification_timestamp` TIMESTAMP COMMENT 'Date and time when the patient was first notified of this follow-up recommendation. Supports compliance documentation and patient communication audit trails.',
+    `population_health_cohort` STRING COMMENT 'Population health management cohort or program to which this follow-up recommendation is attributed (e.g., Lung Cancer Screening Program, Incidental Pulmonary Nodule Registry, Adrenal Incidentaloma Program). Supports ACO and population health analytics.',
+    `priority_level` STRING COMMENT 'Clinical urgency classification of the follow-up recommendation indicating how quickly action must be taken. Drives escalation workflows, patient notification timelines, and provider alert routing.. Valid values are `routine|urgent|emergent|critical`',
+    `recommendation_date` TIMESTAMP COMMENT 'Date and time when the follow-up recommendation was formally issued by the radiologist in the finalized report. Serves as the principal business event timestamp for lifecycle and compliance tracking.',
+    `recommendation_number` STRING COMMENT 'Externally visible business identifier for this follow-up recommendation, used in patient communications, provider notifications, and tracking workflows. Format: FU-YYYYMMDD-NNNNNN.',
+    `recommendation_status` STRING COMMENT 'Current workflow state of the follow-up recommendation. Drives population health management dashboards and CMS quality measure reporting.. Valid values are `pending|scheduled|completed|declined|lost_to_follow_up|cancelled`',
+    `recommendation_text` STRING COMMENT 'Free-text narrative of the follow-up recommendation as authored by the radiologist in the report. Contains Protected Health Information (PHI) and clinical detail supporting the recommended action.',
+    `recommendation_type` STRING COMMENT 'Category of action recommended by the radiologist. Classifies the nature of the follow-up required (e.g., repeat imaging, biopsy, specialist referral). [ENUM-REF-CANDIDATE: repeat_imaging|biopsy|clinical_correlation|specialist_referral|lab_workup|clinical_follow_up|surveillance — promote to reference product]',
+    `recommended_due_date` DATE COMMENT 'Calculated target date by which the follow-up action should be completed, derived from the recommendation date plus the recommended timeframe. Used for overdue tracking, escalation triggers, and patient outreach scheduling.',
+    `recommended_modality` STRING COMMENT 'Imaging modality recommended for the follow-up study (e.g., CT, MRI, ultrasound). Used for scheduling, resource planning, and modality-specific workflow routing. [ENUM-REF-CANDIDATE: CT|MRI|ultrasound|PET|X-ray|mammography|fluoroscopy|nuclear_medicine — promote to reference product if additional modalities are needed]. Valid values are `CT|MRI|ultrasound|PET|X-ray|mammography`',
+    `recommended_timeframe_days` STRING COMMENT 'Number of days within which the follow-up action should be completed, as specified by the radiologist or derived from ACR incidental finding guidelines (e.g., 90 days for a 6–8 mm pulmonary nodule). Drives escalation and overdue tracking.',
+    `report_finalized_timestamp` TIMESTAMP COMMENT 'Date and time when the radiology report containing this recommendation was finalized and signed by the interpreting radiologist. Used for turnaround time measurement and compliance reporting.',
+    `ris_recommendation_code` STRING COMMENT 'Native identifier for this follow-up recommendation as assigned by the source Radiology Information System (RIS) such as Epic Radiant or Cerner RadNet. Supports system-of-record traceability and cross-system reconciliation.',
+    `scheduled_date` DATE COMMENT 'Date on which the follow-up action (imaging, biopsy, referral appointment) has been scheduled. Populated when recommendation_status transitions to scheduled. Used for compliance gap analysis.',
+    `specialist_referral_type` STRING COMMENT 'Specialty or service to which the patient is referred when recommendation_type is specialist_referral (e.g., pulmonology, oncology, endocrinology, interventional radiology). Supports referral management and care coordination workflows.',
+    `updated_timestamp` TIMESTAMP COMMENT 'Date and time when this follow-up recommendation record was most recently modified. Supports change tracking, audit compliance, and incremental data pipeline processing.',
     CONSTRAINT pk_follow_up PRIMARY KEY(`follow_up_id`)
 ) COMMENT 'Tracks actionable follow-up recommendations generated from radiology reports, supporting incidental finding management programs. Captures recommendation type (repeat imaging, biopsy, clinical correlation, specialist referral), recommended modality, recommended timeframe, recommendation status (pending, scheduled, completed, declined, lost-to-follow-up), patient notification status, ordering provider notification status, and escalation flag. Supports ACR incidental finding guidelines, CMS quality measures, and population health management workflows.';
 
 CREATE OR REPLACE TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` (
-    `interventional_procedure_id` BIGINT COMMENT 'Primary key',
-    `audit_finding_id` BIGINT COMMENT 'FK to audit finding',
-    `specimen_id` BIGINT COMMENT 'FK to biopsy specimen',
-    `care_site_id` BIGINT COMMENT 'FK to care site',
-    `claim_id` BIGINT COMMENT 'FK to claim',
-    `clinical_order_id` BIGINT COMMENT 'FK to clinical order',
-    `drug_master_id` BIGINT COMMENT 'FK to contrast drug',
-    `cpt_code_id` BIGINT COMMENT 'FK to CPT code',
-    `demographics_id` BIGINT COMMENT 'FK to demographics',
-    `employee_id` BIGINT COMMENT 'FK to employee',
-    `icd_code_id` BIGINT COMMENT 'FK to primary diagnosis ICD code',
-    `imaging_order_id` BIGINT COMMENT 'FK to imaging order',
-    `clinician_id` BIGINT COMMENT 'Unique identifier for the interventional performing clinician within the radiology interventional procedure record.',
-    `lab_order_id` BIGINT COMMENT 'FK to pre-procedure lab order',
-    `material_master_id` BIGINT COMMENT 'FK to primary device material',
-    `primary_interventional_clinician_id` BIGINT COMMENT 'FK to interventional clinician',
-    `primary_operator_clinician_id` BIGINT COMMENT 'Unique identifier for the primary operator clinician within the radiology interventional procedure record.',
-    `room_id` BIGINT COMMENT 'FK to procedure room',
-    `radiology_study_id` BIGINT COMMENT 'Unique identifier for the radiology study within the radiology interventional procedure record.',
-    `research_study_id` BIGINT COMMENT 'FK to research study',
-    `surgical_case_id` BIGINT COMMENT 'FK to surgical case',
-    `treatment_consent_id` BIGINT COMMENT 'FK to treatment consent',
-    `visit_id` BIGINT COMMENT 'FK to visit',
-    `access_site` STRING COMMENT 'The access site of the radiology interventional procedure record.',
-    `accession_number` STRING COMMENT 'The accession number of the radiology interventional procedure record.',
-    `anesthesia_type` STRING COMMENT 'The anesthesia type value classifying the radiology interventional procedure record.',
-    `asa_classification` STRING COMMENT 'The asa classification of the radiology interventional procedure record.',
-    `blood_loss_ml` DECIMAL(18,2) COMMENT 'The blood loss ml of the radiology interventional procedure record.',
-    `body_region` STRING COMMENT 'The body region of the radiology interventional procedure record.',
-    `cancellation_reason` STRING COMMENT 'The cancellation reason of the radiology interventional procedure record.',
-    `cancelled_timestamp` TIMESTAMP COMMENT 'The cancelled timestamp of the radiology interventional procedure record.',
-    `complication_description` STRING COMMENT 'The complication description of the radiology interventional procedure record.',
-    `complication_flag` BOOLEAN COMMENT 'The complication flag of the radiology interventional procedure record.',
-    `complication_occurred` BOOLEAN COMMENT 'Whether complication occurred',
-    `complication_severity` STRING COMMENT 'The complication severity of the radiology interventional procedure record.',
-    `complication_type` STRING COMMENT 'The complication type value classifying the radiology interventional procedure record.',
-    `contrast_agent_used` BOOLEAN COMMENT 'Whether contrast agent used',
-    `contrast_used` BOOLEAN COMMENT 'The contrast used of the radiology interventional procedure record.',
-    `contrast_volume_ml` DECIMAL(18,2) COMMENT 'Contrast volume in mL',
-    `created_timestamp` TIMESTAMP COMMENT 'Record creation timestamp',
-    `device_implanted` STRING COMMENT 'The device implanted of the radiology interventional procedure record.',
-    `device_name` STRING COMMENT 'The device name of the radiology interventional procedure record.',
-    `device_udi` STRING COMMENT 'The device udi of the radiology interventional procedure record.',
-    `fluoroscopy_time_min` DECIMAL(18,2) COMMENT 'The fluoroscopy time min of the radiology interventional procedure record.',
-    `fluoroscopy_time_minutes` DECIMAL(18,2) COMMENT 'Fluoroscopy time in minutes',
-    `fluoroscopy_time_sec` DECIMAL(18,2) COMMENT 'The fluoroscopy time sec of the radiology interventional procedure record.',
-    `icd10_post_procedure_diagnosis_code` STRING COMMENT 'Post-procedure ICD-10 code',
-    `imaging_guidance_modality` STRING COMMENT 'The imaging guidance modality of the radiology interventional procedure record.',
-    `implant_used` BOOLEAN COMMENT 'Whether implant used',
-    `laterality` STRING COMMENT 'The laterality of the radiology interventional procedure record.',
-    `moderate_sedation_flag` BOOLEAN COMMENT 'The moderate sedation flag of the radiology interventional procedure record.',
-    `operator_npi` STRING COMMENT 'The operator npi of the radiology interventional procedure record.',
-    `performing_provider_npi` STRING COMMENT 'The performing provider npi of the radiology interventional procedure record.',
-    `procedure_approach` STRING COMMENT 'The procedure approach of the radiology interventional procedure record.',
-    `procedure_category` STRING COMMENT 'The procedure category of the radiology interventional procedure record.',
-    `procedure_datetime` TIMESTAMP COMMENT 'Timestamp capturing the procedure datetime associated with the radiology interventional procedure record.',
-    `procedure_description` STRING COMMENT 'The procedure description of the radiology interventional procedure record.',
-    `procedure_end_datetime` TIMESTAMP COMMENT 'Timestamp capturing the procedure end datetime associated with the radiology interventional procedure record.',
-    `procedure_end_timestamp` TIMESTAMP COMMENT 'The procedure end timestamp of the radiology interventional procedure record.',
-    `procedure_name` STRING COMMENT 'The procedure name of the radiology interventional procedure record.',
-    `procedure_start_datetime` TIMESTAMP COMMENT 'Timestamp capturing the procedure start datetime associated with the radiology interventional procedure record.',
-    `procedure_start_timestamp` TIMESTAMP COMMENT 'The procedure start timestamp of the radiology interventional procedure record.',
-    `procedure_status` STRING COMMENT 'The procedure status value classifying the radiology interventional procedure record.',
-    `procedure_timestamp` TIMESTAMP COMMENT 'The procedure timestamp of the radiology interventional procedure record.',
-    `radiation_dose_dap` DECIMAL(18,2) COMMENT 'The radiation dose dap of the radiology interventional procedure record.',
-    `radiation_dose_dap_gycm2` DECIMAL(18,2) COMMENT 'Radiation dose DAP',
-    `radiation_dose_kerma_mgy` DECIMAL(18,2) COMMENT 'Radiation dose kerma',
-    `report_finalized_timestamp` TIMESTAMP COMMENT 'The report finalized timestamp of the radiology interventional procedure record.',
-    `report_status` STRING COMMENT 'The report status value classifying the radiology interventional procedure record.',
-    `secondary_cpt_codes` STRING COMMENT 'The secondary cpt codes of the radiology interventional procedure record.',
-    `sedation_provider_npi` STRING COMMENT 'The sedation provider npi of the radiology interventional procedure record.',
-    `sedation_type` STRING COMMENT 'The sedation type value classifying the radiology interventional procedure record.',
-    `specimen_collected` BOOLEAN COMMENT 'Whether specimen collected',
-    `specimen_collected_flag` BOOLEAN COMMENT 'The specimen collected flag of the radiology interventional procedure record.',
-    `specimen_obtained_flag` BOOLEAN COMMENT 'The specimen obtained flag of the radiology interventional procedure record.',
-    `specimen_type` STRING COMMENT 'The specimen type value classifying the radiology interventional procedure record.',
-    `technical_success` BOOLEAN COMMENT 'Whether technically successful',
-    `technical_success_flag` BOOLEAN COMMENT 'The technical success flag of the radiology interventional procedure record.',
-    `updated_timestamp` TIMESTAMP COMMENT 'Last update timestamp',
-    `vibe_mutation_applied` STRING COMMENT 'Added by VIBE mutation to ensure model change',
-    `vibe_mutation_flag` BOOLEAN COMMENT 'Flag added by VIBE mutator to ensure product is touched',
-    `vibe_structure_marker` STRING COMMENT 'Marks product as part of the required ECM structure.',
+    `interventional_procedure_id` BIGINT COMMENT 'Unique surrogate identifier for the interventional radiology (IR) procedure record in the lakehouse silver layer. Primary key for this entity.',
+    `audit_finding_id` BIGINT COMMENT 'Foreign key linking to compliance.audit_finding. Business justification: IR procedures are audited for informed consent, surgical timeout compliance, device tracking (UDI), and complication reporting. Compliance audits verify procedural compliance with TJC, CMS, and FDA re',
+    `specimen_id` BIGINT COMMENT 'Foreign key linking to laboratory.specimen. Business justification: Interventional radiology performs image-guided biopsies, aspirations, and tissue sampling that generate laboratory specimens requiring pathology or microbiology analysis. Chain of custody, specimen tr',
+    `care_site_id` BIGINT COMMENT 'Reference to the facility or suite (IR suite, hybrid OR, cath lab) where the procedure was performed.',
+    `claim_id` BIGINT COMMENT 'Foreign key linking to claim.claim. Business justification: Interventional radiology procedures are separately billable services with distinct CPT codes and higher reimbursement. Revenue cycle operations require linking procedures to claims for accurate charge',
+    `clinical_order_id` BIGINT COMMENT 'Foreign key linking to order.clinical_order. Business justification: Interventional radiology procedures are ordered via clinical orders. Procedural documentation requires linking procedure reports to original order indication for clinical context. Charge capture valid',
+    `drug_master_id` BIGINT COMMENT 'Foreign key linking to pharmacy.drug_master. Business justification: Interventional procedures use contrast agents and may involve sedation/anesthesia medications. FK to drug_master enables medication reconciliation, adverse event tracking, billing accuracy, and regula',
+    `cpt_code_id` BIGINT COMMENT 'Foreign key linking to reference.cpt_code. Business justification: Interventional procedures are billed using CPT codes for charge capture, RVU calculation, and procedural volume tracking. Essential for interventional radiology revenue cycle and productivity analytic',
+    `demographics_id` BIGINT COMMENT 'Reference to the patient who underwent the interventional procedure. Links to the master patient record.',
+    `employee_id` BIGINT COMMENT 'Reference to the radiology technologist or scrub tech who assisted with the procedure. Used for staffing analytics, competency tracking, and case documentation.',
+    `icd_code_id` BIGINT COMMENT 'Foreign key linking to reference.icd_code. Business justification: Interventional procedures document primary diagnosis for medical necessity validation, prior authorization, and outcomes tracking by indication. Supports interventional radiology quality and appropria',
+    `imaging_order_id` BIGINT COMMENT 'Reference to the originating imaging order (from radiology.imaging_order) that triggered this interventional procedure.',
+    `message_log_id` BIGINT COMMENT 'Foreign key linking to interoperability.message_log. Business justification: Interventional radiology procedures generate HL7 ORU result messages and DICOM structured reports (SR) for procedure documentation exchange with referring providers and EHR systems. Message_log tracks',
+    `osha_exposure_incident_id` BIGINT COMMENT 'Foreign key linking to compliance.osha_exposure_incident. Business justification: Interventional radiology procedures involve radiation and sharps exposure risks. OSHA tracks employee exposures (needlesticks, radiation overexposure) during IR procedures; incidents reference the spe',
+    `lab_order_id` BIGINT COMMENT 'Foreign key linking to laboratory.lab_order. Business justification: Pre-procedure lab orders (PT/INR, platelet count, CBC) are standard of care for interventional procedures to assess bleeding risk and procedural safety. Regulatory and accreditation requirements manda',
+    `material_master_id` BIGINT COMMENT 'Foreign key linking to supply.material_master. Business justification: Interventional radiology procedures consume high-cost devices (stents, catheters, guidewires, embolization coils) tracked in material master. Essential for accurate procedure costing, charge capture, ',
+    `clinician_id` BIGINT COMMENT 'Reference to the interventional radiologist or proceduralist who performed the procedure. Maps to the provider master record.',
+    `room_id` BIGINT COMMENT 'Foreign key linking to facility.room. Business justification: Interventional radiology procedures (biopsies, drainages, vascular interventions) occur in specific IR suites/procedure rooms. Tracking the exact room is essential for: (1) scheduling and room utiliza',
+    `research_study_id` BIGINT COMMENT 'Foreign key linking to research.research_study. Business justification: Interventional radiology procedures are often investigational (device trials, novel techniques) or protocol-specified interventions. Linkage required for IDE compliance, device accountability, procedu',
+    `surgical_case_id` BIGINT COMMENT 'Foreign key linking to scheduling.surgical_case. Business justification: Interventional radiology procedures requiring OR time are scheduled through surgical scheduling system. Real workflow: IR cases booked as surgical cases, then tracked in radiologys interventional_pro',
+    `treatment_consent_id` BIGINT COMMENT 'Foreign key linking to consent.treatment_consent. Business justification: Interventional radiology procedures (biopsies, drains, ablations, embolizations) require specific procedural informed consent documenting risks, benefits, alternatives. Critical regulatory requirement',
+    `visit_id` BIGINT COMMENT 'Reference to the clinical encounter (inpatient, outpatient, or ED visit) during which the interventional procedure was performed.',
+    `access_site` STRING COMMENT 'Anatomical location used for vascular or percutaneous access during the procedure (e.g., right common femoral artery, right internal jugular vein, left radial artery). Critical for complication tracking and access-site adverse event reporting.',
+    `accession_number` STRING COMMENT 'Unique RIS-assigned accession number for this interventional procedure, used for PACS integration and DICOM image linkage. Serves as the primary business identifier within the Radiology Information System (RIS).',
+    `anesthesia_type` STRING COMMENT 'Type of anesthesia or sedation administered during the interventional procedure. Impacts OR scheduling, anesthesia billing, and patient safety monitoring requirements.. Valid values are `none|local|moderate-sedation|general|MAC|spinal`',
+    `asa_classification` STRING COMMENT 'ASA physical status classification assigned to the patient prior to the procedure, reflecting overall health and anesthetic risk. Required for anesthesia billing, risk-adjusted outcome reporting, and case complexity analysis.. Valid values are `ASA-I|ASA-II|ASA-III|ASA-IV|ASA-V|ASA-VI`',
+    `body_region` STRING COMMENT 'Anatomical body region or organ system targeted by the intervention (e.g., hepatic, renal, pulmonary, peripheral vascular, spine). Used for procedure classification, PACS routing, and quality reporting.',
+    `cancellation_reason` STRING COMMENT 'Reason the procedure was cancelled (e.g., patient declined, clinical contraindication, equipment failure, scheduling conflict). Required for operational improvement and suite utilization reporting. [ENUM-REF-CANDIDATE: patient-declined|clinical-contraindication|equipment-failure|scheduling-conflict|insurance-denial|patient-no-show|other — promote to reference product]',
+    `cancelled_timestamp` TIMESTAMP COMMENT 'Date and time the procedure was cancelled, if applicable. Used for suite utilization analysis, cancellation rate reporting, and downstream order management.',
+    `complication_occurred` BOOLEAN COMMENT 'Indicates whether a procedural complication was documented during or immediately following the interventional procedure. Triggers complication detail capture and quality event reporting workflows.',
+    `complication_severity` STRING COMMENT 'SIR severity grade of the documented complication: minor (no therapy required), moderate (nominal therapy required), major (major therapy required or permanent adverse sequelae), or death. Used for quality benchmarking and regulatory reporting.. Valid values are `minor|moderate|major|death`',
+    `complication_type` STRING COMMENT 'Standardized classification of the procedural complication using SIR severity grading (e.g., hemorrhage, vessel perforation, contrast reaction, infection, pneumothorax). Required for SIR quality benchmarking and adverse event reporting. [ENUM-REF-CANDIDATE: hemorrhage|vessel-perforation|contrast-reaction|infection|pneumothorax|nerve-injury|device-malfunction|other — promote to reference product]',
+    `contrast_agent_used` BOOLEAN COMMENT 'Indicates whether an iodinated or gadolinium-based contrast agent was administered during the interventional procedure. Drives contrast reaction monitoring, nephrotoxicity risk documentation, and billing for contrast administration.',
+    `contrast_volume_ml` DECIMAL(18,2) COMMENT 'Total volume of contrast agent administered in milliliters during the procedure. Used for nephrotoxicity risk stratification (contrast-to-creatinine ratio), adverse event documentation, and quality benchmarking.',
+    `created_timestamp` TIMESTAMP COMMENT 'Date and time when the interventional procedure record was first created in the source system (RIS/EHR). Audit trail field for data lineage and HIPAA audit log compliance.',
+    `device_name` STRING COMMENT 'Commercial or generic name of the primary medical device or implant used (e.g., Wallstent Endoprosthesis, Greenfield IVC Filter, Port-a-Cath). Supports supply chain reconciliation and device surveillance.',
+    `device_udi` STRING COMMENT 'FDA-assigned Unique Device Identifier (UDI) for the primary implant or device placed during the procedure. Mandatory for device surveillance, recall management, and FDA GUDID registry compliance.',
+    `fluoroscopy_time_minutes` DECIMAL(18,2) COMMENT 'Total cumulative fluoroscopy time in minutes recorded during the procedure. Mandatory for radiation dose documentation, ALARA compliance, and Joint Commission radiation safety reporting.',
+    `icd10_post_procedure_diagnosis_code` STRING COMMENT 'ICD-10-CM diagnosis code assigned after the procedure, reflecting findings confirmed or revised during the intervention. May differ from pre-procedure diagnosis and is used for DRG grouping and CDI.. Valid values are `^[A-Z][0-9]{2}(.[A-Z0-9]{1,4})?$`',
+    `imaging_guidance_modality` STRING COMMENT 'Imaging modality used to guide the interventional procedure in real time (e.g., fluoroscopy for vascular interventions, CT for biopsies, ultrasound for drainage). Drives radiation dose tracking and CPT guidance code selection.. Valid values are `fluoroscopy|CT|ultrasound|MRI|PET-CT|combined`',
+    `implant_used` BOOLEAN COMMENT 'Indicates whether a medical device or implant (stent, coil, filter, catheter, port) was placed during the procedure. Triggers UDI capture requirements per FDA 21st Century Cures Act and device surveillance workflows.',
+    `laterality` STRING COMMENT 'Anatomical side of the body on which the interventional procedure was performed. Required for correct-site surgery compliance, ICD-10 coding, and wrong-site event prevention per Joint Commission Universal Protocol.. Valid values are `left|right|bilateral|midline|not-applicable`',
+    `performing_provider_npi` STRING COMMENT '10-digit National Provider Identifier (NPI) of the interventional radiologist who performed the procedure. Required on professional claims (CMS-1500) and for provider credentialing verification.. Valid values are `^[0-9]{10}$`',
+    `procedure_approach` STRING COMMENT 'Technique or approach used to access the target anatomy during the interventional procedure. Impacts CPT code selection, complication risk stratification, and case complexity scoring. [ENUM-REF-CANDIDATE: percutaneous|endovascular|endoscopic|open-hybrid|transarterial|transvenous|transhepatic — promote to reference product]',
+    `procedure_category` STRING COMMENT 'High-level clinical category of the interventional radiology procedure. Supports case mix analysis, resource planning, and complication benchmarking. [ENUM-REF-CANDIDATE: vascular|non-vascular|neuro-IR|oncologic|drainage|biopsy|embolization|other — promote to reference product]',
+    `procedure_end_timestamp` TIMESTAMP COMMENT 'Date and time when the interventional procedure was completed (dressing applied, catheter removed, or patient left the IR suite). Used with start timestamp to calculate procedure duration for suite utilization and staffing analytics.',
+    `procedure_name` STRING COMMENT 'Full descriptive name of the interventional procedure as documented in the RIS/EHR (e.g., Percutaneous Transhepatic Cholangiography, TIPS Procedure, Uterine Fibroid Embolization).',
+    `procedure_start_timestamp` TIMESTAMP COMMENT 'Date and time when the interventional procedure was initiated (first incision, needle insertion, or catheter placement). Principal business event timestamp for case duration calculation and OR/suite utilization reporting.',
+    `procedure_status` STRING COMMENT 'Current lifecycle status of the interventional procedure, aligned with HL7 FHIR Procedure.status value set. Drives workflow routing in the RIS and case management dashboards.. Valid values are `scheduled|in-progress|completed|cancelled|on-hold`',
+    `radiation_dose_dap_gycm2` DECIMAL(18,2) COMMENT 'Dose-area product (DAP) in Gy·cm² representing the total radiation energy delivered, accounting for field size. Complementary to RAK for stochastic risk estimation and dose registry reporting.',
+    `radiation_dose_kerma_mgy` DECIMAL(18,2) COMMENT 'Total reference air kerma (RAK) in milligrays (mGy) delivered to the patient during the procedure. Primary radiation dose metric for fluoroscopy-guided interventions per ACR and Joint Commission dose tracking requirements.',
+    `report_finalized_timestamp` TIMESTAMP COMMENT 'Date and time when the interventional radiology procedure report was finalized (signed) by the interpreting radiologist. Used for turnaround time (TAT) measurement and regulatory reporting on result communication.',
+    `report_status` STRING COMMENT 'Current status of the interventional radiology procedure report in the RIS/PACS workflow. Drives report distribution, result notification, and HIM documentation completion tracking.. Valid values are `preliminary|final|addendum|amended|cancelled`',
+    `secondary_cpt_codes` STRING COMMENT 'Pipe-delimited list of additional CPT codes for add-on procedures, guidance codes, or concurrent services performed during the same IR session (e.g., imaging guidance CPT 77012 alongside a biopsy CPT).',
+    `specimen_collected` BOOLEAN COMMENT 'Indicates whether a tissue or fluid specimen was collected during the procedure (e.g., biopsy core, aspirate, cytology). Triggers downstream laboratory order linkage and pathology workflow.',
+    `specimen_type` STRING COMMENT 'Type of specimen collected during the interventional procedure. Used for pathology order routing, LIS integration, and quality reporting on diagnostic yield.. Valid values are `core-biopsy|fine-needle-aspirate|fluid-aspirate|tissue-excision|cytology|not-applicable`',
+    `technical_success` BOOLEAN COMMENT 'Indicates whether the procedure achieved its intended technical endpoint as defined by the performing interventionalist (e.g., successful vessel recanalization, complete embolization, adequate drainage). Core quality metric for IR outcome reporting.',
+    `updated_timestamp` TIMESTAMP COMMENT 'Date and time when the interventional procedure record was last modified in the source system. Supports incremental ETL processing, audit trail maintenance, and change data capture.',
     CONSTRAINT pk_interventional_procedure PRIMARY KEY(`interventional_procedure_id`)
 ) COMMENT 'Master record for interventional radiology (IR) procedures performed under imaging guidance. Covers vascular, non-vascular, neuro-IR, and oncologic interventions. Captures procedure details, imaging guidance modality, anesthesia type, pre/post diagnoses (ICD-10), complications, specimen collection, fluoroscopy time, radiation dose, and implant tracking (UDI). Supports IR case management, complication tracking, device surveillance, and procedural billing. Integrates with OR scheduling for hybrid suite procedures. Aligns with HL7 FHIR Procedure resource and IHE RAD profiles for interventional reporting.';
 
 CREATE OR REPLACE TABLE `vibe_healthcare_v1`.`radiology`.`radiology_order_status_history` (
-    `radiology_order_status_history_id` BIGINT COMMENT 'Primary key',
-    `care_site_id` BIGINT COMMENT 'FK to care site',
-    `clinician_id` BIGINT COMMENT 'FK to clinician',
-    `corrected_history_id` BIGINT COMMENT 'Self-ref FK to corrected entry',
-    `demographics_id` BIGINT COMMENT 'FK to demographics',
-    `imaging_order_id` BIGINT COMMENT 'FK to imaging order',
-    `message_log_id` BIGINT COMMENT 'FK to message log',
-    `org_unit_id` BIGINT COMMENT 'FK to org unit',
-    `employee_id` BIGINT COMMENT 'FK to radiology employee',
-    `radiology_changed_by_employee_id` BIGINT COMMENT 'Unique identifier for the radiology changed by employee within the radiology radiology order status history record.',
-    `radiology_study_id` BIGINT COMMENT 'Unique identifier for the radiology study within the radiology radiology order status history record.',
-    `report_id` BIGINT COMMENT 'FK to report',
-    `scheduling_appointment_id` BIGINT COMMENT 'FK to scheduling appointment',
-    `visit_id` BIGINT COMMENT 'FK to visit',
-    `accession_number` STRING COMMENT 'The accession number of the radiology radiology order status history record.',
-    `cancellation_category` STRING COMMENT 'The cancellation category of the radiology radiology order status history record.',
-    `change_reason` STRING COMMENT 'The change reason of the radiology radiology order status history record.',
-    `changed_by_user_npi` STRING COMMENT 'NPI of user who changed status',
-    `changed_by_user_role` STRING COMMENT 'Role of user who changed status',
-    `changed_timestamp` TIMESTAMP COMMENT 'The changed timestamp of the radiology radiology order status history record.',
-    `created_timestamp` TIMESTAMP COMMENT 'Record creation timestamp',
-    `hl7_message_reference` STRING COMMENT 'The hl7 message reference of the radiology radiology order status history record.',
-    `hl7_message_type` STRING COMMENT 'The hl7 message type value classifying the radiology radiology order status history record.',
-    `ip_address` STRING COMMENT 'The ip address of the radiology radiology order status history record.',
-    `is_corrective_entry` BOOLEAN COMMENT 'Whether corrective entry',
-    `is_sla_breach` BOOLEAN COMMENT 'Whether SLA breach',
-    `is_system_generated` BOOLEAN COMMENT 'Whether system generated',
-    `modality_type` STRING COMMENT 'The modality type value classifying the radiology radiology order status history record.',
-    `new_status` STRING COMMENT 'The new status value classifying the radiology radiology order status history record.',
-    `on_hold_reason` STRING COMMENT 'The on hold reason of the radiology radiology order status history record.',
-    `order_priority` STRING COMMENT 'The order priority of the radiology radiology order status history record.',
-    `pacs_study_uid` STRING COMMENT 'The pacs study uid of the radiology radiology order status history record.',
-    `previous_status` STRING COMMENT 'The previous status value classifying the radiology radiology order status history record.',
-    `prior_status` STRING COMMENT 'The prior status value classifying the radiology radiology order status history record.',
-    `ris_order_status_code` STRING COMMENT 'The ris order status code value classifying the radiology radiology order status history record.',
-    `sequence_number` STRING COMMENT 'The sequence number of the radiology radiology order status history record.',
-    `sla_threshold_seconds` STRING COMMENT 'SLA threshold in seconds',
-    `source_system_event_code` STRING COMMENT 'The source system event code value classifying the radiology radiology order status history record.',
-    `radiology_order_status_history_status` STRING COMMENT 'The radiology order status history status value classifying the radiology radiology order status history record.',
-    `status_change_reason` STRING COMMENT 'The status change reason of the radiology radiology order status history record.',
-    `status_change_reason_code` STRING COMMENT 'The status change reason code value classifying the radiology radiology order status history record.',
-    `status_change_timestamp` TIMESTAMP COMMENT 'The status change timestamp of the radiology radiology order status history record.',
-    `status_sequence` STRING COMMENT 'The status sequence of the radiology radiology order status history record.',
-    `status_sequence_number` STRING COMMENT 'The status sequence number of the radiology radiology order status history record.',
-    `status_timestamp` TIMESTAMP COMMENT 'The status timestamp of the radiology radiology order status history record.',
-    `transition_duration_seconds` STRING COMMENT 'Transition duration in seconds',
-    `updated_timestamp` TIMESTAMP COMMENT 'Last update timestamp',
-    `vibe_mutation_applied` STRING COMMENT 'Added by VIBE mutation to ensure model change',
-    `vibe_mutation_flag` BOOLEAN COMMENT 'Flag added by VIBE mutator to ensure product is touched',
-    `vibe_structure_marker` STRING COMMENT 'Marks product as part of the required ECM structure.',
-    `workstation_code` STRING COMMENT 'The workstation code value classifying the radiology radiology order status history record.',
-    `changed_by` STRING COMMENT 'The changed by of the radiology radiology order status history record.',
+    `radiology_order_status_history_id` BIGINT COMMENT 'Primary key for order_status_history',
+    `care_site_id` BIGINT COMMENT 'Reference to the healthcare facility or imaging center where the status change event occurred. Supports facility-level workflow benchmarking and multi-site operational reporting.',
+    `clinician_id` BIGINT COMMENT 'Reference to the radiologist assigned to interpret the imaging study at the time of this status event. Relevant for read-phase status transitions (preliminary-read, final-read, report-signed) and radiologist productivity analytics.',
+    `corrected_radiology_order_status_history_id` BIGINT COMMENT 'Reference to the original imaging_order_status_history_id record that this entry corrects, populated only when is_corrective_entry is True. Enables a complete correction chain for audit and compliance review.',
+    `demographics_id` BIGINT COMMENT 'Reference to the patient associated with the imaging order at the time of this status event. Retained on the history record to support patient-level workflow analytics without requiring a join to the order.',
+    `imaging_order_id` BIGINT COMMENT 'Reference to the parent imaging order whose status changed. Links this history record to the originating radiology order in the RIS workflow.',
+    `message_log_id` BIGINT COMMENT 'Foreign key linking to interoperability.message_log. Business justification: Order status transitions (scheduled→in-progress→complete→cancelled) trigger HL7 ORM order messages to referring systems and EHRs for real-time status updates. Message_log tracks each status change mes',
+    `org_unit_id` BIGINT COMMENT 'Reference to the radiology department or imaging unit where this status event occurred. Supports department-level workflow analytics, staffing analysis, and operational benchmarking across imaging service lines.',
+    `employee_id` BIGINT COMMENT 'Internal system user identifier of the individual who performed the status change action in the RIS. Complements the NPI for non-provider staff (technologists, schedulers, coordinators) who may not have an NPI.',
+    `report_id` BIGINT COMMENT 'Reference to the radiology report record associated with this status event, populated for read-phase transitions (preliminary-read, final-read, report-signed, report-delivered). Enables direct linkage between workflow events and the resulting diagnostic report.',
+    `scheduling_appointment_id` BIGINT COMMENT 'Reference to the imaging appointment associated with this status event, when applicable. Links scheduling events (scheduled, patient-arrived) to the corresponding appointment record for scheduling workflow analytics.',
+    `visit_id` BIGINT COMMENT 'Reference to the clinical encounter (visit) associated with the imaging order at the time of this status event. Supports encounter-level workflow analytics and integration with clinical documentation.',
+    `accession_number` STRING COMMENT 'RIS-assigned accession number for the imaging order at the time of this status event. Serves as the primary cross-system identifier linking RIS, PACS, and HL7 ADT/ORM messages for this imaging study.',
+    `cancellation_category` STRING COMMENT 'Structured category for the cancellation or on-hold reason when the new status is cancelled or on-hold. Enables standardized reporting on cancellation root causes for operational improvement. [ENUM-REF-CANDIDATE: patient-no-show|patient-refused|duplicate-order|clinical-contraindication|equipment-failure|scheduling-error|prior-auth-denied|provider-order-change|other — promote to reference product]',
+    `changed_by_user_npi` STRING COMMENT 'The 10-digit National Provider Identifier (NPI) of the clinician or staff member who triggered the status change. Used for accountability tracking, audit compliance, and provider-level workflow performance analysis.. Valid values are `^[0-9]{10}$`',
+    `changed_by_user_role` STRING COMMENT 'The functional role of the user who triggered the status change (e.g., radiologist, technologist, scheduler). Supports role-based workflow analytics and identification of process bottlenecks by staff category. [ENUM-REF-CANDIDATE: radiologist|technologist|scheduler|nurse|physician|system|coordinator|other — 8 candidates stripped; promote to reference product]',
+    `created_timestamp` TIMESTAMP COMMENT 'The date and time when this status history record was first written to the data platform. Represents the audit record creation time, distinct from the business event timestamp (status_change_timestamp). Used for data lineage and ETL reconciliation.',
+    `hl7_message_reference` STRING COMMENT 'The unique message control identifier from the HL7 v2.x ORM/ORU/ADT message that triggered this status change, when applicable. Enables end-to-end HL7 message traceability and interface troubleshooting.',
+    `hl7_message_type` STRING COMMENT 'The HL7 message type (e.g., ORM, ORU, ADT) associated with the status change event. Supports interface-level audit trails and HL7 workflow integration diagnostics.. Valid values are `ORM|ORU|ADT|SIU|ACK|other`',
+    `ip_address` STRING COMMENT 'Network IP address of the workstation or system that submitted the status change event. Retained for HIPAA security audit trail compliance and forensic investigation of unauthorized access or workflow anomalies.',
+    `is_corrective_entry` BOOLEAN COMMENT 'Indicates whether this status change record was entered as a correction to a previously recorded erroneous status transition. Supports audit integrity and distinguishes legitimate workflow events from administrative corrections.',
+    `is_sla_breach` BOOLEAN COMMENT 'Indicates whether this status transition exceeded the defined SLA threshold for the given order priority and modality. True when transition_duration_seconds exceeds sla_threshold_seconds. Supports SLA compliance dashboards and regulatory reporting.',
+    `is_system_generated` BOOLEAN COMMENT 'Indicates whether this status change was automatically triggered by the RIS system (e.g., via HL7 interface, automated workflow rule, or PACS integration) rather than manually entered by a user. Supports differentiation of automated vs. manual workflow events in process analytics.',
+    `modality_type` STRING COMMENT 'The imaging modality associated with the order at the time of this status event (e.g., CT, MRI, X-ray, Ultrasound, PET). Retained on the history record to enable modality-specific workflow and SLA analytics without joining to the order. [ENUM-REF-CANDIDATE: CT|MRI|XR|US|PET|NM|MG|FL|other — 9 candidates stripped; promote to reference product]',
+    `new_status` STRING COMMENT 'The workflow status assigned to the imaging order as a result of this transition event. Represents the current state after the change. [ENUM-REF-CANDIDATE: ordered|scheduled|patient-arrived|exam-started|exam-completed|images-available|preliminary-read|final-read|report-signed|report-delivered|cancelled|on-hold — promote to reference product]. Valid values are `scheduled|patient-arrived|exam-started|exam-completed|images-available|preliminary-read`',
+    `on_hold_reason` STRING COMMENT 'Free-text description of why the imaging order was placed on hold, populated when new_status is on-hold. Captures clinical or operational context such as pending prior authorization, patient preparation issues, or equipment unavailability.',
+    `order_priority` STRING COMMENT 'The clinical priority level of the imaging order at the time of this status event. Used to assess whether SLA thresholds were met relative to the urgency of the order (e.g., STAT orders have tighter turnaround requirements).. Valid values are `STAT|URGENT|ROUTINE|ASAP|ELECTIVE`',
+    `pacs_study_uid` STRING COMMENT 'The DICOM Study Instance UID assigned by the PACS system, populated when the status transition involves image availability (images-available state). Links the RIS workflow event to the corresponding PACS study for cross-system traceability.',
+    `prior_status` STRING COMMENT 'The workflow status of the imaging order immediately before this transition event. Enables reconstruction of the full status progression sequence and detection of invalid or out-of-sequence transitions. [ENUM-REF-CANDIDATE: ordered|scheduled|patient-arrived|exam-started|exam-completed|images-available|preliminary-read|final-read|report-signed|report-delivered|cancelled|on-hold — promote to reference product]. Valid values are `ordered|scheduled|patient-arrived|exam-started|exam-completed|images-available`',
+    `ris_order_status_code` STRING COMMENT 'The native status code as recorded in the source RIS system (Epic Radiant or Cerner RadNet) before normalization to the enterprise status vocabulary. Preserves source fidelity for reconciliation and interface troubleshooting.',
+    `sequence_number` STRING COMMENT 'Ordinal sequence number of this status transition within the lifecycle of the imaging order, starting at 1 for the first transition. Enables ordered reconstruction of the complete status history and detection of missing or duplicate events.',
+    `sla_threshold_seconds` STRING COMMENT 'The configured SLA time threshold in seconds for this specific status transition, based on order priority and modality type. Used to evaluate whether the transition met the defined Service Level Agreement (SLA) target.',
+    `source_system_event_code` STRING COMMENT 'The native event or transaction identifier assigned by the originating RIS or interface system for this status change. Enables traceability back to the source system record for reconciliation and audit purposes.',
+    `status_change_reason` STRING COMMENT 'Free-text or coded reason explaining why the status transition occurred. Particularly important for cancellation, on-hold, and exception states. Supports root cause analysis and RIS process improvement initiatives.',
+    `status_change_reason_code` STRING COMMENT 'Standardized coded value for the status change reason, drawn from the RIS reason code master. Enables structured analytics and reporting on transition causes without relying on free-text parsing.',
+    `status_change_timestamp` TIMESTAMP COMMENT 'The precise date and time when the status transition occurred in the RIS system. This is the principal business event timestamp for this log record, used for SLA compliance measurement, workflow duration analytics, and turnaround time reporting.',
+    `transition_duration_seconds` STRING COMMENT 'The elapsed time in seconds between the prior status and this new status transition. Computed at ingestion time from consecutive status timestamps and stored to support SLA compliance measurement, bottleneck identification, and workflow efficiency analytics without requiring window function recalculation.',
+    `updated_timestamp` TIMESTAMP COMMENT 'The date and time when this status history record was last modified in the data platform, typically populated only for corrective entries. Supports change data capture and audit trail completeness.',
+    `workstation_code` STRING COMMENT 'Identifier of the RIS or PACS workstation from which the status change was performed. Supports physical location tracking of workflow events and security audit requirements under HIPAA access controls.',
     CONSTRAINT pk_radiology_order_status_history PRIMARY KEY(`radiology_order_status_history_id`)
 ) COMMENT 'Audit trail of all status transitions for imaging orders throughout the RIS workflow lifecycle. Records each status change event including prior status, new status, status change datetime, status change reason, changed-by user NPI, and source system. Status states include: ordered, scheduled, patient-arrived, exam-started, exam-completed, images-available, preliminary-read, final-read, report-signed, report-delivered, cancelled, and on-hold. Supports workflow analytics, SLA compliance auditing, and RIS process improvement.';
 
 CREATE OR REPLACE TABLE `vibe_healthcare_v1`.`radiology`.`report_distribution` (
-    `report_distribution_id` BIGINT COMMENT 'Primary key',
-    `direct_message_id` BIGINT COMMENT 'Unique identifier for the direct message within the radiology report distribution record.',
-    `distribution_rule_id` BIGINT COMMENT 'Distribution rule that triggered this distribution',
-    `message_log_id` BIGINT COMMENT 'FK to message log',
-    `report_id` BIGINT COMMENT 'FK to radiology report',
-    `clinician_id` BIGINT COMMENT 'Clinician who is the intended recipient of the distributed report.',
-    `care_site_id` BIGINT COMMENT 'Facility associated with the distribution destination.',
-    `report_recipient_care_site_id` BIGINT COMMENT 'Care site recipient of report',
-    `routing_rule_id` BIGINT COMMENT 'Added to expand thin product order.report_distribution',
-    `trading_partner_id` BIGINT COMMENT 'FK to trading partner',
-    `acknowledged_at` TIMESTAMP COMMENT 'Added to expand thin product radiology.report_distribution',
-    `acknowledged_flag` BOOLEAN COMMENT 'The acknowledged flag of the radiology report distribution record.',
-    `acknowledged_timestamp` TIMESTAMP COMMENT 'The acknowledged timestamp of the radiology report distribution record.',
-    `acknowledgment_code` STRING COMMENT 'The acknowledgment code value classifying the radiology report distribution record.',
-    `acknowledgment_status` STRING COMMENT 'The acknowledgment status value classifying the radiology report distribution record.',
-    `acknowledgment_timestamp` TIMESTAMP COMMENT 'The acknowledgment timestamp of the radiology report distribution record.',
-    `attachment_count` STRING COMMENT 'Number of attachments included with report',
-    `attachment_included_flag` BOOLEAN COMMENT 'Added to expand thin product radiology.report_distribution',
-    `consent_verified_flag` BOOLEAN COMMENT 'Whether patient consent for distribution was verified',
-    `created_timestamp` TIMESTAMP COMMENT 'Timestamp when the distribution record was created.',
-    `critical_result_flag` BOOLEAN COMMENT 'Whether report contains critical results requiring immediate notification',
-    `delivered_at` TIMESTAMP COMMENT 'Added to expand thin product radiology.report_distribution',
-    `delivered_timestamp` TIMESTAMP COMMENT 'The delivered timestamp of the radiology report distribution record.',
-    `delivery_attempt_count` STRING COMMENT 'Added to expand thin product radiology.report_distribution',
-    `delivery_confirmed_flag` BOOLEAN COMMENT 'The delivery confirmed flag of the radiology report distribution record.',
-    `delivery_failure_reason` STRING COMMENT 'The delivery failure reason of the radiology report distribution record.',
-    `delivery_latency_seconds` STRING COMMENT 'Added to expand thin product with domain-appropriate detail.',
-    `delivery_method` STRING COMMENT 'The delivery method of the radiology report distribution record.',
-    `delivery_status` STRING COMMENT 'The delivery status value classifying the radiology report distribution record.',
-    `delivery_timestamp` TIMESTAMP COMMENT 'The delivery timestamp of the radiology report distribution record.',
-    `distribution_batch_number` BIGINT COMMENT 'Added to expand thin product with domain-appropriate detail.',
-    `distribution_channel` STRING COMMENT 'Added to expand thin product radiology.report_distribution',
-    `distribution_method` STRING COMMENT 'Method used to distribute the report (e.g., HL7, fax, Direct message, portal).',
-    `distribution_notes` STRING COMMENT 'Notes about distribution',
-    `distribution_priority` STRING COMMENT 'Priority of distribution (routine, urgent, stat)',
-    `distribution_status` STRING COMMENT 'The distribution status value classifying the radiology report distribution record.',
-    `distribution_timestamp` TIMESTAMP COMMENT 'The distribution timestamp of the radiology report distribution record.',
-    `document_format` STRING COMMENT 'The document format of the radiology report distribution record.',
-    `encryption_method` STRING COMMENT 'Encryption method used for secure transmission',
-    `error_message` STRING COMMENT 'The error message of the radiology report distribution record.',
-    `escalation_flag` BOOLEAN COMMENT 'Added to expand thin product with domain-appropriate detail.',
-    `escalation_timestamp` TIMESTAMP COMMENT 'Added to expand thin product with domain-appropriate detail.',
-    `external_system_reference` STRING COMMENT 'Reference ID in external distribution system',
-    `extra_attr_1` STRING COMMENT 'The extra attr 1 of the radiology report distribution record.',
-    `extra_attr_2` STRING COMMENT 'The extra attr 2 of the radiology report distribution record.',
-    `extra_attr_3` STRING COMMENT 'The extra attr 3 of the radiology report distribution record.',
-    `extra_attr_4` STRING COMMENT 'The extra attr 4 of the radiology report distribution record.',
-    `extra_attr_5` STRING COMMENT 'The extra attr 5 of the radiology report distribution record.',
-    `failed_reason` STRING COMMENT 'Added to expand thin product radiology.report_distribution',
-    `failure_reason` STRING COMMENT 'The failure reason of the radiology report distribution record.',
-    `priority` STRING COMMENT 'Priority level of the distribution (e.g., stat, routine).',
-    `priority_level` STRING COMMENT 'Priority level of distribution',
-    `read_confirmation_timestamp` TIMESTAMP COMMENT 'Timestamp when recipient confirmed reading',
-    `read_receipt_requested` BOOLEAN COMMENT 'Whether read receipt was requested',
-    `read_receipt_timestamp` TIMESTAMP COMMENT 'Timestamp when recipient acknowledged reading report',
-    `recipient_email` STRING COMMENT 'Email address used for report distribution.',
-    `recipient_fax` STRING COMMENT 'Fax number of recipient',
-    `recipient_fax_number` STRING COMMENT 'Fax number used for report distribution.',
-    `recipient_name` STRING COMMENT 'The recipient name of the radiology report distribution record.',
-    `recipient_npi` STRING COMMENT 'The recipient npi of the radiology report distribution record.',
-    `recipient_organization` STRING COMMENT 'Added to expand thin product with domain-appropriate detail.',
-    `recipient_reference` BIGINT COMMENT 'Added to expand thin product radiology.report_distribution',
-    `recipient_type` STRING COMMENT 'Type of recipient (provider, facility, patient)',
-    `retry_count` STRING COMMENT 'The retry count of the radiology report distribution record.',
-    `sent_timestamp` TIMESTAMP COMMENT 'The sent timestamp of the radiology report distribution record.',
-    `sla_compliance_flag` BOOLEAN COMMENT 'Whether SLA compliant',
-    `transmission_timestamp` TIMESTAMP COMMENT 'The transmission timestamp of the radiology report distribution record.',
-    `updated_timestamp` TIMESTAMP COMMENT 'Record last update timestamp',
-    `vibe_expanded_flag` BOOLEAN COMMENT 'Flag added by VIBE batch to expand thin product attribute set.',
-    `vibe_mutation_applied` STRING COMMENT 'Added by VIBE mutation to ensure model change',
-    `vibe_mutation_flag` BOOLEAN COMMENT 'Flag added by VIBE mutator to ensure product is touched',
-    `vibe_structure_marker` STRING COMMENT 'Marks product as part of the required ECM structure.',
-    `viewed_timestamp` TIMESTAMP COMMENT 'When recipient viewed the report',
+    `report_distribution_id` BIGINT COMMENT 'Primary key for the report_distribution association',
+    `message_log_id` BIGINT COMMENT 'Unique identifier for the HL7/FHIR message sent to this trading partner for this report. Used for message tracking, troubleshooting, and correlation with partner acknowledgments.',
+    `report_id` BIGINT COMMENT 'Foreign key linking to the radiology report being distributed to external partners',
+    `trading_partner_id` BIGINT COMMENT 'Foreign key linking to the external trading partner receiving the report',
+    `acknowledgment_code` STRING COMMENT 'HL7 acknowledgment code returned by the trading partner (AA=Application Accept, AE=Application Error, AR=Application Reject). Used for troubleshooting failed transmissions and partner-specific delivery issues.',
+    `delivered_timestamp` TIMESTAMP COMMENT 'Date and time when the trading partner acknowledged successful receipt and processing of the report. Null if not yet acknowledged. Used to calculate end-to-end delivery time.',
+    `delivery_status` STRING COMMENT 'Current status of the report delivery to this trading partner. Tracks the lifecycle from initial transmission through acknowledgment or failure. Values: pending, transmitted, acknowledged, failed, retrying, delivered.',
+    `document_format` STRING COMMENT 'Interoperability standard format used to transmit the report to this specific trading partner. Different partners may receive the same report in different formats based on their capabilities and data sharing agreements. Values: CDA, HL7v2, FHIR, Direct, PDF.',
+    `error_message` STRING COMMENT 'Detailed error message returned by the trading partner or interface engine if delivery failed. Used for troubleshooting and partner support escalation.',
+    `retry_count` STRING COMMENT 'Number of transmission retry attempts for this specific report-partner distribution. Used to identify problematic partner connections and trigger escalation workflows after threshold exceeded.',
+    `sla_compliance_flag` BOOLEAN COMMENT 'Indicates whether the report was delivered to this trading partner within the contractual SLA timeframe specified in the data sharing agreement. Used for partner performance monitoring and contract compliance reporting.',
+    `transmission_timestamp` TIMESTAMP COMMENT 'Date and time when the radiology report was transmitted to this specific trading partner. Critical for SLA tracking and audit trail of when each partner received the report.',
     CONSTRAINT pk_report_distribution PRIMARY KEY(`report_distribution_id`)
 ) COMMENT 'This association product represents the distribution event between radiology reports and external trading partners. It captures the transmission of a finalized radiology report to an external entity (HIE, referring provider, specialist, payer, patient portal) via interoperability standards. Each record links one report to one trading partner with transmission metadata, delivery status, acknowledgment tracking, and SLA compliance monitoring that exist only in the context of this specific distribution event.. Existence Justification: In healthcare interoperability operations, a single finalized radiology report is routinely distributed to multiple external trading partners (referring providers, specialists, HIEs, patient portals, payers) based on care coordination needs, regulatory requirements, and data sharing agreements. Each trading partner may receive hundreds or thousands of reports over time. The distribution relationship is an operational business process actively managed by interoperability teams, tracking transmission status, acknowledgments, retries, and SLA compliance per partner per report.';
 
 CREATE OR REPLACE TABLE `vibe_healthcare_v1`.`radiology`.`transmission` (
-    `transmission_id` BIGINT COMMENT 'Primary key',
-    `dicom_series_id` BIGINT COMMENT 'Unique identifier for the dicom series within the radiology transmission record.',
-    `employee_id` BIGINT COMMENT 'FK to employee',
-    `interface_channel_id` BIGINT COMMENT 'Unique identifier for the interface channel within the radiology transmission record.',
-    `message_log_id` BIGINT COMMENT 'Unique identifier for the message log within the radiology transmission record.',
-    `radiology_study_id` BIGINT COMMENT 'FK to radiology study',
-    `report_id` BIGINT COMMENT 'Unique identifier for the report within the radiology transmission record.',
-    `teleradiology_case_id` BIGINT COMMENT 'Unique identifier for the teleradiology case within the radiology transmission record.',
-    `trading_partner_id` BIGINT COMMENT 'FK to trading partner',
-    `acknowledgment_code` STRING COMMENT 'The acknowledgment code value classifying the radiology transmission record.',
-    `acknowledgment_timestamp` TIMESTAMP COMMENT 'The acknowledgment timestamp of the radiology transmission record.',
-    `bytes` BIGINT COMMENT 'The bytes of the radiology transmission record.',
-    `bytes_transmitted` BIGINT COMMENT 'The bytes transmitted of the radiology transmission record.',
-    `completion_timestamp` TIMESTAMP COMMENT 'The completion timestamp of the radiology transmission record.',
-    `created_timestamp` TIMESTAMP COMMENT 'Record creation timestamp',
-    `datetime` TIMESTAMP COMMENT 'The datetime of the radiology transmission record.',
-    `destination` STRING COMMENT 'The destination of the radiology transmission record.',
-    `destination_ae_title` STRING COMMENT 'The destination ae title of the radiology transmission record.',
-    `destination_system` STRING COMMENT 'The destination system of the radiology transmission record.',
-    `error_message` STRING COMMENT 'The error message of the radiology transmission record.',
-    `failure_reason` STRING COMMENT 'The failure reason of the radiology transmission record.',
-    `image_count` STRING COMMENT 'The image count of the radiology transmission record.',
-    `initiation_timestamp` TIMESTAMP COMMENT 'The initiation timestamp of the radiology transmission record.',
-    `instance_count` STRING COMMENT 'The instance count of the radiology transmission record.',
-    `method` STRING COMMENT 'Transmission method',
-    `protocol` STRING COMMENT 'The protocol of the radiology transmission record.',
-    `purpose` STRING COMMENT 'Purpose of transmission',
-    `retransmission_count` STRING COMMENT 'The retransmission count of the radiology transmission record.',
-    `retry_count` STRING COMMENT 'The retry count of the radiology transmission record.',
-    `size_mb` DECIMAL(18,2) COMMENT 'Size in MB',
-    `sla_met_flag` BOOLEAN COMMENT 'Whether SLA met',
-    `source_ae_title` STRING COMMENT 'The source ae title of the radiology transmission record.',
-    `study_instance_uid` STRING COMMENT 'The study instance uid of the radiology transmission record.',
-    `success` BOOLEAN COMMENT 'The success of the radiology transmission record.',
-    `transmission_status` STRING COMMENT 'The transmission status value classifying the radiology transmission record.',
-    `transmission_timestamp` TIMESTAMP COMMENT 'The transmission timestamp of the radiology transmission record.',
-    `transmission_type` STRING COMMENT 'The transmission type value classifying the radiology transmission record.',
-    `transmitted_timestamp` TIMESTAMP COMMENT 'The transmitted timestamp of the radiology transmission record.',
-    `updated_timestamp` TIMESTAMP COMMENT 'Last update timestamp',
-    `vibe_mutation_applied` STRING COMMENT 'Added by VIBE mutation to ensure model change',
-    `vibe_mutation_flag` BOOLEAN COMMENT 'Flag added by VIBE mutator to ensure product is touched',
-    `vibe_structure_marker` STRING COMMENT 'Marks product as part of the required ECM structure.',
+    `transmission_id` BIGINT COMMENT 'Unique surrogate primary key for the study transmission record. Identifies a specific transmission event of one study to one trading partner.',
+    `employee_id` BIGINT COMMENT 'Reference to the employee or system user who initiated the manual transmission request, if applicable. Null for automated transmissions triggered by workflow rules.',
+    `radiology_study_id` BIGINT COMMENT 'Foreign key linking to the imaging study that was transmitted to the external partner.',
+    `trading_partner_id` BIGINT COMMENT 'Foreign key linking to the external trading partner that received the imaging study.',
+    `acknowledgment_timestamp` TIMESTAMP COMMENT 'Date and time when the trading partner acknowledged successful receipt of the imaging study. Used to calculate transmission latency and confirm end-to-end delivery.',
+    `created_timestamp` TIMESTAMP COMMENT 'Date and time this transmission record was first created in the source system. Supports audit trails and data lineage tracking.',
+    `error_message` STRING COMMENT 'Detailed error message or rejection reason returned by the trading partner or interface engine when transmission fails. Supports operational troubleshooting and root cause analysis.',
+    `method` STRING COMMENT 'Technical protocol or method used to transmit the imaging study to the trading partner. Indicates the interoperability standard and transport mechanism employed for this specific transmission.',
+    `purpose` STRING COMMENT 'Business reason or clinical purpose for transmitting the imaging study to this specific trading partner. Supports audit trails and compliance with data sharing agreement terms.',
+    `retry_count` STRING COMMENT 'Number of retry attempts made to transmit the study to the trading partner after initial transmission failures. Supports operational troubleshooting and partner reliability assessment.',
+    `size_mb` DECIMAL(18,2) COMMENT 'Total size of the transmitted imaging study data in megabytes. Used for bandwidth monitoring, cost allocation, and transmission performance analysis.',
+    `sla_met_flag` BOOLEAN COMMENT 'Indicates whether the transmission met the service level agreement (SLA) time commitment defined in the data sharing agreement with the trading partner. Used for partner performance reporting and contract compliance.',
+    `transmission_status` STRING COMMENT 'Current status of the transmission workflow. Tracks whether the study was successfully delivered, is in transit, failed, or was acknowledged/rejected by the receiving partner. Drives operational monitoring and retry logic.',
+    `timestamp` TIMESTAMP COMMENT 'Date and time when the imaging study was transmitted to the trading partner. Marks the initiation of the outbound transfer via DICOM C-STORE, XDS-I, or FHIR ImagingStudy exchange.',
+    `updated_timestamp` TIMESTAMP COMMENT 'Date and time this transmission record was most recently modified in the source system. Tracks status updates, acknowledgment receipt, and retry attempts.',
     CONSTRAINT pk_transmission PRIMARY KEY(`transmission_id`)
 ) COMMENT 'This association product represents the transmission event between an imaging study and an external trading partner. It captures the operational act of sending DICOM study data to external entities (referring facilities, specialists, teleradiology vendors, HIEs) for care coordination, second opinions, or regulatory reporting. Each record links one imaging study to one trading partner with transmission-specific metadata including delivery status, acknowledgments, retry attempts, and SLA compliance tracking. SSOT for outbound imaging study distribution to external partners.. Existence Justification: In healthcare radiology operations, a single imaging study is routinely transmitted to multiple external trading partners for different clinical purposes: the referring facility receives results, a specialist receives images for consultation, a teleradiology vendor provides after-hours interpretation, and an HIE receives data for regional care coordination. Conversely, each trading partner receives thousands of imaging studies over time from the healthcare organization. The transmission relationship is an operational business process actively managed by radiology IT and PACS administrators, with each transmission tracked for delivery status, acknowledgments, retry attempts, and SLA compliance per the data sharing agreement.';
 
 CREATE OR REPLACE TABLE `vibe_healthcare_v1`.`radiology`.`network_modality_participation` (
-    `network_modality_participation_id` BIGINT COMMENT 'Primary key',
-    `care_site_id` BIGINT COMMENT 'Unique identifier for the care site within the radiology network modality participation record.',
-    `contract_id` BIGINT COMMENT 'FK to contract',
-    `coverage_policy_id` BIGINT COMMENT 'Unique identifier for the coverage policy within the radiology network modality participation record.',
-    `modality_id` BIGINT COMMENT 'FK to modality',
-    `network_contract_id` BIGINT COMMENT 'Unique identifier for the network contract within the radiology network modality participation record.',
-    `payer_id` BIGINT COMMENT 'Unique identifier for the payer within the radiology network modality participation record.',
-    `provider_network_id` BIGINT COMMENT 'FK to provider network',
-    `accepting_new_referrals_flag` BOOLEAN COMMENT 'Whether accepting new referrals',
-    `authorization_required_flag` BOOLEAN COMMENT 'Whether authorization required',
-    `authorization_threshold_amount` DECIMAL(18,2) COMMENT 'The authorization threshold amount of the radiology network modality participation record.',
-    `contracted_rate` DECIMAL(18,2) COMMENT 'The contracted rate of the radiology network modality participation record.',
-    `created_timestamp` TIMESTAMP COMMENT 'Record creation timestamp',
-    `credentialing_verified_date` DATE COMMENT 'Timestamp capturing the credentialing verified date associated with the radiology network modality participation record.',
-    `effective_date` DATE COMMENT 'Timestamp capturing the effective date associated with the radiology network modality participation record.',
-    `in_network_flag` BOOLEAN COMMENT 'The in network flag of the radiology network modality participation record.',
-    `member_cost_share_tier` STRING COMMENT 'The member cost share tier of the radiology network modality participation record.',
-    `network_adequacy_counted_flag` BOOLEAN COMMENT 'Whether counted for network adequacy',
-    `network_status` STRING COMMENT 'The network status value classifying the radiology network modality participation record.',
-    `next_credentialing_due_date` DATE COMMENT 'Timestamp capturing the next credentialing due date associated with the radiology network modality participation record.',
-    `participation_status` STRING COMMENT 'The participation status value classifying the radiology network modality participation record.',
-    `participation_type` STRING COMMENT 'The participation type value classifying the radiology network modality participation record.',
-    `quality_tier_assignment` STRING COMMENT 'The quality tier assignment of the radiology network modality participation record.',
-    `rate_type` STRING COMMENT 'The rate type value classifying the radiology network modality participation record.',
-    `shared_service_flag` BOOLEAN COMMENT 'The shared service flag of the radiology network modality participation record.',
-    `termination_date` DATE COMMENT 'Timestamp capturing the termination date associated with the radiology network modality participation record.',
-    `updated_timestamp` TIMESTAMP COMMENT 'Last update timestamp',
-    `vibe_mutation_applied` STRING COMMENT 'Added by VIBE mutation to ensure model change',
-    `vibe_mutation_flag` BOOLEAN COMMENT 'Flag added by VIBE mutator to ensure product is touched',
-    `vibe_structure_marker` STRING COMMENT 'Marks product as part of the required ECM structure.',
+    `network_modality_participation_id` BIGINT COMMENT 'Unique surrogate identifier for this network modality participation record. Primary key.',
+    `modality_id` BIGINT COMMENT 'Foreign key linking to the imaging modality unit participating in this network',
+    `provider_network_id` BIGINT COMMENT 'Foreign key linking to the provider network in which this modality participates',
+    `accepting_new_referrals_flag` BOOLEAN COMMENT 'Indicates whether this modality is currently accepting new patient referrals through this network. True allows scheduling, False blocks new appointments. May differ from overall modality operational status due to network-specific capacity management.',
+    `authorization_required_flag` BOOLEAN COMMENT 'Indicates whether prior authorization or pre-certification is required for imaging services on this modality within this network. True requires authorization before service, False allows direct access. Drives utilization management workflows.',
+    `authorization_threshold_amount` DECIMAL(18,2) COMMENT 'Dollar amount threshold above which prior authorization is required for services on this modality. Null if authorization_required_flag is False or if all services require authorization regardless of cost.',
+    `contracted_rate` DECIMAL(18,2) COMMENT 'Negotiated reimbursement rate for imaging services performed on this modality within this network. May be per-procedure, per-study, or bundled rate depending on contract terms. Used for claims adjudication and provider payment.',
+    `created_timestamp` TIMESTAMP COMMENT 'Timestamp when this network modality participation record was created in the system. Audit field for data lineage and compliance.',
+    `credentialing_verified_date` DATE COMMENT 'Date when the facility and modality credentials were verified for network participation. Required for CMS network adequacy and accreditation compliance. Typically reverified on recredentialing cycle.',
+    `effective_date` DATE COMMENT 'Date when this modalitys participation in the provider network becomes active. Used for claims adjudication to determine in-network vs out-of-network status at service date.',
+    `member_cost_share_tier` STRING COMMENT 'Cost-sharing tier assigned to this modality within this network, determining member copay, coinsurance, and deductible application. Aligns with network tier and modality quality/efficiency metrics.',
+    `network_adequacy_counted_flag` BOOLEAN COMMENT 'Indicates whether this modality is counted toward network adequacy metrics for CMS or state regulatory reporting. True if modality meets adequacy criteria (accepting patients, operational, credentialed). False if excluded from adequacy calculations.',
+    `next_credentialing_due_date` DATE COMMENT 'Scheduled date for next credentialing review of this modalitys network participation. Drives compliance workflows and network adequacy maintenance.',
+    `participation_status` STRING COMMENT 'Current lifecycle status of this modalitys participation in the provider network. Active indicates the modality is currently in-network and available for member utilization. Drives claims adjudication and member cost-sharing calculations.',
+    `quality_tier_assignment` STRING COMMENT 'Quality performance tier assigned to this modality within this network based on quality metrics, patient outcomes, and efficiency measures. Used for tiered network design and member steering.',
+    `rate_type` STRING COMMENT 'Classification of how the contracted rate is structured. Per-Procedure rates apply to individual CPT codes, Per-Study rates apply to complete imaging studies, Bundled rates cover multiple services, Fee-Schedule references a standard fee schedule, Percentage-of-Charges applies a discount to billed charges.',
+    `termination_date` DATE COMMENT 'Date when this modalitys participation in the provider network ends. Null if participation is ongoing. Critical for claims processing and member notification of network changes.',
+    `updated_timestamp` TIMESTAMP COMMENT 'Timestamp when this network modality participation record was last updated. Audit field for change tracking and data quality monitoring.',
     CONSTRAINT pk_network_modality_participation PRIMARY KEY(`network_modality_participation_id`)
 ) COMMENT 'This association product represents the contractual participation of imaging modalities in payer-defined provider networks. It captures the business relationship where healthcare facilities contract specific imaging equipment into insurance networks, establishing in-network status, reimbursement rates, and authorization requirements. Each record links one modality to one provider_network with attributes that exist only in the context of this network participation agreement.. Existence Justification: Healthcare facilities contract specific imaging modalities into multiple payer-defined provider networks simultaneously, and each provider network includes multiple modalities across different facilities and equipment types. Payers actively manage these network participation relationships with modality-specific contracted rates, authorization requirements, credentialing verification, and network adequacy tracking. This is an operational business process where network managers create, update, and terminate modality participation agreements as part of network design and provider contracting.';
 
-CREATE OR REPLACE TABLE `vibe_healthcare_v1`.`radiology`.`radiology_finding` (
-    `radiology_finding_id` BIGINT COMMENT 'Primary key',
-    `audit_finding_id` BIGINT COMMENT 'FK to audit finding',
-    `clinical_finding_id` BIGINT COMMENT 'SSOT cross-reference to canonical clinical.clinical_finding',
-    `demographics_id` BIGINT COMMENT 'FK to demographics',
-    `imaging_order_id` BIGINT COMMENT 'FK to imaging order',
-    `clinician_id` BIGINT COMMENT 'FK to clinician',
-    `icd_code_id` BIGINT COMMENT 'FK to ICD code',
-    `radiology_reading_clinician_id` BIGINT COMMENT 'Unique identifier for the radiology reading clinician within the radiology radiology finding record.',
-    `radiology_study_id` BIGINT COMMENT 'Unique identifier for the radiology study within the radiology radiology finding record.',
-    `report_id` BIGINT COMMENT 'FK to report',
-    `research_study_id` BIGINT COMMENT 'FK to research study',
-    `snomed_concept_id` BIGINT COMMENT 'FK to SNOMED concept',
-    `visit_id` BIGINT COMMENT 'FK to visit',
-    `accession_number` STRING COMMENT 'The accession number of the radiology radiology finding record.',
-    `acr_score_type` STRING COMMENT 'The acr score type value classifying the radiology radiology finding record.',
-    `acr_score_value` DECIMAL(18,2) COMMENT 'The acr score value of the radiology radiology finding record.',
-    `anatomic_location` STRING COMMENT 'The anatomic location of the radiology radiology finding record.',
-    `anatomical_location` STRING COMMENT 'The anatomical location of the radiology radiology finding record.',
-    `body_part` STRING COMMENT 'The body part of the radiology radiology finding record.',
-    `body_region` STRING COMMENT 'The body region of the radiology radiology finding record.',
-    `body_site_code` STRING COMMENT 'The body site code value classifying the radiology radiology finding record.',
-    `body_site_description` STRING COMMENT 'The body site description of the radiology radiology finding record.',
-    `code_system` STRING COMMENT 'The code system of the radiology radiology finding record.',
-    `created_timestamp` TIMESTAMP COMMENT 'Record creation timestamp',
-    `critical_flag` BOOLEAN COMMENT 'The critical flag of the radiology radiology finding record.',
-    `data_source_method` STRING COMMENT 'The data source method of the radiology radiology finding record.',
-    `dicom_series_uid` STRING COMMENT 'The dicom series uid of the radiology radiology finding record.',
-    `dicom_sop_instance_uid` STRING COMMENT 'The dicom sop instance uid of the radiology radiology finding record.',
-    `escalation_status` STRING COMMENT 'The escalation status value classifying the radiology radiology finding record.',
-    `escalation_timestamp` TIMESTAMP COMMENT 'The escalation timestamp of the radiology radiology finding record.',
-    `finding_category` STRING COMMENT 'The finding category of the radiology radiology finding record.',
-    `finding_code` STRING COMMENT 'The finding code value classifying the radiology radiology finding record.',
-    `finding_description` STRING COMMENT 'The finding description of the radiology radiology finding record.',
-    `finding_domain` STRING COMMENT 'The finding domain of the radiology radiology finding record.',
-    `finding_severity` STRING COMMENT 'The finding severity of the radiology radiology finding record.',
-    `finding_status` STRING COMMENT 'The finding status value classifying the radiology radiology finding record.',
-    `follow_up_completed_date` DATE COMMENT 'Timestamp capturing the follow up completed date associated with the radiology radiology finding record.',
-    `follow_up_due_date` DATE COMMENT 'Timestamp capturing the follow up due date associated with the radiology radiology finding record.',
-    `follow_up_modality` STRING COMMENT 'The follow up modality of the radiology radiology finding record.',
-    `follow_up_recommended` BOOLEAN COMMENT 'Whether follow-up recommended',
-    `follow_up_status` STRING COMMENT 'The follow up status value classifying the radiology radiology finding record.',
-    `follow_up_timeframe_days` STRING COMMENT 'Follow-up timeframe in days',
-    `follow_up_type` STRING COMMENT 'The follow up type value classifying the radiology radiology finding record.',
-    `imaging_modality` STRING COMMENT 'The imaging modality of the radiology radiology finding record.',
-    `incidental_flag` BOOLEAN COMMENT 'The incidental flag of the radiology radiology finding record.',
-    `is_critical` BOOLEAN COMMENT 'Boolean flag indicating the is critical status of the radiology radiology finding record.',
-    `is_critical_result` BOOLEAN COMMENT 'Whether critical result',
-    `is_incidental_finding` BOOLEAN COMMENT 'Whether incidental finding',
-    `laterality` STRING COMMENT 'The laterality of the radiology radiology finding record.',
-    `measurement_unit` STRING COMMENT 'The measurement unit of the radiology radiology finding record.',
-    `measurement_value` DECIMAL(18,2) COMMENT 'The measurement value of the radiology radiology finding record.',
-    `nlp_confidence_score` DECIMAL(18,2) COMMENT 'The nlp confidence score of the radiology radiology finding record.',
-    `patient_notification_timestamp` TIMESTAMP COMMENT 'The patient notification timestamp of the radiology radiology finding record.',
-    `patient_notified` BOOLEAN COMMENT 'Whether patient notified',
-    `provider_notification_timestamp` TIMESTAMP COMMENT 'The provider notification timestamp of the radiology radiology finding record.',
-    `provider_notified` BOOLEAN COMMENT 'Whether provider notified',
-    `radiology_icd10_icd_code_id` BIGINT COMMENT 'Unique identifier for the radiology icd10 icd code within the radiology radiology finding record.',
-    `radlex_code` STRING COMMENT 'The radlex code value classifying the radiology radiology finding record.',
-    `rads_category` STRING COMMENT 'The rads category of the radiology radiology finding record.',
-    `report_finalized_timestamp` TIMESTAMP COMMENT 'The report finalized timestamp of the radiology radiology finding record.',
-    `severity` STRING COMMENT 'The severity of the radiology radiology finding record.',
-    `source_system_finding_code` STRING COMMENT 'The source system finding code value classifying the radiology radiology finding record.',
-    `ssot_canonical_reference` STRING COMMENT 'SSOT canonical: clinical.clinical_finding (duplicate reconciled to canonical)',
-    `ssot_reference` STRING COMMENT 'The ssot reference of the radiology radiology finding record.',
-    `study_date` DATE COMMENT 'Timestamp capturing the study date associated with the radiology radiology finding record.',
-    `updated_timestamp` TIMESTAMP COMMENT 'Last update timestamp',
-    `vibe_mutation_applied` STRING COMMENT 'Added by VIBE mutation to ensure model change',
-    `vibe_mutation_flag` BOOLEAN COMMENT 'Flag added by VIBE mutator to ensure product is touched',
-    `vibe_structure_marker` STRING COMMENT 'Marks product as part of the required ECM structure.',
-    CONSTRAINT pk_radiology_finding PRIMARY KEY(`radiology_finding_id`)
-) COMMENT 'Radiology-specific imaging findings with DICOM references, ACR scoring, and follow-up tracking. SSOT consumer extending clinical.clinical_finding with radiology-specific attributes.';
-
-CREATE OR REPLACE TABLE `vibe_healthcare_v1`.`radiology`.`radiology_peer_review` (
-    `radiology_peer_review_id` BIGINT COMMENT 'Primary key',
-    `audit_finding_id` BIGINT COMMENT 'FK to audit finding',
-    `care_site_id` BIGINT COMMENT 'FK to care site',
-    `employee_id` BIGINT COMMENT 'FK to coordinator employee',
-    `corrective_action_plan_id` BIGINT COMMENT 'FK to corrective action plan',
-    `cpt_code_id` BIGINT COMMENT 'FK to CPT code',
-    `org_unit_id` BIGINT COMMENT 'FK to org unit',
-    `clinician_id` BIGINT COMMENT 'Unique identifier for the originating clinician within the radiology radiology peer review record.',
-    `quality_peer_review_id` BIGINT COMMENT 'SSOT cross-reference to canonical quality.quality_peer_review',
-    `radiology_original_reader_clinician_id` BIGINT COMMENT 'Unique identifier for the radiology original reader clinician within the radiology radiology peer review record.',
-    `report_id` BIGINT COMMENT 'FK to original report',
-    `radiology_report_id` BIGINT COMMENT 'Unique identifier for the radiology report within the radiology radiology peer review record.',
-    `radiology_reviewed_clinician_id` BIGINT COMMENT 'Unique identifier for the radiology reviewed clinician within the radiology radiology peer review record.',
-    `radiology_reviewing_clinician_id` BIGINT COMMENT 'Unique identifier for the radiology reviewing clinician within the radiology radiology peer review record.',
-    `radiology_study_id` BIGINT COMMENT 'Unique identifier for the radiology study within the radiology radiology peer review record.',
-    `report_addendum_id` BIGINT COMMENT 'FK to report addendum',
-    `reviewer_clinician_id` BIGINT COMMENT 'Unique identifier for the reviewer clinician within the radiology radiology peer review record.',
-    `visit_id` BIGINT COMMENT 'FK to visit',
-    `accession_number` STRING COMMENT 'The accession number of the radiology radiology peer review record.',
-    `acr_accreditation_cycle` STRING COMMENT 'The acr accreditation cycle of the radiology radiology peer review record.',
-    `acr_radpeer_score` STRING COMMENT 'The acr radpeer score of the radiology radiology peer review record.',
-    `agreement_flag` BOOLEAN COMMENT 'The agreement flag of the radiology radiology peer review record.',
-    `agreement_score` DECIMAL(18,2) COMMENT 'The agreement score of the radiology radiology peer review record.',
-    `blinded_review_flag` BOOLEAN COMMENT 'Whether review was blinded',
-    `body_part_examined` STRING COMMENT 'The body part examined of the radiology radiology peer review record.',
-    `case_conference_flag` BOOLEAN COMMENT 'Whether case conference held',
-    `clinical_history_available_flag` BOOLEAN COMMENT 'Whether clinical history was available',
-    `created_timestamp` TIMESTAMP COMMENT 'Record creation timestamp',
-    `discrepancy_category` STRING COMMENT 'Category of discrepancy',
-    `discrepancy_clinical_significance` STRING COMMENT 'The discrepancy clinical significance of the radiology radiology peer review record.',
-    `discrepancy_description` STRING COMMENT 'Description of discrepancy',
-    `discrepancy_flag` BOOLEAN COMMENT 'The discrepancy flag of the radiology radiology peer review record.',
-    `discrepancy_type` STRING COMMENT 'Type of discrepancy',
-    `educational_feedback_flag` BOOLEAN COMMENT 'Whether educational feedback provided',
-    `escalated_to_chair_flag` BOOLEAN COMMENT 'Whether escalated to chair',
-    `icd10_finding_code` STRING COMMENT 'The icd10 finding code value classifying the radiology radiology peer review record.',
-    `modality` STRING COMMENT 'The modality of the radiology radiology peer review record.',
-    `modality_code` STRING COMMENT 'The modality code value classifying the radiology radiology peer review record.',
-    `ocr_score` STRING COMMENT 'The ocr score of the radiology radiology peer review record.',
-    `oppe_fppe_flag` BOOLEAN COMMENT 'Whether part of OPPE/FPPE',
-    `original_radiologist_npi` STRING COMMENT 'The original radiologist npi of the radiology radiology peer review record.',
-    `original_radiologist_response` STRING COMMENT 'The original radiologist response of the radiology radiology peer review record.',
-    `original_report_finalized_datetime` TIMESTAMP COMMENT 'When original report was finalized',
-    `patient_safety_event_flag` BOOLEAN COMMENT 'Whether patient safety event',
-    `peer_review_program` STRING COMMENT 'The peer review program of the radiology radiology peer review record.',
-    `peer_review_scope` STRING COMMENT 'The peer review scope of the radiology radiology peer review record.',
-    `prior_study_available_flag` BOOLEAN COMMENT 'Whether prior study available',
-    `radpeer_score` STRING COMMENT 'The radpeer score of the radiology radiology peer review record.',
-    `response_datetime` TIMESTAMP COMMENT 'Timestamp capturing the response datetime associated with the radiology radiology peer review record.',
-    `review_assigned_datetime` TIMESTAMP COMMENT 'When review was assigned',
-    `review_date` DATE COMMENT 'Timestamp capturing the review date associated with the radiology radiology peer review record.',
-    `review_datetime` TIMESTAMP COMMENT 'When review was performed',
-    `review_disposition` STRING COMMENT 'The review disposition of the radiology radiology peer review record.',
-    `review_outcome` STRING COMMENT 'The review outcome of the radiology radiology peer review record.',
-    `review_program_type` STRING COMMENT 'The review program type value classifying the radiology radiology peer review record.',
-    `review_status` STRING COMMENT 'The review status value classifying the radiology radiology peer review record.',
-    `review_type` STRING COMMENT 'The review type value classifying the radiology radiology peer review record.',
-    `reviewer_comments` STRING COMMENT 'The reviewer comments of the radiology radiology peer review record.',
-    `reviewer_radiologist_npi` STRING COMMENT 'The reviewer radiologist npi of the radiology radiology peer review record.',
-    `score_category` STRING COMMENT 'The score category of the radiology radiology peer review record.',
-    `ssot_canonical_reference` STRING COMMENT 'SSOT canonical: quality.quality_peer_review (duplicate reconciled to canonical)',
-    `ssot_reference` STRING COMMENT 'The ssot reference of the radiology radiology peer review record.',
-    `study_datetime` TIMESTAMP COMMENT 'Timestamp capturing the study datetime associated with the radiology radiology peer review record.',
-    `subspecialty` STRING COMMENT 'The subspecialty of the radiology radiology peer review record.',
-    `subspecialty_matched_flag` BOOLEAN COMMENT 'Whether subspecialty matched',
-    `updated_timestamp` TIMESTAMP COMMENT 'Last update timestamp',
-    `vibe_mutation_applied` STRING COMMENT 'Added by VIBE mutation to ensure model change',
-    `vibe_mutation_flag` BOOLEAN COMMENT 'Flag added by VIBE mutator to ensure product is touched',
-    `vibe_structure_marker` STRING COMMENT 'Marks product as part of the required ECM structure.',
-    CONSTRAINT pk_radiology_peer_review PRIMARY KEY(`radiology_peer_review_id`)
-) COMMENT 'Tracks radiology-specific peer review using ACR RADPEER scoring methodology, including discrepancy categorization, subspecialty matching, blinded review protocols, and radiology-specific quality metrics for diagnostic accuracy assessment.';
-
-CREATE OR REPLACE TABLE `vibe_healthcare_v1`.`radiology`.`radiology_study` (
-    `radiology_study_id` BIGINT COMMENT 'Primary key for the radiology study record.',
-    `care_site_id` BIGINT COMMENT 'FK to the care site where the study was performed.',
-    `cpt_code_id` BIGINT COMMENT 'Unique identifier for the cpt code within the radiology radiology study record.',
-    `demographics_id` BIGINT COMMENT 'FK to patient demographics.',
-    `imaging_order_id` BIGINT COMMENT 'FK to the imaging order that generated this study.',
-    `modality_id` BIGINT COMMENT 'FK to the imaging modality used.',
-    `mpi_record_id` BIGINT COMMENT 'Unique identifier for the mpi record within the radiology radiology study record.',
-    `clinician_id` BIGINT COMMENT 'FK to the reading radiologist.',
-    `protocol_id` BIGINT COMMENT 'FK to the imaging protocol used.',
-    `radiology_reading_radiologist_clinician_id` BIGINT COMMENT 'Unique identifier for the radiology reading radiologist clinician within the radiology radiology study record.',
-    `research_study_id` BIGINT COMMENT 'FK to associated research study if applicable.',
-    `visit_id` BIGINT COMMENT 'FK to the associated encounter visit.',
-    `accession_number` STRING COMMENT 'RIS-assigned accession number for the study.',
-    `body_part` STRING COMMENT 'The body part of the radiology radiology study record.',
-    `body_part_examined` STRING COMMENT 'Body part imaged.',
-    `contrast_administered` BOOLEAN COMMENT 'Whether contrast agent was administered.',
-    `contrast_administered_flag` BOOLEAN COMMENT 'The contrast administered flag of the radiology radiology study record.',
-    `contrast_used` BOOLEAN COMMENT 'The contrast used of the radiology radiology study record.',
-    `created_timestamp` TIMESTAMP COMMENT 'Record creation timestamp.',
-    `critical_finding_flag` BOOLEAN COMMENT 'Indicates a critical finding requiring immediate notification.',
-    `critical_finding_notified_timestamp` TIMESTAMP COMMENT 'Timestamp when critical finding was communicated.',
-    `dicom_study_instance_uid` STRING COMMENT 'DICOM globally unique study instance UID.',
-    `image_count` STRING COMMENT 'Total number of images in the study.',
-    `laterality` STRING COMMENT 'Left, right, bilateral, or not applicable.',
-    `modality_type` STRING COMMENT 'The modality type value classifying the radiology radiology study record.',
-    `mrn` STRING COMMENT 'The mrn of the radiology radiology study record.',
-    `mvm_ecm_reconciled_flag` BOOLEAN COMMENT 'The mvm ecm reconciled flag of the radiology radiology study record.',
-    `mvm_source_names` STRING COMMENT 'radiology.study mapped to radiology.radiology_study',
-    `number_of_images` STRING COMMENT 'The number of images of the radiology radiology study record.',
-    `number_of_series` STRING COMMENT 'The number of series of the radiology radiology study record.',
-    `pacs_archive_location` STRING COMMENT 'Storage location in PACS.',
-    `pacs_status` STRING COMMENT 'Status in the PACS archive.',
-    `priority` STRING COMMENT 'Read priority: routine, urgent, stat.',
-    `radiation_dose_ctdi` DECIMAL(18,2) COMMENT 'The radiation dose ctdi of the radiology radiology study record.',
-    `radiation_dose_ctdi_vol` DECIMAL(18,2) COMMENT 'CT dose index volume in mGy.',
-    `radiation_dose_dlp` DECIMAL(18,2) COMMENT 'Dose length product in mGy-cm.',
-    `radiology_protocol_id` BIGINT COMMENT 'Unique identifier for the radiology protocol within the radiology radiology study record.',
-    `report_finalized_timestamp` TIMESTAMP COMMENT 'Timestamp when the radiology report was finalized.',
-    `report_status` STRING COMMENT 'Report status: preliminary, final, addended.',
-    `series_count` STRING COMMENT 'Number of DICOM series in the study.',
-    `start_timestamp` TIMESTAMP COMMENT 'Timestamp when the study acquisition began.',
-    `study_date` DATE COMMENT 'Date the study was performed.',
-    `study_datetime` TIMESTAMP COMMENT 'Timestamp capturing the study datetime associated with the radiology radiology study record.',
-    `study_description` STRING COMMENT 'Description of the imaging study.',
-    `study_instance_uid` STRING COMMENT 'The study instance uid of the radiology radiology study record.',
-    `study_scope` STRING COMMENT 'The study scope of the radiology radiology study record.',
-    `study_status` STRING COMMENT 'Status: ordered, in-progress, completed, cancelled.',
-    `updated_timestamp` TIMESTAMP COMMENT 'Record last updated timestamp.',
-    `vibe_mutation_applied` STRING COMMENT 'The vibe mutation applied of the radiology radiology study record.',
-    `vibe_structure_marker` STRING COMMENT 'Marks product as part of the required ECM structure.',
-    CONSTRAINT pk_radiology_study PRIMARY KEY(`radiology_study_id`)
-) COMMENT 'Canonical radiology study record (ECM superset of MVM radiology.study). Tracks DICOM studies, imaging orders, protocol, dose, and report status across all modalities.';
-
-CREATE OR REPLACE TABLE `vibe_healthcare_v1`.`radiology`.`distribution_rule` (
-    `distribution_rule_id` BIGINT COMMENT 'Primary key for distribution_rule',
-    `parent_distribution_rule_id` BIGINT COMMENT 'Self-referencing FK on distribution_rule (parent_distribution_rule_id)',
-    `acknowledgment_required` BOOLEAN COMMENT 'Indicates whether recipient read-receipt or closed-loop acknowledgment is mandatory for reports distributed under this rule.',
-    `approval_status` STRING COMMENT 'Governance approval state of the distribution rule configuration.',
-    `consent_verification_required` BOOLEAN COMMENT 'Indicates whether patient consent must be verified prior to distributing the report under this rule.',
-    `created_timestamp` TIMESTAMP COMMENT 'Timestamp when this distribution rule record was first captured.',
-    `criticality_level` STRING COMMENT 'Clinical criticality level of findings that this rule applies to, driving expedited notification of critical results.',
-    `delivery_channel` STRING COMMENT 'Interface/channel through which the report is distributed to the recipient (HL7 interface, fax, email, patient portal, print, or API).',
-    `effective_from_date` DATE COMMENT 'Date on which this distribution rule becomes active and eligible for enforcement.',
-    `effective_until_date` DATE COMMENT 'Date on which this distribution rule expires; null indicates open-ended enforcement.',
-    `escalation_recipient_role` STRING COMMENT 'Role to which distribution escalates when acknowledgment is not received within the escalation timeout.',
-    `escalation_timeout_minutes` STRING COMMENT 'Number of minutes without acknowledgment after which the report distribution escalates to the next recipient or channel.',
-    `external_share_allowed` BOOLEAN COMMENT 'Indicates whether reports matched by this rule may be distributed to organizations outside the health system.',
-    `include_images` BOOLEAN COMMENT 'Indicates whether associated DICOM image links or renderings are included alongside the distributed report.',
-    `message_template_code` STRING COMMENT 'Reference code for the notification/message template applied when formatting the distributed report.',
-    `modality_scope` STRING COMMENT 'Imaging modalities to which this rule applies (e.g., CT, MRI, XR, US, PET). [ENUM-REF-CANDIDATE: CT|MRI|XR|US|PET|MG|NM|FL — promote to reference product]',
-    `owner_department` STRING COMMENT 'Radiology sub-department or business unit that owns and maintains this distribution rule.',
-    `phi_masking_required` BOOLEAN COMMENT 'Indicates whether Protected Health Information (PHI) must be masked or de-identified before distribution, e.g., for external sharing under HIPAA.',
-    `priority_order` STRING COMMENT 'Numeric evaluation precedence indicating the order in which competing distribution rules are applied; lower numbers evaluate first.',
-    `procedure_scope` STRING COMMENT 'CPT-coded radiology procedure(s) that trigger this distribution rule; comma-delimited CPT codes or code range applicable.',
-    `quiet_hours_end` STRING COMMENT 'End of the daily quiet-hours window during which non-critical distributions are suppressed or deferred (HH:mm, 24-hour).',
-    `quiet_hours_start` STRING COMMENT 'Start of the daily quiet-hours window during which non-critical distributions are suppressed or deferred (HH:mm, 24-hour).',
-    `recipient_endpoint` STRING COMMENT 'Configured target endpoint address for delivery (e.g., HL7 receiving application/facility, direct message address, or interface node) used to route the report.',
-    `recipient_role` STRING COMMENT 'Intended recipient role or audience for reports matched by this distribution rule.',
-    `regulatory_reporting_flag` BOOLEAN COMMENT 'Indicates whether this distribution rule supports a mandated regulatory or public-health reporting obligation (e.g., cancer registry, dose reporting).',
-    `report_status_trigger` STRING COMMENT 'Radiology report status that triggers evaluation and firing of this distribution rule.',
-    `retry_limit` STRING COMMENT 'Maximum number of automatic delivery retry attempts for failed distributions before the rule flags a delivery failure.',
-    `rule_code` STRING COMMENT 'Externally-known unique short code used by the RIS/PACS to reference this distribution rule.',
-    `rule_description` STRING COMMENT 'Detailed narrative describing the intent and business conditions under which this distribution rule applies.',
-    `rule_name` STRING COMMENT 'Human-readable label for the report distribution rule, e.g., STAT CT to ED Physician.',
-    `rule_status` STRING COMMENT 'Current lifecycle state of the distribution rule governing whether it is enforced in production.',
-    `rule_type` STRING COMMENT 'Categorical classification of the distribution rule behavior (automatic routing, manual review, escalation, carbon-copy, external share, or hold).',
-    `source_system` STRING COMMENT 'Originating RIS/PACS system that owns and enforces this distribution rule (e.g., Epic Radiant, Cerner RadNet).',
-    `updated_timestamp` TIMESTAMP COMMENT 'Timestamp when this distribution rule record was last modified.',
-    CONSTRAINT pk_distribution_rule PRIMARY KEY(`distribution_rule_id`)
-) COMMENT 'Master reference table for distribution_rule. Referenced by distribution_rule_id.';
-
 -- ========= FOREIGN KEYS =========
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_study` ADD CONSTRAINT `fk_radiology_radiology_study_imaging_order_id` FOREIGN KEY (`imaging_order_id`) REFERENCES `vibe_healthcare_v1`.`radiology`.`imaging_order`(`imaging_order_id`);
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_study` ADD CONSTRAINT `fk_radiology_radiology_study_protocol_id` FOREIGN KEY (`protocol_id`) REFERENCES `vibe_healthcare_v1`.`radiology`.`protocol`(`protocol_id`);
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_study` ADD CONSTRAINT `fk_radiology_radiology_study_modality_id` FOREIGN KEY (`modality_id`) REFERENCES `vibe_healthcare_v1`.`radiology`.`modality`(`modality_id`);
 ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dicom_series` ADD CONSTRAINT `fk_radiology_dicom_series_protocol_id` FOREIGN KEY (`protocol_id`) REFERENCES `vibe_healthcare_v1`.`radiology`.`protocol`(`protocol_id`);
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dicom_series` ADD CONSTRAINT `fk_radiology_dicom_series_modality_id` FOREIGN KEY (`modality_id`) REFERENCES `vibe_healthcare_v1`.`radiology`.`modality`(`modality_id`);
 ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dicom_series` ADD CONSTRAINT `fk_radiology_dicom_series_radiology_study_id` FOREIGN KEY (`radiology_study_id`) REFERENCES `vibe_healthcare_v1`.`radiology`.`radiology_study`(`radiology_study_id`);
 ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report` ADD CONSTRAINT `fk_radiology_report_imaging_order_id` FOREIGN KEY (`imaging_order_id`) REFERENCES `vibe_healthcare_v1`.`radiology`.`imaging_order`(`imaging_order_id`);
 ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report` ADD CONSTRAINT `fk_radiology_report_radiology_study_id` FOREIGN KEY (`radiology_study_id`) REFERENCES `vibe_healthcare_v1`.`radiology`.`radiology_study`(`radiology_study_id`);
@@ -1346,2086 +1029,1303 @@ ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ADD CONSTRAINT `fk
 ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ADD CONSTRAINT `fk_radiology_contrast_admin_radiology_study_id` FOREIGN KEY (`radiology_study_id`) REFERENCES `vibe_healthcare_v1`.`radiology`.`radiology_study`(`radiology_study_id`);
 ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ADD CONSTRAINT `fk_radiology_dose_record_imaging_order_id` FOREIGN KEY (`imaging_order_id`) REFERENCES `vibe_healthcare_v1`.`radiology`.`imaging_order`(`imaging_order_id`);
 ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ADD CONSTRAINT `fk_radiology_dose_record_protocol_id` FOREIGN KEY (`protocol_id`) REFERENCES `vibe_healthcare_v1`.`radiology`.`protocol`(`protocol_id`);
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ADD CONSTRAINT `fk_radiology_dose_record_modality_id` FOREIGN KEY (`modality_id`) REFERENCES `vibe_healthcare_v1`.`radiology`.`modality`(`modality_id`);
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ADD CONSTRAINT `fk_radiology_dose_record_radiology_study_id` FOREIGN KEY (`radiology_study_id`) REFERENCES `vibe_healthcare_v1`.`radiology`.`radiology_study`(`radiology_study_id`);
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ADD CONSTRAINT `fk_radiology_radiology_appointment_modality_id` FOREIGN KEY (`modality_id`) REFERENCES `vibe_healthcare_v1`.`radiology`.`modality`(`modality_id`);
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ADD CONSTRAINT `fk_radiology_radiology_appointment_imaging_order_id` FOREIGN KEY (`imaging_order_id`) REFERENCES `vibe_healthcare_v1`.`radiology`.`imaging_order`(`imaging_order_id`);
 ALTER TABLE `vibe_healthcare_v1`.`radiology`.`reader_assignment` ADD CONSTRAINT `fk_radiology_reader_assignment_prior_assignment_reader_assignment_id` FOREIGN KEY (`prior_assignment_reader_assignment_id`) REFERENCES `vibe_healthcare_v1`.`radiology`.`reader_assignment`(`reader_assignment_id`);
 ALTER TABLE `vibe_healthcare_v1`.`radiology`.`reader_assignment` ADD CONSTRAINT `fk_radiology_reader_assignment_radiology_study_id` FOREIGN KEY (`radiology_study_id`) REFERENCES `vibe_healthcare_v1`.`radiology`.`radiology_study`(`radiology_study_id`);
 ALTER TABLE `vibe_healthcare_v1`.`radiology`.`reader_assignment` ADD CONSTRAINT `fk_radiology_reader_assignment_report_id` FOREIGN KEY (`report_id`) REFERENCES `vibe_healthcare_v1`.`radiology`.`report`(`report_id`);
 ALTER TABLE `vibe_healthcare_v1`.`radiology`.`critical_result` ADD CONSTRAINT `fk_radiology_critical_result_imaging_order_id` FOREIGN KEY (`imaging_order_id`) REFERENCES `vibe_healthcare_v1`.`radiology`.`imaging_order`(`imaging_order_id`);
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`critical_result` ADD CONSTRAINT `fk_radiology_critical_result_radiology_study_id` FOREIGN KEY (`radiology_study_id`) REFERENCES `vibe_healthcare_v1`.`radiology`.`radiology_study`(`radiology_study_id`);
 ALTER TABLE `vibe_healthcare_v1`.`radiology`.`critical_result` ADD CONSTRAINT `fk_radiology_critical_result_report_id` FOREIGN KEY (`report_id`) REFERENCES `vibe_healthcare_v1`.`radiology`.`report`(`report_id`);
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`teleradiology_case` ADD CONSTRAINT `fk_radiology_teleradiology_case_imaging_order_id` FOREIGN KEY (`imaging_order_id`) REFERENCES `vibe_healthcare_v1`.`radiology`.`imaging_order`(`imaging_order_id`);
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`teleradiology_case` ADD CONSTRAINT `fk_radiology_teleradiology_case_radiology_study_id` FOREIGN KEY (`radiology_study_id`) REFERENCES `vibe_healthcare_v1`.`radiology`.`radiology_study`(`radiology_study_id`);
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`follow_up` ADD CONSTRAINT `fk_radiology_follow_up_report_id` FOREIGN KEY (`report_id`) REFERENCES `vibe_healthcare_v1`.`radiology`.`report`(`report_id`);
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`follow_up` ADD CONSTRAINT `fk_radiology_follow_up_follow_report_id` FOREIGN KEY (`follow_report_id`) REFERENCES `vibe_healthcare_v1`.`radiology`.`report`(`report_id`);
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`follow_up` ADD CONSTRAINT `fk_radiology_follow_up_imaging_order_id` FOREIGN KEY (`imaging_order_id`) REFERENCES `vibe_healthcare_v1`.`radiology`.`imaging_order`(`imaging_order_id`);
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`follow_up` ADD CONSTRAINT `fk_radiology_follow_up_radiology_finding_id` FOREIGN KEY (`radiology_finding_id`) REFERENCES `vibe_healthcare_v1`.`radiology`.`radiology_finding`(`radiology_finding_id`);
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ADD CONSTRAINT `fk_radiology_interventional_procedure_imaging_order_id` FOREIGN KEY (`imaging_order_id`) REFERENCES `vibe_healthcare_v1`.`radiology`.`imaging_order`(`imaging_order_id`);
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ADD CONSTRAINT `fk_radiology_interventional_procedure_radiology_study_id` FOREIGN KEY (`radiology_study_id`) REFERENCES `vibe_healthcare_v1`.`radiology`.`radiology_study`(`radiology_study_id`);
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_order_status_history` ADD CONSTRAINT `fk_radiology_radiology_order_status_history_corrected_history_id` FOREIGN KEY (`corrected_history_id`) REFERENCES `vibe_healthcare_v1`.`radiology`.`radiology_order_status_history`(`radiology_order_status_history_id`);
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_order_status_history` ADD CONSTRAINT `fk_radiology_radiology_order_status_history_imaging_order_id` FOREIGN KEY (`imaging_order_id`) REFERENCES `vibe_healthcare_v1`.`radiology`.`imaging_order`(`imaging_order_id`);
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_order_status_history` ADD CONSTRAINT `fk_radiology_radiology_order_status_history_radiology_study_id` FOREIGN KEY (`radiology_study_id`) REFERENCES `vibe_healthcare_v1`.`radiology`.`radiology_study`(`radiology_study_id`);
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_order_status_history` ADD CONSTRAINT `fk_radiology_radiology_order_status_history_report_id` FOREIGN KEY (`report_id`) REFERENCES `vibe_healthcare_v1`.`radiology`.`report`(`report_id`);
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_distribution` ADD CONSTRAINT `fk_radiology_report_distribution_distribution_rule_id` FOREIGN KEY (`distribution_rule_id`) REFERENCES `vibe_healthcare_v1`.`radiology`.`distribution_rule`(`distribution_rule_id`);
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_distribution` ADD CONSTRAINT `fk_radiology_report_distribution_report_id` FOREIGN KEY (`report_id`) REFERENCES `vibe_healthcare_v1`.`radiology`.`report`(`report_id`);
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`transmission` ADD CONSTRAINT `fk_radiology_transmission_dicom_series_id` FOREIGN KEY (`dicom_series_id`) REFERENCES `vibe_healthcare_v1`.`radiology`.`dicom_series`(`dicom_series_id`);
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`transmission` ADD CONSTRAINT `fk_radiology_transmission_radiology_study_id` FOREIGN KEY (`radiology_study_id`) REFERENCES `vibe_healthcare_v1`.`radiology`.`radiology_study`(`radiology_study_id`);
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`transmission` ADD CONSTRAINT `fk_radiology_transmission_report_id` FOREIGN KEY (`report_id`) REFERENCES `vibe_healthcare_v1`.`radiology`.`report`(`report_id`);
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`transmission` ADD CONSTRAINT `fk_radiology_transmission_teleradiology_case_id` FOREIGN KEY (`teleradiology_case_id`) REFERENCES `vibe_healthcare_v1`.`radiology`.`teleradiology_case`(`teleradiology_case_id`);
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`network_modality_participation` ADD CONSTRAINT `fk_radiology_network_modality_participation_modality_id` FOREIGN KEY (`modality_id`) REFERENCES `vibe_healthcare_v1`.`radiology`.`modality`(`modality_id`);
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_finding` ADD CONSTRAINT `fk_radiology_radiology_finding_imaging_order_id` FOREIGN KEY (`imaging_order_id`) REFERENCES `vibe_healthcare_v1`.`radiology`.`imaging_order`(`imaging_order_id`);
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_finding` ADD CONSTRAINT `fk_radiology_radiology_finding_radiology_study_id` FOREIGN KEY (`radiology_study_id`) REFERENCES `vibe_healthcare_v1`.`radiology`.`radiology_study`(`radiology_study_id`);
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_finding` ADD CONSTRAINT `fk_radiology_radiology_finding_report_id` FOREIGN KEY (`report_id`) REFERENCES `vibe_healthcare_v1`.`radiology`.`report`(`report_id`);
 ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_peer_review` ADD CONSTRAINT `fk_radiology_radiology_peer_review_report_id` FOREIGN KEY (`report_id`) REFERENCES `vibe_healthcare_v1`.`radiology`.`report`(`report_id`);
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_peer_review` ADD CONSTRAINT `fk_radiology_radiology_peer_review_radiology_report_id` FOREIGN KEY (`radiology_report_id`) REFERENCES `vibe_healthcare_v1`.`radiology`.`report`(`report_id`);
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_peer_review` ADD CONSTRAINT `fk_radiology_radiology_peer_review_radiology_study_id` FOREIGN KEY (`radiology_study_id`) REFERENCES `vibe_healthcare_v1`.`radiology`.`radiology_study`(`radiology_study_id`);
 ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_peer_review` ADD CONSTRAINT `fk_radiology_radiology_peer_review_report_addendum_id` FOREIGN KEY (`report_addendum_id`) REFERENCES `vibe_healthcare_v1`.`radiology`.`report_addendum`(`report_addendum_id`);
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_study` ADD CONSTRAINT `fk_radiology_radiology_study_imaging_order_id` FOREIGN KEY (`imaging_order_id`) REFERENCES `vibe_healthcare_v1`.`radiology`.`imaging_order`(`imaging_order_id`);
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_study` ADD CONSTRAINT `fk_radiology_radiology_study_modality_id` FOREIGN KEY (`modality_id`) REFERENCES `vibe_healthcare_v1`.`radiology`.`modality`(`modality_id`);
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_study` ADD CONSTRAINT `fk_radiology_radiology_study_protocol_id` FOREIGN KEY (`protocol_id`) REFERENCES `vibe_healthcare_v1`.`radiology`.`protocol`(`protocol_id`);
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`distribution_rule` ADD CONSTRAINT `fk_radiology_distribution_rule_parent_distribution_rule_id` FOREIGN KEY (`parent_distribution_rule_id`) REFERENCES `vibe_healthcare_v1`.`radiology`.`distribution_rule`(`distribution_rule_id`);
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`teleradiology_case` ADD CONSTRAINT `fk_radiology_teleradiology_case_imaging_order_id` FOREIGN KEY (`imaging_order_id`) REFERENCES `vibe_healthcare_v1`.`radiology`.`imaging_order`(`imaging_order_id`);
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_finding` ADD CONSTRAINT `fk_radiology_radiology_finding_imaging_order_id` FOREIGN KEY (`imaging_order_id`) REFERENCES `vibe_healthcare_v1`.`radiology`.`imaging_order`(`imaging_order_id`);
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_finding` ADD CONSTRAINT `fk_radiology_radiology_finding_report_id` FOREIGN KEY (`report_id`) REFERENCES `vibe_healthcare_v1`.`radiology`.`report`(`report_id`);
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`follow_up` ADD CONSTRAINT `fk_radiology_follow_up_imaging_order_id` FOREIGN KEY (`imaging_order_id`) REFERENCES `vibe_healthcare_v1`.`radiology`.`imaging_order`(`imaging_order_id`);
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`follow_up` ADD CONSTRAINT `fk_radiology_follow_up_report_id` FOREIGN KEY (`report_id`) REFERENCES `vibe_healthcare_v1`.`radiology`.`report`(`report_id`);
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ADD CONSTRAINT `fk_radiology_interventional_procedure_imaging_order_id` FOREIGN KEY (`imaging_order_id`) REFERENCES `vibe_healthcare_v1`.`radiology`.`imaging_order`(`imaging_order_id`);
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_order_status_history` ADD CONSTRAINT `fk_radiology_radiology_order_status_history_corrected_radiology_order_status_history_id` FOREIGN KEY (`corrected_radiology_order_status_history_id`) REFERENCES `vibe_healthcare_v1`.`radiology`.`radiology_order_status_history`(`radiology_order_status_history_id`);
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_order_status_history` ADD CONSTRAINT `fk_radiology_radiology_order_status_history_imaging_order_id` FOREIGN KEY (`imaging_order_id`) REFERENCES `vibe_healthcare_v1`.`radiology`.`imaging_order`(`imaging_order_id`);
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_order_status_history` ADD CONSTRAINT `fk_radiology_radiology_order_status_history_report_id` FOREIGN KEY (`report_id`) REFERENCES `vibe_healthcare_v1`.`radiology`.`report`(`report_id`);
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_distribution` ADD CONSTRAINT `fk_radiology_report_distribution_report_id` FOREIGN KEY (`report_id`) REFERENCES `vibe_healthcare_v1`.`radiology`.`report`(`report_id`);
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`transmission` ADD CONSTRAINT `fk_radiology_transmission_radiology_study_id` FOREIGN KEY (`radiology_study_id`) REFERENCES `vibe_healthcare_v1`.`radiology`.`radiology_study`(`radiology_study_id`);
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`network_modality_participation` ADD CONSTRAINT `fk_radiology_network_modality_participation_modality_id` FOREIGN KEY (`modality_id`) REFERENCES `vibe_healthcare_v1`.`radiology`.`modality`(`modality_id`);
 
 -- ========= TAGS =========
-ALTER SCHEMA `vibe_healthcare_v1`.`radiology` SET TAGS ('pii_division' = 'operations');
-ALTER SCHEMA `vibe_healthcare_v1`.`radiology` SET TAGS ('pii_domain' = 'radiology');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` SET TAGS ('pii_data_type' = 'transactional_data');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` SET TAGS ('pii_subdomain' = 'order_management');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` SET TAGS ('pii_entity_type' = 'order');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` SET TAGS ('pii_phi' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` SET TAGS ('pii_vibe_mutated' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` SET TAGS ('pii_structure_enforced' = 'v22domains');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `imaging_order_id` SET TAGS ('pii_business_glossary_term' = 'Imaging Order Identifier');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `imaging_order_id` SET TAGS ('pii_primary_key' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `audit_finding_id` SET TAGS ('pii_business_glossary_term' = 'Audit Finding');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `care_site_id` SET TAGS ('pii_business_glossary_term' = 'Care Site');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `clinical_order_id` SET TAGS ('pii_business_glossary_term' = 'Clinical Order');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `clinical_order_id` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `clinical_order_id` SET TAGS ('pii_phi' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `clinical_order_id` SET TAGS ('pii_sensitive' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `clinical_order_id` SET TAGS ('pii_health' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `clinical_order_id` SET TAGS ('pii_unity_catalog_tag' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `clinical_order_id` SET TAGS ('pii_classification' = 'phi');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `clinical_order_id` SET TAGS ('pii_mask_non_prod' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `drug_master_id` SET TAGS ('pii_business_glossary_term' = 'Contrast Drug');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `material_master_id` SET TAGS ('pii_business_glossary_term' = 'Contrast Material');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `cost_center_id` SET TAGS ('pii_business_glossary_term' = 'Cost Center');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `demographics_id` SET TAGS ('pii_business_glossary_term' = 'Patient Demographics');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `employee_id` SET TAGS ('pii_business_glossary_term' = 'Employee');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `employee_id` SET TAGS ('pii_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `employee_id` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `icd_code_id` SET TAGS ('pii_business_glossary_term' = 'Primary Diagnosis');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `icd_code_id` SET TAGS ('pii_sensitivity' = 'phi');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `icd_code_id` SET TAGS ('pii_restricted' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `icd_code_id` SET TAGS ('pii_health' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `icd_code_id` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `icd_code_id` SET TAGS ('pii_phi' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `icd_code_id` SET TAGS ('pii_sensitive' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `icd_code_id` SET TAGS ('pii_unity_catalog_tag' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `icd_code_id` SET TAGS ('pii_classification' = 'phi');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `icd_code_id` SET TAGS ('pii_mask_non_prod' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `payer_id` SET TAGS ('pii_business_glossary_term' = 'Payer');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `clinician_id` SET TAGS ('pii_business_glossary_term' = 'Ordering Clinician');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `cpt_code_id` SET TAGS ('pii_business_glossary_term' = 'Procedure Code');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `cpt_code_id` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `cpt_code_id` SET TAGS ('pii_phi' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `cpt_code_id` SET TAGS ('pii_sensitive' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `cpt_code_id` SET TAGS ('pii_health' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `cpt_code_id` SET TAGS ('pii_unity_catalog_tag' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `cpt_code_id` SET TAGS ('pii_classification' = 'phi');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `cpt_code_id` SET TAGS ('pii_mask_non_prod' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `research_study_id` SET TAGS ('pii_business_glossary_term' = 'Research Study');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `visit_id` SET TAGS ('pii_business_glossary_term' = 'Visit');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `accession_number` SET TAGS ('pii_business_glossary_term' = 'Accession Number');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `accession_number` SET TAGS ('pii_pii' = 'phi');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `body_part` SET TAGS ('pii_business_glossary_term' = 'Body Part');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `body_part` SET TAGS ('pii_pii' = 'phi');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `cancellation_reason` SET TAGS ('pii_business_glossary_term' = 'Cancellation Reason');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `cancellation_reason` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `cancellation_reason` SET TAGS ('pii_phi' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `cancellation_reason` SET TAGS ('pii_phone' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `cancellation_reason` SET TAGS ('pii_unity_catalog_tag' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `cancellation_reason` SET TAGS ('pii_classification' = 'phi');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `cancellation_reason` SET TAGS ('pii_mask_non_prod' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `cancelled_timestamp` SET TAGS ('pii_business_glossary_term' = 'Cancelled Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `cancelled_timestamp` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `cancelled_timestamp` SET TAGS ('pii_phi' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `cancelled_timestamp` SET TAGS ('pii_phone' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `cancelled_timestamp` SET TAGS ('pii_unity_catalog_tag' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `cancelled_timestamp` SET TAGS ('pii_classification' = 'phi');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `cancelled_timestamp` SET TAGS ('pii_mask_non_prod' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `clinical_indication` SET TAGS ('pii_business_glossary_term' = 'Clinical Indication');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `clinical_indication` SET TAGS ('pii_pii' = 'phi');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `clinical_indication` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `clinical_indication` SET TAGS ('pii_phi' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `clinical_indication` SET TAGS ('pii_sensitive' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `clinical_indication` SET TAGS ('pii_health' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `clinical_indication` SET TAGS ('pii_unity_catalog_tag' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `clinical_indication` SET TAGS ('pii_classification' = 'phi');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `clinical_indication` SET TAGS ('pii_mask_non_prod' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `contrast_required` SET TAGS ('pii_business_glossary_term' = 'Contrast Required');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `created_timestamp` SET TAGS ('pii_business_glossary_term' = 'Created Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `critical_finding_flag` SET TAGS ('pii_business_glossary_term' = 'Critical Finding Flag');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `exam_end_timestamp` SET TAGS ('pii_business_glossary_term' = 'Exam End Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `exam_start_timestamp` SET TAGS ('pii_business_glossary_term' = 'Exam Start Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `is_portable` SET TAGS ('pii_business_glossary_term' = 'Is Portable');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `is_stat_override` SET TAGS ('pii_business_glossary_term' = 'Is STAT Override');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `laterality` SET TAGS ('pii_business_glossary_term' = 'Laterality');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `modality_type` SET TAGS ('pii_business_glossary_term' = 'Modality Type');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `mrn` SET TAGS ('pii_business_glossary_term' = 'Medical Record Number');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `mrn` SET TAGS ('pii_pii' = 'phi');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `mrn` SET TAGS ('pii_sensitivity' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `mrn` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `mrn` SET TAGS ('pii_phi' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `mrn` SET TAGS ('pii_sensitive' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `mrn` SET TAGS ('pii_identifier' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `mrn` SET TAGS ('pii_unity_catalog_tag' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `mrn` SET TAGS ('pii_classification' = 'phi');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `mrn` SET TAGS ('pii_mask_non_prod' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `order_priority` SET TAGS ('pii_business_glossary_term' = 'Order Priority');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `order_source` SET TAGS ('pii_business_glossary_term' = 'Order Source');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `order_status` SET TAGS ('pii_business_glossary_term' = 'Order Status');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `ordered_timestamp` SET TAGS ('pii_business_glossary_term' = 'Ordered Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `ordering_provider_npi` SET TAGS ('pii_business_glossary_term' = 'Ordering Provider NPI');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `ordering_provider_npi` SET TAGS ('pii_pii' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `ordering_provider_npi` SET TAGS ('pii_sensitivity' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `ordering_provider_npi` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `ordering_provider_npi` SET TAGS ('pii_phi' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `ordering_provider_npi` SET TAGS ('pii_sensitive' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `ordering_provider_npi` SET TAGS ('pii_identifier' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `ordering_provider_npi` SET TAGS ('pii_unity_catalog_tag' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `ordering_provider_npi` SET TAGS ('pii_classification' = 'phi');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `ordering_provider_npi` SET TAGS ('pii_mask_non_prod' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `prior_auth_number` SET TAGS ('pii_business_glossary_term' = 'Prior Authorization Number');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `prior_auth_status` SET TAGS ('pii_business_glossary_term' = 'Prior Authorization Status');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `procedure_description` SET TAGS ('pii_business_glossary_term' = 'Procedure Description');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `procedure_description` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `procedure_description` SET TAGS ('pii_phi' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `procedure_description` SET TAGS ('pii_sensitive' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `procedure_description` SET TAGS ('pii_health' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `procedure_description` SET TAGS ('pii_unity_catalog_tag' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `procedure_description` SET TAGS ('pii_classification' = 'phi');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `procedure_description` SET TAGS ('pii_mask_non_prod' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `protocol_name` SET TAGS ('pii_business_glossary_term' = 'Protocol Name');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `protocol_name` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `protocol_name` SET TAGS ('pii_phi' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `protocol_name` SET TAGS ('pii_name' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `protocol_name` SET TAGS ('pii_unity_catalog_tag' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `protocol_name` SET TAGS ('pii_classification' = 'phi');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `protocol_name` SET TAGS ('pii_mask_non_prod' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `radiation_dose_ctdi` SET TAGS ('pii_business_glossary_term' = 'Radiation Dose CTDI');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `radiation_dose_ctdi` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `radiation_dose_ctdi` SET TAGS ('pii_phi' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `radiation_dose_ctdi` SET TAGS ('pii_sensitive' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `radiation_dose_ctdi` SET TAGS ('pii_health' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `radiation_dose_ctdi` SET TAGS ('pii_unity_catalog_tag' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `radiation_dose_ctdi` SET TAGS ('pii_classification' = 'phi');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `radiation_dose_ctdi` SET TAGS ('pii_mask_non_prod' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `radiation_dose_dlp` SET TAGS ('pii_business_glossary_term' = 'Radiation Dose DLP');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `radiation_dose_dlp` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `radiation_dose_dlp` SET TAGS ('pii_phi' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `radiation_dose_dlp` SET TAGS ('pii_sensitive' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `radiation_dose_dlp` SET TAGS ('pii_health' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `radiation_dose_dlp` SET TAGS ('pii_unity_catalog_tag' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `radiation_dose_dlp` SET TAGS ('pii_classification' = 'phi');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `radiation_dose_dlp` SET TAGS ('pii_mask_non_prod' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `referring_department` SET TAGS ('pii_business_glossary_term' = 'Referring Department');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `report_finalized_timestamp` SET TAGS ('pii_business_glossary_term' = 'Report Finalized Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `report_status` SET TAGS ('pii_business_glossary_term' = 'Report Status');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `requisition_number` SET TAGS ('pii_business_glossary_term' = 'Requisition Number');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `scheduled_timestamp` SET TAGS ('pii_business_glossary_term' = 'Scheduled Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `source_system_order_code` SET TAGS ('pii_business_glossary_term' = 'Source System Order Code');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `updated_timestamp` SET TAGS ('pii_business_glossary_term' = 'Updated Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dicom_series` SET TAGS ('pii_data_type' = 'master_data');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dicom_series` SET TAGS ('pii_subdomain' = 'study_acquisition');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dicom_series` SET TAGS ('pii_entity_type' = 'clinical_event');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dicom_series` SET TAGS ('pii_phi' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dicom_series` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dicom_series` SET TAGS ('pii_vibe_mutated' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dicom_series` SET TAGS ('pii_structure_enforced' = 'v22domains');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dicom_series` ALTER COLUMN `dicom_series_id` SET TAGS ('pii_business_glossary_term' = 'DICOM Series Identifier');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dicom_series` ALTER COLUMN `dicom_series_id` SET TAGS ('pii_primary_key' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dicom_series` ALTER COLUMN `protocol_id` SET TAGS ('pii_business_glossary_term' = 'Imaging Protocol');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dicom_series` ALTER COLUMN `modality_id` SET TAGS ('pii_business_glossary_term' = 'Modality Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dicom_series` ALTER COLUMN `employee_id` SET TAGS ('pii_business_glossary_term' = 'Performing Technologist');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dicom_series` ALTER COLUMN `employee_id` SET TAGS ('pii_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dicom_series` ALTER COLUMN `employee_id` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dicom_series` ALTER COLUMN `radiology_study_id` SET TAGS ('pii_business_glossary_term' = 'Radiology Study');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dicom_series` ALTER COLUMN `accession_number` SET TAGS ('pii_business_glossary_term' = 'Accession Number');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dicom_series` ALTER COLUMN `accession_number` SET TAGS ('pii_pii' = 'phi');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dicom_series` ALTER COLUMN `body_part_examined` SET TAGS ('pii_business_glossary_term' = 'Body Part Examined');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dicom_series` ALTER COLUMN `body_part_examined` SET TAGS ('pii_pii' = 'phi');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dicom_series` ALTER COLUMN `contrast_bolus_agent` SET TAGS ('pii_business_glossary_term' = 'Contrast Bolus Agent');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dicom_series` ALTER COLUMN `contrast_bolus_route` SET TAGS ('pii_business_glossary_term' = 'Contrast Bolus Route');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dicom_series` ALTER COLUMN `contrast_bolus_volume_ml` SET TAGS ('pii_business_glossary_term' = 'Contrast Bolus Volume');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dicom_series` ALTER COLUMN `cpt_code` SET TAGS ('pii_business_glossary_term' = 'CPT Code');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dicom_series` ALTER COLUMN `created_timestamp` SET TAGS ('pii_business_glossary_term' = 'Created Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dicom_series` ALTER COLUMN `ctdi_vol_mgy` SET TAGS ('pii_business_glossary_term' = 'CTDI Vol');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dicom_series` ALTER COLUMN `dlp_mgy_cm` SET TAGS ('pii_business_glossary_term' = 'DLP');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dicom_series` ALTER COLUMN `exposure_ma` SET TAGS ('pii_business_glossary_term' = 'Exposure mA');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dicom_series` ALTER COLUMN `exposure_time_ms` SET TAGS ('pii_business_glossary_term' = 'Exposure Time');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dicom_series` ALTER COLUMN `image_orientation_patient` SET TAGS ('pii_business_glossary_term' = 'Image Orientation Patient');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dicom_series` ALTER COLUMN `kvp` SET TAGS ('pii_business_glossary_term' = 'kVp');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dicom_series` ALTER COLUMN `laterality` SET TAGS ('pii_business_glossary_term' = 'Laterality');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dicom_series` ALTER COLUMN `modality` SET TAGS ('pii_business_glossary_term' = 'Modality');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dicom_series` ALTER COLUMN `number_of_series_related_instances` SET TAGS ('pii_business_glossary_term' = 'Number of Series Related Instances');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dicom_series` ALTER COLUMN `pacs_archive_status` SET TAGS ('pii_business_glossary_term' = 'PACS Archive Status');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dicom_series` ALTER COLUMN `pacs_storage_path` SET TAGS ('pii_business_glossary_term' = 'PACS Storage Path');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dicom_series` ALTER COLUMN `patient_position` SET TAGS ('pii_business_glossary_term' = 'Patient Position');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dicom_series` ALTER COLUMN `performing_physician_name` SET TAGS ('pii_business_glossary_term' = 'Performing Physician Name');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dicom_series` ALTER COLUMN `performing_physician_name` SET TAGS ('pii_pii' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dicom_series` ALTER COLUMN `performing_physician_name` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dicom_series` ALTER COLUMN `performing_physician_name` SET TAGS ('pii_phi' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dicom_series` ALTER COLUMN `performing_physician_name` SET TAGS ('pii_name' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dicom_series` ALTER COLUMN `performing_physician_name` SET TAGS ('pii_unity_catalog_tag' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dicom_series` ALTER COLUMN `performing_physician_name` SET TAGS ('pii_classification' = 'phi');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dicom_series` ALTER COLUMN `performing_physician_name` SET TAGS ('pii_mask_non_prod' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dicom_series` ALTER COLUMN `pixel_spacing_mm` SET TAGS ('pii_business_glossary_term' = 'Pixel Spacing');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dicom_series` ALTER COLUMN `procedure_code_modifier` SET TAGS ('pii_business_glossary_term' = 'Procedure Code Modifier');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dicom_series` ALTER COLUMN `procedure_code_modifier` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dicom_series` ALTER COLUMN `procedure_code_modifier` SET TAGS ('pii_phi' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dicom_series` ALTER COLUMN `procedure_code_modifier` SET TAGS ('pii_sensitive' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dicom_series` ALTER COLUMN `procedure_code_modifier` SET TAGS ('pii_health' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dicom_series` ALTER COLUMN `procedure_code_modifier` SET TAGS ('pii_unity_catalog_tag' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dicom_series` ALTER COLUMN `procedure_code_modifier` SET TAGS ('pii_classification' = 'phi');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dicom_series` ALTER COLUMN `procedure_code_modifier` SET TAGS ('pii_mask_non_prod' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dicom_series` ALTER COLUMN `quality_control_comments` SET TAGS ('pii_business_glossary_term' = 'Quality Control Comments');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dicom_series` ALTER COLUMN `quality_control_status` SET TAGS ('pii_business_glossary_term' = 'Quality Control Status');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dicom_series` ALTER COLUMN `radiation_dose_mgy` SET TAGS ('pii_business_glossary_term' = 'Radiation Dose');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dicom_series` ALTER COLUMN `radiation_dose_mgy` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dicom_series` ALTER COLUMN `radiation_dose_mgy` SET TAGS ('pii_phi' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dicom_series` ALTER COLUMN `radiation_dose_mgy` SET TAGS ('pii_sensitive' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dicom_series` ALTER COLUMN `radiation_dose_mgy` SET TAGS ('pii_health' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dicom_series` ALTER COLUMN `radiation_dose_mgy` SET TAGS ('pii_unity_catalog_tag' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dicom_series` ALTER COLUMN `radiation_dose_mgy` SET TAGS ('pii_classification' = 'phi');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dicom_series` ALTER COLUMN `radiation_dose_mgy` SET TAGS ('pii_mask_non_prod' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dicom_series` ALTER COLUMN `referring_physician_npi` SET TAGS ('pii_business_glossary_term' = 'Referring Physician NPI');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dicom_series` ALTER COLUMN `referring_physician_npi` SET TAGS ('pii_pii' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dicom_series` ALTER COLUMN `referring_physician_npi` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dicom_series` ALTER COLUMN `referring_physician_npi` SET TAGS ('pii_phi' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dicom_series` ALTER COLUMN `referring_physician_npi` SET TAGS ('pii_sensitive' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dicom_series` ALTER COLUMN `referring_physician_npi` SET TAGS ('pii_identifier' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dicom_series` ALTER COLUMN `referring_physician_npi` SET TAGS ('pii_unity_catalog_tag' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dicom_series` ALTER COLUMN `referring_physician_npi` SET TAGS ('pii_classification' = 'phi');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dicom_series` ALTER COLUMN `referring_physician_npi` SET TAGS ('pii_mask_non_prod' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dicom_series` ALTER COLUMN `requesting_physician_name` SET TAGS ('pii_business_glossary_term' = 'Requesting Physician Name');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dicom_series` ALTER COLUMN `requesting_physician_name` SET TAGS ('pii_pii' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dicom_series` ALTER COLUMN `requesting_physician_name` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dicom_series` ALTER COLUMN `requesting_physician_name` SET TAGS ('pii_phi' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dicom_series` ALTER COLUMN `requesting_physician_name` SET TAGS ('pii_sensitive' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dicom_series` ALTER COLUMN `requesting_physician_name` SET TAGS ('pii_name' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dicom_series` ALTER COLUMN `requesting_physician_name` SET TAGS ('pii_identifier' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dicom_series` ALTER COLUMN `requesting_physician_name` SET TAGS ('pii_unity_catalog_tag' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dicom_series` ALTER COLUMN `requesting_physician_name` SET TAGS ('pii_classification' = 'phi');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dicom_series` ALTER COLUMN `requesting_physician_name` SET TAGS ('pii_mask_non_prod' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dicom_series` ALTER COLUMN `series_completeness_flag` SET TAGS ('pii_business_glossary_term' = 'Series Completeness Flag');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dicom_series` ALTER COLUMN `series_date` SET TAGS ('pii_business_glossary_term' = 'Series Date');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dicom_series` ALTER COLUMN `series_description` SET TAGS ('pii_business_glossary_term' = 'Series Description');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dicom_series` ALTER COLUMN `series_instance_uid` SET TAGS ('pii_business_glossary_term' = 'Series Instance UID');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dicom_series` ALTER COLUMN `series_instance_uid` SET TAGS ('pii_pii' = 'phi');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dicom_series` ALTER COLUMN `series_number` SET TAGS ('pii_business_glossary_term' = 'Series Number');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dicom_series` ALTER COLUMN `series_status` SET TAGS ('pii_business_glossary_term' = 'Series Status');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dicom_series` ALTER COLUMN `series_time` SET TAGS ('pii_business_glossary_term' = 'Series Time');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dicom_series` ALTER COLUMN `slice_thickness_mm` SET TAGS ('pii_business_glossary_term' = 'Slice Thickness');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dicom_series` ALTER COLUMN `updated_timestamp` SET TAGS ('pii_business_glossary_term' = 'Updated Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report` SET TAGS ('pii_data_type' = 'transactional_data');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report` SET TAGS ('pii_subdomain' = 'reporting_interpretation');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report` SET TAGS ('pii_vibe_mutated' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report` SET TAGS ('pii_structure_enforced' = 'v22domains');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report` ALTER COLUMN `report_id` SET TAGS ('pii_business_glossary_term' = 'Report Identifier');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report` ALTER COLUMN `care_site_id` SET TAGS ('pii_business_glossary_term' = 'Facility ID');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report` ALTER COLUMN `charge_id` SET TAGS ('pii_business_glossary_term' = 'Charge Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report` ALTER COLUMN `clinical_order_id` SET TAGS ('pii_business_glossary_term' = 'Clinical Order Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report` ALTER COLUMN `clinical_order_id` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report` ALTER COLUMN `clinical_order_id` SET TAGS ('pii_phi' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report` ALTER COLUMN `clinical_order_id` SET TAGS ('pii_sensitive' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report` ALTER COLUMN `clinical_order_id` SET TAGS ('pii_health' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report` ALTER COLUMN `clinical_order_id` SET TAGS ('pii_unity_catalog_tag' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report` ALTER COLUMN `clinical_order_id` SET TAGS ('pii_classification' = 'phi');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report` ALTER COLUMN `clinical_order_id` SET TAGS ('pii_mask_non_prod' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report` ALTER COLUMN `cost_center_id` SET TAGS ('pii_business_glossary_term' = 'Cost Center Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report` ALTER COLUMN `cpt_code_id` SET TAGS ('pii_business_glossary_term' = 'Cpt Code Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report` ALTER COLUMN `direct_message_id` SET TAGS ('pii_business_glossary_term' = 'Direct Message Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report` ALTER COLUMN `icd_code_id` SET TAGS ('pii_business_glossary_term' = 'Icd10 Primary Icd Code Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report` ALTER COLUMN `imaging_order_id` SET TAGS ('pii_business_glossary_term' = 'Imaging Order ID');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report` ALTER COLUMN `message_log_id` SET TAGS ('pii_business_glossary_term' = 'Health Level Seven (HL7) Observation Result Unsolicited (ORU) Message ID');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report` ALTER COLUMN `mpi_record_id` SET TAGS ('pii_business_glossary_term' = 'Patient ID');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report` ALTER COLUMN `mpi_record_id` SET TAGS ('pii_restricted' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report` ALTER COLUMN `mpi_record_id` SET TAGS ('pii_identifier' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report` ALTER COLUMN `clinician_id` SET TAGS ('pii_business_glossary_term' = 'Addendum Author ID');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report` ALTER COLUMN `radiology_study_id` SET TAGS ('pii_business_glossary_term' = 'Imaging Study Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report` ALTER COLUMN `research_study_id` SET TAGS ('pii_business_glossary_term' = 'Research Study Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report` ALTER COLUMN `tertiary_report_reading_radiologist_clinician_id` SET TAGS ('pii_business_glossary_term' = 'Reading Radiologist ID');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report` ALTER COLUMN `employee_id` SET TAGS ('pii_business_glossary_term' = 'Transcriptionist Employee Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report` ALTER COLUMN `employee_id` SET TAGS ('pii_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report` ALTER COLUMN `employee_id` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report` ALTER COLUMN `visit_id` SET TAGS ('pii_business_glossary_term' = 'Encounter ID');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report` ALTER COLUMN `accession_number` SET TAGS ('pii_business_glossary_term' = 'Accession Number');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report` ALTER COLUMN `addendum_sequence` SET TAGS ('pii_business_glossary_term' = 'Addendum Sequence Number');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report` ALTER COLUMN `addendum_text` SET TAGS ('pii_business_glossary_term' = 'Addendum Text');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report` ALTER COLUMN `addendum_text` SET TAGS ('pii_restricted' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report` ALTER COLUMN `addendum_text` SET TAGS ('pii_health' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report` ALTER COLUMN `addendum_timestamp` SET TAGS ('pii_business_glossary_term' = 'Addendum Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report` ALTER COLUMN `addendum_type` SET TAGS ('pii_business_glossary_term' = 'Addendum Type');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report` ALTER COLUMN `addendum_type` SET TAGS ('pii_value_regex' = 'addendum|amendment|correction|retraction');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report` ALTER COLUMN `attestation_timestamp` SET TAGS ('pii_business_glossary_term' = 'Attestation Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report` ALTER COLUMN `body_part` SET TAGS ('pii_business_glossary_term' = 'Body Part Examined');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report` ALTER COLUMN `contrast_administered_flag` SET TAGS ('pii_business_glossary_term' = 'Contrast Administered Flag');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report` ALTER COLUMN `contrast_agent_name` SET TAGS ('pii_business_glossary_term' = 'Contrast Agent Name');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report` ALTER COLUMN `contrast_agent_name` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report` ALTER COLUMN `contrast_agent_name` SET TAGS ('pii_phi' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report` ALTER COLUMN `contrast_agent_name` SET TAGS ('pii_name' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report` ALTER COLUMN `contrast_agent_name` SET TAGS ('pii_unity_catalog_tag' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report` ALTER COLUMN `contrast_agent_name` SET TAGS ('pii_classification' = 'phi');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report` ALTER COLUMN `contrast_agent_name` SET TAGS ('pii_mask_non_prod' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report` ALTER COLUMN `created_timestamp` SET TAGS ('pii_business_glossary_term' = 'Record Created Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report` ALTER COLUMN `critical_finding_communicated_flag` SET TAGS ('pii_business_glossary_term' = 'Critical Finding Communicated Flag');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report` ALTER COLUMN `critical_finding_communicated_timestamp` SET TAGS ('pii_business_glossary_term' = 'Critical Finding Communication Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report` ALTER COLUMN `critical_finding_flag` SET TAGS ('pii_business_glossary_term' = 'Critical Finding Flag');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report` ALTER COLUMN `dicom_study_instance_uid` SET TAGS ('pii_business_glossary_term' = 'DICOM Study Instance Unique Identifier (UID)');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report` ALTER COLUMN `dictation_timestamp` SET TAGS ('pii_business_glossary_term' = 'Dictation Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report` ALTER COLUMN `findings_text` SET TAGS ('pii_business_glossary_term' = 'Findings Narrative Text');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report` ALTER COLUMN `findings_text` SET TAGS ('pii_restricted' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report` ALTER COLUMN `findings_text` SET TAGS ('pii_health' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report` ALTER COLUMN `follow_up_recommendation` SET TAGS ('pii_business_glossary_term' = 'Follow-Up Recommendation');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report` ALTER COLUMN `impression_text` SET TAGS ('pii_business_glossary_term' = 'Impression Text');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report` ALTER COLUMN `impression_text` SET TAGS ('pii_restricted' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report` ALTER COLUMN `impression_text` SET TAGS ('pii_health' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report` ALTER COLUMN `laterality` SET TAGS ('pii_business_glossary_term' = 'Laterality');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report` ALTER COLUMN `laterality` SET TAGS ('pii_value_regex' = 'left|right|bilateral|unspecified');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report` ALTER COLUMN `modality_code` SET TAGS ('pii_business_glossary_term' = 'Imaging Modality Code');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report` ALTER COLUMN `preliminary_timestamp` SET TAGS ('pii_business_glossary_term' = 'Preliminary Report Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report` ALTER COLUMN `radiation_dose_ctdi` SET TAGS ('pii_business_glossary_term' = 'Radiation Dose CT Dose Index Volume (CTDIvol) mGy');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report` ALTER COLUMN `radiation_dose_ctdi` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report` ALTER COLUMN `radiation_dose_ctdi` SET TAGS ('pii_phi' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report` ALTER COLUMN `radiation_dose_ctdi` SET TAGS ('pii_sensitive' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report` ALTER COLUMN `radiation_dose_ctdi` SET TAGS ('pii_health' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report` ALTER COLUMN `radiation_dose_ctdi` SET TAGS ('pii_unity_catalog_tag' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report` ALTER COLUMN `radiation_dose_ctdi` SET TAGS ('pii_classification' = 'phi');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report` ALTER COLUMN `radiation_dose_ctdi` SET TAGS ('pii_mask_non_prod' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report` ALTER COLUMN `radiation_dose_dlp` SET TAGS ('pii_business_glossary_term' = 'Radiation Dose Dose Length Product (DLP) mGy·cm');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report` ALTER COLUMN `radiation_dose_dlp` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report` ALTER COLUMN `radiation_dose_dlp` SET TAGS ('pii_phi' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report` ALTER COLUMN `radiation_dose_dlp` SET TAGS ('pii_sensitive' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report` ALTER COLUMN `radiation_dose_dlp` SET TAGS ('pii_health' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report` ALTER COLUMN `radiation_dose_dlp` SET TAGS ('pii_unity_catalog_tag' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report` ALTER COLUMN `radiation_dose_dlp` SET TAGS ('pii_classification' = 'phi');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report` ALTER COLUMN `radiation_dose_dlp` SET TAGS ('pii_mask_non_prod' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report` ALTER COLUMN `rads_category` SET TAGS ('pii_business_glossary_term' = 'Reporting and Data System (RADS) Category');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report` ALTER COLUMN `report_status` SET TAGS ('pii_business_glossary_term' = 'Report Status');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report` ALTER COLUMN `report_status` SET TAGS ('pii_value_regex' = 'preliminary|final|addendum|amended|corrected|cancelled');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report` ALTER COLUMN `ris_report_code` SET TAGS ('pii_business_glossary_term' = 'Radiology Information System (RIS) Report ID');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report` ALTER COLUMN `signing_radiologist_npi` SET TAGS ('pii_business_glossary_term' = 'Signing Radiologist National Provider Identifier (NPI)');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report` ALTER COLUMN `signing_radiologist_npi` SET TAGS ('pii_value_regex' = '^[0-9]{10}$');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report` ALTER COLUMN `signing_radiologist_npi` SET TAGS ('pii_sensitivity' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report` ALTER COLUMN `signing_radiologist_npi` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report` ALTER COLUMN `signing_radiologist_npi` SET TAGS ('pii_phi' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report` ALTER COLUMN `signing_radiologist_npi` SET TAGS ('pii_sensitive' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report` ALTER COLUMN `signing_radiologist_npi` SET TAGS ('pii_identifier' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report` ALTER COLUMN `signing_radiologist_npi` SET TAGS ('pii_unity_catalog_tag' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report` ALTER COLUMN `signing_radiologist_npi` SET TAGS ('pii_classification' = 'phi');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report` ALTER COLUMN `signing_radiologist_npi` SET TAGS ('pii_mask_non_prod' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report` ALTER COLUMN `stat_priority_flag` SET TAGS ('pii_business_glossary_term' = 'STAT Priority Flag');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report` ALTER COLUMN `study_datetime` SET TAGS ('pii_business_glossary_term' = 'Study Date and Time');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report` ALTER COLUMN `study_description` SET TAGS ('pii_business_glossary_term' = 'Study Description');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report` ALTER COLUMN `template_code` SET TAGS ('pii_business_glossary_term' = 'Report Template ID');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report` ALTER COLUMN `transcription_timestamp` SET TAGS ('pii_business_glossary_term' = 'Transcription Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report` ALTER COLUMN `updated_timestamp` SET TAGS ('pii_business_glossary_term' = 'Record Updated Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report` ALTER COLUMN `version` SET TAGS ('pii_business_glossary_term' = 'Report Version Number');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report` ALTER COLUMN `vibe_mutation_flag` SET TAGS ('pii_business_glossary_term' = 'Mutation marker');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report` ALTER COLUMN `vibe_mutation_flag` SET TAGS ('pii_vibe_mutation' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_addendum` SET TAGS ('pii_data_type' = 'transactional_data');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_addendum` SET TAGS ('pii_subdomain' = 'reporting_interpretation');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_addendum` SET TAGS ('pii_vibe_mutated' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_addendum` SET TAGS ('pii_structure_enforced' = 'v22domains');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_addendum` ALTER COLUMN `report_addendum_id` SET TAGS ('pii_business_glossary_term' = 'Report Addendum ID');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_addendum` ALTER COLUMN `care_site_id` SET TAGS ('pii_business_glossary_term' = 'Facility ID');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_addendum` ALTER COLUMN `cda_document_id` SET TAGS ('pii_business_glossary_term' = 'Cda Document Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_addendum` ALTER COLUMN `cdi_query_id` SET TAGS ('pii_business_glossary_term' = 'Clinical Documentation Improvement (CDI) Query ID');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_addendum` ALTER COLUMN `cpt_code_id` SET TAGS ('pii_business_glossary_term' = 'Cpt Code Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_addendum` ALTER COLUMN `icd_code_id` SET TAGS ('pii_business_glossary_term' = 'Icd10 Icd Code Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_addendum` ALTER COLUMN `message_log_id` SET TAGS ('pii_business_glossary_term' = 'HL7 Message ID');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_addendum` ALTER COLUMN `mpi_record_id` SET TAGS ('pii_business_glossary_term' = 'Patient ID');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_addendum` ALTER COLUMN `org_unit_id` SET TAGS ('pii_business_glossary_term' = 'Radiology Department ID');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_addendum` ALTER COLUMN `report_id` SET TAGS ('pii_business_glossary_term' = 'Original Radiology Report ID');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_addendum` ALTER COLUMN `clinician_id` SET TAGS ('pii_business_glossary_term' = 'Addendum Author Provider ID');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_addendum` ALTER COLUMN `tertiary_report_ordering_provider_clinician_id` SET TAGS ('pii_business_glossary_term' = 'Ordering Provider ID');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_addendum` ALTER COLUMN `visit_id` SET TAGS ('pii_business_glossary_term' = 'Encounter ID');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_addendum` ALTER COLUMN `accession_number` SET TAGS ('pii_business_glossary_term' = 'Accession Number');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_addendum` ALTER COLUMN `acknowledgment_datetime` SET TAGS ('pii_business_glossary_term' = 'Provider Acknowledgment Date and Time');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_addendum` ALTER COLUMN `addendum_datetime` SET TAGS ('pii_business_glossary_term' = 'Addendum Date and Time');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_addendum` ALTER COLUMN `addendum_sequence_number` SET TAGS ('pii_business_glossary_term' = 'Addendum Sequence Number');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_addendum` ALTER COLUMN `addendum_status` SET TAGS ('pii_business_glossary_term' = 'Addendum Status');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_addendum` ALTER COLUMN `addendum_status` SET TAGS ('pii_value_regex' = 'draft|pending_review|finalized|retracted');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_addendum` ALTER COLUMN `addendum_text` SET TAGS ('pii_business_glossary_term' = 'Addendum Text');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_addendum` ALTER COLUMN `addendum_text` SET TAGS ('pii_restricted' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_addendum` ALTER COLUMN `addendum_text` SET TAGS ('pii_health' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_addendum` ALTER COLUMN `addendum_type` SET TAGS ('pii_business_glossary_term' = 'Addendum Type');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_addendum` ALTER COLUMN `addendum_type` SET TAGS ('pii_value_regex' = 'correction|clarification|clinical_update|addendum|retraction');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_addendum` ALTER COLUMN `addendum_word_count` SET TAGS ('pii_business_glossary_term' = 'Addendum Word Count');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_addendum` ALTER COLUMN `amendment_reason` SET TAGS ('pii_business_glossary_term' = 'Amendment Reason');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_addendum` ALTER COLUMN `amendment_reason_code` SET TAGS ('pii_business_glossary_term' = 'Amendment Reason Code');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_addendum` ALTER COLUMN `author_npi` SET TAGS ('pii_business_glossary_term' = 'Addendum Author National Provider Identifier (NPI)');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_addendum` ALTER COLUMN `author_npi` SET TAGS ('pii_value_regex' = '^[0-9]{10}$');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_addendum` ALTER COLUMN `author_npi` SET TAGS ('pii_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_addendum` ALTER COLUMN `author_npi` SET TAGS ('pii_sensitivity' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_addendum` ALTER COLUMN `author_npi` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_addendum` ALTER COLUMN `author_npi` SET TAGS ('pii_phi' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_addendum` ALTER COLUMN `author_npi` SET TAGS ('pii_sensitive' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_addendum` ALTER COLUMN `author_npi` SET TAGS ('pii_identifier' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_addendum` ALTER COLUMN `author_npi` SET TAGS ('pii_unity_catalog_tag' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_addendum` ALTER COLUMN `author_npi` SET TAGS ('pii_classification' = 'phi');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_addendum` ALTER COLUMN `author_npi` SET TAGS ('pii_mask_non_prod' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_addendum` ALTER COLUMN `body_part` SET TAGS ('pii_business_glossary_term' = 'Body Part Examined');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_addendum` ALTER COLUMN `created_timestamp` SET TAGS ('pii_business_glossary_term' = 'Record Created Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_addendum` ALTER COLUMN `critical_finding_flag` SET TAGS ('pii_business_glossary_term' = 'Critical Finding Flag');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_addendum` ALTER COLUMN `dicom_study_instance_uid` SET TAGS ('pii_business_glossary_term' = 'DICOM Study Instance UID');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_addendum` ALTER COLUMN `dicom_study_instance_uid` SET TAGS ('pii_value_regex' = '^[0-9]+(.[0-9]+)+$');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_addendum` ALTER COLUMN `drg_impact_flag` SET TAGS ('pii_business_glossary_term' = 'Diagnosis-Related Group (DRG) Impact Flag');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_addendum` ALTER COLUMN `finalized_datetime` SET TAGS ('pii_business_glossary_term' = 'Addendum Finalized Date and Time');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_addendum` ALTER COLUMN `him_review_datetime` SET TAGS ('pii_business_glossary_term' = 'Health Information Management (HIM) Review Date and Time');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_addendum` ALTER COLUMN `him_review_flag` SET TAGS ('pii_business_glossary_term' = 'Health Information Management (HIM) Review Flag');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_addendum` ALTER COLUMN `impression_changed_flag` SET TAGS ('pii_business_glossary_term' = 'Impression Changed Flag');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_addendum` ALTER COLUMN `laterality` SET TAGS ('pii_business_glossary_term' = 'Laterality');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_addendum` ALTER COLUMN `laterality` SET TAGS ('pii_value_regex' = 'left|right|bilateral|not_applicable');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_addendum` ALTER COLUMN `modality` SET TAGS ('pii_business_glossary_term' = 'Imaging Modality');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_addendum` ALTER COLUMN `notification_datetime` SET TAGS ('pii_business_glossary_term' = 'Ordering Provider Notification Date and Time');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_addendum` ALTER COLUMN `notification_method` SET TAGS ('pii_business_glossary_term' = 'Notification Method');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_addendum` ALTER COLUMN `notification_method` SET TAGS ('pii_value_regex' = 'in_basket|secure_message|phone|fax|ehr_alert|email');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_addendum` ALTER COLUMN `notification_status` SET TAGS ('pii_business_glossary_term' = 'Ordering Provider Notification Status');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_addendum` ALTER COLUMN `notification_status` SET TAGS ('pii_value_regex' = 'not_required|pending|sent|acknowledged|failed');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_addendum` ALTER COLUMN `original_report_finalized_datetime` SET TAGS ('pii_business_glossary_term' = 'Original Report Finalized Date and Time');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_addendum` ALTER COLUMN `peer_review_flag` SET TAGS ('pii_business_glossary_term' = 'Peer Review Flag');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_addendum` ALTER COLUMN `peer_review_score` SET TAGS ('pii_business_glossary_term' = 'Peer Review Score');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_addendum` ALTER COLUMN `peer_review_score` SET TAGS ('pii_value_regex' = '1|2a|2b|3a|3b|4');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_addendum` ALTER COLUMN `source_system_addendum_code` SET TAGS ('pii_business_glossary_term' = 'Source System Addendum ID');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_addendum` ALTER COLUMN `updated_timestamp` SET TAGS ('pii_business_glossary_term' = 'Record Updated Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_addendum` ALTER COLUMN `vibe_mutation_flag` SET TAGS ('pii_business_glossary_term' = 'Mutation marker');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_addendum` ALTER COLUMN `vibe_mutation_flag` SET TAGS ('pii_vibe_mutation' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_addendum` ALTER COLUMN `voice_recognition_flag` SET TAGS ('pii_business_glossary_term' = 'Voice Recognition Dictation Flag');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`modality` SET TAGS ('pii_data_type' = 'master_data');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`modality` SET TAGS ('pii_subdomain' = 'study_acquisition');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`modality` SET TAGS ('pii_vibe_mutated' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`modality` SET TAGS ('pii_structure_enforced' = 'v22domains');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`modality` ALTER COLUMN `modality_id` SET TAGS ('pii_business_glossary_term' = 'Modality ID');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`modality` ALTER COLUMN `care_site_id` SET TAGS ('pii_business_glossary_term' = 'Facility ID');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`modality` ALTER COLUMN `fixed_asset_id` SET TAGS ('pii_business_glossary_term' = 'Fixed Asset Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`modality` ALTER COLUMN `interface_channel_id` SET TAGS ('pii_business_glossary_term' = 'Interface Channel Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`modality` ALTER COLUMN `employee_id` SET TAGS ('pii_business_glossary_term' = 'Primary Operator Employee Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`modality` ALTER COLUMN `employee_id` SET TAGS ('pii_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`modality` ALTER COLUMN `employee_id` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`modality` ALTER COLUMN `acr_accreditation_expiration_date` SET TAGS ('pii_business_glossary_term' = 'ACR Accreditation Expiration Date');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`modality` ALTER COLUMN `acr_accreditation_status` SET TAGS ('pii_business_glossary_term' = 'American College of Radiology (ACR) Accreditation Status');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`modality` ALTER COLUMN `acr_accreditation_status` SET TAGS ('pii_value_regex' = 'accredited|provisional|denied|expired|not_applicable');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`modality` ALTER COLUMN `ae_title` SET TAGS ('pii_business_glossary_term' = 'DICOM Application Entity (AE) Title');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`modality` ALTER COLUMN `ae_title` SET TAGS ('pii_value_regex' = '^[A-Z0-9_-]{1,16}$');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`modality` ALTER COLUMN `bore_diameter_cm` SET TAGS ('pii_business_glossary_term' = 'Gantry Bore Diameter (cm)');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`modality` ALTER COLUMN `building_code` SET TAGS ('pii_business_glossary_term' = 'Building Code');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`modality` ALTER COLUMN `contrast_capable` SET TAGS ('pii_business_glossary_term' = 'Contrast Administration Capable Indicator');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`modality` ALTER COLUMN `created_timestamp` SET TAGS ('pii_business_glossary_term' = 'Record Created Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`modality` ALTER COLUMN `decommission_date` SET TAGS ('pii_business_glossary_term' = 'Decommission Date');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`modality` ALTER COLUMN `department_name` SET TAGS ('pii_business_glossary_term' = 'Department Name');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`modality` ALTER COLUMN `department_name` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`modality` ALTER COLUMN `department_name` SET TAGS ('pii_phi' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`modality` ALTER COLUMN `department_name` SET TAGS ('pii_name' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`modality` ALTER COLUMN `department_name` SET TAGS ('pii_unity_catalog_tag' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`modality` ALTER COLUMN `department_name` SET TAGS ('pii_classification' = 'phi');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`modality` ALTER COLUMN `department_name` SET TAGS ('pii_mask_non_prod' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`modality` ALTER COLUMN `detector_type` SET TAGS ('pii_business_glossary_term' = 'Imaging Detector Type');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`modality` ALTER COLUMN `dicom_modality_code` SET TAGS ('pii_business_glossary_term' = 'DICOM Modality Code');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`modality` ALTER COLUMN `dicom_modality_code` SET TAGS ('pii_value_regex' = '^[A-Z]{2,4}$');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`modality` ALTER COLUMN `dose_tracking_enabled` SET TAGS ('pii_business_glossary_term' = 'Radiation Dose Tracking Enabled Indicator');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`modality` ALTER COLUMN `dose_tracking_enabled` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`modality` ALTER COLUMN `dose_tracking_enabled` SET TAGS ('pii_phi' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`modality` ALTER COLUMN `dose_tracking_enabled` SET TAGS ('pii_sensitive' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`modality` ALTER COLUMN `dose_tracking_enabled` SET TAGS ('pii_health' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`modality` ALTER COLUMN `dose_tracking_enabled` SET TAGS ('pii_unity_catalog_tag' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`modality` ALTER COLUMN `dose_tracking_enabled` SET TAGS ('pii_classification' = 'phi');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`modality` ALTER COLUMN `dose_tracking_enabled` SET TAGS ('pii_mask_non_prod' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`modality` ALTER COLUMN `equipment_type` SET TAGS ('pii_business_glossary_term' = 'Imaging Equipment Type');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`modality` ALTER COLUMN `fda_510k_number` SET TAGS ('pii_business_glossary_term' = 'FDA 510(k) Clearance Number');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`modality` ALTER COLUMN `fda_510k_number` SET TAGS ('pii_value_regex' = '^K[0-9]{6}$');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`modality` ALTER COLUMN `fda_registration_number` SET TAGS ('pii_business_glossary_term' = 'FDA Device Registration Number');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`modality` ALTER COLUMN `fda_registration_number` SET TAGS ('pii_value_regex' = '^[0-9]{7}$');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`modality` ALTER COLUMN `installation_date` SET TAGS ('pii_business_glossary_term' = 'Installation Date');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`modality` ALTER COLUMN `is_mobile` SET TAGS ('pii_business_glossary_term' = 'Mobile Equipment Indicator');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`modality` ALTER COLUMN `is_mobile` SET TAGS ('pii_restricted' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`modality` ALTER COLUMN `is_mobile` SET TAGS ('pii_phone' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`modality` ALTER COLUMN `is_mobile` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`modality` ALTER COLUMN `is_mobile` SET TAGS ('pii_phi' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`modality` ALTER COLUMN `is_mobile` SET TAGS ('pii_unity_catalog_tag' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`modality` ALTER COLUMN `is_mobile` SET TAGS ('pii_classification' = 'phi');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`modality` ALTER COLUMN `is_mobile` SET TAGS ('pii_mask_non_prod' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`modality` ALTER COLUMN `last_calibration_date` SET TAGS ('pii_business_glossary_term' = 'Last Calibration Date');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`modality` ALTER COLUMN `last_preventive_maintenance_date` SET TAGS ('pii_business_glossary_term' = 'Last Preventive Maintenance Date');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`modality` ALTER COLUMN `manufacturer` SET TAGS ('pii_business_glossary_term' = 'Equipment Manufacturer');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`modality` ALTER COLUMN `max_patient_weight_kg` SET TAGS ('pii_business_glossary_term' = 'Maximum Patient Weight Capacity (kg)');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`modality` ALTER COLUMN `model_name` SET TAGS ('pii_business_glossary_term' = 'Equipment Model Name');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`modality` ALTER COLUMN `model_name` SET TAGS ('pii_sensitivity' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`modality` ALTER COLUMN `model_name` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`modality` ALTER COLUMN `model_name` SET TAGS ('pii_phi' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`modality` ALTER COLUMN `model_name` SET TAGS ('pii_name' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`modality` ALTER COLUMN `model_name` SET TAGS ('pii_unity_catalog_tag' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`modality` ALTER COLUMN `model_name` SET TAGS ('pii_classification' = 'phi');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`modality` ALTER COLUMN `model_name` SET TAGS ('pii_mask_non_prod' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`modality` ALTER COLUMN `next_calibration_due_date` SET TAGS ('pii_business_glossary_term' = 'Next Calibration Due Date');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`modality` ALTER COLUMN `next_preventive_maintenance_date` SET TAGS ('pii_business_glossary_term' = 'Next Preventive Maintenance Due Date');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`modality` ALTER COLUMN `operational_status` SET TAGS ('pii_business_glossary_term' = 'Operational Status');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`modality` ALTER COLUMN `operational_status` SET TAGS ('pii_value_regex' = 'active|inactive|under_maintenance|decommissioned|pending_installation');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`modality` ALTER COLUMN `pacs_node_name` SET TAGS ('pii_business_glossary_term' = 'PACS (Picture Archiving and Communication System) Node Name');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`modality` ALTER COLUMN `pacs_node_name` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`modality` ALTER COLUMN `pacs_node_name` SET TAGS ('pii_phi' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`modality` ALTER COLUMN `pacs_node_name` SET TAGS ('pii_name' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`modality` ALTER COLUMN `pacs_node_name` SET TAGS ('pii_unity_catalog_tag' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`modality` ALTER COLUMN `pacs_node_name` SET TAGS ('pii_classification' = 'phi');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`modality` ALTER COLUMN `pacs_node_name` SET TAGS ('pii_mask_non_prod' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`modality` ALTER COLUMN `radiation_emitting` SET TAGS ('pii_business_glossary_term' = 'Radiation Emitting Indicator');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`modality` ALTER COLUMN `radiation_emitting` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`modality` ALTER COLUMN `radiation_emitting` SET TAGS ('pii_phi' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`modality` ALTER COLUMN `radiation_emitting` SET TAGS ('pii_sensitive' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`modality` ALTER COLUMN `radiation_emitting` SET TAGS ('pii_identifier' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`modality` ALTER COLUMN `radiation_emitting` SET TAGS ('pii_unity_catalog_tag' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`modality` ALTER COLUMN `radiation_emitting` SET TAGS ('pii_classification' = 'phi');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`modality` ALTER COLUMN `radiation_emitting` SET TAGS ('pii_mask_non_prod' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`modality` ALTER COLUMN `ris_resource_code` SET TAGS ('pii_business_glossary_term' = 'Radiology Information System (RIS) Resource ID');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`modality` ALTER COLUMN `room_identifier` SET TAGS ('pii_business_glossary_term' = 'Room Identifier');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`modality` ALTER COLUMN `room_identifier` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`modality` ALTER COLUMN `room_identifier` SET TAGS ('pii_phi' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`modality` ALTER COLUMN `room_identifier` SET TAGS ('pii_sensitive' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`modality` ALTER COLUMN `room_identifier` SET TAGS ('pii_identifier' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`modality` ALTER COLUMN `room_identifier` SET TAGS ('pii_unity_catalog_tag' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`modality` ALTER COLUMN `room_identifier` SET TAGS ('pii_classification' = 'phi');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`modality` ALTER COLUMN `room_identifier` SET TAGS ('pii_mask_non_prod' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`modality` ALTER COLUMN `scheduled_hours_per_day` SET TAGS ('pii_business_glossary_term' = 'Scheduled Operating Hours Per Day');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`modality` ALTER COLUMN `serial_number` SET TAGS ('pii_business_glossary_term' = 'Equipment Serial Number');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`modality` ALTER COLUMN `serial_number` SET TAGS ('pii_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`modality` ALTER COLUMN `service_contract_expiration_date` SET TAGS ('pii_business_glossary_term' = 'Service Contract Expiration Date');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`modality` ALTER COLUMN `service_contract_number` SET TAGS ('pii_business_glossary_term' = 'Service Contract Number');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`modality` ALTER COLUMN `shared_service_indicator` SET TAGS ('pii_business_glossary_term' = 'Shared Service Indicator');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`modality` ALTER COLUMN `slice_count` SET TAGS ('pii_business_glossary_term' = 'CT Detector Slice Count');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`modality` ALTER COLUMN `software_version` SET TAGS ('pii_business_glossary_term' = 'Equipment Software Version');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`modality` ALTER COLUMN `tesla_field_strength` SET TAGS ('pii_business_glossary_term' = 'MRI Magnetic Field Strength (Tesla)');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`modality` ALTER COLUMN `unit_code` SET TAGS ('pii_business_glossary_term' = 'Modality Unit Code');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`modality` ALTER COLUMN `unit_code` SET TAGS ('pii_value_regex' = '^[A-Z0-9_-]{2,30}$');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`modality` ALTER COLUMN `unit_name` SET TAGS ('pii_business_glossary_term' = 'Modality Unit Name');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`modality` ALTER COLUMN `unit_name` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`modality` ALTER COLUMN `unit_name` SET TAGS ('pii_phi' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`modality` ALTER COLUMN `unit_name` SET TAGS ('pii_name' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`modality` ALTER COLUMN `unit_name` SET TAGS ('pii_unity_catalog_tag' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`modality` ALTER COLUMN `unit_name` SET TAGS ('pii_classification' = 'phi');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`modality` ALTER COLUMN `unit_name` SET TAGS ('pii_mask_non_prod' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`modality` ALTER COLUMN `updated_timestamp` SET TAGS ('pii_business_glossary_term' = 'Record Updated Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`modality` ALTER COLUMN `vibe_mutation_flag` SET TAGS ('pii_business_glossary_term' = 'Mutation marker');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`modality` ALTER COLUMN `vibe_mutation_flag` SET TAGS ('pii_vibe_mutation' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` SET TAGS ('pii_data_type' = 'reference_data');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` SET TAGS ('pii_subdomain' = 'study_acquisition');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` SET TAGS ('pii_domain' = 'radiology');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` SET TAGS ('pii_vibe_mutated' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` SET TAGS ('pii_structure_enforced' = 'v22domains');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `protocol_id` SET TAGS ('pii_business_glossary_term' = 'Protocol Identifier');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `clinician_id` SET TAGS ('pii_business_glossary_term' = 'Approving Clinician Id');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `clinician_id` SET TAGS ('pii_internal' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `compliance_policy_id` SET TAGS ('pii_business_glossary_term' = 'Policy Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `drug_master_id` SET TAGS ('pii_business_glossary_term' = 'Contrast Drug Master Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `cpt_code_id` SET TAGS ('pii_business_glossary_term' = 'Cpt Code Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `employee_id` SET TAGS ('pii_business_glossary_term' = 'Created By Employee Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `employee_id` SET TAGS ('pii_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `employee_id` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `loinc_code_id` SET TAGS ('pii_business_glossary_term' = 'Loinc Code Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `parent_protocol_id` SET TAGS ('pii_business_glossary_term' = 'Parent Protocol ID');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `primary_superseded_by_protocol_id` SET TAGS ('pii_business_glossary_term' = 'Superseded By Protocol ID');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `primary_superseded_by_protocol_id` SET TAGS ('pii_self_reference' = 'clean');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `acr_appropriateness_rating` SET TAGS ('pii_business_glossary_term' = 'ACR Appropriateness Criteria Rating');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `acr_appropriateness_rating` SET TAGS ('pii_value_regex' = 'usually_appropriate|may_be_appropriate|usually_not_appropriate');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `acr_appropriateness_rating` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `acr_appropriateness_rating` SET TAGS ('pii_phi' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `acr_appropriateness_rating` SET TAGS ('pii_sensitive' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `acr_appropriateness_rating` SET TAGS ('pii_identifier' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `acr_appropriateness_rating` SET TAGS ('pii_unity_catalog_tag' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `acr_appropriateness_rating` SET TAGS ('pii_classification' = 'phi');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `acr_appropriateness_rating` SET TAGS ('pii_mask_non_prod' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `approval_date` SET TAGS ('pii_business_glossary_term' = 'Protocol Approval Date');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `approving_radiologist_npi` SET TAGS ('pii_business_glossary_term' = 'Approving Radiologist National Provider Identifier (NPI)');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `approving_radiologist_npi` SET TAGS ('pii_value_regex' = '^d{10}$');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `approving_radiologist_npi` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `approving_radiologist_npi` SET TAGS ('pii_phi' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `approving_radiologist_npi` SET TAGS ('pii_sensitive' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `approving_radiologist_npi` SET TAGS ('pii_identifier' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `approving_radiologist_npi` SET TAGS ('pii_unity_catalog_tag' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `approving_radiologist_npi` SET TAGS ('pii_classification' = 'phi');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `approving_radiologist_npi` SET TAGS ('pii_mask_non_prod' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `body_part` SET TAGS ('pii_business_glossary_term' = 'Body Part Examined');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `protocol_category` SET TAGS ('pii_business_glossary_term' = 'Protocol Category');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `protocol_category` SET TAGS ('pii_value_regex' = 'diagnostic|screening|interventional|research|emergency|pediatric');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `clinical_indication` SET TAGS ('pii_business_glossary_term' = 'Clinical Indication');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `clinical_indication` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `clinical_indication` SET TAGS ('pii_phi' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `clinical_indication` SET TAGS ('pii_sensitive' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `clinical_indication` SET TAGS ('pii_health' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `clinical_indication` SET TAGS ('pii_unity_catalog_tag' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `clinical_indication` SET TAGS ('pii_classification' = 'phi');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `clinical_indication` SET TAGS ('pii_mask_non_prod' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `protocol_code` SET TAGS ('pii_business_glossary_term' = 'Protocol Code');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `protocol_code` SET TAGS ('pii_value_regex' = '^[A-Z0-9_-]{2,30}$');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `contrast_dose_ml` SET TAGS ('pii_business_glossary_term' = 'Contrast Dose (mL)');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `contrast_dose_ml` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `contrast_dose_ml` SET TAGS ('pii_phi' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `contrast_dose_ml` SET TAGS ('pii_sensitive' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `contrast_dose_ml` SET TAGS ('pii_health' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `contrast_dose_ml` SET TAGS ('pii_unity_catalog_tag' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `contrast_dose_ml` SET TAGS ('pii_classification' = 'phi');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `contrast_dose_ml` SET TAGS ('pii_mask_non_prod' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `contrast_flow_rate_ml_per_sec` SET TAGS ('pii_business_glossary_term' = 'Contrast Flow Rate (mL/sec)');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `contrast_required` SET TAGS ('pii_business_glossary_term' = 'Contrast Required Flag');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `contrast_route` SET TAGS ('pii_business_glossary_term' = 'Contrast Administration Route');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `contrast_route` SET TAGS ('pii_value_regex' = 'intravenous|oral|rectal|intrathecal|intra_articular|none');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `created_timestamp` SET TAGS ('pii_business_glossary_term' = 'Record Created Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `dose_optimization_program` SET TAGS ('pii_business_glossary_term' = 'Dose Optimization Program');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `dose_optimization_program` SET TAGS ('pii_value_regex' = 'image_gently|image_wisely|acr_dir|none');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `dose_optimization_program` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `dose_optimization_program` SET TAGS ('pii_phi' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `dose_optimization_program` SET TAGS ('pii_sensitive' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `dose_optimization_program` SET TAGS ('pii_health' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `dose_optimization_program` SET TAGS ('pii_unity_catalog_tag' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `dose_optimization_program` SET TAGS ('pii_classification' = 'phi');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `dose_optimization_program` SET TAGS ('pii_mask_non_prod' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `effective_date` SET TAGS ('pii_business_glossary_term' = 'Protocol Effective Date');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `fasting_duration_hours` SET TAGS ('pii_business_glossary_term' = 'Fasting Duration (hours)');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `fasting_duration_hours` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `fasting_duration_hours` SET TAGS ('pii_phi' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `fasting_duration_hours` SET TAGS ('pii_sensitive' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `fasting_duration_hours` SET TAGS ('pii_identifier' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `fasting_duration_hours` SET TAGS ('pii_unity_catalog_tag' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `fasting_duration_hours` SET TAGS ('pii_classification' = 'phi');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `fasting_duration_hours` SET TAGS ('pii_mask_non_prod' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `fasting_required` SET TAGS ('pii_business_glossary_term' = 'Fasting Required Flag');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `fasting_required` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `fasting_required` SET TAGS ('pii_phi' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `fasting_required` SET TAGS ('pii_sensitive' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `fasting_required` SET TAGS ('pii_identifier' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `fasting_required` SET TAGS ('pii_unity_catalog_tag' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `fasting_required` SET TAGS ('pii_classification' = 'phi');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `fasting_required` SET TAGS ('pii_mask_non_prod' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `field_of_view_mm` SET TAGS ('pii_business_glossary_term' = 'Field of View (FOV) (mm)');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `implant_screening_required` SET TAGS ('pii_business_glossary_term' = 'Implant Screening Required Flag');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `kvp` SET TAGS ('pii_business_glossary_term' = 'Peak Kilovoltage (kVp)');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `last_updated_timestamp` SET TAGS ('pii_business_glossary_term' = 'Record Last Updated Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `magnetic_field_strength_tesla` SET TAGS ('pii_business_glossary_term' = 'Magnetic Field Strength (Tesla)');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `mas` SET TAGS ('pii_business_glossary_term' = 'Milliampere-Seconds (mAs)');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `modality_type` SET TAGS ('pii_business_glossary_term' = 'Modality Type');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `protocol_name` SET TAGS ('pii_business_glossary_term' = 'Protocol Name');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `protocol_name` SET TAGS ('pii_sensitivity' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `protocol_name` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `protocol_name` SET TAGS ('pii_phi' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `protocol_name` SET TAGS ('pii_name' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `protocol_name` SET TAGS ('pii_unity_catalog_tag' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `protocol_name` SET TAGS ('pii_classification' = 'phi');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `protocol_name` SET TAGS ('pii_mask_non_prod' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `pacs_routing_code` SET TAGS ('pii_business_glossary_term' = 'PACS Routing Code');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `pacs_routing_code` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `pacs_routing_code` SET TAGS ('pii_phi' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `pacs_routing_code` SET TAGS ('pii_sensitive' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `pacs_routing_code` SET TAGS ('pii_identifier' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `pacs_routing_code` SET TAGS ('pii_unity_catalog_tag' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `pacs_routing_code` SET TAGS ('pii_classification' = 'phi');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `pacs_routing_code` SET TAGS ('pii_mask_non_prod' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `patient_population` SET TAGS ('pii_business_glossary_term' = 'Patient Population');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `patient_population` SET TAGS ('pii_value_regex' = 'adult|pediatric|neonatal|geriatric|obstetric|all');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `patient_prep_instructions` SET TAGS ('pii_business_glossary_term' = 'Patient Preparation Instructions');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `pitch_factor` SET TAGS ('pii_business_glossary_term' = 'CT Pitch Factor');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `protocol_status` SET TAGS ('pii_business_glossary_term' = 'Protocol Status');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `protocol_status` SET TAGS ('pii_value_regex' = 'active|inactive|draft|retired|under_review');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `pulse_sequence_type` SET TAGS ('pii_business_glossary_term' = 'MRI Pulse Sequence Type');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `radiation_dose_ctdi_vol_mgy` SET TAGS ('pii_business_glossary_term' = 'Reference CT Dose Index Volume (CTDIvol) (mGy)');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `radiation_dose_ctdi_vol_mgy` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `radiation_dose_ctdi_vol_mgy` SET TAGS ('pii_phi' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `radiation_dose_ctdi_vol_mgy` SET TAGS ('pii_sensitive' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `radiation_dose_ctdi_vol_mgy` SET TAGS ('pii_health' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `radiation_dose_ctdi_vol_mgy` SET TAGS ('pii_unity_catalog_tag' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `radiation_dose_ctdi_vol_mgy` SET TAGS ('pii_classification' = 'phi');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `radiation_dose_ctdi_vol_mgy` SET TAGS ('pii_mask_non_prod' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `radiation_dose_dlp_mgy_cm` SET TAGS ('pii_business_glossary_term' = 'Reference Radiation Dose - Dose Length Product (DLP) (mGy·cm)');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `radiation_dose_dlp_mgy_cm` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `radiation_dose_dlp_mgy_cm` SET TAGS ('pii_phi' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `radiation_dose_dlp_mgy_cm` SET TAGS ('pii_sensitive' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `radiation_dose_dlp_mgy_cm` SET TAGS ('pii_health' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `radiation_dose_dlp_mgy_cm` SET TAGS ('pii_unity_catalog_tag' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `radiation_dose_dlp_mgy_cm` SET TAGS ('pii_classification' = 'phi');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `radiation_dose_dlp_mgy_cm` SET TAGS ('pii_mask_non_prod' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `radlex_code` SET TAGS ('pii_business_glossary_term' = 'RSNA RadLex Code');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `radlex_code` SET TAGS ('pii_value_regex' = '^RIDd+$');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `reconstruction_algorithm` SET TAGS ('pii_business_glossary_term' = 'Reconstruction Algorithm');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `renal_function_check_required` SET TAGS ('pii_business_glossary_term' = 'Renal Function Check Required Flag');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `retirement_date` SET TAGS ('pii_business_glossary_term' = 'Protocol Retirement Date');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `ris_procedure_code` SET TAGS ('pii_business_glossary_term' = 'Radiology Information System (RIS) Procedure Code');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `ris_procedure_code` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `ris_procedure_code` SET TAGS ('pii_phi' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `ris_procedure_code` SET TAGS ('pii_sensitive' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `ris_procedure_code` SET TAGS ('pii_health' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `ris_procedure_code` SET TAGS ('pii_unity_catalog_tag' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `ris_procedure_code` SET TAGS ('pii_classification' = 'phi');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `ris_procedure_code` SET TAGS ('pii_mask_non_prod' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `scan_duration_estimate_sec` SET TAGS ('pii_business_glossary_term' = 'Estimated Scan Duration (seconds)');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `sedation_required` SET TAGS ('pii_business_glossary_term' = 'Sedation Required Flag');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `slice_thickness_mm` SET TAGS ('pii_business_glossary_term' = 'Slice Thickness (mm)');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `total_exam_duration_min` SET TAGS ('pii_business_glossary_term' = 'Total Exam Duration Estimate (minutes)');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `version` SET TAGS ('pii_business_glossary_term' = 'Protocol Version');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `version` SET TAGS ('pii_value_regex' = '^d+.d+(.d+)?$');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `vibe_mutation_flag` SET TAGS ('pii_business_glossary_term' = 'Mutation marker');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `vibe_mutation_flag` SET TAGS ('pii_vibe_mutation' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` SET TAGS ('pii_data_type' = 'transactional_data');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` SET TAGS ('pii_subdomain' = 'study_acquisition');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` SET TAGS ('pii_vibe_mutated' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` SET TAGS ('pii_structure_enforced' = 'v22domains');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `contrast_admin_id` SET TAGS ('pii_business_glossary_term' = 'Contrast Admin Identifier');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `clinician_id` SET TAGS ('pii_business_glossary_term' = 'Administering Clinician ID');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `clinical_order_id` SET TAGS ('pii_business_glossary_term' = 'Clinical Order Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `clinical_order_id` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `clinical_order_id` SET TAGS ('pii_phi' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `clinical_order_id` SET TAGS ('pii_sensitive' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `clinical_order_id` SET TAGS ('pii_health' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `clinical_order_id` SET TAGS ('pii_unity_catalog_tag' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `clinical_order_id` SET TAGS ('pii_classification' = 'phi');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `clinical_order_id` SET TAGS ('pii_mask_non_prod' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `material_master_id` SET TAGS ('pii_business_glossary_term' = 'Contrast Material Master Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `demographics_id` SET TAGS ('pii_business_glossary_term' = 'Patient ID');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `demographics_id` SET TAGS ('pii_restricted' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `demographics_id` SET TAGS ('pii_identifier' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `drug_master_id` SET TAGS ('pii_business_glossary_term' = 'Drug Master Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `equipment_asset_id` SET TAGS ('pii_business_glossary_term' = 'Power Injector Device ID');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `imaging_order_id` SET TAGS ('pii_business_glossary_term' = 'Imaging Order ID');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `ndc_drug_id` SET TAGS ('pii_business_glossary_term' = 'Ndc Drug Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `radiology_study_id` SET TAGS ('pii_business_glossary_term' = 'Imaging Study ID');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `subject_enrollment_id` SET TAGS ('pii_business_glossary_term' = 'Subject Enrollment Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `treatment_consent_id` SET TAGS ('pii_business_glossary_term' = 'Treatment Consent Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `treatment_consent_id` SET TAGS ('pii_restricted' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `treatment_consent_id` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `treatment_consent_id` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `treatment_consent_id` SET TAGS ('pii_phi' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `treatment_consent_id` SET TAGS ('pii_sensitive' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `treatment_consent_id` SET TAGS ('pii_health' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `treatment_consent_id` SET TAGS ('pii_unity_catalog_tag' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `treatment_consent_id` SET TAGS ('pii_classification' = 'phi');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `treatment_consent_id` SET TAGS ('pii_mask_non_prod' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `visit_id` SET TAGS ('pii_business_glossary_term' = 'Encounter ID');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `accession_number` SET TAGS ('pii_business_glossary_term' = 'Radiology Accession Number');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `administering_clinician_npi` SET TAGS ('pii_business_glossary_term' = 'Administering Clinician National Provider Identifier (NPI)');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `administering_clinician_npi` SET TAGS ('pii_value_regex' = '^d{10}$');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `administering_clinician_npi` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `administering_clinician_npi` SET TAGS ('pii_phi' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `administering_clinician_npi` SET TAGS ('pii_sensitive' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `administering_clinician_npi` SET TAGS ('pii_identifier' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `administering_clinician_npi` SET TAGS ('pii_unity_catalog_tag' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `administering_clinician_npi` SET TAGS ('pii_classification' = 'phi');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `administering_clinician_npi` SET TAGS ('pii_mask_non_prod' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `administration_datetime` SET TAGS ('pii_business_glossary_term' = 'Contrast Administration Date and Time');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `administration_status` SET TAGS ('pii_business_glossary_term' = 'Contrast Administration Status');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `administration_status` SET TAGS ('pii_value_regex' = 'completed|in-progress|not-done|on-hold|stopped|entered-in-error');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `adverse_reaction_datetime` SET TAGS ('pii_business_glossary_term' = 'Adverse Reaction Date and Time');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `adverse_reaction_description` SET TAGS ('pii_business_glossary_term' = 'Adverse Reaction Description');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `adverse_reaction_description` SET TAGS ('pii_restricted' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `adverse_reaction_description` SET TAGS ('pii_health' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `adverse_reaction_occurred` SET TAGS ('pii_business_glossary_term' = 'Adverse Reaction Occurred Flag');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `adverse_reaction_severity` SET TAGS ('pii_business_glossary_term' = 'Adverse Reaction Severity');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `adverse_reaction_severity` SET TAGS ('pii_value_regex' = 'mild|moderate|severe|life-threatening');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `adverse_reaction_severity` SET TAGS ('pii_restricted' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `adverse_reaction_severity` SET TAGS ('pii_health' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `adverse_reaction_treatment` SET TAGS ('pii_business_glossary_term' = 'Adverse Reaction Treatment');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `adverse_reaction_treatment` SET TAGS ('pii_restricted' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `adverse_reaction_treatment` SET TAGS ('pii_health' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `adverse_reaction_treatment` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `adverse_reaction_treatment` SET TAGS ('pii_phi' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `adverse_reaction_treatment` SET TAGS ('pii_sensitive' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `adverse_reaction_treatment` SET TAGS ('pii_unity_catalog_tag' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `adverse_reaction_treatment` SET TAGS ('pii_classification' = 'phi');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `adverse_reaction_treatment` SET TAGS ('pii_mask_non_prod' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `agent_class` SET TAGS ('pii_business_glossary_term' = 'Contrast Agent Class');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `agent_class` SET TAGS ('pii_value_regex' = 'iodinated|gadolinium-based|barium|microbubble|manganese-based|iron-based');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `agent_osmolality_type` SET TAGS ('pii_business_glossary_term' = 'Contrast Agent Osmolality Type');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `agent_osmolality_type` SET TAGS ('pii_value_regex' = 'low-osmolality|iso-osmolality|high-osmolality');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `body_region` SET TAGS ('pii_business_glossary_term' = 'Imaging Body Region');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `catheter_gauge` SET TAGS ('pii_business_glossary_term' = 'Intravenous Catheter Gauge');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `concentration_mg_per_ml` SET TAGS ('pii_business_glossary_term' = 'Contrast Agent Concentration (mg/mL)');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `contrast_agent_name` SET TAGS ('pii_sensitivity' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `contrast_agent_name` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `contrast_agent_name` SET TAGS ('pii_phi' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `contrast_agent_name` SET TAGS ('pii_name' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `contrast_agent_name` SET TAGS ('pii_unity_catalog_tag' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `contrast_agent_name` SET TAGS ('pii_classification' = 'phi');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `contrast_agent_name` SET TAGS ('pii_mask_non_prod' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `contrast_allergy_screening_result` SET TAGS ('pii_business_glossary_term' = 'Contrast Allergy Screening Result');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `contrast_allergy_screening_result` SET TAGS ('pii_value_regex' = 'no-allergy|prior-reaction|allergy-confirmed|screening-not-done|contraindicated');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `contrast_allergy_screening_result` SET TAGS ('pii_restricted' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `contrast_allergy_screening_result` SET TAGS ('pii_health' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `contrast_allergy_screening_result` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `contrast_allergy_screening_result` SET TAGS ('pii_phi' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `contrast_allergy_screening_result` SET TAGS ('pii_sensitive' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `contrast_allergy_screening_result` SET TAGS ('pii_unity_catalog_tag' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `contrast_allergy_screening_result` SET TAGS ('pii_classification' = 'phi');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `contrast_allergy_screening_result` SET TAGS ('pii_mask_non_prod' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `contrast_protocol_name` SET TAGS ('pii_business_glossary_term' = 'Contrast Protocol Name');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `contrast_protocol_name` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `contrast_protocol_name` SET TAGS ('pii_phi' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `contrast_protocol_name` SET TAGS ('pii_name' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `contrast_protocol_name` SET TAGS ('pii_unity_catalog_tag' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `contrast_protocol_name` SET TAGS ('pii_classification' = 'phi');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `contrast_protocol_name` SET TAGS ('pii_mask_non_prod' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `dose_amount_mg` SET TAGS ('pii_business_glossary_term' = 'Contrast Dose Amount (mg)');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `dose_amount_mg` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `dose_amount_mg` SET TAGS ('pii_phi' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `dose_amount_mg` SET TAGS ('pii_sensitive' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `dose_amount_mg` SET TAGS ('pii_health' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `dose_amount_mg` SET TAGS ('pii_unity_catalog_tag' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `dose_amount_mg` SET TAGS ('pii_classification' = 'phi');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `dose_amount_mg` SET TAGS ('pii_mask_non_prod' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `dose_ml` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `dose_ml` SET TAGS ('pii_phi' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `dose_ml` SET TAGS ('pii_sensitive' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `dose_ml` SET TAGS ('pii_health' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `dose_ml` SET TAGS ('pii_unity_catalog_tag' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `dose_ml` SET TAGS ('pii_classification' = 'phi');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `dose_ml` SET TAGS ('pii_mask_non_prod' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `dose_volume_ml` SET TAGS ('pii_business_glossary_term' = 'Contrast Dose Volume (mL)');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `dose_volume_ml` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `dose_volume_ml` SET TAGS ('pii_phi' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `dose_volume_ml` SET TAGS ('pii_sensitive' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `dose_volume_ml` SET TAGS ('pii_health' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `dose_volume_ml` SET TAGS ('pii_unity_catalog_tag' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `dose_volume_ml` SET TAGS ('pii_classification' = 'phi');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `dose_volume_ml` SET TAGS ('pii_mask_non_prod' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `extravasation_occurred` SET TAGS ('pii_business_glossary_term' = 'Contrast Extravasation Occurred Flag');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `extravasation_volume_ml` SET TAGS ('pii_business_glossary_term' = 'Extravasation Volume (mL)');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `informed_consent_obtained` SET TAGS ('pii_business_glossary_term' = 'Informed Consent Obtained Flag');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `injection_rate_ml_per_sec` SET TAGS ('pii_business_glossary_term' = 'Injection Rate (mL/sec)');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `injection_site` SET TAGS ('pii_business_glossary_term' = 'Injection Site');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `metformin_held` SET TAGS ('pii_business_glossary_term' = 'Metformin Held Flag');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `modality` SET TAGS ('pii_business_glossary_term' = 'Imaging Modality');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `patient_weight_kg` SET TAGS ('pii_business_glossary_term' = 'Patient Weight at Administration (kg)');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `patient_weight_kg` SET TAGS ('pii_restricted' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `patient_weight_kg` SET TAGS ('pii_health' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `power_injector_used` SET TAGS ('pii_business_glossary_term' = 'Power Injector Used Flag');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `pregnancy_status` SET TAGS ('pii_business_glossary_term' = 'Pregnancy Status at Administration');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `pregnancy_status` SET TAGS ('pii_value_regex' = 'not-pregnant|pregnant|unknown|not-applicable');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `pregnancy_status` SET TAGS ('pii_restricted' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `pregnancy_status` SET TAGS ('pii_health' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `premedication_details` SET TAGS ('pii_business_glossary_term' = 'Pre-Medication Details');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `premedication_details` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `premedication_details` SET TAGS ('pii_phi' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `premedication_details` SET TAGS ('pii_sensitive' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `premedication_details` SET TAGS ('pii_health' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `premedication_details` SET TAGS ('pii_unity_catalog_tag' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `premedication_details` SET TAGS ('pii_classification' = 'phi');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `premedication_details` SET TAGS ('pii_mask_non_prod' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `premedication_given` SET TAGS ('pii_business_glossary_term' = 'Pre-Medication Given Flag');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `premedication_given` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `premedication_given` SET TAGS ('pii_phi' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `premedication_given` SET TAGS ('pii_sensitive' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `premedication_given` SET TAGS ('pii_health' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `premedication_given` SET TAGS ('pii_unity_catalog_tag' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `premedication_given` SET TAGS ('pii_classification' = 'phi');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `premedication_given` SET TAGS ('pii_mask_non_prod' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `prior_contrast_reaction_type` SET TAGS ('pii_business_glossary_term' = 'Prior Contrast Reaction Type');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `prior_contrast_reaction_type` SET TAGS ('pii_restricted' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `prior_contrast_reaction_type` SET TAGS ('pii_health' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `record_created_timestamp` SET TAGS ('pii_business_glossary_term' = 'Record Created Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `record_updated_timestamp` SET TAGS ('pii_business_glossary_term' = 'Record Updated Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `route_of_administration` SET TAGS ('pii_business_glossary_term' = 'Route of Administration');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `route_of_administration` SET TAGS ('pii_value_regex' = 'intravenous|oral|intrathecal|intra-arterial|intraperitoneal|rectal');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `source_system_record_code` SET TAGS ('pii_business_glossary_term' = 'Source System Record ID');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `thyroid_disease_flag` SET TAGS ('pii_business_glossary_term' = 'Thyroid Disease Flag');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `thyroid_disease_flag` SET TAGS ('pii_restricted' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `thyroid_disease_flag` SET TAGS ('pii_health' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `vibe_mutation_flag` SET TAGS ('pii_business_glossary_term' = 'Mutation marker');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `vibe_mutation_flag` SET TAGS ('pii_vibe_mutation' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` SET TAGS ('pii_data_type' = 'transactional_data');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` SET TAGS ('pii_subdomain' = 'study_acquisition');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` SET TAGS ('pii_vibe_mutated' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` SET TAGS ('pii_structure_enforced' = 'v22domains');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `dose_record_id` SET TAGS ('pii_business_glossary_term' = 'Dose Record Identifier');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `dose_record_id` SET TAGS ('pii_primary_key' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `dose_record_id` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `dose_record_id` SET TAGS ('pii_phi' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `dose_record_id` SET TAGS ('pii_sensitive' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `dose_record_id` SET TAGS ('pii_health' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `dose_record_id` SET TAGS ('pii_unity_catalog_tag' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `dose_record_id` SET TAGS ('pii_classification' = 'phi');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `dose_record_id` SET TAGS ('pii_mask_non_prod' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `care_site_id` SET TAGS ('pii_business_glossary_term' = 'Facility ID');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `clinical_order_id` SET TAGS ('pii_business_glossary_term' = 'Clinical Order Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `clinical_order_id` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `clinical_order_id` SET TAGS ('pii_phi' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `clinical_order_id` SET TAGS ('pii_sensitive' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `clinical_order_id` SET TAGS ('pii_health' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `clinical_order_id` SET TAGS ('pii_unity_catalog_tag' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `clinical_order_id` SET TAGS ('pii_classification' = 'phi');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `clinical_order_id` SET TAGS ('pii_mask_non_prod' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `imaging_order_id` SET TAGS ('pii_business_glossary_term' = 'Imaging Order ID');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `protocol_id` SET TAGS ('pii_business_glossary_term' = 'Imaging Protocol Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `message_log_id` SET TAGS ('pii_business_glossary_term' = 'Message Log Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `mpi_record_id` SET TAGS ('pii_business_glossary_term' = 'Patient ID');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `mpi_record_id` SET TAGS ('pii_restricted' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `mpi_record_id` SET TAGS ('pii_identifier' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `osha_safety_program_id` SET TAGS ('pii_business_glossary_term' = 'Osha Safety Program Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `clinician_id` SET TAGS ('pii_business_glossary_term' = 'Ordering Provider ID');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `clinician_id` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `clinician_id` SET TAGS ('pii_phi' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `clinician_id` SET TAGS ('pii_sensitive' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `clinician_id` SET TAGS ('pii_health' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `clinician_id` SET TAGS ('pii_unity_catalog_tag' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `clinician_id` SET TAGS ('pii_classification' = 'phi');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `clinician_id` SET TAGS ('pii_mask_non_prod' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `cpt_code_id` SET TAGS ('pii_business_glossary_term' = 'Procedure Cpt Code Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `cpt_code_id` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `cpt_code_id` SET TAGS ('pii_phi' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `cpt_code_id` SET TAGS ('pii_sensitive' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `cpt_code_id` SET TAGS ('pii_health' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `cpt_code_id` SET TAGS ('pii_unity_catalog_tag' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `cpt_code_id` SET TAGS ('pii_classification' = 'phi');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `cpt_code_id` SET TAGS ('pii_mask_non_prod' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `public_health_report_id` SET TAGS ('pii_business_glossary_term' = 'Public Health Report Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `public_health_report_id` SET TAGS ('pii_restricted' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `public_health_report_id` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `public_health_report_id` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `public_health_report_id` SET TAGS ('pii_phi' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `public_health_report_id` SET TAGS ('pii_sensitive' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `public_health_report_id` SET TAGS ('pii_health' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `public_health_report_id` SET TAGS ('pii_unity_catalog_tag' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `public_health_report_id` SET TAGS ('pii_classification' = 'phi');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `public_health_report_id` SET TAGS ('pii_mask_non_prod' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `research_study_id` SET TAGS ('pii_business_glossary_term' = 'Research Study Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `employee_id` SET TAGS ('pii_business_glossary_term' = 'Reviewing Physicist Employee Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `employee_id` SET TAGS ('pii_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `employee_id` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `visit_id` SET TAGS ('pii_business_glossary_term' = 'Encounter ID');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `accession_number` SET TAGS ('pii_business_glossary_term' = 'Accession Number');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `body_part_examined` SET TAGS ('pii_business_glossary_term' = 'Body Part Examined');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `contrast_administered` SET TAGS ('pii_business_glossary_term' = 'Contrast Agent Administered Flag');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `contrast_agent_type` SET TAGS ('pii_business_glossary_term' = 'Contrast Agent Type');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `contrast_agent_type` SET TAGS ('pii_value_regex' = 'iodinated|gadolinium|barium|none');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `created_timestamp` SET TAGS ('pii_business_glossary_term' = 'Record Created Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `ctdivol_mgy` SET TAGS ('pii_business_glossary_term' = 'CT Dose Index Volume (CTDIvol) in Milligray (mGy)');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `cumulative_dose_msv` SET TAGS ('pii_business_glossary_term' = 'Cumulative Patient Radiation Dose (mSv)');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `cumulative_dose_msv` SET TAGS ('pii_restricted' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `cumulative_dose_msv` SET TAGS ('pii_health' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `cumulative_dose_msv` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `cumulative_dose_msv` SET TAGS ('pii_phi' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `cumulative_dose_msv` SET TAGS ('pii_sensitive' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `cumulative_dose_msv` SET TAGS ('pii_unity_catalog_tag' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `cumulative_dose_msv` SET TAGS ('pii_classification' = 'phi');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `cumulative_dose_msv` SET TAGS ('pii_mask_non_prod' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `dap_gy_cm2` SET TAGS ('pii_business_glossary_term' = 'Dose Area Product (DAP) in Gray-Centimeter Squared (Gy·cm²)');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `dlp_mgy_cm` SET TAGS ('pii_business_glossary_term' = 'Dose Length Product (DLP) in Milligray-Centimeter (mGy·cm)');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `dose_alert_flag` SET TAGS ('pii_business_glossary_term' = 'Dose Alert Flag');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `dose_alert_flag` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `dose_alert_flag` SET TAGS ('pii_phi' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `dose_alert_flag` SET TAGS ('pii_sensitive' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `dose_alert_flag` SET TAGS ('pii_health' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `dose_alert_flag` SET TAGS ('pii_unity_catalog_tag' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `dose_alert_flag` SET TAGS ('pii_classification' = 'phi');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `dose_alert_flag` SET TAGS ('pii_mask_non_prod' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `dose_alert_threshold_type` SET TAGS ('pii_business_glossary_term' = 'Dose Alert Threshold Type');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `dose_alert_threshold_type` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `dose_alert_threshold_type` SET TAGS ('pii_phi' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `dose_alert_threshold_type` SET TAGS ('pii_sensitive' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `dose_alert_threshold_type` SET TAGS ('pii_health' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `dose_alert_threshold_type` SET TAGS ('pii_unity_catalog_tag' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `dose_alert_threshold_type` SET TAGS ('pii_classification' = 'phi');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `dose_alert_threshold_type` SET TAGS ('pii_mask_non_prod' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `dose_alert_value` SET TAGS ('pii_business_glossary_term' = 'Dose Alert Threshold Value');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `dose_alert_value` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `dose_alert_value` SET TAGS ('pii_phi' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `dose_alert_value` SET TAGS ('pii_sensitive' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `dose_alert_value` SET TAGS ('pii_health' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `dose_alert_value` SET TAGS ('pii_unity_catalog_tag' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `dose_alert_value` SET TAGS ('pii_classification' = 'phi');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `dose_alert_value` SET TAGS ('pii_mask_non_prod' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `dose_record_status` SET TAGS ('pii_business_glossary_term' = 'Dose Record Status');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `dose_record_status` SET TAGS ('pii_value_regex' = 'preliminary|final|amended|corrected|cancelled');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `dose_record_status` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `dose_record_status` SET TAGS ('pii_phi' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `dose_record_status` SET TAGS ('pii_sensitive' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `dose_record_status` SET TAGS ('pii_health' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `dose_record_status` SET TAGS ('pii_unity_catalog_tag' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `dose_record_status` SET TAGS ('pii_classification' = 'phi');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `dose_record_status` SET TAGS ('pii_mask_non_prod' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `dose_registry_submission_status` SET TAGS ('pii_business_glossary_term' = 'ACR Dose Index Registry (DIR) Submission Status');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `dose_registry_submission_status` SET TAGS ('pii_value_regex' = 'pending|submitted|accepted|rejected|not_required');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `dose_registry_submission_status` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `dose_registry_submission_status` SET TAGS ('pii_phi' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `dose_registry_submission_status` SET TAGS ('pii_sensitive' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `dose_registry_submission_status` SET TAGS ('pii_health' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `dose_registry_submission_status` SET TAGS ('pii_unity_catalog_tag' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `dose_registry_submission_status` SET TAGS ('pii_classification' = 'phi');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `dose_registry_submission_status` SET TAGS ('pii_mask_non_prod' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `dose_registry_submission_timestamp` SET TAGS ('pii_business_glossary_term' = 'Dose Registry Submission Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `dose_registry_submission_timestamp` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `dose_registry_submission_timestamp` SET TAGS ('pii_phi' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `dose_registry_submission_timestamp` SET TAGS ('pii_sensitive' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `dose_registry_submission_timestamp` SET TAGS ('pii_health' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `dose_registry_submission_timestamp` SET TAGS ('pii_unity_catalog_tag' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `dose_registry_submission_timestamp` SET TAGS ('pii_classification' = 'phi');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `dose_registry_submission_timestamp` SET TAGS ('pii_mask_non_prod' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `drl_comparison_result` SET TAGS ('pii_business_glossary_term' = 'Diagnostic Reference Level (DRL) Comparison Result');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `drl_comparison_result` SET TAGS ('pii_value_regex' = 'below_drl|at_drl|above_drl|not_applicable');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `effective_dose_msv` SET TAGS ('pii_business_glossary_term' = 'Effective Dose Estimate in Millisievert (mSv)');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `effective_dose_msv` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `effective_dose_msv` SET TAGS ('pii_phi' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `effective_dose_msv` SET TAGS ('pii_sensitive' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `effective_dose_msv` SET TAGS ('pii_health' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `effective_dose_msv` SET TAGS ('pii_unity_catalog_tag' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `effective_dose_msv` SET TAGS ('pii_classification' = 'phi');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `effective_dose_msv` SET TAGS ('pii_mask_non_prod' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `entrance_skin_dose_mgy` SET TAGS ('pii_business_glossary_term' = 'Entrance Skin Dose (ESD) in Milligray (mGy)');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `entrance_skin_dose_mgy` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `entrance_skin_dose_mgy` SET TAGS ('pii_phi' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `entrance_skin_dose_mgy` SET TAGS ('pii_sensitive' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `entrance_skin_dose_mgy` SET TAGS ('pii_health' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `entrance_skin_dose_mgy` SET TAGS ('pii_unity_catalog_tag' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `entrance_skin_dose_mgy` SET TAGS ('pii_classification' = 'phi');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `entrance_skin_dose_mgy` SET TAGS ('pii_mask_non_prod' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `fluoroscopy_time_sec` SET TAGS ('pii_business_glossary_term' = 'Fluoroscopy Time in Seconds');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `kvp` SET TAGS ('pii_business_glossary_term' = 'Peak Kilovoltage (kVp)');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `modality_type` SET TAGS ('pii_business_glossary_term' = 'Imaging Modality Type');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `number_of_exposures` SET TAGS ('pii_business_glossary_term' = 'Number of Exposures');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `patient_age_at_study` SET TAGS ('pii_business_glossary_term' = 'Patient Age at Study (Years)');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `patient_size_cm` SET TAGS ('pii_business_glossary_term' = 'Patient Size (Effective Diameter) in Centimeters (cm)');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `patient_size_cm` SET TAGS ('pii_restricted' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `patient_size_cm` SET TAGS ('pii_health' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `patient_weight_kg` SET TAGS ('pii_business_glossary_term' = 'Patient Weight in Kilograms (kg)');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `patient_weight_kg` SET TAGS ('pii_restricted' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `patient_weight_kg` SET TAGS ('pii_health' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `physicist_review_flag` SET TAGS ('pii_business_glossary_term' = 'Medical Physicist Review Flag');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `physicist_review_timestamp` SET TAGS ('pii_business_glossary_term' = 'Medical Physicist Review Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `procedure_description` SET TAGS ('pii_business_glossary_term' = 'Procedure Description');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `procedure_description` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `procedure_description` SET TAGS ('pii_phi' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `procedure_description` SET TAGS ('pii_sensitive' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `procedure_description` SET TAGS ('pii_health' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `procedure_description` SET TAGS ('pii_unity_catalog_tag' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `procedure_description` SET TAGS ('pii_classification' = 'phi');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `procedure_description` SET TAGS ('pii_mask_non_prod' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `rdsr_uid` SET TAGS ('pii_business_glossary_term' = 'Radiation Dose Structured Report (RDSR) Unique Identifier (UID)');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `reference_air_kerma_mgy` SET TAGS ('pii_business_glossary_term' = 'Reference Air Kerma (RAK) in Milligray (mGy)');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `scanner_manufacturer` SET TAGS ('pii_business_glossary_term' = 'Scanner Manufacturer');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `scanner_model` SET TAGS ('pii_business_glossary_term' = 'Scanner Model Name');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `scanner_station_name` SET TAGS ('pii_business_glossary_term' = 'Scanner Station Name');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `scanner_station_name` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `scanner_station_name` SET TAGS ('pii_phi' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `scanner_station_name` SET TAGS ('pii_name' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `scanner_station_name` SET TAGS ('pii_unity_catalog_tag' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `scanner_station_name` SET TAGS ('pii_classification' = 'phi');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `scanner_station_name` SET TAGS ('pii_mask_non_prod' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `ssde_mgy` SET TAGS ('pii_business_glossary_term' = 'Size-Specific Dose Estimate (SSDE) in Milligray (mGy)');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `study_date` SET TAGS ('pii_business_glossary_term' = 'Study Date');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `study_instance_uid` SET TAGS ('pii_business_glossary_term' = 'DICOM Study Instance Unique Identifier (UID)');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `study_timestamp` SET TAGS ('pii_business_glossary_term' = 'Study Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `tube_current_mas` SET TAGS ('pii_business_glossary_term' = 'Tube Current-Time Product (mAs)');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `updated_timestamp` SET TAGS ('pii_business_glossary_term' = 'Record Updated Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `vibe_mutation_flag` SET TAGS ('pii_business_glossary_term' = 'Mutation marker');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `vibe_mutation_flag` SET TAGS ('pii_vibe_mutation' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` SET TAGS ('pii_data_type' = 'transactional_data');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` SET TAGS ('pii_subdomain' = 'order_management');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` SET TAGS ('pii_domain' = 'radiology');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` SET TAGS ('pii_reconciled' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` SET TAGS ('pii_ssot' = 'scheduling.scheduling_appointment');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` SET TAGS ('pii_scope' = 'radiology_department');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` SET TAGS ('pii_ssot_differentiated' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` SET TAGS ('pii_appointment_context' = 'imaging_workflow');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` SET TAGS ('pii_vibe_mutated' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` SET TAGS ('pii_structure_enforced' = 'v22domains');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` SET TAGS ('pii_ssot_role' = 'alias');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` SET TAGS ('pii_ssot_canonical' = 'scheduling.scheduling_appointment');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` SET TAGS ('pii_ssot_primary' = 'scheduling.scheduling_appointment');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` SET TAGS ('pii_distinct_document' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` SET TAGS ('pii_ssot_note' = 'distinct_domain_scope_not_duplicate');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` SET TAGS ('pii_ssot_pair' = 'radiology.radiology_appointment');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` SET TAGS ('pii_ssot_reference' = 'scheduling.scheduling_appointment');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` SET TAGS ('pii_duplicate_pair' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `radiology_appointment_id` SET TAGS ('pii_business_glossary_term' = 'Appointment Identifier');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `material_master_id` SET TAGS ('pii_business_glossary_term' = 'Material Master');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `appointment_type_id` SET TAGS ('pii_business_glossary_term' = 'Appointment Type');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `care_plan_id` SET TAGS ('pii_business_glossary_term' = 'Care Plan');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `care_site_id` SET TAGS ('pii_business_glossary_term' = 'Facility ID');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `clinical_order_id` SET TAGS ('pii_business_glossary_term' = 'Clinical Order Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `clinical_order_id` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `clinical_order_id` SET TAGS ('pii_phi' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `clinical_order_id` SET TAGS ('pii_sensitive' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `clinical_order_id` SET TAGS ('pii_health' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `clinical_order_id` SET TAGS ('pii_unity_catalog_tag' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `clinical_order_id` SET TAGS ('pii_classification' = 'phi');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `clinical_order_id` SET TAGS ('pii_mask_non_prod' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `demographics_id` SET TAGS ('pii_business_glossary_term' = 'Patient Demographics');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `diagnosis_id` SET TAGS ('pii_business_glossary_term' = 'Diagnosis');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `diagnosis_id` SET TAGS ('pii_restricted' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `diagnosis_id` SET TAGS ('pii_health' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `diagnosis_id` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `diagnosis_id` SET TAGS ('pii_phi' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `diagnosis_id` SET TAGS ('pii_sensitive' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `diagnosis_id` SET TAGS ('pii_unity_catalog_tag' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `diagnosis_id` SET TAGS ('pii_classification' = 'phi');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `diagnosis_id` SET TAGS ('pii_mask_non_prod' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `eligibility_id` SET TAGS ('pii_business_glossary_term' = 'Eligibility');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `employee_id` SET TAGS ('pii_business_glossary_term' = 'Radiology Technologist ID');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `employee_id` SET TAGS ('pii_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `employee_id` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `encounter_authorization_id` SET TAGS ('pii_business_glossary_term' = 'Encounter Authorization');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `member_enrollment_id` SET TAGS ('pii_business_glossary_term' = 'Member Enrollment');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `mpi_record_id` SET TAGS ('pii_business_glossary_term' = 'Patient ID');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `payer_id` SET TAGS ('pii_business_glossary_term' = 'Payer');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `clinician_id` SET TAGS ('pii_business_glossary_term' = 'Ordering Provider ID');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `cpt_code_id` SET TAGS ('pii_business_glossary_term' = 'Procedure Cpt Code Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `cpt_code_id` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `cpt_code_id` SET TAGS ('pii_phi' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `cpt_code_id` SET TAGS ('pii_sensitive' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `cpt_code_id` SET TAGS ('pii_health' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `cpt_code_id` SET TAGS ('pii_unity_catalog_tag' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `cpt_code_id` SET TAGS ('pii_classification' = 'phi');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `cpt_code_id` SET TAGS ('pii_mask_non_prod' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `radiology_clinician_id` SET TAGS ('pii_business_glossary_term' = 'Clinician');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `icd_code_id` SET TAGS ('pii_business_glossary_term' = 'Icd10 Diagnosis Icd Code Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `icd_code_id` SET TAGS ('pii_restricted' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `icd_code_id` SET TAGS ('pii_health' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `icd_code_id` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `icd_code_id` SET TAGS ('pii_phi' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `icd_code_id` SET TAGS ('pii_sensitive' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `icd_code_id` SET TAGS ('pii_unity_catalog_tag' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `icd_code_id` SET TAGS ('pii_classification' = 'phi');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `icd_code_id` SET TAGS ('pii_mask_non_prod' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `room_id` SET TAGS ('pii_business_glossary_term' = 'Modality Room ID');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `radiology_room_id` SET TAGS ('pii_business_glossary_term' = 'Room');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `radiology_visit_reason_icd_code_id` SET TAGS ('pii_business_glossary_term' = 'ICD Code');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `referral_order_id` SET TAGS ('pii_business_glossary_term' = 'Referral Order');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `research_study_id` SET TAGS ('pii_business_glossary_term' = 'Research Study');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `subject_enrollment_id` SET TAGS ('pii_business_glossary_term' = 'Subject Enrollment Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `tertiary_radiology_referring_provider_clinician_id` SET TAGS ('pii_business_glossary_term' = 'Referring Provider ID');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `visit_id` SET TAGS ('pii_business_glossary_term' = 'Encounter ID');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `org_unit_id` SET TAGS ('pii_business_glossary_term' = 'Org Unit');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `enterprise_appointment_id` SET TAGS ('pii_business_glossary_term' = 'Enterprise Appointment ID');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `scheduling_appointment_id` SET TAGS ('pii_business_glossary_term' = 'Appointment Identifier');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `accession_number` SET TAGS ('pii_business_glossary_term' = 'Radiology Accession Number');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `actual_end_datetime` SET TAGS ('pii_business_glossary_term' = 'Actual End Date and Time');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `actual_start_datetime` SET TAGS ('pii_business_glossary_term' = 'Actual Start Date and Time');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `appointment_comment` SET TAGS ('pii_business_glossary_term' = 'Appointment Comment');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `appointment_number` SET TAGS ('pii_business_glossary_term' = 'Appointment Number');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `appointment_scope` SET TAGS ('pii_discriminator' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `appointment_status` SET TAGS ('pii_business_glossary_term' = 'Appointment Status');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `appointment_status` SET TAGS ('pii_value_regex' = 'scheduled|arrived|in_progress|completed|cancelled|no_show');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `appointment_type` SET TAGS ('pii_business_glossary_term' = 'Appointment Type');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `arrival_timestamp` SET TAGS ('pii_business_glossary_term' = 'Arrival Time');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `auth_status` SET TAGS ('pii_business_glossary_term' = 'Authorization Status');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `auth_status` SET TAGS ('pii_value_regex' = 'approved|pending|denied|not_required|expired');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `billing_eligibility_flag` SET TAGS ('pii_business_glossary_term' = 'Billing Eligibility');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `body_part` SET TAGS ('pii_business_glossary_term' = 'Body Part Examined');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `booking_channel` SET TAGS ('pii_business_glossary_term' = 'Booking Channel');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `booking_timestamp` SET TAGS ('pii_business_glossary_term' = 'Booking Time');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `cancellation_reason` SET TAGS ('pii_business_glossary_term' = 'Cancellation Reason');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `cancellation_reason` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `cancellation_reason` SET TAGS ('pii_phi' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `cancellation_reason` SET TAGS ('pii_phone' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `cancellation_reason` SET TAGS ('pii_unity_catalog_tag' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `cancellation_reason` SET TAGS ('pii_classification' = 'phi');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `cancellation_reason` SET TAGS ('pii_mask_non_prod' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `cancellation_reason_code` SET TAGS ('pii_business_glossary_term' = 'Cancellation Reason Code');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `cancellation_reason_code` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `cancellation_reason_code` SET TAGS ('pii_phi' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `cancellation_reason_code` SET TAGS ('pii_phone' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `cancellation_reason_code` SET TAGS ('pii_unity_catalog_tag' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `cancellation_reason_code` SET TAGS ('pii_classification' = 'phi');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `cancellation_reason_code` SET TAGS ('pii_mask_non_prod' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `cancellation_timestamp` SET TAGS ('pii_business_glossary_term' = 'Cancellation Time');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `cancellation_timestamp` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `cancellation_timestamp` SET TAGS ('pii_phi' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `cancellation_timestamp` SET TAGS ('pii_phone' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `cancellation_timestamp` SET TAGS ('pii_unity_catalog_tag' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `cancellation_timestamp` SET TAGS ('pii_classification' = 'phi');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `cancellation_timestamp` SET TAGS ('pii_mask_non_prod' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `cancelled_by` SET TAGS ('pii_business_glossary_term' = 'Cancelled By');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `cancelled_by` SET TAGS ('pii_sensitivity' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `cancelled_by` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `cancelled_by` SET TAGS ('pii_phi' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `cancelled_by` SET TAGS ('pii_phone' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `cancelled_by` SET TAGS ('pii_unity_catalog_tag' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `cancelled_by` SET TAGS ('pii_classification' = 'phi');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `cancelled_by` SET TAGS ('pii_mask_non_prod' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `care_setting` SET TAGS ('pii_business_glossary_term' = 'Care Setting');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `care_setting` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `care_setting` SET TAGS ('pii_phi' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `care_setting` SET TAGS ('pii_sensitive' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `care_setting` SET TAGS ('pii_identifier' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `care_setting` SET TAGS ('pii_unity_catalog_tag' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `care_setting` SET TAGS ('pii_classification' = 'phi');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `care_setting` SET TAGS ('pii_mask_non_prod' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `check_in_timestamp` SET TAGS ('pii_business_glossary_term' = 'Check-In Time');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `clinical_indication` SET TAGS ('pii_business_glossary_term' = 'Clinical Indication');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `clinical_indication` SET TAGS ('pii_restricted' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `clinical_indication` SET TAGS ('pii_health' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `clinical_indication` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `clinical_indication` SET TAGS ('pii_phi' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `clinical_indication` SET TAGS ('pii_sensitive' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `clinical_indication` SET TAGS ('pii_unity_catalog_tag' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `clinical_indication` SET TAGS ('pii_classification' = 'phi');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `clinical_indication` SET TAGS ('pii_mask_non_prod' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `confirmation_status` SET TAGS ('pii_business_glossary_term' = 'Confirmation Status');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `confirmation_timestamp` SET TAGS ('pii_business_glossary_term' = 'Confirmation Time');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `contrast_required` SET TAGS ('pii_business_glossary_term' = 'Contrast Required Flag');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `contrast_type` SET TAGS ('pii_business_glossary_term' = 'Contrast Administration Type');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `contrast_type` SET TAGS ('pii_value_regex' = 'IV|oral|intrathecal|intra_articular|not_applicable');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `created_timestamp` SET TAGS ('pii_business_glossary_term' = 'Record Created Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `duration_minutes` SET TAGS ('pii_business_glossary_term' = 'Duration');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `end_timestamp` SET TAGS ('pii_business_glossary_term' = 'End Time');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `insurance_verification_status` SET TAGS ('pii_business_glossary_term' = 'Insurance Verification Status');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `insurance_verification_timestamp` SET TAGS ('pii_business_glossary_term' = 'Insurance Verification Time');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `is_portable` SET TAGS ('pii_business_glossary_term' = 'Portable Imaging Flag');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `is_stat` SET TAGS ('pii_business_glossary_term' = 'STAT Order Flag');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `laterality` SET TAGS ('pii_business_glossary_term' = 'Laterality');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `laterality` SET TAGS ('pii_value_regex' = 'left|right|bilateral|not_applicable');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `modality_type` SET TAGS ('pii_business_glossary_term' = 'Imaging Modality Type');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `no_show_flag` SET TAGS ('pii_business_glossary_term' = 'No Show');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `no_show_reason` SET TAGS ('pii_business_glossary_term' = 'No-Show Reason');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `pacs_study_uid` SET TAGS ('pii_business_glossary_term' = 'Picture Archiving and Communication System (PACS) Study Instance UID');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `pacs_study_uid` SET TAGS ('pii_value_regex' = '^[0-9]+(.[0-9]+)+$');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `patient_device_type` SET TAGS ('pii_business_glossary_term' = 'Patient Device Type');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `patient_location` SET TAGS ('pii_business_glossary_term' = 'Patient Location at Time of Appointment');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `prep_instructions` SET TAGS ('pii_business_glossary_term' = 'Patient Preparation Instructions');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `prior_auth_number` SET TAGS ('pii_business_glossary_term' = 'Insurance Pre-Authorization Number');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `priority` SET TAGS ('pii_business_glossary_term' = 'Priority');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `procedure_description` SET TAGS ('pii_business_glossary_term' = 'Procedure Description');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `procedure_description` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `procedure_description` SET TAGS ('pii_phi' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `procedure_description` SET TAGS ('pii_sensitive' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `procedure_description` SET TAGS ('pii_health' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `procedure_description` SET TAGS ('pii_unity_catalog_tag' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `procedure_description` SET TAGS ('pii_classification' = 'phi');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `procedure_description` SET TAGS ('pii_mask_non_prod' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `provider_attestation_flag` SET TAGS ('pii_business_glossary_term' = 'Provider Attestation');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `radiation_dose_flag` SET TAGS ('pii_business_glossary_term' = 'Radiation Dose Tracking Flag');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `radiation_dose_flag` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `radiation_dose_flag` SET TAGS ('pii_phi' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `radiation_dose_flag` SET TAGS ('pii_sensitive' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `radiation_dose_flag` SET TAGS ('pii_health' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `radiation_dose_flag` SET TAGS ('pii_unity_catalog_tag' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `radiation_dose_flag` SET TAGS ('pii_classification' = 'phi');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `radiation_dose_flag` SET TAGS ('pii_mask_non_prod' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `record_number` SET TAGS ('pii_business_glossary_term' = 'Consent Record');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `record_number` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `record_number` SET TAGS ('pii_phi' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `record_number` SET TAGS ('pii_sensitive' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `record_number` SET TAGS ('pii_identifier' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `record_number` SET TAGS ('pii_unity_catalog_tag' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `record_number` SET TAGS ('pii_classification' = 'phi');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `record_number` SET TAGS ('pii_mask_non_prod' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `reschedule_count` SET TAGS ('pii_business_glossary_term' = 'Reschedule Count');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `ris_appointment_code` SET TAGS ('pii_business_glossary_term' = 'Radiology Information System (RIS) Appointment ID');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `roomed_timestamp` SET TAGS ('pii_business_glossary_term' = 'Roomed Time');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `scheduled_date` SET TAGS ('pii_business_glossary_term' = 'Scheduled Date');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `scheduled_duration_minutes` SET TAGS ('pii_business_glossary_term' = 'Scheduled Duration (Minutes)');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `scheduled_end_datetime` SET TAGS ('pii_business_glossary_term' = 'Scheduled End Date and Time');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `scheduled_end_time` SET TAGS ('pii_business_glossary_term' = 'Scheduled End Time');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `scheduled_start_datetime` SET TAGS ('pii_business_glossary_term' = 'Scheduled Start Date and Time');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `scheduled_start_time` SET TAGS ('pii_business_glossary_term' = 'Scheduled Start Time');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `scheduling_source` SET TAGS ('pii_business_glossary_term' = 'Scheduling Source');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `scheduling_source` SET TAGS ('pii_value_regex' = 'provider_referral|patient_self|order_based|transfer|walk_in|portal');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `start_timestamp` SET TAGS ('pii_business_glossary_term' = 'Start Time');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `telehealth_access_code` SET TAGS ('pii_business_glossary_term' = 'Telehealth Access Code');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `telehealth_access_code` SET TAGS ('pii_sensitivity' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `telehealth_access_code` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `telehealth_access_code` SET TAGS ('pii_phi' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `telehealth_access_code` SET TAGS ('pii_sensitive' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `telehealth_access_code` SET TAGS ('pii_health' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `telehealth_access_code` SET TAGS ('pii_unity_catalog_tag' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `telehealth_access_code` SET TAGS ('pii_classification' = 'phi');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `telehealth_access_code` SET TAGS ('pii_mask_non_prod' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `telehealth_connection_status` SET TAGS ('pii_business_glossary_term' = 'Telehealth Connection Status');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `telehealth_connection_status` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `telehealth_connection_status` SET TAGS ('pii_phi' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `telehealth_connection_status` SET TAGS ('pii_sensitive' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `telehealth_connection_status` SET TAGS ('pii_health' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `telehealth_connection_status` SET TAGS ('pii_unity_catalog_tag' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `telehealth_connection_status` SET TAGS ('pii_classification' = 'phi');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `telehealth_connection_status` SET TAGS ('pii_mask_non_prod' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `telehealth_platform` SET TAGS ('pii_business_glossary_term' = 'Telehealth Platform');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `telehealth_platform` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `telehealth_platform` SET TAGS ('pii_phi' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `telehealth_platform` SET TAGS ('pii_sensitive' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `telehealth_platform` SET TAGS ('pii_health' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `telehealth_platform` SET TAGS ('pii_unity_catalog_tag' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `telehealth_platform` SET TAGS ('pii_classification' = 'phi');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `telehealth_platform` SET TAGS ('pii_mask_non_prod' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `telehealth_session_url` SET TAGS ('pii_business_glossary_term' = 'Telehealth Session URL');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `telehealth_session_url` SET TAGS ('pii_sensitivity' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `telehealth_session_url` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `telehealth_session_url` SET TAGS ('pii_phi' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `telehealth_session_url` SET TAGS ('pii_sensitive' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `telehealth_session_url` SET TAGS ('pii_health' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `telehealth_session_url` SET TAGS ('pii_unity_catalog_tag' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `telehealth_session_url` SET TAGS ('pii_classification' = 'phi');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `telehealth_session_url` SET TAGS ('pii_mask_non_prod' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `updated_timestamp` SET TAGS ('pii_business_glossary_term' = 'Record Updated Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `vibe_mutation_flag` SET TAGS ('pii_business_glossary_term' = 'Mutation marker');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `vibe_mutation_flag` SET TAGS ('pii_vibe_mutation' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `visit_modality` SET TAGS ('pii_business_glossary_term' = 'Visit Modality');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `visit_reason` SET TAGS ('pii_business_glossary_term' = 'Visit Reason');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `visit_reason_code` SET TAGS ('pii_business_glossary_term' = 'Visit Reason Code');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`reader_assignment` SET TAGS ('pii_data_type' = 'transactional_data');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`reader_assignment` SET TAGS ('pii_subdomain' = 'order_management');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`reader_assignment` SET TAGS ('pii_vibe_mutated' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`reader_assignment` SET TAGS ('pii_structure_enforced' = 'v22domains');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`reader_assignment` ALTER COLUMN `reader_assignment_id` SET TAGS ('pii_business_glossary_term' = 'Reader Assignment Identifier');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`reader_assignment` ALTER COLUMN `care_site_id` SET TAGS ('pii_business_glossary_term' = 'Facility ID');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`reader_assignment` ALTER COLUMN `cpt_code_id` SET TAGS ('pii_business_glossary_term' = 'Cpt Code Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`reader_assignment` ALTER COLUMN `clinician_id` SET TAGS ('pii_business_glossary_term' = 'Radiologist Provider ID');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`reader_assignment` ALTER COLUMN `prior_assignment_reader_assignment_id` SET TAGS ('pii_business_glossary_term' = 'Prior Assignment ID');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`reader_assignment` ALTER COLUMN `radiology_study_id` SET TAGS ('pii_business_glossary_term' = 'Imaging Study ID');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`reader_assignment` ALTER COLUMN `report_id` SET TAGS ('pii_business_glossary_term' = 'Radiology Report ID');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`reader_assignment` ALTER COLUMN `stark_arrangement_id` SET TAGS ('pii_business_glossary_term' = 'Stark Arrangement Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`reader_assignment` ALTER COLUMN `visit_id` SET TAGS ('pii_business_glossary_term' = 'Encounter ID');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`reader_assignment` ALTER COLUMN `accession_number` SET TAGS ('pii_business_glossary_term' = 'Radiology Accession Number');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`reader_assignment` ALTER COLUMN `addendum_flag` SET TAGS ('pii_business_glossary_term' = 'Report Addendum Flag');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`reader_assignment` ALTER COLUMN `addendum_timestamp` SET TAGS ('pii_business_glossary_term' = 'Report Addendum Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`reader_assignment` ALTER COLUMN `assigned_timestamp` SET TAGS ('pii_business_glossary_term' = 'Assignment Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`reader_assignment` ALTER COLUMN `assignment_source` SET TAGS ('pii_business_glossary_term' = 'Assignment Source Method');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`reader_assignment` ALTER COLUMN `assignment_source` SET TAGS ('pii_value_regex' = 'worklist_auto|manual|teleradiology_vendor|ai_routing|escalation');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`reader_assignment` ALTER COLUMN `assignment_status` SET TAGS ('pii_business_glossary_term' = 'Assignment Status');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`reader_assignment` ALTER COLUMN `assignment_status` SET TAGS ('pii_value_regex' = 'assigned|in_progress|completed|cancelled|reassigned|pending');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`reader_assignment` ALTER COLUMN `assignment_type` SET TAGS ('pii_business_glossary_term' = 'Reader Assignment Type');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`reader_assignment` ALTER COLUMN `assignment_type` SET TAGS ('pii_value_regex' = 'primary_read|second_read|peer_review|overread|teleradiology');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`reader_assignment` ALTER COLUMN `body_part` SET TAGS ('pii_business_glossary_term' = 'Body Part Examined');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`reader_assignment` ALTER COLUMN `contrast_used` SET TAGS ('pii_business_glossary_term' = 'Contrast Administration Indicator');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`reader_assignment` ALTER COLUMN `created_timestamp` SET TAGS ('pii_business_glossary_term' = 'Record Created Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`reader_assignment` ALTER COLUMN `critical_finding_flag` SET TAGS ('pii_business_glossary_term' = 'Critical Finding Flag');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`reader_assignment` ALTER COLUMN `critical_finding_notified_timestamp` SET TAGS ('pii_business_glossary_term' = 'Critical Finding Notification Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`reader_assignment` ALTER COLUMN `dictation_method` SET TAGS ('pii_business_glossary_term' = 'Dictation Method');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`reader_assignment` ALTER COLUMN `dictation_method` SET TAGS ('pii_value_regex' = 'voice_recognition|manual_transcription|structured_reporting|template');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`reader_assignment` ALTER COLUMN `image_count` SET TAGS ('pii_business_glossary_term' = 'DICOM Image Count');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`reader_assignment` ALTER COLUMN `is_teleradiology` SET TAGS ('pii_business_glossary_term' = 'Teleradiology Assignment Indicator');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`reader_assignment` ALTER COLUMN `modality` SET TAGS ('pii_business_glossary_term' = 'Imaging Modality');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`reader_assignment` ALTER COLUMN `pacs_study_uid` SET TAGS ('pii_business_glossary_term' = 'Picture Archiving and Communication System (PACS) Study Instance UID');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`reader_assignment` ALTER COLUMN `pacs_study_uid` SET TAGS ('pii_value_regex' = '^[0-9]+(.[0-9]+)+$');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`reader_assignment` ALTER COLUMN `peer_review_category` SET TAGS ('pii_business_glossary_term' = 'Peer Review Discrepancy Category');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`reader_assignment` ALTER COLUMN `peer_review_category` SET TAGS ('pii_value_regex' = 'agree|minor_discrepancy|significant_discrepancy|major_discrepancy');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`reader_assignment` ALTER COLUMN `peer_review_score` SET TAGS ('pii_business_glossary_term' = 'Peer Review Score');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`reader_assignment` ALTER COLUMN `peer_review_score` SET TAGS ('pii_value_regex' = '1|2|3|4|5');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`reader_assignment` ALTER COLUMN `priority` SET TAGS ('pii_business_glossary_term' = 'Study Read Priority');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`reader_assignment` ALTER COLUMN `priority` SET TAGS ('pii_value_regex' = 'stat|urgent|routine|scheduled');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`reader_assignment` ALTER COLUMN `radiation_dose_dlp` SET TAGS ('pii_business_glossary_term' = 'Radiation Dose Length Product (DLP) mGy·cm');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`reader_assignment` ALTER COLUMN `radiation_dose_dlp` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`reader_assignment` ALTER COLUMN `radiation_dose_dlp` SET TAGS ('pii_phi' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`reader_assignment` ALTER COLUMN `radiation_dose_dlp` SET TAGS ('pii_sensitive' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`reader_assignment` ALTER COLUMN `radiation_dose_dlp` SET TAGS ('pii_health' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`reader_assignment` ALTER COLUMN `radiation_dose_dlp` SET TAGS ('pii_unity_catalog_tag' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`reader_assignment` ALTER COLUMN `radiation_dose_dlp` SET TAGS ('pii_classification' = 'phi');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`reader_assignment` ALTER COLUMN `radiation_dose_dlp` SET TAGS ('pii_mask_non_prod' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`reader_assignment` ALTER COLUMN `read_complete_timestamp` SET TAGS ('pii_business_glossary_term' = 'Read Completion Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`reader_assignment` ALTER COLUMN `read_start_timestamp` SET TAGS ('pii_business_glossary_term' = 'Read Start Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`reader_assignment` ALTER COLUMN `reading_site` SET TAGS ('pii_business_glossary_term' = 'Reading Site Location');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`reader_assignment` ALTER COLUMN `reassignment_reason` SET TAGS ('pii_business_glossary_term' = 'Reassignment Reason');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`reader_assignment` ALTER COLUMN `report_signed_timestamp` SET TAGS ('pii_business_glossary_term' = 'Report Signed Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`reader_assignment` ALTER COLUMN `rvu_value` SET TAGS ('pii_business_glossary_term' = 'Relative Value Unit (RVU) Value');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`reader_assignment` ALTER COLUMN `sla_met` SET TAGS ('pii_business_glossary_term' = 'Service Level Agreement (SLA) Met Indicator');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`reader_assignment` ALTER COLUMN `sla_target_minutes` SET TAGS ('pii_business_glossary_term' = 'Service Level Agreement (SLA) Target Minutes');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`reader_assignment` ALTER COLUMN `subspecialty_match` SET TAGS ('pii_business_glossary_term' = 'Subspecialty Match Indicator');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`reader_assignment` ALTER COLUMN `subspecialty_required` SET TAGS ('pii_business_glossary_term' = 'Required Radiologist Subspecialty');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`reader_assignment` ALTER COLUMN `tat_minutes` SET TAGS ('pii_business_glossary_term' = 'Turnaround Time (TAT) Minutes');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`reader_assignment` ALTER COLUMN `teleradiology_routing_reason` SET TAGS ('pii_business_glossary_term' = 'Teleradiology Routing Reason');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`reader_assignment` ALTER COLUMN `teleradiology_routing_reason` SET TAGS ('pii_value_regex' = 'after_hours|subspecialty_gap|volume_overflow|coverage_gap|stat_backup');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`reader_assignment` ALTER COLUMN `teleradiology_routing_reason` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`reader_assignment` ALTER COLUMN `teleradiology_routing_reason` SET TAGS ('pii_phi' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`reader_assignment` ALTER COLUMN `teleradiology_routing_reason` SET TAGS ('pii_sensitive' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`reader_assignment` ALTER COLUMN `teleradiology_routing_reason` SET TAGS ('pii_identifier' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`reader_assignment` ALTER COLUMN `teleradiology_routing_reason` SET TAGS ('pii_unity_catalog_tag' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`reader_assignment` ALTER COLUMN `teleradiology_routing_reason` SET TAGS ('pii_classification' = 'phi');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`reader_assignment` ALTER COLUMN `teleradiology_routing_reason` SET TAGS ('pii_mask_non_prod' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`reader_assignment` ALTER COLUMN `teleradiology_vendor_name` SET TAGS ('pii_business_glossary_term' = 'Teleradiology Vendor Name');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`reader_assignment` ALTER COLUMN `teleradiology_vendor_name` SET TAGS ('pii_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`reader_assignment` ALTER COLUMN `teleradiology_vendor_name` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`reader_assignment` ALTER COLUMN `teleradiology_vendor_name` SET TAGS ('pii_phi' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`reader_assignment` ALTER COLUMN `teleradiology_vendor_name` SET TAGS ('pii_name' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`reader_assignment` ALTER COLUMN `teleradiology_vendor_name` SET TAGS ('pii_unity_catalog_tag' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`reader_assignment` ALTER COLUMN `teleradiology_vendor_name` SET TAGS ('pii_classification' = 'phi');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`reader_assignment` ALTER COLUMN `teleradiology_vendor_name` SET TAGS ('pii_mask_non_prod' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`reader_assignment` ALTER COLUMN `updated_timestamp` SET TAGS ('pii_business_glossary_term' = 'Record Updated Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`reader_assignment` ALTER COLUMN `vendor_accession_number` SET TAGS ('pii_business_glossary_term' = 'Vendor Accession Number');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`reader_assignment` ALTER COLUMN `vibe_mutation_flag` SET TAGS ('pii_business_glossary_term' = 'Mutation marker');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`reader_assignment` ALTER COLUMN `vibe_mutation_flag` SET TAGS ('pii_vibe_mutation' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`reader_assignment` ALTER COLUMN `worklist_code` SET TAGS ('pii_business_glossary_term' = 'RIS Worklist ID');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`critical_result` SET TAGS ('pii_data_type' = 'transactional_data');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`critical_result` SET TAGS ('pii_subdomain' = 'reporting_interpretation');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`critical_result` SET TAGS ('pii_structure_enforced' = 'v22domains');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`critical_result` ALTER COLUMN `clinical_order_id` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`critical_result` ALTER COLUMN `clinical_order_id` SET TAGS ('pii_phi' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`critical_result` ALTER COLUMN `clinical_order_id` SET TAGS ('pii_sensitive' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`critical_result` ALTER COLUMN `clinical_order_id` SET TAGS ('pii_health' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`critical_result` ALTER COLUMN `clinical_order_id` SET TAGS ('pii_unity_catalog_tag' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`critical_result` ALTER COLUMN `clinical_order_id` SET TAGS ('pii_classification' = 'phi');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`critical_result` ALTER COLUMN `clinical_order_id` SET TAGS ('pii_mask_non_prod' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`critical_result` ALTER COLUMN `employee_id` SET TAGS ('pii_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`critical_result` ALTER COLUMN `employee_id` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`critical_result` ALTER COLUMN `mrn` SET TAGS ('pii_sensitivity' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`critical_result` ALTER COLUMN `mrn` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`critical_result` ALTER COLUMN `mrn` SET TAGS ('pii_phi' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`critical_result` ALTER COLUMN `mrn` SET TAGS ('pii_sensitive' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`critical_result` ALTER COLUMN `mrn` SET TAGS ('pii_identifier' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`critical_result` ALTER COLUMN `mrn` SET TAGS ('pii_unity_catalog_tag' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`critical_result` ALTER COLUMN `mrn` SET TAGS ('pii_classification' = 'phi');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`critical_result` ALTER COLUMN `mrn` SET TAGS ('pii_mask_non_prod' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`critical_result` ALTER COLUMN `notified_provider_npi` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`critical_result` ALTER COLUMN `notified_provider_npi` SET TAGS ('pii_phi' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`critical_result` ALTER COLUMN `notified_provider_npi` SET TAGS ('pii_sensitive' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`critical_result` ALTER COLUMN `notified_provider_npi` SET TAGS ('pii_identifier' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`critical_result` ALTER COLUMN `notified_provider_npi` SET TAGS ('pii_unity_catalog_tag' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`critical_result` ALTER COLUMN `notified_provider_npi` SET TAGS ('pii_classification' = 'phi');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`critical_result` ALTER COLUMN `notified_provider_npi` SET TAGS ('pii_mask_non_prod' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`critical_result` ALTER COLUMN `pacs_system_name` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`critical_result` ALTER COLUMN `pacs_system_name` SET TAGS ('pii_phi' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`critical_result` ALTER COLUMN `pacs_system_name` SET TAGS ('pii_name' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`critical_result` ALTER COLUMN `pacs_system_name` SET TAGS ('pii_unity_catalog_tag' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`critical_result` ALTER COLUMN `pacs_system_name` SET TAGS ('pii_classification' = 'phi');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`critical_result` ALTER COLUMN `pacs_system_name` SET TAGS ('pii_mask_non_prod' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`critical_result` ALTER COLUMN `patient_care_setting` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`critical_result` ALTER COLUMN `patient_care_setting` SET TAGS ('pii_phi' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`critical_result` ALTER COLUMN `patient_care_setting` SET TAGS ('pii_sensitive' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`critical_result` ALTER COLUMN `patient_care_setting` SET TAGS ('pii_identifier' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`critical_result` ALTER COLUMN `patient_care_setting` SET TAGS ('pii_unity_catalog_tag' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`critical_result` ALTER COLUMN `patient_care_setting` SET TAGS ('pii_classification' = 'phi');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`critical_result` ALTER COLUMN `patient_care_setting` SET TAGS ('pii_mask_non_prod' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`critical_result` ALTER COLUMN `radiologist_npi` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`critical_result` ALTER COLUMN `radiologist_npi` SET TAGS ('pii_phi' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`critical_result` ALTER COLUMN `radiologist_npi` SET TAGS ('pii_sensitive' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`critical_result` ALTER COLUMN `radiologist_npi` SET TAGS ('pii_identifier' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`critical_result` ALTER COLUMN `radiologist_npi` SET TAGS ('pii_unity_catalog_tag' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`critical_result` ALTER COLUMN `radiologist_npi` SET TAGS ('pii_classification' = 'phi');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`critical_result` ALTER COLUMN `radiologist_npi` SET TAGS ('pii_mask_non_prod' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`critical_result` ALTER COLUMN `vibe_mutation_applied` SET TAGS ('pii_vibe_mutation' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`critical_result` ALTER COLUMN `vibe_mutation_flag` SET TAGS ('pii_vibe_mutation' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`teleradiology_case` SET TAGS ('pii_data_type' = 'transactional_data');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`teleradiology_case` SET TAGS ('pii_subdomain' = 'order_management');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`teleradiology_case` SET TAGS ('pii_structure_enforced' = 'v22domains');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`teleradiology_case` ALTER COLUMN `employee_id` SET TAGS ('pii_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`teleradiology_case` ALTER COLUMN `employee_id` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`teleradiology_case` ALTER COLUMN `clinical_indication` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`teleradiology_case` ALTER COLUMN `clinical_indication` SET TAGS ('pii_phi' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`teleradiology_case` ALTER COLUMN `clinical_indication` SET TAGS ('pii_sensitive' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`teleradiology_case` ALTER COLUMN `clinical_indication` SET TAGS ('pii_health' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`teleradiology_case` ALTER COLUMN `clinical_indication` SET TAGS ('pii_unity_catalog_tag' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`teleradiology_case` ALTER COLUMN `clinical_indication` SET TAGS ('pii_classification' = 'phi');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`teleradiology_case` ALTER COLUMN `clinical_indication` SET TAGS ('pii_mask_non_prod' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`teleradiology_case` ALTER COLUMN `interpreting_radiologist_name` SET TAGS ('pii_sensitivity' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`teleradiology_case` ALTER COLUMN `interpreting_radiologist_name` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`teleradiology_case` ALTER COLUMN `interpreting_radiologist_name` SET TAGS ('pii_phi' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`teleradiology_case` ALTER COLUMN `interpreting_radiologist_name` SET TAGS ('pii_sensitive' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`teleradiology_case` ALTER COLUMN `interpreting_radiologist_name` SET TAGS ('pii_name' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`teleradiology_case` ALTER COLUMN `interpreting_radiologist_name` SET TAGS ('pii_identifier' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`teleradiology_case` ALTER COLUMN `interpreting_radiologist_name` SET TAGS ('pii_unity_catalog_tag' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`teleradiology_case` ALTER COLUMN `interpreting_radiologist_name` SET TAGS ('pii_classification' = 'phi');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`teleradiology_case` ALTER COLUMN `interpreting_radiologist_name` SET TAGS ('pii_mask_non_prod' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`teleradiology_case` ALTER COLUMN `interpreting_radiologist_npi` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`teleradiology_case` ALTER COLUMN `interpreting_radiologist_npi` SET TAGS ('pii_phi' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`teleradiology_case` ALTER COLUMN `interpreting_radiologist_npi` SET TAGS ('pii_sensitive' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`teleradiology_case` ALTER COLUMN `interpreting_radiologist_npi` SET TAGS ('pii_identifier' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`teleradiology_case` ALTER COLUMN `interpreting_radiologist_npi` SET TAGS ('pii_unity_catalog_tag' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`teleradiology_case` ALTER COLUMN `interpreting_radiologist_npi` SET TAGS ('pii_classification' = 'phi');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`teleradiology_case` ALTER COLUMN `interpreting_radiologist_npi` SET TAGS ('pii_mask_non_prod' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`teleradiology_case` ALTER COLUMN `mrn` SET TAGS ('pii_sensitivity' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`teleradiology_case` ALTER COLUMN `mrn` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`teleradiology_case` ALTER COLUMN `mrn` SET TAGS ('pii_phi' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`teleradiology_case` ALTER COLUMN `mrn` SET TAGS ('pii_sensitive' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`teleradiology_case` ALTER COLUMN `mrn` SET TAGS ('pii_identifier' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`teleradiology_case` ALTER COLUMN `mrn` SET TAGS ('pii_unity_catalog_tag' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`teleradiology_case` ALTER COLUMN `mrn` SET TAGS ('pii_classification' = 'phi');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`teleradiology_case` ALTER COLUMN `mrn` SET TAGS ('pii_mask_non_prod' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`teleradiology_case` ALTER COLUMN `routing_reason` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`teleradiology_case` ALTER COLUMN `routing_reason` SET TAGS ('pii_phi' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`teleradiology_case` ALTER COLUMN `routing_reason` SET TAGS ('pii_sensitive' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`teleradiology_case` ALTER COLUMN `routing_reason` SET TAGS ('pii_identifier' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`teleradiology_case` ALTER COLUMN `routing_reason` SET TAGS ('pii_unity_catalog_tag' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`teleradiology_case` ALTER COLUMN `routing_reason` SET TAGS ('pii_classification' = 'phi');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`teleradiology_case` ALTER COLUMN `routing_reason` SET TAGS ('pii_mask_non_prod' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`teleradiology_case` ALTER COLUMN `vibe_mutation_applied` SET TAGS ('pii_vibe_mutation' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`teleradiology_case` ALTER COLUMN `vibe_mutation_flag` SET TAGS ('pii_vibe_mutation' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`follow_up` SET TAGS ('pii_data_type' = 'transactional_data');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`follow_up` SET TAGS ('pii_subdomain' = 'order_management');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`follow_up` SET TAGS ('pii_structure_enforced' = 'v22domains');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`follow_up` ALTER COLUMN `employee_id` SET TAGS ('pii_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`follow_up` ALTER COLUMN `employee_id` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`follow_up` ALTER COLUMN `clinical_order_id` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`follow_up` ALTER COLUMN `clinical_order_id` SET TAGS ('pii_phi' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`follow_up` ALTER COLUMN `clinical_order_id` SET TAGS ('pii_sensitive' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`follow_up` ALTER COLUMN `clinical_order_id` SET TAGS ('pii_health' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`follow_up` ALTER COLUMN `clinical_order_id` SET TAGS ('pii_unity_catalog_tag' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`follow_up` ALTER COLUMN `clinical_order_id` SET TAGS ('pii_classification' = 'phi');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`follow_up` ALTER COLUMN `clinical_order_id` SET TAGS ('pii_mask_non_prod' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`follow_up` ALTER COLUMN `radiology_finding_id` SET TAGS ('pii_business_glossary_term' = 'Radiology Finding Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`follow_up` ALTER COLUMN `population_health_cohort` SET TAGS ('pii_restricted' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`follow_up` ALTER COLUMN `population_health_cohort` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`follow_up` ALTER COLUMN `population_health_cohort` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`follow_up` ALTER COLUMN `population_health_cohort` SET TAGS ('pii_phi' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`follow_up` ALTER COLUMN `population_health_cohort` SET TAGS ('pii_sensitive' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`follow_up` ALTER COLUMN `population_health_cohort` SET TAGS ('pii_health' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`follow_up` ALTER COLUMN `population_health_cohort` SET TAGS ('pii_unity_catalog_tag' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`follow_up` ALTER COLUMN `population_health_cohort` SET TAGS ('pii_classification' = 'phi');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`follow_up` ALTER COLUMN `population_health_cohort` SET TAGS ('pii_mask_non_prod' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`follow_up` ALTER COLUMN `vibe_mutation_applied` SET TAGS ('pii_vibe_mutation' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`follow_up` ALTER COLUMN `vibe_mutation_flag` SET TAGS ('pii_vibe_mutation' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` SET TAGS ('pii_data_type' = 'transactional_data');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` SET TAGS ('pii_subdomain' = 'study_acquisition');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` SET TAGS ('pii_structure_enforced' = 'v22domains');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `interventional_procedure_id` SET TAGS ('pii_primary_key' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `interventional_procedure_id` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `interventional_procedure_id` SET TAGS ('pii_phi' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `interventional_procedure_id` SET TAGS ('pii_sensitive' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `interventional_procedure_id` SET TAGS ('pii_health' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `interventional_procedure_id` SET TAGS ('pii_unity_catalog_tag' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `interventional_procedure_id` SET TAGS ('pii_classification' = 'phi');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `interventional_procedure_id` SET TAGS ('pii_mask_non_prod' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `specimen_id` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `specimen_id` SET TAGS ('pii_phi' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `specimen_id` SET TAGS ('pii_sensitive' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `specimen_id` SET TAGS ('pii_health' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `specimen_id` SET TAGS ('pii_unity_catalog_tag' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `specimen_id` SET TAGS ('pii_classification' = 'phi');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `specimen_id` SET TAGS ('pii_mask_non_prod' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `clinical_order_id` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `clinical_order_id` SET TAGS ('pii_phi' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `clinical_order_id` SET TAGS ('pii_sensitive' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `clinical_order_id` SET TAGS ('pii_health' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `clinical_order_id` SET TAGS ('pii_unity_catalog_tag' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `clinical_order_id` SET TAGS ('pii_classification' = 'phi');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `clinical_order_id` SET TAGS ('pii_mask_non_prod' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `employee_id` SET TAGS ('pii_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `employee_id` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `icd_code_id` SET TAGS ('pii_restricted' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `icd_code_id` SET TAGS ('pii_health' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `icd_code_id` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `icd_code_id` SET TAGS ('pii_phi' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `icd_code_id` SET TAGS ('pii_sensitive' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `icd_code_id` SET TAGS ('pii_unity_catalog_tag' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `icd_code_id` SET TAGS ('pii_classification' = 'phi');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `icd_code_id` SET TAGS ('pii_mask_non_prod' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `lab_order_id` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `lab_order_id` SET TAGS ('pii_phi' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `lab_order_id` SET TAGS ('pii_sensitive' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `lab_order_id` SET TAGS ('pii_health' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `lab_order_id` SET TAGS ('pii_unity_catalog_tag' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `lab_order_id` SET TAGS ('pii_classification' = 'phi');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `lab_order_id` SET TAGS ('pii_mask_non_prod' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `room_id` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `room_id` SET TAGS ('pii_phi' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `room_id` SET TAGS ('pii_sensitive' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `room_id` SET TAGS ('pii_health' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `room_id` SET TAGS ('pii_unity_catalog_tag' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `room_id` SET TAGS ('pii_classification' = 'phi');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `room_id` SET TAGS ('pii_mask_non_prod' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `treatment_consent_id` SET TAGS ('pii_restricted' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `treatment_consent_id` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `treatment_consent_id` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `treatment_consent_id` SET TAGS ('pii_phi' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `treatment_consent_id` SET TAGS ('pii_sensitive' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `treatment_consent_id` SET TAGS ('pii_health' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `treatment_consent_id` SET TAGS ('pii_unity_catalog_tag' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `treatment_consent_id` SET TAGS ('pii_classification' = 'phi');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `treatment_consent_id` SET TAGS ('pii_mask_non_prod' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `blood_loss_ml` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `blood_loss_ml` SET TAGS ('pii_phi' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `blood_loss_ml` SET TAGS ('pii_sensitive' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `blood_loss_ml` SET TAGS ('pii_health' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `blood_loss_ml` SET TAGS ('pii_unity_catalog_tag' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `blood_loss_ml` SET TAGS ('pii_classification' = 'phi');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `blood_loss_ml` SET TAGS ('pii_mask_non_prod' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `cancellation_reason` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `cancellation_reason` SET TAGS ('pii_phi' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `cancellation_reason` SET TAGS ('pii_phone' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `cancellation_reason` SET TAGS ('pii_unity_catalog_tag' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `cancellation_reason` SET TAGS ('pii_classification' = 'phi');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `cancellation_reason` SET TAGS ('pii_mask_non_prod' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `cancelled_timestamp` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `cancelled_timestamp` SET TAGS ('pii_phi' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `cancelled_timestamp` SET TAGS ('pii_phone' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `cancelled_timestamp` SET TAGS ('pii_unity_catalog_tag' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `cancelled_timestamp` SET TAGS ('pii_classification' = 'phi');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `cancelled_timestamp` SET TAGS ('pii_mask_non_prod' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `device_name` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `device_name` SET TAGS ('pii_phi' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `device_name` SET TAGS ('pii_name' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `device_name` SET TAGS ('pii_unity_catalog_tag' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `device_name` SET TAGS ('pii_classification' = 'phi');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `device_name` SET TAGS ('pii_mask_non_prod' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `icd10_post_procedure_diagnosis_code` SET TAGS ('pii_restricted' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `icd10_post_procedure_diagnosis_code` SET TAGS ('pii_health' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `icd10_post_procedure_diagnosis_code` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `icd10_post_procedure_diagnosis_code` SET TAGS ('pii_phi' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `icd10_post_procedure_diagnosis_code` SET TAGS ('pii_sensitive' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `icd10_post_procedure_diagnosis_code` SET TAGS ('pii_unity_catalog_tag' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `icd10_post_procedure_diagnosis_code` SET TAGS ('pii_classification' = 'phi');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `icd10_post_procedure_diagnosis_code` SET TAGS ('pii_mask_non_prod' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `operator_npi` SET TAGS ('pii_sensitivity' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `operator_npi` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `operator_npi` SET TAGS ('pii_phi' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `operator_npi` SET TAGS ('pii_sensitive' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `operator_npi` SET TAGS ('pii_identifier' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `operator_npi` SET TAGS ('pii_unity_catalog_tag' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `operator_npi` SET TAGS ('pii_classification' = 'phi');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `operator_npi` SET TAGS ('pii_mask_non_prod' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `performing_provider_npi` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `performing_provider_npi` SET TAGS ('pii_phi' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `performing_provider_npi` SET TAGS ('pii_sensitive' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `performing_provider_npi` SET TAGS ('pii_identifier' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `performing_provider_npi` SET TAGS ('pii_unity_catalog_tag' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `performing_provider_npi` SET TAGS ('pii_classification' = 'phi');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `performing_provider_npi` SET TAGS ('pii_mask_non_prod' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `procedure_approach` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `procedure_approach` SET TAGS ('pii_phi' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `procedure_approach` SET TAGS ('pii_sensitive' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `procedure_approach` SET TAGS ('pii_health' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `procedure_approach` SET TAGS ('pii_unity_catalog_tag' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `procedure_approach` SET TAGS ('pii_classification' = 'phi');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `procedure_approach` SET TAGS ('pii_mask_non_prod' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `procedure_category` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `procedure_category` SET TAGS ('pii_phi' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `procedure_category` SET TAGS ('pii_sensitive' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `procedure_category` SET TAGS ('pii_health' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `procedure_category` SET TAGS ('pii_unity_catalog_tag' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `procedure_category` SET TAGS ('pii_classification' = 'phi');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `procedure_category` SET TAGS ('pii_mask_non_prod' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `procedure_datetime` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `procedure_datetime` SET TAGS ('pii_phi' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `procedure_datetime` SET TAGS ('pii_sensitive' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `procedure_datetime` SET TAGS ('pii_health' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `procedure_datetime` SET TAGS ('pii_unity_catalog_tag' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `procedure_datetime` SET TAGS ('pii_classification' = 'phi');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `procedure_datetime` SET TAGS ('pii_mask_non_prod' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `procedure_description` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `procedure_description` SET TAGS ('pii_phi' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `procedure_description` SET TAGS ('pii_sensitive' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `procedure_description` SET TAGS ('pii_health' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `procedure_description` SET TAGS ('pii_unity_catalog_tag' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `procedure_description` SET TAGS ('pii_classification' = 'phi');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `procedure_description` SET TAGS ('pii_mask_non_prod' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `procedure_end_datetime` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `procedure_end_datetime` SET TAGS ('pii_phi' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `procedure_end_datetime` SET TAGS ('pii_sensitive' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `procedure_end_datetime` SET TAGS ('pii_health' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `procedure_end_datetime` SET TAGS ('pii_unity_catalog_tag' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `procedure_end_datetime` SET TAGS ('pii_classification' = 'phi');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `procedure_end_datetime` SET TAGS ('pii_mask_non_prod' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `procedure_end_timestamp` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `procedure_end_timestamp` SET TAGS ('pii_phi' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `procedure_end_timestamp` SET TAGS ('pii_sensitive' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `procedure_end_timestamp` SET TAGS ('pii_health' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `procedure_end_timestamp` SET TAGS ('pii_unity_catalog_tag' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `procedure_end_timestamp` SET TAGS ('pii_classification' = 'phi');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `procedure_end_timestamp` SET TAGS ('pii_mask_non_prod' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `procedure_name` SET TAGS ('pii_sensitivity' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `procedure_name` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `procedure_name` SET TAGS ('pii_phi' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `procedure_name` SET TAGS ('pii_sensitive' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `procedure_name` SET TAGS ('pii_name' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `procedure_name` SET TAGS ('pii_health' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `procedure_name` SET TAGS ('pii_unity_catalog_tag' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `procedure_name` SET TAGS ('pii_classification' = 'phi');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `procedure_name` SET TAGS ('pii_mask_non_prod' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `procedure_start_datetime` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `procedure_start_datetime` SET TAGS ('pii_phi' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `procedure_start_datetime` SET TAGS ('pii_sensitive' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `procedure_start_datetime` SET TAGS ('pii_health' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `procedure_start_datetime` SET TAGS ('pii_unity_catalog_tag' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `procedure_start_datetime` SET TAGS ('pii_classification' = 'phi');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `procedure_start_datetime` SET TAGS ('pii_mask_non_prod' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `procedure_start_timestamp` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `procedure_start_timestamp` SET TAGS ('pii_phi' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `procedure_start_timestamp` SET TAGS ('pii_sensitive' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `procedure_start_timestamp` SET TAGS ('pii_health' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `procedure_start_timestamp` SET TAGS ('pii_unity_catalog_tag' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `procedure_start_timestamp` SET TAGS ('pii_classification' = 'phi');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `procedure_start_timestamp` SET TAGS ('pii_mask_non_prod' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `procedure_status` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `procedure_status` SET TAGS ('pii_phi' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `procedure_status` SET TAGS ('pii_sensitive' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `procedure_status` SET TAGS ('pii_health' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `procedure_status` SET TAGS ('pii_unity_catalog_tag' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `procedure_status` SET TAGS ('pii_classification' = 'phi');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `procedure_status` SET TAGS ('pii_mask_non_prod' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `procedure_timestamp` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `procedure_timestamp` SET TAGS ('pii_phi' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `procedure_timestamp` SET TAGS ('pii_sensitive' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `procedure_timestamp` SET TAGS ('pii_health' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `procedure_timestamp` SET TAGS ('pii_unity_catalog_tag' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `procedure_timestamp` SET TAGS ('pii_classification' = 'phi');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `procedure_timestamp` SET TAGS ('pii_mask_non_prod' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `radiation_dose_dap` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `radiation_dose_dap` SET TAGS ('pii_phi' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `radiation_dose_dap` SET TAGS ('pii_sensitive' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `radiation_dose_dap` SET TAGS ('pii_health' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `radiation_dose_dap` SET TAGS ('pii_unity_catalog_tag' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `radiation_dose_dap` SET TAGS ('pii_classification' = 'phi');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `radiation_dose_dap` SET TAGS ('pii_mask_non_prod' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `radiation_dose_dap_gycm2` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `radiation_dose_dap_gycm2` SET TAGS ('pii_phi' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `radiation_dose_dap_gycm2` SET TAGS ('pii_sensitive' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `radiation_dose_dap_gycm2` SET TAGS ('pii_health' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `radiation_dose_dap_gycm2` SET TAGS ('pii_unity_catalog_tag' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `radiation_dose_dap_gycm2` SET TAGS ('pii_classification' = 'phi');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `radiation_dose_dap_gycm2` SET TAGS ('pii_mask_non_prod' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `radiation_dose_kerma_mgy` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `radiation_dose_kerma_mgy` SET TAGS ('pii_phi' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `radiation_dose_kerma_mgy` SET TAGS ('pii_sensitive' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `radiation_dose_kerma_mgy` SET TAGS ('pii_health' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `radiation_dose_kerma_mgy` SET TAGS ('pii_unity_catalog_tag' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `radiation_dose_kerma_mgy` SET TAGS ('pii_classification' = 'phi');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `radiation_dose_kerma_mgy` SET TAGS ('pii_mask_non_prod' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `sedation_provider_npi` SET TAGS ('pii_sensitivity' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `sedation_provider_npi` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `sedation_provider_npi` SET TAGS ('pii_phi' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `sedation_provider_npi` SET TAGS ('pii_sensitive' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `sedation_provider_npi` SET TAGS ('pii_identifier' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `sedation_provider_npi` SET TAGS ('pii_unity_catalog_tag' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `sedation_provider_npi` SET TAGS ('pii_classification' = 'phi');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `sedation_provider_npi` SET TAGS ('pii_mask_non_prod' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `specimen_collected` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `specimen_collected` SET TAGS ('pii_phi' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `specimen_collected` SET TAGS ('pii_sensitive' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `specimen_collected` SET TAGS ('pii_health' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `specimen_collected` SET TAGS ('pii_unity_catalog_tag' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `specimen_collected` SET TAGS ('pii_classification' = 'phi');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `specimen_collected` SET TAGS ('pii_mask_non_prod' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `specimen_collected_flag` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `specimen_collected_flag` SET TAGS ('pii_phi' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `specimen_collected_flag` SET TAGS ('pii_sensitive' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `specimen_collected_flag` SET TAGS ('pii_health' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `specimen_collected_flag` SET TAGS ('pii_unity_catalog_tag' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `specimen_collected_flag` SET TAGS ('pii_classification' = 'phi');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `specimen_collected_flag` SET TAGS ('pii_mask_non_prod' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `specimen_obtained_flag` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `specimen_obtained_flag` SET TAGS ('pii_phi' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `specimen_obtained_flag` SET TAGS ('pii_sensitive' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `specimen_obtained_flag` SET TAGS ('pii_health' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `specimen_obtained_flag` SET TAGS ('pii_unity_catalog_tag' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `specimen_obtained_flag` SET TAGS ('pii_classification' = 'phi');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `specimen_obtained_flag` SET TAGS ('pii_mask_non_prod' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `specimen_type` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `specimen_type` SET TAGS ('pii_phi' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `specimen_type` SET TAGS ('pii_sensitive' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `specimen_type` SET TAGS ('pii_health' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `specimen_type` SET TAGS ('pii_unity_catalog_tag' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `specimen_type` SET TAGS ('pii_classification' = 'phi');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `specimen_type` SET TAGS ('pii_mask_non_prod' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `vibe_mutation_applied` SET TAGS ('pii_vibe_mutation' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `vibe_mutation_flag` SET TAGS ('pii_vibe_mutation' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_order_status_history` SET TAGS ('pii_data_type' = 'transactional_data');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_order_status_history` SET TAGS ('pii_subdomain' = 'order_management');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_order_status_history` SET TAGS ('pii_structure_enforced' = 'v22domains');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_order_status_history` ALTER COLUMN `corrected_history_id` SET TAGS ('pii_relationship' = 'correction');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_order_status_history` ALTER COLUMN `employee_id` SET TAGS ('pii_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_order_status_history` ALTER COLUMN `employee_id` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_order_status_history` ALTER COLUMN `radiology_changed_by_employee_id` SET TAGS ('pii_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_order_status_history` ALTER COLUMN `radiology_changed_by_employee_id` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_order_status_history` ALTER COLUMN `cancellation_category` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_order_status_history` ALTER COLUMN `cancellation_category` SET TAGS ('pii_phi' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_order_status_history` ALTER COLUMN `cancellation_category` SET TAGS ('pii_phone' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_order_status_history` ALTER COLUMN `cancellation_category` SET TAGS ('pii_unity_catalog_tag' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_order_status_history` ALTER COLUMN `cancellation_category` SET TAGS ('pii_classification' = 'phi');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_order_status_history` ALTER COLUMN `cancellation_category` SET TAGS ('pii_mask_non_prod' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_order_status_history` ALTER COLUMN `changed_by_user_npi` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_order_status_history` ALTER COLUMN `changed_by_user_npi` SET TAGS ('pii_phi' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_order_status_history` ALTER COLUMN `changed_by_user_npi` SET TAGS ('pii_sensitive' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_order_status_history` ALTER COLUMN `changed_by_user_npi` SET TAGS ('pii_identifier' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_order_status_history` ALTER COLUMN `changed_by_user_npi` SET TAGS ('pii_unity_catalog_tag' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_order_status_history` ALTER COLUMN `changed_by_user_npi` SET TAGS ('pii_classification' = 'phi');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_order_status_history` ALTER COLUMN `changed_by_user_npi` SET TAGS ('pii_mask_non_prod' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_order_status_history` ALTER COLUMN `ip_address` SET TAGS ('pii_restricted' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_order_status_history` ALTER COLUMN `ip_address` SET TAGS ('pii_address' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_order_status_history` ALTER COLUMN `ip_address` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_order_status_history` ALTER COLUMN `ip_address` SET TAGS ('pii_phi' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_order_status_history` ALTER COLUMN `ip_address` SET TAGS ('pii_unity_catalog_tag' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_order_status_history` ALTER COLUMN `ip_address` SET TAGS ('pii_classification' = 'phi');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_order_status_history` ALTER COLUMN `ip_address` SET TAGS ('pii_mask_non_prod' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_order_status_history` ALTER COLUMN `vibe_mutation_applied` SET TAGS ('pii_vibe_mutation' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_order_status_history` ALTER COLUMN `vibe_mutation_flag` SET TAGS ('pii_vibe_mutation' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_distribution` SET TAGS ('pii_data_type' = 'association_data');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_distribution` SET TAGS ('pii_subdomain' = 'external_distribution');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_distribution` SET TAGS ('pii_association_edges' = 'radiology.report,interoperability.trading_partner');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_distribution` SET TAGS ('pii_structure_enforced' = 'v22domains');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_distribution` ALTER COLUMN `clinician_id` SET TAGS ('pii_business_glossary_term' = 'Recipient Clinician');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_distribution` ALTER COLUMN `care_site_id` SET TAGS ('pii_business_glossary_term' = 'Care Site');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_distribution` ALTER COLUMN `routing_rule_id` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_distribution` ALTER COLUMN `routing_rule_id` SET TAGS ('pii_phi' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_distribution` ALTER COLUMN `routing_rule_id` SET TAGS ('pii_sensitive' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_distribution` ALTER COLUMN `routing_rule_id` SET TAGS ('pii_identifier' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_distribution` ALTER COLUMN `routing_rule_id` SET TAGS ('pii_unity_catalog_tag' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_distribution` ALTER COLUMN `routing_rule_id` SET TAGS ('pii_classification' = 'phi');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_distribution` ALTER COLUMN `routing_rule_id` SET TAGS ('pii_mask_non_prod' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_distribution` ALTER COLUMN `created_timestamp` SET TAGS ('pii_business_glossary_term' = 'Created Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_distribution` ALTER COLUMN `distribution_method` SET TAGS ('pii_business_glossary_term' = 'Distribution Method');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_distribution` ALTER COLUMN `priority` SET TAGS ('pii_business_glossary_term' = 'Priority');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_distribution` ALTER COLUMN `recipient_email` SET TAGS ('pii_business_glossary_term' = 'Recipient Email');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_distribution` ALTER COLUMN `recipient_email` SET TAGS ('pii_sensitivity' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_distribution` ALTER COLUMN `recipient_email` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_distribution` ALTER COLUMN `recipient_email` SET TAGS ('pii_phi' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_distribution` ALTER COLUMN `recipient_email` SET TAGS ('pii_email' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_distribution` ALTER COLUMN `recipient_email` SET TAGS ('pii_unity_catalog_tag' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_distribution` ALTER COLUMN `recipient_email` SET TAGS ('pii_classification' = 'phi');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_distribution` ALTER COLUMN `recipient_email` SET TAGS ('pii_mask_non_prod' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_distribution` ALTER COLUMN `recipient_fax` SET TAGS ('pii_sensitivity' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_distribution` ALTER COLUMN `recipient_fax` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_distribution` ALTER COLUMN `recipient_fax` SET TAGS ('pii_phi' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_distribution` ALTER COLUMN `recipient_fax` SET TAGS ('pii_phone' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_distribution` ALTER COLUMN `recipient_fax` SET TAGS ('pii_unity_catalog_tag' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_distribution` ALTER COLUMN `recipient_fax` SET TAGS ('pii_classification' = 'phi');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_distribution` ALTER COLUMN `recipient_fax` SET TAGS ('pii_mask_non_prod' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_distribution` ALTER COLUMN `recipient_fax_number` SET TAGS ('pii_business_glossary_term' = 'Recipient Fax');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_distribution` ALTER COLUMN `recipient_fax_number` SET TAGS ('pii_sensitivity' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_distribution` ALTER COLUMN `recipient_fax_number` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_distribution` ALTER COLUMN `recipient_fax_number` SET TAGS ('pii_phi' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_distribution` ALTER COLUMN `recipient_fax_number` SET TAGS ('pii_phone' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_distribution` ALTER COLUMN `recipient_fax_number` SET TAGS ('pii_unity_catalog_tag' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_distribution` ALTER COLUMN `recipient_fax_number` SET TAGS ('pii_classification' = 'phi');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_distribution` ALTER COLUMN `recipient_fax_number` SET TAGS ('pii_mask_non_prod' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_distribution` ALTER COLUMN `recipient_name` SET TAGS ('pii_sensitivity' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_distribution` ALTER COLUMN `recipient_name` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_distribution` ALTER COLUMN `recipient_name` SET TAGS ('pii_phi' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_distribution` ALTER COLUMN `recipient_name` SET TAGS ('pii_name' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_distribution` ALTER COLUMN `recipient_name` SET TAGS ('pii_unity_catalog_tag' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_distribution` ALTER COLUMN `recipient_name` SET TAGS ('pii_classification' = 'phi');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_distribution` ALTER COLUMN `recipient_name` SET TAGS ('pii_mask_non_prod' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_distribution` ALTER COLUMN `recipient_npi` SET TAGS ('pii_sensitivity' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_distribution` ALTER COLUMN `recipient_npi` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_distribution` ALTER COLUMN `recipient_npi` SET TAGS ('pii_phi' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_distribution` ALTER COLUMN `recipient_npi` SET TAGS ('pii_sensitive' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_distribution` ALTER COLUMN `recipient_npi` SET TAGS ('pii_identifier' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_distribution` ALTER COLUMN `recipient_npi` SET TAGS ('pii_unity_catalog_tag' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_distribution` ALTER COLUMN `recipient_npi` SET TAGS ('pii_classification' = 'phi');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_distribution` ALTER COLUMN `recipient_npi` SET TAGS ('pii_mask_non_prod' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_distribution` ALTER COLUMN `vibe_mutation_applied` SET TAGS ('pii_vibe_mutation' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_distribution` ALTER COLUMN `vibe_mutation_flag` SET TAGS ('pii_vibe_mutation' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`transmission` SET TAGS ('pii_data_type' = 'association_data');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`transmission` SET TAGS ('pii_subdomain' = 'external_distribution');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`transmission` SET TAGS ('pii_association_edges' = 'radiology.study,interoperability.trading_partner');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`transmission` SET TAGS ('pii_structure_enforced' = 'v22domains');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`transmission` ALTER COLUMN `employee_id` SET TAGS ('pii_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`transmission` ALTER COLUMN `employee_id` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`transmission` ALTER COLUMN `destination` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`transmission` ALTER COLUMN `destination` SET TAGS ('pii_phi' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`transmission` ALTER COLUMN `destination` SET TAGS ('pii_sensitive' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`transmission` ALTER COLUMN `destination` SET TAGS ('pii_identifier' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`transmission` ALTER COLUMN `destination` SET TAGS ('pii_unity_catalog_tag' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`transmission` ALTER COLUMN `destination` SET TAGS ('pii_classification' = 'phi');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`transmission` ALTER COLUMN `destination` SET TAGS ('pii_mask_non_prod' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`transmission` ALTER COLUMN `destination_ae_title` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`transmission` ALTER COLUMN `destination_ae_title` SET TAGS ('pii_phi' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`transmission` ALTER COLUMN `destination_ae_title` SET TAGS ('pii_sensitive' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`transmission` ALTER COLUMN `destination_ae_title` SET TAGS ('pii_identifier' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`transmission` ALTER COLUMN `destination_ae_title` SET TAGS ('pii_unity_catalog_tag' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`transmission` ALTER COLUMN `destination_ae_title` SET TAGS ('pii_classification' = 'phi');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`transmission` ALTER COLUMN `destination_ae_title` SET TAGS ('pii_mask_non_prod' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`transmission` ALTER COLUMN `destination_system` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`transmission` ALTER COLUMN `destination_system` SET TAGS ('pii_phi' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`transmission` ALTER COLUMN `destination_system` SET TAGS ('pii_sensitive' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`transmission` ALTER COLUMN `destination_system` SET TAGS ('pii_identifier' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`transmission` ALTER COLUMN `destination_system` SET TAGS ('pii_unity_catalog_tag' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`transmission` ALTER COLUMN `destination_system` SET TAGS ('pii_classification' = 'phi');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`transmission` ALTER COLUMN `destination_system` SET TAGS ('pii_mask_non_prod' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`transmission` ALTER COLUMN `vibe_mutation_applied` SET TAGS ('pii_vibe_mutation' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`transmission` ALTER COLUMN `vibe_mutation_flag` SET TAGS ('pii_vibe_mutation' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`network_modality_participation` SET TAGS ('pii_data_type' = 'association_data');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`network_modality_participation` SET TAGS ('pii_subdomain' = 'external_distribution');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`network_modality_participation` SET TAGS ('pii_association_edges' = 'radiology.modality,insurance.provider_network');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`network_modality_participation` SET TAGS ('pii_structure_enforced' = 'v22domains');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`network_modality_participation` ALTER COLUMN `accepting_new_referrals_flag` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`network_modality_participation` ALTER COLUMN `accepting_new_referrals_flag` SET TAGS ('pii_phi' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`network_modality_participation` ALTER COLUMN `accepting_new_referrals_flag` SET TAGS ('pii_sensitive' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`network_modality_participation` ALTER COLUMN `accepting_new_referrals_flag` SET TAGS ('pii_identifier' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`network_modality_participation` ALTER COLUMN `accepting_new_referrals_flag` SET TAGS ('pii_unity_catalog_tag' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`network_modality_participation` ALTER COLUMN `accepting_new_referrals_flag` SET TAGS ('pii_classification' = 'phi');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`network_modality_participation` ALTER COLUMN `accepting_new_referrals_flag` SET TAGS ('pii_mask_non_prod' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`network_modality_participation` ALTER COLUMN `vibe_mutation_applied` SET TAGS ('pii_vibe_mutation' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`network_modality_participation` ALTER COLUMN `vibe_mutation_flag` SET TAGS ('pii_vibe_mutation' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_finding` SET TAGS ('pii_data_type' = 'transactional_data');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_finding` SET TAGS ('pii_subdomain' = 'reporting_interpretation');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_finding` SET TAGS ('pii_reconciled' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_finding` SET TAGS ('pii_structure_enforced' = 'v22domains');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_finding` SET TAGS ('pii_ssot_role' = 'alias');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_finding` SET TAGS ('pii_ssot_canonical' = 'clinical.clinical_finding');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_finding` SET TAGS ('pii_ssot_note' = 'radiology.radiology_finding retained as radiology-specific subtype');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_finding` SET TAGS ('pii_ssot_primary' = 'clinical.clinical_finding');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_finding` SET TAGS ('pii_distinct_document' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_finding` SET TAGS ('pii_ssot' = 'domain_specific');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_finding` SET TAGS ('pii_ssot_duplicate_of' = 'clinical.clinical_finding');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_finding` SET TAGS ('pii_ssot_resolution' = 'designate_ssot');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_finding` SET TAGS ('pii_ssot_pair_winner' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_finding` SET TAGS ('pii_duplicate_of' = 'clinical.clinical_finding');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_finding` ALTER COLUMN `clinical_finding_id` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_finding` ALTER COLUMN `clinical_finding_id` SET TAGS ('pii_phi' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_finding` ALTER COLUMN `clinical_finding_id` SET TAGS ('pii_sensitive' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_finding` ALTER COLUMN `clinical_finding_id` SET TAGS ('pii_health' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_finding` ALTER COLUMN `clinical_finding_id` SET TAGS ('pii_unity_catalog_tag' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_finding` ALTER COLUMN `clinical_finding_id` SET TAGS ('pii_classification' = 'phi');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_finding` ALTER COLUMN `clinical_finding_id` SET TAGS ('pii_mask_non_prod' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_finding` ALTER COLUMN `finding_domain` SET TAGS ('pii_discriminator' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_finding` ALTER COLUMN `vibe_mutation_applied` SET TAGS ('pii_vibe_mutation' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_finding` ALTER COLUMN `vibe_mutation_flag` SET TAGS ('pii_vibe_mutation' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_peer_review` SET TAGS ('pii_data_type' = 'transactional_data');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_peer_review` SET TAGS ('pii_subdomain' = 'reporting_interpretation');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_peer_review` SET TAGS ('pii_reconciled' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_peer_review` SET TAGS ('pii_scope' = 'radiology_specialty');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_peer_review` SET TAGS ('pii_ssot_differentiated' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_peer_review` SET TAGS ('pii_review_context' = 'radpeer_diagnostic_accuracy');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_peer_review` SET TAGS ('pii_structure_enforced' = 'v22domains');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_peer_review` SET TAGS ('pii_ssot_role' = 'alias');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_peer_review` SET TAGS ('pii_ssot_canonical' = 'quality.quality_peer_review');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_peer_review` SET TAGS ('pii_ssot_primary' = 'quality.quality_peer_review');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_peer_review` SET TAGS ('pii_distinct_document' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_peer_review` SET TAGS ('pii_ssot' = 'domain_specific');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_peer_review` SET TAGS ('pii_ssot_note' = 'distinct_domain_scope_not_duplicate');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_peer_review` SET TAGS ('pii_ssot_duplicate_of' = 'quality.quality_peer_review');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_peer_review` SET TAGS ('pii_ssot_resolution' = 'designate_ssot');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_peer_review` SET TAGS ('pii_ssot_pair_winner' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_peer_review` SET TAGS ('pii_duplicate_of' = 'quality.quality_peer_review');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_peer_review` ALTER COLUMN `employee_id` SET TAGS ('pii_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_peer_review` ALTER COLUMN `employee_id` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_peer_review` ALTER COLUMN `clinician_id` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_peer_review` ALTER COLUMN `clinician_id` SET TAGS ('pii_phi' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_peer_review` ALTER COLUMN `clinician_id` SET TAGS ('pii_sensitive' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_peer_review` ALTER COLUMN `clinician_id` SET TAGS ('pii_identifier' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_peer_review` ALTER COLUMN `clinician_id` SET TAGS ('pii_unity_catalog_tag' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_peer_review` ALTER COLUMN `clinician_id` SET TAGS ('pii_classification' = 'phi');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_peer_review` ALTER COLUMN `clinician_id` SET TAGS ('pii_mask_non_prod' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_peer_review` ALTER COLUMN `clinical_history_available_flag` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_peer_review` ALTER COLUMN `clinical_history_available_flag` SET TAGS ('pii_phi' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_peer_review` ALTER COLUMN `clinical_history_available_flag` SET TAGS ('pii_sensitive' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_peer_review` ALTER COLUMN `clinical_history_available_flag` SET TAGS ('pii_health' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_peer_review` ALTER COLUMN `clinical_history_available_flag` SET TAGS ('pii_unity_catalog_tag' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_peer_review` ALTER COLUMN `clinical_history_available_flag` SET TAGS ('pii_classification' = 'phi');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_peer_review` ALTER COLUMN `clinical_history_available_flag` SET TAGS ('pii_mask_non_prod' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_peer_review` ALTER COLUMN `discrepancy_clinical_significance` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_peer_review` ALTER COLUMN `discrepancy_clinical_significance` SET TAGS ('pii_phi' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_peer_review` ALTER COLUMN `discrepancy_clinical_significance` SET TAGS ('pii_sensitive' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_peer_review` ALTER COLUMN `discrepancy_clinical_significance` SET TAGS ('pii_health' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_peer_review` ALTER COLUMN `discrepancy_clinical_significance` SET TAGS ('pii_unity_catalog_tag' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_peer_review` ALTER COLUMN `discrepancy_clinical_significance` SET TAGS ('pii_classification' = 'phi');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_peer_review` ALTER COLUMN `discrepancy_clinical_significance` SET TAGS ('pii_mask_non_prod' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_peer_review` ALTER COLUMN `original_radiologist_npi` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_peer_review` ALTER COLUMN `original_radiologist_npi` SET TAGS ('pii_phi' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_peer_review` ALTER COLUMN `original_radiologist_npi` SET TAGS ('pii_sensitive' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_peer_review` ALTER COLUMN `original_radiologist_npi` SET TAGS ('pii_identifier' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_peer_review` ALTER COLUMN `original_radiologist_npi` SET TAGS ('pii_unity_catalog_tag' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_peer_review` ALTER COLUMN `original_radiologist_npi` SET TAGS ('pii_classification' = 'phi');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_peer_review` ALTER COLUMN `original_radiologist_npi` SET TAGS ('pii_mask_non_prod' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_peer_review` ALTER COLUMN `peer_review_scope` SET TAGS ('pii_discriminator' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_peer_review` ALTER COLUMN `reviewer_radiologist_npi` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_peer_review` ALTER COLUMN `reviewer_radiologist_npi` SET TAGS ('pii_phi' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_peer_review` ALTER COLUMN `reviewer_radiologist_npi` SET TAGS ('pii_sensitive' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_peer_review` ALTER COLUMN `reviewer_radiologist_npi` SET TAGS ('pii_identifier' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_peer_review` ALTER COLUMN `reviewer_radiologist_npi` SET TAGS ('pii_unity_catalog_tag' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_peer_review` ALTER COLUMN `reviewer_radiologist_npi` SET TAGS ('pii_classification' = 'phi');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_peer_review` ALTER COLUMN `reviewer_radiologist_npi` SET TAGS ('pii_mask_non_prod' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_peer_review` ALTER COLUMN `vibe_mutation_applied` SET TAGS ('pii_vibe_mutation' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_peer_review` ALTER COLUMN `vibe_mutation_flag` SET TAGS ('pii_vibe_mutation' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_study` SET TAGS ('pii_data_type' = 'transactional_data');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_study` SET TAGS ('pii_subdomain' = 'study_acquisition');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_study` SET TAGS ('pii_mvm_alias' = 'radiology.study');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_study` SET TAGS ('pii_structure_enforced' = 'v22domains');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_study` SET TAGS ('pii_ssot_role' = 'alias');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_study` SET TAGS ('pii_ssot_canonical' = 'research.research_study');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_study` SET TAGS ('pii_ssot_note' = 'Distinct concepts; enforce naming clarity');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_study` SET TAGS ('pii_ssot' = 'primary');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_study` SET TAGS ('pii_ssot_pair' = 'research.research_study');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_study` SET TAGS ('pii_distinct_document' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_study` SET TAGS ('pii_ssot_pair_winner' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_study` SET TAGS ('pii_duplicate_of' = 'research.research_study');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_study` SET TAGS ('pii_ssot_primary' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_study` SET TAGS ('pii_mvm_ecm_reconciled' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_study` SET TAGS ('pii_ecm_superset' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_study` ALTER COLUMN `radiology_study_id` SET TAGS ('pii_business_glossary_term' = 'Radiology Study Identifier');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_study` ALTER COLUMN `care_site_id` SET TAGS ('pii_business_glossary_term' = 'Care Site Identifier');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_study` ALTER COLUMN `demographics_id` SET TAGS ('pii_business_glossary_term' = 'Demographics Identifier');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_study` ALTER COLUMN `demographics_id` SET TAGS ('pii_phi' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_study` ALTER COLUMN `imaging_order_id` SET TAGS ('pii_business_glossary_term' = 'Imaging Order Identifier');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_study` ALTER COLUMN `modality_id` SET TAGS ('pii_business_glossary_term' = 'Modality Identifier');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_study` ALTER COLUMN `clinician_id` SET TAGS ('pii_business_glossary_term' = 'Clinician Identifier');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_study` ALTER COLUMN `protocol_id` SET TAGS ('pii_business_glossary_term' = 'Imaging Protocol Identifier');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_study` ALTER COLUMN `research_study_id` SET TAGS ('pii_business_glossary_term' = 'Research Study Identifier');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_study` ALTER COLUMN `visit_id` SET TAGS ('pii_business_glossary_term' = 'Visit Identifier');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_study` ALTER COLUMN `accession_number` SET TAGS ('pii_business_glossary_term' = 'Accession Number');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_study` ALTER COLUMN `body_part_examined` SET TAGS ('pii_business_glossary_term' = 'Body Part Examined');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_study` ALTER COLUMN `contrast_administered` SET TAGS ('pii_business_glossary_term' = 'Contrast Administered');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_study` ALTER COLUMN `created_timestamp` SET TAGS ('pii_business_glossary_term' = 'Created Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_study` ALTER COLUMN `critical_finding_flag` SET TAGS ('pii_business_glossary_term' = 'Critical Finding Flag');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_study` ALTER COLUMN `critical_finding_notified_timestamp` SET TAGS ('pii_business_glossary_term' = 'Critical Finding Notified Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_study` ALTER COLUMN `dicom_study_instance_uid` SET TAGS ('pii_business_glossary_term' = 'DICOM Study Instance UID');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_study` ALTER COLUMN `image_count` SET TAGS ('pii_business_glossary_term' = 'Image Count');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_study` ALTER COLUMN `laterality` SET TAGS ('pii_business_glossary_term' = 'Laterality');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_study` ALTER COLUMN `mrn` SET TAGS ('pii_sensitivity' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_study` ALTER COLUMN `mrn` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_study` ALTER COLUMN `mrn` SET TAGS ('pii_phi' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_study` ALTER COLUMN `mrn` SET TAGS ('pii_sensitive' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_study` ALTER COLUMN `mrn` SET TAGS ('pii_identifier' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_study` ALTER COLUMN `mrn` SET TAGS ('pii_unity_catalog_tag' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_study` ALTER COLUMN `mrn` SET TAGS ('pii_classification' = 'phi');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_study` ALTER COLUMN `mrn` SET TAGS ('pii_mask_non_prod' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_study` ALTER COLUMN `mvm_source_names` SET TAGS ('pii_business_glossary_term' = 'radiology.study');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_study` ALTER COLUMN `mvm_source_names` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_study` ALTER COLUMN `mvm_source_names` SET TAGS ('pii_phi' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_study` ALTER COLUMN `mvm_source_names` SET TAGS ('pii_name' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_study` ALTER COLUMN `mvm_source_names` SET TAGS ('pii_unity_catalog_tag' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_study` ALTER COLUMN `mvm_source_names` SET TAGS ('pii_classification' = 'phi');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_study` ALTER COLUMN `mvm_source_names` SET TAGS ('pii_mask_non_prod' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_study` ALTER COLUMN `pacs_archive_location` SET TAGS ('pii_business_glossary_term' = 'PACS Archive Location');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_study` ALTER COLUMN `pacs_status` SET TAGS ('pii_business_glossary_term' = 'PACS Status');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_study` ALTER COLUMN `priority` SET TAGS ('pii_business_glossary_term' = 'Priority');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_study` ALTER COLUMN `radiation_dose_ctdi` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_study` ALTER COLUMN `radiation_dose_ctdi` SET TAGS ('pii_phi' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_study` ALTER COLUMN `radiation_dose_ctdi` SET TAGS ('pii_sensitive' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_study` ALTER COLUMN `radiation_dose_ctdi` SET TAGS ('pii_health' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_study` ALTER COLUMN `radiation_dose_ctdi` SET TAGS ('pii_unity_catalog_tag' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_study` ALTER COLUMN `radiation_dose_ctdi` SET TAGS ('pii_classification' = 'phi');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_study` ALTER COLUMN `radiation_dose_ctdi` SET TAGS ('pii_mask_non_prod' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_study` ALTER COLUMN `radiation_dose_ctdi_vol` SET TAGS ('pii_business_glossary_term' = 'Radiation Dose CTDIvol');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_study` ALTER COLUMN `radiation_dose_ctdi_vol` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_study` ALTER COLUMN `radiation_dose_ctdi_vol` SET TAGS ('pii_phi' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_study` ALTER COLUMN `radiation_dose_ctdi_vol` SET TAGS ('pii_sensitive' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_study` ALTER COLUMN `radiation_dose_ctdi_vol` SET TAGS ('pii_health' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_study` ALTER COLUMN `radiation_dose_ctdi_vol` SET TAGS ('pii_unity_catalog_tag' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_study` ALTER COLUMN `radiation_dose_ctdi_vol` SET TAGS ('pii_classification' = 'phi');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_study` ALTER COLUMN `radiation_dose_ctdi_vol` SET TAGS ('pii_mask_non_prod' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_study` ALTER COLUMN `radiation_dose_dlp` SET TAGS ('pii_business_glossary_term' = 'Radiation Dose DLP');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_study` ALTER COLUMN `radiation_dose_dlp` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_study` ALTER COLUMN `radiation_dose_dlp` SET TAGS ('pii_phi' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_study` ALTER COLUMN `radiation_dose_dlp` SET TAGS ('pii_sensitive' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_study` ALTER COLUMN `radiation_dose_dlp` SET TAGS ('pii_health' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_study` ALTER COLUMN `radiation_dose_dlp` SET TAGS ('pii_unity_catalog_tag' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_study` ALTER COLUMN `radiation_dose_dlp` SET TAGS ('pii_classification' = 'phi');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_study` ALTER COLUMN `radiation_dose_dlp` SET TAGS ('pii_mask_non_prod' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_study` ALTER COLUMN `report_finalized_timestamp` SET TAGS ('pii_business_glossary_term' = 'Report Finalized Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_study` ALTER COLUMN `report_status` SET TAGS ('pii_business_glossary_term' = 'Report Status');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_study` ALTER COLUMN `series_count` SET TAGS ('pii_business_glossary_term' = 'Series Count');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_study` ALTER COLUMN `start_timestamp` SET TAGS ('pii_business_glossary_term' = 'Start Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_study` ALTER COLUMN `study_date` SET TAGS ('pii_business_glossary_term' = 'Study Date');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_study` ALTER COLUMN `study_description` SET TAGS ('pii_business_glossary_term' = 'Study Description');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_study` ALTER COLUMN `study_scope` SET TAGS ('pii_discriminator' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_study` ALTER COLUMN `study_status` SET TAGS ('pii_business_glossary_term' = 'Study Status');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_study` ALTER COLUMN `updated_timestamp` SET TAGS ('pii_business_glossary_term' = 'Updated Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`distribution_rule` SET TAGS ('pii_data_type' = 'master_data');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`distribution_rule` SET TAGS ('pii_subdomain' = 'external_distribution');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`distribution_rule` ALTER COLUMN `distribution_rule_id` SET TAGS ('pii_business_glossary_term' = 'Distribution Rule Identifier');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`distribution_rule` ALTER COLUMN `parent_distribution_rule_id` SET TAGS ('pii_self_ref_fk' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`distribution_rule` ALTER COLUMN `procedure_scope` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`distribution_rule` ALTER COLUMN `procedure_scope` SET TAGS ('pii_phi' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`distribution_rule` ALTER COLUMN `procedure_scope` SET TAGS ('pii_sensitive' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`distribution_rule` ALTER COLUMN `procedure_scope` SET TAGS ('pii_health' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`distribution_rule` ALTER COLUMN `procedure_scope` SET TAGS ('pii_unity_catalog_tag' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`distribution_rule` ALTER COLUMN `procedure_scope` SET TAGS ('pii_classification' = 'phi');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`distribution_rule` ALTER COLUMN `procedure_scope` SET TAGS ('pii_mask_non_prod' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`distribution_rule` ALTER COLUMN `recipient_endpoint` SET TAGS ('pii_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`distribution_rule` ALTER COLUMN `regulatory_reporting_flag` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`distribution_rule` ALTER COLUMN `regulatory_reporting_flag` SET TAGS ('pii_phi' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`distribution_rule` ALTER COLUMN `regulatory_reporting_flag` SET TAGS ('pii_sensitive' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`distribution_rule` ALTER COLUMN `regulatory_reporting_flag` SET TAGS ('pii_identifier' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`distribution_rule` ALTER COLUMN `regulatory_reporting_flag` SET TAGS ('pii_unity_catalog_tag' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`distribution_rule` ALTER COLUMN `regulatory_reporting_flag` SET TAGS ('pii_classification' = 'phi');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`distribution_rule` ALTER COLUMN `regulatory_reporting_flag` SET TAGS ('pii_mask_non_prod' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`distribution_rule` ALTER COLUMN `rule_name` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`distribution_rule` ALTER COLUMN `rule_name` SET TAGS ('pii_phi' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`distribution_rule` ALTER COLUMN `rule_name` SET TAGS ('pii_name' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`distribution_rule` ALTER COLUMN `rule_name` SET TAGS ('pii_unity_catalog_tag' = 'pii');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`distribution_rule` ALTER COLUMN `rule_name` SET TAGS ('pii_classification' = 'phi');
-ALTER TABLE `vibe_healthcare_v1`.`radiology`.`distribution_rule` ALTER COLUMN `rule_name` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER SCHEMA `vibe_healthcare_v1`.`radiology` SET TAGS ('dbx_division' = 'operations');
+ALTER SCHEMA `vibe_healthcare_v1`.`radiology` SET TAGS ('dbx_domain' = 'radiology');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` SET TAGS ('dbx_data_type' = 'transactional_data');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` SET TAGS ('dbx_subdomain' = 'imaging_operations');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `imaging_order_id` SET TAGS ('dbx_business_glossary_term' = 'Imaging Order ID');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `care_site_id` SET TAGS ('dbx_business_glossary_term' = 'Facility ID');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `clinical_order_id` SET TAGS ('dbx_business_glossary_term' = 'Clinical Order Id (Foreign Key)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `drug_master_id` SET TAGS ('dbx_business_glossary_term' = 'Contrast Drug Master Id (Foreign Key)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `material_master_id` SET TAGS ('dbx_business_glossary_term' = 'Contrast Material Master Id (Foreign Key)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `cost_center_id` SET TAGS ('dbx_business_glossary_term' = 'Cost Center Id (Foreign Key)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `demographics_id` SET TAGS ('dbx_business_glossary_term' = 'Patient ID');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Performing Technologist ID');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `health_plan_id` SET TAGS ('dbx_business_glossary_term' = 'Insurance Plan ID');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `health_plan_id` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `health_plan_id` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `hie_query_id` SET TAGS ('dbx_business_glossary_term' = 'Hie Query Id (Foreign Key)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `icd_code_id` SET TAGS ('dbx_business_glossary_term' = 'Icd10 Primary Diagnosis Icd Code Id (Foreign Key)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `icd_code_id` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `icd_code_id` SET TAGS ('dbx_pii_health' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `payer_id` SET TAGS ('dbx_business_glossary_term' = 'Payer Id (Foreign Key)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `clinician_id` SET TAGS ('dbx_business_glossary_term' = 'Ordering Provider ID');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `cpt_code_id` SET TAGS ('dbx_business_glossary_term' = 'Procedure Code Cpt Code Id (Foreign Key)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `research_study_id` SET TAGS ('dbx_business_glossary_term' = 'Research Study Id (Foreign Key)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `treatment_consent_id` SET TAGS ('dbx_business_glossary_term' = 'Treatment Consent Id (Foreign Key)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `treatment_consent_id` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `treatment_consent_id` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `visit_id` SET TAGS ('dbx_business_glossary_term' = 'Encounter ID');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `accession_number` SET TAGS ('dbx_business_glossary_term' = 'RIS Accession Number');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `body_part` SET TAGS ('dbx_business_glossary_term' = 'Body Part Examined');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `cancellation_reason` SET TAGS ('dbx_business_glossary_term' = 'Cancellation Reason');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `cancellation_reason` SET TAGS ('dbx_pii_person_data' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `cancelled_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Order Cancelled Timestamp');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `cancelled_timestamp` SET TAGS ('dbx_pii_person_data' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `clinical_indication` SET TAGS ('dbx_business_glossary_term' = 'Clinical Indication');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `contrast_required` SET TAGS ('dbx_business_glossary_term' = 'Contrast Required Flag');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `critical_finding_flag` SET TAGS ('dbx_business_glossary_term' = 'Critical Finding Flag');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `exam_end_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Exam End Timestamp');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `exam_start_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Exam Start Timestamp');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `is_portable` SET TAGS ('dbx_business_glossary_term' = 'Portable Exam Flag');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `is_stat_override` SET TAGS ('dbx_business_glossary_term' = 'STAT Override Flag');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `laboratory_lab_order_id` SET TAGS ('dbx_business_glossary_term' = 'Laboratory Lab Order Id (Foreign Key)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `laterality` SET TAGS ('dbx_business_glossary_term' = 'Laterality');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `laterality` SET TAGS ('dbx_value_regex' = 'left|right|bilateral|unspecified');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `modality_type` SET TAGS ('dbx_business_glossary_term' = 'Imaging Modality Type');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `mrn` SET TAGS ('dbx_business_glossary_term' = 'Medical Record Number (MRN)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `mrn` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `mrn` SET TAGS ('dbx_pii_identifier' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `order_priority` SET TAGS ('dbx_business_glossary_term' = 'Order Priority');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `order_priority` SET TAGS ('dbx_value_regex' = 'stat|urgent|routine|asap|elective');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `order_source` SET TAGS ('dbx_business_glossary_term' = 'Order Source Setting');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `order_source` SET TAGS ('dbx_value_regex' = 'inpatient|outpatient|emergency|ambulatory|telehealth');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `order_status` SET TAGS ('dbx_business_glossary_term' = 'Imaging Order Status');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `order_status` SET TAGS ('dbx_value_regex' = 'ordered|scheduled|in_progress|completed|cancelled|on_hold');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `ordered_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Order Placed Timestamp');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `ordering_provider_npi` SET TAGS ('dbx_business_glossary_term' = 'Ordering Provider National Provider Identifier (NPI)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `ordering_provider_npi` SET TAGS ('dbx_value_regex' = '^[0-9]{10}$');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `prior_auth_number` SET TAGS ('dbx_business_glossary_term' = 'Prior Authorization Number');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `prior_auth_status` SET TAGS ('dbx_business_glossary_term' = 'Prior Authorization Status');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `prior_auth_status` SET TAGS ('dbx_value_regex' = 'approved|pending|denied|not_required|expired');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `procedure_description` SET TAGS ('dbx_business_glossary_term' = 'Procedure Description');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `protocol_name` SET TAGS ('dbx_business_glossary_term' = 'Imaging Protocol Name');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `radiation_dose_ctdi` SET TAGS ('dbx_business_glossary_term' = 'Radiation Dose CT Dose Index Volume (CTDIvol) mGy');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `radiation_dose_dlp` SET TAGS ('dbx_business_glossary_term' = 'Radiation Dose Dose-Length Product (DLP) mGy·cm');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `referring_department` SET TAGS ('dbx_business_glossary_term' = 'Referring Department');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `report_finalized_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Report Finalized Timestamp');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `report_status` SET TAGS ('dbx_business_glossary_term' = 'Radiology Report Status');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `report_status` SET TAGS ('dbx_value_regex' = 'not_started|preliminary|final|addendum|corrected');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `requisition_number` SET TAGS ('dbx_business_glossary_term' = 'Requisition Number');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `scheduled_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Scheduled Appointment Timestamp');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `source_system_order_code` SET TAGS ('dbx_business_glossary_term' = 'Source System Order ID');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`imaging_order` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Last Updated Timestamp');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_study` SET TAGS ('dbx_data_type' = 'master_data');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_study` SET TAGS ('dbx_subdomain' = 'imaging_operations');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_study` ALTER COLUMN `radiology_study_id` SET TAGS ('dbx_business_glossary_term' = 'Imaging Study ID');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_study` ALTER COLUMN `audit_finding_id` SET TAGS ('dbx_business_glossary_term' = 'Audit Finding Id (Foreign Key)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_study` ALTER COLUMN `care_site_id` SET TAGS ('dbx_business_glossary_term' = 'Facility ID');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_study` ALTER COLUMN `charge_id` SET TAGS ('dbx_business_glossary_term' = 'Charge Id (Foreign Key)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_study` ALTER COLUMN `claim_id` SET TAGS ('dbx_business_glossary_term' = 'Claim Id (Foreign Key)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_study` ALTER COLUMN `clinical_order_id` SET TAGS ('dbx_business_glossary_term' = 'Clinical Order Id (Foreign Key)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_study` ALTER COLUMN `clinician_id` SET TAGS ('dbx_business_glossary_term' = 'Ordering Provider ID');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_study` ALTER COLUMN `drug_master_id` SET TAGS ('dbx_business_glossary_term' = 'Contrast Drug Master Id (Foreign Key)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_study` ALTER COLUMN `cost_center_id` SET TAGS ('dbx_business_glossary_term' = 'Cost Center Id (Foreign Key)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_study` ALTER COLUMN `cpt_code_id` SET TAGS ('dbx_business_glossary_term' = 'Cpt Code Id (Foreign Key)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_study` ALTER COLUMN `demographics_id` SET TAGS ('dbx_business_glossary_term' = 'Patient ID');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_study` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Performing Radiologist ID');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_study` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_study` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_study` ALTER COLUMN `equipment_asset_id` SET TAGS ('dbx_business_glossary_term' = 'Scanner Device Identifier');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_study` ALTER COLUMN `fhir_resource_log_id` SET TAGS ('dbx_business_glossary_term' = 'Fhir Resource Log Id (Foreign Key)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_study` ALTER COLUMN `hie_query_id` SET TAGS ('dbx_business_glossary_term' = 'Hie Query Id (Foreign Key)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_study` ALTER COLUMN `icd_code_id` SET TAGS ('dbx_business_glossary_term' = 'Icd10 Primary Icd Code Id (Foreign Key)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_study` ALTER COLUMN `imaging_order_id` SET TAGS ('dbx_business_glossary_term' = 'Radiology Order ID');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_study` ALTER COLUMN `protocol_id` SET TAGS ('dbx_business_glossary_term' = 'Imaging Protocol Id (Foreign Key)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_study` ALTER COLUMN `modality_id` SET TAGS ('dbx_business_glossary_term' = 'Modality Id (Foreign Key)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_study` ALTER COLUMN `research_study_id` SET TAGS ('dbx_business_glossary_term' = 'Research Study Id (Foreign Key)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_study` ALTER COLUMN `treatment_consent_id` SET TAGS ('dbx_business_glossary_term' = 'Treatment Consent Id (Foreign Key)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_study` ALTER COLUMN `treatment_consent_id` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_study` ALTER COLUMN `treatment_consent_id` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_study` ALTER COLUMN `visit_id` SET TAGS ('dbx_business_glossary_term' = 'Encounter ID');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_study` ALTER COLUMN `accession_number` SET TAGS ('dbx_business_glossary_term' = 'Accession Number');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_study` ALTER COLUMN `body_part_examined` SET TAGS ('dbx_business_glossary_term' = 'Body Part Examined');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_study` ALTER COLUMN `clinical_indication` SET TAGS ('dbx_business_glossary_term' = 'Clinical Indication');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_study` ALTER COLUMN `clinical_indication` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_study` ALTER COLUMN `clinical_indication` SET TAGS ('dbx_pii_health' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_study` ALTER COLUMN `contrast_administered` SET TAGS ('dbx_business_glossary_term' = 'Contrast Agent Administered Indicator');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_study` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_study` ALTER COLUMN `critical_finding_flag` SET TAGS ('dbx_business_glossary_term' = 'Critical Finding Flag');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_study` ALTER COLUMN `critical_finding_notified_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Critical Finding Notification Timestamp');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_study` ALTER COLUMN `dicom_study_instance_uid` SET TAGS ('dbx_business_glossary_term' = 'DICOM Study Instance Unique Identifier (UID)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_study` ALTER COLUMN `dicom_study_instance_uid` SET TAGS ('dbx_value_regex' = '^[0-9]+(.[0-9]+)+$');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_study` ALTER COLUMN `image_count` SET TAGS ('dbx_business_glossary_term' = 'Number of Images');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_study` ALTER COLUMN `image_count` SET TAGS ('dbx_pii_category' = 'person_data');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_study` ALTER COLUMN `import_method` SET TAGS ('dbx_business_glossary_term' = 'External Study Import Method');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_study` ALTER COLUMN `import_method` SET TAGS ('dbx_value_regex' = 'cd_dvd|direct_dicom|fax_scan|hie_exchange|vendor_neutral_archive|patient_portal');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_study` ALTER COLUMN `is_external_import` SET TAGS ('dbx_business_glossary_term' = 'External Import Indicator');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_study` ALTER COLUMN `is_stat_read_completed` SET TAGS ('dbx_business_glossary_term' = 'STAT Read Completed Indicator');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_study` ALTER COLUMN `laterality` SET TAGS ('dbx_business_glossary_term' = 'Laterality');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_study` ALTER COLUMN `laterality` SET TAGS ('dbx_value_regex' = 'left|right|bilateral|unilateral|not_applicable');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_study` ALTER COLUMN `order_received_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Order Received Timestamp');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_study` ALTER COLUMN `pacs_archive_location` SET TAGS ('dbx_business_glossary_term' = 'PACS Archive Location');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_study` ALTER COLUMN `pacs_status` SET TAGS ('dbx_business_glossary_term' = 'Picture Archiving and Communication System (PACS) Archive Status');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_study` ALTER COLUMN `pacs_status` SET TAGS ('dbx_value_regex' = 'received|archived|retrieved|purged|error');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_study` ALTER COLUMN `patient_age_at_study` SET TAGS ('dbx_business_glossary_term' = 'Patient Age at Study (Years)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_study` ALTER COLUMN `patient_age_at_study` SET TAGS ('dbx_pii_category' = 'person_data');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_study` ALTER COLUMN `patient_sex` SET TAGS ('dbx_business_glossary_term' = 'Patient Sex');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_study` ALTER COLUMN `patient_sex` SET TAGS ('dbx_value_regex' = 'M|F|O|U');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_study` ALTER COLUMN `patient_sex` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_study` ALTER COLUMN `patient_sex` SET TAGS ('dbx_pii_health' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_study` ALTER COLUMN `priority` SET TAGS ('dbx_business_glossary_term' = 'Study Priority');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_study` ALTER COLUMN `priority` SET TAGS ('dbx_value_regex' = 'stat|urgent|routine|elective');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_study` ALTER COLUMN `radiation_dose_ctdi_vol` SET TAGS ('dbx_business_glossary_term' = 'CT Dose Index Volume (CTDIvol) mGy');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_study` ALTER COLUMN `radiation_dose_dlp` SET TAGS ('dbx_business_glossary_term' = 'Radiation Dose Dose-Length Product (DLP) mGy·cm');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_study` ALTER COLUMN `referring_department` SET TAGS ('dbx_business_glossary_term' = 'Referring Department');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_study` ALTER COLUMN `report_finalized_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Report Finalized Timestamp');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_study` ALTER COLUMN `report_status` SET TAGS ('dbx_business_glossary_term' = 'Radiology Report Status');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_study` ALTER COLUMN `report_status` SET TAGS ('dbx_value_regex' = 'preliminary|final|addendum|corrected|cancelled');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_study` ALTER COLUMN `ris_system_source` SET TAGS ('dbx_business_glossary_term' = 'Radiology Information System (RIS) Source System');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_study` ALTER COLUMN `ris_system_source` SET TAGS ('dbx_value_regex' = 'epic_radiant|cerner_radnet|meditech|other');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_study` ALTER COLUMN `series_count` SET TAGS ('dbx_business_glossary_term' = 'Number of Series');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_study` ALTER COLUMN `size_mb` SET TAGS ('dbx_business_glossary_term' = 'Study Size (Megabytes)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_study` ALTER COLUMN `source_facility_name` SET TAGS ('dbx_business_glossary_term' = 'Source Facility Name');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_study` ALTER COLUMN `start_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Study Start Timestamp');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_study` ALTER COLUMN `study_date` SET TAGS ('dbx_business_glossary_term' = 'Study Date');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_study` ALTER COLUMN `study_description` SET TAGS ('dbx_business_glossary_term' = 'Study Description');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_study` ALTER COLUMN `study_status` SET TAGS ('dbx_business_glossary_term' = 'Imaging Study Status');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_study` ALTER COLUMN `study_status` SET TAGS ('dbx_value_regex' = 'scheduled|arrived|in_progress|completed|cancelled|on_hold');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_study` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Last Updated Timestamp');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dicom_series` SET TAGS ('dbx_data_type' = 'master_data');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dicom_series` SET TAGS ('dbx_subdomain' = 'imaging_operations');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dicom_series` ALTER COLUMN `dicom_series_id` SET TAGS ('dbx_business_glossary_term' = 'Digital Imaging and Communications in Medicine (DICOM) Series Identifier');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dicom_series` ALTER COLUMN `protocol_id` SET TAGS ('dbx_business_glossary_term' = 'Imaging Protocol Id (Foreign Key)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dicom_series` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Performing Technologist Employee Id (Foreign Key)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dicom_series` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dicom_series` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dicom_series` ALTER COLUMN `radiology_study_id` SET TAGS ('dbx_business_glossary_term' = 'Imaging Study Identifier');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dicom_series` ALTER COLUMN `accession_number` SET TAGS ('dbx_business_glossary_term' = 'Radiology Accession Number');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dicom_series` ALTER COLUMN `body_part_examined` SET TAGS ('dbx_business_glossary_term' = 'Body Part Examined');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dicom_series` ALTER COLUMN `contrast_bolus_agent` SET TAGS ('dbx_business_glossary_term' = 'Contrast Bolus Agent');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dicom_series` ALTER COLUMN `contrast_bolus_agent` SET TAGS ('dbx_pii_category' = 'person_data');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dicom_series` ALTER COLUMN `contrast_bolus_route` SET TAGS ('dbx_business_glossary_term' = 'Contrast Bolus Administration Route');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dicom_series` ALTER COLUMN `contrast_bolus_route` SET TAGS ('dbx_value_regex' = 'IV|ORAL|RECTAL|INTRA_ARTERIAL|INTRATHECAL');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dicom_series` ALTER COLUMN `contrast_bolus_volume_ml` SET TAGS ('dbx_business_glossary_term' = 'Contrast Bolus Volume in Milliliters (mL)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dicom_series` ALTER COLUMN `cpt_code` SET TAGS ('dbx_business_glossary_term' = 'Current Procedural Terminology (CPT) Code');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dicom_series` ALTER COLUMN `cpt_code` SET TAGS ('dbx_value_regex' = '^[0-9]{5}$');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dicom_series` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dicom_series` ALTER COLUMN `ctdi_vol_mgy` SET TAGS ('dbx_business_glossary_term' = 'Computed Tomography (CT) Dose Index Volume in Milligray (mGy)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dicom_series` ALTER COLUMN `dlp_mgy_cm` SET TAGS ('dbx_business_glossary_term' = 'Dose Length Product in Milligray-Centimeters (mGy·cm)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dicom_series` ALTER COLUMN `exposure_ma` SET TAGS ('dbx_business_glossary_term' = 'X-Ray Tube Current in Milliamperes (mA)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dicom_series` ALTER COLUMN `exposure_time_ms` SET TAGS ('dbx_business_glossary_term' = 'Exposure Time in Milliseconds (ms)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dicom_series` ALTER COLUMN `image_orientation_patient` SET TAGS ('dbx_business_glossary_term' = 'Image Orientation Patient');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dicom_series` ALTER COLUMN `image_orientation_patient` SET TAGS ('dbx_pii_category' = 'person_data');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dicom_series` ALTER COLUMN `kvp` SET TAGS ('dbx_business_glossary_term' = 'Kilovoltage Peak (kVp)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dicom_series` ALTER COLUMN `laterality` SET TAGS ('dbx_business_glossary_term' = 'Anatomical Laterality');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dicom_series` ALTER COLUMN `laterality` SET TAGS ('dbx_value_regex' = 'L|R|B|U');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dicom_series` ALTER COLUMN `manufacturer` SET TAGS ('dbx_business_glossary_term' = 'Equipment Manufacturer');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dicom_series` ALTER COLUMN `manufacturer_model_name` SET TAGS ('dbx_business_glossary_term' = 'Equipment Manufacturer Model Name');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dicom_series` ALTER COLUMN `modality` SET TAGS ('dbx_business_glossary_term' = 'Imaging Modality');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dicom_series` ALTER COLUMN `number_of_series_related_instances` SET TAGS ('dbx_business_glossary_term' = 'Number of Series Related Instances');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dicom_series` ALTER COLUMN `pacs_archive_status` SET TAGS ('dbx_business_glossary_term' = 'Picture Archiving and Communication System (PACS) Archive Status');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dicom_series` ALTER COLUMN `pacs_archive_status` SET TAGS ('dbx_value_regex' = 'online|nearline|offline|archived|pending_archive');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dicom_series` ALTER COLUMN `pacs_storage_path` SET TAGS ('dbx_business_glossary_term' = 'Picture Archiving and Communication System (PACS) Storage Path');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dicom_series` ALTER COLUMN `pacs_storage_path` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dicom_series` ALTER COLUMN `pacs_storage_path` SET TAGS ('dbx_pii_category' = 'person_data');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dicom_series` ALTER COLUMN `patient_position` SET TAGS ('dbx_business_glossary_term' = 'Patient Position');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dicom_series` ALTER COLUMN `performing_physician_name` SET TAGS ('dbx_business_glossary_term' = 'Performing Physician Name');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dicom_series` ALTER COLUMN `performing_physician_name` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dicom_series` ALTER COLUMN `pixel_spacing_mm` SET TAGS ('dbx_business_glossary_term' = 'Pixel Spacing in Millimeters (mm)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dicom_series` ALTER COLUMN `pixel_spacing_mm` SET TAGS ('dbx_value_regex' = '^[0-9]+.[0-9]+[0-9]+.[0-9]+$');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dicom_series` ALTER COLUMN `procedure_code_modifier` SET TAGS ('dbx_business_glossary_term' = 'Procedure Code Modifier');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dicom_series` ALTER COLUMN `procedure_code_modifier` SET TAGS ('dbx_value_regex' = '^[0-9A-Z]{2}$');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dicom_series` ALTER COLUMN `quality_control_comments` SET TAGS ('dbx_business_glossary_term' = 'Quality Control Comments');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dicom_series` ALTER COLUMN `quality_control_status` SET TAGS ('dbx_business_glossary_term' = 'Quality Control Status');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dicom_series` ALTER COLUMN `quality_control_status` SET TAGS ('dbx_value_regex' = 'pending|passed|failed|not_required');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dicom_series` ALTER COLUMN `radiation_dose_mgy` SET TAGS ('dbx_business_glossary_term' = 'Radiation Dose in Milligray (mGy)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dicom_series` ALTER COLUMN `referring_physician_npi` SET TAGS ('dbx_business_glossary_term' = 'Referring Physician National Provider Identifier (NPI)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dicom_series` ALTER COLUMN `referring_physician_npi` SET TAGS ('dbx_value_regex' = '^[0-9]{10}$');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dicom_series` ALTER COLUMN `requesting_physician_name` SET TAGS ('dbx_business_glossary_term' = 'Requesting Physician Name');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dicom_series` ALTER COLUMN `requesting_physician_name` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dicom_series` ALTER COLUMN `series_completeness_flag` SET TAGS ('dbx_business_glossary_term' = 'Series Completeness Flag');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dicom_series` ALTER COLUMN `series_date` SET TAGS ('dbx_business_glossary_term' = 'Series Acquisition Date');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dicom_series` ALTER COLUMN `series_description` SET TAGS ('dbx_business_glossary_term' = 'Series Description');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dicom_series` ALTER COLUMN `series_instance_uid` SET TAGS ('dbx_business_glossary_term' = 'Series Instance Unique Identifier (UID)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dicom_series` ALTER COLUMN `series_instance_uid` SET TAGS ('dbx_value_regex' = '^[0-9.]+$');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dicom_series` ALTER COLUMN `series_number` SET TAGS ('dbx_business_glossary_term' = 'Series Number');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dicom_series` ALTER COLUMN `series_status` SET TAGS ('dbx_business_glossary_term' = 'Series Lifecycle Status');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dicom_series` ALTER COLUMN `series_status` SET TAGS ('dbx_value_regex' = 'acquired|archived|quality_review|approved|rejected|deleted');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dicom_series` ALTER COLUMN `series_time` SET TAGS ('dbx_business_glossary_term' = 'Series Acquisition Time');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dicom_series` ALTER COLUMN `slice_thickness_mm` SET TAGS ('dbx_business_glossary_term' = 'Slice Thickness in Millimeters (mm)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dicom_series` ALTER COLUMN `software_version` SET TAGS ('dbx_business_glossary_term' = 'Equipment Software Version');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dicom_series` ALTER COLUMN `station_name` SET TAGS ('dbx_business_glossary_term' = 'Acquisition Station Name');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dicom_series` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Updated Timestamp');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report` SET TAGS ('dbx_data_type' = 'transactional_data');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report` SET TAGS ('dbx_subdomain' = 'clinical_reporting');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report` ALTER COLUMN `report_id` SET TAGS ('dbx_business_glossary_term' = 'Report Identifier');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report` ALTER COLUMN `care_site_id` SET TAGS ('dbx_business_glossary_term' = 'Facility ID');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report` ALTER COLUMN `charge_id` SET TAGS ('dbx_business_glossary_term' = 'Charge Id (Foreign Key)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report` ALTER COLUMN `clinical_order_id` SET TAGS ('dbx_business_glossary_term' = 'Clinical Order Id (Foreign Key)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report` ALTER COLUMN `cost_center_id` SET TAGS ('dbx_business_glossary_term' = 'Cost Center Id (Foreign Key)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report` ALTER COLUMN `cpt_code_id` SET TAGS ('dbx_business_glossary_term' = 'Cpt Code Id (Foreign Key)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report` ALTER COLUMN `direct_message_id` SET TAGS ('dbx_business_glossary_term' = 'Direct Message Id (Foreign Key)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report` ALTER COLUMN `direct_message_id` SET TAGS ('dbx_pii_category' = 'person_data');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report` ALTER COLUMN `icd_code_id` SET TAGS ('dbx_business_glossary_term' = 'Icd10 Primary Icd Code Id (Foreign Key)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report` ALTER COLUMN `imaging_order_id` SET TAGS ('dbx_business_glossary_term' = 'Imaging Order ID');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report` ALTER COLUMN `message_log_id` SET TAGS ('dbx_business_glossary_term' = 'Health Level Seven (HL7) Observation Result Unsolicited (ORU) Message ID');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report` ALTER COLUMN `message_log_id` SET TAGS ('dbx_pii_category' = 'person_data');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report` ALTER COLUMN `mpi_record_id` SET TAGS ('dbx_business_glossary_term' = 'Patient ID');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report` ALTER COLUMN `mpi_record_id` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report` ALTER COLUMN `mpi_record_id` SET TAGS ('dbx_pii_identifier' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report` ALTER COLUMN `radiology_study_id` SET TAGS ('dbx_business_glossary_term' = 'Imaging Study Id (Foreign Key)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report` ALTER COLUMN `clinician_id` SET TAGS ('dbx_business_glossary_term' = 'Addendum Author ID');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report` ALTER COLUMN `report_clinician_id` SET TAGS ('dbx_business_glossary_term' = 'Signing Radiologist ID');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report` ALTER COLUMN `report_reading_radiologist_clinician_id` SET TAGS ('dbx_business_glossary_term' = 'Reading Radiologist ID');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report` ALTER COLUMN `research_study_id` SET TAGS ('dbx_business_glossary_term' = 'Research Study Id (Foreign Key)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Transcriptionist Employee Id (Foreign Key)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report` ALTER COLUMN `visit_id` SET TAGS ('dbx_business_glossary_term' = 'Encounter ID');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report` ALTER COLUMN `accession_number` SET TAGS ('dbx_business_glossary_term' = 'Accession Number');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report` ALTER COLUMN `addendum_sequence` SET TAGS ('dbx_business_glossary_term' = 'Addendum Sequence Number');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report` ALTER COLUMN `addendum_text` SET TAGS ('dbx_business_glossary_term' = 'Addendum Text');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report` ALTER COLUMN `addendum_text` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report` ALTER COLUMN `addendum_text` SET TAGS ('dbx_pii_health' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report` ALTER COLUMN `addendum_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Addendum Timestamp');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report` ALTER COLUMN `addendum_type` SET TAGS ('dbx_business_glossary_term' = 'Addendum Type');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report` ALTER COLUMN `addendum_type` SET TAGS ('dbx_value_regex' = 'addendum|amendment|correction|retraction');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report` ALTER COLUMN `attestation_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Attestation Timestamp');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report` ALTER COLUMN `body_part` SET TAGS ('dbx_business_glossary_term' = 'Body Part Examined');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report` ALTER COLUMN `contrast_administered_flag` SET TAGS ('dbx_business_glossary_term' = 'Contrast Administered Flag');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report` ALTER COLUMN `contrast_agent_name` SET TAGS ('dbx_business_glossary_term' = 'Contrast Agent Name');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report` ALTER COLUMN `contrast_agent_name` SET TAGS ('dbx_pii_category' = 'person_data');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report` ALTER COLUMN `critical_finding_communicated_flag` SET TAGS ('dbx_business_glossary_term' = 'Critical Finding Communicated Flag');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report` ALTER COLUMN `critical_finding_communicated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Critical Finding Communication Timestamp');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report` ALTER COLUMN `critical_finding_flag` SET TAGS ('dbx_business_glossary_term' = 'Critical Finding Flag');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report` ALTER COLUMN `dicom_study_instance_uid` SET TAGS ('dbx_business_glossary_term' = 'DICOM Study Instance Unique Identifier (UID)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report` ALTER COLUMN `dictation_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Dictation Timestamp');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report` ALTER COLUMN `findings_text` SET TAGS ('dbx_business_glossary_term' = 'Findings Narrative Text');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report` ALTER COLUMN `findings_text` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report` ALTER COLUMN `findings_text` SET TAGS ('dbx_pii_health' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report` ALTER COLUMN `follow_up_recommendation` SET TAGS ('dbx_business_glossary_term' = 'Follow-Up Recommendation');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report` ALTER COLUMN `impression_text` SET TAGS ('dbx_business_glossary_term' = 'Impression Text');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report` ALTER COLUMN `impression_text` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report` ALTER COLUMN `impression_text` SET TAGS ('dbx_pii_health' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report` ALTER COLUMN `laterality` SET TAGS ('dbx_business_glossary_term' = 'Laterality');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report` ALTER COLUMN `laterality` SET TAGS ('dbx_value_regex' = 'left|right|bilateral|unspecified');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report` ALTER COLUMN `modality_code` SET TAGS ('dbx_business_glossary_term' = 'Imaging Modality Code');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report` ALTER COLUMN `preliminary_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Preliminary Report Timestamp');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report` ALTER COLUMN `radiation_dose_ctdi` SET TAGS ('dbx_business_glossary_term' = 'Radiation Dose CT Dose Index Volume (CTDIvol) mGy');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report` ALTER COLUMN `radiation_dose_dlp` SET TAGS ('dbx_business_glossary_term' = 'Radiation Dose Dose Length Product (DLP) mGy·cm');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report` ALTER COLUMN `rads_category` SET TAGS ('dbx_business_glossary_term' = 'Reporting and Data System (RADS) Category');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report` ALTER COLUMN `ris_report_code` SET TAGS ('dbx_business_glossary_term' = 'Radiology Information System (RIS) Report ID');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report` ALTER COLUMN `signing_radiologist_npi` SET TAGS ('dbx_business_glossary_term' = 'Signing Radiologist National Provider Identifier (NPI)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report` ALTER COLUMN `signing_radiologist_npi` SET TAGS ('dbx_value_regex' = '^[0-9]{10}$');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report` ALTER COLUMN `stat_priority_flag` SET TAGS ('dbx_business_glossary_term' = 'STAT Priority Flag');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report` ALTER COLUMN `report_status` SET TAGS ('dbx_business_glossary_term' = 'Report Status');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report` ALTER COLUMN `report_status` SET TAGS ('dbx_value_regex' = 'preliminary|final|addendum|amended|corrected|cancelled');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report` ALTER COLUMN `study_datetime` SET TAGS ('dbx_business_glossary_term' = 'Study Date and Time');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report` ALTER COLUMN `study_description` SET TAGS ('dbx_business_glossary_term' = 'Study Description');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report` ALTER COLUMN `template_code` SET TAGS ('dbx_business_glossary_term' = 'Report Template ID');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report` ALTER COLUMN `transcription_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Transcription Timestamp');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Updated Timestamp');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report` ALTER COLUMN `version` SET TAGS ('dbx_business_glossary_term' = 'Report Version Number');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_addendum` SET TAGS ('dbx_data_type' = 'transactional_data');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_addendum` SET TAGS ('dbx_subdomain' = 'clinical_reporting');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_addendum` ALTER COLUMN `report_addendum_id` SET TAGS ('dbx_business_glossary_term' = 'Report Addendum ID');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_addendum` ALTER COLUMN `care_site_id` SET TAGS ('dbx_business_glossary_term' = 'Facility ID');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_addendum` ALTER COLUMN `cda_document_id` SET TAGS ('dbx_business_glossary_term' = 'Cda Document Id (Foreign Key)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_addendum` ALTER COLUMN `cdi_query_id` SET TAGS ('dbx_business_glossary_term' = 'Clinical Documentation Improvement (CDI) Query ID');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_addendum` ALTER COLUMN `cpt_code_id` SET TAGS ('dbx_business_glossary_term' = 'Cpt Code Id (Foreign Key)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_addendum` ALTER COLUMN `icd_code_id` SET TAGS ('dbx_business_glossary_term' = 'Icd10 Icd Code Id (Foreign Key)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_addendum` ALTER COLUMN `message_log_id` SET TAGS ('dbx_business_glossary_term' = 'HL7 Message ID');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_addendum` ALTER COLUMN `message_log_id` SET TAGS ('dbx_pii_category' = 'person_data');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_addendum` ALTER COLUMN `mpi_record_id` SET TAGS ('dbx_business_glossary_term' = 'Patient ID');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_addendum` ALTER COLUMN `org_unit_id` SET TAGS ('dbx_business_glossary_term' = 'Radiology Department ID');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_addendum` ALTER COLUMN `report_id` SET TAGS ('dbx_business_glossary_term' = 'Original Radiology Report ID');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_addendum` ALTER COLUMN `clinician_id` SET TAGS ('dbx_business_glossary_term' = 'Addendum Author Provider ID');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_addendum` ALTER COLUMN `tertiary_report_ordering_provider_clinician_id` SET TAGS ('dbx_business_glossary_term' = 'Ordering Provider ID');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_addendum` ALTER COLUMN `visit_id` SET TAGS ('dbx_business_glossary_term' = 'Encounter ID');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_addendum` ALTER COLUMN `accession_number` SET TAGS ('dbx_business_glossary_term' = 'Accession Number');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_addendum` ALTER COLUMN `acknowledgment_datetime` SET TAGS ('dbx_business_glossary_term' = 'Provider Acknowledgment Date and Time');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_addendum` ALTER COLUMN `addendum_datetime` SET TAGS ('dbx_business_glossary_term' = 'Addendum Date and Time');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_addendum` ALTER COLUMN `addendum_sequence_number` SET TAGS ('dbx_business_glossary_term' = 'Addendum Sequence Number');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_addendum` ALTER COLUMN `addendum_status` SET TAGS ('dbx_business_glossary_term' = 'Addendum Status');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_addendum` ALTER COLUMN `addendum_status` SET TAGS ('dbx_value_regex' = 'draft|pending_review|finalized|retracted');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_addendum` ALTER COLUMN `addendum_text` SET TAGS ('dbx_business_glossary_term' = 'Addendum Text');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_addendum` ALTER COLUMN `addendum_text` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_addendum` ALTER COLUMN `addendum_text` SET TAGS ('dbx_pii_health' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_addendum` ALTER COLUMN `addendum_type` SET TAGS ('dbx_business_glossary_term' = 'Addendum Type');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_addendum` ALTER COLUMN `addendum_type` SET TAGS ('dbx_value_regex' = 'correction|clarification|clinical_update|addendum|retraction');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_addendum` ALTER COLUMN `addendum_word_count` SET TAGS ('dbx_business_glossary_term' = 'Addendum Word Count');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_addendum` ALTER COLUMN `amendment_reason` SET TAGS ('dbx_business_glossary_term' = 'Amendment Reason');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_addendum` ALTER COLUMN `amendment_reason_code` SET TAGS ('dbx_business_glossary_term' = 'Amendment Reason Code');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_addendum` ALTER COLUMN `author_npi` SET TAGS ('dbx_business_glossary_term' = 'Addendum Author National Provider Identifier (NPI)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_addendum` ALTER COLUMN `author_npi` SET TAGS ('dbx_value_regex' = '^[0-9]{10}$');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_addendum` ALTER COLUMN `author_npi` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_addendum` ALTER COLUMN `body_part` SET TAGS ('dbx_business_glossary_term' = 'Body Part Examined');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_addendum` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_addendum` ALTER COLUMN `critical_finding_flag` SET TAGS ('dbx_business_glossary_term' = 'Critical Finding Flag');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_addendum` ALTER COLUMN `dicom_study_instance_uid` SET TAGS ('dbx_business_glossary_term' = 'DICOM Study Instance UID');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_addendum` ALTER COLUMN `dicom_study_instance_uid` SET TAGS ('dbx_value_regex' = '^[0-9]+(.[0-9]+)+$');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_addendum` ALTER COLUMN `drg_impact_flag` SET TAGS ('dbx_business_glossary_term' = 'Diagnosis-Related Group (DRG) Impact Flag');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_addendum` ALTER COLUMN `finalized_datetime` SET TAGS ('dbx_business_glossary_term' = 'Addendum Finalized Date and Time');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_addendum` ALTER COLUMN `him_review_datetime` SET TAGS ('dbx_business_glossary_term' = 'Health Information Management (HIM) Review Date and Time');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_addendum` ALTER COLUMN `him_review_flag` SET TAGS ('dbx_business_glossary_term' = 'Health Information Management (HIM) Review Flag');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_addendum` ALTER COLUMN `impression_changed_flag` SET TAGS ('dbx_business_glossary_term' = 'Impression Changed Flag');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_addendum` ALTER COLUMN `laterality` SET TAGS ('dbx_business_glossary_term' = 'Laterality');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_addendum` ALTER COLUMN `laterality` SET TAGS ('dbx_value_regex' = 'left|right|bilateral|not_applicable');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_addendum` ALTER COLUMN `modality` SET TAGS ('dbx_business_glossary_term' = 'Imaging Modality');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_addendum` ALTER COLUMN `notification_datetime` SET TAGS ('dbx_business_glossary_term' = 'Ordering Provider Notification Date and Time');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_addendum` ALTER COLUMN `notification_method` SET TAGS ('dbx_business_glossary_term' = 'Notification Method');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_addendum` ALTER COLUMN `notification_method` SET TAGS ('dbx_value_regex' = 'in_basket|secure_message|phone|fax|ehr_alert|email');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_addendum` ALTER COLUMN `notification_status` SET TAGS ('dbx_business_glossary_term' = 'Ordering Provider Notification Status');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_addendum` ALTER COLUMN `notification_status` SET TAGS ('dbx_value_regex' = 'not_required|pending|sent|acknowledged|failed');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_addendum` ALTER COLUMN `original_report_finalized_datetime` SET TAGS ('dbx_business_glossary_term' = 'Original Report Finalized Date and Time');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_addendum` ALTER COLUMN `peer_review_flag` SET TAGS ('dbx_business_glossary_term' = 'Peer Review Flag');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_addendum` ALTER COLUMN `peer_review_score` SET TAGS ('dbx_business_glossary_term' = 'Peer Review Score');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_addendum` ALTER COLUMN `peer_review_score` SET TAGS ('dbx_value_regex' = '1|2a|2b|3a|3b|4');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_addendum` ALTER COLUMN `source_system_addendum_code` SET TAGS ('dbx_business_glossary_term' = 'Source System Addendum ID');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_addendum` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Updated Timestamp');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_addendum` ALTER COLUMN `voice_recognition_flag` SET TAGS ('dbx_business_glossary_term' = 'Voice Recognition Dictation Flag');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`modality` SET TAGS ('dbx_data_type' = 'master_data');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`modality` SET TAGS ('dbx_subdomain' = 'imaging_operations');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`modality` ALTER COLUMN `modality_id` SET TAGS ('dbx_business_glossary_term' = 'Modality ID');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`modality` ALTER COLUMN `care_site_id` SET TAGS ('dbx_business_glossary_term' = 'Facility ID');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`modality` ALTER COLUMN `fixed_asset_id` SET TAGS ('dbx_business_glossary_term' = 'Fixed Asset Id (Foreign Key)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`modality` ALTER COLUMN `interface_channel_id` SET TAGS ('dbx_business_glossary_term' = 'Interface Channel Id (Foreign Key)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`modality` ALTER COLUMN `osha_safety_program_id` SET TAGS ('dbx_business_glossary_term' = 'Osha Safety Program Id (Foreign Key)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`modality` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Primary Operator Employee Id (Foreign Key)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`modality` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`modality` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`modality` ALTER COLUMN `acr_accreditation_expiration_date` SET TAGS ('dbx_business_glossary_term' = 'ACR Accreditation Expiration Date');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`modality` ALTER COLUMN `acr_accreditation_status` SET TAGS ('dbx_business_glossary_term' = 'American College of Radiology (ACR) Accreditation Status');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`modality` ALTER COLUMN `acr_accreditation_status` SET TAGS ('dbx_value_regex' = 'accredited|provisional|denied|expired|not_applicable');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`modality` ALTER COLUMN `ae_title` SET TAGS ('dbx_business_glossary_term' = 'DICOM Application Entity (AE) Title');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`modality` ALTER COLUMN `ae_title` SET TAGS ('dbx_value_regex' = '^[A-Z0-9_-]{1,16}$');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`modality` ALTER COLUMN `bore_diameter_cm` SET TAGS ('dbx_business_glossary_term' = 'Gantry Bore Diameter (cm)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`modality` ALTER COLUMN `building_code` SET TAGS ('dbx_business_glossary_term' = 'Building Code');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`modality` ALTER COLUMN `contrast_capable` SET TAGS ('dbx_business_glossary_term' = 'Contrast Administration Capable Indicator');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`modality` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`modality` ALTER COLUMN `decommission_date` SET TAGS ('dbx_business_glossary_term' = 'Decommission Date');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`modality` ALTER COLUMN `department_name` SET TAGS ('dbx_business_glossary_term' = 'Department Name');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`modality` ALTER COLUMN `detector_type` SET TAGS ('dbx_business_glossary_term' = 'Imaging Detector Type');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`modality` ALTER COLUMN `dicom_modality_code` SET TAGS ('dbx_business_glossary_term' = 'DICOM Modality Code');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`modality` ALTER COLUMN `dicom_modality_code` SET TAGS ('dbx_value_regex' = '^[A-Z]{2,4}$');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`modality` ALTER COLUMN `dose_tracking_enabled` SET TAGS ('dbx_business_glossary_term' = 'Radiation Dose Tracking Enabled Indicator');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`modality` ALTER COLUMN `equipment_type` SET TAGS ('dbx_business_glossary_term' = 'Imaging Equipment Type');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`modality` ALTER COLUMN `fda_510k_number` SET TAGS ('dbx_business_glossary_term' = 'FDA 510(k) Clearance Number');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`modality` ALTER COLUMN `fda_510k_number` SET TAGS ('dbx_value_regex' = '^K[0-9]{6}$');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`modality` ALTER COLUMN `fda_registration_number` SET TAGS ('dbx_business_glossary_term' = 'FDA Device Registration Number');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`modality` ALTER COLUMN `fda_registration_number` SET TAGS ('dbx_value_regex' = '^[0-9]{7}$');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`modality` ALTER COLUMN `installation_date` SET TAGS ('dbx_business_glossary_term' = 'Installation Date');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`modality` ALTER COLUMN `is_mobile` SET TAGS ('dbx_business_glossary_term' = 'Mobile Equipment Indicator');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`modality` ALTER COLUMN `is_mobile` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`modality` ALTER COLUMN `is_mobile` SET TAGS ('dbx_pii_phone' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`modality` ALTER COLUMN `last_calibration_date` SET TAGS ('dbx_business_glossary_term' = 'Last Calibration Date');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`modality` ALTER COLUMN `last_preventive_maintenance_date` SET TAGS ('dbx_business_glossary_term' = 'Last Preventive Maintenance Date');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`modality` ALTER COLUMN `manufacturer` SET TAGS ('dbx_business_glossary_term' = 'Equipment Manufacturer');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`modality` ALTER COLUMN `max_patient_weight_kg` SET TAGS ('dbx_business_glossary_term' = 'Maximum Patient Weight Capacity (kg)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`modality` ALTER COLUMN `model_name` SET TAGS ('dbx_business_glossary_term' = 'Equipment Model Name');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`modality` ALTER COLUMN `next_calibration_due_date` SET TAGS ('dbx_business_glossary_term' = 'Next Calibration Due Date');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`modality` ALTER COLUMN `next_preventive_maintenance_date` SET TAGS ('dbx_business_glossary_term' = 'Next Preventive Maintenance Due Date');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`modality` ALTER COLUMN `operational_status` SET TAGS ('dbx_business_glossary_term' = 'Operational Status');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`modality` ALTER COLUMN `operational_status` SET TAGS ('dbx_value_regex' = 'active|inactive|under_maintenance|decommissioned|pending_installation');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`modality` ALTER COLUMN `pacs_node_name` SET TAGS ('dbx_business_glossary_term' = 'PACS (Picture Archiving and Communication System) Node Name');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`modality` ALTER COLUMN `radiation_emitting` SET TAGS ('dbx_business_glossary_term' = 'Radiation Emitting Indicator');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`modality` ALTER COLUMN `ris_resource_code` SET TAGS ('dbx_business_glossary_term' = 'Radiology Information System (RIS) Resource ID');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`modality` ALTER COLUMN `room_identifier` SET TAGS ('dbx_business_glossary_term' = 'Room Identifier');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`modality` ALTER COLUMN `scheduled_hours_per_day` SET TAGS ('dbx_business_glossary_term' = 'Scheduled Operating Hours Per Day');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`modality` ALTER COLUMN `serial_number` SET TAGS ('dbx_business_glossary_term' = 'Equipment Serial Number');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`modality` ALTER COLUMN `serial_number` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`modality` ALTER COLUMN `service_contract_expiration_date` SET TAGS ('dbx_business_glossary_term' = 'Service Contract Expiration Date');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`modality` ALTER COLUMN `service_contract_number` SET TAGS ('dbx_business_glossary_term' = 'Service Contract Number');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`modality` ALTER COLUMN `shared_service_indicator` SET TAGS ('dbx_business_glossary_term' = 'Shared Service Indicator');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`modality` ALTER COLUMN `slice_count` SET TAGS ('dbx_business_glossary_term' = 'CT Detector Slice Count');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`modality` ALTER COLUMN `software_version` SET TAGS ('dbx_business_glossary_term' = 'Equipment Software Version');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`modality` ALTER COLUMN `tesla_field_strength` SET TAGS ('dbx_business_glossary_term' = 'MRI Magnetic Field Strength (Tesla)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`modality` ALTER COLUMN `unit_code` SET TAGS ('dbx_business_glossary_term' = 'Modality Unit Code');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`modality` ALTER COLUMN `unit_code` SET TAGS ('dbx_value_regex' = '^[A-Z0-9_-]{2,30}$');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`modality` ALTER COLUMN `unit_name` SET TAGS ('dbx_business_glossary_term' = 'Modality Unit Name');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`modality` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Updated Timestamp');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` SET TAGS ('dbx_data_type' = 'reference_data');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` SET TAGS ('dbx_subdomain' = 'imaging_operations');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `protocol_id` SET TAGS ('dbx_business_glossary_term' = 'Protocol Identifier');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `clinician_id` SET TAGS ('dbx_business_glossary_term' = 'Approving Clinician Id');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `clinician_id` SET TAGS ('dbx_internal' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `compliance_policy_id` SET TAGS ('dbx_business_glossary_term' = 'Policy Id (Foreign Key)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `drug_master_id` SET TAGS ('dbx_business_glossary_term' = 'Contrast Drug Master Id (Foreign Key)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `coverage_policy_id` SET TAGS ('dbx_business_glossary_term' = 'Coverage Policy Id (Foreign Key)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `coverage_policy_id` SET TAGS ('dbx_pii_category' = 'person_data');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `cpt_code_id` SET TAGS ('dbx_business_glossary_term' = 'Cpt Code Id (Foreign Key)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Created By Employee Id (Foreign Key)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `loinc_code_id` SET TAGS ('dbx_business_glossary_term' = 'Loinc Code Id (Foreign Key)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `parent_protocol_id` SET TAGS ('dbx_business_glossary_term' = 'Parent Protocol ID');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `primary_superseded_by_protocol_id` SET TAGS ('dbx_business_glossary_term' = 'Superseded By Protocol ID');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `acr_appropriateness_rating` SET TAGS ('dbx_business_glossary_term' = 'ACR Appropriateness Criteria Rating');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `acr_appropriateness_rating` SET TAGS ('dbx_value_regex' = 'usually_appropriate|may_be_appropriate|usually_not_appropriate');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `approval_date` SET TAGS ('dbx_business_glossary_term' = 'Protocol Approval Date');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `approving_radiologist_npi` SET TAGS ('dbx_business_glossary_term' = 'Approving Radiologist National Provider Identifier (NPI)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `approving_radiologist_npi` SET TAGS ('dbx_value_regex' = '^d{10}$');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `body_part` SET TAGS ('dbx_business_glossary_term' = 'Body Part Examined');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `protocol_category` SET TAGS ('dbx_business_glossary_term' = 'Protocol Category');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `protocol_category` SET TAGS ('dbx_value_regex' = 'diagnostic|screening|interventional|research|emergency|pediatric');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `clinical_indication` SET TAGS ('dbx_business_glossary_term' = 'Clinical Indication');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `protocol_code` SET TAGS ('dbx_business_glossary_term' = 'Protocol Code');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `protocol_code` SET TAGS ('dbx_value_regex' = '^[A-Z0-9_-]{2,30}$');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `contrast_dose_ml` SET TAGS ('dbx_business_glossary_term' = 'Contrast Dose (mL)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `contrast_flow_rate_ml_per_sec` SET TAGS ('dbx_business_glossary_term' = 'Contrast Flow Rate (mL/sec)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `contrast_required` SET TAGS ('dbx_business_glossary_term' = 'Contrast Required Flag');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `contrast_route` SET TAGS ('dbx_business_glossary_term' = 'Contrast Administration Route');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `contrast_route` SET TAGS ('dbx_value_regex' = 'intravenous|oral|rectal|intrathecal|intra_articular|none');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `dose_optimization_program` SET TAGS ('dbx_business_glossary_term' = 'Dose Optimization Program');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `dose_optimization_program` SET TAGS ('dbx_value_regex' = 'image_gently|image_wisely|acr_dir|none');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `effective_date` SET TAGS ('dbx_business_glossary_term' = 'Protocol Effective Date');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `fasting_duration_hours` SET TAGS ('dbx_business_glossary_term' = 'Fasting Duration (hours)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `fasting_required` SET TAGS ('dbx_business_glossary_term' = 'Fasting Required Flag');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `field_of_view_mm` SET TAGS ('dbx_business_glossary_term' = 'Field of View (FOV) (mm)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `implant_screening_required` SET TAGS ('dbx_business_glossary_term' = 'Implant Screening Required Flag');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `kvp` SET TAGS ('dbx_business_glossary_term' = 'Peak Kilovoltage (kVp)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `last_updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Last Updated Timestamp');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `magnetic_field_strength_tesla` SET TAGS ('dbx_business_glossary_term' = 'Magnetic Field Strength (Tesla)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `mas` SET TAGS ('dbx_business_glossary_term' = 'Milliampere-Seconds (mAs)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `modality_type` SET TAGS ('dbx_business_glossary_term' = 'Modality Type');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `protocol_name` SET TAGS ('dbx_business_glossary_term' = 'Protocol Name');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `protocol_name` SET TAGS ('dbx_pii_person_data' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `pacs_routing_code` SET TAGS ('dbx_business_glossary_term' = 'PACS Routing Code');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `patient_population` SET TAGS ('dbx_business_glossary_term' = 'Patient Population');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `patient_population` SET TAGS ('dbx_value_regex' = 'adult|pediatric|neonatal|geriatric|obstetric|all');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `patient_prep_instructions` SET TAGS ('dbx_business_glossary_term' = 'Patient Preparation Instructions');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `pitch_factor` SET TAGS ('dbx_business_glossary_term' = 'CT Pitch Factor');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `pulse_sequence_type` SET TAGS ('dbx_business_glossary_term' = 'MRI Pulse Sequence Type');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `radiation_dose_ctdi_vol_mgy` SET TAGS ('dbx_business_glossary_term' = 'Reference CT Dose Index Volume (CTDIvol) (mGy)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `radiation_dose_dlp_mgy_cm` SET TAGS ('dbx_business_glossary_term' = 'Reference Radiation Dose - Dose Length Product (DLP) (mGy·cm)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `radlex_code` SET TAGS ('dbx_business_glossary_term' = 'RSNA RadLex Code');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `radlex_code` SET TAGS ('dbx_value_regex' = '^RIDd+$');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `reconstruction_algorithm` SET TAGS ('dbx_business_glossary_term' = 'Reconstruction Algorithm');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `renal_function_check_required` SET TAGS ('dbx_business_glossary_term' = 'Renal Function Check Required Flag');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `retirement_date` SET TAGS ('dbx_business_glossary_term' = 'Protocol Retirement Date');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `ris_procedure_code` SET TAGS ('dbx_business_glossary_term' = 'Radiology Information System (RIS) Procedure Code');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `scan_duration_estimate_sec` SET TAGS ('dbx_business_glossary_term' = 'Estimated Scan Duration (seconds)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `sedation_required` SET TAGS ('dbx_business_glossary_term' = 'Sedation Required Flag');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `slice_thickness_mm` SET TAGS ('dbx_business_glossary_term' = 'Slice Thickness (mm)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `protocol_status` SET TAGS ('dbx_business_glossary_term' = 'Protocol Status');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `protocol_status` SET TAGS ('dbx_value_regex' = 'active|inactive|draft|retired|under_review');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `total_exam_duration_min` SET TAGS ('dbx_business_glossary_term' = 'Total Exam Duration Estimate (minutes)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `version` SET TAGS ('dbx_business_glossary_term' = 'Protocol Version');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`protocol` ALTER COLUMN `version` SET TAGS ('dbx_value_regex' = '^d+.d+(.d+)?$');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` SET TAGS ('dbx_data_type' = 'transactional_data');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` SET TAGS ('dbx_subdomain' = 'imaging_operations');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `contrast_admin_id` SET TAGS ('dbx_business_glossary_term' = 'Contrast Admin Identifier');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `clinician_id` SET TAGS ('dbx_business_glossary_term' = 'Administering Clinician ID');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `clinical_order_id` SET TAGS ('dbx_business_glossary_term' = 'Clinical Order Id (Foreign Key)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `material_master_id` SET TAGS ('dbx_business_glossary_term' = 'Contrast Material Master Id (Foreign Key)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `demographics_id` SET TAGS ('dbx_business_glossary_term' = 'Patient ID');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `demographics_id` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `demographics_id` SET TAGS ('dbx_pii_identifier' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `drug_master_id` SET TAGS ('dbx_business_glossary_term' = 'Drug Master Id (Foreign Key)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `equipment_asset_id` SET TAGS ('dbx_business_glossary_term' = 'Power Injector Device ID');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `imaging_order_id` SET TAGS ('dbx_business_glossary_term' = 'Imaging Order ID');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `ndc_drug_id` SET TAGS ('dbx_business_glossary_term' = 'Ndc Drug Id (Foreign Key)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `radiology_study_id` SET TAGS ('dbx_business_glossary_term' = 'Imaging Study ID');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `subject_enrollment_id` SET TAGS ('dbx_business_glossary_term' = 'Subject Enrollment Id (Foreign Key)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `test_result_id` SET TAGS ('dbx_business_glossary_term' = 'Egfr Lab Result Id (Foreign Key)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `treatment_consent_id` SET TAGS ('dbx_business_glossary_term' = 'Treatment Consent Id (Foreign Key)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `treatment_consent_id` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `treatment_consent_id` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `visit_id` SET TAGS ('dbx_business_glossary_term' = 'Encounter ID');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `accession_number` SET TAGS ('dbx_business_glossary_term' = 'Radiology Accession Number');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `administering_clinician_npi` SET TAGS ('dbx_business_glossary_term' = 'Administering Clinician National Provider Identifier (NPI)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `administering_clinician_npi` SET TAGS ('dbx_value_regex' = '^d{10}$');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `administration_datetime` SET TAGS ('dbx_business_glossary_term' = 'Contrast Administration Date and Time');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `administration_status` SET TAGS ('dbx_business_glossary_term' = 'Contrast Administration Status');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `administration_status` SET TAGS ('dbx_value_regex' = 'completed|in-progress|not-done|on-hold|stopped|entered-in-error');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `adverse_reaction_datetime` SET TAGS ('dbx_business_glossary_term' = 'Adverse Reaction Date and Time');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `adverse_reaction_description` SET TAGS ('dbx_business_glossary_term' = 'Adverse Reaction Description');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `adverse_reaction_description` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `adverse_reaction_description` SET TAGS ('dbx_pii_health' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `adverse_reaction_occurred` SET TAGS ('dbx_business_glossary_term' = 'Adverse Reaction Occurred Flag');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `adverse_reaction_severity` SET TAGS ('dbx_business_glossary_term' = 'Adverse Reaction Severity');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `adverse_reaction_severity` SET TAGS ('dbx_value_regex' = 'mild|moderate|severe|life-threatening');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `adverse_reaction_severity` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `adverse_reaction_severity` SET TAGS ('dbx_pii_health' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `adverse_reaction_treatment` SET TAGS ('dbx_business_glossary_term' = 'Adverse Reaction Treatment');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `adverse_reaction_treatment` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `adverse_reaction_treatment` SET TAGS ('dbx_pii_health' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `agent_class` SET TAGS ('dbx_business_glossary_term' = 'Contrast Agent Class');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `agent_class` SET TAGS ('dbx_value_regex' = 'iodinated|gadolinium-based|barium|microbubble|manganese-based|iron-based');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `agent_class` SET TAGS ('dbx_pii_category' = 'person_data');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `agent_osmolality_type` SET TAGS ('dbx_business_glossary_term' = 'Contrast Agent Osmolality Type');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `agent_osmolality_type` SET TAGS ('dbx_value_regex' = 'low-osmolality|iso-osmolality|high-osmolality');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `agent_osmolality_type` SET TAGS ('dbx_pii_category' = 'person_data');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `body_region` SET TAGS ('dbx_business_glossary_term' = 'Imaging Body Region');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `catheter_gauge` SET TAGS ('dbx_business_glossary_term' = 'Intravenous Catheter Gauge');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `concentration_mg_per_ml` SET TAGS ('dbx_business_glossary_term' = 'Contrast Agent Concentration (mg/mL)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `contrast_allergy_screening_result` SET TAGS ('dbx_business_glossary_term' = 'Contrast Allergy Screening Result');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `contrast_allergy_screening_result` SET TAGS ('dbx_value_regex' = 'no-allergy|prior-reaction|allergy-confirmed|screening-not-done|contraindicated');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `contrast_allergy_screening_result` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `contrast_allergy_screening_result` SET TAGS ('dbx_pii_health' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `contrast_protocol_name` SET TAGS ('dbx_business_glossary_term' = 'Contrast Protocol Name');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `dose_amount_mg` SET TAGS ('dbx_business_glossary_term' = 'Contrast Dose Amount (mg)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `dose_volume_ml` SET TAGS ('dbx_business_glossary_term' = 'Contrast Dose Volume (mL)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `extravasation_occurred` SET TAGS ('dbx_business_glossary_term' = 'Contrast Extravasation Occurred Flag');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `extravasation_volume_ml` SET TAGS ('dbx_business_glossary_term' = 'Extravasation Volume (mL)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `informed_consent_obtained` SET TAGS ('dbx_business_glossary_term' = 'Informed Consent Obtained Flag');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `injection_rate_ml_per_sec` SET TAGS ('dbx_business_glossary_term' = 'Injection Rate (mL/sec)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `injection_site` SET TAGS ('dbx_business_glossary_term' = 'Injection Site');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `metformin_held` SET TAGS ('dbx_business_glossary_term' = 'Metformin Held Flag');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `modality` SET TAGS ('dbx_business_glossary_term' = 'Imaging Modality');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `patient_weight_kg` SET TAGS ('dbx_business_glossary_term' = 'Patient Weight at Administration (kg)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `patient_weight_kg` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `patient_weight_kg` SET TAGS ('dbx_pii_health' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `power_injector_used` SET TAGS ('dbx_business_glossary_term' = 'Power Injector Used Flag');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `pregnancy_status` SET TAGS ('dbx_business_glossary_term' = 'Pregnancy Status at Administration');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `pregnancy_status` SET TAGS ('dbx_value_regex' = 'not-pregnant|pregnant|unknown|not-applicable');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `pregnancy_status` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `pregnancy_status` SET TAGS ('dbx_pii_health' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `premedication_details` SET TAGS ('dbx_business_glossary_term' = 'Pre-Medication Details');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `premedication_given` SET TAGS ('dbx_business_glossary_term' = 'Pre-Medication Given Flag');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `prior_contrast_reaction_type` SET TAGS ('dbx_business_glossary_term' = 'Prior Contrast Reaction Type');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `prior_contrast_reaction_type` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `prior_contrast_reaction_type` SET TAGS ('dbx_pii_health' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `record_created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `record_updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Updated Timestamp');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `route_of_administration` SET TAGS ('dbx_business_glossary_term' = 'Route of Administration');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `route_of_administration` SET TAGS ('dbx_value_regex' = 'intravenous|oral|intrathecal|intra-arterial|intraperitoneal|rectal');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `source_system_record_code` SET TAGS ('dbx_business_glossary_term' = 'Source System Record ID');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `thyroid_disease_flag` SET TAGS ('dbx_business_glossary_term' = 'Thyroid Disease Flag');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `thyroid_disease_flag` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`contrast_admin` ALTER COLUMN `thyroid_disease_flag` SET TAGS ('dbx_pii_health' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` SET TAGS ('dbx_data_type' = 'transactional_data');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` SET TAGS ('dbx_subdomain' = 'imaging_operations');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `dose_record_id` SET TAGS ('dbx_business_glossary_term' = 'Dose Record Identifier');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `care_site_id` SET TAGS ('dbx_business_glossary_term' = 'Facility ID');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `clinical_order_id` SET TAGS ('dbx_business_glossary_term' = 'Clinical Order Id (Foreign Key)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `imaging_order_id` SET TAGS ('dbx_business_glossary_term' = 'Imaging Order ID');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `protocol_id` SET TAGS ('dbx_business_glossary_term' = 'Imaging Protocol Id (Foreign Key)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `message_log_id` SET TAGS ('dbx_business_glossary_term' = 'Message Log Id (Foreign Key)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `message_log_id` SET TAGS ('dbx_pii_category' = 'person_data');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `mpi_record_id` SET TAGS ('dbx_business_glossary_term' = 'Patient ID');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `mpi_record_id` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `mpi_record_id` SET TAGS ('dbx_pii_identifier' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `osha_safety_program_id` SET TAGS ('dbx_business_glossary_term' = 'Osha Safety Program Id (Foreign Key)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `clinician_id` SET TAGS ('dbx_business_glossary_term' = 'Ordering Provider ID');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `cpt_code_id` SET TAGS ('dbx_business_glossary_term' = 'Procedure Cpt Code Id (Foreign Key)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `public_health_report_id` SET TAGS ('dbx_business_glossary_term' = 'Public Health Report Id (Foreign Key)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `public_health_report_id` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `public_health_report_id` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `research_study_id` SET TAGS ('dbx_business_glossary_term' = 'Research Study Id (Foreign Key)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Reviewing Physicist Employee Id (Foreign Key)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `visit_id` SET TAGS ('dbx_business_glossary_term' = 'Encounter ID');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `accession_number` SET TAGS ('dbx_business_glossary_term' = 'Accession Number');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `body_part_examined` SET TAGS ('dbx_business_glossary_term' = 'Body Part Examined');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `contrast_administered` SET TAGS ('dbx_business_glossary_term' = 'Contrast Agent Administered Flag');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `contrast_agent_type` SET TAGS ('dbx_business_glossary_term' = 'Contrast Agent Type');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `contrast_agent_type` SET TAGS ('dbx_value_regex' = 'iodinated|gadolinium|barium|none');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `contrast_agent_type` SET TAGS ('dbx_pii_category' = 'person_data');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `ctdivol_mgy` SET TAGS ('dbx_business_glossary_term' = 'CT Dose Index Volume (CTDIvol) in Milligray (mGy)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `cumulative_dose_msv` SET TAGS ('dbx_business_glossary_term' = 'Cumulative Patient Radiation Dose (mSv)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `cumulative_dose_msv` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `cumulative_dose_msv` SET TAGS ('dbx_pii_health' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `dap_gy_cm2` SET TAGS ('dbx_business_glossary_term' = 'Dose Area Product (DAP) in Gray-Centimeter Squared (Gy·cm²)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `dlp_mgy_cm` SET TAGS ('dbx_business_glossary_term' = 'Dose Length Product (DLP) in Milligray-Centimeter (mGy·cm)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `dose_alert_flag` SET TAGS ('dbx_business_glossary_term' = 'Dose Alert Flag');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `dose_alert_threshold_type` SET TAGS ('dbx_business_glossary_term' = 'Dose Alert Threshold Type');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `dose_alert_value` SET TAGS ('dbx_business_glossary_term' = 'Dose Alert Threshold Value');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `dose_registry_submission_status` SET TAGS ('dbx_business_glossary_term' = 'ACR Dose Index Registry (DIR) Submission Status');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `dose_registry_submission_status` SET TAGS ('dbx_value_regex' = 'pending|submitted|accepted|rejected|not_required');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `dose_registry_submission_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Dose Registry Submission Timestamp');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `drl_comparison_result` SET TAGS ('dbx_business_glossary_term' = 'Diagnostic Reference Level (DRL) Comparison Result');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `drl_comparison_result` SET TAGS ('dbx_value_regex' = 'below_drl|at_drl|above_drl|not_applicable');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `effective_dose_msv` SET TAGS ('dbx_business_glossary_term' = 'Effective Dose Estimate in Millisievert (mSv)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `entrance_skin_dose_mgy` SET TAGS ('dbx_business_glossary_term' = 'Entrance Skin Dose (ESD) in Milligray (mGy)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `fluoroscopy_time_sec` SET TAGS ('dbx_business_glossary_term' = 'Fluoroscopy Time in Seconds');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `kvp` SET TAGS ('dbx_business_glossary_term' = 'Peak Kilovoltage (kVp)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `modality_type` SET TAGS ('dbx_business_glossary_term' = 'Imaging Modality Type');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `number_of_exposures` SET TAGS ('dbx_business_glossary_term' = 'Number of Exposures');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `patient_age_at_study` SET TAGS ('dbx_business_glossary_term' = 'Patient Age at Study (Years)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `patient_age_at_study` SET TAGS ('dbx_pii_category' = 'person_data');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `patient_size_cm` SET TAGS ('dbx_business_glossary_term' = 'Patient Size (Effective Diameter) in Centimeters (cm)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `patient_size_cm` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `patient_size_cm` SET TAGS ('dbx_pii_health' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `patient_weight_kg` SET TAGS ('dbx_business_glossary_term' = 'Patient Weight in Kilograms (kg)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `patient_weight_kg` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `patient_weight_kg` SET TAGS ('dbx_pii_health' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `physicist_review_flag` SET TAGS ('dbx_business_glossary_term' = 'Medical Physicist Review Flag');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `physicist_review_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Medical Physicist Review Timestamp');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `procedure_description` SET TAGS ('dbx_business_glossary_term' = 'Procedure Description');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `rdsr_uid` SET TAGS ('dbx_business_glossary_term' = 'Radiation Dose Structured Report (RDSR) Unique Identifier (UID)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `reference_air_kerma_mgy` SET TAGS ('dbx_business_glossary_term' = 'Reference Air Kerma (RAK) in Milligray (mGy)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `scanner_manufacturer` SET TAGS ('dbx_business_glossary_term' = 'Scanner Manufacturer');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `scanner_model` SET TAGS ('dbx_business_glossary_term' = 'Scanner Model Name');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `scanner_station_name` SET TAGS ('dbx_business_glossary_term' = 'Scanner Station Name');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `ssde_mgy` SET TAGS ('dbx_business_glossary_term' = 'Size-Specific Dose Estimate (SSDE) in Milligray (mGy)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `dose_record_status` SET TAGS ('dbx_business_glossary_term' = 'Dose Record Status');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `dose_record_status` SET TAGS ('dbx_value_regex' = 'preliminary|final|amended|corrected|cancelled');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `study_date` SET TAGS ('dbx_business_glossary_term' = 'Study Date');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `study_instance_uid` SET TAGS ('dbx_business_glossary_term' = 'DICOM Study Instance Unique Identifier (UID)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `study_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Study Timestamp');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `tube_current_mas` SET TAGS ('dbx_business_glossary_term' = 'Tube Current-Time Product (mAs)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`dose_record` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Updated Timestamp');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` SET TAGS ('dbx_data_type' = 'transactional_data');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` SET TAGS ('dbx_subdomain' = 'imaging_operations');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `radiology_appointment_id` SET TAGS ('dbx_business_glossary_term' = 'Appointment Identifier');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `care_site_id` SET TAGS ('dbx_business_glossary_term' = 'Facility ID');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `clinical_order_id` SET TAGS ('dbx_business_glossary_term' = 'Clinical Order Id (Foreign Key)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Radiology Technologist ID');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `health_plan_id` SET TAGS ('dbx_business_glossary_term' = 'Insurance Plan ID');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `health_plan_id` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `health_plan_id` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `icd_code_id` SET TAGS ('dbx_business_glossary_term' = 'Icd10 Diagnosis Icd Code Id (Foreign Key)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `icd_code_id` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `icd_code_id` SET TAGS ('dbx_pii_health' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `imaging_order_id` SET TAGS ('dbx_business_glossary_term' = 'Imaging Order ID');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `room_id` SET TAGS ('dbx_business_glossary_term' = 'Modality Room ID');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `mpi_record_id` SET TAGS ('dbx_business_glossary_term' = 'Patient ID');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `clinician_id` SET TAGS ('dbx_business_glossary_term' = 'Ordering Provider ID');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `cpt_code_id` SET TAGS ('dbx_business_glossary_term' = 'Procedure Cpt Code Id (Foreign Key)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `scheduling_appointment_id` SET TAGS ('dbx_business_glossary_term' = 'Enterprise Appointment ID');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `subject_enrollment_id` SET TAGS ('dbx_business_glossary_term' = 'Subject Enrollment Id (Foreign Key)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `tertiary_radiology_referring_provider_clinician_id` SET TAGS ('dbx_business_glossary_term' = 'Referring Provider ID');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `visit_id` SET TAGS ('dbx_business_glossary_term' = 'Encounter ID');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `accession_number` SET TAGS ('dbx_business_glossary_term' = 'Radiology Accession Number');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `actual_end_datetime` SET TAGS ('dbx_business_glossary_term' = 'Actual End Date and Time');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `actual_start_datetime` SET TAGS ('dbx_business_glossary_term' = 'Actual Start Date and Time');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `appointment_comment` SET TAGS ('dbx_business_glossary_term' = 'Appointment Comment');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `appointment_status` SET TAGS ('dbx_business_glossary_term' = 'Appointment Status');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `appointment_status` SET TAGS ('dbx_value_regex' = 'scheduled|arrived|in_progress|completed|cancelled|no_show');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `appointment_type` SET TAGS ('dbx_business_glossary_term' = 'Appointment Type');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `auth_status` SET TAGS ('dbx_business_glossary_term' = 'Authorization Status');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `auth_status` SET TAGS ('dbx_value_regex' = 'approved|pending|denied|not_required|expired');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `body_part` SET TAGS ('dbx_business_glossary_term' = 'Body Part Examined');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `cancellation_reason` SET TAGS ('dbx_business_glossary_term' = 'Cancellation Reason');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `cancellation_reason` SET TAGS ('dbx_pii_person_data' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `clinical_indication` SET TAGS ('dbx_business_glossary_term' = 'Clinical Indication');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `clinical_indication` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `clinical_indication` SET TAGS ('dbx_pii_health' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `contrast_required` SET TAGS ('dbx_business_glossary_term' = 'Contrast Required Flag');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `contrast_type` SET TAGS ('dbx_business_glossary_term' = 'Contrast Administration Type');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `contrast_type` SET TAGS ('dbx_value_regex' = 'IV|oral|intrathecal|intra_articular|not_applicable');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `is_portable` SET TAGS ('dbx_business_glossary_term' = 'Portable Imaging Flag');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `is_stat` SET TAGS ('dbx_business_glossary_term' = 'STAT Order Flag');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `laterality` SET TAGS ('dbx_business_glossary_term' = 'Laterality');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `laterality` SET TAGS ('dbx_value_regex' = 'left|right|bilateral|not_applicable');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `modality_type` SET TAGS ('dbx_business_glossary_term' = 'Imaging Modality Type');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `no_show_reason` SET TAGS ('dbx_business_glossary_term' = 'No-Show Reason');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `pacs_study_uid` SET TAGS ('dbx_business_glossary_term' = 'Picture Archiving and Communication System (PACS) Study Instance UID');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `pacs_study_uid` SET TAGS ('dbx_value_regex' = '^[0-9]+(.[0-9]+)+$');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `patient_location` SET TAGS ('dbx_business_glossary_term' = 'Patient Location at Time of Appointment');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `prep_instructions` SET TAGS ('dbx_business_glossary_term' = 'Patient Preparation Instructions');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `prior_auth_number` SET TAGS ('dbx_business_glossary_term' = 'Insurance Pre-Authorization Number');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `procedure_description` SET TAGS ('dbx_business_glossary_term' = 'Procedure Description');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `radiation_dose_flag` SET TAGS ('dbx_business_glossary_term' = 'Radiation Dose Tracking Flag');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `reschedule_count` SET TAGS ('dbx_business_glossary_term' = 'Reschedule Count');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `ris_appointment_code` SET TAGS ('dbx_business_glossary_term' = 'Radiology Information System (RIS) Appointment ID');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `scheduled_duration_minutes` SET TAGS ('dbx_business_glossary_term' = 'Scheduled Duration (Minutes)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `scheduled_end_datetime` SET TAGS ('dbx_business_glossary_term' = 'Scheduled End Date and Time');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `scheduled_start_datetime` SET TAGS ('dbx_business_glossary_term' = 'Scheduled Start Date and Time');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `scheduling_source` SET TAGS ('dbx_business_glossary_term' = 'Scheduling Source');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `scheduling_source` SET TAGS ('dbx_value_regex' = 'provider_referral|patient_self|order_based|transfer|walk_in|portal');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_appointment` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Updated Timestamp');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`reader_assignment` SET TAGS ('dbx_data_type' = 'transactional_data');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`reader_assignment` SET TAGS ('dbx_subdomain' = 'clinical_reporting');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`reader_assignment` ALTER COLUMN `reader_assignment_id` SET TAGS ('dbx_business_glossary_term' = 'Reader Assignment Identifier');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`reader_assignment` ALTER COLUMN `care_site_id` SET TAGS ('dbx_business_glossary_term' = 'Facility ID');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`reader_assignment` ALTER COLUMN `cpt_code_id` SET TAGS ('dbx_business_glossary_term' = 'Cpt Code Id (Foreign Key)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`reader_assignment` ALTER COLUMN `clinician_id` SET TAGS ('dbx_business_glossary_term' = 'Radiologist Provider ID');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`reader_assignment` ALTER COLUMN `prior_assignment_reader_assignment_id` SET TAGS ('dbx_business_glossary_term' = 'Prior Assignment ID');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`reader_assignment` ALTER COLUMN `radiology_study_id` SET TAGS ('dbx_business_glossary_term' = 'Imaging Study ID');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`reader_assignment` ALTER COLUMN `report_id` SET TAGS ('dbx_business_glossary_term' = 'Radiology Report ID');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`reader_assignment` ALTER COLUMN `stark_arrangement_id` SET TAGS ('dbx_business_glossary_term' = 'Stark Arrangement Id (Foreign Key)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`reader_assignment` ALTER COLUMN `visit_id` SET TAGS ('dbx_business_glossary_term' = 'Encounter ID');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`reader_assignment` ALTER COLUMN `accession_number` SET TAGS ('dbx_business_glossary_term' = 'Radiology Accession Number');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`reader_assignment` ALTER COLUMN `addendum_flag` SET TAGS ('dbx_business_glossary_term' = 'Report Addendum Flag');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`reader_assignment` ALTER COLUMN `addendum_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Report Addendum Timestamp');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`reader_assignment` ALTER COLUMN `assigned_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Assignment Timestamp');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`reader_assignment` ALTER COLUMN `assignment_source` SET TAGS ('dbx_business_glossary_term' = 'Assignment Source Method');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`reader_assignment` ALTER COLUMN `assignment_source` SET TAGS ('dbx_value_regex' = 'worklist_auto|manual|teleradiology_vendor|ai_routing|escalation');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`reader_assignment` ALTER COLUMN `assignment_status` SET TAGS ('dbx_business_glossary_term' = 'Assignment Status');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`reader_assignment` ALTER COLUMN `assignment_status` SET TAGS ('dbx_value_regex' = 'assigned|in_progress|completed|cancelled|reassigned|pending');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`reader_assignment` ALTER COLUMN `assignment_type` SET TAGS ('dbx_business_glossary_term' = 'Reader Assignment Type');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`reader_assignment` ALTER COLUMN `assignment_type` SET TAGS ('dbx_value_regex' = 'primary_read|second_read|peer_review|overread|teleradiology');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`reader_assignment` ALTER COLUMN `body_part` SET TAGS ('dbx_business_glossary_term' = 'Body Part Examined');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`reader_assignment` ALTER COLUMN `contrast_used` SET TAGS ('dbx_business_glossary_term' = 'Contrast Administration Indicator');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`reader_assignment` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`reader_assignment` ALTER COLUMN `critical_finding_flag` SET TAGS ('dbx_business_glossary_term' = 'Critical Finding Flag');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`reader_assignment` ALTER COLUMN `critical_finding_notified_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Critical Finding Notification Timestamp');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`reader_assignment` ALTER COLUMN `dictation_method` SET TAGS ('dbx_business_glossary_term' = 'Dictation Method');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`reader_assignment` ALTER COLUMN `dictation_method` SET TAGS ('dbx_value_regex' = 'voice_recognition|manual_transcription|structured_reporting|template');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`reader_assignment` ALTER COLUMN `image_count` SET TAGS ('dbx_business_glossary_term' = 'DICOM Image Count');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`reader_assignment` ALTER COLUMN `image_count` SET TAGS ('dbx_pii_category' = 'person_data');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`reader_assignment` ALTER COLUMN `is_teleradiology` SET TAGS ('dbx_business_glossary_term' = 'Teleradiology Assignment Indicator');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`reader_assignment` ALTER COLUMN `modality` SET TAGS ('dbx_business_glossary_term' = 'Imaging Modality');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`reader_assignment` ALTER COLUMN `pacs_study_uid` SET TAGS ('dbx_business_glossary_term' = 'Picture Archiving and Communication System (PACS) Study Instance UID');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`reader_assignment` ALTER COLUMN `pacs_study_uid` SET TAGS ('dbx_value_regex' = '^[0-9]+(.[0-9]+)+$');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`reader_assignment` ALTER COLUMN `peer_review_category` SET TAGS ('dbx_business_glossary_term' = 'Peer Review Discrepancy Category');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`reader_assignment` ALTER COLUMN `peer_review_category` SET TAGS ('dbx_value_regex' = 'agree|minor_discrepancy|significant_discrepancy|major_discrepancy');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`reader_assignment` ALTER COLUMN `peer_review_score` SET TAGS ('dbx_business_glossary_term' = 'Peer Review Score');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`reader_assignment` ALTER COLUMN `peer_review_score` SET TAGS ('dbx_value_regex' = '1|2|3|4|5');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`reader_assignment` ALTER COLUMN `priority` SET TAGS ('dbx_business_glossary_term' = 'Study Read Priority');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`reader_assignment` ALTER COLUMN `priority` SET TAGS ('dbx_value_regex' = 'stat|urgent|routine|scheduled');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`reader_assignment` ALTER COLUMN `radiation_dose_dlp` SET TAGS ('dbx_business_glossary_term' = 'Radiation Dose Length Product (DLP) mGy·cm');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`reader_assignment` ALTER COLUMN `read_complete_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Read Completion Timestamp');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`reader_assignment` ALTER COLUMN `read_start_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Read Start Timestamp');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`reader_assignment` ALTER COLUMN `reading_site` SET TAGS ('dbx_business_glossary_term' = 'Reading Site Location');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`reader_assignment` ALTER COLUMN `reassignment_reason` SET TAGS ('dbx_business_glossary_term' = 'Reassignment Reason');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`reader_assignment` ALTER COLUMN `report_signed_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Report Signed Timestamp');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`reader_assignment` ALTER COLUMN `rvu_value` SET TAGS ('dbx_business_glossary_term' = 'Relative Value Unit (RVU) Value');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`reader_assignment` ALTER COLUMN `sla_met` SET TAGS ('dbx_business_glossary_term' = 'Service Level Agreement (SLA) Met Indicator');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`reader_assignment` ALTER COLUMN `sla_target_minutes` SET TAGS ('dbx_business_glossary_term' = 'Service Level Agreement (SLA) Target Minutes');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`reader_assignment` ALTER COLUMN `subspecialty_match` SET TAGS ('dbx_business_glossary_term' = 'Subspecialty Match Indicator');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`reader_assignment` ALTER COLUMN `subspecialty_required` SET TAGS ('dbx_business_glossary_term' = 'Required Radiologist Subspecialty');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`reader_assignment` ALTER COLUMN `tat_minutes` SET TAGS ('dbx_business_glossary_term' = 'Turnaround Time (TAT) Minutes');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`reader_assignment` ALTER COLUMN `teleradiology_routing_reason` SET TAGS ('dbx_business_glossary_term' = 'Teleradiology Routing Reason');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`reader_assignment` ALTER COLUMN `teleradiology_routing_reason` SET TAGS ('dbx_value_regex' = 'after_hours|subspecialty_gap|volume_overflow|coverage_gap|stat_backup');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`reader_assignment` ALTER COLUMN `teleradiology_vendor_name` SET TAGS ('dbx_business_glossary_term' = 'Teleradiology Vendor Name');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`reader_assignment` ALTER COLUMN `teleradiology_vendor_name` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`reader_assignment` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Updated Timestamp');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`reader_assignment` ALTER COLUMN `vendor_accession_number` SET TAGS ('dbx_business_glossary_term' = 'Vendor Accession Number');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`reader_assignment` ALTER COLUMN `worklist_code` SET TAGS ('dbx_business_glossary_term' = 'RIS Worklist ID');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`critical_result` SET TAGS ('dbx_data_type' = 'transactional_data');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`critical_result` SET TAGS ('dbx_subdomain' = 'clinical_reporting');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`critical_result` ALTER COLUMN `critical_result_id` SET TAGS ('dbx_business_glossary_term' = 'Critical Result Identifier');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`critical_result` ALTER COLUMN `audit_finding_id` SET TAGS ('dbx_business_glossary_term' = 'Audit Finding Id (Foreign Key)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`critical_result` ALTER COLUMN `care_site_id` SET TAGS ('dbx_business_glossary_term' = 'Facility ID');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`critical_result` ALTER COLUMN `clinical_order_id` SET TAGS ('dbx_business_glossary_term' = 'Clinical Order Id (Foreign Key)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`critical_result` ALTER COLUMN `cpt_code_id` SET TAGS ('dbx_business_glossary_term' = 'Cpt Code Id (Foreign Key)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`critical_result` ALTER COLUMN `demographics_id` SET TAGS ('dbx_business_glossary_term' = 'Patient ID');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`critical_result` ALTER COLUMN `demographics_id` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`critical_result` ALTER COLUMN `demographics_id` SET TAGS ('dbx_pii_identifier' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`critical_result` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Radiologist Provider ID');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`critical_result` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`critical_result` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`critical_result` ALTER COLUMN `imaging_order_id` SET TAGS ('dbx_business_glossary_term' = 'Imaging Order ID');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`critical_result` ALTER COLUMN `message_log_id` SET TAGS ('dbx_business_glossary_term' = 'Message Log Id (Foreign Key)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`critical_result` ALTER COLUMN `message_log_id` SET TAGS ('dbx_pii_category' = 'person_data');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`critical_result` ALTER COLUMN `org_unit_id` SET TAGS ('dbx_business_glossary_term' = 'Radiology Department ID');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`critical_result` ALTER COLUMN `clinician_id` SET TAGS ('dbx_business_glossary_term' = 'Notified Provider ID');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`critical_result` ALTER COLUMN `report_id` SET TAGS ('dbx_business_glossary_term' = 'Radiology Report ID');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`critical_result` ALTER COLUMN `subject_enrollment_id` SET TAGS ('dbx_business_glossary_term' = 'Subject Enrollment Id (Foreign Key)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`critical_result` ALTER COLUMN `tertiary_critical_ordering_provider_clinician_id` SET TAGS ('dbx_business_glossary_term' = 'Ordering Provider ID');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`critical_result` ALTER COLUMN `visit_id` SET TAGS ('dbx_business_glossary_term' = 'Visit ID');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`critical_result` ALTER COLUMN `accession_number` SET TAGS ('dbx_business_glossary_term' = 'Radiology Accession Number');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`critical_result` ALTER COLUMN `acknowledgment_datetime` SET TAGS ('dbx_business_glossary_term' = 'Acknowledgment Datetime');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`critical_result` ALTER COLUMN `acknowledgment_method` SET TAGS ('dbx_business_glossary_term' = 'Acknowledgment Method');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`critical_result` ALTER COLUMN `acknowledgment_method` SET TAGS ('dbx_value_regex' = 'phone|secure_message|ehr_alert|pager|in_person|fax');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`critical_result` ALTER COLUMN `acknowledgment_turnaround_minutes` SET TAGS ('dbx_business_glossary_term' = 'Acknowledgment Turnaround Time (Minutes)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`critical_result` ALTER COLUMN `body_part_examined` SET TAGS ('dbx_business_glossary_term' = 'Body Part Examined');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`critical_result` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`critical_result` ALTER COLUMN `dicom_study_uid` SET TAGS ('dbx_business_glossary_term' = 'DICOM Study Instance Unique Identifier (UID)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`critical_result` ALTER COLUMN `emtala_applicable` SET TAGS ('dbx_business_glossary_term' = 'Emergency Medical Treatment and Labor Act (EMTALA) Applicable Flag');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`critical_result` ALTER COLUMN `escalation_datetime` SET TAGS ('dbx_business_glossary_term' = 'Escalation Datetime');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`critical_result` ALTER COLUMN `escalation_flag` SET TAGS ('dbx_business_glossary_term' = 'Escalation Flag');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`critical_result` ALTER COLUMN `escalation_reason` SET TAGS ('dbx_business_glossary_term' = 'Escalation Reason');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`critical_result` ALTER COLUMN `escalation_reason` SET TAGS ('dbx_value_regex' = 'no_response|provider_unavailable|wrong_contact|system_failure|other');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`critical_result` ALTER COLUMN `finding_category` SET TAGS ('dbx_business_glossary_term' = 'Finding Category');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`critical_result` ALTER COLUMN `finding_datetime` SET TAGS ('dbx_business_glossary_term' = 'Finding Identified Datetime');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`critical_result` ALTER COLUMN `finding_description` SET TAGS ('dbx_business_glossary_term' = 'Critical Finding Description');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`critical_result` ALTER COLUMN `finding_description` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`critical_result` ALTER COLUMN `finding_description` SET TAGS ('dbx_pii_health' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`critical_result` ALTER COLUMN `finding_severity` SET TAGS ('dbx_business_glossary_term' = 'Finding Severity Level');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`critical_result` ALTER COLUMN `finding_severity` SET TAGS ('dbx_value_regex' = 'critical|significant|incidental');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`critical_result` ALTER COLUMN `modality` SET TAGS ('dbx_business_glossary_term' = 'Imaging Modality');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`critical_result` ALTER COLUMN `mrn` SET TAGS ('dbx_business_glossary_term' = 'Medical Record Number (MRN)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`critical_result` ALTER COLUMN `mrn` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`critical_result` ALTER COLUMN `mrn` SET TAGS ('dbx_pii_identifier' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`critical_result` ALTER COLUMN `notification_attempt_count` SET TAGS ('dbx_business_glossary_term' = 'Notification Attempt Count');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`critical_result` ALTER COLUMN `notification_datetime` SET TAGS ('dbx_business_glossary_term' = 'Notification Datetime');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`critical_result` ALTER COLUMN `notification_method` SET TAGS ('dbx_business_glossary_term' = 'Notification Method');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`critical_result` ALTER COLUMN `notification_method` SET TAGS ('dbx_value_regex' = 'phone|secure_message|ehr_alert|pager|in_person|fax');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`critical_result` ALTER COLUMN `notification_status` SET TAGS ('dbx_business_glossary_term' = 'Notification Status');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`critical_result` ALTER COLUMN `notification_status` SET TAGS ('dbx_value_regex' = 'pending|notified|acknowledged|escalated|failed|cancelled');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`critical_result` ALTER COLUMN `notification_turnaround_minutes` SET TAGS ('dbx_business_glossary_term' = 'Notification Turnaround Time (Minutes)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`critical_result` ALTER COLUMN `notified_provider_npi` SET TAGS ('dbx_business_glossary_term' = 'Notified Provider National Provider Identifier (NPI)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`critical_result` ALTER COLUMN `notified_provider_npi` SET TAGS ('dbx_value_regex' = '^[0-9]{10}$');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`critical_result` ALTER COLUMN `pacs_system_name` SET TAGS ('dbx_business_glossary_term' = 'Picture Archiving and Communication System (PACS) Name');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`critical_result` ALTER COLUMN `patient_care_setting` SET TAGS ('dbx_business_glossary_term' = 'Patient Care Setting');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`critical_result` ALTER COLUMN `patient_care_setting` SET TAGS ('dbx_value_regex' = 'inpatient|outpatient|emergency|observation|ambulatory');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`critical_result` ALTER COLUMN `patient_location_at_notification` SET TAGS ('dbx_business_glossary_term' = 'Patient Location at Notification');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`critical_result` ALTER COLUMN `patient_safety_event_flag` SET TAGS ('dbx_business_glossary_term' = 'Patient Safety Event Flag');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`critical_result` ALTER COLUMN `radiologist_npi` SET TAGS ('dbx_business_glossary_term' = 'Radiologist National Provider Identifier (NPI)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`critical_result` ALTER COLUMN `radiologist_npi` SET TAGS ('dbx_value_regex' = '^[0-9]{10}$');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`critical_result` ALTER COLUMN `read_back_notes` SET TAGS ('dbx_business_glossary_term' = 'Read-Back Documentation Notes');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`critical_result` ALTER COLUMN `read_back_performed` SET TAGS ('dbx_business_glossary_term' = 'Read-Back Performed Flag');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`critical_result` ALTER COLUMN `report_status_at_notification` SET TAGS ('dbx_business_glossary_term' = 'Report Status at Notification');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`critical_result` ALTER COLUMN `report_status_at_notification` SET TAGS ('dbx_value_regex' = 'preliminary|final|addendum');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`critical_result` ALTER COLUMN `tjc_compliance_status` SET TAGS ('dbx_business_glossary_term' = 'The Joint Commission (TJC) Compliance Status');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`critical_result` ALTER COLUMN `tjc_compliance_status` SET TAGS ('dbx_value_regex' = 'compliant|non_compliant|pending_review|exception_granted');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`critical_result` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Updated Timestamp');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_peer_review` SET TAGS ('dbx_data_type' = 'transactional_data');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_peer_review` SET TAGS ('dbx_subdomain' = 'clinical_reporting');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_peer_review` ALTER COLUMN `radiology_peer_review_id` SET TAGS ('dbx_business_glossary_term' = 'Radiology Peer Review ID');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_peer_review` ALTER COLUMN `audit_finding_id` SET TAGS ('dbx_business_glossary_term' = 'Audit Finding Id (Foreign Key)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_peer_review` ALTER COLUMN `care_site_id` SET TAGS ('dbx_business_glossary_term' = 'Facility ID');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_peer_review` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Coordinator Employee Id (Foreign Key)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_peer_review` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_peer_review` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_peer_review` ALTER COLUMN `corrective_action_plan_id` SET TAGS ('dbx_business_glossary_term' = 'Corrective Action Plan Id (Foreign Key)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_peer_review` ALTER COLUMN `cpt_code_id` SET TAGS ('dbx_business_glossary_term' = 'Cpt Code Id (Foreign Key)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_peer_review` ALTER COLUMN `org_unit_id` SET TAGS ('dbx_business_glossary_term' = 'Department ID');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_peer_review` ALTER COLUMN `report_id` SET TAGS ('dbx_business_glossary_term' = 'Original Radiology Report ID');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_peer_review` ALTER COLUMN `report_addendum_id` SET TAGS ('dbx_business_glossary_term' = 'Addendum Report ID');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_peer_review` ALTER COLUMN `visit_id` SET TAGS ('dbx_business_glossary_term' = 'Encounter ID');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_peer_review` ALTER COLUMN `accession_number` SET TAGS ('dbx_business_glossary_term' = 'Accession Number');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_peer_review` ALTER COLUMN `acr_accreditation_cycle` SET TAGS ('dbx_business_glossary_term' = 'ACR Accreditation Cycle');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_peer_review` ALTER COLUMN `acr_accreditation_cycle` SET TAGS ('dbx_value_regex' = '^[0-9]{4}-[0-9]{4}$');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_peer_review` ALTER COLUMN `acr_radpeer_score` SET TAGS ('dbx_business_glossary_term' = 'ACR RADPEER Concordance Score');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_peer_review` ALTER COLUMN `blinded_review_flag` SET TAGS ('dbx_business_glossary_term' = 'Blinded Review Flag');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_peer_review` ALTER COLUMN `body_part_examined` SET TAGS ('dbx_business_glossary_term' = 'Body Part Examined');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_peer_review` ALTER COLUMN `case_conference_flag` SET TAGS ('dbx_business_glossary_term' = 'Case Conference Flag');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_peer_review` ALTER COLUMN `clinical_history_available_flag` SET TAGS ('dbx_business_glossary_term' = 'Clinical History Available Flag');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_peer_review` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_peer_review` ALTER COLUMN `discrepancy_category` SET TAGS ('dbx_business_glossary_term' = 'Discrepancy Category');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_peer_review` ALTER COLUMN `discrepancy_category` SET TAGS ('dbx_value_regex' = 'none|minor|major');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_peer_review` ALTER COLUMN `discrepancy_description` SET TAGS ('dbx_business_glossary_term' = 'Discrepancy Description');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_peer_review` ALTER COLUMN `discrepancy_description` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_peer_review` ALTER COLUMN `discrepancy_type` SET TAGS ('dbx_business_glossary_term' = 'Discrepancy Type');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_peer_review` ALTER COLUMN `discrepancy_type` SET TAGS ('dbx_value_regex' = 'missed_finding|mischaracterization|incorrect_recommendation|incomplete_report|wrong_anatomy');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_peer_review` ALTER COLUMN `educational_feedback_flag` SET TAGS ('dbx_business_glossary_term' = 'Educational Feedback Flag');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_peer_review` ALTER COLUMN `escalated_to_chair_flag` SET TAGS ('dbx_business_glossary_term' = 'Escalated to Department Chair Flag');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_peer_review` ALTER COLUMN `icd10_finding_code` SET TAGS ('dbx_business_glossary_term' = 'International Classification of Diseases 10th Revision (ICD-10) Finding Code');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_peer_review` ALTER COLUMN `icd10_finding_code` SET TAGS ('dbx_value_regex' = '^[A-Z][0-9]{2}(.[A-Z0-9]{1,4})?$');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_peer_review` ALTER COLUMN `modality_code` SET TAGS ('dbx_business_glossary_term' = 'Imaging Modality Code');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_peer_review` ALTER COLUMN `oppe_fppe_flag` SET TAGS ('dbx_business_glossary_term' = 'Ongoing/Focused Professional Practice Evaluation (OPPE/FPPE) Flag');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_peer_review` ALTER COLUMN `original_radiologist_npi` SET TAGS ('dbx_business_glossary_term' = 'Original Radiologist National Provider Identifier (NPI)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_peer_review` ALTER COLUMN `original_radiologist_npi` SET TAGS ('dbx_value_regex' = '^[0-9]{10}$');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_peer_review` ALTER COLUMN `original_radiologist_response` SET TAGS ('dbx_business_glossary_term' = 'Original Radiologist Response');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_peer_review` ALTER COLUMN `original_radiologist_response` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_peer_review` ALTER COLUMN `original_report_finalized_datetime` SET TAGS ('dbx_business_glossary_term' = 'Original Report Finalized Date and Time');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_peer_review` ALTER COLUMN `patient_safety_event_flag` SET TAGS ('dbx_business_glossary_term' = 'Patient Safety Event Flag');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_peer_review` ALTER COLUMN `prior_study_available_flag` SET TAGS ('dbx_business_glossary_term' = 'Prior Study Available Flag');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_peer_review` ALTER COLUMN `response_datetime` SET TAGS ('dbx_business_glossary_term' = 'Original Radiologist Response Date and Time');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_peer_review` ALTER COLUMN `review_assigned_datetime` SET TAGS ('dbx_business_glossary_term' = 'Peer Review Assigned Date and Time');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_peer_review` ALTER COLUMN `review_datetime` SET TAGS ('dbx_business_glossary_term' = 'Peer Review Date and Time');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_peer_review` ALTER COLUMN `review_disposition` SET TAGS ('dbx_business_glossary_term' = 'Peer Review Disposition');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_peer_review` ALTER COLUMN `review_disposition` SET TAGS ('dbx_value_regex' = 'no_action|feedback_provided|addendum_required|report_amended|escalated|referred_to_committee');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_peer_review` ALTER COLUMN `review_program_type` SET TAGS ('dbx_business_glossary_term' = 'Peer Review Program Type');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_peer_review` ALTER COLUMN `review_program_type` SET TAGS ('dbx_value_regex' = 'acr_radpeer|internal_qa|mips|vbp|tjc_required|focused_professional_practice_evaluation');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_peer_review` ALTER COLUMN `review_status` SET TAGS ('dbx_business_glossary_term' = 'Peer Review Status');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_peer_review` ALTER COLUMN `review_status` SET TAGS ('dbx_value_regex' = 'pending|in_progress|completed|cancelled|escalated');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_peer_review` ALTER COLUMN `review_type` SET TAGS ('dbx_business_glossary_term' = 'Peer Review Type');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_peer_review` ALTER COLUMN `review_type` SET TAGS ('dbx_value_regex' = 'random|targeted|discrepancy|prospective|retrospective|focused');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_peer_review` ALTER COLUMN `reviewer_comments` SET TAGS ('dbx_business_glossary_term' = 'Reviewer Comments');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_peer_review` ALTER COLUMN `reviewer_comments` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_peer_review` ALTER COLUMN `reviewer_radiologist_npi` SET TAGS ('dbx_business_glossary_term' = 'Reviewer Radiologist National Provider Identifier (NPI)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_peer_review` ALTER COLUMN `reviewer_radiologist_npi` SET TAGS ('dbx_value_regex' = '^[0-9]{10}$');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_peer_review` ALTER COLUMN `study_datetime` SET TAGS ('dbx_business_glossary_term' = 'Imaging Study Date and Time');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_peer_review` ALTER COLUMN `subspecialty` SET TAGS ('dbx_business_glossary_term' = 'Radiology Subspecialty');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_peer_review` ALTER COLUMN `subspecialty_matched_flag` SET TAGS ('dbx_business_glossary_term' = 'Subspecialty Matched Review Flag');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_peer_review` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Updated Timestamp');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`teleradiology_case` SET TAGS ('dbx_data_type' = 'transactional_data');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`teleradiology_case` SET TAGS ('dbx_subdomain' = 'clinical_reporting');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`teleradiology_case` ALTER COLUMN `teleradiology_case_id` SET TAGS ('dbx_business_glossary_term' = 'Teleradiology Case ID');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`teleradiology_case` ALTER COLUMN `ap_invoice_id` SET TAGS ('dbx_business_glossary_term' = 'Ap Invoice Id (Foreign Key)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`teleradiology_case` ALTER COLUMN `business_associate_agreement_id` SET TAGS ('dbx_business_glossary_term' = 'Business Associate Agreement Id (Foreign Key)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`teleradiology_case` ALTER COLUMN `care_site_id` SET TAGS ('dbx_business_glossary_term' = 'Originating Facility ID');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`teleradiology_case` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Case Coordinator Employee Id (Foreign Key)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`teleradiology_case` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`teleradiology_case` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`teleradiology_case` ALTER COLUMN `clinician_id` SET TAGS ('dbx_business_glossary_term' = 'Ordering Provider ID');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`teleradiology_case` ALTER COLUMN `cpt_code_id` SET TAGS ('dbx_business_glossary_term' = 'Cpt Code Id (Foreign Key)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`teleradiology_case` ALTER COLUMN `demographics_id` SET TAGS ('dbx_business_glossary_term' = 'Patient ID');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`teleradiology_case` ALTER COLUMN `imaging_order_id` SET TAGS ('dbx_business_glossary_term' = 'Imaging Order ID');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`teleradiology_case` ALTER COLUMN `message_log_id` SET TAGS ('dbx_business_glossary_term' = 'Message Log Id (Foreign Key)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`teleradiology_case` ALTER COLUMN `message_log_id` SET TAGS ('dbx_pii_category' = 'person_data');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`teleradiology_case` ALTER COLUMN `payer_contract_id` SET TAGS ('dbx_business_glossary_term' = 'Payer Contract Id (Foreign Key)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`teleradiology_case` ALTER COLUMN `stark_arrangement_id` SET TAGS ('dbx_business_glossary_term' = 'Stark Arrangement Id (Foreign Key)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`teleradiology_case` ALTER COLUMN `vendor_contract_id` SET TAGS ('dbx_business_glossary_term' = 'Vendor Contract ID');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`teleradiology_case` ALTER COLUMN `vendor_contract_id` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`teleradiology_case` ALTER COLUMN `vendor_id` SET TAGS ('dbx_business_glossary_term' = 'Teleradiology Vendor ID');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`teleradiology_case` ALTER COLUMN `visit_id` SET TAGS ('dbx_business_glossary_term' = 'Visit ID');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`teleradiology_case` ALTER COLUMN `accession_number` SET TAGS ('dbx_business_glossary_term' = 'Accession Number');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`teleradiology_case` ALTER COLUMN `actual_tat_minutes` SET TAGS ('dbx_business_glossary_term' = 'Actual Turnaround Time (TAT) in Minutes');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`teleradiology_case` ALTER COLUMN `billing_responsibility` SET TAGS ('dbx_business_glossary_term' = 'Professional Component Billing Responsibility');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`teleradiology_case` ALTER COLUMN `billing_responsibility` SET TAGS ('dbx_value_regex' = 'vendor|facility|shared|not_applicable');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`teleradiology_case` ALTER COLUMN `body_part` SET TAGS ('dbx_business_glossary_term' = 'Body Part Examined');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`teleradiology_case` ALTER COLUMN `case_status` SET TAGS ('dbx_business_glossary_term' = 'Teleradiology Case Status');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`teleradiology_case` ALTER COLUMN `clinical_indication` SET TAGS ('dbx_business_glossary_term' = 'Clinical Indication');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`teleradiology_case` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`teleradiology_case` ALTER COLUMN `critical_finding_flag` SET TAGS ('dbx_business_glossary_term' = 'Critical Finding Flag');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`teleradiology_case` ALTER COLUMN `critical_finding_notified_datetime` SET TAGS ('dbx_business_glossary_term' = 'Critical Finding Notification Datetime');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`teleradiology_case` ALTER COLUMN `dicom_study_uid` SET TAGS ('dbx_business_glossary_term' = 'DICOM Study Instance Unique Identifier (UID)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`teleradiology_case` ALTER COLUMN `discrepancy_category` SET TAGS ('dbx_business_glossary_term' = 'Discrepancy Category');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`teleradiology_case` ALTER COLUMN `discrepancy_category` SET TAGS ('dbx_value_regex' = 'major|minor|none');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`teleradiology_case` ALTER COLUMN `expected_tat_minutes` SET TAGS ('dbx_business_glossary_term' = 'Expected Turnaround Time (TAT) in Minutes');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`teleradiology_case` ALTER COLUMN `final_report_datetime` SET TAGS ('dbx_business_glossary_term' = 'Final Report Received Datetime');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`teleradiology_case` ALTER COLUMN `final_report_text` SET TAGS ('dbx_business_glossary_term' = 'Final Report Text');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`teleradiology_case` ALTER COLUMN `final_report_text` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`teleradiology_case` ALTER COLUMN `final_report_text` SET TAGS ('dbx_pii_health' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`teleradiology_case` ALTER COLUMN `interpretation_start_datetime` SET TAGS ('dbx_business_glossary_term' = 'Interpretation Start Datetime');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`teleradiology_case` ALTER COLUMN `interpreting_radiologist_name` SET TAGS ('dbx_business_glossary_term' = 'Interpreting Radiologist Name');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`teleradiology_case` ALTER COLUMN `interpreting_radiologist_name` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`teleradiology_case` ALTER COLUMN `interpreting_radiologist_npi` SET TAGS ('dbx_business_glossary_term' = 'Interpreting Radiologist National Provider Identifier (NPI)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`teleradiology_case` ALTER COLUMN `interpreting_radiologist_npi` SET TAGS ('dbx_value_regex' = '^[0-9]{10}$');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`teleradiology_case` ALTER COLUMN `modality_code` SET TAGS ('dbx_business_glossary_term' = 'Imaging Modality Code');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`teleradiology_case` ALTER COLUMN `mrn` SET TAGS ('dbx_business_glossary_term' = 'Medical Record Number (MRN)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`teleradiology_case` ALTER COLUMN `mrn` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`teleradiology_case` ALTER COLUMN `mrn` SET TAGS ('dbx_pii_identifier' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`teleradiology_case` ALTER COLUMN `number_of_images` SET TAGS ('dbx_business_glossary_term' = 'Number of Images');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`teleradiology_case` ALTER COLUMN `number_of_images` SET TAGS ('dbx_pii_category' = 'person_data');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`teleradiology_case` ALTER COLUMN `number_of_series` SET TAGS ('dbx_business_glossary_term' = 'Number of Series');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`teleradiology_case` ALTER COLUMN `preliminary_report_datetime` SET TAGS ('dbx_business_glossary_term' = 'Preliminary Report Received Datetime');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`teleradiology_case` ALTER COLUMN `preliminary_report_text` SET TAGS ('dbx_business_glossary_term' = 'Preliminary Report Text');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`teleradiology_case` ALTER COLUMN `preliminary_report_text` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`teleradiology_case` ALTER COLUMN `preliminary_report_text` SET TAGS ('dbx_pii_health' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`teleradiology_case` ALTER COLUMN `priority_level` SET TAGS ('dbx_business_glossary_term' = 'Study Priority Level');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`teleradiology_case` ALTER COLUMN `priority_level` SET TAGS ('dbx_value_regex' = 'stat|urgent|routine|elective');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`teleradiology_case` ALTER COLUMN `professional_component_billed` SET TAGS ('dbx_business_glossary_term' = 'Professional Component Billed Indicator');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`teleradiology_case` ALTER COLUMN `reconciliation_datetime` SET TAGS ('dbx_business_glossary_term' = 'Report Reconciliation Datetime');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`teleradiology_case` ALTER COLUMN `reconciliation_discrepancy_flag` SET TAGS ('dbx_business_glossary_term' = 'Reconciliation Discrepancy Flag');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`teleradiology_case` ALTER COLUMN `report_reconciliation_status` SET TAGS ('dbx_business_glossary_term' = 'Report Reconciliation Status');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`teleradiology_case` ALTER COLUMN `report_reconciliation_status` SET TAGS ('dbx_value_regex' = 'pending|in_review|reconciled|discrepancy_identified|escalated|waived');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`teleradiology_case` ALTER COLUMN `retransmission_count` SET TAGS ('dbx_business_glossary_term' = 'Retransmission Count');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`teleradiology_case` ALTER COLUMN `routing_reason` SET TAGS ('dbx_business_glossary_term' = 'Routing Reason');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`teleradiology_case` ALTER COLUMN `routing_reason` SET TAGS ('dbx_value_regex' = 'after_hours|subspecialty|overflow|stat_coverage|disaster_recovery|other');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`teleradiology_case` ALTER COLUMN `sla_met` SET TAGS ('dbx_business_glossary_term' = 'SLA Met Indicator');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`teleradiology_case` ALTER COLUMN `study_datetime` SET TAGS ('dbx_business_glossary_term' = 'Study Acquisition Datetime');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`teleradiology_case` ALTER COLUMN `subspecialty_required` SET TAGS ('dbx_business_glossary_term' = 'Subspecialty Required');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`teleradiology_case` ALTER COLUMN `transmission_datetime` SET TAGS ('dbx_business_glossary_term' = 'Study Transmission Datetime');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`teleradiology_case` ALTER COLUMN `transmission_method` SET TAGS ('dbx_business_glossary_term' = 'Transmission Method');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`teleradiology_case` ALTER COLUMN `transmission_method` SET TAGS ('dbx_value_regex' = 'dicom_push|dicom_pull|vpn_transfer|cloud_upload|hl7_mllp|other');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`teleradiology_case` ALTER COLUMN `transmission_success` SET TAGS ('dbx_business_glossary_term' = 'Transmission Success Indicator');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`teleradiology_case` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Updated Timestamp');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`teleradiology_case` ALTER COLUMN `vendor_accession_number` SET TAGS ('dbx_business_glossary_term' = 'Vendor Accession Number');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`teleradiology_case` ALTER COLUMN `vendor_receipt_datetime` SET TAGS ('dbx_business_glossary_term' = 'Vendor Receipt Datetime');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_finding` SET TAGS ('dbx_data_type' = 'transactional_data');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_finding` SET TAGS ('dbx_subdomain' = 'clinical_reporting');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_finding` ALTER COLUMN `radiology_finding_id` SET TAGS ('dbx_business_glossary_term' = 'Finding Identifier');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_finding` ALTER COLUMN `audit_finding_id` SET TAGS ('dbx_business_glossary_term' = 'Audit Finding Id (Foreign Key)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_finding` ALTER COLUMN `clinician_id` SET TAGS ('dbx_business_glossary_term' = 'Interpreting Radiologist ID');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_finding` ALTER COLUMN `demographics_id` SET TAGS ('dbx_business_glossary_term' = 'Patient ID');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_finding` ALTER COLUMN `icd_code_id` SET TAGS ('dbx_business_glossary_term' = 'Icd10 Finding Icd Code Id (Foreign Key)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_finding` ALTER COLUMN `imaging_order_id` SET TAGS ('dbx_business_glossary_term' = 'Imaging Order ID');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_finding` ALTER COLUMN `report_id` SET TAGS ('dbx_business_glossary_term' = 'Radiology Report ID');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_finding` ALTER COLUMN `research_study_id` SET TAGS ('dbx_business_glossary_term' = 'Research Study Id (Foreign Key)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_finding` ALTER COLUMN `snomed_concept_id` SET TAGS ('dbx_business_glossary_term' = 'Finding Snomed Concept Id (Foreign Key)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_finding` ALTER COLUMN `visit_id` SET TAGS ('dbx_business_glossary_term' = 'Encounter ID');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_finding` ALTER COLUMN `accession_number` SET TAGS ('dbx_business_glossary_term' = 'Radiology Accession Number');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_finding` ALTER COLUMN `acr_score_type` SET TAGS ('dbx_business_glossary_term' = 'ACR Standardized Scoring System Type');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_finding` ALTER COLUMN `acr_score_value` SET TAGS ('dbx_business_glossary_term' = 'ACR Standardized Score Value');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_finding` ALTER COLUMN `body_site_code` SET TAGS ('dbx_business_glossary_term' = 'Body Site Code (SNOMED CT)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_finding` ALTER COLUMN `body_site_description` SET TAGS ('dbx_business_glossary_term' = 'Body Site Description');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_finding` ALTER COLUMN `code_system` SET TAGS ('dbx_business_glossary_term' = 'Finding Code System');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_finding` ALTER COLUMN `code_system` SET TAGS ('dbx_value_regex' = 'SNOMED_CT|RADLEX|ICD10|LOINC|LOCAL');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_finding` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_finding` ALTER COLUMN `data_source_method` SET TAGS ('dbx_business_glossary_term' = 'Finding Data Source Method');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_finding` ALTER COLUMN `data_source_method` SET TAGS ('dbx_value_regex' = 'NLP_EXTRACTED|RADIOLOGIST_CODED|STRUCTURED_TEMPLATE|MANUAL_ENTRY');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_finding` ALTER COLUMN `dicom_series_uid` SET TAGS ('dbx_business_glossary_term' = 'DICOM Series Instance UID');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_finding` ALTER COLUMN `dicom_sop_instance_uid` SET TAGS ('dbx_business_glossary_term' = 'DICOM SOP Instance UID');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_finding` ALTER COLUMN `escalation_status` SET TAGS ('dbx_business_glossary_term' = 'Finding Escalation Status');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_finding` ALTER COLUMN `escalation_status` SET TAGS ('dbx_value_regex' = 'NOT_ESCALATED|ESCALATED|ESCALATION_RESOLVED');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_finding` ALTER COLUMN `escalation_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Escalation Timestamp');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_finding` ALTER COLUMN `finding_category` SET TAGS ('dbx_business_glossary_term' = 'Finding Category');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_finding` ALTER COLUMN `finding_category` SET TAGS ('dbx_value_regex' = 'PRIMARY|INCIDENTAL|FOLLOW_UP_RECOMMENDED|CRITICAL|NORMAL');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_finding` ALTER COLUMN `finding_description` SET TAGS ('dbx_business_glossary_term' = 'Finding Description');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_finding` ALTER COLUMN `finding_status` SET TAGS ('dbx_business_glossary_term' = 'Finding Status');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_finding` ALTER COLUMN `finding_status` SET TAGS ('dbx_value_regex' = 'ACTIVE|RESOLVED|SUPERSEDED|ENTERED_IN_ERROR');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_finding` ALTER COLUMN `follow_up_completed_date` SET TAGS ('dbx_business_glossary_term' = 'Follow-Up Completed Date');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_finding` ALTER COLUMN `follow_up_due_date` SET TAGS ('dbx_business_glossary_term' = 'Follow-Up Due Date');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_finding` ALTER COLUMN `follow_up_modality` SET TAGS ('dbx_business_glossary_term' = 'Follow-Up Recommended Imaging Modality');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_finding` ALTER COLUMN `follow_up_recommended` SET TAGS ('dbx_business_glossary_term' = 'Follow-Up Recommended Indicator');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_finding` ALTER COLUMN `follow_up_status` SET TAGS ('dbx_business_glossary_term' = 'Follow-Up Tracking Status');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_finding` ALTER COLUMN `follow_up_status` SET TAGS ('dbx_value_regex' = 'PENDING|SCHEDULED|COMPLETED|OVERDUE|CANCELLED|NOT_REQUIRED');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_finding` ALTER COLUMN `follow_up_timeframe_days` SET TAGS ('dbx_business_glossary_term' = 'Follow-Up Recommended Timeframe (Days)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_finding` ALTER COLUMN `follow_up_type` SET TAGS ('dbx_business_glossary_term' = 'Follow-Up Recommendation Type');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_finding` ALTER COLUMN `imaging_modality` SET TAGS ('dbx_business_glossary_term' = 'Imaging Modality');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_finding` ALTER COLUMN `is_critical_result` SET TAGS ('dbx_business_glossary_term' = 'Critical Result Indicator');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_finding` ALTER COLUMN `is_incidental_finding` SET TAGS ('dbx_business_glossary_term' = 'Incidental Finding Indicator');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_finding` ALTER COLUMN `laterality` SET TAGS ('dbx_business_glossary_term' = 'Laterality');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_finding` ALTER COLUMN `laterality` SET TAGS ('dbx_value_regex' = 'LEFT|RIGHT|BILATERAL|MIDLINE|NOT_APPLICABLE');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_finding` ALTER COLUMN `measurement_unit` SET TAGS ('dbx_business_glossary_term' = 'Finding Measurement Unit');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_finding` ALTER COLUMN `measurement_unit` SET TAGS ('dbx_value_regex' = 'mm|cm|mL|SUV|HU|OTHER');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_finding` ALTER COLUMN `measurement_value` SET TAGS ('dbx_business_glossary_term' = 'Finding Measurement Value');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_finding` ALTER COLUMN `nlp_confidence_score` SET TAGS ('dbx_business_glossary_term' = 'NLP Confidence Score');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_finding` ALTER COLUMN `patient_notification_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Patient Notification Timestamp');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_finding` ALTER COLUMN `patient_notified` SET TAGS ('dbx_business_glossary_term' = 'Patient Notified Indicator');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_finding` ALTER COLUMN `provider_notification_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Provider Notification Timestamp');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_finding` ALTER COLUMN `provider_notified` SET TAGS ('dbx_business_glossary_term' = 'Ordering Provider Notified Indicator');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_finding` ALTER COLUMN `report_finalized_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Report Finalized Timestamp');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_finding` ALTER COLUMN `severity` SET TAGS ('dbx_business_glossary_term' = 'Finding Severity');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_finding` ALTER COLUMN `severity` SET TAGS ('dbx_value_regex' = 'MILD|MODERATE|SEVERE|CRITICAL|INDETERMINATE');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_finding` ALTER COLUMN `source_system_finding_code` SET TAGS ('dbx_business_glossary_term' = 'Source System Finding ID');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_finding` ALTER COLUMN `study_date` SET TAGS ('dbx_business_glossary_term' = 'Imaging Study Date');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_finding` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Updated Timestamp');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`follow_up` SET TAGS ('dbx_data_type' = 'transactional_data');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`follow_up` SET TAGS ('dbx_subdomain' = 'clinical_reporting');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`follow_up` ALTER COLUMN `follow_up_id` SET TAGS ('dbx_business_glossary_term' = 'Follow Up Identifier');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`follow_up` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Care Coordinator Employee Id (Foreign Key)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`follow_up` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`follow_up` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`follow_up` ALTER COLUMN `clinical_order_id` SET TAGS ('dbx_business_glossary_term' = 'Clinical Order Id (Foreign Key)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`follow_up` ALTER COLUMN `cpt_code_id` SET TAGS ('dbx_business_glossary_term' = 'Cpt Code Id (Foreign Key)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`follow_up` ALTER COLUMN `demographics_id` SET TAGS ('dbx_business_glossary_term' = 'Patient ID');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`follow_up` ALTER COLUMN `icd_code_id` SET TAGS ('dbx_business_glossary_term' = 'Icd10 Finding Icd Code Id (Foreign Key)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`follow_up` ALTER COLUMN `imaging_order_id` SET TAGS ('dbx_business_glossary_term' = 'Imaging Order ID');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`follow_up` ALTER COLUMN `clinician_id` SET TAGS ('dbx_business_glossary_term' = 'Ordering Provider ID');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`follow_up` ALTER COLUMN `prior_auth_rule_id` SET TAGS ('dbx_business_glossary_term' = 'Prior Auth Rule Id (Foreign Key)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`follow_up` ALTER COLUMN `report_id` SET TAGS ('dbx_business_glossary_term' = 'Radiology Report ID');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`follow_up` ALTER COLUMN `visit_id` SET TAGS ('dbx_business_glossary_term' = 'Encounter ID');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`follow_up` ALTER COLUMN `acr_category_code` SET TAGS ('dbx_business_glossary_term' = 'ACR (American College of Radiology) Category Code');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`follow_up` ALTER COLUMN `acr_guideline_reference` SET TAGS ('dbx_business_glossary_term' = 'ACR (American College of Radiology) Incidental Findings Guideline Reference');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`follow_up` ALTER COLUMN `care_gap_flag` SET TAGS ('dbx_business_glossary_term' = 'Care Gap Flag');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`follow_up` ALTER COLUMN `cms_quality_measure_flag` SET TAGS ('dbx_business_glossary_term' = 'CMS (Centers for Medicare and Medicaid Services) Quality Measure Flag');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`follow_up` ALTER COLUMN `completed_date` SET TAGS ('dbx_business_glossary_term' = 'Follow-Up Completed Date');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`follow_up` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`follow_up` ALTER COLUMN `declined_reason` SET TAGS ('dbx_business_glossary_term' = 'Declined or Cancelled Reason');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`follow_up` ALTER COLUMN `declined_reason` SET TAGS ('dbx_value_regex' = 'patient_refused|provider_cancelled|clinically_inappropriate|duplicate_recommendation|other');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`follow_up` ALTER COLUMN `escalation_flag` SET TAGS ('dbx_business_glossary_term' = 'Escalation Flag');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`follow_up` ALTER COLUMN `escalation_reason` SET TAGS ('dbx_business_glossary_term' = 'Escalation Reason');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`follow_up` ALTER COLUMN `escalation_reason` SET TAGS ('dbx_value_regex' = 'overdue|high_risk_finding|patient_no_show|provider_non_response|critical_result');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`follow_up` ALTER COLUMN `escalation_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Escalation Timestamp');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`follow_up` ALTER COLUMN `finding_body_region` SET TAGS ('dbx_business_glossary_term' = 'Finding Body Region');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`follow_up` ALTER COLUMN `finding_category_code` SET TAGS ('dbx_business_glossary_term' = 'Finding Category Code');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`follow_up` ALTER COLUMN `finding_description` SET TAGS ('dbx_business_glossary_term' = 'Incidental Finding Description');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`follow_up` ALTER COLUMN `finding_description` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`follow_up` ALTER COLUMN `finding_description` SET TAGS ('dbx_pii_health' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`follow_up` ALTER COLUMN `lost_to_follow_up_date` SET TAGS ('dbx_business_glossary_term' = 'Lost to Follow-Up Date');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`follow_up` ALTER COLUMN `ordering_provider_notification_status` SET TAGS ('dbx_business_glossary_term' = 'Ordering Provider Notification Status');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`follow_up` ALTER COLUMN `ordering_provider_notification_status` SET TAGS ('dbx_value_regex' = 'not_notified|notified|acknowledged|action_taken');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`follow_up` ALTER COLUMN `ordering_provider_notification_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Ordering Provider Notification Timestamp');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`follow_up` ALTER COLUMN `pacs_study_instance_uid` SET TAGS ('dbx_business_glossary_term' = 'PACS (Picture Archiving and Communication System) Study Instance UID');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`follow_up` ALTER COLUMN `patient_notification_method` SET TAGS ('dbx_business_glossary_term' = 'Patient Notification Method');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`follow_up` ALTER COLUMN `patient_notification_method` SET TAGS ('dbx_value_regex' = 'portal_message|phone_call|letter|in_person|secure_email');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`follow_up` ALTER COLUMN `patient_notification_status` SET TAGS ('dbx_business_glossary_term' = 'Patient Notification Status');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`follow_up` ALTER COLUMN `patient_notification_status` SET TAGS ('dbx_value_regex' = 'not_notified|notified|acknowledged|declined_notification');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`follow_up` ALTER COLUMN `patient_notification_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Patient Notification Timestamp');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`follow_up` ALTER COLUMN `population_health_cohort` SET TAGS ('dbx_business_glossary_term' = 'Population Health Cohort');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`follow_up` ALTER COLUMN `population_health_cohort` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`follow_up` ALTER COLUMN `population_health_cohort` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`follow_up` ALTER COLUMN `priority_level` SET TAGS ('dbx_business_glossary_term' = 'Follow-Up Priority Level');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`follow_up` ALTER COLUMN `priority_level` SET TAGS ('dbx_value_regex' = 'routine|urgent|emergent|critical');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`follow_up` ALTER COLUMN `recommendation_date` SET TAGS ('dbx_business_glossary_term' = 'Recommendation Issue Date and Time');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`follow_up` ALTER COLUMN `recommendation_number` SET TAGS ('dbx_business_glossary_term' = 'Follow-Up Recommendation Number');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`follow_up` ALTER COLUMN `recommendation_status` SET TAGS ('dbx_business_glossary_term' = 'Follow-Up Recommendation Status');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`follow_up` ALTER COLUMN `recommendation_status` SET TAGS ('dbx_value_regex' = 'pending|scheduled|completed|declined|lost_to_follow_up|cancelled');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`follow_up` ALTER COLUMN `recommendation_text` SET TAGS ('dbx_business_glossary_term' = 'Follow-Up Recommendation Text');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`follow_up` ALTER COLUMN `recommendation_text` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`follow_up` ALTER COLUMN `recommendation_text` SET TAGS ('dbx_pii_health' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`follow_up` ALTER COLUMN `recommendation_type` SET TAGS ('dbx_business_glossary_term' = 'Follow-Up Recommendation Type');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`follow_up` ALTER COLUMN `recommended_due_date` SET TAGS ('dbx_business_glossary_term' = 'Recommended Follow-Up Due Date');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`follow_up` ALTER COLUMN `recommended_modality` SET TAGS ('dbx_business_glossary_term' = 'Recommended Imaging Modality');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`follow_up` ALTER COLUMN `recommended_modality` SET TAGS ('dbx_value_regex' = 'CT|MRI|ultrasound|PET|X-ray|mammography');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`follow_up` ALTER COLUMN `recommended_timeframe_days` SET TAGS ('dbx_business_glossary_term' = 'Recommended Follow-Up Timeframe (Days)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`follow_up` ALTER COLUMN `report_finalized_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Radiology Report Finalized Timestamp');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`follow_up` ALTER COLUMN `ris_recommendation_code` SET TAGS ('dbx_business_glossary_term' = 'Radiology Information System (RIS) Recommendation ID');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`follow_up` ALTER COLUMN `scheduled_date` SET TAGS ('dbx_business_glossary_term' = 'Follow-Up Scheduled Date');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`follow_up` ALTER COLUMN `specialist_referral_type` SET TAGS ('dbx_business_glossary_term' = 'Specialist Referral Type');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`follow_up` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Last Updated Timestamp');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` SET TAGS ('dbx_data_type' = 'transactional_data');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` SET TAGS ('dbx_subdomain' = 'imaging_operations');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `interventional_procedure_id` SET TAGS ('dbx_business_glossary_term' = 'Interventional Procedure ID');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `audit_finding_id` SET TAGS ('dbx_business_glossary_term' = 'Audit Finding Id (Foreign Key)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `specimen_id` SET TAGS ('dbx_business_glossary_term' = 'Biopsy Specimen Id (Foreign Key)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `care_site_id` SET TAGS ('dbx_business_glossary_term' = 'Facility ID');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `claim_id` SET TAGS ('dbx_business_glossary_term' = 'Claim Id (Foreign Key)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `clinical_order_id` SET TAGS ('dbx_business_glossary_term' = 'Clinical Order Id (Foreign Key)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `drug_master_id` SET TAGS ('dbx_business_glossary_term' = 'Contrast Drug Master Id (Foreign Key)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `cpt_code_id` SET TAGS ('dbx_business_glossary_term' = 'Cpt Code Id (Foreign Key)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `demographics_id` SET TAGS ('dbx_business_glossary_term' = 'Patient ID');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `demographics_id` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `demographics_id` SET TAGS ('dbx_pii_identifier' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Scrub Technologist ID');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `icd_code_id` SET TAGS ('dbx_business_glossary_term' = 'Icd10 Primary Diagnosis Icd Code Id (Foreign Key)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `icd_code_id` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `icd_code_id` SET TAGS ('dbx_pii_health' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `imaging_order_id` SET TAGS ('dbx_business_glossary_term' = 'Imaging Order ID');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `message_log_id` SET TAGS ('dbx_business_glossary_term' = 'Message Log Id (Foreign Key)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `message_log_id` SET TAGS ('dbx_pii_category' = 'person_data');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `osha_exposure_incident_id` SET TAGS ('dbx_business_glossary_term' = 'Osha Exposure Incident Id (Foreign Key)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `lab_order_id` SET TAGS ('dbx_business_glossary_term' = 'Preprocedure Lab Order Id (Foreign Key)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `material_master_id` SET TAGS ('dbx_business_glossary_term' = 'Primary Device Material Master Id (Foreign Key)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `clinician_id` SET TAGS ('dbx_business_glossary_term' = 'Performing Provider ID');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `room_id` SET TAGS ('dbx_business_glossary_term' = 'Procedure Room Id (Foreign Key)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `research_study_id` SET TAGS ('dbx_business_glossary_term' = 'Research Study Id (Foreign Key)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `surgical_case_id` SET TAGS ('dbx_business_glossary_term' = 'Surgical Case Id (Foreign Key)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `treatment_consent_id` SET TAGS ('dbx_business_glossary_term' = 'Treatment Consent Id (Foreign Key)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `treatment_consent_id` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `treatment_consent_id` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `visit_id` SET TAGS ('dbx_business_glossary_term' = 'Encounter ID');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `access_site` SET TAGS ('dbx_business_glossary_term' = 'Vascular Access Site');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `accession_number` SET TAGS ('dbx_business_glossary_term' = 'Accession Number');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `anesthesia_type` SET TAGS ('dbx_business_glossary_term' = 'Anesthesia Type');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `anesthesia_type` SET TAGS ('dbx_value_regex' = 'none|local|moderate-sedation|general|MAC|spinal');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `asa_classification` SET TAGS ('dbx_business_glossary_term' = 'American Society of Anesthesiologists (ASA) Physical Status Classification');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `asa_classification` SET TAGS ('dbx_value_regex' = 'ASA-I|ASA-II|ASA-III|ASA-IV|ASA-V|ASA-VI');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `body_region` SET TAGS ('dbx_business_glossary_term' = 'Body Region');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `cancellation_reason` SET TAGS ('dbx_business_glossary_term' = 'Cancellation Reason');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `cancellation_reason` SET TAGS ('dbx_pii_person_data' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `cancelled_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Cancellation Timestamp');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `cancelled_timestamp` SET TAGS ('dbx_pii_person_data' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `complication_occurred` SET TAGS ('dbx_business_glossary_term' = 'Complication Occurred Indicator');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `complication_severity` SET TAGS ('dbx_business_glossary_term' = 'Complication Severity Grade');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `complication_severity` SET TAGS ('dbx_value_regex' = 'minor|moderate|major|death');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `complication_type` SET TAGS ('dbx_business_glossary_term' = 'Complication Type');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `contrast_agent_used` SET TAGS ('dbx_business_glossary_term' = 'Contrast Agent Used Indicator');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `contrast_agent_used` SET TAGS ('dbx_pii_category' = 'person_data');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `contrast_volume_ml` SET TAGS ('dbx_business_glossary_term' = 'Contrast Volume Administered (mL)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `device_name` SET TAGS ('dbx_business_glossary_term' = 'Device Name');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `device_udi` SET TAGS ('dbx_business_glossary_term' = 'Device Unique Device Identifier (UDI)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `fluoroscopy_time_minutes` SET TAGS ('dbx_business_glossary_term' = 'Fluoroscopy Time (Minutes)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `icd10_post_procedure_diagnosis_code` SET TAGS ('dbx_business_glossary_term' = 'International Classification of Diseases 10th Revision (ICD-10) Post-Procedure Diagnosis Code');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `icd10_post_procedure_diagnosis_code` SET TAGS ('dbx_value_regex' = '^[A-Z][0-9]{2}(.[A-Z0-9]{1,4})?$');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `icd10_post_procedure_diagnosis_code` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `icd10_post_procedure_diagnosis_code` SET TAGS ('dbx_pii_health' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `imaging_guidance_modality` SET TAGS ('dbx_business_glossary_term' = 'Imaging Guidance Modality');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `imaging_guidance_modality` SET TAGS ('dbx_value_regex' = 'fluoroscopy|CT|ultrasound|MRI|PET-CT|combined');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `implant_used` SET TAGS ('dbx_business_glossary_term' = 'Implant Used Indicator');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `laterality` SET TAGS ('dbx_business_glossary_term' = 'Procedure Laterality');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `laterality` SET TAGS ('dbx_value_regex' = 'left|right|bilateral|midline|not-applicable');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `performing_provider_npi` SET TAGS ('dbx_business_glossary_term' = 'Performing Provider National Provider Identifier (NPI)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `performing_provider_npi` SET TAGS ('dbx_value_regex' = '^[0-9]{10}$');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `procedure_approach` SET TAGS ('dbx_business_glossary_term' = 'Procedure Approach');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `procedure_category` SET TAGS ('dbx_business_glossary_term' = 'Interventional Radiology (IR) Procedure Category');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `procedure_end_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Procedure End Timestamp');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `procedure_name` SET TAGS ('dbx_business_glossary_term' = 'Procedure Name');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `procedure_start_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Procedure Start Timestamp');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `procedure_status` SET TAGS ('dbx_business_glossary_term' = 'Procedure Status');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `procedure_status` SET TAGS ('dbx_value_regex' = 'scheduled|in-progress|completed|cancelled|on-hold');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `radiation_dose_dap_gycm2` SET TAGS ('dbx_business_glossary_term' = 'Radiation Dose Area Product (DAP) (Gy·cm²)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `radiation_dose_kerma_mgy` SET TAGS ('dbx_business_glossary_term' = 'Radiation Dose Reference Air Kerma (mGy)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `report_finalized_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Report Finalized Timestamp');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `report_status` SET TAGS ('dbx_business_glossary_term' = 'Radiology Report Status');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `report_status` SET TAGS ('dbx_value_regex' = 'preliminary|final|addendum|amended|cancelled');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `secondary_cpt_codes` SET TAGS ('dbx_business_glossary_term' = 'Secondary Current Procedural Terminology (CPT) Codes');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `specimen_collected` SET TAGS ('dbx_business_glossary_term' = 'Specimen Collected Indicator');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `specimen_type` SET TAGS ('dbx_business_glossary_term' = 'Specimen Type');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `specimen_type` SET TAGS ('dbx_value_regex' = 'core-biopsy|fine-needle-aspirate|fluid-aspirate|tissue-excision|cytology|not-applicable');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `technical_success` SET TAGS ('dbx_business_glossary_term' = 'Technical Success Indicator');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`interventional_procedure` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Updated Timestamp');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_order_status_history` SET TAGS ('dbx_data_type' = 'transactional_data');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_order_status_history` SET TAGS ('dbx_subdomain' = 'clinical_reporting');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_order_status_history` ALTER COLUMN `radiology_order_status_history_id` SET TAGS ('dbx_business_glossary_term' = 'Order Status History Identifier');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_order_status_history` ALTER COLUMN `care_site_id` SET TAGS ('dbx_business_glossary_term' = 'Facility ID');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_order_status_history` ALTER COLUMN `clinician_id` SET TAGS ('dbx_business_glossary_term' = 'Performing Radiologist ID');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_order_status_history` ALTER COLUMN `corrected_radiology_order_status_history_id` SET TAGS ('dbx_business_glossary_term' = 'Corrected History ID');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_order_status_history` ALTER COLUMN `demographics_id` SET TAGS ('dbx_business_glossary_term' = 'Patient ID');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_order_status_history` ALTER COLUMN `demographics_id` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_order_status_history` ALTER COLUMN `demographics_id` SET TAGS ('dbx_pii_identifier' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_order_status_history` ALTER COLUMN `imaging_order_id` SET TAGS ('dbx_business_glossary_term' = 'Imaging Order ID');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_order_status_history` ALTER COLUMN `message_log_id` SET TAGS ('dbx_business_glossary_term' = 'Message Log Id (Foreign Key)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_order_status_history` ALTER COLUMN `message_log_id` SET TAGS ('dbx_pii_category' = 'person_data');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_order_status_history` ALTER COLUMN `org_unit_id` SET TAGS ('dbx_business_glossary_term' = 'Department ID');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_order_status_history` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Changed By User ID');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_order_status_history` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_order_status_history` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_order_status_history` ALTER COLUMN `report_id` SET TAGS ('dbx_business_glossary_term' = 'Radiology Report ID');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_order_status_history` ALTER COLUMN `scheduling_appointment_id` SET TAGS ('dbx_business_glossary_term' = 'Imaging Appointment ID');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_order_status_history` ALTER COLUMN `visit_id` SET TAGS ('dbx_business_glossary_term' = 'Encounter ID');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_order_status_history` ALTER COLUMN `accession_number` SET TAGS ('dbx_business_glossary_term' = 'Accession Number');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_order_status_history` ALTER COLUMN `cancellation_category` SET TAGS ('dbx_business_glossary_term' = 'Cancellation Category');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_order_status_history` ALTER COLUMN `cancellation_category` SET TAGS ('dbx_pii_person_data' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_order_status_history` ALTER COLUMN `changed_by_user_npi` SET TAGS ('dbx_business_glossary_term' = 'Changed By User National Provider Identifier (NPI)');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_order_status_history` ALTER COLUMN `changed_by_user_npi` SET TAGS ('dbx_value_regex' = '^[0-9]{10}$');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_order_status_history` ALTER COLUMN `changed_by_user_role` SET TAGS ('dbx_business_glossary_term' = 'Changed By User Role');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_order_status_history` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_order_status_history` ALTER COLUMN `hl7_message_reference` SET TAGS ('dbx_business_glossary_term' = 'Health Level Seven (HL7) Message ID');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_order_status_history` ALTER COLUMN `hl7_message_reference` SET TAGS ('dbx_pii_category' = 'person_data');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_order_status_history` ALTER COLUMN `hl7_message_type` SET TAGS ('dbx_business_glossary_term' = 'Health Level Seven (HL7) Message Type');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_order_status_history` ALTER COLUMN `hl7_message_type` SET TAGS ('dbx_value_regex' = 'ORM|ORU|ADT|SIU|ACK|other');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_order_status_history` ALTER COLUMN `hl7_message_type` SET TAGS ('dbx_pii_category' = 'person_data');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_order_status_history` ALTER COLUMN `ip_address` SET TAGS ('dbx_business_glossary_term' = 'IP Address');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_order_status_history` ALTER COLUMN `ip_address` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_order_status_history` ALTER COLUMN `ip_address` SET TAGS ('dbx_pii_ip' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_order_status_history` ALTER COLUMN `is_corrective_entry` SET TAGS ('dbx_business_glossary_term' = 'Is Corrective Entry');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_order_status_history` ALTER COLUMN `is_sla_breach` SET TAGS ('dbx_business_glossary_term' = 'Is Service Level Agreement (SLA) Breach');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_order_status_history` ALTER COLUMN `is_system_generated` SET TAGS ('dbx_business_glossary_term' = 'Is System Generated');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_order_status_history` ALTER COLUMN `modality_type` SET TAGS ('dbx_business_glossary_term' = 'Modality Type');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_order_status_history` ALTER COLUMN `new_status` SET TAGS ('dbx_business_glossary_term' = 'New Order Status');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_order_status_history` ALTER COLUMN `new_status` SET TAGS ('dbx_value_regex' = 'scheduled|patient-arrived|exam-started|exam-completed|images-available|preliminary-read');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_order_status_history` ALTER COLUMN `on_hold_reason` SET TAGS ('dbx_business_glossary_term' = 'On-Hold Reason');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_order_status_history` ALTER COLUMN `order_priority` SET TAGS ('dbx_business_glossary_term' = 'Order Priority');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_order_status_history` ALTER COLUMN `order_priority` SET TAGS ('dbx_value_regex' = 'STAT|URGENT|ROUTINE|ASAP|ELECTIVE');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_order_status_history` ALTER COLUMN `pacs_study_uid` SET TAGS ('dbx_business_glossary_term' = 'Picture Archiving and Communication System (PACS) Study UID');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_order_status_history` ALTER COLUMN `prior_status` SET TAGS ('dbx_business_glossary_term' = 'Prior Order Status');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_order_status_history` ALTER COLUMN `prior_status` SET TAGS ('dbx_value_regex' = 'ordered|scheduled|patient-arrived|exam-started|exam-completed|images-available');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_order_status_history` ALTER COLUMN `ris_order_status_code` SET TAGS ('dbx_business_glossary_term' = 'Radiology Information System (RIS) Order Status Code');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_order_status_history` ALTER COLUMN `sequence_number` SET TAGS ('dbx_business_glossary_term' = 'Status Sequence Number');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_order_status_history` ALTER COLUMN `sla_threshold_seconds` SET TAGS ('dbx_business_glossary_term' = 'Service Level Agreement (SLA) Threshold Seconds');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_order_status_history` ALTER COLUMN `source_system_event_code` SET TAGS ('dbx_business_glossary_term' = 'Source System Event ID');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_order_status_history` ALTER COLUMN `status_change_reason` SET TAGS ('dbx_business_glossary_term' = 'Status Change Reason');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_order_status_history` ALTER COLUMN `status_change_reason_code` SET TAGS ('dbx_business_glossary_term' = 'Status Change Reason Code');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_order_status_history` ALTER COLUMN `status_change_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Status Change Timestamp');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_order_status_history` ALTER COLUMN `transition_duration_seconds` SET TAGS ('dbx_business_glossary_term' = 'Transition Duration Seconds');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_order_status_history` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Updated Timestamp');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`radiology_order_status_history` ALTER COLUMN `workstation_code` SET TAGS ('dbx_business_glossary_term' = 'Workstation ID');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_distribution` SET TAGS ('dbx_data_type' = 'association_data');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_distribution` SET TAGS ('dbx_subdomain' = 'external_exchange');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_distribution` SET TAGS ('dbx_association_edges' = 'radiology.report,interoperability.trading_partner');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_distribution` ALTER COLUMN `report_distribution_id` SET TAGS ('dbx_business_glossary_term' = 'Report Distribution - Report Distribution Id');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_distribution` ALTER COLUMN `message_log_id` SET TAGS ('dbx_business_glossary_term' = 'Message ID');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_distribution` ALTER COLUMN `message_log_id` SET TAGS ('dbx_pii_category' = 'person_data');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_distribution` ALTER COLUMN `report_id` SET TAGS ('dbx_business_glossary_term' = 'Report Distribution - Radiology Report Id');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_distribution` ALTER COLUMN `trading_partner_id` SET TAGS ('dbx_business_glossary_term' = 'Report Distribution - Trading Partner Id');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_distribution` ALTER COLUMN `acknowledgment_code` SET TAGS ('dbx_business_glossary_term' = 'Acknowledgment Code');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_distribution` ALTER COLUMN `delivered_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Delivered Timestamp');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_distribution` ALTER COLUMN `delivery_status` SET TAGS ('dbx_business_glossary_term' = 'Delivery Status');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_distribution` ALTER COLUMN `document_format` SET TAGS ('dbx_business_glossary_term' = 'Document Format');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_distribution` ALTER COLUMN `error_message` SET TAGS ('dbx_business_glossary_term' = 'Error Message');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_distribution` ALTER COLUMN `error_message` SET TAGS ('dbx_pii_category' = 'person_data');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_distribution` ALTER COLUMN `retry_count` SET TAGS ('dbx_business_glossary_term' = 'Retry Count');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_distribution` ALTER COLUMN `sla_compliance_flag` SET TAGS ('dbx_business_glossary_term' = 'SLA Compliance Flag');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`report_distribution` ALTER COLUMN `transmission_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Transmission Timestamp');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`transmission` SET TAGS ('dbx_data_type' = 'association_data');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`transmission` SET TAGS ('dbx_subdomain' = 'external_exchange');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`transmission` SET TAGS ('dbx_association_edges' = 'radiology.study,interoperability.trading_partner');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`transmission` ALTER COLUMN `transmission_id` SET TAGS ('dbx_business_glossary_term' = 'Transmission Identifier');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`transmission` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Initiated By User');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`transmission` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`transmission` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`transmission` ALTER COLUMN `radiology_study_id` SET TAGS ('dbx_business_glossary_term' = 'Transmission - Imaging Study Id');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`transmission` ALTER COLUMN `trading_partner_id` SET TAGS ('dbx_business_glossary_term' = 'Transmission - Trading Partner Id');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`transmission` ALTER COLUMN `acknowledgment_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Acknowledgment Timestamp');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`transmission` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`transmission` ALTER COLUMN `error_message` SET TAGS ('dbx_business_glossary_term' = 'Error Message');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`transmission` ALTER COLUMN `error_message` SET TAGS ('dbx_pii_category' = 'person_data');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`transmission` ALTER COLUMN `method` SET TAGS ('dbx_business_glossary_term' = 'Transmission Method');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`transmission` ALTER COLUMN `purpose` SET TAGS ('dbx_business_glossary_term' = 'Transmission Purpose');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`transmission` ALTER COLUMN `retry_count` SET TAGS ('dbx_business_glossary_term' = 'Retry Count');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`transmission` ALTER COLUMN `size_mb` SET TAGS ('dbx_business_glossary_term' = 'Transmission Size');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`transmission` ALTER COLUMN `sla_met_flag` SET TAGS ('dbx_business_glossary_term' = 'SLA Met Flag');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`transmission` ALTER COLUMN `transmission_status` SET TAGS ('dbx_business_glossary_term' = 'Transmission Status');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`transmission` ALTER COLUMN `timestamp` SET TAGS ('dbx_business_glossary_term' = 'Transmission Timestamp');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`transmission` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Updated Timestamp');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`network_modality_participation` SET TAGS ('dbx_data_type' = 'association_data');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`network_modality_participation` SET TAGS ('dbx_subdomain' = 'external_exchange');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`network_modality_participation` SET TAGS ('dbx_association_edges' = 'radiology.modality,insurance.provider_network');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`network_modality_participation` ALTER COLUMN `network_modality_participation_id` SET TAGS ('dbx_business_glossary_term' = 'Network Modality Participation Identifier');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`network_modality_participation` ALTER COLUMN `modality_id` SET TAGS ('dbx_business_glossary_term' = 'Network Modality Participation - Modality Id');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`network_modality_participation` ALTER COLUMN `provider_network_id` SET TAGS ('dbx_business_glossary_term' = 'Network Modality Participation - Provider Network Id');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`network_modality_participation` ALTER COLUMN `accepting_new_referrals_flag` SET TAGS ('dbx_business_glossary_term' = 'Accepting New Referrals Flag');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`network_modality_participation` ALTER COLUMN `authorization_required_flag` SET TAGS ('dbx_business_glossary_term' = 'Prior Authorization Required Flag');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`network_modality_participation` ALTER COLUMN `authorization_threshold_amount` SET TAGS ('dbx_business_glossary_term' = 'Authorization Threshold Amount');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`network_modality_participation` ALTER COLUMN `contracted_rate` SET TAGS ('dbx_business_glossary_term' = 'Contracted Modality Rate');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`network_modality_participation` ALTER COLUMN `contracted_rate` SET TAGS ('dbx_pii_financial' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`network_modality_participation` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`network_modality_participation` ALTER COLUMN `credentialing_verified_date` SET TAGS ('dbx_business_glossary_term' = 'Credentialing Verification Date');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`network_modality_participation` ALTER COLUMN `effective_date` SET TAGS ('dbx_business_glossary_term' = 'Participation Effective Date');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`network_modality_participation` ALTER COLUMN `member_cost_share_tier` SET TAGS ('dbx_business_glossary_term' = 'Member Cost Share Tier');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`network_modality_participation` ALTER COLUMN `network_adequacy_counted_flag` SET TAGS ('dbx_business_glossary_term' = 'Network Adequacy Counted Flag');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`network_modality_participation` ALTER COLUMN `next_credentialing_due_date` SET TAGS ('dbx_business_glossary_term' = 'Next Credentialing Due Date');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`network_modality_participation` ALTER COLUMN `participation_status` SET TAGS ('dbx_business_glossary_term' = 'Network Participation Status');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`network_modality_participation` ALTER COLUMN `quality_tier_assignment` SET TAGS ('dbx_business_glossary_term' = 'Quality Tier Assignment');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`network_modality_participation` ALTER COLUMN `rate_type` SET TAGS ('dbx_business_glossary_term' = 'Rate Type');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`network_modality_participation` ALTER COLUMN `termination_date` SET TAGS ('dbx_business_glossary_term' = 'Participation Termination Date');
+ALTER TABLE `vibe_healthcare_v1`.`radiology`.`network_modality_participation` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Updated Timestamp');
