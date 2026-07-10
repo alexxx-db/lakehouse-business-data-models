@@ -1,772 +1,796 @@
 -- Schema for Domain: encounter | Business:  | Version: v2_ecm
--- Generated on: 2026-07-10 14:11:11
+-- Generated on: 2026-07-02 06:46:10
 
 -- ========= DATABASE =========
 CREATE DATABASE IF NOT EXISTS `vibe_healthcare_v1`.`encounter` COMMENT 'Core operational record of every patient-provider interaction. Owns ADT (Admit, Discharge, Transfer) events, visit types (inpatient, outpatient, ED, observation, telehealth), admission source and disposition, attending and consulting providers, LOS (Length of Stay), DRG assignment, discharge status, and care setting transitions. Central hub linking patient, provider, clinical, and billing domains.';
 
 -- ========= TABLES =========
 CREATE OR REPLACE TABLE `vibe_healthcare_v1`.`encounter`.`visit` (
-    `visit_id` BIGINT COMMENT 'Unique surrogate identifier for every patient-provider interaction record in the encounter domain. Primary key of the visit data product and central linkage point for clinical, billing, and provider domains.',
-    `cost_center_id` BIGINT COMMENT 'Foreign key linking to finance.cost_center. Business justification: Every visit incurs costs tracked to a specific cost center for departmental P&L, variance analysis, Medicare cost reporting, and service-line profitability. Core operational link in healthcare financi',
-    `drg_id` BIGINT COMMENT 'Foreign key linking to reference.drg. Business justification: Visit-level DRG assignment—every inpatient visits DRG must reference the official DRG definition for payment calculation, expected LOS comparison, and case mix reporting. Required for revenue cycle o',
-    `unit_id` BIGINT COMMENT 'add column facility_unit_id (BIGINT) with FK to facility.unit.unit_id - visits occur in specific units (ICU, ED, med-surg) and this critical operational link is missing from the visit table',
-    `general_ledger_id` BIGINT COMMENT 'Foreign key linking to finance.general_ledger. Business justification: Visit revenue and costs post to the general ledger for financial statement preparation, regulatory reporting (Medicare cost reports), and consolidated financial reporting across entities. Essential fi',
-    `insurance_coverage_id` BIGINT COMMENT 'Reference to the primary insurance coverage record verified at the time of admission. Links to the patient insurance coverage domain for eligibility and authorization details.',
-    `demographics_id` BIGINT COMMENT 'add column patient_demographics_id (BIGINT) with FK to patient.demographics.demographics_id - visit links to mpi_record but not demographics; demographic snapshot at time of visit is needed for regulatory reporting',
-    `employee_id` BIGINT COMMENT 'Foreign key linking to workforce.employee. Business justification: Primary nurse assignment is fundamental to inpatient care delivery. Required for nurse-to-patient ratio compliance, workload balancing, quality metrics attribution, and labor cost allocation. Standard',
-    `research_study_id` BIGINT COMMENT 'Foreign key linking to research.research_study. Business justification: Clinical encounters frequently occur as part of research protocols. Tracking which study a visit supports is essential for research billing determination, protocol compliance monitoring, regulatory re',
-    `training_completion_id` BIGINT COMMENT 'Foreign key linking to compliance.training_completion. Business justification: Training effectiveness validation requires auditing staff performance on actual encounters (e.g., did staff who completed sepsis training properly document sepsis cases? Did EMTALA-trained staff compl',
-    `care_site_id` BIGINT COMMENT 'add column admission_source_care_site_id (BIGINT) with FK to facility.care_site.care_site_id - visit already has care_site_id but needs a separate FK for admission source facility per ADT requirements',
-    `clinician_id` BIGINT COMMENT 'Reference to the clinician who formally admitted the patient to the facility. May differ from the attending provider. Required for inpatient UB-04 billing and DRG assignment.',
-    `visit_care_site_id` BIGINT COMMENT 'Reference to the facility or care setting where the visit occurred (hospital, clinic, outpatient center, telehealth hub). Links to the facility domain.',
-    `visit_clinician_id` BIGINT COMMENT 'Reference to the clinician with primary responsibility for the patient during this visit. Used for quality reporting, RVU attribution, and MIPS/APM performance measurement.',
-    `visit_discharging_provider_clinician_id` BIGINT COMMENT 'Reference to the clinician who authorized and completed the patient discharge. Used for care transition accountability, discharge instruction tracking, and quality audits.',
-    `mpi_record_id` BIGINT COMMENT 'Reference to the patient who is the subject of this visit. Links the encounter domain to the patient domain master record.',
-    `visit_patient_mpi_record_id` BIGINT COMMENT 'FK to patient.mpi_record.mpi_record_id — The most fundamental healthcare join — every visit must link to a patient. Without this FK, no query can associate encounters with patient demographics, insurance, or clinical history. Blocks every cl',
-    `scheduling_appointment_id` BIGINT COMMENT '',
-    `admission_source` STRING COMMENT 'Indicates the origin point from which the patient entered the facility for this visit. Required for UB-04 billing, readmission analysis, and care transition reporting. [ENUM-REF-CANDIDATE: emergency_department|direct_admission|transfer|referral|birth|court_law|information_not_available — promote to reference product]. Valid values are `emergency_department|direct_admission|transfer|referral|birth`',
-    `admission_timestamp` TIMESTAMP COMMENT 'Date and time the patient was formally admitted to the facility or the visit began. Principal business event timestamp for the encounter lifecycle. Used for LOS calculation, throughput analytics, and regulatory reporting.',
-    `admission_type` STRING COMMENT 'Characterizes the clinical urgency and circumstance under which the patient was admitted. Required for UB-04 billing and DRG grouping. Sourced from Epic ADT or Cerner PowerChart admission workflow.. Valid values are `elective|urgent|emergent|newborn|trauma`',
-    `admitting_diagnosis_code` STRING COMMENT 'ICD-10-CM code representing the condition documented at the time of admission, before full workup. May differ from the principal discharge diagnosis. Required on UB-04 for inpatient claims.. Valid values are `^[A-Z][0-9A-Z]{1,6}(.[0-9A-Z]{1,4})?$`',
-    `care_setting` STRING COMMENT 'Specific clinical environment within the facility where the patient received care during this visit. More granular than visit type; used for staffing, capacity management, and HAI surveillance. [ENUM-REF-CANDIDATE: inpatient_ward|icu|ed|or|observation_unit|outpatient_clinic|telehealth|labor_delivery|nicu|step_down — promote to reference product]',
-    `care_transition_plan_completed` BOOLEAN COMMENT 'Indicates whether a formal care transition plan was completed and communicated to the receiving provider or care setting at discharge. Required for CMS Transitional Care Management billing and TJC accreditation.',
-    `consent_obtained` BOOLEAN COMMENT 'Indicates whether informed consent for treatment was obtained and documented at the time of admission or prior to procedure. Required for TJC accreditation and HIPAA compliance.',
-    `converted_to_inpatient` BOOLEAN COMMENT 'Indicates whether an observation encounter was subsequently converted to a formal inpatient admission. Triggers billing reclassification and DRG assignment workflows.',
-    `created_timestamp` TIMESTAMP COMMENT 'Date and time the visit record was first created in the source EHR system. Used for audit trail, data lineage, and ETL processing. Sourced from Epic or Cerner encounter creation event.',
-    `discharge_disposition` STRING COMMENT 'Standardized code describing where the patient went or what occurred at the conclusion of the visit. Required for UB-04 billing, DRG grouping, readmission risk stratification, and CMS quality reporting. [ENUM-REF-CANDIDATE: home|snf|rehab|ama|expired|hospice|transfer_acute|transfer_other|home_health|left_without_being_seen — promote to reference product]. Valid values are `home|snf|rehab|ama|expired|hospice`',
-    `discharge_instructions_issued` BOOLEAN COMMENT 'Indicates whether written discharge instructions were provided to the patient or caregiver at the time of discharge. Required for TJC accreditation, HCAHPS scoring, and CMS Conditions of Participation.',
-    `discharge_timestamp` TIMESTAMP COMMENT 'Date and time the patient was formally discharged or the visit concluded. Used for LOS calculation, bed management, and revenue cycle close-out. Null for visits still in progress.',
-    `drg_type` STRING COMMENT 'Identifies the DRG classification system used for this encounter (Medicare Severity DRG, All Patient Refined DRG, or All Patient DRG). Determines reimbursement methodology and payer applicability.. Valid values are `MS-DRG|APR-DRG|AP-DRG`',
-    `drg_weight` DECIMAL(18,2) COMMENT 'Numeric relative weight assigned to the DRG, reflecting the average resource intensity of cases in that group. Used to calculate expected reimbursement and Case Mix Index (CMI) contribution for the facility.',
-    `emtala_compliant` BOOLEAN COMMENT 'Indicates whether EMTALA obligations were assessed and met for this visit, including medical screening examination and stabilization requirements. Critical for ED visits and transfer scenarios. Required for OIG compliance audits.',
-    `encounter_number` STRING COMMENT 'Human-readable, externally-known visit or encounter number assigned by the source EHR system (e.g., Epic CSN — Contact Serial Number, or Cerner FIN — Financial Identification Number). Used in billing, claims, and patient communications.',
-    `expected_los_days` DECIMAL(18,2) COMMENT 'DRG-based or risk-adjusted expected length of stay for this encounter, used to benchmark actual LOS against peer performance and identify outlier cases for CDI and utilization management review.',
-    `financial_class` STRING COMMENT 'Payer category assigned at the time of visit registration, used to route the encounter through the appropriate revenue cycle workflow. Drives charge capture, claim form selection (UB-04 vs CMS-1500), and reimbursement expectations. [ENUM-REF-CANDIDATE: commercial|medicare|medicaid|self_pay|workers_comp|tricare|charity|other_government — promote to reference product]. Valid values are `commercial|medicare|medicaid|self_pay|workers_comp`',
-    `follow_up_scheduled` BOOLEAN COMMENT 'Indicates whether a follow-up appointment was scheduled prior to or at the time of discharge. Used for care transition quality metrics, readmission prevention programs, and HEDIS measure compliance.',
-    `inpatient_conversion_timestamp` TIMESTAMP COMMENT 'Date and time an observation status encounter was formally converted to inpatient admission. Used for LOS recalculation, billing reclassification, and two-midnight rule compliance documentation.',
-    `length_of_stay_days` STRING COMMENT 'Total number of inpatient days from admission to discharge, calculated as discharge date minus admission date. Key operational and financial metric used for ALOS benchmarking, CMI analysis, and VBP performance.',
-    `moon_delivered_timestamp` TIMESTAMP COMMENT 'Date and time the Medicare Outpatient Observation Notice (MOON) was delivered to the patient, as required by the NOTICE Act for Medicare beneficiaries receiving observation services exceeding 24 hours.',
-    `mrn` STRING COMMENT 'Facility-assigned Medical Record Number that uniquely identifies the patient within the health system. Used for cross-visit patient matching and HIM workflows. Sourced from Epic MPI or Cerner MPI.',
-    `observation_hours` DECIMAL(18,2) COMMENT 'Total number of hours the patient spent under outpatient observation status during this visit. Used for two-midnight rule compliance assessment, MOON trigger evaluation, and Medicare billing.',
-    `observation_status` BOOLEAN COMMENT 'Indicates whether the patient is classified under outpatient observation status rather than formal inpatient admission. Drives MOON delivery requirement, two-midnight rule assessment, and Medicare Part A vs Part B billing determination.',
-    `point_of_service_code` STRING COMMENT 'CMS two-digit Place of Service code indicating the setting where the professional service was rendered. Required on CMS-1500 professional claims for correct reimbursement routing.',
-    `principal_icd10_diagnosis_code` STRING COMMENT 'ICD-10-CM code for the principal diagnosis — the condition established after study to be chiefly responsible for the admission. Required for DRG grouping, claims submission, and quality reporting.. Valid values are `^[A-Z][0-9A-Z]{1,6}(.[0-9A-Z]{1,4})?$`',
-    `readmission_flag` BOOLEAN COMMENT 'Indicates whether this visit is classified as an unplanned readmission within 30 days of a prior discharge. Used for CMS Hospital Readmissions Reduction Program (HRRP) reporting and VBP performance measurement.',
-    `readmission_risk_score` DECIMAL(18,2) COMMENT 'Numeric risk score (e.g., LACE, HOSPITAL score) predicting the probability of unplanned 30-day readmission. Used by care management teams to prioritize post-discharge follow-up and care transition interventions.',
-    `source_encounter_code` STRING COMMENT 'Native encounter identifier from the originating EHR system (e.g., Epic CSN, Cerner Encounter ID). Preserved for cross-system reconciliation, HIE interoperability, and FHIR API mapping.',
-    `visit_status` STRING COMMENT 'Current lifecycle state of the visit from scheduling through discharge. Drives ADT event processing, bed management, and revenue cycle workflows in Epic ADT and Cerner PowerChart.. Valid values are `scheduled|arrived|in_progress|discharged|cancelled|no_show`',
-    `telehealth_connection_quality` STRING COMMENT 'Assessed quality of the audio/video connection during a telehealth visit. Used for patient experience reporting, platform SLA monitoring, and identifying visits that may require follow-up due to technical issues.. Valid values are `excellent|good|fair|poor|failed`',
-    `telehealth_platform` STRING COMMENT 'Name of the telehealth technology platform used to conduct the virtual visit (e.g., Epic MyChart Video, Zoom for Healthcare, Teladoc). Required for telehealth billing modifier application and platform performance reporting.',
-    `two_midnight_compliant` BOOLEAN COMMENT 'Indicates whether the inpatient admission meets CMS two-midnight rule criteria, requiring the admitting physician to expect the patient to require hospital care spanning at least two midnights. Critical for Medicare inpatient billing compliance and RAC audit defense.',
-    `visit_type` STRING COMMENT 'Classification of the patient-provider interaction by care setting and service modality. Drives billing rules, regulatory requirements, and clinical workflow routing. [ENUM-REF-CANDIDATE: inpatient|outpatient|emergency|observation|telehealth|ambulatory|surgical|preventive — promote to reference product]. Valid values are `inpatient|outpatient|emergency|observation|telehealth|ambulatory`',
-    `updated_timestamp` TIMESTAMP COMMENT 'Date and time the visit record was most recently modified in the source EHR system or the lakehouse silver layer. Used for incremental ETL processing, change data capture, and audit compliance.',
+    `visit_id` BIGINT COMMENT 'Surrogate primary key for the visit/encounter record.',
+    `care_site_id` BIGINT COMMENT 'FK to the care site where the visit occurred.',
+    `cost_center_id` BIGINT COMMENT 'FK to the financial cost center.',
+    `drg_id` BIGINT COMMENT 'FK to the DRG reference record.',
+    `insurance_coverage_id` BIGINT COMMENT 'FK to the patient insurance coverage record.',
+    `employee_id` BIGINT COMMENT 'FK to the primary nurse employee.',
+    `clinician_id` BIGINT COMMENT 'FK to the admitting provider clinician.',
+    `mpi_record_id` BIGINT COMMENT 'FK to the patient MPI record.',
+    `research_study_id` BIGINT COMMENT 'FK to associated research study.',
+    `tertiary_visit_discharging_provider_clinician_id` BIGINT COMMENT 'FK to the discharging provider clinician.',
+    `training_completion_id` BIGINT COMMENT 'FK to training completion record.',
+    `admission_source` STRING COMMENT 'Source of admission (e.g., ED, physician referral).. Valid values are `emergency_department|direct_admission|transfer|referral|birth`',
+    `admission_timestamp` TIMESTAMP COMMENT 'Date and time of patient admission.',
+    `admission_type` STRING COMMENT 'Type of admission (e.g., elective, emergency, urgent).. Valid values are `elective|urgent|emergent|newborn|trauma`',
+    `admitting_diagnosis_code` STRING COMMENT 'ICD-10 code for the admitting diagnosis.. Valid values are `^[A-Z][0-9A-Z]{1,6}(.[0-9A-Z]{1,4})?$`',
+    `care_setting` STRING COMMENT 'Care setting (inpatient, outpatient, observation, ED).',
+    `care_transition_plan_completed` BOOLEAN COMMENT 'Flag indicating care transition plan was completed.',
+    `consent_obtained` BOOLEAN COMMENT 'Flag indicating patient consent was obtained.',
+    `converted_to_inpatient` BOOLEAN COMMENT 'Flag indicating observation status converted to inpatient.',
+    `created_timestamp` TIMESTAMP COMMENT 'Record creation timestamp.',
+    `discharge_disposition` STRING COMMENT 'Discharge disposition description.. Valid values are `home|snf|rehab|ama|expired|hospice`',
+    `discharge_instructions_issued` BOOLEAN COMMENT 'Flag indicating discharge instructions were issued.',
+    `discharge_timestamp` TIMESTAMP COMMENT 'Date and time of patient discharge.',
+    `drg_type` STRING COMMENT 'DRG type (MS-DRG, APR-DRG).. Valid values are `MS-DRG|APR-DRG|AP-DRG`',
+    `drg_weight` DECIMAL(18,2) COMMENT 'DRG relative weight for reimbursement calculation.',
+    `emtala_compliant` BOOLEAN COMMENT 'Flag indicating EMTALA compliance.',
+    `encounter_number` STRING COMMENT 'Unique encounter/visit number from source system.',
+    `expected_los_days` DECIMAL(18,2) COMMENT 'Expected length of stay in days.',
+    `financial_class` STRING COMMENT 'Financial class of the visit (Medicare, Medicaid, Commercial).. Valid values are `commercial|medicare|medicaid|self_pay|workers_comp`',
+    `follow_up_scheduled` BOOLEAN COMMENT 'Flag indicating follow-up appointment was scheduled.',
+    `inpatient_conversion_timestamp` TIMESTAMP COMMENT 'Timestamp when observation was converted to inpatient.',
+    `length_of_stay_days` STRING COMMENT 'Actual length of stay in days.',
+    `moon_delivered_timestamp` TIMESTAMP COMMENT 'Timestamp when Medicare Outpatient Observation Notice was delivered.',
+    `mrn` STRING COMMENT 'Medical record number.',
+    `observation_hours` DECIMAL(18,2) COMMENT 'Total hours patient was in observation status.',
+    `observation_status` BOOLEAN COMMENT 'Flag indicating patient is in observation status.',
+    `point_of_service_code` STRING COMMENT 'CMS point of service code.',
+    `principal_icd10_diagnosis_code` STRING COMMENT 'The principal icd10 diagnosis code value classifying the encounter visit record.. Valid values are `^[A-Z][0-9A-Z]{1,6}(.[0-9A-Z]{1,4})?$`',
+    `readmission_flag` BOOLEAN COMMENT 'Flag indicating this visit is a readmission.',
+    `readmission_risk_score` DECIMAL(18,2) COMMENT 'Readmission risk score at time of admission.',
+    `source_encounter_code` STRING COMMENT 'Source system encounter code.',
+    `structural_fk_reconciled_flag` BOOLEAN COMMENT 'The structural fk reconciled flag of the encounter visit record.',
+    `telehealth_connection_quality` STRING COMMENT 'Quality rating of telehealth connection.. Valid values are `excellent|good|fair|poor|failed`',
+    `telehealth_platform` STRING COMMENT 'Telehealth platform used for the visit.',
+    `two_midnight_compliant` BOOLEAN COMMENT 'Flag indicating compliance with CMS two-midnight rule.',
+    `updated_timestamp` TIMESTAMP COMMENT 'Record last updated timestamp.',
+    `vibe_mutation_marker` STRING COMMENT 'The vibe mutation marker of the encounter visit record.',
+    `vibe_structure_marker` STRING COMMENT 'The vibe structure marker of the encounter visit record.',
+    `visit_status` STRING COMMENT 'Current status of the visit.. Valid values are `scheduled|arrived|in_progress|discharged|cancelled|no_show`',
+    `visit_type` STRING COMMENT 'Type of visit (inpatient, outpatient, ED, telehealth).. Valid values are `inpatient|outpatient|emergency|observation|telehealth|ambulatory`',
     CONSTRAINT pk_visit PRIMARY KEY(`visit_id`)
-) COMMENT 'Core master record for every patient-provider interaction across all care settings (inpatient, outpatient, ED, observation, telehealth, ambulatory). Central hub of the encounter domain and primary linkage point to patient, provider, clinical, and billing domains. Captures visit type, care setting, facility, attending provider, financial class, and visit status. Owns the full admission-through-discharge lifecycle: admission type (elective, urgent, emergent, newborn, trauma), admission source (ED, direct, transfer, referral, birth), admitting diagnosis, admitting provider, insurance verification at admission, admission and discharge timestamps, discharge disposition (home, SNF, rehab, AMA, expired, hospice, transfer), discharging provider, discharge instructions issued, discharge diagnosis summary, LOS (Length of Stay), readmission risk score, follow-up scheduling, and care transition plan. For observation encounters: two-midnight rule compliance assessment, MOON (Medicare Outpatient Observation Notice) delivery timestamp, total observation hours, conversion-to-inpatient flag and timestamp, and financial impact assessment. For telehealth encounters: platform, connection quality, and session metadata. Includes EMTALA compliance flags, consent status at admission, DRG assignment reference, CMI contribution, and financial class. SSOT for all encounter-level identity, classification, lifecycle state, admission, discharge, observation management, and care setting attributes.';
+) COMMENT 'Core encounter/visit record representing a patient interaction with the health system.';
 
 CREATE OR REPLACE TABLE `vibe_healthcare_v1`.`encounter`.`adt_event` (
-    `adt_event_id` BIGINT COMMENT 'Unique surrogate identifier for each ADT event record in the silver layer. Primary key for the adt_event data product. Role: TRANSACTION_HEADER.',
-    `clinician_id` BIGINT COMMENT 'Reference to the attending or responsible provider at the time of this ADT event. Captures the clinician accountable for the patient at the moment of admit, transfer, or discharge.',
-    `demographics_id` BIGINT COMMENT 'Reference to the patient associated with this ADT event. Serves as the PARTY_REFERENCE for this TRANSACTION_HEADER, linking the event to the Master Patient Index (MPI).',
-    `drg_id` BIGINT COMMENT 'Foreign key linking to reference.drg. Business justification: ADT event tracking—DRG codes captured during patient movement events must reference official DRG definitions for real-time case management, bed utilization analysis, and revenue cycle monitoring. Requ',
-    `message_log_id` BIGINT COMMENT 'Unique identifier of the originating HL7 ADT message from the source system (Epic or Cerner). Used for message traceability, deduplication, and reconciliation with upstream ADT feeds. Corresponds to MSH-10 in HL7 v2.x.',
-    `prior_event_adt_event_id` BIGINT COMMENT 'Reference to the immediately preceding ADT event in the same encounters event chain. Enables reconstruction of the full ADT event sequence and care pathway for LOS milestone tracking and transitions-of-care analysis.',
-    `employee_id` BIGINT COMMENT 'Foreign key linking to workforce.employee. Business justification: Patient transport events require accountability tracking for safety incidents, OSHA reporting, and labor cost allocation. Transport staff (orderlies, techs) are workforce employees whose activity must',
-    `visit_id` BIGINT COMMENT 'Reference to the parent encounter (visit) to which this ADT event belongs. Links the ADT event to the broader encounter context including patient, provider, and billing information.',
-    `accepting_provider_npi` STRING COMMENT '10-digit National Provider Identifier (NPI) of the provider accepting responsibility for the patient at the destination care setting during a transfer event. Required for EMTALA transfer compliance documentation and inter-facility transfer records.. Valid values are `^[0-9]{10}$`',
-    `admission_source_code` STRING COMMENT 'Standardized code indicating the source from which the patient was admitted (e.g., physician referral, emergency room, transfer from another facility, birth). Corresponds to PV1-14 (Admit Source) in HL7 v2.x and UB-04 field 15. Used for DRG grouping and regulatory reporting. [ENUM-REF-CANDIDATE: 1|2|3|4|5|6|7|8|9 — promote to reference product per UB-04 Admit Source codes]',
-    `ama_flag` BOOLEAN COMMENT 'Indicates whether the patient was discharged Against Medical Advice (AMA). Populated for discharge events (A03). Relevant for discharge disposition coding, liability documentation, and readmission risk analysis.',
-    `bed_assigned_timestamp` TIMESTAMP COMMENT 'Date and time a specific bed was assigned to the patient as part of this ADT event. Used to calculate bed assignment turnaround time and support capacity management analytics.',
-    `bed_request_timestamp` TIMESTAMP COMMENT 'Date and time a bed was requested for the patient as part of this ADT event. Used to calculate bed placement turnaround time and support real-time bed management KPIs.',
-    `cancel_reason` STRING COMMENT 'Free-text or coded reason for cancellation when event_status is cancelled. Captures clinical or administrative rationale for reversing an ADT event (e.g., Patient not admitted, Duplicate registration). Corresponds to EVN-4 in HL7 v2.x.',
-    `clinical_reason_for_transfer` STRING COMMENT 'Free-text or coded clinical justification for a patient transfer event (e.g., Requires ICU-level monitoring, Specialist not available at sending facility). Populated for transfer and inter-facility transition events. Supports EMTALA compliance documentation and care transitions analysis.',
-    `created_timestamp` TIMESTAMP COMMENT 'Date and time this ADT event record was first created in the silver layer data product. Serves as the RECORD_AUDIT_CREATED timestamp for data lineage and audit trail purposes.',
-    `discharge_disposition_code` STRING COMMENT 'Standardized code indicating the patients status or destination at discharge (e.g., home, skilled nursing facility, expired, AMA). Corresponds to PV1-36 (Discharge Disposition) in HL7 v2.x and UB-04 field 17. Required for DRG assignment, readmission risk, and CMS quality reporting. [ENUM-REF-CANDIDATE: 01|02|03|04|05|06|07|20|30|43|50|51|61|62|63|64|65|66|69|70|71|72 — promote to reference product per NUBC Patient Discharge Status codes]',
-    `drg_type` STRING COMMENT 'Classification of the DRG methodology used for grouping. MS-DRG (Medicare Severity DRG) is used for Medicare/Medicaid; APR-DRG (All Patient Refined DRG) is used for commercial and Medicaid managed care; IR-DRG (International Refined DRG) for international payers.. Valid values are `MS-DRG|APR-DRG|IR-DRG`',
-    `emtala_compliant` BOOLEAN COMMENT 'Indicates whether the transfer event meets all EMTALA (Emergency Medical Treatment and Labor Act) compliance requirements, including medical screening examination, stabilization, and appropriate transfer documentation. Applicable to inter-facility transfer events from emergency settings.',
-    `emtala_transfer_form_completed` BOOLEAN COMMENT 'Indicates whether the required EMTALA transfer certification form was completed and signed by the responsible physician prior to inter-facility transfer. Supports OIG audit readiness and EMTALA compliance tracking.',
-    `event_recorded_timestamp` TIMESTAMP COMMENT 'The date and time the ADT event was recorded or entered into the source system (Epic or Cerner). May differ from event_timestamp when events are back-entered. Corresponds to EVN-4 (Event Recorded Date/Time) in HL7 v2.x.',
-    `event_status` STRING COMMENT 'Current lifecycle status of the ADT event record. active indicates a valid, confirmed event; cancelled indicates the event was reversed (e.g., A11 Cancel Admit); corrected indicates the event was amended; pending indicates the event is pre-registered or pre-admitted but not yet confirmed.. Valid values are `active|cancelled|corrected|pending`',
-    `event_timestamp` TIMESTAMP COMMENT 'The precise date and time the ADT event occurred in the real world (e.g., when the patient was physically admitted, transferred, or discharged). This is the BUSINESS_EVENT_TIMESTAMP — distinct from record audit timestamps. Corresponds to EVN-2 in HL7 v2.x.',
-    `event_type_code` STRING COMMENT 'HL7 ADT event type code identifying the nature of the ADT transaction. Standard HL7 v2.x event codes include A01 (Admit), A02 (Transfer), A03 (Discharge), A04 (Register Outpatient), A05 (Pre-Admit), A06 (Change Outpatient to Inpatient), A07 (Change Inpatient to Outpatient), A08 (Update Patient Info), A11 (Cancel Admit), A12 (Cancel Transfer), A13 (Cancel Discharge), A21 (Patient Goes on Leave of Absence), A22 (Patient Returns from Leave of Absence), among others. [ENUM-REF-CANDIDATE: A01|A02|A03|A04|A05|A06|A07|A08|A09|A10|A11|A12|A13|A21|A22 — promote to reference product]. Valid values are `A01|A02|A03|A04|A05|A06`',
-    `event_type_description` STRING COMMENT 'Human-readable description of the ADT event type corresponding to the event_type_code (e.g., Admit a Patient, Transfer a Patient, Discharge/End Visit). Sourced from HL7 ADT event type table.',
-    `from_bed_code` STRING COMMENT 'Specific bed identifier from which the patient is being transferred or discharged. Supports real-time bed management and occupancy tracking. Corresponds to PV1-3 (Prior Patient Location) bed component in HL7 v2.x.',
-    `from_unit_code` STRING COMMENT 'Code identifying the nursing unit, care area, or department from which the patient is being transferred or discharged. For admission events, this represents the originating unit (e.g., ED). Corresponds to PV1-3 prior location in HL7 v2.x.',
-    `isolation_flag` BOOLEAN COMMENT 'Indicates whether the patient requires isolation precautions at the time of this ADT event (e.g., contact, droplet, airborne precautions). Drives bed assignment logic, infection control workflows, and HAI prevention protocols.',
-    `isolation_type` STRING COMMENT 'Type of isolation precaution required for the patient at the time of this ADT event. Values: contact, droplet, airborne, protective (reverse isolation), none. Populated when isolation_flag is true. Supports infection control and bed management workflows.. Valid values are `contact|droplet|airborne|protective|none`',
-    `leave_of_absence_reason` STRING COMMENT 'Reason for a patient leave of absence event (HL7 A21). Captures the clinical or administrative justification when a patient temporarily leaves the facility (e.g., therapeutic pass, family visit). Null for non-leave events.',
-    `level_of_care_code` STRING COMMENT 'Code representing the clinical level of care at the destination unit for this ADT event. Values: ICU (Intensive Care Unit), PCU (Progressive Care Unit), MED_SURG (Medical-Surgical), ED (Emergency Department), OR (Operating Room), PACU (Post-Anesthesia Care Unit), OBS (Observation), TELE (Telemetry), NICU (Neonatal ICU), PICU (Pediatric ICU). Supports LOS milestone tracking and level-of-care transition analysis. [ENUM-REF-CANDIDATE: ICU|PCU|MED_SURG|ED|OR|PACU|OBS|TELE|NICU|PICU — 10 candidates stripped; promote to reference product]',
-    `patient_class_code` STRING COMMENT 'HL7 patient class code indicating the care setting type at the time of this ADT event. Values: I=Inpatient, O=Outpatient, E=Emergency, B=Obstetrics, C=Commercial Account, N=Not Applicable, R=Recurring Patient, U=Unknown. Corresponds to PV1-2 in HL7 v2.x. Drives billing, regulatory reporting, and LOS calculations. [ENUM-REF-CANDIDATE: I|O|E|B|C|N|R|U — 8 candidates stripped; promote to reference product]',
-    `patient_stability_score` STRING COMMENT 'Clinical assessment of patient stability at the time of a transfer event. Values: stable, guarded, critical, unstable. Required for EMTALA transfer compliance documentation and supports risk stratification for inter-facility transfers.. Valid values are `stable|guarded|critical|unstable`',
-    `readmission_risk_flag` BOOLEAN COMMENT 'Indicates whether the patient has been flagged as high-risk for readmission at the time of this discharge ADT event. Populated by predictive risk models or clinical decision support tools. Supports CMS Hospital Readmissions Reduction Program (HRRP) compliance and care transitions planning.',
-    `sending_application` STRING COMMENT 'Name of the source application that generated the HL7 ADT message (e.g., EPIC, CERNER). Corresponds to MSH-3 (Sending Application) in HL7 v2.x. Supports source system traceability and ETL lineage.',
-    `sending_facility` STRING COMMENT 'Name or identifier of the facility or system that originated the HL7 ADT message. Corresponds to MSH-4 (Sending Facility) in HL7 v2.x. Used for multi-facility environments and HIE routing.',
-    `sequence_number` STRING COMMENT 'Ordinal sequence number of this ADT event within the encounters event chain. Enables chronological ordering of all ADT events for a given encounter when timestamps alone are insufficient (e.g., same-second events).',
-    `source_system_event_code` STRING COMMENT 'Native identifier of this ADT event in the originating source system (Epic or Cerner). Used for ETL reconciliation, deduplication, and bi-directional traceability between the lakehouse silver layer and the operational EHR system.',
-    `source_system_name` STRING COMMENT 'Name of the operational EHR system that is the authoritative source for this ADT event record. Values: EPIC (Epic EHR ADT), CERNER (Cerner Millennium ADT), MEDITECH (MEDITECH Expanse). Supports multi-system environments and data lineage.. Valid values are `EPIC|CERNER|MEDITECH`',
-    `to_bed_code` STRING COMMENT 'Specific bed identifier to which the patient is being admitted or transferred. Supports real-time bed management, housekeeping workflows, and infection control tracking. Corresponds to PV1-3 assigned bed component in HL7 v2.x.',
-    `to_room_code` STRING COMMENT 'Room identifier within the destination unit to which the patient is assigned. Complements to_bed_code for full location resolution. Corresponds to PV1-3 room component in HL7 v2.x.',
-    `to_unit_code` STRING COMMENT 'Code identifying the nursing unit, care area, or department to which the patient is being admitted or transferred. Corresponds to PV1-3 (Assigned Patient Location) in HL7 v2.x. Central to real-time bed management and capacity planning.',
-    `transition_type` STRING COMMENT 'Classification of the care setting transition for transfer events. Values: inter_unit (within same facility, same level of care), level_of_care_change (e.g., floor to ICU), inter_facility (between different facilities), internal_transfer, external_transfer. Null for non-transfer events. Supports transitions-of-care quality measures.. Valid values are `inter_unit|level_of_care_change|inter_facility|internal_transfer|external_transfer`',
-    `transport_mode` STRING COMMENT 'Mode of transport used for patient transfer between care settings or facilities. Applicable for transfer and discharge events. Values include ambulance, helicopter, wheelchair, stretcher, ambulatory, private_vehicle. Null for non-transfer events.. Valid values are `ambulance|helicopter|wheelchair|stretcher|ambulatory|private_vehicle`',
-    `updated_timestamp` TIMESTAMP COMMENT 'Date and time this ADT event record was last modified in the silver layer data product. Serves as the RECORD_AUDIT_UPDATED timestamp. Updated when corrections, cancellations, or amendments are applied to the event.',
-    `visit_type_code` STRING COMMENT 'Classification of the visit type associated with this ADT event (e.g., inpatient, outpatient, emergency, observation, telehealth, ambulatory). Complements patient_class_code with business-level visit categorization used in analytics and reporting.. Valid values are `inpatient|outpatient|emergency|observation|telehealth|ambulatory`',
+    `adt_event_id` BIGINT COMMENT 'Surrogate primary key for the ADT event.',
+    `clinician_id` BIGINT COMMENT 'FK to the clinician associated with the ADT event.',
+    `demographics_id` BIGINT COMMENT 'FK to patient demographics.',
+    `drg_id` BIGINT COMMENT 'FK to DRG reference.',
+    `message_log_id` BIGINT COMMENT 'FK to the HL7 message log.',
+    `mpi_record_id` BIGINT COMMENT 'Unique identifier for the mpi record within the encounter adt event record.',
+    `prior_event_adt_event_id` BIGINT COMMENT 'Self-referential FK to the prior ADT event.',
+    `employee_id` BIGINT COMMENT 'FK to the employee responsible for patient transport.',
+    `visit_id` BIGINT COMMENT 'FK to the parent visit.',
+    `accepting_provider_npi` STRING COMMENT 'NPI of the accepting provider.. Valid values are `^[0-9]{10}$`',
+    `admission_source_code` STRING COMMENT 'The admission source code value classifying the encounter adt event record.',
+    `ama_flag` BOOLEAN COMMENT 'Flag indicating against medical advice discharge.',
+    `bed_assigned_timestamp` TIMESTAMP COMMENT 'Timestamp when bed was assigned.',
+    `bed_request_timestamp` TIMESTAMP COMMENT 'Timestamp when bed was requested.',
+    `cancel_reason` STRING COMMENT 'Reason for event cancellation.',
+    `clinical_reason_for_transfer` STRING COMMENT 'Clinical reason for patient transfer.',
+    `created_timestamp` TIMESTAMP COMMENT 'Record creation timestamp.',
+    `discharge_disposition_code` STRING COMMENT 'The discharge disposition code value classifying the encounter adt event record.',
+    `drg_type` STRING COMMENT 'DRG type associated with the event.. Valid values are `MS-DRG|APR-DRG|IR-DRG`',
+    `emtala_compliant` BOOLEAN COMMENT 'EMTALA compliance flag.',
+    `emtala_transfer_form_completed` BOOLEAN COMMENT 'Flag indicating EMTALA transfer form was completed.',
+    `event_recorded_timestamp` TIMESTAMP COMMENT 'Timestamp when event was recorded in system.',
+    `event_status` STRING COMMENT 'Current status of the ADT event.. Valid values are `active|cancelled|corrected|pending`',
+    `event_timestamp` TIMESTAMP COMMENT 'Timestamp when the ADT event occurred.',
+    `event_type_code` STRING COMMENT 'HL7 ADT event type code (A01, A02, A03, etc.).. Valid values are `A01|A02|A03|A04|A05|A06`',
+    `event_type_description` STRING COMMENT 'Description of the ADT event type.',
+    `from_bed_code` STRING COMMENT 'Bed code patient is transferring from.',
+    `from_unit_code` STRING COMMENT 'Unit code patient is transferring from.',
+    `isolation_flag` BOOLEAN COMMENT 'Flag indicating patient requires isolation.',
+    `isolation_type` STRING COMMENT 'Type of isolation required.. Valid values are `contact|droplet|airborne|protective|none`',
+    `leave_of_absence_reason` STRING COMMENT 'Reason for leave of absence.',
+    `level_of_care_code` STRING COMMENT 'The level of care code value classifying the encounter adt event record.',
+    `patient_class_code` STRING COMMENT 'Patient class code (inpatient, outpatient, etc.).',
+    `patient_stability_score` STRING COMMENT 'Patient stability score at time of event.. Valid values are `stable|guarded|critical|unstable`',
+    `readmission_risk_flag` BOOLEAN COMMENT 'Flag indicating elevated readmission risk.',
+    `sending_application` STRING COMMENT 'HL7 sending application identifier.',
+    `sending_facility` STRING COMMENT 'HL7 sending facility identifier.',
+    `sequence_number` STRING COMMENT 'Sequence number of the event within the visit.',
+    `source_system_event_code` STRING COMMENT 'The source system event code value classifying the encounter adt event record.',
+    `source_system_name` STRING COMMENT 'The source system name of the encounter adt event record.. Valid values are `EPIC|CERNER|MEDITECH`',
+    `adt_event_status` STRING COMMENT 'The adt event status value classifying the encounter adt event record.',
+    `to_bed_code` STRING COMMENT 'Bed code patient is transferring to.',
+    `to_room_code` STRING COMMENT 'Room code patient is transferring to.',
+    `to_unit_code` STRING COMMENT 'Unit code patient is transferring to.',
+    `transition_type` STRING COMMENT 'Type of care transition.. Valid values are `inter_unit|level_of_care_change|inter_facility|internal_transfer|external_transfer`',
+    `transport_mode` STRING COMMENT 'Mode of patient transport.. Valid values are `ambulance|helicopter|wheelchair|stretcher|ambulatory|private_vehicle`',
+    `updated_timestamp` TIMESTAMP COMMENT 'Record last updated timestamp.',
+    `vibe_mutation_marker` STRING COMMENT 'The vibe mutation marker of the encounter adt event record.',
+    `vibe_structure_marker` STRING COMMENT 'The vibe structure marker of the encounter adt event record.',
+    `visit_type_code` STRING COMMENT 'The visit type code value classifying the encounter adt event record.. Valid values are `inpatient|outpatient|emergency|observation|telehealth|ambulatory`',
     CONSTRAINT pk_adt_event PRIMARY KEY(`adt_event_id`)
-) COMMENT 'Transactional record of every ADT (Admit, Discharge, Transfer) event and care setting transition associated with a visit. Captures event type (A01 Admit, A02 Transfer, A03 Discharge, A08 Update, A11 Cancel Admit, etc.), event timestamp, sending and receiving units/beds, responsible provider at time of event, and HL7 ADT message metadata. For transfer and care transition events: origin and destination care settings, transition type (inter-unit, level-of-care change, inter-facility), transport mode, clinical reason for transition, accepting provider NPI, patient stability score at time of transfer, and EMTALA transfer compliance documentation. SSOT for all timestamped ADT events and care setting transitions within the encounter domain. No separate care_transition product exists — all transition data lives here. Enables real-time bed management, LOS milestone tracking, care transitions analysis, transitions-of-care quality measures, and readmission risk tracking. Sourced from Epic ADT and Cerner Millennium ADT feeds.';
+) COMMENT 'Admit-Discharge-Transfer event record capturing patient movement events within and between facilities.';
 
 CREATE OR REPLACE TABLE `vibe_healthcare_v1`.`encounter`.`visit_provider` (
-    `visit_provider_id` BIGINT COMMENT 'Unique surrogate identifier for each visit-provider association record in the Silver layer lakehouse. Primary key for this junction entity linking a provider to a specific patient visit with a defined role.',
-    `cost_center_id` BIGINT COMMENT 'Foreign key linking to finance.cost_center. Business justification: Provider assignments drive RVU-based compensation and cost allocation models. Linking to cost centers enables provider productivity analysis, departmental expense tracking, and physician compensation ',
-    `insurance_network_participation_id` BIGINT COMMENT 'Foreign key linking to insurance.network_participation. Business justification: Determines in-network vs out-of-network status for each provider on a visit, directly impacting reimbursement rates and patient cost-sharing. Critical for claims processing, payment accuracy, and pati',
-    `network_affiliation_id` BIGINT COMMENT 'Foreign key linking to provider.network_affiliation. Business justification: Links provider assignment to specific network participation record for the visits payer. Essential for determining in-network vs out-of-network status, calculating patient cost-sharing, and supportin',
-    `payer_id` BIGINT COMMENT 'Reference to the primary payer (insurance plan) associated with this visit at the time of provider assignment. Used for payer-specific provider network validation, credentialing verification, and RCM (Revenue Cycle Management) analytics.',
-    `clinician_id` BIGINT COMMENT 'Reference to the clinician or provider record assigned to this visit. Links to the provider domain clinician master record.',
-    `provider_payer_enrollment_id` BIGINT COMMENT 'Foreign key linking to provider.payer_enrollment. Business justification: Validates that the assigned clinician is enrolled with the patients payer at time of service. Critical for billing compliance, claims adjudication, and preventing denials due to provider enrollment g',
-    `referral_order_id` BIGINT COMMENT 'Reference to the formal consultation order or request that triggered this providers assignment to the visit. Applicable when assignment_type is consult_request. Links to the order management domain.',
-    `stark_arrangement_id` BIGINT COMMENT 'Foreign key linking to compliance.stark_arrangement. Business justification: Stark Law compliance monitoring requires tracking which physicians provided designated health services under which financial arrangements. Referral volume tracking and FMV validation depend on linking',
-    `employee_id` BIGINT COMMENT 'Foreign key linking to workforce.employee. Business justification: Advanced practice providers (NPs, PAs) require documented nurse supervision in many states and for credentialing. Tracks supervisory relationships for compliance, privileging, and malpractice coverage',
-    `tertiary_visit_supervising_provider_clinician_id` BIGINT COMMENT 'Reference to the supervising or attending physician responsible for overseeing this providers participation in the visit. Required for resident, student, and mid-level provider assignments per CMS teaching physician billing guidelines.',
-    `visit_id` BIGINT COMMENT 'Reference to the patient visit or encounter to which this provider is assigned. Links to the encounter domain visit record representing the ADT (Admit, Discharge, Transfer) event.',
-    `admission_source_role` STRING COMMENT 'Indicates whether this provider served as the admitting, referring, or transferring physician at the time of patient admission. Relevant for ADT (Admit, Discharge, Transfer) event documentation and CMS admission source reporting.. Valid values are `admitting|referring|transferring|none`',
-    `assignment_end_timestamp` TIMESTAMP COMMENT 'Date and time when the providers active participation in this visit ended. Null if the provider is still actively assigned. Used for LOS (Length of Stay) attribution, handoff documentation, and coverage gap analysis.',
-    `assignment_start_timestamp` TIMESTAMP COMMENT 'Date and time when the providers active participation in this visit began. Used for time-bounded care team tracking, shift coverage analysis, and provider performance analytics per encounter.',
-    `assignment_status` STRING COMMENT 'Current lifecycle status of the providers assignment to this visit. active indicates current participation; transferred indicates a handoff to another provider has occurred; cancelled indicates the assignment was voided.. Valid values are `active|inactive|pending|cancelled|transferred`',
-    `assignment_type` STRING COMMENT 'Indicates how the provider came to be assigned to this visit — whether through scheduled care, unscheduled walk-in, emergency response, on-call coverage, or formal consult request. Supports operational staffing and care coordination analytics.. Valid values are `scheduled|unscheduled|emergency|coverage|consult_request`',
-    `billing_provider_npi` STRING COMMENT 'The NPI (National Provider Identifier) used specifically for billing and claims submission for services rendered by this provider during this visit. May differ from the rendering provider NPI when billing under a group practice or supervising physician.. Valid values are `^[0-9]{10}$`',
-    `care_setting` STRING COMMENT 'The clinical care setting in which the provider is participating for this visit (e.g., inpatient, outpatient, ED (Emergency Department), observation, telehealth, surgical, ICU (Intensive Care Unit)). Supports care setting-specific analytics and regulatory reporting. [ENUM-REF-CANDIDATE: inpatient|outpatient|ed|observation|telehealth|surgical|icu — 7 candidates stripped; promote to reference product]',
-    `care_team_sequence` STRING COMMENT 'Ordinal sequence number indicating the order in which this provider was added to the visit care team. Used to reconstruct care team composition history and identify primary vs. secondary team members in chronological order.',
-    `comments` STRING COMMENT 'Free-text comments or notes entered by clinical staff regarding this providers assignment to the visit. May include coverage rationale, special instructions, or handoff context not captured in structured fields.',
-    `cosignature_required` BOOLEAN COMMENT 'Indicates whether the providers clinical documentation for this visit requires co-signature by a supervising physician (e.g., resident or student notes requiring attending co-signature). Supports CDI (Clinical Documentation Improvement) workflow and compliance.',
-    `created_timestamp` TIMESTAMP COMMENT 'Date and time when this visit-provider association record was first created in the data platform. Supports audit trail, data lineage, and compliance with HIPAA record retention requirements.',
-    `credentialing_verified_flag` BOOLEAN COMMENT 'Indicates whether the providers credentials and privileges were verified as current and active at the time of this visit assignment. Supports Joint Commission credentialing compliance and risk management.',
-    `drg_attribution_flag` BOOLEAN COMMENT 'Indicates whether this providers assignment is attributed to the DRG (Diagnosis-Related Group) assignment for inpatient billing purposes. The attending of records DRG attribution drives inpatient reimbursement under CMS IPPS.',
-    `effective_date` DATE COMMENT 'Calendar date on which this provider assignment became effective for the visit. Used for date-level scheduling, staffing reports, and daily census attribution distinct from the precise assignment_start_timestamp.',
-    `handoff_reference` STRING COMMENT 'Reference identifier or note key pointing to the handoff documentation record created when this provider transferred care responsibility to another provider. Supports care continuity, patient safety, and Joint Commission handoff communication standards.',
-    `is_attending_of_record` BOOLEAN COMMENT 'Indicates whether this provider is designated as the attending physician of record for the visit. The attending of record bears overall clinical and legal responsibility for the patients care and is reported on all billing claims.',
-    `is_primary_provider` BOOLEAN COMMENT 'Indicates whether this provider holds primary clinical and billing responsibility for the visit. Only one provider per visit should have this flag set to True. Drives attending physician attribution on claims, UB-04, and CMS-1500 forms.',
-    `locum_tenens_flag` BOOLEAN COMMENT 'Indicates whether the provider is serving in a locum tenens (temporary substitute) capacity for this visit. Locum tenens billing has specific CMS rules requiring the Q6 modifier on claims.',
-    `mips_eligible_flag` BOOLEAN COMMENT 'Indicates whether this providers participation in this visit is eligible for MIPS (Merit-based Incentive Payment System) performance measurement under MACRA (Medicare Access and CHIP Reauthorization Act). Drives quality measure attribution.',
-    `note_count` STRING COMMENT 'Number of clinical notes authored or co-signed by this provider for this visit. Supports CDI (Clinical Documentation Improvement) completeness tracking and provider documentation compliance reporting.',
-    `npi` STRING COMMENT 'The 10-digit National Provider Identifier (NPI) of the assigned provider as issued by CMS. Captured at time of assignment to support billing, claims adjudication, and RVU (Relative Value Unit) attribution independent of provider master record changes.. Valid values are `^[0-9]{10}$`',
-    `on_call_flag` BOOLEAN COMMENT 'Indicates whether this provider was assigned to the visit as part of an on-call coverage rotation rather than a scheduled or direct assignment. Supports on-call scheduling analytics and EMTALA (Emergency Medical Treatment and Labor Act) compliance tracking.',
-    `order_count` STRING COMMENT 'Number of clinical orders (lab, radiology, pharmacy, procedures) placed by this provider via CPOE (Computerized Physician Order Entry) for this visit. Supports provider ordering pattern analytics and CPOE adoption reporting.',
-    `participation_duration_minutes` STRING COMMENT 'Total number of minutes the provider was actively engaged in this visit, calculated from assignment_start_timestamp to assignment_end_timestamp. Used for time-based billing (e.g., anesthesia, critical care), provider productivity reporting, and staffing analytics.',
-    `place_of_service_code` STRING COMMENT 'Two-digit CMS Place of Service (POS) code indicating the setting where the provider rendered services during this visit (e.g., 11=Office, 21=Inpatient Hospital, 23=Emergency Room, 02=Telehealth). Required on CMS-1500 professional claims.. Valid values are `^[0-9]{2}$`',
-    `privilege_type` STRING COMMENT 'The type of clinical privileges held by the provider at the facility for this visit assignment (e.g., full, provisional, temporary, locum tenens, telemedicine). Determines scope of permissible clinical activities.. Valid values are `full|provisional|temporary|locum_tenens|telemedicine`',
-    `provider_role` STRING COMMENT 'Clinical role of the provider for this specific visit assignment (e.g., attending, consulting, admitting, covering, resident, hospitalist, surgeon, anesthesiologist, PCP). Determines care team hierarchy, billing responsibility, and RVU attribution. [ENUM-REF-CANDIDATE: attending|consulting|admitting|covering|resident|hospitalist|surgeon|anesthesiologist|pcp|co_surgeon|scrub_tech|circulating_nurse|care_coordinator — promote to reference product]',
-    `provider_type` STRING COMMENT 'Classification of the providers credential type for this assignment (e.g., physician, NP (Nurse Practitioner), PA (Physician Assistant), resident, fellow, student, RN, CRNA). Determines billing rules, supervision requirements, and scope of practice. [ENUM-REF-CANDIDATE: physician|np|pa|resident|fellow|student|rn|crna|other — 9 candidates stripped; promote to reference product]',
-    `rendering_provider_npi` STRING COMMENT 'The NPI (National Provider Identifier) of the individual clinician who actually rendered the service during this visit. Distinct from billing_provider_npi when services are billed under a group or supervising provider.. Valid values are `^[0-9]{10}$`',
-    `rvu_credit_flag` BOOLEAN COMMENT 'Indicates whether this provider assignment is eligible to receive RVU (Relative Value Unit) credit for services rendered during this visit. Used in provider productivity reporting, compensation modeling, and MIPS (Merit-based Incentive Payment System) performance tracking.',
-    `rvu_work_units` DECIMAL(18,2) COMMENT 'The physician work RVU (wRVU) value attributed to this provider for services rendered during this visit assignment. Sourced from CMS RBRVS fee schedule and used for provider productivity measurement and compensation calculations.',
-    `source_system_record_code` STRING COMMENT 'The native identifier of this provider assignment record in the originating operational system (e.g., Epic ClinDoc provider assignment ID, Cerner care team member ID). Enables traceability back to the system of record for reconciliation and audit.',
-    `specialty_at_assignment` STRING COMMENT 'The clinical specialty of the provider at the time of this visit assignment, captured as a point-in-time snapshot. Supports specialty-based care team analytics and quality reporting independent of provider master record updates.',
-    `telehealth_flag` BOOLEAN COMMENT 'Indicates whether the providers participation in this visit was conducted via telehealth modality. Affects billing modifier requirements, place of service codes, and state telehealth licensure compliance.',
-    `updated_timestamp` TIMESTAMP COMMENT 'Date and time when this visit-provider association record was last modified in the data platform. Supports change tracking, SCD (Slowly Changing Dimension) processing, and audit compliance.',
+    `visit_provider_id` BIGINT COMMENT 'Surrogate primary key for the visit-provider association.',
+    `cost_center_id` BIGINT COMMENT 'FK to the cost center.',
+    `insurance_network_participation_id` BIGINT COMMENT 'FK to insurance network participation.',
+    `network_affiliation_id` BIGINT COMMENT 'FK to provider network affiliation.',
+    `payer_id` BIGINT COMMENT 'FK to the payer.',
+    `clinician_id` BIGINT COMMENT 'FK to the primary clinician for this visit.',
+    `provider_payer_enrollment_id` BIGINT COMMENT 'FK to provider payer enrollment.',
+    `referral_order_id` BIGINT COMMENT 'FK to the referral order.',
+    `stark_arrangement_id` BIGINT COMMENT 'FK to Stark Law arrangement.',
+    `employee_id` BIGINT COMMENT 'FK to the supervising nurse employee.',
+    `tertiary_visit_supervising_provider_clinician_id` BIGINT COMMENT 'FK to the tertiary supervising provider.',
+    `visit_id` BIGINT COMMENT 'FK to the parent visit.',
+    `admission_source_role` STRING COMMENT 'Role of the provider at admission.. Valid values are `admitting|referring|transferring|none`',
+    `assignment_end_timestamp` TIMESTAMP COMMENT 'Timestamp when provider assignment ended.',
+    `assignment_start_timestamp` TIMESTAMP COMMENT 'Timestamp when provider assignment started.',
+    `assignment_status` STRING COMMENT 'Current status of the provider assignment.. Valid values are `active|inactive|pending|cancelled|transferred`',
+    `assignment_type` STRING COMMENT 'Type of provider assignment.. Valid values are `scheduled|unscheduled|emergency|coverage|consult_request`',
+    `billing_provider_npi` STRING COMMENT 'NPI of the billing provider.. Valid values are `^[0-9]{10}$`',
+    `care_setting` STRING COMMENT 'Care setting for this provider assignment.',
+    `care_team_sequence` STRING COMMENT 'Sequence number within the care team.',
+    `comments` STRING COMMENT 'Free-text comments about the assignment.',
+    `cosignature_required` BOOLEAN COMMENT 'Flag indicating co-signature is required.',
+    `created_timestamp` TIMESTAMP COMMENT 'Record creation timestamp.',
+    `credentialing_verified_flag` BOOLEAN COMMENT 'Flag indicating credentialing was verified.',
+    `drg_attribution_flag` BOOLEAN COMMENT 'Flag indicating provider is attributed for DRG.',
+    `effective_date` DATE COMMENT 'Effective date of the provider assignment.',
+    `handoff_reference` STRING COMMENT 'Reference to handoff documentation.',
+    `is_attending_of_record` BOOLEAN COMMENT 'Flag indicating provider is the attending of record.',
+    `is_primary_provider` BOOLEAN COMMENT 'Flag indicating this is the primary provider.',
+    `locum_tenens_flag` BOOLEAN COMMENT 'Flag indicating locum tenens provider.',
+    `mips_eligible_flag` BOOLEAN COMMENT 'Flag indicating provider is MIPS eligible.',
+    `note_count` STRING COMMENT 'Number of notes authored by this provider for this visit.',
+    `npi` STRING COMMENT 'National Provider Identifier.. Valid values are `^[0-9]{10}$`',
+    `on_call_flag` BOOLEAN COMMENT 'Flag indicating provider was on call.',
+    `order_count` STRING COMMENT 'Number of orders placed by this provider for this visit.',
+    `participation_duration_minutes` STRING COMMENT 'Duration of provider participation in minutes.',
+    `place_of_service_code` STRING COMMENT 'CMS place of service code.. Valid values are `^[0-9]{2}$`',
+    `privilege_type` STRING COMMENT 'Type of clinical privilege exercised.. Valid values are `full|provisional|temporary|locum_tenens|telemedicine`',
+    `provider_role` STRING COMMENT 'Role of the provider (attending, resident, consultant).',
+    `provider_type` STRING COMMENT 'Type of provider (physician, NP, PA).',
+    `rendering_provider_npi` STRING COMMENT 'NPI of the rendering provider.. Valid values are `^[0-9]{10}$`',
+    `rvu_credit_flag` BOOLEAN COMMENT 'Flag indicating RVU credit is assigned.',
+    `rvu_work_units` DECIMAL(18,2) COMMENT 'Work RVU units credited to this provider.',
+    `source_system_record_code` STRING COMMENT 'The source system record code value classifying the encounter visit provider record.',
+    `specialty_at_assignment` STRING COMMENT 'Provider specialty at time of assignment.',
+    `visit_provider_status` STRING COMMENT 'The visit provider status value classifying the encounter visit provider record.',
+    `telehealth_flag` BOOLEAN COMMENT 'Flag indicating telehealth visit.',
+    `updated_timestamp` TIMESTAMP COMMENT 'Record last updated timestamp.',
+    `vibe_mutation_marker` STRING COMMENT 'The vibe mutation marker of the encounter visit provider record.',
+    `vibe_structure_marker` STRING COMMENT 'The vibe structure marker of the encounter visit provider record.',
     CONSTRAINT pk_visit_provider PRIMARY KEY(`visit_provider_id`)
-) COMMENT 'Association entity linking providers to a visit with their specific role and time-bounded participation. Captures provider NPI, provider role (attending, consulting, admitting, covering, resident, hospitalist, surgeon, anesthesiologist, PCP), assignment start and end timestamps, primary responsibility flag, and handoff documentation reference. Enables multi-provider care team tracking, RVU attribution, and provider performance analytics per encounter. Sourced from Epic ClinDoc provider assignment and Cerner PowerChart care team.';
+) COMMENT 'Association between a visit and the providers involved in care delivery.';
 
 CREATE OR REPLACE TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` (
-    `drg_assignment_id` BIGINT COMMENT 'Primary key for drg_assignment',
-    `care_site_id` BIGINT COMMENT 'Reference to the hospital or care facility where the encounter occurred. Supports facility-level CMI benchmarking, regulatory reporting, and payer contract management.',
-    `clinician_id` BIGINT COMMENT 'Reference to the attending physician responsible for the encounter at the time of DRG assignment. Used for physician-level CMI reporting and CDI query targeting.',
-    `drg_id` BIGINT COMMENT 'Foreign key linking to reference.drg. Business justification: Core DRG grouping workflow—every DRG assignment must reference the official DRG definition for payment calculation, case mix index reporting, expected LOS comparison, and reimbursement validation. Ess',
-    `employee_id` BIGINT COMMENT 'Reference to the HIM (Health Information Management) coder who finalized the DRG assignment. Supports coding productivity reporting, quality audits, and compliance tracking.',
-    `mpi_record_id` BIGINT COMMENT 'Reference to the patient associated with this DRG assignment, supporting CMI analysis and population health reporting.',
-    `payer_id` BIGINT COMMENT 'Reference to the primary payer (insurance plan) for this encounter. Determines which DRG version and payment methodology applies (e.g., MS-DRG for Medicare, APR-DRG for Medicaid managed care).',
-    `visit_id` BIGINT COMMENT 'Reference to the inpatient or observation encounter for which this DRG assignment was generated. Links the DRG record to the core encounter event.',
-    `actual_los` DECIMAL(18,2) COMMENT 'The actual number of days the patient was hospitalized for this encounter, calculated from admission to discharge. Compared against geometric and arithmetic mean LOS for efficiency and outlier analysis.',
-    `admit_source_code` STRING COMMENT 'The UB-04 admission source code indicating how the patient was admitted (e.g., 1=Physician Referral, 4=Transfer from Hospital, 7=Emergency Room). Influences DRG grouping logic for certain MDCs.. Valid values are `^[0-9]{1,2}$`',
-    `appeal_status` STRING COMMENT 'Current status of any payer or RAC appeal related to this DRG assignment. Tracks the outcome of reimbursement disputes through the appeals process.. Valid values are `not_appealed|pending|upheld|overturned|withdrawn`',
-    `arithmetic_mean_los` DECIMAL(18,2) COMMENT 'The arithmetic mean length of stay in days for the assigned DRG, published by CMS. Used alongside geometric mean LOS for outlier threshold determination and payer contract benchmarking.',
-    `assignment_status` STRING COMMENT 'Current workflow status of the DRG assignment record: preliminary (initial grouping), final (coding complete and validated), amended (revised after CDI query or audit), or voided (invalidated). Drives revenue cycle workflow routing.. Valid values are `preliminary|final|amended|voided`',
-    `assignment_type` STRING COMMENT 'Classifies the nature of the DRG assignment: initial (first grouping at admission), working (interim CDI grouping), final (post-discharge coding), appeal (payer dispute), or rac_review (Recovery Audit Contractor review). [ENUM-REF-CANDIDATE: initial|working|final|appeal|rac_review — promote to reference product]. Valid values are `initial|working|final|appeal|rac_review`',
-    `base_payment_rate` DECIMAL(18,2) COMMENT 'The hospital-specific or payer-contracted base payment rate (in USD) applied to the DRG weight to calculate expected reimbursement. Reflects IPPS standardized amount or negotiated payer contract rate.',
-    `cc_mcc_flag` BOOLEAN COMMENT 'Indicates whether the encounter qualifies for a Complication and Comorbidity (CC) or Major Complication and Comorbidity (MCC) designation, which elevates the DRG tier and associated reimbursement weight. Critical CDI target for revenue optimization.',
-    `cdi_query_count` STRING COMMENT 'The number of CDI queries issued to the attending physician for this encounter to clarify or improve clinical documentation supporting the DRG assignment. Key CDI productivity and impact metric.',
-    `cdi_query_response_flag` BOOLEAN COMMENT 'Indicates whether at least one CDI query for this encounter received a physician response that resulted in a documentation change affecting the DRG assignment. Measures CDI program effectiveness.',
-    `created_timestamp` TIMESTAMP COMMENT 'The date and time when this DRG assignment record was first created in the system. Supports audit trail requirements and data lineage tracking.',
-    `discharge_status_code` STRING COMMENT 'The UB-04 patient discharge status code (01–99) indicating the disposition of the patient at discharge (e.g., 01=Home, 02=SNF, 20=Expired). Affects DRG payment under post-acute care transfer rules.. Valid values are `^[0-9]{2}$`',
-    `drg_changed_flag` BOOLEAN COMMENT 'Indicates whether the DRG code was changed from the initial working DRG to the final assigned DRG, typically as a result of CDI query responses or coding review. Tracks CDI program impact on reimbursement.',
-    `drg_description` STRING COMMENT 'Full text description of the assigned DRG code (e.g., SIMPLE PNEUMONIA AND PLEURISY W MCC). Used in clinical documentation improvement workflows and reimbursement reporting.',
-    `drg_version` STRING COMMENT 'The DRG classification system version used for grouping: MS-DRG (Medicare Severity), APR-DRG (All Patient Refined), or IR-DRG (International Refined). Determines the applicable reimbursement methodology and payer contract.. Valid values are `MS-DRG|APR-DRG|IR-DRG`',
-    `drg_version_number` STRING COMMENT 'The specific fiscal year or release version of the DRG grouper applied (e.g., v41 for MS-DRG Version 41). Required for audit trails and reimbursement reconciliation across fiscal year transitions.. Valid values are `^v?[0-9]{1,2}(.[0-9]{1,2})?$`',
-    `drg_weight` DECIMAL(18,2) COMMENT 'The relative weight assigned to the DRG, reflecting the average resource intensity of cases in that group relative to the average Medicare case. Used to calculate CMI and expected reimbursement from the base payment rate.',
-    `expected_reimbursement` DECIMAL(18,2) COMMENT 'The calculated expected reimbursement amount (in USD) derived from DRG weight multiplied by the base payment rate, before outlier adjustments. Used for revenue forecasting and variance analysis against actual payments.',
-    `finalized_timestamp` TIMESTAMP COMMENT 'The date and time when the DRG assignment was finalized by the coding team, triggering claim submission eligibility. Key milestone in the revenue cycle management workflow.',
-    `geometric_mean_los` DECIMAL(18,2) COMMENT 'The geometric mean length of stay in days for the assigned DRG, published by CMS. Used as a benchmark for LOS efficiency analysis and outlier payment threshold calculations.',
-    `grouper_software` STRING COMMENT 'Name of the DRG grouper software used to assign the DRG (e.g., 3M Grouper Plus, OptumInsight Encoder). Required for audit trails and reimbursement dispute resolution.',
-    `grouper_software_version` STRING COMMENT 'The specific release version of the grouper software applied (e.g., 3M Grouper Plus v32.1). Critical for audit compliance and reimbursement reconciliation when grouper logic changes between versions.',
-    `grouping_date` DATE COMMENT 'The calendar date on which the DRG grouper software was executed and the DRG code was assigned. Used for tracking CDI workflow timelines and coding productivity.',
-    `initial_drg_code` STRING COMMENT 'The DRG code assigned at the initial working grouping (typically at admission or during the stay), before final coding and CDI review. Compared against the final DRG to measure CDI program impact and reimbursement uplift.. Valid values are `^[0-9]{3}$`',
-    `initial_drg_weight` DECIMAL(18,2) COMMENT 'The DRG relative weight associated with the initial working DRG code. Used to calculate the reimbursement uplift achieved through CDI and coding optimization.',
-    `is_outlier` BOOLEAN COMMENT 'Indicates whether this encounter qualifies as a cost outlier under CMS IPPS policy, triggering additional outlier payment beyond the standard DRG payment. True when actual costs exceed the fixed-loss threshold.',
-    `mdc_code` STRING COMMENT 'The Major Diagnostic Category code (01–25 plus PRE for pre-MDC) that serves as the primary clinical grouping tier above the DRG. Derived from the principal diagnosis and used for service-line analytics and CMI benchmarking.. Valid values are `^(P[RR]E|[0-9]{1,2})$`',
-    `mdc_description` STRING COMMENT 'Full text description of the MDC (e.g., Diseases and Disorders of the Respiratory System). Supports service-line reporting and clinical program analytics.',
-    `outlier_payment` DECIMAL(18,2) COMMENT 'Additional payment amount (in USD) approved for high-cost outlier cases where actual costs exceed the fixed-loss outlier threshold. Applicable under CMS IPPS cost outlier policy.',
-    `patient_type` STRING COMMENT 'Classifies the encounter type for DRG assignment purposes: inpatient (full admission), observation (outpatient observation status), or short_stay. Determines DRG applicability and reimbursement methodology.. Valid values are `inpatient|observation|short_stay`',
-    `principal_diagnosis_code` STRING COMMENT 'The ICD-10-CM code for the principal diagnosis — the condition established after study to be chiefly responsible for the admission. Drives DRG grouping logic and is a key CDI target for reimbursement optimization.. Valid values are `^[A-Z][0-9A-Z]{2,6}(.[0-9A-Z]{1,4})?$`',
-    `principal_diagnosis_description` STRING COMMENT 'Full text description of the principal ICD-10-CM diagnosis code. Supports CDI workflow review, clinical documentation audits, and payer communication.',
-    `principal_procedure_code` STRING COMMENT 'The ICD-10-PCS code for the principal procedure performed during the encounter. Surgical procedures are the primary driver of DRG partition assignment (surgical vs. medical) and reimbursement weight.. Valid values are `^[0-9A-Z]{7}$`',
-    `procedure_count` STRING COMMENT 'The total number of ICD-10-PCS procedure codes submitted on the claim. Surgical procedures drive DRG assignment into surgical partitions, significantly affecting reimbursement weight.',
-    `rac_review_flag` BOOLEAN COMMENT 'Indicates whether this DRG assignment has been selected for review by a Recovery Audit Contractor (RAC) under the CMS RAC program. Triggers additional documentation retention and appeal workflow.',
-    `secondary_diagnosis_count` STRING COMMENT 'The total number of secondary (additional) ICD-10-CM diagnosis codes submitted on the claim. Influences CC/MCC determination and DRG tier assignment; a key CDI metric for documentation completeness.',
-    `transfer_case_flag` BOOLEAN COMMENT 'Indicates whether this encounter is a transfer case subject to the post-acute care transfer (PACT) policy, which may reduce DRG payment when the patient is transferred to a post-acute care setting before the geometric mean LOS.',
-    `updated_timestamp` TIMESTAMP COMMENT 'The date and time when this DRG assignment record was last modified. Tracks amendments from CDI queries, coding audits, or payer appeals.',
+    `drg_assignment_id` BIGINT COMMENT 'Surrogate primary key for the DRG assignment.',
+    `care_site_id` BIGINT COMMENT 'FK to the care site.',
+    `clinician_id` BIGINT COMMENT 'FK to the responsible clinician.',
+    `drg_id` BIGINT COMMENT 'FK to the DRG reference record.',
+    `employee_id` BIGINT COMMENT 'FK to the coder/employee who performed the assignment.',
+    `mpi_record_id` BIGINT COMMENT 'FK to the patient MPI record.',
+    `payer_id` BIGINT COMMENT 'FK to the payer.',
+    `visit_id` BIGINT COMMENT 'FK to the parent visit.',
+    `actual_los` DECIMAL(18,2) COMMENT 'Actual length of stay in days.',
+    `admit_source_code` STRING COMMENT 'Admission source code.. Valid values are `^[0-9]{1,2}$`',
+    `appeal_status` STRING COMMENT 'Status of any DRG appeal.. Valid values are `not_appealed|pending|upheld|overturned|withdrawn`',
+    `arithmetic_mean_los` DECIMAL(18,2) COMMENT 'Arithmetic mean length of stay for this DRG.',
+    `assignment_status` STRING COMMENT 'Status of the DRG assignment.. Valid values are `preliminary|final|amended|voided`',
+    `assignment_type` STRING COMMENT 'Type of DRG assignment (initial, final, appeal).. Valid values are `initial|working|final|appeal|rac_review`',
+    `base_payment_rate` DECIMAL(18,2) COMMENT 'Base payment rate for this DRG.',
+    `cc_mcc_flag` BOOLEAN COMMENT 'Flag indicating presence of CC or MCC.',
+    `cdi_query_count` STRING COMMENT 'Number of CDI queries associated with this assignment.',
+    `cdi_query_response_flag` BOOLEAN COMMENT 'Flag indicating CDI query was responded to.',
+    `created_timestamp` TIMESTAMP COMMENT 'Record creation timestamp.',
+    `discharge_status_code` STRING COMMENT 'The discharge status code value classifying the encounter drg assignment record.. Valid values are `^[0-9]{2}$`',
+    `drg_changed_flag` BOOLEAN COMMENT 'Flag indicating DRG was changed from initial assignment.',
+    `drg_description` STRING COMMENT 'Description of the assigned DRG.',
+    `drg_version` STRING COMMENT 'DRG version (e.g., MS-DRG v40).. Valid values are `MS-DRG|APR-DRG|IR-DRG`',
+    `drg_version_number` STRING COMMENT 'The drg version number of the encounter drg assignment record.. Valid values are `^v?[0-9]{1,2}(.[0-9]{1,2})?$`',
+    `drg_weight` DECIMAL(18,2) COMMENT 'DRG relative weight.',
+    `expected_reimbursement` DECIMAL(18,2) COMMENT 'Expected reimbursement amount.',
+    `finalized_timestamp` TIMESTAMP COMMENT 'Timestamp when DRG assignment was finalized.',
+    `geometric_mean_los` DECIMAL(18,2) COMMENT 'Geometric mean length of stay for this DRG.',
+    `grouper_software` STRING COMMENT 'DRG grouper software used.',
+    `grouper_software_version` STRING COMMENT 'Version of the DRG grouper software.',
+    `grouping_date` DATE COMMENT 'Date when DRG grouping was performed.',
+    `initial_drg_code` STRING COMMENT 'Initial DRG code before any changes.. Valid values are `^[0-9]{3}$`',
+    `initial_drg_weight` DECIMAL(18,2) COMMENT 'Initial DRG weight before any changes.',
+    `is_outlier` BOOLEAN COMMENT 'Flag indicating this is a cost or day outlier case.',
+    `mdc_code` STRING COMMENT 'Major Diagnostic Category code.. Valid values are `^(P[RR]E|[0-9]{1,2})$`',
+    `mdc_description` STRING COMMENT 'Major Diagnostic Category description.',
+    `outlier_payment` DECIMAL(18,2) COMMENT 'Outlier payment amount.',
+    `patient_type` STRING COMMENT 'Patient type (medical, surgical).. Valid values are `inpatient|observation|short_stay`',
+    `principal_diagnosis_code` STRING COMMENT 'Principal diagnosis ICD-10 code.. Valid values are `^[A-Z][0-9A-Z]{2,6}(.[0-9A-Z]{1,4})?$`',
+    `principal_diagnosis_description` STRING COMMENT 'The principal diagnosis description of the encounter drg assignment record.',
+    `principal_procedure_code` STRING COMMENT 'The principal procedure code value classifying the encounter drg assignment record.. Valid values are `^[0-9A-Z]{7}$`',
+    `procedure_count` STRING COMMENT 'Total number of procedures.',
+    `rac_review_flag` BOOLEAN COMMENT 'Flag indicating RAC review was performed.',
+    `secondary_diagnosis_count` STRING COMMENT 'Number of secondary diagnoses.',
+    `drg_assignment_status` STRING COMMENT 'The drg assignment status value classifying the encounter drg assignment record.',
+    `transfer_case_flag` BOOLEAN COMMENT 'Flag indicating this is a transfer case.',
+    `updated_timestamp` TIMESTAMP COMMENT 'Record last updated timestamp.',
+    `vibe_mutation_marker` STRING COMMENT 'The vibe mutation marker of the encounter drg assignment record.',
+    `vibe_structure_marker` STRING COMMENT 'The vibe structure marker of the encounter drg assignment record.',
     CONSTRAINT pk_drg_assignment PRIMARY KEY(`drg_assignment_id`)
-) COMMENT 'DRG (Diagnosis-Related Group) assignment record for inpatient and observation encounters, capturing the assigned DRG code, DRG version (MS-DRG, APR-DRG, IR-DRG), DRG weight, geometric mean LOS, arithmetic mean LOS, MDC (Major Diagnostic Category), CC/MCC (Complication and Comorbidity) flags, principal diagnosis ICD-10 code, and grouper software version. Supports CMI (Case Mix Index) calculation, reimbursement optimization, and CDI (Clinical Documentation Improvement) workflows. Sourced from 3M Health Information Systems grouper and Epic Resolute HB.';
+) COMMENT 'DRG assignment record capturing grouper results, weights, and reimbursement data for inpatient visits.';
 
 CREATE OR REPLACE TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` (
-    `visit_diagnosis_id` BIGINT COMMENT 'Unique surrogate identifier for each visit diagnosis record in the Silver layer lakehouse. Primary key for this encounter-level diagnosis entity. Role: TRANSACTION_LINE — this record is a line-level diagnosis attached to a parent encounter/visit header.',
-    `audit_finding_id` BIGINT COMMENT 'Foreign key linking to compliance.audit_finding. Business justification: Audit findings frequently cite specific diagnosis coding errors (upcoding, specificity, POA indicator errors). Direct linkage enables traceability from finding to the exact diagnosis record under revi',
-    `clinician_id` BIGINT COMMENT 'Reference to the attending physician responsible for the patients care during this encounter, as associated with this diagnosis. Used for provider-level quality reporting, MIPS attribution, and UB-04 claim form population. Aligns with PARTY_REFERENCE canonical category.',
-    `cost_center_id` BIGINT COMMENT 'Foreign key linking to finance.cost_center. Business justification: Diagnosis coding drives reimbursement and HCC risk adjustment. Linking to cost centers enables service-line profitability analysis, clinical program financial performance, and diagnosis-related cost b',
-    `icd_code_id` BIGINT COMMENT 'Foreign key linking to reference.icd_code. Business justification: Core clinical coding workflow—every diagnosis on a visit must reference the official ICD-10 code set for billing compliance, quality reporting, HCC risk adjustment, and clinical documentation integrit',
-    `mpi_record_id` BIGINT COMMENT 'Reference to the patient associated with this visit diagnosis. Supports patient-level longitudinal diagnosis history, population health analytics, and risk adjustment. Classified as restricted PHI per HIPAA.',
-    `note_id` BIGINT COMMENT 'Reference to the clinical note or documentation that supports this diagnosis. Links the coded diagnosis back to the source clinical documentation for CDI, audit, and RAC defense purposes. Sourced from Epic ClinDoc.',
-    `snomed_concept_id` BIGINT COMMENT 'Foreign key linking to reference.snomed_concept. Business justification: Clinical terminology mapping—SNOMED codes on diagnoses must reference the official SNOMED CT concept for interoperability, clinical decision support, quality measure reporting, and data exchange with ',
-    `visit_id` BIGINT COMMENT 'Foreign key reference to the parent encounter/visit record. Establishes the HEADER_REFERENCE relationship linking this diagnosis line to its owning visit. Central to DRG grouping, quality reporting, and revenue cycle processing.',
-    `bill_indicator` BOOLEAN COMMENT 'Indicates whether this diagnosis code is included on the claim submitted to the payer. True = included on the claim. Some diagnoses may be documented clinically but excluded from billing (e.g., working diagnoses, non-billable codes). Drives UB-04 and CMS-1500 claim form population.',
-    `cc_mcc_indicator` STRING COMMENT 'Classifies this diagnosis as a Complication/Comorbidity (CC), Major Complication/Comorbidity (MCC), Hospital-Acquired Condition (HAC), or none. Directly impacts MS-DRG assignment and inpatient reimbursement under IPPS. Sourced from 3M HIS grouper output and CMS CC/MCC exclusion lists.. Valid values are `CC|MCC|HAC|none`',
-    `chronic_condition_flag` BOOLEAN COMMENT 'Indicates whether this diagnosis represents a chronic condition as defined by CMS Chronic Condition Warehouse (CCW) or clinical classification standards. True = chronic condition. Supports population health management, care management program enrollment, HEDIS chronic disease measure attribution, and SDOH analysis.',
-    `coded_date` DATE COMMENT 'The date on which the ICD-10-CM code was assigned to this diagnosis by the HIM coding team. Used for coding productivity tracking, CDI program metrics, and revenue cycle timeliness reporting. Sourced from 3M HIS and Epic Resolute coding workflows.',
-    `coding_provider_npi` STRING COMMENT 'The 10-digit National Provider Identifier (NPI) of the clinician or coder who assigned or attested this diagnosis code. Used for audit trails, CDI accountability, RAC audit defense, and provider-level coding quality reporting. Sourced from 3M HIS and Epic ClinDoc coding workflows.. Valid values are `^[0-9]{10}$`',
-    `coding_status` STRING COMMENT 'Current workflow status of this diagnosis record within the HIM/CDI coding lifecycle. pending indicates awaiting coder review; coded indicates initial code assignment; validated indicates coder-confirmed; queried indicates a CDI query has been issued; amended indicates a post-bill correction; final indicates billing-ready. Drives revenue cycle workflow and CDI query management in 3M HIS and Epic Resolute.. Valid values are `pending|coded|validated|queried|amended|final`',
-    `created_timestamp` TIMESTAMP COMMENT 'The timestamp when this visit diagnosis record was first created in the source system or ingested into the Silver layer. Supports audit trail, data lineage, and RECORD_AUDIT_CREATED canonical category requirement.',
-    `diagnosis_rank` STRING COMMENT 'Clinical ranking of this diagnosis by severity or clinical significance within the encounter, as assigned by the coding team or clinical documentation system. Distinct from diagnosis_seq_num (billing sequence); this rank reflects clinical priority for care management and quality reporting purposes.',
-    `diagnosis_seq_num` STRING COMMENT 'Ordinal position of this diagnosis within the encounters diagnosis list. Sequence 1 typically denotes the principal diagnosis. Used for claim form ordering (UB-04 diagnosis fields), DRG grouping logic, and quality measure attribution. Aligns with LINE_SEQUENCE canonical category.',
-    `diagnosis_source` STRING COMMENT 'Identifies who or what originated this diagnosis record. physician = entered by the treating clinician; coder = assigned by HIM coding staff; cdi_specialist = added via CDI query resolution; system = auto-populated by clinical decision support; imported = received via HIE or external system. Supports audit trail and coding accountability.. Valid values are `physician|coder|cdi_specialist|system|imported`',
-    `diagnosis_type` STRING COMMENT 'Classification of the diagnosis role within the encounter. admitting is the reason for admission; principal is the condition chiefly responsible for the stay after study; secondary are comorbidities and complications; discharge is the final coded diagnosis at discharge; working is a provisional diagnosis during the encounter; final is the confirmed diagnosis post-workup. Drives DRG assignment and UB-04/CMS-1500 claim form population.. Valid values are `admitting|principal|secondary|discharge|working|final`',
-    `drg_code` STRING COMMENT 'The MS-DRG or APR-DRG code assigned to the encounter as influenced by this diagnosis. Populated after DRG grouping by 3M HIS or CMS grouper. Central to inpatient reimbursement under IPPS and case mix index (CMI) calculation.. Valid values are `^[0-9]{3}$`',
-    `drg_relevance_flag` BOOLEAN COMMENT 'Indicates whether this diagnosis code contributes to the DRG assignment for this encounter. True = this diagnosis is a complication/comorbidity (CC) or major complication/comorbidity (MCC) that affects DRG grouping and reimbursement. Critical for revenue cycle optimization and CDI program targeting.',
-    `drg_type` STRING COMMENT 'Specifies the DRG classification system used: MS-DRG (Medicare Severity DRG, CMS), APR-DRG (All Patient Refined DRG, 3M), or IR-DRG (International Refined DRG). Determines the reimbursement methodology and payer applicability.. Valid values are `MS-DRG|APR-DRG|IR-DRG`',
-    `encounter_diagnosis_comment` STRING COMMENT 'Free-text clinical comment or qualifier associated with this diagnosis record, as entered by the coding team or clinician. May include specificity notes, CDI query resolution rationale, or coding clarifications. Classified as restricted PHI per HIPAA.',
-    `encounter_diagnosis_source_code` STRING COMMENT 'The native identifier for this diagnosis record in the source operational system (e.g., Epic ClinDoc diagnosis ID or Cerner PowerChart diagnosis ID). Supports ETL lineage, data reconciliation, and source system audit trails in the Silver layer.',
-    `external_cause_code` STRING COMMENT 'ICD-10-CM external cause code (V, W, X, Y codes) documenting the cause, place of occurrence, activity, and status for injury and poisoning diagnoses. Required for trauma registries, injury surveillance, workers compensation claims, and public health reporting.. Valid values are `^[VWX][0-9A-Z]{2,6}(.[0-9A-Z]{1,4})?$|^Y[0-9A-Z]{2,6}(.[0-9A-Z]{1,4})?$`',
-    `hai_flag` BOOLEAN COMMENT 'Indicates whether this diagnosis represents a healthcare-associated infection (HAI) such as CLABSI, CAUTI, or SSI. True = HAI diagnosis. Triggers HAI surveillance workflows, CMS HAC Reduction Program payment adjustments, and TJC infection control reporting.',
-    `hcc_category_code` STRING COMMENT 'The specific CMS HCC category code to which this ICD-10-CM diagnosis maps. Populated only when hcc_flag is True. Used for risk score calculation in Medicare Advantage, ACO, and MIPS/APM programs. Sourced from CMS HCC mapping crosswalk tables.',
-    `hcc_flag` BOOLEAN COMMENT 'Indicates whether this ICD-10-CM diagnosis code maps to a CMS Hierarchical Condition Category (HCC) used for risk adjustment in Medicare Advantage and ACO programs. True = this diagnosis contributes to the patients HCC risk score. Critical for population health management, value-based care contracting, and capitation payment accuracy.',
-    `icd10_code` STRING COMMENT 'The ICD-10-CM diagnosis code assigned to this visit. Drives DRG grouping, quality measure attribution, risk adjustment (HCC mapping), and medical billing. Sourced from Epic ClinDoc and validated through 3M HIS coding workflows. Conforms to WHO ICD-10-CM code format.. Valid values are `^[A-Z][0-9A-Z]{1,6}(.[0-9A-Z]{1,4})?$`',
-    `icd10_description` STRING COMMENT 'Full clinical description of the ICD-10-CM diagnosis code as defined by the WHO/CMS code set. Provides human-readable context for the coded diagnosis. Used in clinical documentation, reporting, and CDI workflows.',
-    `icd10_version` STRING COMMENT 'The fiscal year version of the ICD-10-CM code set used to assign this diagnosis code (e.g., FY2024). ICD-10-CM is updated annually by CMS/CDC. Ensures accurate code interpretation across fiscal year transitions and supports historical data analysis.. Valid values are `^FY[0-9]{4}$`',
-    `mental_health_flag` BOOLEAN COMMENT 'Indicates whether this diagnosis is classified as a mental health or behavioral health condition per ICD-10-CM Chapter 5 (F-codes). True = mental/behavioral health diagnosis. Supports behavioral health program management, parity compliance reporting, and population health segmentation.',
-    `onset_date` DATE COMMENT 'The date on which the diagnosed condition first manifested or was first identified, as documented in the clinical record. Supports longitudinal disease tracking, chronic condition management, POA determination, and population health analytics. Aligns with BUSINESS_EVENT_TIMESTAMP canonical category.',
-    `poa_indicator` STRING COMMENT 'Indicates whether the diagnosis condition was present at the time of inpatient admission. Values: Y=Yes (present on admission), N=No (not present on admission), U=Unknown, W=Clinically undetermined, 1=Exempt from POA reporting. Required by CMS for inpatient claims on UB-04. Impacts HAI reporting, VBP penalties, and hospital-acquired condition (HAC) payment adjustments.. Valid values are `Y|N|U|W|1`',
-    `primary_diagnosis_flag` BOOLEAN COMMENT 'Indicates whether this diagnosis is designated as the primary/principal diagnosis for the encounter. True = primary diagnosis. Provides a quick boolean filter for analytics and reporting without requiring sequence number logic. Complements diagnosis_seq_num and diagnosis_type.',
-    `quality_measure_flag` BOOLEAN COMMENT 'Indicates whether this diagnosis contributes to one or more quality measure denominators or numerators (e.g., HEDIS, MIPS, VBP, TJC core measures). True = this diagnosis is relevant to at least one active quality measure. Supports quality reporting, MIPS scoring, and VBP program management.',
-    `reportable_condition_flag` BOOLEAN COMMENT 'Indicates whether this diagnosis is a notifiable/reportable condition requiring mandatory reporting to public health authorities (e.g., state health departments, CDC). True = reportable. Supports public health surveillance, regulatory compliance, and HIE reporting obligations.',
-    `resolved_date` DATE COMMENT 'The date on which the diagnosed condition was resolved, abated, or no longer active, as documented in the clinical record. Null if the condition is ongoing. Used for chronic disease management, care plan updates, and longitudinal patient health tracking.',
-    `sdoh_flag` BOOLEAN COMMENT 'Indicates whether this diagnosis code represents a Social Determinants of Health (SDOH) factor (e.g., Z-codes for housing instability, food insecurity, transportation barriers). True = SDOH-related diagnosis. Supports population health management, care coordination, and CMS SDOH reporting initiatives.',
-    `snomed_code` STRING COMMENT 'The SNOMED CT concept identifier mapped to this ICD-10-CM diagnosis code. Supports clinical interoperability, HL7 FHIR-based HIE data exchange, and clinical decision support. Populated via ICD-10 to SNOMED CT crosswalk. Used in FHIR Condition resources for interoperability.. Valid values are `^[0-9]{6,18}$`',
-    `substance_use_flag` BOOLEAN COMMENT 'Indicates whether this diagnosis represents a substance use disorder (SUD) per ICD-10-CM codes. True = substance use disorder diagnosis. Supports SUD program management, 42 CFR Part 2 confidentiality compliance, and population health analytics.',
-    `updated_timestamp` TIMESTAMP COMMENT 'The timestamp when this visit diagnosis record was last modified in the source system or Silver layer. Supports change data capture, audit trail, and RECORD_AUDIT_UPDATED canonical category requirement.',
+    `visit_diagnosis_id` BIGINT COMMENT 'Surrogate primary key for the visit diagnosis.',
+    `clinician_id` BIGINT COMMENT 'FK to the diagnosing clinician.',
+    `icd_code_id` BIGINT COMMENT 'FK to the ICD code reference.',
+    `material_master_id` BIGINT COMMENT 'FK to material master.',
+    `mpi_record_id` BIGINT COMMENT 'FK to the patient MPI record.',
+    `note_id` BIGINT COMMENT 'FK to the clinical note.',
+    `research_study_id` BIGINT COMMENT 'FK to associated research study.',
+    `snomed_concept_id` BIGINT COMMENT 'FK to SNOMED concept.',
+    `visit_id` BIGINT COMMENT 'FK to the parent visit.',
+    `bill_indicator` BOOLEAN COMMENT 'Flag indicating diagnosis should be billed.',
+    `cc_mcc_indicator` STRING COMMENT 'CC/MCC indicator (CC, MCC, or blank).. Valid values are `CC|MCC|HAC|none`',
+    `chronic_condition_flag` BOOLEAN COMMENT 'Flag indicating chronic condition.',
+    `coded_date` DATE COMMENT 'Date when diagnosis was coded.',
+    `coding_provider_npi` STRING COMMENT 'NPI of the coding provider.. Valid values are `^[0-9]{10}$`',
+    `coding_status` STRING COMMENT 'Status of the coding (pending, complete, queried).. Valid values are `pending|coded|validated|queried|amended|final`',
+    `created_timestamp` TIMESTAMP COMMENT 'Record creation timestamp.',
+    `diagnosis_rank` STRING COMMENT 'Rank/sequence of the diagnosis.',
+    `diagnosis_seq_num` STRING COMMENT 'Sequence number of the diagnosis.',
+    `diagnosis_source` STRING COMMENT 'Source of the diagnosis (physician, coder, etc.).. Valid values are `physician|coder|cdi_specialist|system|imported`',
+    `diagnosis_type` STRING COMMENT 'Type of diagnosis (admitting, principal, secondary).. Valid values are `admitting|principal|secondary|discharge|working|final`',
+    `drg_code` STRING COMMENT 'DRG code associated with this diagnosis.. Valid values are `^[0-9]{3}$`',
+    `drg_relevance_flag` BOOLEAN COMMENT 'Flag indicating relevance to DRG assignment.',
+    `drg_type` STRING COMMENT 'The drg type value classifying the encounter visit diagnosis record.. Valid values are `MS-DRG|APR-DRG|IR-DRG`',
+    `encounter_diagnosis_comment` STRING COMMENT 'Free-text comment about the diagnosis.',
+    `encounter_diagnosis_source_code` STRING COMMENT 'Source system code for the diagnosis.',
+    `external_cause_code` STRING COMMENT 'External cause ICD-10 code (E-code).. Valid values are `^[VWX][0-9A-Z]{2,6}(.[0-9A-Z]{1,4})?$|^Y[0-9A-Z]{2,6}(.[0-9A-Z]{1,4})?$`',
+    `hai_flag` BOOLEAN COMMENT 'Flag indicating healthcare-associated infection.',
+    `hcc_category_code` STRING COMMENT 'HCC category code for risk adjustment.',
+    `hcc_flag` BOOLEAN COMMENT 'Flag indicating HCC-relevant diagnosis.',
+    `icd10_code` STRING COMMENT 'ICD-10 diagnosis code.. Valid values are `^[A-Z][0-9A-Z]{1,6}(.[0-9A-Z]{1,4})?$`',
+    `icd10_description` STRING COMMENT 'ICD-10 diagnosis description.',
+    `icd10_version` STRING COMMENT 'ICD-10 version year.. Valid values are `^FY[0-9]{4}$`',
+    `mental_health_flag` BOOLEAN COMMENT 'Flag indicating mental health diagnosis.',
+    `onset_date` DATE COMMENT 'Date of diagnosis onset.',
+    `poa_indicator` STRING COMMENT 'Present on admission indicator (Y, N, U, W, 1).. Valid values are `Y|N|U|W|1`',
+    `primary_diagnosis_flag` BOOLEAN COMMENT 'Flag indicating this is the primary diagnosis.',
+    `quality_measure_flag` BOOLEAN COMMENT 'Flag indicating relevance to quality measures.',
+    `reportable_condition_flag` BOOLEAN COMMENT 'Flag indicating reportable condition.',
+    `resolved_date` DATE COMMENT 'Date when diagnosis was resolved.',
+    `sdoh_flag` BOOLEAN COMMENT 'Flag indicating SDOH-related diagnosis (Z-code).',
+    `snomed_code` STRING COMMENT 'SNOMED CT code.. Valid values are `^[0-9]{6,18}$`',
+    `visit_diagnosis_status` STRING COMMENT 'The visit diagnosis status value classifying the encounter visit diagnosis record.',
+    `substance_use_flag` BOOLEAN COMMENT 'Flag indicating substance use disorder diagnosis.',
+    `updated_timestamp` TIMESTAMP COMMENT 'Record last updated timestamp.',
+    `vibe_mutation_marker` STRING COMMENT 'The vibe mutation marker of the encounter visit diagnosis record.',
+    `vibe_structure_marker` STRING COMMENT 'The vibe structure marker of the encounter visit diagnosis record.',
     CONSTRAINT pk_visit_diagnosis PRIMARY KEY(`visit_diagnosis_id`)
-) COMMENT 'Encounter-level diagnosis record linking ICD-10 diagnosis codes to a visit with clinical context. Captures ICD-10-CM code, diagnosis description, diagnosis type (admitting, principal, secondary, discharge, working, final), diagnosis sequence number, POA (Present on Admission) indicator, HCC (Hierarchical Condition Category) flag, chronic condition flag, and coding provider NPI. Central to DRG grouping, quality reporting, risk adjustment, and revenue cycle. Sourced from Epic ClinDoc and 3M HIS coding workflows.';
+) COMMENT 'Diagnosis codes associated with a visit, including POA indicators, DRG relevance, and coding status.';
 
 CREATE OR REPLACE TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` (
-    `visit_procedure_id` BIGINT COMMENT 'Unique surrogate identifier for each procedure record performed during a patient visit. Primary key for the visit_procedure data product in the encounter domain.',
-    `audit_finding_id` BIGINT COMMENT 'Foreign key linking to compliance.audit_finding. Business justification: Procedure coding audit findings (unbundling, medical necessity, modifier errors, upcoding) must reference the specific procedure record being challenged. Enables direct linkage from compliance finding',
-    `cost_center_id` BIGINT COMMENT 'Foreign key linking to finance.cost_center. Business justification: Procedures are performed in specific departments/cost centers. Essential for activity-based costing, OR suite profitability analysis, procedural revenue tracking, and CPT-based cost allocation for dep',
-    `cpt_code_id` BIGINT COMMENT 'Foreign key linking to reference.cpt_code. Business justification: Essential procedure coding workflow—every CPT code on a visit procedure must validate against the official CPT reference for claims submission, reimbursement calculation, RVU assignment, and NCCI edit',
-    `hcpcs_code_id` BIGINT COMMENT 'Foreign key linking to reference.hcpcs_code. Business justification: Required for HCPCS procedure coding—DME, supplies, drugs, and non-physician services must reference official HCPCS codes for billing, coverage determination, and reimbursement. Critical for outpatient',
-    `icd_code_id` BIGINT COMMENT 'Foreign key linking to reference.icd_code. Business justification: Inpatient procedure coding workflow—ICD-10-PCS codes must validate against the official ICD-10 code set for inpatient claims submission, DRG grouping, and quality measure reporting. Required for hospi',
-    `interventional_procedure_id` BIGINT COMMENT 'Foreign key linking to radiology.interventional_procedure. Business justification: Interventional radiology procedures (biopsies, drainages, embolizations) are billable encounter procedures requiring linkage for charge capture, procedural documentation, and outcomes tracking. IR pro',
-    `material_master_id` BIGINT COMMENT 'Foreign key linking to supply.material_master. Business justification: Procedures consume specific supplies, devices, and implants that must be documented for billing (CDM charge codes), regulatory compliance (UDI tracking for implantables), and procedure cost analysis. ',
-    `mpi_record_id` BIGINT COMMENT 'Reference to the patient on whom the procedure was performed. Supports patient-level procedure history, quality measurement, and population health analytics.',
-    `or_suite_id` BIGINT COMMENT 'Reference to the operating room or procedure room where the procedure was performed. Supports OR utilization reporting, room turnover analysis, and facility capacity planning.',
-    `clinician_id` BIGINT COMMENT 'Reference to the clinician who performed the procedure. Used for provider-level quality reporting, credentialing validation, and RVU attribution.',
-    `privileging_id` BIGINT COMMENT 'Foreign key linking to provider.privileging. Business justification: Enables retrospective verification that performing clinician held valid privileges for the specific procedure at the facility on the procedure date. Required for peer review, quality assurance audits,',
-    `research_study_id` BIGINT COMMENT 'Foreign key linking to research.research_study. Business justification: Research billing requires distinguishing study-mandated procedures from standard-of-care for coverage analysis and sponsor billing. Protocol compliance monitoring needs to verify required procedures w',
-    `snomed_concept_id` BIGINT COMMENT 'Foreign key linking to reference.snomed_concept. Business justification: Procedure terminology mapping—SNOMED codes on procedures must reference official SNOMED CT for clinical documentation, interoperability, and data exchange with external systems. Required for USCDI com',
-    `visit_id` BIGINT COMMENT 'Reference to the parent encounter/visit during which this procedure was performed. Links the procedure to the ADT event, visit type, and associated clinical and billing context.',
-    `anesthesia_type` STRING COMMENT 'Type of anesthesia administered during the procedure. Drives anesthesia CPT code selection, anesthesia time unit billing, ASA physical status documentation, and OR case complexity classification.. Valid values are `general|regional|local|monitored_anesthesia_care|none`',
-    `asa_class` STRING COMMENT 'ASA physical status classification assigned by the anesthesiologist prior to the procedure, reflecting the patients overall health status. Used for anesthesia risk stratification, surgical case complexity scoring, and outcomes risk adjustment.. Valid values are `I|II|III|IV|V|VI`',
-    `body_site` STRING COMMENT 'Anatomical location or body site where the procedure was performed, coded using SNOMED CT body structure concepts. Supports surgical safety documentation, quality measure stratification, and clinical analytics.',
-    `cancellation_reason` STRING COMMENT 'Reason code or description explaining why a scheduled procedure was cancelled (e.g., patient not ready, equipment unavailable, surgeon unavailable, insurance denial). Populated only when is_cancelled is true. Supports root cause analysis and OR efficiency improvement.',
-    `charge_amount` DECIMAL(18,2) COMMENT 'Gross charge amount posted to the patient account for this procedure based on the CDM. Represents the billed amount before contractual adjustments, payer discounts, or patient responsibility. Used in revenue cycle management and financial reporting.',
-    `charge_code` STRING COMMENT 'Internal charge code from the Charge Description Master (CDM) mapped to this procedure. Links the clinical procedure to the revenue cycle for charge capture, pricing, and claim generation in Epic Resolute or Cerner Revenue Cycle.',
-    `complication_description` STRING COMMENT 'Free-text or coded description of the complication that occurred during or after the procedure. Populated only when complication_flag is true. Used for clinical documentation, quality review, and risk management reporting.',
-    `complication_flag` BOOLEAN COMMENT 'Indicates whether a complication was documented as occurring during or immediately following the procedure. Triggers CDI query workflow, quality event review, and HAI/PSI surveillance reporting.',
-    `consent_obtained_flag` BOOLEAN COMMENT 'Indicates whether informed consent was documented as obtained from the patient or legal guardian prior to the procedure. Required for regulatory compliance, malpractice risk management, and The Joint Commission accreditation standards.',
-    `cpt_code` STRING COMMENT 'AMA CPT code identifying the procedure for professional billing, charge capture, and payer adjudication. Required on CMS-1500 claims. Drives RVU calculation and reimbursement.. Valid values are `^[0-9]{4}[0-9A-Z]$`',
-    `cpt_modifier_1` STRING COMMENT 'Primary CPT modifier appended to the procedure code to indicate special circumstances (e.g., 50=bilateral, LT=left side, RT=right side, 22=increased procedural services, 59=distinct procedural service). Required for accurate claim adjudication.. Valid values are `^[A-Z0-9]{2}$`',
-    `cpt_modifier_2` STRING COMMENT 'Secondary CPT modifier providing additional claim specificity when a single modifier is insufficient. Used in conjunction with cpt_modifier_1 for complex billing scenarios per CMS Correct Coding Initiative.. Valid values are `^[A-Z0-9]{2}$`',
-    `created_timestamp` TIMESTAMP COMMENT 'Timestamp when this procedure record was first created in the source system. Used for audit trail, data lineage, and regulatory compliance documentation per HIPAA and The Joint Commission medical record requirements.',
-    `drg_relevant_flag` BOOLEAN COMMENT 'Indicates whether this procedure influences the DRG assignment for the inpatient encounter. Flagged by the 3M grouper or equivalent DRG grouping engine. Critical for inpatient revenue integrity and CDI prioritization.',
-    `hcpcs_code` STRING COMMENT 'HCPCS Level II code used when a CPT code is not applicable, primarily for supplies, durable medical equipment, and non-physician services billed to Medicare/Medicaid. Complements CPT on UB-04 and CMS-1500 claims.. Valid values are `^[A-Z][0-9]{4}$`',
-    `icd10_pcs_code` STRING COMMENT 'ICD-10-PCS code assigned for inpatient procedures. Required for inpatient DRG grouping, UB-04 institutional claims, and CMS inpatient prospective payment system (IPPS) reimbursement. Not applicable for outpatient encounters.. Valid values are `^[0-9A-HJ-NP-Z]{7}$`',
-    `implant_flag` BOOLEAN COMMENT 'Indicates whether a medical device or implant was used during the procedure. Triggers UDI (Unique Device Identifier) documentation requirements per FDA regulations and supply chain charge capture workflows.',
-    `is_cancelled` BOOLEAN COMMENT 'Indicates whether a scheduled procedure was cancelled before execution. Used for OR cancellation rate reporting, scheduling efficiency analysis, and revenue impact assessment.',
-    `is_elective` BOOLEAN COMMENT 'Indicates whether the procedure was scheduled as elective (non-urgent) versus emergent or urgent. Supports surgical scheduling analytics, OR block time management, and payer prior authorization workflows.',
-    `is_principal_procedure` BOOLEAN COMMENT 'Indicates whether this is the principal procedure performed for the encounter, as defined by the Uniform Hospital Discharge Data Set (UHDDS). The principal procedure is the one most closely related to the principal diagnosis and drives DRG assignment for inpatient cases.',
-    `laterality` STRING COMMENT 'Body side on which the procedure was performed. Required for correct CPT modifier assignment (RT/LT/50), surgical safety checklists, and wrong-site surgery prevention per The Joint Commission Universal Protocol.. Valid values are `left|right|bilateral|unilateral|not_applicable`',
-    `performing_provider_npi` STRING COMMENT '10-digit NPI of the performing provider as required on CMS-1500 and UB-04 claims. Stored denormalized here for claim generation and audit purposes, as the NPI is a regulatory billing requirement independent of the provider master record.. Valid values are `^[0-9]{10}$`',
-    `procedure_date` DATE COMMENT 'Calendar date on which the procedure was performed. Used for charge capture date-of-service, quality measure denominator identification, and surgical case scheduling analytics.',
-    `procedure_description` STRING COMMENT 'Full clinical description of the procedure as documented in the source system (Epic ClinDoc, OpTime, or Cerner SurgiNet). Provides human-readable context for the CPT/HCPCS/ICD-10-PCS code.',
-    `procedure_end_timestamp` TIMESTAMP COMMENT 'Date and time when the procedure was completed (closure for surgical cases, or final clinical action for non-surgical). Combined with start timestamp to derive procedure duration for OR utilization and case costing.',
-    `procedure_number` STRING COMMENT 'Externally visible, human-readable identifier assigned to this procedure record within the source system (e.g., Epic OpTime case number or Cerner SurgiNet procedure order number). Used for cross-system reconciliation and audit.',
-    `procedure_start_timestamp` TIMESTAMP COMMENT 'Date and time when the procedure began (knife-to-skin for surgical cases, or first clinical action for non-surgical). Used for OR utilization analysis, case duration calculation, and scheduling efficiency reporting.',
-    `procedure_status` STRING COMMENT 'Current workflow status of the procedure record per HL7 FHIR Procedure.status value set. Drives charge capture eligibility, quality measure inclusion/exclusion, and CDI workflow routing.. Valid values are `completed|in-progress|not-done|entered-in-error|unknown`',
-    `procedure_type` STRING COMMENT 'High-level classification of the procedure category. Supports operational reporting, OR scheduling, charge master (CDM) mapping, and departmental cost allocation. [ENUM-REF-CANDIDATE: surgical|diagnostic|therapeutic|anesthesia|radiology|laboratory|nursing|other — promote to reference product]',
-    `quantity` STRING COMMENT 'Number of times this procedure was performed or units billed within the encounter. Used for charge capture accuracy, claim line quantity reporting, and utilization analysis.',
-    `rvu_total` DECIMAL(18,2) COMMENT 'Total RVU for the procedure, comprising work RVU, practice expense RVU, and malpractice RVU components per the CMS Physician Fee Schedule. Used for overall provider productivity benchmarking and reimbursement modeling.',
-    `rvu_work` DECIMAL(18,2) COMMENT 'Physician work RVU assigned to this procedure per the CMS Physician Fee Schedule. Represents the time, skill, and intensity of the physicians work. Used for provider productivity measurement, compensation modeling, and MIPS performance reporting.',
-    `sequence_number` STRING COMMENT 'Ordinal position of this procedure within the encounter, used to distinguish principal from secondary procedures on claims. Sequence 1 typically denotes the principal procedure for DRG grouping and IPPS reimbursement.',
-    `snomed_code` STRING COMMENT 'SNOMED CT concept identifier for the procedure, providing a clinically precise, interoperable representation beyond CPT/ICD-10-PCS. Supports HIE data exchange, FHIR-based interoperability, and clinical decision support.. Valid values are `^[0-9]{6,18}$`',
-    `source_system_procedure_code` STRING COMMENT 'Native identifier of this procedure record in the originating source system (e.g., Epic OpTime case ID, Cerner SurgiNet order ID). Enables bidirectional traceability between the lakehouse silver layer and the operational EHR system.',
-    `surgical_approach` STRING COMMENT 'Method or technique used to access the operative site. Drives ICD-10-PCS character 5 (approach) coding, surgical case complexity classification, and outcomes benchmarking.. Valid values are `open|laparoscopic|robotic|endoscopic|percutaneous|other`',
-    `timeout_performed_flag` BOOLEAN COMMENT 'Indicates whether the pre-procedure surgical time-out (Universal Protocol) was performed and documented, confirming correct patient, site, and procedure. Required by The Joint Commission Universal Protocol for preventing wrong-site surgery.',
-    `udi` STRING COMMENT 'FDA-assigned Unique Device Identifier for any medical device or implant used during the procedure. Required for FDA MDR (Medical Device Reporting), recall management, and supply chain traceability. Populated only when implant_flag is true.',
-    `updated_timestamp` TIMESTAMP COMMENT 'Timestamp of the most recent modification to this procedure record in the source system. Supports incremental ETL processing, change data capture, and audit trail requirements for medical record integrity.',
-    `wound_class` STRING COMMENT 'CDC wound classification assigned at the time of surgery, indicating the degree of microbial contamination. Used for SSI (Surgical Site Infection) risk stratification, HAI surveillance, and quality reporting to NHSN.. Valid values are `clean|clean_contaminated|contaminated|dirty_infected`',
+    `visit_procedure_id` BIGINT COMMENT 'Surrogate primary key for the visit procedure.',
+    `audit_finding_id` BIGINT COMMENT 'FK to compliance audit finding.',
+    `cost_center_id` BIGINT COMMENT 'FK to the cost center.',
+    `cpt_code_id` BIGINT COMMENT 'FK to CPT code reference.',
+    `hcpcs_code_id` BIGINT COMMENT 'FK to HCPCS code reference.',
+    `icd_code_id` BIGINT COMMENT 'FK to ICD procedure code reference.',
+    `interventional_procedure_id` BIGINT COMMENT 'FK to radiology interventional procedure.',
+    `material_master_id` BIGINT COMMENT 'FK to material master.',
+    `mpi_record_id` BIGINT COMMENT 'FK to the patient MPI record.',
+    `or_suite_id` BIGINT COMMENT 'FK to the OR suite.',
+    `clinician_id` BIGINT COMMENT 'FK to the primary performing clinician.',
+    `privileging_id` BIGINT COMMENT 'FK to the provider privileging record.',
+    `research_study_id` BIGINT COMMENT 'FK to associated research study.',
+    `snomed_concept_id` BIGINT COMMENT 'FK to SNOMED concept.',
+    `visit_id` BIGINT COMMENT 'FK to the parent visit.',
+    `anesthesia_type` STRING COMMENT 'Type of anesthesia used.. Valid values are `general|regional|local|monitored_anesthesia_care|none`',
+    `asa_class` STRING COMMENT 'ASA physical status classification.. Valid values are `I|II|III|IV|V|VI`',
+    `body_site` STRING COMMENT 'Body site of the procedure.',
+    `cancellation_reason` STRING COMMENT 'Reason for procedure cancellation.',
+    `charge_amount` DECIMAL(18,2) COMMENT 'Charge amount for the procedure.',
+    `charge_code` STRING COMMENT 'Charge master code.',
+    `complication_description` STRING COMMENT 'Description of any complications.',
+    `complication_flag` BOOLEAN COMMENT 'Flag indicating a complication occurred.',
+    `consent_obtained_flag` BOOLEAN COMMENT 'Flag indicating informed consent was obtained.',
+    `cpt_code` STRING COMMENT 'CPT procedure code.. Valid values are `^[0-9]{4}[0-9A-Z]$`',
+    `cpt_modifier_1` STRING COMMENT 'First CPT modifier.. Valid values are `^[A-Z0-9]{2}$`',
+    `cpt_modifier_2` STRING COMMENT 'Second CPT modifier.. Valid values are `^[A-Z0-9]{2}$`',
+    `created_timestamp` TIMESTAMP COMMENT 'Record creation timestamp.',
+    `drg_relevant_flag` BOOLEAN COMMENT 'Flag indicating procedure is DRG-relevant.',
+    `hcpcs_code` STRING COMMENT 'HCPCS procedure code.. Valid values are `^[A-Z][0-9]{4}$`',
+    `icd10_pcs_code` STRING COMMENT 'ICD-10-PCS procedure code.. Valid values are `^[0-9A-HJ-NP-Z]{7}$`',
+    `implant_flag` BOOLEAN COMMENT 'Flag indicating an implant was used.',
+    `is_cancelled` BOOLEAN COMMENT 'Flag indicating procedure was cancelled.',
+    `is_elective` BOOLEAN COMMENT 'Flag indicating elective procedure.',
+    `is_principal_procedure` BOOLEAN COMMENT 'Flag indicating this is the principal procedure.',
+    `laterality` STRING COMMENT 'Laterality of the procedure (left, right, bilateral).. Valid values are `left|right|bilateral|unilateral|not_applicable`',
+    `performing_provider_npi` STRING COMMENT 'NPI of the performing provider.. Valid values are `^[0-9]{10}$`',
+    `procedure_date` DATE COMMENT 'Date the procedure was performed.',
+    `procedure_description` STRING COMMENT 'Description of the procedure.',
+    `procedure_end_timestamp` TIMESTAMP COMMENT 'Timestamp when procedure ended.',
+    `procedure_number` STRING COMMENT 'Procedure number from source system.',
+    `procedure_start_timestamp` TIMESTAMP COMMENT 'Timestamp when procedure started.',
+    `procedure_status` STRING COMMENT 'Status of the procedure.. Valid values are `completed|in-progress|not-done|entered-in-error|unknown`',
+    `procedure_type` STRING COMMENT 'Type of procedure (surgical, diagnostic, therapeutic).',
+    `quantity` STRING COMMENT 'Quantity of procedure performed.',
+    `rvu_total` DECIMAL(18,2) COMMENT 'Total RVU value.',
+    `rvu_work` DECIMAL(18,2) COMMENT 'Work RVU value.',
+    `sequence_number` STRING COMMENT 'Sequence number of the procedure.',
+    `snomed_code` STRING COMMENT 'SNOMED CT code.. Valid values are `^[0-9]{6,18}$`',
+    `source_system_procedure_code` STRING COMMENT 'The source system procedure code value classifying the encounter visit procedure record.',
+    `visit_procedure_status` STRING COMMENT 'The visit procedure status value classifying the encounter visit procedure record.',
+    `surgical_approach` STRING COMMENT 'Surgical approach (open, laparoscopic, robotic).. Valid values are `open|laparoscopic|robotic|endoscopic|percutaneous|other`',
+    `timeout_performed_flag` BOOLEAN COMMENT 'Flag indicating surgical timeout was performed.',
+    `udi` STRING COMMENT 'Unique Device Identifier for implanted device.',
+    `updated_timestamp` TIMESTAMP COMMENT 'Record last updated timestamp.',
+    `vibe_mutation_marker` STRING COMMENT 'The vibe mutation marker of the encounter visit procedure record.',
+    `vibe_structure_marker` STRING COMMENT 'The vibe structure marker of the encounter visit procedure record.',
+    `wound_class` STRING COMMENT 'Wound classification (clean, clean-contaminated, contaminated, dirty).. Valid values are `clean|clean_contaminated|contaminated|dirty_infected`',
     CONSTRAINT pk_visit_procedure PRIMARY KEY(`visit_procedure_id`)
-) COMMENT 'Encounter-level procedure record capturing all procedures performed during a visit. Includes CPT/HCPCS procedure code, ICD-10-PCS code (for inpatient), procedure description, procedure date and time, performing provider NPI, procedure sequence number, principal procedure flag, laterality, anesthesia type, and OR/procedure room reference. Supports charge capture, DRG grouping, quality measurement, and surgical case tracking. Sourced from Epic OpTime, ClinDoc, and Cerner SurgiNet.';
+) COMMENT 'Procedures performed during a visit, including CPT/ICD-10-PCS codes, RVUs, and surgical details.';
 
 CREATE OR REPLACE TABLE `vibe_healthcare_v1`.`encounter`.`bed_assignment` (
-    `bed_assignment_id` BIGINT COMMENT 'Unique surrogate identifier for each bed assignment record in the lakehouse Silver layer. Primary key for the bed_assignment data product.',
-    `employee_id` BIGINT COMMENT 'Foreign key linking to workforce.employee. Business justification: Bed assignments are made by charge nurses or bed coordinators. Required for workflow accountability, assignment dispute resolution, and tracking coordinator productivity. Distinct from attending clini',
-    `care_site_id` BIGINT COMMENT 'Reference to the facility (hospital or care site) where the bed is located. Supports multi-facility capacity planning and reporting.',
-    `clinician_id` BIGINT COMMENT 'Reference to the attending or admitting provider responsible for the patient at the time of bed assignment. Used for provider-level capacity and workload reporting.',
-    `inventory_location_id` BIGINT COMMENT 'Foreign key linking to supply.inventory_location. Business justification: Patient beds are spatially co-located with PAR locations and ADC machines. Bedside supply replenishment, nursing workflow optimization, and inventory par level management depend on linking bed assignm',
-    `mpi_record_id` BIGINT COMMENT 'Reference to the patient assigned to this bed. Supports patient-level bed utilization tracking and HAI (Healthcare-Associated Infection) isolation compliance.',
-    `bed_id` BIGINT COMMENT 'Unique identifier of the physical bed as defined in the facilitys bed management system (Epic ADT or Cerner Bed Board). Used to track individual bed utilization, turnover, and HAI (Healthcare-Associated Infection) events.',
-    `visit_id` BIGINT COMMENT 'Reference to the patient encounter (visit) associated with this bed assignment. Links the bed assignment to the core encounter record for the patient visit.',
-    `admission_date` DATE COMMENT 'Calendar date of the patients hospital admission associated with this bed assignment. Used for LOS (Length of Stay) calculation, DRG (Diagnosis-Related Group) assignment, and CMS reporting.',
-    `admission_source_code` STRING COMMENT 'Standardized CMS admission source code indicating how the patient arrived for this admission (e.g., 1 = physician referral, 4 = transfer from hospital, 7 = emergency room). Required for UB-04 billing and CMS quality reporting. [ENUM-REF-CANDIDATE: 1|2|3|4|5|6|7|8|9|D|E|F — promote to reference product]',
-    `adt_event_type` STRING COMMENT 'HL7 ADT (Admit, Discharge, Transfer) event type code that triggered this bed assignment record. A01 = admit; A02 = transfer; A03 = discharge; A04 = register outpatient; A08 = update patient info; A11 = cancel admit; A12 = cancel transfer; A13 = cancel discharge. Supports HL7 FHIR interoperability and HIE (Health Information Exchange) event processing. [ENUM-REF-CANDIDATE: A01|A02|A03|A04|A08|A11|A12|A13 — 8 candidates stripped; promote to reference product]',
-    `assignment_end_timestamp` TIMESTAMP COMMENT 'Date and time when the patient vacated the assigned bed, either through discharge, transfer, or death. Null if the assignment is still active. Used to compute bed occupancy duration.',
-    `assignment_number` STRING COMMENT 'Externally visible, human-readable identifier for this bed assignment event as generated by the ADT (Admit, Discharge, Transfer) system. Used for operational tracking and audit trails.',
-    `assignment_reason` STRING COMMENT 'Clinical or operational reason for this specific bed assignment event. admission = initial placement upon admission; transfer = moved from another bed/unit; upgrade = moved to higher acuity bed; downgrade = moved to lower acuity bed; isolation_precaution = placed for infection control; overflow = placed due to capacity constraints; elective = planned placement. [ENUM-REF-CANDIDATE: admission|transfer|upgrade|downgrade|isolation_precaution|overflow|elective|post_procedure|observation_conversion — promote to reference product]',
-    `assignment_start_timestamp` TIMESTAMP COMMENT 'Date and time when the patient was physically placed in the assigned bed. Principal business event timestamp for the bed assignment lifecycle. Used for LOS (Length of Stay) calculation and capacity analytics.',
-    `assignment_status` STRING COMMENT 'Current lifecycle state of the bed assignment. pending indicates a bed request has been made but not yet fulfilled; active indicates the patient is currently occupying the bed; completed indicates the patient has vacated; cancelled indicates the assignment was voided; transferred indicates the patient moved to another bed.. Valid values are `pending|active|completed|cancelled|transferred`',
-    `bed_class` STRING COMMENT 'Regulatory classification of the bed for CMS (Centers for Medicare and Medicaid Services) reporting and reimbursement purposes. Determines whether the bed counts toward licensed inpatient capacity or outpatient/observation capacity. [ENUM-REF-CANDIDATE: inpatient|outpatient|observation|emergency|behavioral_health|rehabilitation|long_term_care|skilled_nursing — promote to reference product]. Valid values are `inpatient|outpatient|observation|emergency|behavioral_health|rehabilitation`',
-    `bed_gender_designation` STRING COMMENT 'Gender designation of the bed for patient placement purposes. male = designated for male patients; female = designated for female patients; any = no gender restriction. Used for bed placement rules and patient privacy compliance.. Valid values are `male|female|any`',
-    `bed_hold_reason` STRING COMMENT 'Reason the bed is being held for a patient who is temporarily off the unit (e.g., for a procedure, imaging, or therapy). none indicates no hold is in effect. Used for bed availability accuracy and capacity management.. Valid values are `procedure|imaging|therapy|family_request|clinical_hold|none`',
-    `bed_label` STRING COMMENT 'Human-readable label or name of the bed as displayed in the ADT system (e.g., 4B-12A). Used by nursing staff and bed coordinators for operational identification.',
-    `bed_request_source` STRING COMMENT 'Origin point from which the bed request was initiated. ed = Emergency Department; or = Operating Room post-procedure; icu = ICU step-down; direct_admit = direct admission from clinic or physician office; transfer_center = inter-facility transfer; observation = conversion from observation status; pacu = Post-Anesthesia Care Unit. Used for bed flow analysis and throughput optimization. [ENUM-REF-CANDIDATE: ed|or|icu|direct_admit|transfer_center|observation|pacu — 7 candidates stripped; promote to reference product]',
-    `bed_type` STRING COMMENT 'Clinical classification of the bed based on care intensity and equipment capability. icu = Intensive Care Unit bed; telemetry = cardiac monitoring bed; med_surg = medical-surgical bed; isolation = negative pressure or contact precaution bed; observation = short-stay observation bed; step_down = intermediate care bed. Drives staffing ratios, reimbursement, and HAI (Healthcare-Associated Infection) tracking.. Valid values are `icu|telemetry|med_surg|isolation|observation|step_down`',
-    `created_timestamp` TIMESTAMP COMMENT 'Date and time when this bed assignment record was first created in the source ADT system. Supports audit trail and data lineage requirements.',
-    `discharge_date` DATE COMMENT 'Calendar date of the patients discharge from the facility associated with this bed assignment. Null if the patient is still admitted. Used for ALOS (Average Length of Stay) reporting and DRG (Diagnosis-Related Group) reimbursement.',
-    `discharge_disposition_code` STRING COMMENT 'Standardized CMS discharge disposition code indicating where the patient went upon leaving this bed assignment (e.g., 01 = home, 02 = short-term hospital, 03 = SNF, 20 = expired). Required for UB-04 billing and CMS quality reporting. [ENUM-REF-CANDIDATE: 01|02|03|04|05|06|07|20|21|30|43|50|51|61|62|63|64|65|66|69|70|71|72|81|82|83|84|85|86|87|88|89|90|91|92|93|94|95|96|97|98|99 — promote to reference product]',
-    `expected_discharge_date` DATE COMMENT 'Clinician-estimated date of patient discharge from this bed assignment. Used for discharge planning, bed availability forecasting, and ALOS (Average Length of Stay) management. Sourced from Epic Discharge Planning or Cerner Millennium care management workflows.',
-    `floor_number` STRING COMMENT 'Physical floor or level of the facility building where the bed is located. Used for facility management, emergency evacuation planning, and environmental services routing.',
-    `housekeeping_status_at_assignment` STRING COMMENT 'Environmental services (EVS) status of the bed at the moment of patient assignment. clean = bed was verified clean and ready; dirty = bed had not yet been cleaned (emergency placement); in_progress = cleaning was underway; inspected = cleaning completed and inspected; out_of_service = bed was flagged as unavailable. Critical for HAI (Healthcare-Associated Infection) prevention audits and EVS performance measurement.. Valid values are `clean|dirty|in_progress|inspected|out_of_service`',
-    `is_isolation_bed` BOOLEAN COMMENT 'Indicates whether this bed is designated as a negative pressure or isolation room capable of supporting infection control precautions. True = isolation-capable bed; False = standard bed. Used for capacity planning of isolation-capable beds and HAI (Healthcare-Associated Infection) compliance reporting.',
-    `is_observation_status` BOOLEAN COMMENT 'Indicates whether the patient is under CMS observation status (rather than formal inpatient admission) during this bed assignment. True = observation status; False = inpatient or other status. Critical for CMS Two-Midnight Rule compliance, Medicare Part A vs. Part B billing, and patient financial counseling obligations under the NOTICE Act.',
-    `is_private_room` BOOLEAN COMMENT 'Indicates whether the bed is located in a private single-occupancy room. True = private room; False = semi-private or multi-bed room. Relevant for infection control, patient satisfaction (CAHPS), and revenue for private room upgrades.',
-    `is_telemetry_monitored` BOOLEAN COMMENT 'Indicates whether the patient in this bed assignment is connected to continuous cardiac telemetry monitoring. True = telemetry active; False = no telemetry. Used for telemetry capacity management and nursing workload planning.',
-    `isolation_type` STRING COMMENT 'Type of infection control isolation precaution in effect for this bed assignment. contact = contact precautions (e.g., MRSA, C. diff); droplet = droplet precautions (e.g., influenza); airborne = airborne precautions (e.g., TB, COVID-19); protective = reverse isolation for immunocompromised patients; none = no isolation required. Critical for HAI (Healthcare-Associated Infection) tracking including CLABSI, CAUTI, and SSI prevention.. Valid values are `contact|droplet|airborne|protective|none`',
-    `los_days` DECIMAL(18,2) COMMENT 'Number of days the patient occupied this specific bed assignment, calculated as the difference between assignment end and start timestamps expressed in fractional days. Supports ALOS (Average Length of Stay) benchmarking, CMI (Case Mix Index) analysis, and capacity planning. Note: this is bed-level LOS, not encounter-level LOS.',
-    `nursing_station_code` STRING COMMENT 'Code identifying the nursing station responsible for this bed. Used for nursing assignment, medication administration routing (MAR), and staffing ratio compliance reporting.',
-    `patient_class` STRING COMMENT 'CMS-defined patient classification status at the time of this bed assignment. Determines reimbursement pathway (inpatient DRG vs. outpatient APC), two-midnight rule applicability, and Medicare Part A vs. Part B billing. observation status has significant patient financial implications under CMS rules.. Valid values are `inpatient|outpatient|observation|emergency|recurring|preadmit`',
-    `request_timestamp` TIMESTAMP COMMENT 'Date and time when the bed request was initiated by the clinical team or bed coordinator. Used to calculate bed request-to-assignment elapsed time, a key operational KPI (Key Performance Indicator) for bed management efficiency.',
-    `request_to_assignment_minutes` STRING COMMENT 'Elapsed time in minutes between the bed request timestamp and the assignment start timestamp. Key operational KPI (Key Performance Indicator) for bed management throughput and ED (Emergency Department) boarding reduction. Sourced from Epic ADT or Cerner Bed Board workflow timestamps.',
-    `room_number` STRING COMMENT 'Room number within the unit or ward where the bed is located. Used for wayfinding, nursing assignments, and infection control zone tracking.',
-    `sequence` STRING COMMENT 'Sequential ordinal number of this bed assignment within the patients encounter, starting at 1 for the first bed assignment. Used to reconstruct the patients bed movement history throughout a visit and calculate total number of transfers.',
-    `source_system_assignment_code` STRING COMMENT 'Native identifier of this bed assignment record in the originating operational system (Epic ADT, Cerner Millennium, or MEDITECH Expanse). Used for cross-system reconciliation, data lineage tracing, and support of HIE (Health Information Exchange) integrations.',
-    `unit_code` STRING COMMENT 'Standardized alphanumeric code identifying the clinical unit or ward in the facilitys master data. Used for cross-system reporting and integration with billing and staffing systems.',
-    `unit_name` STRING COMMENT 'Name of the clinical unit or ward where the bed is located (e.g., Medical ICU, 4 North Med-Surg, ED Observation). Used for unit-level capacity planning and staffing analytics.',
-    `updated_timestamp` TIMESTAMP COMMENT 'Date and time when this bed assignment record was last modified in the source ADT system. Supports change tracking and incremental ETL (Extract, Transform, Load) processing.',
-    `wing_or_pod` STRING COMMENT 'Sub-unit designation within a nursing unit identifying the wing, pod, or cluster where the bed is located (e.g., North Wing, Pod A). Used for nursing assignment optimization and infection control zone management.',
+    `bed_assignment_id` BIGINT COMMENT 'Surrogate primary key for the bed assignment.',
+    `employee_id` BIGINT COMMENT 'FK to the nurse who assigned the bed.',
+    `care_site_id` BIGINT COMMENT 'FK to the care site.',
+    `clinician_id` BIGINT COMMENT 'FK to the responsible clinician.',
+    `mpi_record_id` BIGINT COMMENT 'FK to the patient MPI record.',
+    `bed_id` BIGINT COMMENT 'FK to the assigned bed.',
+    `visit_id` BIGINT COMMENT 'FK to the parent visit.',
+    `admission_date` DATE COMMENT 'Date of admission.',
+    `admission_source_code` STRING COMMENT 'The admission source code value classifying the encounter bed assignment record.',
+    `adt_event_type` STRING COMMENT 'ADT event type triggering this assignment.',
+    `assignment_end_timestamp` TIMESTAMP COMMENT 'Timestamp when bed assignment ended.',
+    `assignment_number` STRING COMMENT 'Bed assignment number.',
+    `assignment_reason` STRING COMMENT 'Reason for bed assignment.',
+    `assignment_start_timestamp` TIMESTAMP COMMENT 'Timestamp when bed assignment started.',
+    `assignment_status` STRING COMMENT 'Current status of the bed assignment.. Valid values are `pending|active|completed|cancelled|transferred`',
+    `bed_class` STRING COMMENT 'Class of bed (ICU, step-down, med-surg).. Valid values are `inpatient|outpatient|observation|emergency|behavioral_health|rehabilitation`',
+    `bed_gender_designation` STRING COMMENT 'Gender designation of the bed.. Valid values are `male|female|any`',
+    `bed_hold_reason` STRING COMMENT 'Reason for bed hold.. Valid values are `procedure|imaging|therapy|family_request|clinical_hold|none`',
+    `bed_request_source` STRING COMMENT 'Source of the bed request.',
+    `bed_type` STRING COMMENT 'Type of bed.. Valid values are `icu|telemetry|med_surg|isolation|observation|step_down`',
+    `created_timestamp` TIMESTAMP COMMENT 'Record creation timestamp.',
+    `discharge_date` DATE COMMENT 'Date of discharge.',
+    `discharge_disposition_code` STRING COMMENT 'The discharge disposition code value classifying the encounter bed assignment record.',
+    `expected_discharge_date` DATE COMMENT 'Timestamp capturing the expected discharge date associated with the encounter bed assignment record.',
+    `floor_number` STRING COMMENT 'The floor number of the encounter bed assignment record.',
+    `housekeeping_status_at_assignment` STRING COMMENT 'Housekeeping status when bed was assigned.. Valid values are `clean|dirty|in_progress|inspected|out_of_service`',
+    `is_isolation_bed` BOOLEAN COMMENT 'Flag indicating isolation bed.',
+    `is_observation_status` BOOLEAN COMMENT 'Flag indicating observation status.',
+    `is_private_room` BOOLEAN COMMENT 'Flag indicating private room.',
+    `is_telemetry_monitored` BOOLEAN COMMENT 'Flag indicating telemetry monitoring.',
+    `isolation_type` STRING COMMENT 'Type of isolation.. Valid values are `contact|droplet|airborne|protective|none`',
+    `los_days` DECIMAL(18,2) COMMENT 'Length of stay in this bed in days.',
+    `nursing_station_code` STRING COMMENT 'The nursing station code value classifying the encounter bed assignment record.',
+    `patient_class` STRING COMMENT 'The patient class of the encounter bed assignment record.. Valid values are `inpatient|outpatient|observation|emergency|recurring|preadmit`',
+    `request_timestamp` TIMESTAMP COMMENT 'Timestamp of bed request.',
+    `request_to_assignment_minutes` STRING COMMENT 'Minutes from bed request to assignment.',
+    `room_number` STRING COMMENT 'The room number of the encounter bed assignment record.',
+    `sequence` STRING COMMENT 'Sequence number of this bed assignment within the visit.',
+    `source_system_assignment_code` STRING COMMENT 'The source system assignment code value classifying the encounter bed assignment record.',
+    `bed_assignment_status` STRING COMMENT 'The bed assignment status value classifying the encounter bed assignment record.',
+    `unit_code` STRING COMMENT 'The unit code value classifying the encounter bed assignment record.',
+    `unit_name` STRING COMMENT 'The unit name of the encounter bed assignment record.',
+    `updated_timestamp` TIMESTAMP COMMENT 'Record last updated timestamp.',
+    `vibe_mutation_marker` STRING COMMENT 'The vibe mutation marker of the encounter bed assignment record.',
+    `vibe_structure_marker` STRING COMMENT 'The vibe structure marker of the encounter bed assignment record.',
+    `wing_or_pod` STRING COMMENT 'Wing or pod designation.',
     CONSTRAINT pk_bed_assignment PRIMARY KEY(`bed_assignment_id`)
-) COMMENT 'Operational record of bed assignments throughout a patient visit, capturing assigned bed ID, unit/ward, room number, bed type (ICU, telemetry, med-surg, isolation, observation), assignment start and end timestamps, assignment reason, housekeeping status at assignment, and bed request-to-assignment elapsed time. Supports real-time bed management, capacity planning, ALOS optimization, and HAI (Healthcare-Associated Infection) isolation tracking. Sourced from Epic ADT bed management and Cerner Millennium bed board.';
+) COMMENT 'Bed assignment record tracking patient bed placements throughout a visit.';
 
 CREATE OR REPLACE TABLE `vibe_healthcare_v1`.`encounter`.`visit_insurance` (
-    `visit_insurance_id` BIGINT COMMENT 'Unique surrogate identifier for the visit insurance record. Primary key for the visit_insurance data product within the encounter domain.',
-    `health_plan_id` BIGINT COMMENT 'Foreign key linking to insurance.health_plan. Business justification: Visit insurance records denormalize plan_name and plan_type but lack FK to health_plan. Direct link is essential for benefit determination, claims adjudication, and cost-sharing calculation—core reven',
-    `insurance_coverage_id` BIGINT COMMENT 'Reference to the patients insurance coverage record in the patient domain (patient.insurance_coverage), representing the standing policy used for this visit.',
-    `payer_contract_id` BIGINT COMMENT 'Identifier of the payer contract or fee schedule agreement under which services for this visit will be reimbursed. Used in contract management and expected reimbursement calculation.',
-    `payer_id` BIGINT COMMENT 'Reference to the payer (insurance company or government program) responsible for reimbursement for this visit. Links to the payer reference entity.',
-    `subscriber_id` BIGINT COMMENT 'Unique identifier of the primary policyholder (subscriber) as assigned by the payer. May differ from the patients member ID when the patient is a dependent.',
-    `visit_id` BIGINT COMMENT 'Reference to the patient visit or encounter to which this insurance coverage record is associated. Core linkage to the encounter domain.',
-    `mpi_record_id` BIGINT COMMENT 'Unique member identification number assigned by the payer to identify the insured individual on the insurance card and in payer systems. Required for eligibility verification and claims submission.',
-    `visit_patient_mpi_record_id` BIGINT COMMENT 'Reference to the patient whose insurance coverage is being captured for this visit. Links to the Master Patient Index (MPI) in the patient domain.',
-    `authorization_effective_date` DATE COMMENT 'Start date of the approved prior authorization period. Services rendered before this date may not be covered under the authorization.',
-    `authorization_expiration_date` DATE COMMENT 'End date of the approved prior authorization period. Services rendered after this date require a new authorization. Critical for revenue cycle management to prevent claim denials.',
-    `authorization_number` STRING COMMENT 'Pre-authorization or prior authorization number issued by the payer approving the services rendered during this visit. Required for claims submission for services that mandate prior authorization.',
-    `authorization_status` STRING COMMENT 'Current status of the prior authorization request for services associated with this visit. APPROVED = payer approved; PENDING = awaiting payer decision; DENIED = payer denied; NOT_REQUIRED = service does not require auth; EXPIRED = auth obtained but expired.. Valid values are `APPROVED|PENDING|DENIED|NOT_REQUIRED|EXPIRED`',
-    `billing_npi` STRING COMMENT 'National Provider Identifier (NPI) of the billing provider or organization submitted to the payer for this visit. Required on CMS-1500 and UB-04 claim forms.. Valid values are `^[0-9]{10}$`',
-    `claim_form_type` STRING COMMENT 'Type of claim form used to bill the payer for this visit. CMS_1500 = professional/physician claims; UB_04 = institutional/facility claims; ELECTRONIC_837P = electronic professional claim; ELECTRONIC_837I = electronic institutional claim.. Valid values are `CMS_1500|UB_04|ELECTRONIC_837P|ELECTRONIC_837I`',
-    `cob_notes` STRING COMMENT 'Free-text notes related to coordination of benefits (COB) for this visit, capturing special instructions, payer-specific COB rules, or manual overrides documented by revenue cycle staff.',
-    `coinsurance_rate` DECIMAL(18,2) COMMENT 'Patients coinsurance percentage (expressed as a decimal, e.g., 0.20 = 20%) representing the share of covered service costs the patient is responsible for after the deductible is met.',
-    `copay_amount` DECIMAL(18,2) COMMENT 'Fixed dollar amount the patient is responsible for paying at the time of service as defined by the insurance plan for this visit type. Used in patient financial counseling and billing.',
-    `coverage_effective_date` DATE COMMENT 'Date on which the patients insurance coverage under this plan became effective. Used to confirm coverage was active at the time of the visit.',
-    `coverage_sequence` STRING COMMENT 'Coordination of Benefits (COB) sequence number indicating the order in which payers are billed. 1 = primary, 2 = secondary, 3 = tertiary. Governs payer billing priority per COB rules.',
-    `coverage_termination_date` DATE COMMENT 'Date on which the patients insurance coverage under this plan ends or was terminated. Null if coverage is open-ended or still active. Used to validate coverage at time of service.',
-    `coverage_type` STRING COMMENT 'Type of insurance coverage applicable to this visit. Determines which benefit category applies for claims adjudication. MEDICAL = general medical/surgical; DENTAL; VISION; BEHAVIORAL_HEALTH = mental health/substance use; PHARMACY.. Valid values are `MEDICAL|DENTAL|VISION|BEHAVIORAL_HEALTH|PHARMACY`',
-    `created_timestamp` TIMESTAMP COMMENT 'Timestamp when this visit insurance record was first created in the system. Supports audit trail and data lineage tracking per HIPAA and internal data governance requirements.',
-    `deductible_amount` DECIMAL(18,2) COMMENT 'Annual deductible amount the patient must meet before the insurance plan begins paying for covered services. Sourced from eligibility verification response for patient financial counseling.',
-    `deductible_met_amount` DECIMAL(18,2) COMMENT 'Dollar amount of the patients annual deductible that has already been satisfied as of the date of this visit. Used to estimate patient financial responsibility.',
-    `eligibility_status` STRING COMMENT 'Current status of the insurance eligibility verification for this visit. Indicates whether the patients coverage has been confirmed active with the payer at the time of service.. Valid values are `VERIFIED|PENDING|INACTIVE|UNABLE_TO_VERIFY|NOT_ELIGIBLE`',
-    `eligibility_verification_method` STRING COMMENT 'Method used to verify the patients insurance eligibility. ELECTRONIC = automated 270/271 transaction; PHONE = staff called payer; PORTAL = payer web portal; MANUAL = paper/fax; REAL_TIME = real-time API query.. Valid values are `ELECTRONIC|PHONE|PORTAL|MANUAL|REAL_TIME`',
-    `eligibility_verified_date` DATE COMMENT 'Date on which the patients insurance eligibility was last verified with the payer for this visit. Used to confirm coverage was active at the time of service.',
-    `financial_class` STRING COMMENT 'Financial classification assigned to the visit based on the primary payer, used for revenue cycle management (RCM), billing workflow routing, and financial reporting. Examples: Commercial, Medicare, Medicaid, Self-Pay, Workers Comp, Charity Care. [ENUM-REF-CANDIDATE: COMMERCIAL|MEDICARE|MEDICAID|SELF_PAY|WORKERS_COMP|CHARITY_CARE|TRICARE|MANAGED_CARE — promote to reference product]',
-    `group_number` STRING COMMENT 'Group policy number assigned by the payer to identify the employer group or association under which the patients insurance plan is issued. Used in claims submission and eligibility verification.',
-    `insurance_type_code` STRING COMMENT 'Standardized payer-assigned or industry-standard code identifying the type of insurance (e.g., Medicare Part A, Medicare Part B, Medicaid, CHAMPUS/TRICARE, FECA Black Lung, Group Health Plan). Corresponds to Box 1 on CMS-1500.',
-    `insurance_verification_source` STRING COMMENT 'Source system or clearinghouse used to perform the insurance eligibility verification for this visit. Supports audit trail and troubleshooting of eligibility discrepancies.. Valid values are `EPIC|CERNER|CHANGE_HEALTHCARE|AVAILITY|MANUAL|PAYER_PORTAL`',
-    `network_status` STRING COMMENT 'Indicates whether the rendering provider and/or facility is in-network or out-of-network with the patients insurance plan for this visit. Affects patient cost-sharing and reimbursement rates.. Valid values are `IN_NETWORK|OUT_OF_NETWORK|UNKNOWN`',
-    `out_of_pocket_max` DECIMAL(18,2) COMMENT 'Maximum annual dollar amount the patient is required to pay out-of-pocket for covered services under the insurance plan. Once met, the plan covers 100% of covered services.',
-    `out_of_pocket_met_amount` DECIMAL(18,2) COMMENT 'Dollar amount of the patients annual out-of-pocket maximum that has already been satisfied as of the date of this visit. Used to determine remaining patient financial liability.',
-    `payer_phone` STRING COMMENT 'Primary contact phone number for the insurance payers provider services or claims department. Used by revenue cycle staff for eligibility verification and claims follow-up.. Valid values are `^+?[0-9-s().]{7,20}$`',
-    `preauth_required` BOOLEAN COMMENT 'Indicates whether the payer requires prior authorization for the services rendered during this visit. True = pre-authorization is required; False = no pre-authorization needed.',
-    `referral_number` STRING COMMENT 'Referral authorization number issued by the patients Primary Care Physician (PCP) or gatekeeper for HMO/POS plans requiring referrals for specialist or facility services during this visit.',
-    `reimbursement_method` STRING COMMENT 'Expected payment methodology under which the payer will reimburse the provider for this visit. FFS = Fee-For-Service; CAPITATION = per-member per-month; BUNDLED = bundled payment; VBP = Value-Based Purchasing; DRG = Diagnosis-Related Group; PER_DIEM = daily rate.. Valid values are `FFS|CAPITATION|BUNDLED|VBP|DRG|PER_DIEM`',
-    `subscriber_dob` DATE COMMENT 'Date of birth of the primary policyholder (subscriber). Used for eligibility verification and claims adjudication when the patient is a dependent.',
-    `subscriber_relationship` STRING COMMENT 'Relationship of the patient to the primary policyholder (subscriber). Determines dependent eligibility and COB rules. Values: SELF (patient is the subscriber), SPOUSE, CHILD, OTHER. [ENUM-REF-CANDIDATE: SELF|SPOUSE|CHILD|DOMESTIC_PARTNER|WARD|EMPLOYEE|UNKNOWN|OTHER — promote to reference product]. Valid values are `SELF|SPOUSE|CHILD|OTHER`',
-    `updated_timestamp` TIMESTAMP COMMENT 'Timestamp when this visit insurance record was last modified. Used for change data capture (CDC), audit trail, and downstream ETL processing in the Databricks Silver layer.',
+    `visit_insurance_id` BIGINT COMMENT 'Surrogate primary key for the visit insurance record.',
+    `health_plan_id` BIGINT COMMENT 'FK to the health plan.',
+    `insurance_coverage_id` BIGINT COMMENT 'FK to patient insurance coverage.',
+    `payer_contract_id` BIGINT COMMENT 'FK to the payer contract.',
+    `payer_id` BIGINT COMMENT 'FK to the payer.',
+    `subscriber_id` BIGINT COMMENT 'FK to the subscriber.',
+    `visit_id` BIGINT COMMENT 'FK to the parent visit.',
+    `mpi_record_id` BIGINT COMMENT 'FK to the member MPI record.',
+    `visit_mpi_record_id` BIGINT COMMENT 'FK to the patient MPI record.',
+    `authorization_effective_date` DATE COMMENT 'Effective date of the authorization.',
+    `authorization_expiration_date` DATE COMMENT 'Expiration date of the authorization.',
+    `authorization_number` STRING COMMENT 'Prior authorization number.',
+    `authorization_status` STRING COMMENT 'Status of the authorization.. Valid values are `APPROVED|PENDING|DENIED|NOT_REQUIRED|EXPIRED`',
+    `billing_npi` STRING COMMENT 'The billing npi of the encounter visit insurance record.. Valid values are `^[0-9]{10}$`',
+    `claim_form_type` STRING COMMENT 'Claim form type (UB-04, CMS-1500).. Valid values are `CMS_1500|UB_04|ELECTRONIC_837P|ELECTRONIC_837I`',
+    `cob_notes` STRING COMMENT 'Coordination of benefits notes.',
+    `coinsurance_rate` DECIMAL(18,2) COMMENT 'The coinsurance rate of the encounter visit insurance record.',
+    `copay_amount` DECIMAL(18,2) COMMENT 'The copay amount of the encounter visit insurance record.',
+    `coverage_effective_date` DATE COMMENT 'Timestamp capturing the coverage effective date associated with the encounter visit insurance record.',
+    `coverage_sequence` STRING COMMENT 'Coverage sequence (primary=1, secondary=2).',
+    `coverage_termination_date` DATE COMMENT 'Timestamp capturing the coverage termination date associated with the encounter visit insurance record.',
+    `coverage_type` STRING COMMENT 'Type of coverage.. Valid values are `MEDICAL|DENTAL|VISION|BEHAVIORAL_HEALTH|PHARMACY`',
+    `created_timestamp` TIMESTAMP COMMENT 'Record creation timestamp.',
+    `deductible_amount` DECIMAL(18,2) COMMENT 'The deductible amount of the encounter visit insurance record.',
+    `deductible_met_amount` DECIMAL(18,2) COMMENT 'Deductible amount met.',
+    `eligibility_status` STRING COMMENT 'The eligibility status value classifying the encounter visit insurance record.. Valid values are `VERIFIED|PENDING|INACTIVE|UNABLE_TO_VERIFY|NOT_ELIGIBLE`',
+    `eligibility_verification_method` STRING COMMENT 'Method used to verify eligibility.. Valid values are `ELECTRONIC|PHONE|PORTAL|MANUAL|REAL_TIME`',
+    `eligibility_verified_date` DATE COMMENT 'Date eligibility was verified.',
+    `financial_class` STRING COMMENT 'The financial class of the encounter visit insurance record.',
+    `group_number` STRING COMMENT 'Insurance group number.',
+    `insurance_type_code` STRING COMMENT 'The insurance type code value classifying the encounter visit insurance record.',
+    `insurance_verification_source` STRING COMMENT 'Source of insurance verification.. Valid values are `EPIC|CERNER|CHANGE_HEALTHCARE|AVAILITY|MANUAL|PAYER_PORTAL`',
+    `network_status` STRING COMMENT 'Network status (in-network, out-of-network).. Valid values are `IN_NETWORK|OUT_OF_NETWORK|UNKNOWN`',
+    `out_of_pocket_max` DECIMAL(18,2) COMMENT 'Out-of-pocket maximum.',
+    `out_of_pocket_met_amount` DECIMAL(18,2) COMMENT 'Out-of-pocket amount met.',
+    `payer_phone` STRING COMMENT 'Payer phone number.. Valid values are `^+?[0-9-s().]{7,20}$`',
+    `preauth_required` BOOLEAN COMMENT 'Flag indicating pre-authorization is required.',
+    `referral_number` STRING COMMENT 'The referral number of the encounter visit insurance record.',
+    `reimbursement_method` STRING COMMENT 'Reimbursement method (DRG, fee-for-service, capitation).. Valid values are `FFS|CAPITATION|BUNDLED|VBP|DRG|PER_DIEM`',
+    `visit_insurance_status` STRING COMMENT 'The visit insurance status value classifying the encounter visit insurance record.',
+    `subscriber_dob` DATE COMMENT 'Subscriber date of birth.',
+    `subscriber_relationship` STRING COMMENT 'Relationship of subscriber to patient.. Valid values are `SELF|SPOUSE|CHILD|OTHER`',
+    `updated_timestamp` TIMESTAMP COMMENT 'Record last updated timestamp.',
+    `vibe_mutation_marker` STRING COMMENT 'The vibe mutation marker of the encounter visit insurance record.',
+    `vibe_structure_marker` STRING COMMENT 'The vibe structure marker of the encounter visit insurance record.',
     CONSTRAINT pk_visit_insurance PRIMARY KEY(`visit_insurance_id`)
-) COMMENT 'Insurance coverage and payer information associated with a specific visit, capturing primary, secondary, and tertiary payer details, plan name, group number, member ID, subscriber relationship, coverage verification status, authorization number, pre-authorization requirements, financial class, expected reimbursement method (FFS, capitation, bundled payment, VBP), and coordination of benefits sequence. SSOT for payer-visit linkage within the encounter domain. Sourced from Epic Resolute HB and Cerner Revenue Cycle eligibility verification.';
-
-CREATE OR REPLACE TABLE `vibe_healthcare_v1`.`encounter`.`encounter_authorization` (
-    `encounter_authorization_id` BIGINT COMMENT 'Unique surrogate primary key for the prior authorization and concurrent review record within the encounter domain. Assigned by the lakehouse Silver layer upon ingestion.',
-    `clinician_id` BIGINT COMMENT 'Reference to the clinician or provider who submitted the prior authorization request to the payer. Used for provider-level utilization management reporting.',
-    `employee_id` BIGINT COMMENT 'Foreign key linking to workforce.employee. Business justification: Utilization review coordinators process authorization requests. Required for audit trails, denial appeal preparation, productivity tracking, and compliance with payer submission timelines. Distinct fr',
-    `cost_center_id` BIGINT COMMENT 'Foreign key linking to finance.cost_center. Business justification: Prior authorizations for services tie to the cost center delivering care. Needed for denied-service cost tracking, authorization yield financial analysis, and payer contract performance evaluation at ',
-    `coverage_policy_id` BIGINT COMMENT 'Foreign key linking to insurance.coverage_policy. Business justification: Authorizations are approved or denied based on specific coverage policies. Tracking which policy was applied enables denial management, appeals preparation, and policy effectiveness analysis—critical ',
-    `cpt_code_id` BIGINT COMMENT 'Foreign key linking to reference.cpt_code. Business justification: Prior authorization workflow—requested procedures must reference official CPT codes for payer review, medical necessity determination, and authorization approval. Required for utilization management a',
-    `demographics_id` BIGINT COMMENT 'Reference to the patient for whom the authorization was requested. Supports patient-level denial management and utilization management analytics.',
-    `drg_id` BIGINT COMMENT 'Foreign key linking to reference.drg. Business justification: Inpatient authorization workflow—DRG-based authorizations must reference official DRG definitions for expected payment calculation and length-of-stay approval. Required for inpatient utilization manag',
-    `hcpcs_code_id` BIGINT COMMENT 'Foreign key linking to reference.hcpcs_code. Business justification: Prior authorization for HCPCS services—DME, supplies, and drug authorizations must reference official HCPCS codes for payer review and approval. Required for utilization management of non-physician se',
-    `icd_code_id` BIGINT COMMENT 'Foreign key linking to reference.icd_code. Business justification: Medical necessity validation—authorization diagnosis codes must reference official ICD-10 for clinical justification and payer approval. Required for utilization management to validate that requested ',
-    `interface_channel_id` BIGINT COMMENT 'Foreign key linking to interoperability.interface_channel. Business justification: Authorization requests/responses are transmitted via specific payer interface channels. Tracking which channel processed each authorization enables SLA monitoring, payer-specific error analysis, routi',
-    `material_master_id` BIGINT COMMENT 'Foreign key linking to supply.material_master. Business justification: Prior authorizations frequently specify approved devices, medications, or supplies by item number. Payer contract compliance and authorization workflow systems require tracking which specific material',
-    `order_authorization_id` BIGINT COMMENT 'FK to SSOT owner order.order_authorization for the authorization entity.',
-    `payer_id` BIGINT COMMENT 'Reference to the insurance payer or health plan responsible for adjudicating the authorization request. Drives payer contract compliance and denial trend analysis.',
-    `prior_auth_rule_id` BIGINT COMMENT 'Foreign key linking to insurance.prior_auth_rule. Business justification: Each authorization decision applies specific prior auth rules defined by payer. Direct link enables compliance tracking, rule effectiveness analysis, and appeals documentation—essential for utilizatio',
-    `research_study_id` BIGINT COMMENT 'Foreign key linking to research.research_study. Business justification: Prior authorizations for research-related services must reference the study protocol for proper coverage determination under Medicare NCD 310.1 and commercial clinical trial policies. Research billing',
-    `visit_id` BIGINT COMMENT 'Reference to the patient encounter (visit) for which this prior authorization was obtained or requested. Links the authorization record to the core ADT encounter event.',
-    `appeal_decision` STRING COMMENT 'Outcome of the payer appeal review. Upheld: original denial maintained; Overturned: denial reversed, services approved; Partial: partial approval granted on appeal; Pending: appeal under review. Drives denial overturn rate KPI reporting.. Valid values are `upheld|overturned|partial|pending`',
-    `appeal_submitted_date` DATE COMMENT 'Date on which a formal appeal of the payer denial was submitted. Populated when authorization_status is appealed. Used to track appeal filing deadlines and payer response timelines.',
-    `authorization_number` STRING COMMENT 'Externally assigned authorization reference number issued by the payer upon approval or acknowledgment of the prior authorization request. Required on claims submission to validate covered services. Sourced from Epic Resolute HB payer portal integration.',
-    `authorization_status` STRING COMMENT 'Current workflow state of the prior authorization request. Drives revenue cycle integrity, denial management workflows, and utilization management escalation. Key values: approved (payer approved services), denied (payer denied services), pending (awaiting payer decision), appealed (denial under appeal), retro_authorized (authorization obtained after service delivery), cancelled (request withdrawn).. Valid values are `approved|denied|pending|appealed|retro_authorized|cancelled`',
-    `authorization_type` STRING COMMENT 'Classification of the authorization request by timing relative to service delivery. Prior: requested before service; Concurrent: requested during ongoing inpatient stay (utilization review); Retrospective: requested after service delivery; Expedited: urgent/emergent prior authorization with accelerated payer review timeline.. Valid values are `prior|concurrent|retrospective|expedited`',
-    `authorized_amount` DECIMAL(18,2) COMMENT 'Dollar amount of services approved by the payer under this authorization. Used for revenue cycle forecasting, expected reimbursement calculation, and payer contract compliance monitoring.',
-    `authorized_days` STRING COMMENT 'Number of inpatient days or service days approved by the payer for the authorized admission or ongoing care episode. Critical for concurrent review, length-of-stay management, and discharge planning. Distinct from authorized_units which applies to discrete service counts.',
-    `authorized_units` STRING COMMENT 'Number of service units (e.g., therapy visits, procedure units, infusion doses) approved by the payer for the authorized service. Used for utilization tracking against approved quantities and denial prevention.',
-    `clinical_indication` STRING COMMENT 'Narrative description of the medical necessity justification submitted to the payer supporting the authorization request. Documents the clinical rationale, patient condition, and treatment plan context. Used by CDI teams for documentation improvement and appeal preparation.',
-    `cpt_code` STRING COMMENT 'AMA Current Procedural Terminology code identifying the specific procedure or service for which authorization is requested. Used for claims matching, denial root cause analysis, and payer contract compliance validation.. Valid values are `^[0-9]{4}[0-9A-Z]$`',
-    `created_timestamp` TIMESTAMP COMMENT 'Date and time the authorization record was first created in the source system (Epic Resolute HB or payer portal integration). Audit trail field for data lineage and compliance.',
-    `days_used` STRING COMMENT 'Number of authorized inpatient days actually consumed against this authorization. Compared against authorized_days for concurrent review, length-of-stay management, and proactive extension request triggering.',
-    `denial_reason_code` STRING COMMENT 'Payer-issued standardized code identifying the reason for authorization denial (e.g., not medically necessary, experimental/investigational, out-of-network, missing documentation, benefit exclusion). Used for denial management root cause analysis and appeal strategy. Populated only when authorization_status is denied or appealed.',
-    `denial_reason_description` STRING COMMENT 'Free-text or payer-provided narrative description of the denial rationale. Supplements the denial_reason_code with additional clinical or administrative context. Used by CDI and RCM teams for appeal letter preparation.',
-    `end_date` DATE COMMENT 'Last date on which authorized services may be rendered under this authorization. Services delivered after this date require re-authorization. Used for authorization expiration monitoring and proactive renewal workflows.',
-    `extension_authorization_number` STRING COMMENT 'Payer-issued authorization number for an approved extension of the original authorization period or unit count. Links the extension approval to the parent authorization record for complete authorization chain tracking.',
-    `extension_requested_flag` BOOLEAN COMMENT 'Indicates whether an extension of the original authorization (additional days or units) has been requested from the payer. True = extension request submitted. Supports concurrent review workflow management and LOS management reporting.',
-    `facility_type` STRING COMMENT 'Type of care setting or facility for which the authorization was requested. Inpatient: acute hospital admission; Outpatient: ambulatory services; ED: emergency department; Observation: observation status; SNF: skilled nursing facility; Home Health: home-based services; Telehealth: virtual care services. [ENUM-REF-CANDIDATE: inpatient|outpatient|ed|observation|snf|home_health|telehealth — 7 candidates stripped; promote to reference product]',
-    `hcpcs_code` STRING COMMENT 'HCPCS Level II code for services, supplies, or equipment not covered by CPT codes (e.g., durable medical equipment, ambulance services, drugs). Complements CPT code for comprehensive service identification on authorization requests.. Valid values are `^[A-Z][0-9]{4}$`',
-    `icd10_diagnosis_code` STRING COMMENT 'Primary ICD-10-CM diagnosis code submitted as clinical indication supporting the medical necessity of the requested service. Required by most payers for authorization adjudication. Sourced from Epic ClinDoc clinical documentation.. Valid values are `^[A-Z][0-9]{2}(.[0-9A-Z]{1,4})?$`',
-    `notes` STRING COMMENT 'Free-text field capturing additional clinical, administrative, or payer-specific notes related to the authorization request or decision. Used by RCM and utilization management staff to document follow-up actions, payer communications, and special circumstances.',
-    `payer_authorization_reference` STRING COMMENT 'Payer-assigned internal tracking or case reference number for the authorization request, distinct from the final authorization_number. Used for payer portal follow-up, status inquiries, and audit trail documentation during the pending review period.',
-    `payer_decision_timestamp` TIMESTAMP COMMENT 'Date and time the payer issued its authorization decision (approval, denial, or partial approval). Used to calculate payer turnaround time, measure compliance with CMS prior authorization timelines, and support denial management workflows.',
-    `payer_reviewer_name` STRING COMMENT 'Name of the payer clinical reviewer or medical director who adjudicated the authorization request. Used for peer-to-peer review scheduling, appeal escalation, and payer relationship management.',
-    `payer_reviewer_npi` STRING COMMENT 'National Provider Identifier of the payer medical director or clinical reviewer who adjudicated the authorization. Required for peer-to-peer review documentation and regulatory audit trails.. Valid values are `^[0-9]{10}$`',
-    `peer_to_peer_outcome` STRING COMMENT 'Result of the peer-to-peer clinical review with the payer medical director. Approved: payer reversed denial after P2P; Denied: payer upheld denial after P2P; Partial: partial approval granted; Pending: outcome not yet determined.. Valid values are `approved|denied|partial|pending`',
-    `peer_to_peer_review_date` DATE COMMENT 'Date on which the peer-to-peer clinical review between the requesting provider and payer medical director was conducted. Populated when peer_to_peer_review_flag is True.',
-    `peer_to_peer_review_flag` BOOLEAN COMMENT 'Indicates whether a peer-to-peer clinical review was requested or conducted between the requesting provider and the payer medical director to contest a denial or support authorization. True = P2P review requested/completed. Key metric for utilization management and denial overturn tracking.',
-    `request_submitted_timestamp` TIMESTAMP COMMENT 'Date and time the prior authorization request was formally submitted to the payer. Principal business event timestamp for the authorization lifecycle. Used for turnaround time measurement and payer SLA compliance tracking.',
-    `retro_authorization_reason` STRING COMMENT 'Documented reason why authorization was obtained retrospectively after service delivery (e.g., emergency admission, system downtime, payer portal unavailability, clinical urgency). Required for retro-authorization requests and RAC audit defense. Populated when authorization_type is retrospective.',
-    `service_type` STRING COMMENT 'Category of clinical service or care setting for which authorization is being requested (e.g., inpatient admission, outpatient surgery, skilled nursing facility, home health, durable medical equipment, specialty referral, imaging, infusion therapy). Sourced from payer-specific service type codes. [ENUM-REF-CANDIDATE: inpatient|outpatient_surgery|skilled_nursing|home_health|dme|specialty_referral|imaging|infusion|behavioral_health|physical_therapy — promote to reference product]',
-    `source_system_auth_code` STRING COMMENT 'Native authorization record identifier from the originating source system (e.g., Epic Resolute HB authorization ID or payer portal case ID). Enables cross-system reconciliation, ETL traceability, and audit trail back to the system of record.',
-    `start_date` DATE COMMENT 'First date on which the authorized services may be rendered under this authorization. Services delivered before this date are not covered and may result in claim denial. Sourced from payer authorization response.',
-    `submission_method` STRING COMMENT 'Channel through which the prior authorization request was submitted to the payer. Electronic: automated EDI 278 transaction; Phone: verbal submission via payer call center; Fax: paper-based fax submission; Portal: payer web portal submission; EDI: direct EDI integration. Used for operational efficiency analysis and automation opportunity identification.. Valid values are `electronic|phone|fax|portal|edi`',
-    `units_used` STRING COMMENT 'Number of authorized service units actually consumed against this authorization. Compared against authorized_units to monitor utilization, prevent over-utilization, and trigger re-authorization workflows when approaching the authorized limit.',
-    `updated_timestamp` TIMESTAMP COMMENT 'Date and time the authorization record was most recently modified in the source system. Tracks status changes, unit updates, and appeal outcomes throughout the authorization lifecycle.',
-    `urgency_level` STRING COMMENT 'Clinical urgency classification of the authorization request. Routine: standard processing timeline; Urgent: accelerated review required within 72 hours; Emergent: immediate review required; Expedited: CMS-defined expedited review for life-threatening conditions. Drives payer SLA requirements and processing priority.. Valid values are `routine|urgent|emergent|expedited`',
-    CONSTRAINT pk_encounter_authorization PRIMARY KEY(`encounter_authorization_id`)
-) COMMENT 'Prior authorization and concurrent review record for services rendered during a visit. Captures authorization number, authorizing payer, authorized service type, authorized units/days, authorization start and end dates, requesting provider, clinical indication, authorization status (approved, denied, pending, appealed, retro-authorized), denial reason code, and peer-to-peer review flag. Critical for revenue cycle integrity, denial management, utilization management, and payer contract compliance. Sourced from Epic Resolute HB and payer portal integrations.';
+) COMMENT 'Insurance coverage details associated with a visit, including eligibility, authorization, and financial responsibility.';
 
 CREATE OR REPLACE TABLE `vibe_healthcare_v1`.`encounter`.`visit_status_history` (
-    `visit_status_history_id` BIGINT COMMENT 'Unique surrogate identifier for each visit status history record. Primary key for the visit_status_history data product in the encounter domain.',
-    `bed_id` BIGINT COMMENT 'Reference to the specific bed assigned to the patient at the time of this status change. Supports bed management, occupancy tracking, and throughput analysis.',
-    `employee_id` BIGINT COMMENT 'Reference to the system user (clinician, registrar, or automated process) who initiated or recorded the status change. Used for workflow auditing and accountability tracking.',
-    `clinician_id` BIGINT COMMENT 'Reference to the attending physician responsible for the patient at the time of this status change. Supports provider-level throughput and LOS analysis.',
-    `consent_record_id` BIGINT COMMENT 'Reference to the original visit_status_history record that this record corrects or supersedes. Null if is_corrected is False. Enables correction chain tracing for audit and HIM workflows.',
-    `demographics_id` BIGINT COMMENT 'Reference to the patient associated with the visit. Enables patient-level throughput and LOS milestone analysis without requiring a join to the visit table.',
-    `drg_id` BIGINT COMMENT 'Foreign key linking to reference.drg. Business justification: Status change tracking—DRG codes captured during visit status changes must reference official DRG definitions for revenue cycle monitoring, case management tracking, and real-time financial impact ana',
-    `message_log_id` BIGINT COMMENT 'The HL7 message control ID (MSH-10) from the ADT message that triggered this status change. Enables traceability back to the originating HL7 ADT message for interface troubleshooting and audit.',
-    `org_unit_id` BIGINT COMMENT 'Reference to the clinical department or unit associated with this status change event (e.g., ED, ICU, Med-Surg). Supports department-level throughput and capacity analysis.',
-    `care_site_id` BIGINT COMMENT 'Reference to the facility or hospital where the visit status change occurred. Enables multi-facility throughput comparison and operational reporting.',
-    `visit_id` BIGINT COMMENT 'Reference to the parent visit/encounter record for which this status change event is recorded. Links the status history to the core encounter.',
-    `visit_transfer_destination_facility_care_site_id` BIGINT COMMENT 'Reference to the destination facility when the status change represents a patient transfer event. Null for non-transfer status changes. Supports inter-facility transfer tracking and care continuity analysis.',
-    `admission_source_code` STRING COMMENT 'Standardized code indicating the source from which the patient was admitted at the time of an admission status event (e.g., emergency room, physician referral, transfer from another facility). Relevant for admit-type status transitions. Aligns with UB-04 FL-15.',
-    `adt_event_reason_code` STRING COMMENT 'Coded reason for the ADT event or status change as defined by the source system or HL7 standard (e.g., elective admission, emergency, transfer for higher level of care). Supports root-cause analysis of status transitions.',
-    `adt_event_type` STRING COMMENT 'HL7 ADT event type code that triggered this status change (e.g., A01=Admit, A02=Transfer, A03=Discharge, A04=Register Outpatient, A05=Pre-Admit, A06=Change Outpatient to Inpatient). Enables HL7-aligned event classification. [ENUM-REF-CANDIDATE: A01|A02|A03|A04|A05|A06|A07|A08|A09|A10|A11|A12|A13|A21|A22|A38|A40 — promote to reference product]. Valid values are `A01|A02|A03|A04|A05|A06`',
-    `care_setting` STRING COMMENT 'Physical or virtual care setting where the patient was located at the time of this status change (e.g., ED, ICU, OR, inpatient unit, outpatient clinic, observation unit, telehealth). Supports care setting transition analysis. [ENUM-REF-CANDIDATE: ED|ICU|OR|inpatient_unit|outpatient_clinic|observation_unit|telehealth — 7 candidates stripped; promote to reference product]',
-    `changed_by_role` STRING COMMENT 'Functional role of the user who performed the status change (e.g., physician, nurse, registrar, care coordinator, system). Enables role-based throughput and workflow analysis.. Valid values are `physician|nurse|registrar|care_coordinator|system|other`',
-    `changed_by_user_name` STRING COMMENT 'Display name of the user who initiated the status change. Carried on the record to support audit reporting without requiring a join to the user directory.',
-    `created_timestamp` TIMESTAMP COMMENT 'Timestamp when this visit status history record was first created in the data platform. Distinct from status_change_timestamp which reflects the real-world event time. Used for audit trail and ETL lineage.',
-    `department_name` STRING COMMENT 'Name of the clinical department or unit at the time of the status change. Carried on the record to support reporting without requiring a join to the department reference table.',
-    `discharge_disposition_code` STRING COMMENT 'Standardized code indicating the patients disposition at the time of a discharge status event (e.g., home, skilled nursing facility, expired, AMA). Aligns with UB-04 FL-17 and CMS discharge disposition codes. Relevant for discharge-type status transitions.',
-    `duration_in_status_minutes` STRING COMMENT 'Number of minutes the visit remained in the previous status before transitioning to the new status. Calculated at ingestion time from consecutive status_change_timestamps. Supports LOS milestone tracking and throughput bottleneck analysis.',
-    `effective_date` DATE COMMENT 'Calendar date on which the status change became effective. Derived from status_change_timestamp for date-level partitioning, daily census reporting, and operational dashboards.',
-    `encounter_number` STRING COMMENT 'Human-readable, externally visible encounter or visit number assigned by the source system (e.g., Epic CSN or Cerner FIN). Used for cross-system reconciliation and operational reporting.',
-    `financial_class` STRING COMMENT 'Financial class or payer category of the visit at the time of this status change (e.g., Medicare, Medicaid, Commercial, Self-Pay). Supports payer-stratified throughput and LOS analysis.',
-    `is_corrected` BOOLEAN COMMENT 'Indicates whether this status history record is a correction of a previously entered status change. True if this record supersedes an erroneous prior entry. Supports data quality auditing and HIM correction workflows.',
-    `is_current_status` BOOLEAN COMMENT 'Indicates whether this record represents the most recent (current) status of the visit. True for the latest status record; False for all prior status records. Enables efficient current-state queries without window functions.',
-    `is_system_generated` BOOLEAN COMMENT 'Indicates whether this status change was automatically generated by the source system (e.g., automated bed assignment, scheduled discharge trigger) rather than manually entered by a user. Supports audit quality and workflow automation analysis.',
-    `los_at_event_hours` DECIMAL(18,2) COMMENT 'Cumulative length of stay in hours from the initial admission or arrival timestamp to the time of this status change event. Supports LOS milestone tracking and throughput benchmarking at each status transition point.',
-    `mrn` STRING COMMENT 'Medical Record Number assigned to the patient by the facility. Carried on the status history record to support operational auditing and patient-level throughput reporting without requiring upstream joins.',
-    `new_status` STRING COMMENT 'The visit status assigned as a result of this status change event. Represents the current state of the visit at the time of this record. [ENUM-REF-CANDIDATE: scheduled|pre-registered|arrived|admitted|in-progress|observation|transferred|discharged|cancelled|no-show|left-without-being-seen — promote to reference product]',
-    `notes` STRING COMMENT 'Free-text notes or comments entered by the user at the time of the status change. May include clinical context, operational instructions, or escalation notes. Supports workflow auditing and care coordination.',
-    `previous_status` STRING COMMENT 'The visit status immediately before this status change event occurred. Null for the initial status record. Used to reconstruct the full status transition chain. [ENUM-REF-CANDIDATE: scheduled|pre-registered|arrived|admitted|in-progress|observation|transferred|discharged|cancelled|no-show|left-without-being-seen — promote to reference product]',
-    `room_number` STRING COMMENT 'Room number assigned to the patient at the time of this status change. Relevant for bed assignment, transfer, and discharge events. Supports bed management and capacity planning.',
-    `sequence_number` STRING COMMENT 'Ordinal sequence number of this status change event within the visit lifecycle, starting at 1. Enables chronological ordering of status transitions for a given visit without relying solely on timestamps.',
-    `source_system_event_code` STRING COMMENT 'The native event or transaction identifier from the originating source system (e.g., Epic ADT event ID, Cerner Millennium event ID). Used for cross-system reconciliation, deduplication, and ETL lineage tracking.',
-    `status_change_reason` STRING COMMENT 'Free-text or coded narrative reason entered by the user or system explaining why the visit status was changed (e.g., Patient arrived at ED triage, Bed assigned in ICU, Patient left without being seen). Supports operational workflow auditing.',
-    `status_change_timestamp` TIMESTAMP COMMENT 'The precise date and time when the visit status transition occurred. Principal event timestamp for this record. Used for LOS milestone tracking, throughput analysis, and ADT event sequencing.',
-    `updated_timestamp` TIMESTAMP COMMENT 'Timestamp when this visit status history record was last modified in the data platform. Used for incremental ETL processing, change detection, and audit trail maintenance.',
+    `visit_status_history_id` BIGINT COMMENT 'Surrogate primary key for the visit status history record.',
+    `bed_id` BIGINT COMMENT 'FK to the bed at time of status change.',
+    `clinician_id` BIGINT COMMENT 'FK to the clinician.',
+    `corrected_record_visit_status_history_id` BIGINT COMMENT 'FK to the corrected consent record.',
+    `demographics_id` BIGINT COMMENT 'FK to patient demographics.',
+    `drg_id` BIGINT COMMENT 'FK to DRG reference.',
+    `employee_id` BIGINT COMMENT 'FK to the employee who made the status change.',
+    `message_log_id` BIGINT COMMENT 'FK to the HL7 message log.',
+    `org_unit_id` BIGINT COMMENT 'FK to the organizational unit.',
+    `care_site_id` BIGINT COMMENT 'FK to the care site.',
+    `visit_id` BIGINT COMMENT 'FK to the parent visit.',
+    `visit_transfer_destination_facility_care_site_id` BIGINT COMMENT 'FK to the transfer destination care site.',
+    `admission_source_code` STRING COMMENT 'The admission source code value classifying the encounter visit status history record.',
+    `adt_event_reason_code` STRING COMMENT 'The adt event reason code value classifying the encounter visit status history record.',
+    `adt_event_type` STRING COMMENT 'The adt event type value classifying the encounter visit status history record.. Valid values are `A01|A02|A03|A04|A05|A06`',
+    `care_setting` STRING COMMENT 'Care setting at time of status change.',
+    `changed_by_role` STRING COMMENT 'Role of the user who changed the status.. Valid values are `physician|nurse|registrar|care_coordinator|system|other`',
+    `changed_by_user_name` STRING COMMENT 'Username of the user who changed the status.',
+    `created_timestamp` TIMESTAMP COMMENT 'Record creation timestamp.',
+    `department_name` STRING COMMENT 'Department name at time of status change.',
+    `discharge_disposition_code` STRING COMMENT 'The discharge disposition code value classifying the encounter visit status history record.',
+    `duration_in_status_minutes` STRING COMMENT 'Duration in the previous status in minutes.',
+    `effective_date` DATE COMMENT 'Effective date of the status change.',
+    `encounter_number` STRING COMMENT 'The encounter number of the encounter visit status history record.',
+    `financial_class` STRING COMMENT 'Financial class at time of status change.',
+    `is_corrected` BOOLEAN COMMENT 'Flag indicating this is a corrected record.',
+    `is_current_status` BOOLEAN COMMENT 'Flag indicating this is the current status.',
+    `is_system_generated` BOOLEAN COMMENT 'Flag indicating system-generated status change.',
+    `los_at_event_hours` DECIMAL(18,2) COMMENT 'Length of stay at time of event in hours.',
+    `mrn` STRING COMMENT 'Medical record number.',
+    `new_status` STRING COMMENT 'New visit status.',
+    `notes` STRING COMMENT 'Free-text notes.',
+    `previous_status` STRING COMMENT 'Previous visit status.',
+    `room_number` STRING COMMENT 'Room number at time of status change.',
+    `sequence_number` STRING COMMENT 'Sequence number of the status change.',
+    `source_system_event_code` STRING COMMENT 'The source system event code value classifying the encounter visit status history record.',
+    `visit_status_history_status` STRING COMMENT 'The visit status history status value classifying the encounter visit status history record.',
+    `status_change_reason` STRING COMMENT 'Reason for the status change.',
+    `status_change_timestamp` TIMESTAMP COMMENT 'Timestamp of the status change.',
+    `updated_timestamp` TIMESTAMP COMMENT 'Record last updated timestamp.',
+    `vibe_mutation_marker` STRING COMMENT 'The vibe mutation marker of the encounter visit status history record.',
+    `vibe_structure_marker` STRING COMMENT 'The vibe structure marker of the encounter visit status history record.',
     CONSTRAINT pk_visit_status_history PRIMARY KEY(`visit_status_history_id`)
-) COMMENT 'Chronological audit trail of all status changes for a visit throughout its lifecycle (scheduled, pre-registered, arrived, admitted, in-progress, observation, transferred, discharged, cancelled, no-show, left-without-being-seen). Captures previous status, new status, status change timestamp, changed-by user, and reason for status change. Enables LOS milestone tracking, throughput analysis, and operational workflow auditing. Sourced from Epic ADT and Cerner Millennium event log.';
+) COMMENT 'Audit trail of visit status changes throughout the encounter lifecycle.';
 
 CREATE OR REPLACE TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` (
-    `triage_assessment_id` BIGINT COMMENT 'Unique surrogate identifier for the triage assessment record in the Silver layer lakehouse. Primary key for this entity.',
-    `care_site_id` BIGINT COMMENT 'Reference to the facility (ED or urgent care location) where the triage assessment was conducted. Supports multi-site throughput and capacity analytics.',
-    `clinician_id` BIGINT COMMENT 'Reference to the licensed nurse or clinician who performed the triage assessment. Used for accountability, staffing analytics, and EMTALA compliance tracking.',
-    `mpi_record_id` BIGINT COMMENT 'Reference to the patient who was triaged. Core party reference linking the triage assessment to the Master Patient Index (MPI).',
-    `prior_triage_assessment_id` BIGINT COMMENT 'Reference to the original triage assessment record when this record is a reassessment. Enables linkage of reassessment chains for acuity escalation tracking and waiting room safety analytics.',
-    `employee_id` BIGINT COMMENT 'Foreign key linking to workforce.employee. Business justification: Triage nurses are often RNs tracked in workforce (not provider domain). Required for ED staffing models, competency validation (ESI certification), and labor productivity. Complements existing clinici',
-    `visit_id` BIGINT COMMENT 'Reference to the parent Emergency Department (ED) or urgent care encounter for which this triage assessment was performed. Links triage to the broader encounter lifecycle.',
-    `acuity_change_reason` STRING COMMENT 'Free-text or structured reason documented by the triage nurse when the ESI acuity level is changed during a reassessment. PHI under HIPAA. Used for clinical quality review and patient safety event analysis.',
-    `ama_flag` BOOLEAN COMMENT 'Indicates whether the patient left the ED Against Medical Advice (AMA) after triage but before completing the full ED visit. Distinct from LWBS — AMA occurs after provider contact. Used for risk management, quality reporting, and EMTALA compliance.',
-    `arrival_mode` STRING COMMENT 'Method by which the patient arrived at the ED or urgent care facility. Includes ground ambulance, air transport (helicopter), walk-in, police transport, private vehicle, or inter-facility transfer. Used for EMTALA compliance, acuity benchmarking, and EMS coordination analytics.. Valid values are `ambulance|walk_in|helicopter|police|private_vehicle|transfer`',
-    `chief_complaint` STRING COMMENT 'Free-text or structured description of the patients primary reason for presenting to the ED or urgent care, as stated by the patient or documented by the triage nurse. Protected Health Information (PHI) under HIPAA. Used for clinical documentation, coding, and population health analytics.',
-    `chief_complaint_code` STRING COMMENT 'Standardized SNOMED CT (Systematized Nomenclature of Medicine Clinical Terms) code representing the chief complaint. Enables structured clinical analytics, interoperability, and population health reporting across systems.',
-    `diastolic_bp_mmhg` STRING COMMENT 'Diastolic blood pressure measurement recorded at triage, expressed in millimeters of mercury (mmHg). Used alongside systolic BP for hemodynamic assessment and ESI acuity scoring. PHI under HIPAA.',
-    `door_arrival_timestamp` TIMESTAMP COMMENT 'Date and time the patient physically arrived at the ED or urgent care facility (door time). Used as the baseline for door-to-triage and door-to-provider time quality measures reported to CMS.',
-    `esi_level` STRING COMMENT 'Emergency Severity Index (ESI) triage acuity score assigned by the triage nurse, ranging from 1 (most critical/immediate) to 5 (least urgent/non-urgent). Drives resource allocation, bed assignment priority, and ED throughput analytics. Defined by AHRQ ESI Triage Algorithm.',
-    `glasgow_coma_score` STRING COMMENT 'Total Glasgow Coma Scale (GCS) score assessed at triage, ranging from 3 (deep unconsciousness) to 15 (fully alert). Used for neurological status assessment, ESI acuity determination, and trauma triage protocols. PHI under HIPAA.',
-    `heart_rate_bpm` STRING COMMENT 'Heart rate (pulse) measured at triage, expressed in beats per minute (BPM). Key vital sign for ESI acuity determination and identification of hemodynamic instability. PHI under HIPAA.',
-    `interpreter_language` STRING COMMENT 'Primary language for which interpretation services are required, using ISO 639-1 two-letter language codes (e.g., es for Spanish, zh for Chinese). Supports LEP compliance reporting and interpreter resource planning.',
-    `interpreter_required_flag` BOOLEAN COMMENT 'Indicates whether the patient requires language interpretation services during the triage assessment. Supports compliance with Title VI of the Civil Rights Act and CMS Limited English Proficiency (LEP) requirements.',
-    `isolation_required_flag` BOOLEAN COMMENT 'Indicates whether the patient requires isolation precautions at triage (e.g., airborne, droplet, contact, or neutropenic precautions). Drives bed assignment workflows, infection control protocols, and Healthcare-Associated Infection (HAI) prevention measures.',
-    `isolation_type` STRING COMMENT 'Type of isolation precaution required for the patient as determined at triage. Drives room assignment, personal protective equipment (PPE) requirements, and infection control workflows.. Valid values are `airborne|droplet|contact|neutropenic|standard`',
-    `lwbs_flag` BOOLEAN COMMENT 'Indicates whether the patient left the ED without being seen by a provider after triage (LWBS). Key ED throughput quality metric reported to CMS and used for EMTALA compliance monitoring and operational improvement initiatives.',
-    `lwbs_timestamp` TIMESTAMP COMMENT 'Date and time the patient departed the ED without being seen by a provider, when the LWBS flag is true. Used to calculate time-to-LWBS and identify peak demand periods contributing to patient walkouts.',
-    `mental_health_flag` BOOLEAN COMMENT 'Indicates whether the patients chief complaint or triage assessment involves a primary mental health or behavioral health concern. Used for ED behavioral health throughput analytics, psychiatric bed management, and EMTALA psychiatric screening compliance.',
-    `pain_scale_type` STRING COMMENT 'Type of validated pain assessment scale used to obtain the pain score at triage. Distinguishes between numeric rating scale (NRS), Wong-Baker FACES (pediatric), FLACC (non-verbal), verbal descriptor, or behavioral observation scales.. Valid values are `numeric|faces|flacc|verbal|behavioral`',
-    `pain_score` STRING COMMENT 'Patient-reported pain intensity score at triage, typically on a 0–10 numeric rating scale (NRS) or equivalent validated scale (e.g., Wong-Baker FACES for pediatric patients). Used for ESI acuity determination and Joint Commission pain management compliance. PHI under HIPAA.',
-    `record_created_timestamp` TIMESTAMP COMMENT 'Date and time when this triage assessment record was first created in the source system. Used for audit trail, data lineage, and Silver layer ingestion tracking.',
-    `record_updated_timestamp` TIMESTAMP COMMENT 'Date and time when this triage assessment record was most recently modified in the source system. Used for change detection, incremental ETL processing, and audit compliance.',
-    `respiratory_rate_bpm` STRING COMMENT 'Respiratory rate measured at triage, expressed in breaths per minute. Used for ESI acuity scoring and identification of respiratory distress. PHI under HIPAA.',
-    `sepsis_alert_flag` BOOLEAN COMMENT 'Indicates whether a sepsis screening alert was triggered at triage based on vital signs and clinical criteria (e.g., SIRS criteria, qSOFA). Supports SEP-1 bundle compliance reporting to CMS and Joint Commission sepsis quality measures.',
-    `source_system_record_code` STRING COMMENT 'Native record identifier from the originating operational system (Epic ClinDoc or Cerner PowerChart ED) for this triage assessment. Enables cross-system traceability and supports Health Information Exchange (HIE) reconciliation.',
-    `spo2_percent` DECIMAL(18,2) COMMENT 'Peripheral oxygen saturation (SpO2) measured by pulse oximetry at triage, expressed as a percentage. Critical indicator for respiratory status and ESI acuity level assignment. PHI under HIPAA.',
-    `stroke_alert_flag` BOOLEAN COMMENT 'Indicates whether a stroke alert protocol was activated at triage based on presenting symptoms (e.g., FAST criteria). Supports door-to-CT and door-to-needle time quality measures for stroke care reported to The Joint Commission and CMS.',
-    `systolic_bp_mmhg` STRING COMMENT 'Systolic blood pressure measurement recorded at triage, expressed in millimeters of mercury (mmHg). Critical vital sign for ESI acuity determination and clinical decision support. PHI under HIPAA.',
-    `temperature_celsius` DECIMAL(18,2) COMMENT 'Body temperature measured at triage, expressed in degrees Celsius. Used for ESI acuity determination, sepsis screening, and infection surveillance. PHI under HIPAA.',
-    `temperature_route` STRING COMMENT 'Anatomical route used to obtain the body temperature measurement at triage (e.g., oral, rectal, axillary, tympanic, temporal). Affects clinical interpretation of temperature values.. Valid values are `oral|rectal|axillary|tympanic|temporal`',
-    `trauma_activation_flag` BOOLEAN COMMENT 'Indicates whether a trauma team activation was initiated at or following triage. Used for trauma registry reporting, ACS trauma center verification, and ED resource utilization analytics.',
-    `trauma_level` STRING COMMENT 'Level of trauma team activation triggered at triage (Level 1 = full activation for most critical injuries, Level 2 = partial activation, Level 3 = consult/standby). Drives resource deployment and trauma registry classification.. Valid values are `level_1|level_2|level_3`',
-    `triage_category` STRING COMMENT 'Categorical classification of triage acuity corresponding to the ESI level. Supports ED throughput reporting, staffing models, and payer analytics. Values align with standard ED triage nomenclature.. Valid values are `emergent|urgent|semi_urgent|non_urgent|immediate`',
-    `triage_completed_timestamp` TIMESTAMP COMMENT 'Date and time when the triage assessment was fully documented and completed by the triage nurse. Used to calculate triage duration and nurse productivity metrics.',
-    `triage_number` STRING COMMENT 'Externally visible, human-readable identifier for the triage assessment record as assigned by the source system (Epic ClinDoc or Cerner PowerChart ED). Used for cross-system reconciliation and audit trails.',
-    `triage_nurse_npi` STRING COMMENT 'National Provider Identifier (NPI) of the licensed nurse or clinician who performed the triage assessment. Required for EMTALA compliance documentation and provider-level quality reporting. Sourced from Epic ClinDoc or Cerner PowerChart ED.. Valid values are `^[0-9]{10}$`',
-    `triage_reassessment_flag` BOOLEAN COMMENT 'Indicates whether this triage record represents a reassessment of a previously triaged patient (e.g., patient condition changed while waiting). Supports tracking of acuity escalation events and waiting room safety monitoring.',
-    `triage_status` STRING COMMENT 'Current workflow state of the triage assessment record. Indicates whether triage documentation is in progress, finalized, subsequently amended, or voided.. Valid values are `in_progress|completed|amended|voided`',
-    `triage_timestamp` TIMESTAMP COMMENT 'Date and time when the triage assessment was initiated by the triage nurse. This is the principal business event timestamp used to calculate door-to-triage time and ED throughput quality measures.',
-    `weight_kg` DECIMAL(18,2) COMMENT 'Patient weight measured or reported at triage, expressed in kilograms. Used for medication dosing calculations, pediatric weight-based protocols, and clinical decision support. PHI under HIPAA.',
+    `triage_assessment_id` BIGINT COMMENT 'Surrogate primary key for the triage assessment.',
+    `care_site_id` BIGINT COMMENT 'FK to the care site.',
+    `clinician_id` BIGINT COMMENT 'FK to the clinician.',
+    `mpi_record_id` BIGINT COMMENT 'FK to the patient MPI record.',
+    `prior_triage_assessment_id` BIGINT COMMENT 'Self-referential FK to prior triage assessment.',
+    `employee_id` BIGINT COMMENT 'FK to the triage nurse employee.',
+    `visit_id` BIGINT COMMENT 'FK to the parent visit.',
+    `acuity_change_reason` STRING COMMENT 'Reason for acuity level change.',
+    `ama_flag` BOOLEAN COMMENT 'Flag indicating against medical advice.',
+    `arrival_mode` STRING COMMENT 'Mode of arrival (ambulance, walk-in, helicopter).. Valid values are `ambulance|walk_in|helicopter|police|private_vehicle|transfer`',
+    `chief_complaint` STRING COMMENT 'Patient chief complaint.',
+    `chief_complaint_code` STRING COMMENT 'Coded chief complaint.',
+    `created_timestamp` TIMESTAMP COMMENT 'The created timestamp of the encounter triage assessment record.',
+    `diastolic_bp_mmhg` STRING COMMENT 'Diastolic blood pressure in mmHg.',
+    `door_arrival_timestamp` TIMESTAMP COMMENT 'Timestamp of patient arrival at door.',
+    `esi_level` STRING COMMENT 'Emergency Severity Index level (1-5).',
+    `glasgow_coma_score` STRING COMMENT 'Glasgow Coma Scale score.',
+    `heart_rate_bpm` STRING COMMENT 'Heart rate in beats per minute.',
+    `interpreter_language` STRING COMMENT 'Language for interpreter services.',
+    `interpreter_required_flag` BOOLEAN COMMENT 'Flag indicating interpreter is required.',
+    `isolation_required_flag` BOOLEAN COMMENT 'Flag indicating isolation is required.',
+    `isolation_type` STRING COMMENT 'Type of isolation required.. Valid values are `airborne|droplet|contact|neutropenic|standard`',
+    `lwbs_flag` BOOLEAN COMMENT 'Flag indicating left without being seen.',
+    `lwbs_timestamp` TIMESTAMP COMMENT 'Timestamp when patient left without being seen.',
+    `mental_health_flag` BOOLEAN COMMENT 'Flag indicating mental health presentation.',
+    `pain_scale_type` STRING COMMENT 'Type of pain scale used.. Valid values are `numeric|faces|flacc|verbal|behavioral`',
+    `pain_score` STRING COMMENT 'The pain score of the encounter triage assessment record.',
+    `record_created_timestamp` TIMESTAMP COMMENT 'Record creation timestamp.',
+    `record_updated_timestamp` TIMESTAMP COMMENT 'Record last updated timestamp.',
+    `respiratory_rate_bpm` STRING COMMENT 'Respiratory rate in breaths per minute.',
+    `sepsis_alert_flag` BOOLEAN COMMENT 'Flag indicating sepsis alert was triggered.',
+    `source_system_record_code` STRING COMMENT 'The source system record code value classifying the encounter triage assessment record.',
+    `spo2_percent` DECIMAL(18,2) COMMENT 'Oxygen saturation percentage.',
+    `triage_assessment_status` STRING COMMENT 'The triage assessment status value classifying the encounter triage assessment record.',
+    `stroke_alert_flag` BOOLEAN COMMENT 'Flag indicating stroke alert was triggered.',
+    `systolic_bp_mmhg` STRING COMMENT 'Systolic blood pressure in mmHg.',
+    `temperature_celsius` DECIMAL(18,2) COMMENT 'Body temperature in Celsius.',
+    `temperature_route` STRING COMMENT 'Route of temperature measurement.. Valid values are `oral|rectal|axillary|tympanic|temporal`',
+    `trauma_activation_flag` BOOLEAN COMMENT 'Flag indicating trauma activation.',
+    `trauma_level` STRING COMMENT 'Trauma activation level.. Valid values are `level_1|level_2|level_3`',
+    `triage_category` STRING COMMENT 'The triage category of the encounter triage assessment record.. Valid values are `emergent|urgent|semi_urgent|non_urgent|immediate`',
+    `triage_completed_timestamp` TIMESTAMP COMMENT 'Timestamp when triage was completed.',
+    `triage_number` STRING COMMENT 'The triage number of the encounter triage assessment record.',
+    `triage_nurse_npi` STRING COMMENT 'NPI of the triage nurse.. Valid values are `^[0-9]{10}$`',
+    `triage_reassessment_flag` BOOLEAN COMMENT 'Flag indicating this is a reassessment.',
+    `triage_status` STRING COMMENT 'Status of the triage assessment.. Valid values are `in_progress|completed|amended|voided`',
+    `triage_timestamp` TIMESTAMP COMMENT 'Timestamp of triage.',
+    `updated_timestamp` TIMESTAMP COMMENT 'The updated timestamp of the encounter triage assessment record.',
+    `vibe_mutation_marker` STRING COMMENT 'The vibe mutation marker of the encounter triage assessment record.',
+    `vibe_structure_marker` STRING COMMENT 'The vibe structure marker of the encounter triage assessment record.',
+    `weight_kg` DECIMAL(18,2) COMMENT 'Patient weight in kilograms.',
     CONSTRAINT pk_triage_assessment PRIMARY KEY(`triage_assessment_id`)
-) COMMENT 'ED and urgent care triage assessment record capturing triage acuity level (ESI 1-5), chief complaint, triage timestamp, triage nurse NPI, vital signs at triage (BP, HR, RR, temp, SpO2, pain score), mode of arrival (ambulance, walk-in, helicopter, police), triage category (emergent, urgent, semi-urgent, non-urgent), and LWBS (Left Without Being Seen) flag. Supports ED throughput metrics, door-to-provider time quality measures, and EMTALA compliance. Sourced from Epic ClinDoc ED module and Cerner PowerChart ED.';
+) COMMENT 'Emergency department triage assessment capturing vital signs, acuity level, and chief complaint.';
 
 CREATE OR REPLACE TABLE `vibe_healthcare_v1`.`encounter`.`readmission` (
-    `readmission_id` BIGINT COMMENT 'Unique surrogate identifier for the readmission tracking record linking an index encounter to a subsequent readmission encounter.',
-    `care_site_id` BIGINT COMMENT 'Foreign key reference to the facility where the readmission encounter occurred. Supports facility-level HRRP penalty calculation and Joint Commission reporting.',
-    `clinician_id` BIGINT COMMENT 'Foreign key reference to the attending physician responsible for the readmission encounter. Used for provider-level quality reporting and MIPS performance attribution.',
-    `compliance_regulatory_submission_id` BIGINT COMMENT 'Foreign key linking to compliance.regulatory_submission. Business justification: Readmission data is directly submitted to CMS for Hospital Readmissions Reduction Program (HRRP) penalty calculation. Specific readmission records are referenced in regulatory submissions. Core CMS qu',
-    `demographics_id` BIGINT COMMENT 'Foreign key reference to the patient record. Links the readmission pair to the Master Patient Index (MPI) for population health analytics and care management targeting.',
-    `drg_id` BIGINT COMMENT 'Foreign key linking to reference.drg. Business justification: Readmission tracking—index admission DRG must reference official DRG definition for HRRP penalty calculation, excess readmission ratio reporting, and quality measure validation. Required for CMS readm',
-    `payer_id` BIGINT COMMENT 'Foreign key reference to the payer (insurance plan) responsible for the index encounter. Used to segment readmission rates by payer for value-based contract performance reporting and ACO/HMO/PPO analytics.',
-    `visit_id` BIGINT COMMENT 'Foreign key reference to the subsequent encounter that qualifies as a readmission within the defined time window following the index discharge.',
-    `readmission_original_visit_id` BIGINT COMMENT 'add column original_visit_id (BIGINT) with FK to encounter.visit.visit_id - readmission references visit but needs two visit FKs: the readmission visit and the original/index visit; currently only one visit FK exists',
-    `readmission_visit_id` BIGINT COMMENT 'Foreign key reference to the original (index) inpatient encounter from which the readmission window is measured. The index encounter is the hospitalization that preceded the readmission.',
-    `aco_attributed` BOOLEAN COMMENT 'Indicates whether the patient was attributed to an Accountable Care Organization (ACO) at the time of the index encounter. ACO-attributed readmissions have direct financial implications under shared savings and risk-based contracts.',
-    `admission_date` DATE COMMENT 'Date the patient was admitted for the readmission encounter. Used to calculate days between discharge and readmission and to determine which time-window cohort (7, 30, 90 days) the readmission falls into.',
-    `admit_source` STRING COMMENT 'Source through which the patient was admitted for the readmission encounter (e.g., Emergency Department, physician referral, transfer from another facility). Supports analysis of care transition failure points.. Valid values are `ed|physician_referral|transfer|direct_admit|other`',
-    `care_gap_identified` STRING COMMENT 'Specific care gap identified during readmission review that contributed to the readmission event. Used to drive post-discharge intervention program design and care management outreach. [ENUM-REF-CANDIDATE: no_follow_up_appointment|medication_reconciliation_gap|no_discharge_instructions|no_post_acute_referral|no_care_gap — promote to reference product]. Valid values are `no_follow_up_appointment|medication_reconciliation_gap|no_discharge_instructions|no_post_acute_referral|no_care_gap`',
-    `created_timestamp` TIMESTAMP COMMENT 'Timestamp when this readmission tracking record was first created in the system, typically triggered by the ADT discharge event or quality review workflow initiation.',
-    `days_to_readmission` STRING COMMENT 'Number of calendar days elapsed between the index discharge date and the readmission admission date. Core metric for HRRP cohort assignment and post-discharge intervention effectiveness analysis.',
-    `drg_code` STRING COMMENT 'MS-DRG code assigned to the readmission encounter by the grouper. Used for financial impact analysis of readmissions on reimbursement and for HRRP penalty cost modeling.',
-    `estimated_penalty_amount` DECIMAL(18,2) COMMENT 'Estimated financial penalty amount (in USD) attributable to this readmission under the CMS Hospital Readmissions Reduction Program. Used for revenue cycle impact analysis and CFO-level financial reporting. Confidential business financial data.',
-    `follow_up_appointment_date` DATE COMMENT 'Scheduled date of the first post-discharge follow-up appointment after the index encounter. Used to assess timeliness of follow-up care and its correlation with readmission prevention.',
-    `follow_up_appointment_scheduled` BOOLEAN COMMENT 'Indicates whether a follow-up outpatient appointment was scheduled prior to or at the time of index discharge. A key care gap indicator; absence is associated with higher 30-day readmission risk.',
-    `hrrp_excess_readmission_ratio` DECIMAL(18,2) COMMENT 'CMS-calculated ratio of predicted to expected readmissions for the applicable HRRP measure category. A ratio greater than 1.0 indicates excess readmissions subject to payment penalty. Sourced from CMS IPPS final rule calculations.',
-    `hrrp_measure_category` STRING COMMENT 'CMS HRRP condition-specific measure category assigned to the readmission. AMI=Acute Myocardial Infarction, HF=Heart Failure, PN=Pneumonia, COPD=Chronic Obstructive Pulmonary Disease, THA_TKA=Total Hip/Knee Arthroplasty, CABG=Coronary Artery Bypass Graft, other=does not fall under a specific HRRP measure. Drives CMS penalty calculation and quality reporting. [ENUM-REF-CANDIDATE: AMI|HF|PN|COPD|THA_TKA|CABG|other — promote to reference product]',
-    `index_discharge_date` DATE COMMENT 'Date the patient was discharged from the index (original) inpatient encounter. Serves as the start of the readmission measurement window per CMS HRRP methodology.',
-    `index_discharge_disposition` STRING COMMENT 'Discharge disposition code from the index encounter indicating where the patient was discharged to. Critical for identifying post-acute care failures as a readmission root cause and for HRRP exclusion logic (e.g., AMA, expired). [ENUM-REF-CANDIDATE: home|home_health|snf|ltach|rehab|hospice|ama|expired — promote to reference product]',
-    `index_los_days` STRING COMMENT 'Number of inpatient days for the index encounter. Used in readmission risk stratification and to assess whether short LOS contributed to the readmission.',
-    `index_primary_icd10_code` STRING COMMENT 'Primary ICD-10-CM diagnosis code from the index encounter. Used to determine HRRP measure category eligibility and to analyze clinical patterns driving readmissions.. Valid values are `^[A-Z][0-9A-Z]{1,6}$`',
-    `is_hrrp_applicable` BOOLEAN COMMENT 'Indicates whether this readmission is subject to CMS HRRP penalty calculation. False when the readmission meets CMS exclusion criteria (e.g., planned readmission, transfer, AMA discharge, death during index stay).',
-    `is_related_to_index` BOOLEAN COMMENT 'Indicates whether the readmission diagnosis is clinically related to the index encounters principal diagnosis, as determined by clinical documentation review or CDI query outcome. Supports root cause analysis and preventability assessment.',
-    `los_days` STRING COMMENT 'Number of inpatient days for the readmission encounter. Used for financial impact analysis and to assess severity of the readmission event.',
-    `medication_reconciliation_completed` BOOLEAN COMMENT 'Indicates whether medication reconciliation was completed at the time of index discharge. Medication discrepancies are a leading cause of preventable readmissions; this flag supports MAR audit and quality reporting.',
-    `payer_type` STRING COMMENT 'Classification of the payer for the index encounter. Medicare is the primary payer subject to CMS HRRP penalties. Segmentation by payer type enables value-based contract performance analysis across HMO, PPO, ACO, and government programs.. Valid values are `medicare|medicaid|commercial|self_pay|other`',
-    `preventability_assessment` STRING COMMENT 'Clinical determination of whether the readmission was potentially preventable through improved care coordination, discharge planning, or post-discharge follow-up. Drives care management program targeting and quality improvement initiatives.. Valid values are `potentially_preventable|not_preventable|undetermined`',
-    `primary_icd10_code` STRING COMMENT 'Primary ICD-10-CM diagnosis code assigned at the readmission encounter. Core field for determining whether the readmission is related to the index condition and for CMS HRRP measure attribution.. Valid values are `^[A-Z][0-9A-Z]{1,6}$`',
-    `review_completed_date` DATE COMMENT 'Date on which the clinical quality review of this readmission record was completed by the quality or CDI team. Supports workflow management and regulatory reporting timeliness tracking.',
-    `reviewer_notes` STRING COMMENT 'Free-text clinical notes entered by the quality reviewer documenting the rationale for preventability assessment, root cause determination, and any care gaps identified during the readmission review process.',
-    `risk_score` DECIMAL(18,2) COMMENT 'Numeric risk score assigned to the patient at the time of index discharge predicting likelihood of 30-day readmission (e.g., LACE score, HOSPITAL score, Epic readmission risk model output). Used for care management program targeting and post-discharge intervention prioritization.',
-    `risk_score_model` STRING COMMENT 'Name of the validated risk stratification model used to generate the readmission risk score. LACE=Length of stay, Acuity, Comorbidities, ED visits; HOSPITAL=Hemoglobin, Oncology, Sodium, Procedure, Index admission type, Type of admission, number of Admissions, Length of stay.. Valid values are `LACE|HOSPITAL|BOOST|epic_model|custom`',
-    `root_cause_category` STRING COMMENT 'Categorized root cause of the readmission as identified through clinical review. Supports targeted quality improvement interventions and population health management. [ENUM-REF-CANDIDATE: medication_issue|care_coordination_gap|patient_non_compliance|inadequate_discharge_planning|disease_progression|social_determinants|post_acute_care_failure — promote to reference product]',
-    `sdoh_flag` BOOLEAN COMMENT 'Indicates whether Social Determinants of Health (SDOH) factors (e.g., housing instability, food insecurity, transportation barriers) were identified as contributing to the readmission. Supports population health management and care management program targeting.',
-    `readmission_status` STRING COMMENT 'Current workflow status of the readmission record within the quality review and HRRP adjudication process. pending_review indicates awaiting clinical validation; confirmed indicates validated readmission; excluded indicates meets CMS exclusion criteria; appealed indicates under payer or CMS appeal; closed indicates final disposition reached.. Valid values are `pending_review|confirmed|excluded|appealed|closed`',
-    `tracking_number` STRING COMMENT 'Externally visible business identifier for this readmission record, used in care management workflows, quality reporting submissions, and cross-system reconciliation (e.g., Epic Healthy Planet case reference).',
-    `transition_of_care_completed` BOOLEAN COMMENT 'Indicates whether a formal transition of care communication (e.g., discharge summary transmitted to PCP, care transition call completed) was documented following the index discharge. Supports HEDIS Transitions of Care measure compliance.',
-    `readmission_type` STRING COMMENT 'Classification of the readmission as planned or unplanned per CMS HRRP methodology. Planned readmissions (e.g., scheduled chemotherapy, elective procedures) are excluded from HRRP penalty calculations. Unplanned readmissions are subject to CMS penalty assessment.. Valid values are `planned|unplanned`',
-    `updated_timestamp` TIMESTAMP COMMENT 'Timestamp when this readmission tracking record was last modified, such as when a review is completed, status changes, or preventability assessment is updated.',
-    `window` STRING COMMENT 'Defined time window within which the readmission occurred relative to the index discharge. 7_day supports high-acuity post-discharge monitoring; 30_day is the primary CMS HRRP measurement window; 90_day supports extended care management program targeting.. Valid values are `7_day|30_day|90_day`',
+    `readmission_id` BIGINT COMMENT 'Surrogate primary key for the readmission record.',
+    `care_site_id` BIGINT COMMENT 'FK to the care site.',
+    `clinician_id` BIGINT COMMENT 'FK to the responsible clinician.',
+    `compliance_regulatory_submission_id` BIGINT COMMENT 'FK to compliance regulatory submission.',
+    `demographics_id` BIGINT COMMENT 'FK to patient demographics.',
+    `drg_id` BIGINT COMMENT 'FK to the index visit DRG.',
+    `payer_id` BIGINT COMMENT 'FK to the payer.',
+    `visit_id` BIGINT COMMENT 'FK to the readmission encounter visit.',
+    `aco_attributed` BOOLEAN COMMENT 'Flag indicating ACO attribution.',
+    `admission_date` DATE COMMENT 'Date of readmission.',
+    `admit_source` STRING COMMENT 'Source of readmission.. Valid values are `ed|physician_referral|transfer|direct_admit|other`',
+    `care_gap_identified` STRING COMMENT 'Care gap identified as contributing to readmission.. Valid values are `no_follow_up_appointment|medication_reconciliation_gap|no_discharge_instructions|no_post_acute_referral|no_care_gap`',
+    `created_timestamp` TIMESTAMP COMMENT 'Record creation timestamp.',
+    `days_to_readmission` STRING COMMENT 'Number of days from index discharge to readmission.',
+    `drg_code` STRING COMMENT 'DRG code for the readmission.',
+    `estimated_penalty_amount` DECIMAL(18,2) COMMENT 'Estimated HRRP penalty amount.',
+    `follow_up_appointment_date` DATE COMMENT 'Date of follow-up appointment.',
+    `follow_up_appointment_scheduled` BOOLEAN COMMENT 'Flag indicating follow-up was scheduled.',
+    `hrrp_excess_readmission_ratio` DECIMAL(18,2) COMMENT 'The hrrp excess readmission ratio of the encounter readmission record.',
+    `hrrp_measure_category` STRING COMMENT 'HRRP measure category (AMI, HF, pneumonia, etc.).',
+    `index_discharge_date` DATE COMMENT 'Discharge date of the index visit.',
+    `index_discharge_disposition` STRING COMMENT 'Discharge disposition of the index visit.',
+    `index_los_days` STRING COMMENT 'Length of stay for the index visit.',
+    `index_primary_icd10_code` STRING COMMENT 'Primary ICD-10 code for the index visit.. Valid values are `^[A-Z][0-9A-Z]{1,6}$`',
+    `is_hrrp_applicable` BOOLEAN COMMENT 'Flag indicating HRRP applicability.',
+    `is_related_to_index` BOOLEAN COMMENT 'Flag indicating readmission is related to index visit.',
+    `los_days` STRING COMMENT 'Length of stay for the readmission.',
+    `medication_reconciliation_completed` BOOLEAN COMMENT 'Flag indicating medication reconciliation was completed.',
+    `payer_type` STRING COMMENT 'Payer type (Medicare, Medicaid, commercial).. Valid values are `medicare|medicaid|commercial|self_pay|other`',
+    `preventability_assessment` STRING COMMENT 'Assessment of readmission preventability.. Valid values are `potentially_preventable|not_preventable|undetermined`',
+    `primary_icd10_code` STRING COMMENT 'Primary ICD-10 code for the readmission.. Valid values are `^[A-Z][0-9A-Z]{1,6}$`',
+    `readmission_status` STRING COMMENT 'Status of the readmission review.. Valid values are `pending_review|confirmed|excluded|appealed|closed`',
+    `readmission_type` STRING COMMENT 'Type of readmission (planned, unplanned).. Valid values are `planned|unplanned`',
+    `review_completed_date` DATE COMMENT 'Date readmission review was completed.',
+    `reviewer_notes` STRING COMMENT 'Notes from the readmission reviewer.',
+    `risk_score` DECIMAL(18,2) COMMENT 'Readmission risk score.',
+    `risk_score_model` STRING COMMENT 'Model used to calculate risk score.. Valid values are `LACE|HOSPITAL|BOOST|epic_model|custom`',
+    `root_cause_category` STRING COMMENT 'Root cause category of the readmission.',
+    `sdoh_flag` BOOLEAN COMMENT 'Flag indicating SDOH factors contributed to readmission.',
+    `tracking_number` STRING COMMENT 'Tracking number for the readmission review.',
+    `transition_of_care_completed` BOOLEAN COMMENT 'Flag indicating transition of care was completed.',
+    `updated_timestamp` TIMESTAMP COMMENT 'Record last updated timestamp.',
+    `vibe_mutation_marker` STRING COMMENT 'The vibe mutation marker of the encounter readmission record.',
+    `vibe_structure_marker` STRING COMMENT 'The vibe structure marker of the encounter readmission record.',
+    `window` STRING COMMENT 'Readmission window (30-day, 90-day).. Valid values are `7_day|30_day|90_day`',
     CONSTRAINT pk_readmission PRIMARY KEY(`readmission_id`)
-) COMMENT 'Readmission tracking record linking an index (original) encounter to a subsequent readmission encounter within a defined time window (7, 30, 90 days). Captures index visit FK, readmission visit FK, days between discharge and readmission, readmission type (planned, unplanned), readmission diagnosis ICD-10, CMS readmission measure category (HRRP — Hospital Readmissions Reduction Program), preventability assessment, root cause category, and care gap identified. Supports CMS HRRP penalty avoidance, quality reporting, care management program targeting, and post-discharge intervention effectiveness analysis.';
+) COMMENT 'Readmission tracking record for HRRP compliance, root cause analysis, and quality improvement.';
 
 CREATE OR REPLACE TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` (
-    `discharge_summary_id` BIGINT COMMENT 'Unique identifier for the discharge summary record. Primary key.',
-    `addended_discharge_summary_id` BIGINT COMMENT 'Self-referencing FK on discharge_summary (addended_discharge_summary_id)',
-    `care_site_id` BIGINT COMMENT 'Reference to the healthcare facility where the patient was discharged from.',
-    `care_transition_notification_id` BIGINT COMMENT 'Foreign key linking to interoperability.care_transition_notification. Business justification: CMS Interoperability rules require discharge summaries to trigger care transition notifications. Linking enables compliance tracking, notification delivery verification, acknowledgment monitoring, and',
-    `employee_id` BIGINT COMMENT 'Foreign key linking to workforce.employee. Business justification: Case managers coordinate discharge planning, DME orders, home health referrals, and care transitions. Essential for readmission prevention programs, utilization management, and CMS care transition mea',
-    `cda_document_id` BIGINT COMMENT 'The unique identifier of the discharge summary document in the source EHR system for traceability and audit purposes.',
-    `compliance_regulatory_submission_id` BIGINT COMMENT 'Foreign key linking to compliance.regulatory_submission. Business justification: Discharge summaries provide clinical documentation for quality measure submissions (CMS Core Measures, Joint Commission, state quality reporting). Specific discharge summaries are referenced in regula',
-    `cost_center_id` BIGINT COMMENT 'Foreign key linking to finance.cost_center. Business justification: Discharge events close episodes of care with final cost accumulation to the treating cost center. Required for case costing, length-of-stay financial impact analysis, and discharge disposition cost tr',
-    `demographics_id` BIGINT COMMENT 'Reference to the patient who was discharged.',
-    `drg_assignment_id` BIGINT COMMENT 'Foreign key linking to encounter.drg_assignment. Business justification: Normalization of DRG data in discharge summary. Currently discharge_summary duplicates drg_code and drg_description from the authoritative drg_assignment record. Both products link to the same visit, ',
-    `mpi_record_id` BIGINT COMMENT 'add column patient_mpi_record_id (BIGINT) with FK to patient.mpi_record.mpi_record_id - discharge summaries reference demographics but not mpi_record; MPI is the SSOT for patient identity',
-    `clinician_id` BIGINT COMMENT 'Reference to the provider who authorized and completed the patient discharge.',
-    `requisition_id` BIGINT COMMENT 'Foreign key linking to supply.requisition. Business justification: Discharge planning triggers supply requisitions for home health equipment, DME, wound care supplies, or take-home medications. Care transitions and discharge readiness workflows depend on linking disc',
-    `subject_enrollment_id` BIGINT COMMENT 'Foreign key linking to research.subject_enrollment. Business justification: Research protocols require discharge summaries for serious adverse event reporting, outcome assessment, and protocol deviation documentation. Clinical research coordinators need to access discharge do',
-    `tertiary_discharge_follow_up_provider_clinician_id` BIGINT COMMENT 'Reference to the provider with whom the follow-up appointment is scheduled.',
-    `visit_id` BIGINT COMMENT 'Reference to the parent encounter for which this discharge summary was created.',
-    `activity_restrictions` STRING COMMENT 'Physical activity limitations and restrictions prescribed at discharge including weight-bearing, lifting, and exercise guidelines.',
-    `care_transition_plan_completed` BOOLEAN COMMENT 'Indicates whether a comprehensive care transition plan was documented and communicated to the patient and receiving providers.',
-    `compliance_flag` BOOLEAN COMMENT 'Indicates whether the discharge summary was completed within the required timeframe per organizational policy and regulatory requirements.',
-    `created_timestamp` TIMESTAMP COMMENT 'The date and time when this discharge summary record was first created in the data warehouse.',
-    `diet_instructions` STRING COMMENT 'Dietary recommendations and restrictions provided to the patient at discharge.',
-    `discharge_condition` STRING COMMENT 'The patients clinical condition at the time of discharge compared to admission status.. Valid values are `improved|stable|deteriorated|unchanged|expired`',
-    `discharge_date` DATE COMMENT 'The date the patient was discharged from the facility or care setting.',
-    `discharge_disposition` STRING COMMENT 'The destination or status of the patient at discharge indicating where the patient went after leaving the facility. [ENUM-REF-CANDIDATE: home|home_health|snf|rehab|ltac|hospice|ama|expired|transfer|other — 10 candidates stripped; promote to reference product]',
-    `discharge_disposition_code` STRING COMMENT 'Standardized code representing the discharge disposition per CMS or payer requirements.',
-    `discharge_instructions_issued` BOOLEAN COMMENT 'Indicates whether written discharge instructions were provided to the patient or caregiver at discharge.',
-    `discharge_instructions_text` STRING COMMENT 'Free-text narrative of the discharge instructions provided to the patient including medications, activity restrictions, diet, wound care, and warning signs.',
-    `discharge_medications_prescribed` STRING COMMENT 'List or narrative of medications prescribed at discharge including drug name, dosage, frequency, and duration.',
-    `discharge_timestamp` TIMESTAMP COMMENT 'The precise date and time the patient was discharged from the facility, including time zone information.',
-    `discharging_provider_npi` STRING COMMENT 'The National Provider Identifier of the discharging provider for billing and regulatory reporting.',
-    `durable_medical_equipment_ordered` STRING COMMENT 'List of durable medical equipment prescribed for home use such as oxygen, wheelchair, walker, or hospital bed.',
-    `follow_up_appointment_date` DATE COMMENT 'The scheduled date for the patient to return for follow-up care after discharge.',
-    `follow_up_instructions` STRING COMMENT 'Specific instructions for follow-up care including tests, specialist referrals, or monitoring requirements.',
-    `follow_up_scheduled` BOOLEAN COMMENT 'Indicates whether a follow-up appointment with a provider was scheduled prior to discharge.',
-    `functional_status_at_discharge` STRING COMMENT 'Assessment of the patients functional abilities at discharge including mobility, self-care, and activities of daily living.',
-    `home_health_referral_made` BOOLEAN COMMENT 'Indicates whether a referral to home health services was made at discharge.',
-    `hospital_course_narrative` STRING COMMENT 'Detailed chronological narrative of the patients clinical course during hospitalization including daily progress and significant events.',
-    `length_of_stay_days` STRING COMMENT 'The total number of days the patient was admitted, calculated from admission to discharge date.',
-    `medication_reconciliation_completed` BOOLEAN COMMENT 'Indicates whether medication reconciliation was performed at discharge comparing pre-admission, inpatient, and discharge medications.',
-    `mrn` STRING COMMENT 'The unique medical record number assigned to the patient by the healthcare facility.',
-    `number` STRING COMMENT 'Business identifier for the discharge summary document, often used for clinical documentation tracking and retrieval.',
-    `patient_education_provided` BOOLEAN COMMENT 'Indicates whether patient education regarding their condition, treatment, and self-care was documented.',
-    `patient_education_topics` STRING COMMENT 'List of topics covered during patient education sessions including disease management, medication use, and lifestyle modifications.',
-    `principal_diagnosis_code` STRING COMMENT 'The ICD-10-CM diagnosis code representing the condition established after study to be chiefly responsible for the admission.',
-    `principal_diagnosis_description` STRING COMMENT 'Human-readable description of the principal diagnosis for clinical documentation and patient communication.',
-    `procedures_performed_summary` STRING COMMENT 'Summary of all procedures, surgeries, and interventions performed during the hospitalization.',
-    `secondary_diagnosis_count` STRING COMMENT 'The number of secondary diagnoses documented for this encounter, used for case complexity assessment.',
-    `summary_authored_timestamp` TIMESTAMP COMMENT 'The date and time when the discharge summary was initially authored or dictated by the provider.',
-    `summary_finalized_timestamp` TIMESTAMP COMMENT 'The date and time when the discharge summary was finalized and signed by the responsible provider.',
-    `summary_of_hospitalization` STRING COMMENT 'Narrative summary of the hospital course including reason for admission, significant findings, procedures performed, treatment provided, and patient response.',
-    `summary_status` STRING COMMENT 'Current lifecycle status of the discharge summary document indicating its completion and approval state.. Valid values are `draft|preliminary|final|amended|corrected|cancelled`',
-    `time_to_completion_hours` DECIMAL(18,2) COMMENT 'The number of hours between discharge and finalization of the discharge summary, used for compliance monitoring.',
-    `updated_timestamp` TIMESTAMP COMMENT 'The date and time when this discharge summary record was last modified in the data warehouse.',
-    `warning_signs` STRING COMMENT 'Symptoms or conditions that should prompt the patient to seek immediate medical attention after discharge.',
-    `wound_care_instructions` STRING COMMENT 'Specific instructions for surgical site care, dressing changes, or wound management at home.',
+    `discharge_summary_id` BIGINT COMMENT 'Surrogate primary key for the discharge summary.',
+    `addended_discharge_summary_id` BIGINT COMMENT 'Self-referential FK to the original discharge summary being addended.',
+    `care_site_id` BIGINT COMMENT 'FK to the care site.',
+    `care_transition_notification_id` BIGINT COMMENT 'FK to care transition notification.',
+    `employee_id` BIGINT COMMENT 'FK to the case manager employee.',
+    `cda_document_id` BIGINT COMMENT 'FK to the CDA document.',
+    `cost_center_id` BIGINT COMMENT 'FK to the cost center.',
+    `demographics_id` BIGINT COMMENT 'FK to patient demographics.',
+    `drg_assignment_id` BIGINT COMMENT 'FK to the DRG assignment.',
+    `mpi_record_id` BIGINT COMMENT 'Unique identifier for the mpi record within the encounter discharge summary record.',
+    `clinician_id` BIGINT COMMENT 'FK to the primary discharging clinician.',
+    `requisition_id` BIGINT COMMENT 'FK to supply requisition.',
+    `subject_enrollment_id` BIGINT COMMENT 'FK to research subject enrollment.',
+    `tertiary_discharge_follow_up_provider_clinician_id` BIGINT COMMENT 'FK to the follow-up provider clinician.',
+    `visit_id` BIGINT COMMENT 'FK to the parent visit.',
+    `activity_restrictions` STRING COMMENT 'Activity restrictions at discharge.',
+    `care_transition_plan_completed` BOOLEAN COMMENT 'Flag indicating care transition plan was completed.',
+    `compliance_flag` BOOLEAN COMMENT 'Flag indicating compliance issue.',
+    `created_timestamp` TIMESTAMP COMMENT 'Record creation timestamp.',
+    `diet_instructions` STRING COMMENT 'Dietary instructions at discharge.',
+    `discharge_condition` STRING COMMENT 'Patient condition at discharge.. Valid values are `improved|stable|deteriorated|unchanged|expired`',
+    `discharge_date` DATE COMMENT 'Date of discharge.',
+    `discharge_disposition` STRING COMMENT 'The discharge disposition of the encounter discharge summary record.',
+    `discharge_disposition_code` STRING COMMENT 'The discharge disposition code value classifying the encounter discharge summary record.',
+    `discharge_instructions_issued` BOOLEAN COMMENT 'Flag indicating discharge instructions were issued.',
+    `discharge_instructions_text` STRING COMMENT 'Text of discharge instructions.',
+    `discharge_medications_prescribed` STRING COMMENT 'Medications prescribed at discharge.',
+    `discharge_summary_number` STRING COMMENT 'Discharge summary document number.',
+    `discharge_timestamp` TIMESTAMP COMMENT 'Timestamp of discharge.',
+    `discharging_provider_npi` STRING COMMENT 'NPI of the discharging provider.',
+    `durable_medical_equipment_ordered` STRING COMMENT 'DME ordered at discharge.',
+    `follow_up_appointment_date` DATE COMMENT 'Date of follow-up appointment.',
+    `follow_up_instructions` STRING COMMENT 'The follow up instructions of the encounter discharge summary record.',
+    `follow_up_scheduled` BOOLEAN COMMENT 'Flag indicating follow-up was scheduled.',
+    `functional_status_at_discharge` STRING COMMENT 'The functional status at discharge of the encounter discharge summary record.',
+    `home_health_referral_made` BOOLEAN COMMENT 'Flag indicating home health referral was made.',
+    `hospital_course_narrative` STRING COMMENT 'Narrative of hospital course.',
+    `length_of_stay_days` STRING COMMENT 'Length of stay in days.',
+    `medication_reconciliation_completed` BOOLEAN COMMENT 'Flag indicating medication reconciliation was completed.',
+    `mrn` STRING COMMENT 'Medical record number.',
+    `patient_education_provided` BOOLEAN COMMENT 'Flag indicating patient education was provided.',
+    `patient_education_topics` STRING COMMENT 'Topics covered in patient education.',
+    `principal_diagnosis_code` STRING COMMENT 'The principal diagnosis code value classifying the encounter discharge summary record.',
+    `principal_diagnosis_description` STRING COMMENT 'The principal diagnosis description of the encounter discharge summary record.',
+    `procedures_performed_summary` STRING COMMENT 'Summary of procedures performed.',
+    `secondary_diagnosis_count` STRING COMMENT 'Number of secondary diagnoses.',
+    `discharge_summary_status` STRING COMMENT 'The discharge summary status value classifying the encounter discharge summary record.',
+    `summary_authored_timestamp` TIMESTAMP COMMENT 'Timestamp when summary was authored.',
+    `summary_finalized_timestamp` TIMESTAMP COMMENT 'Timestamp when summary was finalized.',
+    `summary_of_hospitalization` STRING COMMENT 'The summary of hospitalization of the encounter discharge summary record.',
+    `summary_status` STRING COMMENT 'Status of the discharge summary.. Valid values are `draft|preliminary|final|amended|corrected|cancelled`',
+    `time_to_completion_hours` DECIMAL(18,2) COMMENT 'Time to complete the discharge summary in hours.',
+    `updated_timestamp` TIMESTAMP COMMENT 'Record last updated timestamp.',
+    `vibe_mutation_marker` STRING COMMENT 'The vibe mutation marker of the encounter discharge summary record.',
+    `vibe_structure_marker` STRING COMMENT 'The vibe structure marker of the encounter discharge summary record.',
+    `warning_signs` STRING COMMENT 'Warning signs to watch for after discharge.',
+    `wound_care_instructions` STRING COMMENT 'The wound care instructions of the encounter discharge summary record.',
     CONSTRAINT pk_discharge_summary PRIMARY KEY(`discharge_summary_id`)
-) COMMENT 'Discharge summary records capturing discharge date, disposition, diagnosis, instructions, and follow-up appointments.';
+) COMMENT 'Discharge summary document capturing hospital course, discharge instructions, and follow-up plan.';
 
 CREATE OR REPLACE TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` (
-    `transfer_request_id` BIGINT COMMENT 'Unique identifier for the patient transfer request record. Primary key for the transfer_request product.',
-    `care_transition_notification_id` BIGINT COMMENT 'Foreign key linking to interoperability.care_transition_notification. Business justification: EMTALA-compliant transfers require care transition notifications to receiving facilities. Linking enables notification delivery tracking, acknowledgment verification, transfer coordination workflow mo',
-    `bed_id` BIGINT COMMENT 'Reference to the specific bed assigned to the patient at the destination facility.',
-    `care_site_id` BIGINT COMMENT 'Reference to the facility to which the patient is being transferred.',
-    `employee_id` BIGINT COMMENT 'Reference to the user (administrator, physician, or case manager) who approved the transfer request.',
-    `mpi_record_id` BIGINT COMMENT 'Reference to the patient being transferred.',
-    `origin_bed_id` BIGINT COMMENT 'Reference to the specific bed the patient is being transferred from.',
-    `cost_center_id` BIGINT COMMENT 'Foreign key linking to finance.cost_center. Business justification: Inter-unit transfers move cost responsibility between cost centers. Required for accurate departmental cost accounting, transfer pricing between units, and cost allocation during multi-department epis',
-    `original_transfer_request_id` BIGINT COMMENT 'Self-referencing FK on transfer_request (original_transfer_request_id)',
-    `primary_transfer_care_site_id` BIGINT COMMENT 'Reference to the facility from which the patient is being transferred.',
-    `clinician_id` BIGINT COMMENT 'Reference to the provider who initiated the transfer request.',
-    `visit_id` BIGINT COMMENT 'Reference to the encounter (visit) for which the transfer is being requested.',
-    `accepting_provider_npi` STRING COMMENT 'National Provider Identifier of the physician or clinician accepting the patient at the destination facility.',
-    `actual_transfer_timestamp` TIMESTAMP COMMENT 'Actual date and time when the patient transfer was completed and the patient arrived at the destination.',
-    `acuity_level` STRING COMMENT 'Clinical acuity classification of the patient at the time of transfer request, indicating urgency and level of care required.. Valid values are `critical|acute|stable|routine`',
-    `approval_required` BOOLEAN COMMENT 'Indicates whether the transfer request requires administrative or clinical approval before proceeding.',
-    `approval_timestamp` TIMESTAMP COMMENT 'Date and time when the transfer request was approved.',
-    `bed_availability_confirmed` BOOLEAN COMMENT 'Indicates whether the destination facility has confirmed availability of an appropriate bed for the patient.',
-    `cancellation_reason` STRING COMMENT 'Explanation for why the transfer request was cancelled after initial approval.',
-    `clinical_indication` STRING COMMENT 'Detailed clinical justification for the transfer, including diagnosis, condition severity, and required interventions not available at the origin facility.',
-    `created_timestamp` TIMESTAMP COMMENT 'Date and time when this transfer request record was first created in the system.',
-    `denial_reason` STRING COMMENT 'Explanation for why the transfer request was denied, if applicable.',
-    `destination_unit_code` STRING COMMENT 'Department or unit code at the destination facility where the patient will be admitted.',
-    `emtala_certification_completed` BOOLEAN COMMENT 'Indicates whether the required EMTALA physician certification form has been completed, documenting that medical benefits of transfer outweigh risks.',
-    `emtala_certification_timestamp` TIMESTAMP COMMENT 'Date and time when the EMTALA physician certification was signed.',
-    `emtala_compliant` BOOLEAN COMMENT 'Indicates whether the transfer request meets EMTALA requirements for appropriate transfer, including medical screening, stabilization, and informed consent.',
-    `isolation_required` BOOLEAN COMMENT 'Indicates whether the patient requires isolation precautions during and after transfer due to infectious disease or other clinical reasons.',
-    `isolation_type` STRING COMMENT 'Type of isolation precautions required for the patient (e.g., contact, droplet, airborne, protective).. Valid values are `contact|droplet|airborne|protective|none`',
-    `level_of_care_required` STRING COMMENT 'Specific level of care needed at the destination facility (e.g., ICU, step-down, telemetry, general medical-surgical).',
-    `medical_records_sent` BOOLEAN COMMENT 'Indicates whether copies of medical records, imaging, and test results have been sent to the accepting facility.',
-    `medical_records_sent_timestamp` TIMESTAMP COMMENT 'Date and time when medical records were transmitted to the destination facility.',
-    `mrn` STRING COMMENT 'The patients medical record number at the originating facility.',
-    `number` STRING COMMENT 'Business identifier for the transfer request, used for tracking and communication between facilities.',
-    `origin_unit_code` STRING COMMENT 'Department or unit code at the origin facility where the patient is currently located.',
-    `patient_consent_obtained` BOOLEAN COMMENT 'Indicates whether informed consent for the transfer has been obtained from the patient or their legal representative.',
-    `patient_consent_timestamp` TIMESTAMP COMMENT 'Date and time when patient or representative consent for transfer was documented.',
-    `patient_stability_score` STRING COMMENT 'Numeric score representing the patients clinical stability at the time of transfer, used to assess transfer risk.',
-    `primary_diagnosis_code` STRING COMMENT 'ICD-10 diagnosis code representing the primary condition necessitating the transfer.',
-    `primary_diagnosis_description` STRING COMMENT 'Human-readable description of the primary diagnosis associated with the transfer request.',
-    `request_timestamp` TIMESTAMP COMMENT 'Date and time when the transfer request was initiated. This is the principal business event timestamp for the transfer request transaction.',
-    `requested_transfer_timestamp` TIMESTAMP COMMENT 'Desired date and time for the patient transfer to occur, as specified by the requesting provider.',
-    `requesting_provider_npi` STRING COMMENT 'National Provider Identifier of the physician or clinician requesting the transfer.',
-    `source_system_record_code` STRING COMMENT 'Unique identifier for this transfer request in the source operational system.',
-    `specialty_service_required` STRING COMMENT 'Specialized medical service or capability required at the destination facility (e.g., neurosurgery, cardiac catheterization, burn unit, neonatal intensive care).',
-    `transfer_reason` STRING COMMENT 'Clinical or operational reason for the transfer request. Free-text description of why the patient needs to be transferred.',
-    `transfer_reason_code` STRING COMMENT 'Standardized code representing the reason for transfer (e.g., higher level of care, specialty service unavailable, patient request, capacity constraints).',
-    `transfer_status` STRING COMMENT 'Current lifecycle status of the transfer request. Tracks the request from initial submission through completion or cancellation. [ENUM-REF-CANDIDATE: requested|pending_approval|approved|in_progress|completed|cancelled|denied — 7 candidates stripped; promote to reference product]',
-    `transfer_type` STRING COMMENT 'Classification of the transfer request based on scope and urgency. Inter-facility transfers occur between different healthcare organizations, intra-facility transfers occur within the same organization.. Valid values are `inter_facility|intra_facility|emergency|elective|specialty_care|higher_level_of_care`',
-    `transport_mode` STRING COMMENT 'Method of transportation used or planned for the patient transfer.. Valid values are `ambulance|air_ambulance|wheelchair_van|private_vehicle|walk`',
-    `transport_provider` STRING COMMENT 'Name of the ambulance service, air transport company, or other transportation provider responsible for the transfer.',
-    `updated_timestamp` TIMESTAMP COMMENT 'Date and time when this transfer request record was last modified.',
+    `transfer_request_id` BIGINT COMMENT 'Surrogate primary key for the transfer request.',
+    `care_transition_notification_id` BIGINT COMMENT 'FK to care transition notification.',
+    `bed_id` BIGINT COMMENT 'FK to the destination bed.',
+    `care_site_id` BIGINT COMMENT 'FK to the destination facility care site.',
+    `employee_id` BIGINT COMMENT 'FK to the employee initiating the transfer.',
+    `mpi_record_id` BIGINT COMMENT 'FK to the patient MPI record.',
+    `origin_bed_id` BIGINT COMMENT 'FK to the origin bed.',
+    `cost_center_id` BIGINT COMMENT 'FK to the origin cost center.',
+    `original_transfer_request_id` BIGINT COMMENT 'Self-referential FK to the original transfer request.',
+    `primary_transfer_care_site_id` BIGINT COMMENT 'FK to the primary transfer care site.',
+    `clinician_id` BIGINT COMMENT 'FK to the primary transfer clinician.',
+    `visit_id` BIGINT COMMENT 'FK to the parent visit.',
+    `accepting_provider_npi` STRING COMMENT 'NPI of the accepting provider.',
+    `actual_transfer_timestamp` TIMESTAMP COMMENT 'Actual timestamp of transfer.',
+    `acuity_level` STRING COMMENT 'Patient acuity level.. Valid values are `critical|acute|stable|routine`',
+    `approval_required` BOOLEAN COMMENT 'Flag indicating approval is required.',
+    `approval_timestamp` TIMESTAMP COMMENT 'Timestamp of transfer approval.',
+    `bed_availability_confirmed` BOOLEAN COMMENT 'Flag indicating bed availability was confirmed.',
+    `cancellation_reason` STRING COMMENT 'Reason for transfer cancellation.',
+    `clinical_indication` STRING COMMENT 'Clinical indication for transfer.',
+    `created_timestamp` TIMESTAMP COMMENT 'Record creation timestamp.',
+    `denial_reason` STRING COMMENT 'Reason for transfer denial.',
+    `destination_unit_code` STRING COMMENT 'The destination unit code value classifying the encounter transfer request record.',
+    `emtala_certification_completed` BOOLEAN COMMENT 'Flag indicating EMTALA certification was completed.',
+    `emtala_certification_timestamp` TIMESTAMP COMMENT 'Timestamp of EMTALA certification.',
+    `emtala_compliant` BOOLEAN COMMENT 'Flag indicating EMTALA compliance.',
+    `isolation_required` BOOLEAN COMMENT 'Flag indicating isolation is required.',
+    `isolation_type` STRING COMMENT 'Type of isolation required.. Valid values are `contact|droplet|airborne|protective|none`',
+    `level_of_care_required` STRING COMMENT 'Level of care required at destination.',
+    `medical_records_sent` BOOLEAN COMMENT 'Flag indicating medical records were sent.',
+    `medical_records_sent_timestamp` TIMESTAMP COMMENT 'Timestamp when medical records were sent.',
+    `mrn` STRING COMMENT 'Medical record number.',
+    `origin_unit_code` STRING COMMENT 'The origin unit code value classifying the encounter transfer request record.',
+    `patient_consent_obtained` BOOLEAN COMMENT 'Flag indicating patient consent was obtained.',
+    `patient_consent_timestamp` TIMESTAMP COMMENT 'Timestamp of patient consent.',
+    `patient_stability_score` STRING COMMENT 'The patient stability score of the encounter transfer request record.',
+    `primary_diagnosis_code` STRING COMMENT 'The primary diagnosis code value classifying the encounter transfer request record.',
+    `primary_diagnosis_description` STRING COMMENT 'The primary diagnosis description of the encounter transfer request record.',
+    `request_timestamp` TIMESTAMP COMMENT 'Timestamp of transfer request.',
+    `requested_transfer_timestamp` TIMESTAMP COMMENT 'Requested timestamp for transfer.',
+    `requesting_provider_npi` STRING COMMENT 'NPI of the requesting provider.',
+    `source_system_record_code` STRING COMMENT 'The source system record code value classifying the encounter transfer request record.',
+    `specialty_service_required` STRING COMMENT 'Specialty service required at destination.',
+    `transfer_request_status` STRING COMMENT 'The transfer request status value classifying the encounter transfer request record.',
+    `transfer_reason` STRING COMMENT 'Reason for transfer.',
+    `transfer_reason_code` STRING COMMENT 'The transfer reason code value classifying the encounter transfer request record.',
+    `transfer_request_number` STRING COMMENT 'The transfer request number of the encounter transfer request record.',
+    `transfer_status` STRING COMMENT 'Current status of the transfer request.',
+    `transfer_type` STRING COMMENT 'Type of transfer (internal, external, downgrade, upgrade).. Valid values are `inter_facility|intra_facility|emergency|elective|specialty_care|higher_level_of_care`',
+    `transport_mode` STRING COMMENT 'Mode of transport.. Valid values are `ambulance|air_ambulance|wheelchair_van|private_vehicle|walk`',
+    `transport_provider` STRING COMMENT 'Transport provider name.',
+    `updated_timestamp` TIMESTAMP COMMENT 'Record last updated timestamp.',
+    `vibe_mutation_marker` STRING COMMENT 'The vibe mutation marker of the encounter transfer request record.',
+    `vibe_structure_marker` STRING COMMENT 'The vibe structure marker of the encounter transfer request record.',
     CONSTRAINT pk_transfer_request PRIMARY KEY(`transfer_request_id`)
-) COMMENT 'Inter-facility and intra-facility patient transfer request records with EMTALA compliance tracking.';
+) COMMENT 'Patient transfer request record capturing EMTALA compliance, clinical indication, and transfer logistics.';
 
 CREATE OR REPLACE TABLE `vibe_healthcare_v1`.`encounter`.`visit_coverage` (
-    `visit_coverage_id` BIGINT COMMENT 'Primary key for the visit_coverage association',
-    `payer_id` BIGINT COMMENT 'Foreign key linking to the insurance payer providing coverage for this visit',
-    `visit_id` BIGINT COMMENT 'Foreign key linking to the patient visit record that this coverage applies to',
-    `authorization_number` STRING COMMENT 'Unique authorization or referral number issued by the payer approving coverage for this specific visit. Required on claim submission for services requiring prior authorization. Obtained during pre-registration or admission process and specific to this visit-payer combination.',
-    `authorization_status` STRING COMMENT 'Current status of prior authorization for this visit-payer combination. Approved indicates payer has authorized coverage for the planned services. Not Required indicates payer does not require authorization for this visit type or service category. Drives admission clearance and claim submission readiness.',
-    `copay_amount` DECIMAL(18,2) COMMENT 'Fixed dollar amount the patient owes at time of service per the benefit plan for this payer. Collected at registration or discharge. Amount is specific to this visit-payer combination and varies by payer contract and patient benefit plan.',
-    `coverage_effective_date` DATE COMMENT 'Date on which the patients coverage with this payer became active. Retrieved from eligibility verification. Used to validate that coverage was active on the date of service for this visit.',
-    `coverage_sequence` STRING COMMENT 'Indicates the order of financial responsibility when multiple payers cover a single visit. Primary payer is billed first, secondary covers remaining balance per coordination of benefits rules, tertiary covers after secondary. Critical for claim submission sequencing and coordination of benefits processing.',
-    `coverage_termination_date` DATE COMMENT 'Date on which the patients coverage with this payer ends or ended. Retrieved from eligibility verification. Null for active open-ended coverage. Used to validate coverage was active on date of service and to flag potential coverage gaps.',
-    `deductible_met_amount` DECIMAL(18,2) COMMENT 'Dollar amount of the annual deductible the patient has already satisfied with this payer at the time of visit registration. Retrieved from eligibility verification response. Used to calculate patient financial responsibility and estimate out-of-pocket costs for this visit.',
-    `eligibility_status` STRING COMMENT 'Status of real-time eligibility verification performed at visit registration or admission. Verified indicates active coverage confirmed via EDI 270/271 transaction or payer portal. Drives financial counseling, authorization requirements, and registration workflow completion.',
-    `eligibility_verification_timestamp` TIMESTAMP COMMENT 'Date and time when real-time eligibility verification was performed with this payer for this visit. Documents when coverage was confirmed and provides audit trail for registration compliance and claim denial prevention.',
-    `network_status` STRING COMMENT 'Indicates whether the facility or attending provider is in-network or out-of-network for this specific payer. Determines reimbursement rates, patient cost-sharing levels, and claim adjudication rules. Retrieved during eligibility verification and specific to this visit-payer relationship.',
-    `subscriber_relationship` STRING COMMENT 'Relationship of the patient to the insurance subscriber (policyholder) for this payer. Self indicates patient is the policyholder. Required for claim submission and coordination of benefits processing. Specific to this visit-payer combination as patient may have different relationships with different payers.',
+    `visit_coverage_id` BIGINT COMMENT 'Surrogate primary key for the visit coverage record.',
+    `member_enrollment_id` BIGINT COMMENT 'Member ID.',
+    `payer_id` BIGINT COMMENT 'FK to the payer.',
+    `visit_id` BIGINT COMMENT 'FK to the parent visit.',
+    `authorization_number` STRING COMMENT 'The authorization number of the encounter visit coverage record.',
+    `authorization_status` STRING COMMENT 'The authorization status value classifying the encounter visit coverage record.',
+    `copay_amount` DECIMAL(18,2) COMMENT 'The copay amount of the encounter visit coverage record.',
+    `coverage_effective_date` DATE COMMENT 'Timestamp capturing the coverage effective date associated with the encounter visit coverage record.',
+    `coverage_sequence` STRING COMMENT 'Coverage sequence (primary, secondary, tertiary).',
+    `coverage_termination_date` DATE COMMENT 'Timestamp capturing the coverage termination date associated with the encounter visit coverage record.',
+    `created_timestamp` TIMESTAMP COMMENT 'Record creation timestamp.',
+    `deductible_met_amount` DECIMAL(18,2) COMMENT 'Deductible amount met.',
+    `eligibility_status` STRING COMMENT 'The eligibility status value classifying the encounter visit coverage record.',
+    `eligibility_verification_timestamp` TIMESTAMP COMMENT 'Timestamp of eligibility verification.',
+    `group_number` STRING COMMENT 'Insurance group number.',
+    `network_status` STRING COMMENT 'The network status value classifying the encounter visit coverage record.',
+    `out_of_pocket_max` DECIMAL(18,2) COMMENT 'Out-of-pocket maximum.',
+    `out_of_pocket_met_amount` DECIMAL(18,2) COMMENT 'Out-of-pocket amount met.',
+    `plan_name` STRING COMMENT 'Health plan name.',
+    `visit_coverage_status` STRING COMMENT 'The visit coverage status value classifying the encounter visit coverage record.',
+    `subscriber_relationship` STRING COMMENT 'Subscriber relationship to patient.',
+    `updated_timestamp` TIMESTAMP COMMENT 'Record last updated timestamp.',
+    `vibe_mutation_marker` STRING COMMENT 'The vibe mutation marker of the encounter visit coverage record.',
+    `vibe_structure_marker` STRING COMMENT 'The vibe structure marker of the encounter visit coverage record.',
     CONSTRAINT pk_visit_coverage PRIMARY KEY(`visit_coverage_id`)
-) COMMENT 'This association product represents the insurance coverage relationship between a patient visit and a payer. It captures the coordination of benefits when multiple payers cover a single visit, tracking coverage sequence (primary, secondary, tertiary), eligibility verification status, prior authorization details, and financial responsibility allocation. Each record links one visit to one payer with attributes that exist only in the context of this specific coverage instance.. Existence Justification: In healthcare operations, a single patient visit routinely involves multiple insurance payers through coordination of benefits (COB)—primary, secondary, and tertiary coverage. Each payer relationship requires distinct eligibility verification, prior authorization tracking, coverage sequencing, and financial responsibility determination. Conversely, each payer covers thousands of visits across the healthcare organization. The visit-payer relationship is an operational business entity actively managed during registration, admission, and billing workflows.';
+) COMMENT 'Summary of insurance coverage applicable to a visit for eligibility and financial clearance.';
 
 CREATE OR REPLACE TABLE `vibe_healthcare_v1`.`encounter`.`visit_recall_impact` (
-    `visit_recall_impact_id` BIGINT COMMENT 'Primary key for the visit_recall_impact association',
-    `clinician_id` BIGINT COMMENT 'Reference to the clinician assigned to conduct the clinical review and patient notification for this visit-recall combination. Supports patient safety workflow assignment and accountability.',
-    `recall_notice_id` BIGINT COMMENT 'Foreign key linking to the recall notice that potentially affects this visit based on supply usage during the encounter.',
-    `visit_id` BIGINT COMMENT 'Foreign key linking to the patient visit that may have been exposed to the recalled medical supply, device, or implant during the encounter.',
-    `clinical_review_completed` BOOLEAN COMMENT 'Indicates whether a clinical review has been completed to assess the actual patient impact for this specific visit-recall combination. Clinical review determines if the recalled product was actually used on this patient and what clinical follow-up is required.',
-    `clinical_review_date` DATE COMMENT 'Date on which the clinical review was completed for this visit-recall combination. Used to track compliance with patient safety investigation timelines.',
-    `created_timestamp` TIMESTAMP COMMENT 'Timestamp when this visit-recall impact record was created in the system, typically when the recall was matched to potentially affected visits through supply chain traceability analysis.',
-    `follow_up_due_date` DATE COMMENT 'Target date by which clinical follow-up should be completed for this visit-recall combination. Used for patient safety task management and compliance tracking.',
-    `follow_up_required` BOOLEAN COMMENT 'Indicates whether ongoing clinical follow-up is required for this patient based on the recall impact assessment. Drives care coordination and patient safety monitoring workflows.',
-    `last_updated_timestamp` TIMESTAMP COMMENT 'Timestamp of the most recent update to this visit-recall impact record, tracking the progression of the patient safety investigation and notification workflow.',
-    `lot_serial_match_confirmed` BOOLEAN COMMENT 'Indicates whether the specific lot number or serial number of the product used in this visit matches the affected lot/serial range specified in the recall notice. Critical for determining actual patient exposure.',
-    `notification_date` DATE COMMENT 'Date on which the patient associated with this visit was formally notified of potential exposure to the recalled product. Used for regulatory compliance tracking and patient safety audit trails.',
-    `patient_impact_assessment` STRING COMMENT 'Clinical assessment of the actual or potential impact of the recalled product on this specific patient during this visit. Categorizes risk level and drives notification urgency and remediation priority.',
-    `patient_notification_status` STRING COMMENT 'Current status of the patient notification workflow for this visit-recall combination. Tracks whether the patient has been notified of potential exposure to the recalled product, supporting FDA MedWatch and patient safety regulatory requirements.',
-    `product_actually_used` BOOLEAN COMMENT 'Indicates whether the recalled product was definitively confirmed to have been used on this patient during this visit. Determined through supply chain traceability, clinical documentation review, and UDI tracking.',
-    `remediation_action_taken` STRING COMMENT 'Specific remediation action taken for this visit-recall combination based on clinical review findings. Documents the healthcare organizations response to the recall for this specific patient encounter.',
-    `remediation_date` DATE COMMENT 'Date on which the remediation action was completed for this visit-recall combination. Used for regulatory compliance tracking and patient safety audit trails.',
+    `visit_recall_impact_id` BIGINT COMMENT 'Surrogate primary key for the visit recall impact record.',
+    `clinician_id` BIGINT COMMENT 'FK to the clinician assigned to review.',
+    `recall_notice_id` BIGINT COMMENT 'FK to the supply recall notice.',
+    `visit_id` BIGINT COMMENT 'FK to the parent visit.',
+    `clinical_review_completed` BOOLEAN COMMENT 'Flag indicating clinical review was completed.',
+    `clinical_review_date` DATE COMMENT 'Date of clinical review.',
+    `created_timestamp` TIMESTAMP COMMENT 'Record creation timestamp.',
+    `device_description` STRING COMMENT 'Description of the recalled device/product.',
+    `follow_up_due_date` DATE COMMENT 'Due date for follow-up action.',
+    `follow_up_required` BOOLEAN COMMENT 'Flag indicating follow-up is required.',
+    `last_updated_timestamp` TIMESTAMP COMMENT 'Record last updated timestamp.',
+    `lot_serial_match_confirmed` BOOLEAN COMMENT 'Flag indicating lot/serial number match was confirmed.',
+    `notification_date` DATE COMMENT 'Date patient was notified.',
+    `patient_impact_assessment` STRING COMMENT 'Assessment of patient impact from the recall.',
+    `patient_notification_status` STRING COMMENT 'Status of patient notification.',
+    `product_actually_used` BOOLEAN COMMENT 'Flag indicating recalled product was actually used.',
+    `recall_class` STRING COMMENT 'FDA recall class (I, II, III).',
+    `remediation_action_taken` STRING COMMENT 'The remediation action taken of the encounter visit recall impact record.',
+    `remediation_date` DATE COMMENT 'Date remediation was completed.',
+    `visit_recall_impact_status` STRING COMMENT 'The visit recall impact status value classifying the encounter visit recall impact record.',
+    `udi` STRING COMMENT 'Unique Device Identifier of the recalled product.',
+    `updated_timestamp` TIMESTAMP COMMENT 'The updated timestamp of the encounter visit recall impact record.',
+    `vibe_mutation_marker` STRING COMMENT 'The vibe mutation marker of the encounter visit recall impact record.',
+    `vibe_structure_marker` STRING COMMENT 'The vibe structure marker of the encounter visit recall impact record.',
     CONSTRAINT pk_visit_recall_impact PRIMARY KEY(`visit_recall_impact_id`)
-) COMMENT 'This association product represents the patient safety tracking relationship between visit and recall_notice. It captures the regulatory-required tracking of which patient visits were potentially affected by medical supply recalls, the notification and remediation workflow status for each visit-recall combination, and the clinical assessment of patient impact. Each record links one visit to one recall_notice with attributes that exist only in the context of this patient safety investigation and notification workflow.. Existence Justification: In healthcare operations, a single patient visit can be affected by multiple different recall notices if multiple recalled products were used during the encounter (e.g., different implants, devices, or supplies). Conversely, a single recall notice affects multiple patient visits—every patient who received the recalled product must be identified, notified, and clinically assessed. The healthcare organization must actively manage each visit-recall combination as a distinct patient safety investigation with its own notification status, clinical review, and remediation workflow.';
+) COMMENT 'Tracks the impact of supply/device recalls on specific patient visits, including remediation actions.';
+
+CREATE OR REPLACE TABLE `vibe_healthcare_v1`.`encounter`.`encounter_authorization` (
+    `encounter_authorization_id` BIGINT COMMENT 'Primary key for the encounter authorization record.',
+    `clinician_id` BIGINT COMMENT 'FK to the requesting clinician.',
+    `payer_id` BIGINT COMMENT 'FK to the payer requiring authorization.',
+    `visit_id` BIGINT COMMENT 'FK to the associated encounter visit.',
+    `appeal_decision` STRING COMMENT 'Outcome of the appeal.',
+    `appeal_submitted_date` DATE COMMENT 'Date appeal was submitted.',
+    `authorization_number` STRING COMMENT 'Payer-assigned authorization number.',
+    `authorization_scope` STRING COMMENT 'The authorization scope of the encounter encounter authorization record.',
+    `authorization_status` STRING COMMENT 'Current status: approved, denied, pending, appealed.',
+    `authorization_type` STRING COMMENT 'Type of authorization: inpatient, outpatient, procedure.',
+    `authorized_amount` DECIMAL(18,2) COMMENT 'Dollar amount authorized.',
+    `authorized_days` STRING COMMENT 'Number of inpatient days authorized.',
+    `authorized_units` STRING COMMENT 'Number of service units authorized.',
+    `clinical_indication` STRING COMMENT 'Clinical justification for the authorization request.',
+    `cpt_code` STRING COMMENT 'Procedure code for the authorized service.',
+    `created_timestamp` TIMESTAMP COMMENT 'Record creation timestamp.',
+    `denial_reason_code` STRING COMMENT 'Payer denial reason code.',
+    `denial_reason_description` STRING COMMENT 'Human-readable denial reason.',
+    `end_date` DATE COMMENT 'Authorization effective end date.',
+    `icd10_diagnosis_code` STRING COMMENT 'Primary diagnosis code supporting the authorization.',
+    `mvm_ecm_reconciled_flag` BOOLEAN COMMENT 'The mvm ecm reconciled flag of the encounter encounter authorization record.',
+    `mvm_source_names` STRING COMMENT 'encounter.authorization mapped to encounter.encounter_authorization',
+    `payer_decision_timestamp` TIMESTAMP COMMENT 'Timestamp of payer authorization decision.',
+    `peer_to_peer_review_date` DATE COMMENT 'Date of peer-to-peer review.',
+    `peer_to_peer_review_flag` BOOLEAN COMMENT 'Indicates a peer-to-peer review was requested.',
+    `request_submitted_timestamp` TIMESTAMP COMMENT 'Timestamp when authorization request was submitted.',
+    `start_date` DATE COMMENT 'Authorization effective start date.',
+    `encounter_authorization_status` STRING COMMENT 'The encounter authorization status value classifying the encounter encounter authorization record.',
+    `updated_timestamp` TIMESTAMP COMMENT 'Record last updated timestamp.',
+    `urgency_level` STRING COMMENT 'Urgency: routine, urgent, emergent.',
+    `vibe_mutation_marker` STRING COMMENT 'The vibe mutation marker of the encounter encounter authorization record.',
+    `vibe_structure_marker` STRING COMMENT 'The vibe structure marker of the encounter encounter authorization record.',
+    CONSTRAINT pk_encounter_authorization PRIMARY KEY(`encounter_authorization_id`)
+) COMMENT 'SSOT resolved: defer to order.order_authorization as the single source of truth for this concept. This table is a domain-specific extension/reference.';
 
 -- ========= FOREIGN KEYS =========
 ALTER TABLE `vibe_healthcare_v1`.`encounter`.`adt_event` ADD CONSTRAINT `fk_encounter_adt_event_prior_event_adt_event_id` FOREIGN KEY (`prior_event_adt_event_id`) REFERENCES `vibe_healthcare_v1`.`encounter`.`adt_event`(`adt_event_id`);
@@ -777,13 +801,11 @@ ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ADD CONSTRAINT `f
 ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ADD CONSTRAINT `fk_encounter_visit_procedure_visit_id` FOREIGN KEY (`visit_id`) REFERENCES `vibe_healthcare_v1`.`encounter`.`visit`(`visit_id`);
 ALTER TABLE `vibe_healthcare_v1`.`encounter`.`bed_assignment` ADD CONSTRAINT `fk_encounter_bed_assignment_visit_id` FOREIGN KEY (`visit_id`) REFERENCES `vibe_healthcare_v1`.`encounter`.`visit`(`visit_id`);
 ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_insurance` ADD CONSTRAINT `fk_encounter_visit_insurance_visit_id` FOREIGN KEY (`visit_id`) REFERENCES `vibe_healthcare_v1`.`encounter`.`visit`(`visit_id`);
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`encounter_authorization` ADD CONSTRAINT `fk_encounter_encounter_authorization_visit_id` FOREIGN KEY (`visit_id`) REFERENCES `vibe_healthcare_v1`.`encounter`.`visit`(`visit_id`);
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_status_history` ADD CONSTRAINT `fk_encounter_visit_status_history_corrected_record_visit_status_history_id` FOREIGN KEY (`corrected_record_visit_status_history_id`) REFERENCES `vibe_healthcare_v1`.`encounter`.`visit_status_history`(`visit_status_history_id`);
 ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_status_history` ADD CONSTRAINT `fk_encounter_visit_status_history_visit_id` FOREIGN KEY (`visit_id`) REFERENCES `vibe_healthcare_v1`.`encounter`.`visit`(`visit_id`);
 ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` ADD CONSTRAINT `fk_encounter_triage_assessment_prior_triage_assessment_id` FOREIGN KEY (`prior_triage_assessment_id`) REFERENCES `vibe_healthcare_v1`.`encounter`.`triage_assessment`(`triage_assessment_id`);
 ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` ADD CONSTRAINT `fk_encounter_triage_assessment_visit_id` FOREIGN KEY (`visit_id`) REFERENCES `vibe_healthcare_v1`.`encounter`.`visit`(`visit_id`);
 ALTER TABLE `vibe_healthcare_v1`.`encounter`.`readmission` ADD CONSTRAINT `fk_encounter_readmission_visit_id` FOREIGN KEY (`visit_id`) REFERENCES `vibe_healthcare_v1`.`encounter`.`visit`(`visit_id`);
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`readmission` ADD CONSTRAINT `fk_encounter_readmission_readmission_original_visit_id` FOREIGN KEY (`readmission_original_visit_id`) REFERENCES `vibe_healthcare_v1`.`encounter`.`visit`(`visit_id`);
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`readmission` ADD CONSTRAINT `fk_encounter_readmission_readmission_visit_id` FOREIGN KEY (`readmission_visit_id`) REFERENCES `vibe_healthcare_v1`.`encounter`.`visit`(`visit_id`);
 ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ADD CONSTRAINT `fk_encounter_discharge_summary_addended_discharge_summary_id` FOREIGN KEY (`addended_discharge_summary_id`) REFERENCES `vibe_healthcare_v1`.`encounter`.`discharge_summary`(`discharge_summary_id`);
 ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ADD CONSTRAINT `fk_encounter_discharge_summary_drg_assignment_id` FOREIGN KEY (`drg_assignment_id`) REFERENCES `vibe_healthcare_v1`.`encounter`.`drg_assignment`(`drg_assignment_id`);
 ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ADD CONSTRAINT `fk_encounter_discharge_summary_visit_id` FOREIGN KEY (`visit_id`) REFERENCES `vibe_healthcare_v1`.`encounter`.`visit`(`visit_id`);
@@ -791,1047 +813,1646 @@ ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ADD CONSTRAINT `
 ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ADD CONSTRAINT `fk_encounter_transfer_request_visit_id` FOREIGN KEY (`visit_id`) REFERENCES `vibe_healthcare_v1`.`encounter`.`visit`(`visit_id`);
 ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_coverage` ADD CONSTRAINT `fk_encounter_visit_coverage_visit_id` FOREIGN KEY (`visit_id`) REFERENCES `vibe_healthcare_v1`.`encounter`.`visit`(`visit_id`);
 ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_recall_impact` ADD CONSTRAINT `fk_encounter_visit_recall_impact_visit_id` FOREIGN KEY (`visit_id`) REFERENCES `vibe_healthcare_v1`.`encounter`.`visit`(`visit_id`);
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`encounter_authorization` ADD CONSTRAINT `fk_encounter_encounter_authorization_visit_id` FOREIGN KEY (`visit_id`) REFERENCES `vibe_healthcare_v1`.`encounter`.`visit`(`visit_id`);
 
 -- ========= TAGS =========
-ALTER SCHEMA `vibe_healthcare_v1`.`encounter` SET TAGS ('dbx_division' = 'operations');
-ALTER SCHEMA `vibe_healthcare_v1`.`encounter` SET TAGS ('dbx_domain' = 'encounter');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` SET TAGS ('dbx_subdomain' = 'encounter_management');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `visit_id` SET TAGS ('dbx_business_glossary_term' = 'Visit ID');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `cost_center_id` SET TAGS ('dbx_business_glossary_term' = 'Cost Center Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `drg_id` SET TAGS ('dbx_business_glossary_term' = 'Drg Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `general_ledger_id` SET TAGS ('dbx_business_glossary_term' = 'General Ledger Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `insurance_coverage_id` SET TAGS ('dbx_business_glossary_term' = 'Primary Insurance Coverage ID');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `insurance_coverage_id` SET TAGS ('dbx_pii_category' = 'person_data');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Primary Nurse Employee Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `research_study_id` SET TAGS ('dbx_business_glossary_term' = 'Research Study Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `training_completion_id` SET TAGS ('dbx_business_glossary_term' = 'Training Completion Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `clinician_id` SET TAGS ('dbx_business_glossary_term' = 'Admitting Provider ID');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `visit_care_site_id` SET TAGS ('dbx_business_glossary_term' = 'Facility ID');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `visit_clinician_id` SET TAGS ('dbx_business_glossary_term' = 'Attending Provider ID');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `visit_discharging_provider_clinician_id` SET TAGS ('dbx_business_glossary_term' = 'Discharging Provider ID');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `mpi_record_id` SET TAGS ('dbx_business_glossary_term' = 'Patient ID');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `mpi_record_id` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `mpi_record_id` SET TAGS ('dbx_pii_identifier' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `visit_patient_mpi_record_id` SET TAGS ('dbx_business_glossary_term' = 'Visit Patient Mpi Record Id');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `admission_source` SET TAGS ('dbx_business_glossary_term' = 'Admission Source');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `admission_source` SET TAGS ('dbx_value_regex' = 'emergency_department|direct_admission|transfer|referral|birth');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `admission_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Admission Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `admission_type` SET TAGS ('dbx_business_glossary_term' = 'Admission Type');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `admission_type` SET TAGS ('dbx_value_regex' = 'elective|urgent|emergent|newborn|trauma');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `admitting_diagnosis_code` SET TAGS ('dbx_business_glossary_term' = 'Admitting Diagnosis ICD-10 Code');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `admitting_diagnosis_code` SET TAGS ('dbx_value_regex' = '^[A-Z][0-9A-Z]{1,6}(.[0-9A-Z]{1,4})?$');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `admitting_diagnosis_code` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `admitting_diagnosis_code` SET TAGS ('dbx_pii_health' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `care_setting` SET TAGS ('dbx_business_glossary_term' = 'Care Setting');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `care_transition_plan_completed` SET TAGS ('dbx_business_glossary_term' = 'Care Transition Plan Completed Flag');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `consent_obtained` SET TAGS ('dbx_business_glossary_term' = 'Informed Consent Obtained Flag');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `converted_to_inpatient` SET TAGS ('dbx_business_glossary_term' = 'Converted to Inpatient Flag');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `discharge_disposition` SET TAGS ('dbx_business_glossary_term' = 'Discharge Disposition');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `discharge_disposition` SET TAGS ('dbx_value_regex' = 'home|snf|rehab|ama|expired|hospice');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `discharge_instructions_issued` SET TAGS ('dbx_business_glossary_term' = 'Discharge Instructions Issued Flag');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `discharge_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Discharge Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `drg_type` SET TAGS ('dbx_business_glossary_term' = 'Diagnosis-Related Group (DRG) Type');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `drg_type` SET TAGS ('dbx_value_regex' = 'MS-DRG|APR-DRG|AP-DRG');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `drg_weight` SET TAGS ('dbx_business_glossary_term' = 'Diagnosis-Related Group (DRG) Relative Weight');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `emtala_compliant` SET TAGS ('dbx_business_glossary_term' = 'Emergency Medical Treatment and Labor Act (EMTALA) Compliance Flag');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `encounter_number` SET TAGS ('dbx_business_glossary_term' = 'Encounter Number');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `expected_los_days` SET TAGS ('dbx_business_glossary_term' = 'Expected Length of Stay (LOS) in Days');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `financial_class` SET TAGS ('dbx_business_glossary_term' = 'Financial Class');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `financial_class` SET TAGS ('dbx_value_regex' = 'commercial|medicare|medicaid|self_pay|workers_comp');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `follow_up_scheduled` SET TAGS ('dbx_business_glossary_term' = 'Follow-Up Appointment Scheduled Flag');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `inpatient_conversion_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Inpatient Conversion Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `length_of_stay_days` SET TAGS ('dbx_business_glossary_term' = 'Length of Stay (LOS) in Days');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `moon_delivered_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Medicare Outpatient Observation Notice (MOON) Delivery Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `mrn` SET TAGS ('dbx_business_glossary_term' = 'Medical Record Number (MRN)');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `mrn` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `mrn` SET TAGS ('dbx_pii_identifier' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `observation_hours` SET TAGS ('dbx_business_glossary_term' = 'Total Observation Hours');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `observation_status` SET TAGS ('dbx_business_glossary_term' = 'Observation Status Flag');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `point_of_service_code` SET TAGS ('dbx_business_glossary_term' = 'Place of Service (POS) Code');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `principal_icd10_diagnosis_code` SET TAGS ('dbx_business_glossary_term' = 'Principal ICD-10 Diagnosis Code');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `principal_icd10_diagnosis_code` SET TAGS ('dbx_value_regex' = '^[A-Z][0-9A-Z]{1,6}(.[0-9A-Z]{1,4})?$');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `principal_icd10_diagnosis_code` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `principal_icd10_diagnosis_code` SET TAGS ('dbx_pii_health' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `readmission_flag` SET TAGS ('dbx_business_glossary_term' = 'Readmission Flag');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `readmission_risk_score` SET TAGS ('dbx_business_glossary_term' = 'Readmission Risk Score');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `source_encounter_code` SET TAGS ('dbx_business_glossary_term' = 'Source System Encounter ID');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `visit_status` SET TAGS ('dbx_business_glossary_term' = 'Visit Status');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `visit_status` SET TAGS ('dbx_value_regex' = 'scheduled|arrived|in_progress|discharged|cancelled|no_show');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `telehealth_connection_quality` SET TAGS ('dbx_business_glossary_term' = 'Telehealth Connection Quality');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `telehealth_connection_quality` SET TAGS ('dbx_value_regex' = 'excellent|good|fair|poor|failed');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `telehealth_platform` SET TAGS ('dbx_business_glossary_term' = 'Telehealth Platform');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `two_midnight_compliant` SET TAGS ('dbx_business_glossary_term' = 'Two-Midnight Rule Compliance Flag');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `visit_type` SET TAGS ('dbx_business_glossary_term' = 'Visit Type');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `visit_type` SET TAGS ('dbx_value_regex' = 'inpatient|outpatient|emergency|observation|telehealth|ambulatory');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Last Updated Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`adt_event` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`adt_event` SET TAGS ('dbx_subdomain' = 'patient_flow');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`adt_event` ALTER COLUMN `adt_event_id` SET TAGS ('dbx_business_glossary_term' = 'Admit Discharge Transfer (ADT) Event ID');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`adt_event` ALTER COLUMN `clinician_id` SET TAGS ('dbx_business_glossary_term' = 'Responsible Provider ID');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`adt_event` ALTER COLUMN `demographics_id` SET TAGS ('dbx_business_glossary_term' = 'Patient ID');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`adt_event` ALTER COLUMN `drg_id` SET TAGS ('dbx_business_glossary_term' = 'Drg Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`adt_event` ALTER COLUMN `message_log_id` SET TAGS ('dbx_business_glossary_term' = 'Health Level Seven (HL7) Message ID');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`adt_event` ALTER COLUMN `message_log_id` SET TAGS ('dbx_pii_category' = 'person_data');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`adt_event` ALTER COLUMN `prior_event_adt_event_id` SET TAGS ('dbx_business_glossary_term' = 'Prior ADT Event ID');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`adt_event` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Transporting Employee Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`adt_event` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`adt_event` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`adt_event` ALTER COLUMN `visit_id` SET TAGS ('dbx_business_glossary_term' = 'Encounter ID');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`adt_event` ALTER COLUMN `accepting_provider_npi` SET TAGS ('dbx_business_glossary_term' = 'Accepting Provider National Provider Identifier (NPI)');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`adt_event` ALTER COLUMN `accepting_provider_npi` SET TAGS ('dbx_value_regex' = '^[0-9]{10}$');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`adt_event` ALTER COLUMN `admission_source_code` SET TAGS ('dbx_business_glossary_term' = 'Admission Source Code');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`adt_event` ALTER COLUMN `ama_flag` SET TAGS ('dbx_business_glossary_term' = 'Against Medical Advice (AMA) Discharge Flag');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`adt_event` ALTER COLUMN `bed_assigned_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Bed Assigned Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`adt_event` ALTER COLUMN `bed_request_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Bed Request Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`adt_event` ALTER COLUMN `cancel_reason` SET TAGS ('dbx_business_glossary_term' = 'ADT Event Cancellation Reason');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`adt_event` ALTER COLUMN `clinical_reason_for_transfer` SET TAGS ('dbx_business_glossary_term' = 'Clinical Reason for Transfer');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`adt_event` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`adt_event` ALTER COLUMN `discharge_disposition_code` SET TAGS ('dbx_business_glossary_term' = 'Discharge Disposition Code');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`adt_event` ALTER COLUMN `drg_type` SET TAGS ('dbx_business_glossary_term' = 'Diagnosis-Related Group (DRG) Type');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`adt_event` ALTER COLUMN `drg_type` SET TAGS ('dbx_value_regex' = 'MS-DRG|APR-DRG|IR-DRG');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`adt_event` ALTER COLUMN `emtala_compliant` SET TAGS ('dbx_business_glossary_term' = 'Emergency Medical Treatment and Labor Act (EMTALA) Transfer Compliance Flag');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`adt_event` ALTER COLUMN `emtala_transfer_form_completed` SET TAGS ('dbx_business_glossary_term' = 'EMTALA Transfer Form Completed Flag');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`adt_event` ALTER COLUMN `event_recorded_timestamp` SET TAGS ('dbx_business_glossary_term' = 'ADT Event Recorded Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`adt_event` ALTER COLUMN `event_status` SET TAGS ('dbx_business_glossary_term' = 'ADT Event Status');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`adt_event` ALTER COLUMN `event_status` SET TAGS ('dbx_value_regex' = 'active|cancelled|corrected|pending');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`adt_event` ALTER COLUMN `event_timestamp` SET TAGS ('dbx_business_glossary_term' = 'ADT Event Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`adt_event` ALTER COLUMN `event_type_code` SET TAGS ('dbx_business_glossary_term' = 'ADT Event Type Code');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`adt_event` ALTER COLUMN `event_type_code` SET TAGS ('dbx_value_regex' = 'A01|A02|A03|A04|A05|A06');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`adt_event` ALTER COLUMN `event_type_description` SET TAGS ('dbx_business_glossary_term' = 'ADT Event Type Description');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`adt_event` ALTER COLUMN `from_bed_code` SET TAGS ('dbx_business_glossary_term' = 'From Bed Code');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`adt_event` ALTER COLUMN `from_unit_code` SET TAGS ('dbx_business_glossary_term' = 'From Unit Code');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`adt_event` ALTER COLUMN `isolation_flag` SET TAGS ('dbx_business_glossary_term' = 'Patient Isolation Flag');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`adt_event` ALTER COLUMN `isolation_type` SET TAGS ('dbx_business_glossary_term' = 'Isolation Type');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`adt_event` ALTER COLUMN `isolation_type` SET TAGS ('dbx_value_regex' = 'contact|droplet|airborne|protective|none');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`adt_event` ALTER COLUMN `leave_of_absence_reason` SET TAGS ('dbx_business_glossary_term' = 'Leave of Absence Reason');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`adt_event` ALTER COLUMN `level_of_care_code` SET TAGS ('dbx_business_glossary_term' = 'Level of Care Code');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`adt_event` ALTER COLUMN `patient_class_code` SET TAGS ('dbx_business_glossary_term' = 'Patient Class Code');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`adt_event` ALTER COLUMN `patient_stability_score` SET TAGS ('dbx_business_glossary_term' = 'Patient Stability Score at Transfer');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`adt_event` ALTER COLUMN `patient_stability_score` SET TAGS ('dbx_value_regex' = 'stable|guarded|critical|unstable');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`adt_event` ALTER COLUMN `readmission_risk_flag` SET TAGS ('dbx_business_glossary_term' = 'Readmission Risk Flag');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`adt_event` ALTER COLUMN `sending_application` SET TAGS ('dbx_business_glossary_term' = 'Sending Application');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`adt_event` ALTER COLUMN `sending_facility` SET TAGS ('dbx_business_glossary_term' = 'Sending Facility');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`adt_event` ALTER COLUMN `sequence_number` SET TAGS ('dbx_business_glossary_term' = 'ADT Event Sequence Number');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`adt_event` ALTER COLUMN `source_system_event_code` SET TAGS ('dbx_business_glossary_term' = 'Source System ADT Event ID');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`adt_event` ALTER COLUMN `source_system_name` SET TAGS ('dbx_business_glossary_term' = 'Source System Name');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`adt_event` ALTER COLUMN `source_system_name` SET TAGS ('dbx_value_regex' = 'EPIC|CERNER|MEDITECH');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`adt_event` ALTER COLUMN `to_bed_code` SET TAGS ('dbx_business_glossary_term' = 'To Bed Code');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`adt_event` ALTER COLUMN `to_room_code` SET TAGS ('dbx_business_glossary_term' = 'To Room Code');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`adt_event` ALTER COLUMN `to_unit_code` SET TAGS ('dbx_business_glossary_term' = 'To Unit Code');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`adt_event` ALTER COLUMN `transition_type` SET TAGS ('dbx_business_glossary_term' = 'Care Transition Type');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`adt_event` ALTER COLUMN `transition_type` SET TAGS ('dbx_value_regex' = 'inter_unit|level_of_care_change|inter_facility|internal_transfer|external_transfer');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`adt_event` ALTER COLUMN `transport_mode` SET TAGS ('dbx_business_glossary_term' = 'Transport Mode');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`adt_event` ALTER COLUMN `transport_mode` SET TAGS ('dbx_value_regex' = 'ambulance|helicopter|wheelchair|stretcher|ambulatory|private_vehicle');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`adt_event` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Updated Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`adt_event` ALTER COLUMN `visit_type_code` SET TAGS ('dbx_business_glossary_term' = 'Visit Type Code');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`adt_event` ALTER COLUMN `visit_type_code` SET TAGS ('dbx_value_regex' = 'inpatient|outpatient|emergency|observation|telehealth|ambulatory');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_provider` SET TAGS ('dbx_data_type' = 'association_data');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_provider` SET TAGS ('dbx_subdomain' = 'encounter_management');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_provider` ALTER COLUMN `visit_provider_id` SET TAGS ('dbx_business_glossary_term' = 'Visit Provider ID');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_provider` ALTER COLUMN `cost_center_id` SET TAGS ('dbx_business_glossary_term' = 'Cost Center Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_provider` ALTER COLUMN `insurance_network_participation_id` SET TAGS ('dbx_business_glossary_term' = 'Network Participation Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_provider` ALTER COLUMN `network_affiliation_id` SET TAGS ('dbx_business_glossary_term' = 'Network Affiliation Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_provider` ALTER COLUMN `payer_id` SET TAGS ('dbx_business_glossary_term' = 'Payer ID');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_provider` ALTER COLUMN `clinician_id` SET TAGS ('dbx_business_glossary_term' = 'Provider ID');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_provider` ALTER COLUMN `provider_payer_enrollment_id` SET TAGS ('dbx_business_glossary_term' = 'Payer Enrollment Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_provider` ALTER COLUMN `referral_order_id` SET TAGS ('dbx_business_glossary_term' = 'Consult Request ID');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_provider` ALTER COLUMN `stark_arrangement_id` SET TAGS ('dbx_business_glossary_term' = 'Stark Arrangement Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_provider` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Supervising Nurse Employee Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_provider` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_provider` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_provider` ALTER COLUMN `tertiary_visit_supervising_provider_clinician_id` SET TAGS ('dbx_business_glossary_term' = 'Supervising Provider ID');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_provider` ALTER COLUMN `visit_id` SET TAGS ('dbx_business_glossary_term' = 'Visit ID');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_provider` ALTER COLUMN `admission_source_role` SET TAGS ('dbx_business_glossary_term' = 'Admission Source Role');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_provider` ALTER COLUMN `admission_source_role` SET TAGS ('dbx_value_regex' = 'admitting|referring|transferring|none');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_provider` ALTER COLUMN `assignment_end_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Provider Assignment End Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_provider` ALTER COLUMN `assignment_start_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Provider Assignment Start Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_provider` ALTER COLUMN `assignment_status` SET TAGS ('dbx_business_glossary_term' = 'Provider Assignment Status');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_provider` ALTER COLUMN `assignment_status` SET TAGS ('dbx_value_regex' = 'active|inactive|pending|cancelled|transferred');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_provider` ALTER COLUMN `assignment_type` SET TAGS ('dbx_business_glossary_term' = 'Provider Assignment Type');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_provider` ALTER COLUMN `assignment_type` SET TAGS ('dbx_value_regex' = 'scheduled|unscheduled|emergency|coverage|consult_request');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_provider` ALTER COLUMN `billing_provider_npi` SET TAGS ('dbx_business_glossary_term' = 'Billing Provider National Provider Identifier (NPI)');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_provider` ALTER COLUMN `billing_provider_npi` SET TAGS ('dbx_value_regex' = '^[0-9]{10}$');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_provider` ALTER COLUMN `care_setting` SET TAGS ('dbx_business_glossary_term' = 'Care Setting');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_provider` ALTER COLUMN `care_team_sequence` SET TAGS ('dbx_business_glossary_term' = 'Care Team Sequence');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_provider` ALTER COLUMN `comments` SET TAGS ('dbx_business_glossary_term' = 'Assignment Comments');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_provider` ALTER COLUMN `cosignature_required` SET TAGS ('dbx_business_glossary_term' = 'Co-Signature Required Flag');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_provider` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_provider` ALTER COLUMN `credentialing_verified_flag` SET TAGS ('dbx_business_glossary_term' = 'Credentialing Verified Flag');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_provider` ALTER COLUMN `drg_attribution_flag` SET TAGS ('dbx_business_glossary_term' = 'Diagnosis-Related Group (DRG) Attribution Flag');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_provider` ALTER COLUMN `effective_date` SET TAGS ('dbx_business_glossary_term' = 'Effective Date');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_provider` ALTER COLUMN `handoff_reference` SET TAGS ('dbx_business_glossary_term' = 'Handoff Documentation Reference');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_provider` ALTER COLUMN `is_attending_of_record` SET TAGS ('dbx_business_glossary_term' = 'Attending of Record Flag');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_provider` ALTER COLUMN `is_primary_provider` SET TAGS ('dbx_business_glossary_term' = 'Primary Provider Flag');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_provider` ALTER COLUMN `locum_tenens_flag` SET TAGS ('dbx_business_glossary_term' = 'Locum Tenens Flag');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_provider` ALTER COLUMN `mips_eligible_flag` SET TAGS ('dbx_business_glossary_term' = 'Merit-based Incentive Payment System (MIPS) Eligible Flag');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_provider` ALTER COLUMN `note_count` SET TAGS ('dbx_business_glossary_term' = 'Clinical Note Count');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_provider` ALTER COLUMN `npi` SET TAGS ('dbx_business_glossary_term' = 'National Provider Identifier (NPI)');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_provider` ALTER COLUMN `npi` SET TAGS ('dbx_value_regex' = '^[0-9]{10}$');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_provider` ALTER COLUMN `on_call_flag` SET TAGS ('dbx_business_glossary_term' = 'On-Call Assignment Flag');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_provider` ALTER COLUMN `order_count` SET TAGS ('dbx_business_glossary_term' = 'Order Count');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_provider` ALTER COLUMN `participation_duration_minutes` SET TAGS ('dbx_business_glossary_term' = 'Provider Participation Duration (Minutes)');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_provider` ALTER COLUMN `place_of_service_code` SET TAGS ('dbx_business_glossary_term' = 'Place of Service (POS) Code');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_provider` ALTER COLUMN `place_of_service_code` SET TAGS ('dbx_value_regex' = '^[0-9]{2}$');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_provider` ALTER COLUMN `privilege_type` SET TAGS ('dbx_business_glossary_term' = 'Clinical Privilege Type');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_provider` ALTER COLUMN `privilege_type` SET TAGS ('dbx_value_regex' = 'full|provisional|temporary|locum_tenens|telemedicine');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_provider` ALTER COLUMN `provider_role` SET TAGS ('dbx_business_glossary_term' = 'Provider Role');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_provider` ALTER COLUMN `provider_type` SET TAGS ('dbx_business_glossary_term' = 'Provider Type');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_provider` ALTER COLUMN `rendering_provider_npi` SET TAGS ('dbx_business_glossary_term' = 'Rendering Provider National Provider Identifier (NPI)');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_provider` ALTER COLUMN `rendering_provider_npi` SET TAGS ('dbx_value_regex' = '^[0-9]{10}$');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_provider` ALTER COLUMN `rvu_credit_flag` SET TAGS ('dbx_business_glossary_term' = 'Relative Value Unit (RVU) Credit Flag');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_provider` ALTER COLUMN `rvu_work_units` SET TAGS ('dbx_business_glossary_term' = 'Relative Value Unit (RVU) Work Units');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_provider` ALTER COLUMN `source_system_record_code` SET TAGS ('dbx_business_glossary_term' = 'Source System Record ID');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_provider` ALTER COLUMN `specialty_at_assignment` SET TAGS ('dbx_business_glossary_term' = 'Provider Specialty at Assignment');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_provider` ALTER COLUMN `telehealth_flag` SET TAGS ('dbx_business_glossary_term' = 'Telehealth Encounter Flag');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_provider` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Updated Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` SET TAGS ('dbx_subdomain' = 'clinical_documentation');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` ALTER COLUMN `drg_assignment_id` SET TAGS ('dbx_business_glossary_term' = 'Drg Assignment Identifier');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` ALTER COLUMN `care_site_id` SET TAGS ('dbx_business_glossary_term' = 'Facility ID');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` ALTER COLUMN `clinician_id` SET TAGS ('dbx_business_glossary_term' = 'Attending Provider ID');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` ALTER COLUMN `drg_id` SET TAGS ('dbx_business_glossary_term' = 'Drg Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Coder ID');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` ALTER COLUMN `mpi_record_id` SET TAGS ('dbx_business_glossary_term' = 'Patient ID');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` ALTER COLUMN `payer_id` SET TAGS ('dbx_business_glossary_term' = 'Payer ID');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` ALTER COLUMN `visit_id` SET TAGS ('dbx_business_glossary_term' = 'Encounter ID');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` ALTER COLUMN `actual_los` SET TAGS ('dbx_business_glossary_term' = 'Actual Length of Stay (LOS)');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` ALTER COLUMN `admit_source_code` SET TAGS ('dbx_business_glossary_term' = 'Admission Source Code');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` ALTER COLUMN `admit_source_code` SET TAGS ('dbx_value_regex' = '^[0-9]{1,2}$');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` ALTER COLUMN `appeal_status` SET TAGS ('dbx_business_glossary_term' = 'DRG Appeal Status');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` ALTER COLUMN `appeal_status` SET TAGS ('dbx_value_regex' = 'not_appealed|pending|upheld|overturned|withdrawn');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` ALTER COLUMN `arithmetic_mean_los` SET TAGS ('dbx_business_glossary_term' = 'Arithmetic Mean Length of Stay (LOS)');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` ALTER COLUMN `assignment_status` SET TAGS ('dbx_business_glossary_term' = 'DRG Assignment Status');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` ALTER COLUMN `assignment_status` SET TAGS ('dbx_value_regex' = 'preliminary|final|amended|voided');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` ALTER COLUMN `assignment_type` SET TAGS ('dbx_business_glossary_term' = 'DRG Assignment Type');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` ALTER COLUMN `assignment_type` SET TAGS ('dbx_value_regex' = 'initial|working|final|appeal|rac_review');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` ALTER COLUMN `base_payment_rate` SET TAGS ('dbx_business_glossary_term' = 'DRG Base Payment Rate');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` ALTER COLUMN `base_payment_rate` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` ALTER COLUMN `cc_mcc_flag` SET TAGS ('dbx_business_glossary_term' = 'Complication and Comorbidity / Major Complication and Comorbidity (CC/MCC) Flag');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` ALTER COLUMN `cdi_query_count` SET TAGS ('dbx_business_glossary_term' = 'Clinical Documentation Improvement (CDI) Query Count');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` ALTER COLUMN `cdi_query_response_flag` SET TAGS ('dbx_business_glossary_term' = 'Clinical Documentation Improvement (CDI) Query Response Flag');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` ALTER COLUMN `discharge_status_code` SET TAGS ('dbx_business_glossary_term' = 'Patient Discharge Status Code');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` ALTER COLUMN `discharge_status_code` SET TAGS ('dbx_value_regex' = '^[0-9]{2}$');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` ALTER COLUMN `drg_changed_flag` SET TAGS ('dbx_business_glossary_term' = 'DRG Changed Flag');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` ALTER COLUMN `drg_description` SET TAGS ('dbx_business_glossary_term' = 'Diagnosis-Related Group (DRG) Description');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` ALTER COLUMN `drg_version` SET TAGS ('dbx_business_glossary_term' = 'Diagnosis-Related Group (DRG) Version');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` ALTER COLUMN `drg_version` SET TAGS ('dbx_value_regex' = 'MS-DRG|APR-DRG|IR-DRG');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` ALTER COLUMN `drg_version_number` SET TAGS ('dbx_business_glossary_term' = 'Diagnosis-Related Group (DRG) Version Number');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` ALTER COLUMN `drg_version_number` SET TAGS ('dbx_value_regex' = '^v?[0-9]{1,2}(.[0-9]{1,2})?$');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` ALTER COLUMN `drg_weight` SET TAGS ('dbx_business_glossary_term' = 'Diagnosis-Related Group (DRG) Relative Weight');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` ALTER COLUMN `expected_reimbursement` SET TAGS ('dbx_business_glossary_term' = 'Expected DRG Reimbursement Amount');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` ALTER COLUMN `expected_reimbursement` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` ALTER COLUMN `finalized_timestamp` SET TAGS ('dbx_business_glossary_term' = 'DRG Finalized Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` ALTER COLUMN `geometric_mean_los` SET TAGS ('dbx_business_glossary_term' = 'Geometric Mean Length of Stay (LOS)');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` ALTER COLUMN `grouper_software` SET TAGS ('dbx_business_glossary_term' = 'Grouper Software Name');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` ALTER COLUMN `grouper_software_version` SET TAGS ('dbx_business_glossary_term' = 'Grouper Software Version');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` ALTER COLUMN `grouping_date` SET TAGS ('dbx_business_glossary_term' = 'DRG Grouping Date');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` ALTER COLUMN `initial_drg_code` SET TAGS ('dbx_business_glossary_term' = 'Initial Working Diagnosis-Related Group (DRG) Code');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` ALTER COLUMN `initial_drg_code` SET TAGS ('dbx_value_regex' = '^[0-9]{3}$');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` ALTER COLUMN `initial_drg_weight` SET TAGS ('dbx_business_glossary_term' = 'Initial Working Diagnosis-Related Group (DRG) Relative Weight');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` ALTER COLUMN `is_outlier` SET TAGS ('dbx_business_glossary_term' = 'Cost Outlier Indicator');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` ALTER COLUMN `mdc_code` SET TAGS ('dbx_business_glossary_term' = 'Major Diagnostic Category (MDC) Code');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` ALTER COLUMN `mdc_code` SET TAGS ('dbx_value_regex' = '^(P[RR]E|[0-9]{1,2})$');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` ALTER COLUMN `mdc_description` SET TAGS ('dbx_business_glossary_term' = 'Major Diagnostic Category (MDC) Description');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` ALTER COLUMN `outlier_payment` SET TAGS ('dbx_business_glossary_term' = 'Outlier Payment Amount');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` ALTER COLUMN `outlier_payment` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` ALTER COLUMN `patient_type` SET TAGS ('dbx_business_glossary_term' = 'Patient Type');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` ALTER COLUMN `patient_type` SET TAGS ('dbx_value_regex' = 'inpatient|observation|short_stay');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` ALTER COLUMN `principal_diagnosis_code` SET TAGS ('dbx_business_glossary_term' = 'Principal Diagnosis ICD-10-CM Code');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` ALTER COLUMN `principal_diagnosis_code` SET TAGS ('dbx_value_regex' = '^[A-Z][0-9A-Z]{2,6}(.[0-9A-Z]{1,4})?$');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` ALTER COLUMN `principal_diagnosis_code` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` ALTER COLUMN `principal_diagnosis_code` SET TAGS ('dbx_pii_health' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` ALTER COLUMN `principal_diagnosis_description` SET TAGS ('dbx_business_glossary_term' = 'Principal Diagnosis Description');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` ALTER COLUMN `principal_diagnosis_description` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` ALTER COLUMN `principal_diagnosis_description` SET TAGS ('dbx_pii_health' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` ALTER COLUMN `principal_procedure_code` SET TAGS ('dbx_business_glossary_term' = 'Principal Procedure ICD-10-PCS Code');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` ALTER COLUMN `principal_procedure_code` SET TAGS ('dbx_value_regex' = '^[0-9A-Z]{7}$');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` ALTER COLUMN `principal_procedure_code` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` ALTER COLUMN `principal_procedure_code` SET TAGS ('dbx_pii_health' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` ALTER COLUMN `procedure_count` SET TAGS ('dbx_business_glossary_term' = 'Procedure Code Count');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` ALTER COLUMN `rac_review_flag` SET TAGS ('dbx_business_glossary_term' = 'Recovery Audit Contractor (RAC) Review Flag');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` ALTER COLUMN `secondary_diagnosis_count` SET TAGS ('dbx_business_glossary_term' = 'Secondary Diagnosis Count');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` ALTER COLUMN `secondary_diagnosis_count` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` ALTER COLUMN `secondary_diagnosis_count` SET TAGS ('dbx_pii_health' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` ALTER COLUMN `transfer_case_flag` SET TAGS ('dbx_business_glossary_term' = 'Transfer Case Flag');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Updated Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` SET TAGS ('dbx_subdomain' = 'clinical_documentation');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `visit_diagnosis_id` SET TAGS ('dbx_business_glossary_term' = 'Visit Diagnosis ID');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `visit_diagnosis_id` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `visit_diagnosis_id` SET TAGS ('dbx_pii_health' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `audit_finding_id` SET TAGS ('dbx_business_glossary_term' = 'Audit Finding Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `clinician_id` SET TAGS ('dbx_business_glossary_term' = 'Attending Provider ID');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `cost_center_id` SET TAGS ('dbx_business_glossary_term' = 'Cost Center Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `icd_code_id` SET TAGS ('dbx_business_glossary_term' = 'Icd Code Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `mpi_record_id` SET TAGS ('dbx_business_glossary_term' = 'Patient ID');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `mpi_record_id` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `mpi_record_id` SET TAGS ('dbx_pii_health' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `note_id` SET TAGS ('dbx_business_glossary_term' = 'Clinical Note ID');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `snomed_concept_id` SET TAGS ('dbx_business_glossary_term' = 'Snomed Concept Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `visit_id` SET TAGS ('dbx_business_glossary_term' = 'Encounter ID');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `bill_indicator` SET TAGS ('dbx_business_glossary_term' = 'Billable Diagnosis Indicator');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `cc_mcc_indicator` SET TAGS ('dbx_business_glossary_term' = 'Complication/Comorbidity (CC) / Major Complication/Comorbidity (MCC) Indicator');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `cc_mcc_indicator` SET TAGS ('dbx_value_regex' = 'CC|MCC|HAC|none');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `chronic_condition_flag` SET TAGS ('dbx_business_glossary_term' = 'Chronic Condition Flag');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `coded_date` SET TAGS ('dbx_business_glossary_term' = 'Diagnosis Coded Date');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `coding_provider_npi` SET TAGS ('dbx_business_glossary_term' = 'Coding Provider National Provider Identifier (NPI)');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `coding_provider_npi` SET TAGS ('dbx_value_regex' = '^[0-9]{10}$');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `coding_status` SET TAGS ('dbx_business_glossary_term' = 'Coding Status');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `coding_status` SET TAGS ('dbx_value_regex' = 'pending|coded|validated|queried|amended|final');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `diagnosis_rank` SET TAGS ('dbx_business_glossary_term' = 'Diagnosis Rank');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `diagnosis_rank` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `diagnosis_rank` SET TAGS ('dbx_pii_health' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `diagnosis_seq_num` SET TAGS ('dbx_business_glossary_term' = 'Diagnosis Sequence Number');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `diagnosis_seq_num` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `diagnosis_seq_num` SET TAGS ('dbx_pii_health' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `diagnosis_source` SET TAGS ('dbx_business_glossary_term' = 'Diagnosis Source');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `diagnosis_source` SET TAGS ('dbx_value_regex' = 'physician|coder|cdi_specialist|system|imported');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `diagnosis_source` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `diagnosis_source` SET TAGS ('dbx_pii_health' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `diagnosis_type` SET TAGS ('dbx_business_glossary_term' = 'Diagnosis Type');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `diagnosis_type` SET TAGS ('dbx_value_regex' = 'admitting|principal|secondary|discharge|working|final');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `diagnosis_type` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `diagnosis_type` SET TAGS ('dbx_pii_health' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `drg_code` SET TAGS ('dbx_business_glossary_term' = 'Diagnosis-Related Group (DRG) Code');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `drg_code` SET TAGS ('dbx_value_regex' = '^[0-9]{3}$');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `drg_relevance_flag` SET TAGS ('dbx_business_glossary_term' = 'Diagnosis-Related Group (DRG) Relevance Flag');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `drg_type` SET TAGS ('dbx_business_glossary_term' = 'Diagnosis-Related Group (DRG) Type');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `drg_type` SET TAGS ('dbx_value_regex' = 'MS-DRG|APR-DRG|IR-DRG');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `encounter_diagnosis_comment` SET TAGS ('dbx_business_glossary_term' = 'Encounter Diagnosis Comment');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `encounter_diagnosis_comment` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `encounter_diagnosis_comment` SET TAGS ('dbx_pii_health' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `encounter_diagnosis_source_code` SET TAGS ('dbx_business_glossary_term' = 'Encounter Diagnosis Source System ID');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `encounter_diagnosis_source_code` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `encounter_diagnosis_source_code` SET TAGS ('dbx_pii_health' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `external_cause_code` SET TAGS ('dbx_business_glossary_term' = 'External Cause of Injury (ICD-10-CM) Code');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `external_cause_code` SET TAGS ('dbx_value_regex' = '^[VWX][0-9A-Z]{2,6}(.[0-9A-Z]{1,4})?$|^Y[0-9A-Z]{2,6}(.[0-9A-Z]{1,4})?$');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `hai_flag` SET TAGS ('dbx_business_glossary_term' = 'Healthcare-Associated Infection (HAI) Flag');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `hcc_category_code` SET TAGS ('dbx_business_glossary_term' = 'Hierarchical Condition Category (HCC) Category Code');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `hcc_flag` SET TAGS ('dbx_business_glossary_term' = 'Hierarchical Condition Category (HCC) Flag');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `icd10_code` SET TAGS ('dbx_business_glossary_term' = 'International Classification of Diseases 10th Revision (ICD-10) Code');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `icd10_code` SET TAGS ('dbx_value_regex' = '^[A-Z][0-9A-Z]{1,6}(.[0-9A-Z]{1,4})?$');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `icd10_code` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `icd10_code` SET TAGS ('dbx_pii_health' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `icd10_description` SET TAGS ('dbx_business_glossary_term' = 'International Classification of Diseases 10th Revision (ICD-10) Diagnosis Description');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `icd10_description` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `icd10_description` SET TAGS ('dbx_pii_health' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `icd10_version` SET TAGS ('dbx_business_glossary_term' = 'ICD-10-CM Fiscal Year Version');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `icd10_version` SET TAGS ('dbx_value_regex' = '^FY[0-9]{4}$');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `mental_health_flag` SET TAGS ('dbx_business_glossary_term' = 'Mental Health Diagnosis Flag');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `mental_health_flag` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `mental_health_flag` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `onset_date` SET TAGS ('dbx_business_glossary_term' = 'Diagnosis Onset Date');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `onset_date` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `onset_date` SET TAGS ('dbx_pii_health' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `poa_indicator` SET TAGS ('dbx_business_glossary_term' = 'Present on Admission (POA) Indicator');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `poa_indicator` SET TAGS ('dbx_value_regex' = 'Y|N|U|W|1');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `primary_diagnosis_flag` SET TAGS ('dbx_business_glossary_term' = 'Primary Diagnosis Flag');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `primary_diagnosis_flag` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `primary_diagnosis_flag` SET TAGS ('dbx_pii_health' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `quality_measure_flag` SET TAGS ('dbx_business_glossary_term' = 'Quality Measure Flag');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `reportable_condition_flag` SET TAGS ('dbx_business_glossary_term' = 'Reportable Condition Flag');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `resolved_date` SET TAGS ('dbx_business_glossary_term' = 'Diagnosis Resolved Date');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `resolved_date` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `resolved_date` SET TAGS ('dbx_pii_health' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `sdoh_flag` SET TAGS ('dbx_business_glossary_term' = 'Social Determinants of Health (SDOH) Flag');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `snomed_code` SET TAGS ('dbx_business_glossary_term' = 'Systematized Nomenclature of Medicine Clinical Terms (SNOMED CT) Code');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `snomed_code` SET TAGS ('dbx_value_regex' = '^[0-9]{6,18}$');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `substance_use_flag` SET TAGS ('dbx_business_glossary_term' = 'Substance Use Disorder (SUD) Flag');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Updated Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` SET TAGS ('dbx_subdomain' = 'clinical_documentation');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `visit_procedure_id` SET TAGS ('dbx_business_glossary_term' = 'Visit Procedure ID');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `audit_finding_id` SET TAGS ('dbx_business_glossary_term' = 'Audit Finding Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `cost_center_id` SET TAGS ('dbx_business_glossary_term' = 'Cost Center Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `cpt_code_id` SET TAGS ('dbx_business_glossary_term' = 'Cpt Code Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `hcpcs_code_id` SET TAGS ('dbx_business_glossary_term' = 'Hcpcs Code Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `icd_code_id` SET TAGS ('dbx_business_glossary_term' = 'Icd10 Pcs Code Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `interventional_procedure_id` SET TAGS ('dbx_business_glossary_term' = 'Interventional Procedure Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `material_master_id` SET TAGS ('dbx_business_glossary_term' = 'Material Master Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `mpi_record_id` SET TAGS ('dbx_business_glossary_term' = 'Patient ID');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `mpi_record_id` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `mpi_record_id` SET TAGS ('dbx_pii_identifier' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `or_suite_id` SET TAGS ('dbx_business_glossary_term' = 'Operating Room (OR) / Procedure Room ID');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `clinician_id` SET TAGS ('dbx_business_glossary_term' = 'Performing Provider ID');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `privileging_id` SET TAGS ('dbx_business_glossary_term' = 'Privileging Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `research_study_id` SET TAGS ('dbx_business_glossary_term' = 'Research Study Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `snomed_concept_id` SET TAGS ('dbx_business_glossary_term' = 'Snomed Concept Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `visit_id` SET TAGS ('dbx_business_glossary_term' = 'Encounter ID');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `anesthesia_type` SET TAGS ('dbx_business_glossary_term' = 'Anesthesia Type');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `anesthesia_type` SET TAGS ('dbx_value_regex' = 'general|regional|local|monitored_anesthesia_care|none');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `asa_class` SET TAGS ('dbx_business_glossary_term' = 'American Society of Anesthesiologists (ASA) Physical Status Classification');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `asa_class` SET TAGS ('dbx_value_regex' = 'I|II|III|IV|V|VI');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `body_site` SET TAGS ('dbx_business_glossary_term' = 'Procedure Body Site');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `cancellation_reason` SET TAGS ('dbx_business_glossary_term' = 'Procedure Cancellation Reason');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `cancellation_reason` SET TAGS ('dbx_pii_person_data' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `charge_amount` SET TAGS ('dbx_business_glossary_term' = 'Procedure Charge Amount');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `charge_amount` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `charge_code` SET TAGS ('dbx_business_glossary_term' = 'Charge Description Master (CDM) Charge Code');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `complication_description` SET TAGS ('dbx_business_glossary_term' = 'Procedure Complication Description');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `complication_flag` SET TAGS ('dbx_business_glossary_term' = 'Procedure Complication Flag');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `consent_obtained_flag` SET TAGS ('dbx_business_glossary_term' = 'Informed Consent Obtained Flag');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `cpt_code` SET TAGS ('dbx_business_glossary_term' = 'Current Procedural Terminology (CPT) Code');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `cpt_code` SET TAGS ('dbx_value_regex' = '^[0-9]{4}[0-9A-Z]$');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `cpt_modifier_1` SET TAGS ('dbx_business_glossary_term' = 'CPT Modifier 1');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `cpt_modifier_1` SET TAGS ('dbx_value_regex' = '^[A-Z0-9]{2}$');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `cpt_modifier_2` SET TAGS ('dbx_business_glossary_term' = 'CPT Modifier 2');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `cpt_modifier_2` SET TAGS ('dbx_value_regex' = '^[A-Z0-9]{2}$');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `drg_relevant_flag` SET TAGS ('dbx_business_glossary_term' = 'Diagnosis-Related Group (DRG) Relevant Procedure Flag');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `hcpcs_code` SET TAGS ('dbx_business_glossary_term' = 'Healthcare Common Procedure Coding System (HCPCS) Code');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `hcpcs_code` SET TAGS ('dbx_value_regex' = '^[A-Z][0-9]{4}$');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `icd10_pcs_code` SET TAGS ('dbx_business_glossary_term' = 'ICD-10 Procedure Coding System (ICD-10-PCS) Code');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `icd10_pcs_code` SET TAGS ('dbx_value_regex' = '^[0-9A-HJ-NP-Z]{7}$');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `implant_flag` SET TAGS ('dbx_business_glossary_term' = 'Implant Used Flag');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `is_cancelled` SET TAGS ('dbx_business_glossary_term' = 'Procedure Cancelled Flag');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `is_cancelled` SET TAGS ('dbx_pii_person_data' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `is_elective` SET TAGS ('dbx_business_glossary_term' = 'Elective Procedure Flag');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `is_principal_procedure` SET TAGS ('dbx_business_glossary_term' = 'Principal Procedure Flag');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `laterality` SET TAGS ('dbx_business_glossary_term' = 'Procedure Laterality');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `laterality` SET TAGS ('dbx_value_regex' = 'left|right|bilateral|unilateral|not_applicable');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `performing_provider_npi` SET TAGS ('dbx_business_glossary_term' = 'Performing Provider National Provider Identifier (NPI)');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `performing_provider_npi` SET TAGS ('dbx_value_regex' = '^[0-9]{10}$');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `procedure_date` SET TAGS ('dbx_business_glossary_term' = 'Procedure Date');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `procedure_description` SET TAGS ('dbx_business_glossary_term' = 'Procedure Description');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `procedure_end_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Procedure End Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `procedure_number` SET TAGS ('dbx_business_glossary_term' = 'Procedure Number');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `procedure_start_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Procedure Start Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `procedure_status` SET TAGS ('dbx_business_glossary_term' = 'Procedure Status');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `procedure_status` SET TAGS ('dbx_value_regex' = 'completed|in-progress|not-done|entered-in-error|unknown');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `procedure_type` SET TAGS ('dbx_business_glossary_term' = 'Procedure Type');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `quantity` SET TAGS ('dbx_business_glossary_term' = 'Procedure Quantity');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `rvu_total` SET TAGS ('dbx_business_glossary_term' = 'Relative Value Unit (RVU) — Total');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `rvu_work` SET TAGS ('dbx_business_glossary_term' = 'Relative Value Unit (RVU) — Work Component');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `sequence_number` SET TAGS ('dbx_business_glossary_term' = 'Procedure Sequence Number');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `snomed_code` SET TAGS ('dbx_business_glossary_term' = 'Systematized Nomenclature of Medicine Clinical Terms (SNOMED CT) Procedure Code');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `snomed_code` SET TAGS ('dbx_value_regex' = '^[0-9]{6,18}$');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `source_system_procedure_code` SET TAGS ('dbx_business_glossary_term' = 'Source System Procedure ID');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `surgical_approach` SET TAGS ('dbx_business_glossary_term' = 'Surgical Approach');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `surgical_approach` SET TAGS ('dbx_value_regex' = 'open|laparoscopic|robotic|endoscopic|percutaneous|other');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `timeout_performed_flag` SET TAGS ('dbx_business_glossary_term' = 'Surgical Time-Out Performed Flag');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `udi` SET TAGS ('dbx_business_glossary_term' = 'Unique Device Identifier (UDI)');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Updated Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `wound_class` SET TAGS ('dbx_business_glossary_term' = 'Wound Classification');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `wound_class` SET TAGS ('dbx_value_regex' = 'clean|clean_contaminated|contaminated|dirty_infected');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`bed_assignment` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`bed_assignment` SET TAGS ('dbx_subdomain' = 'patient_flow');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`bed_assignment` ALTER COLUMN `bed_assignment_id` SET TAGS ('dbx_business_glossary_term' = 'Bed Assignment ID');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`bed_assignment` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Assigning Nurse Employee Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`bed_assignment` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`bed_assignment` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`bed_assignment` ALTER COLUMN `care_site_id` SET TAGS ('dbx_business_glossary_term' = 'Facility ID');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`bed_assignment` ALTER COLUMN `clinician_id` SET TAGS ('dbx_business_glossary_term' = 'Assigned Provider ID');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`bed_assignment` ALTER COLUMN `inventory_location_id` SET TAGS ('dbx_business_glossary_term' = 'Inventory Location Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`bed_assignment` ALTER COLUMN `mpi_record_id` SET TAGS ('dbx_business_glossary_term' = 'Patient ID');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`bed_assignment` ALTER COLUMN `mpi_record_id` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`bed_assignment` ALTER COLUMN `mpi_record_id` SET TAGS ('dbx_pii_identifier' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`bed_assignment` ALTER COLUMN `bed_id` SET TAGS ('dbx_business_glossary_term' = 'Bed ID');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`bed_assignment` ALTER COLUMN `visit_id` SET TAGS ('dbx_business_glossary_term' = 'Encounter ID');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`bed_assignment` ALTER COLUMN `admission_date` SET TAGS ('dbx_business_glossary_term' = 'Admission Date');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`bed_assignment` ALTER COLUMN `admission_source_code` SET TAGS ('dbx_business_glossary_term' = 'Admission Source Code');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`bed_assignment` ALTER COLUMN `adt_event_type` SET TAGS ('dbx_business_glossary_term' = 'ADT (Admit, Discharge, Transfer) Event Type');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`bed_assignment` ALTER COLUMN `assignment_end_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Bed Assignment End Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`bed_assignment` ALTER COLUMN `assignment_number` SET TAGS ('dbx_business_glossary_term' = 'Bed Assignment Number');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`bed_assignment` ALTER COLUMN `assignment_reason` SET TAGS ('dbx_business_glossary_term' = 'Bed Assignment Reason');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`bed_assignment` ALTER COLUMN `assignment_start_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Bed Assignment Start Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`bed_assignment` ALTER COLUMN `assignment_status` SET TAGS ('dbx_business_glossary_term' = 'Bed Assignment Status');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`bed_assignment` ALTER COLUMN `assignment_status` SET TAGS ('dbx_value_regex' = 'pending|active|completed|cancelled|transferred');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`bed_assignment` ALTER COLUMN `bed_class` SET TAGS ('dbx_business_glossary_term' = 'Bed Class');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`bed_assignment` ALTER COLUMN `bed_class` SET TAGS ('dbx_value_regex' = 'inpatient|outpatient|observation|emergency|behavioral_health|rehabilitation');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`bed_assignment` ALTER COLUMN `bed_gender_designation` SET TAGS ('dbx_business_glossary_term' = 'Bed Gender Designation');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`bed_assignment` ALTER COLUMN `bed_gender_designation` SET TAGS ('dbx_value_regex' = 'male|female|any');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`bed_assignment` ALTER COLUMN `bed_gender_designation` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`bed_assignment` ALTER COLUMN `bed_gender_designation` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`bed_assignment` ALTER COLUMN `bed_gender_designation` SET TAGS ('dbx_pii_person_data' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`bed_assignment` ALTER COLUMN `bed_hold_reason` SET TAGS ('dbx_business_glossary_term' = 'Bed Hold Reason');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`bed_assignment` ALTER COLUMN `bed_hold_reason` SET TAGS ('dbx_value_regex' = 'procedure|imaging|therapy|family_request|clinical_hold|none');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`bed_assignment` ALTER COLUMN `bed_label` SET TAGS ('dbx_business_glossary_term' = 'Bed Label');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`bed_assignment` ALTER COLUMN `bed_request_source` SET TAGS ('dbx_business_glossary_term' = 'Bed Request Source');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`bed_assignment` ALTER COLUMN `bed_type` SET TAGS ('dbx_business_glossary_term' = 'Bed Type');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`bed_assignment` ALTER COLUMN `bed_type` SET TAGS ('dbx_value_regex' = 'icu|telemetry|med_surg|isolation|observation|step_down');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`bed_assignment` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`bed_assignment` ALTER COLUMN `discharge_date` SET TAGS ('dbx_business_glossary_term' = 'Discharge Date');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`bed_assignment` ALTER COLUMN `discharge_disposition_code` SET TAGS ('dbx_business_glossary_term' = 'Discharge Disposition Code');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`bed_assignment` ALTER COLUMN `expected_discharge_date` SET TAGS ('dbx_business_glossary_term' = 'Expected Discharge Date');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`bed_assignment` ALTER COLUMN `floor_number` SET TAGS ('dbx_business_glossary_term' = 'Floor Number');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`bed_assignment` ALTER COLUMN `housekeeping_status_at_assignment` SET TAGS ('dbx_business_glossary_term' = 'Housekeeping Status at Assignment');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`bed_assignment` ALTER COLUMN `housekeeping_status_at_assignment` SET TAGS ('dbx_value_regex' = 'clean|dirty|in_progress|inspected|out_of_service');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`bed_assignment` ALTER COLUMN `is_isolation_bed` SET TAGS ('dbx_business_glossary_term' = 'Is Isolation Bed Flag');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`bed_assignment` ALTER COLUMN `is_observation_status` SET TAGS ('dbx_business_glossary_term' = 'Is Observation Status Flag');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`bed_assignment` ALTER COLUMN `is_private_room` SET TAGS ('dbx_business_glossary_term' = 'Is Private Room Flag');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`bed_assignment` ALTER COLUMN `is_telemetry_monitored` SET TAGS ('dbx_business_glossary_term' = 'Is Telemetry Monitored Flag');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`bed_assignment` ALTER COLUMN `isolation_type` SET TAGS ('dbx_business_glossary_term' = 'Isolation Type');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`bed_assignment` ALTER COLUMN `isolation_type` SET TAGS ('dbx_value_regex' = 'contact|droplet|airborne|protective|none');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`bed_assignment` ALTER COLUMN `los_days` SET TAGS ('dbx_business_glossary_term' = 'Length of Stay (LOS) Days');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`bed_assignment` ALTER COLUMN `nursing_station_code` SET TAGS ('dbx_business_glossary_term' = 'Nursing Station Code');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`bed_assignment` ALTER COLUMN `patient_class` SET TAGS ('dbx_business_glossary_term' = 'Patient Class');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`bed_assignment` ALTER COLUMN `patient_class` SET TAGS ('dbx_value_regex' = 'inpatient|outpatient|observation|emergency|recurring|preadmit');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`bed_assignment` ALTER COLUMN `request_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Bed Request Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`bed_assignment` ALTER COLUMN `request_to_assignment_minutes` SET TAGS ('dbx_business_glossary_term' = 'Bed Request to Assignment Elapsed Time (Minutes)');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`bed_assignment` ALTER COLUMN `room_number` SET TAGS ('dbx_business_glossary_term' = 'Room Number');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`bed_assignment` ALTER COLUMN `sequence` SET TAGS ('dbx_business_glossary_term' = 'Bed Assignment Sequence Number');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`bed_assignment` ALTER COLUMN `source_system_assignment_code` SET TAGS ('dbx_business_glossary_term' = 'Source System Assignment ID');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`bed_assignment` ALTER COLUMN `unit_code` SET TAGS ('dbx_business_glossary_term' = 'Unit Code');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`bed_assignment` ALTER COLUMN `unit_name` SET TAGS ('dbx_business_glossary_term' = 'Unit Name');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`bed_assignment` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Updated Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`bed_assignment` ALTER COLUMN `wing_or_pod` SET TAGS ('dbx_business_glossary_term' = 'Wing or Pod');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_insurance` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_insurance` SET TAGS ('dbx_subdomain' = 'financial_coverage');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_insurance` ALTER COLUMN `visit_insurance_id` SET TAGS ('dbx_business_glossary_term' = 'Visit Insurance ID');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_insurance` ALTER COLUMN `health_plan_id` SET TAGS ('dbx_business_glossary_term' = 'Health Plan Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_insurance` ALTER COLUMN `health_plan_id` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_insurance` ALTER COLUMN `health_plan_id` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_insurance` ALTER COLUMN `insurance_coverage_id` SET TAGS ('dbx_business_glossary_term' = 'Insurance Coverage ID');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_insurance` ALTER COLUMN `insurance_coverage_id` SET TAGS ('dbx_pii_category' = 'person_data');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_insurance` ALTER COLUMN `payer_contract_id` SET TAGS ('dbx_business_glossary_term' = 'Payer Contract ID');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_insurance` ALTER COLUMN `payer_id` SET TAGS ('dbx_business_glossary_term' = 'Payer ID');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_insurance` ALTER COLUMN `subscriber_id` SET TAGS ('dbx_business_glossary_term' = 'Subscriber ID');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_insurance` ALTER COLUMN `subscriber_id` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_insurance` ALTER COLUMN `subscriber_id` SET TAGS ('dbx_pii_identifier' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_insurance` ALTER COLUMN `visit_id` SET TAGS ('dbx_business_glossary_term' = 'Visit ID');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_insurance` ALTER COLUMN `mpi_record_id` SET TAGS ('dbx_business_glossary_term' = 'Member ID');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_insurance` ALTER COLUMN `mpi_record_id` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_insurance` ALTER COLUMN `mpi_record_id` SET TAGS ('dbx_pii_identifier' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_insurance` ALTER COLUMN `visit_patient_mpi_record_id` SET TAGS ('dbx_business_glossary_term' = 'Patient ID');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_insurance` ALTER COLUMN `visit_patient_mpi_record_id` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_insurance` ALTER COLUMN `visit_patient_mpi_record_id` SET TAGS ('dbx_pii_identifier' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_insurance` ALTER COLUMN `authorization_effective_date` SET TAGS ('dbx_business_glossary_term' = 'Authorization Effective Date');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_insurance` ALTER COLUMN `authorization_expiration_date` SET TAGS ('dbx_business_glossary_term' = 'Authorization Expiration Date');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_insurance` ALTER COLUMN `authorization_number` SET TAGS ('dbx_business_glossary_term' = 'Prior Authorization Number');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_insurance` ALTER COLUMN `authorization_status` SET TAGS ('dbx_business_glossary_term' = 'Prior Authorization Status');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_insurance` ALTER COLUMN `authorization_status` SET TAGS ('dbx_value_regex' = 'APPROVED|PENDING|DENIED|NOT_REQUIRED|EXPIRED');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_insurance` ALTER COLUMN `billing_npi` SET TAGS ('dbx_business_glossary_term' = 'Billing National Provider Identifier (NPI)');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_insurance` ALTER COLUMN `billing_npi` SET TAGS ('dbx_value_regex' = '^[0-9]{10}$');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_insurance` ALTER COLUMN `claim_form_type` SET TAGS ('dbx_business_glossary_term' = 'Claim Form Type');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_insurance` ALTER COLUMN `claim_form_type` SET TAGS ('dbx_value_regex' = 'CMS_1500|UB_04|ELECTRONIC_837P|ELECTRONIC_837I');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_insurance` ALTER COLUMN `cob_notes` SET TAGS ('dbx_business_glossary_term' = 'Coordination of Benefits (COB) Notes');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_insurance` ALTER COLUMN `coinsurance_rate` SET TAGS ('dbx_business_glossary_term' = 'Coinsurance Rate');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_insurance` ALTER COLUMN `copay_amount` SET TAGS ('dbx_business_glossary_term' = 'Copay Amount');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_insurance` ALTER COLUMN `copay_amount` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_insurance` ALTER COLUMN `copay_amount` SET TAGS ('dbx_pii_financial' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_insurance` ALTER COLUMN `coverage_effective_date` SET TAGS ('dbx_business_glossary_term' = 'Coverage Effective Date');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_insurance` ALTER COLUMN `coverage_effective_date` SET TAGS ('dbx_pii_category' = 'person_data');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_insurance` ALTER COLUMN `coverage_sequence` SET TAGS ('dbx_business_glossary_term' = 'Coverage Sequence (Coordination of Benefits)');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_insurance` ALTER COLUMN `coverage_sequence` SET TAGS ('dbx_pii_category' = 'person_data');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_insurance` ALTER COLUMN `coverage_termination_date` SET TAGS ('dbx_business_glossary_term' = 'Coverage Termination Date');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_insurance` ALTER COLUMN `coverage_termination_date` SET TAGS ('dbx_pii_category' = 'person_data');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_insurance` ALTER COLUMN `coverage_type` SET TAGS ('dbx_business_glossary_term' = 'Coverage Type');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_insurance` ALTER COLUMN `coverage_type` SET TAGS ('dbx_value_regex' = 'MEDICAL|DENTAL|VISION|BEHAVIORAL_HEALTH|PHARMACY');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_insurance` ALTER COLUMN `coverage_type` SET TAGS ('dbx_pii_category' = 'person_data');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_insurance` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_insurance` ALTER COLUMN `deductible_amount` SET TAGS ('dbx_business_glossary_term' = 'Deductible Amount');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_insurance` ALTER COLUMN `deductible_amount` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_insurance` ALTER COLUMN `deductible_amount` SET TAGS ('dbx_pii_financial' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_insurance` ALTER COLUMN `deductible_met_amount` SET TAGS ('dbx_business_glossary_term' = 'Deductible Met Amount');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_insurance` ALTER COLUMN `deductible_met_amount` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_insurance` ALTER COLUMN `deductible_met_amount` SET TAGS ('dbx_pii_financial' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_insurance` ALTER COLUMN `eligibility_status` SET TAGS ('dbx_business_glossary_term' = 'Eligibility Verification Status');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_insurance` ALTER COLUMN `eligibility_status` SET TAGS ('dbx_value_regex' = 'VERIFIED|PENDING|INACTIVE|UNABLE_TO_VERIFY|NOT_ELIGIBLE');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_insurance` ALTER COLUMN `eligibility_verification_method` SET TAGS ('dbx_business_glossary_term' = 'Eligibility Verification Method');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_insurance` ALTER COLUMN `eligibility_verification_method` SET TAGS ('dbx_value_regex' = 'ELECTRONIC|PHONE|PORTAL|MANUAL|REAL_TIME');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_insurance` ALTER COLUMN `eligibility_verified_date` SET TAGS ('dbx_business_glossary_term' = 'Eligibility Verified Date');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_insurance` ALTER COLUMN `financial_class` SET TAGS ('dbx_business_glossary_term' = 'Financial Class');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_insurance` ALTER COLUMN `group_number` SET TAGS ('dbx_business_glossary_term' = 'Insurance Group Number');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_insurance` ALTER COLUMN `insurance_type_code` SET TAGS ('dbx_business_glossary_term' = 'Insurance Type Code');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_insurance` ALTER COLUMN `insurance_verification_source` SET TAGS ('dbx_business_glossary_term' = 'Insurance Verification Source System');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_insurance` ALTER COLUMN `insurance_verification_source` SET TAGS ('dbx_value_regex' = 'EPIC|CERNER|CHANGE_HEALTHCARE|AVAILITY|MANUAL|PAYER_PORTAL');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_insurance` ALTER COLUMN `network_status` SET TAGS ('dbx_business_glossary_term' = 'Network Status');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_insurance` ALTER COLUMN `network_status` SET TAGS ('dbx_value_regex' = 'IN_NETWORK|OUT_OF_NETWORK|UNKNOWN');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_insurance` ALTER COLUMN `out_of_pocket_max` SET TAGS ('dbx_business_glossary_term' = 'Out-of-Pocket Maximum');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_insurance` ALTER COLUMN `out_of_pocket_max` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_insurance` ALTER COLUMN `out_of_pocket_max` SET TAGS ('dbx_pii_financial' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_insurance` ALTER COLUMN `out_of_pocket_met_amount` SET TAGS ('dbx_business_glossary_term' = 'Out-of-Pocket Met Amount');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_insurance` ALTER COLUMN `out_of_pocket_met_amount` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_insurance` ALTER COLUMN `out_of_pocket_met_amount` SET TAGS ('dbx_pii_financial' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_insurance` ALTER COLUMN `payer_phone` SET TAGS ('dbx_business_glossary_term' = 'Payer Phone Number');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_insurance` ALTER COLUMN `payer_phone` SET TAGS ('dbx_value_regex' = '^+?[0-9-s().]{7,20}$');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_insurance` ALTER COLUMN `payer_phone` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_insurance` ALTER COLUMN `payer_phone` SET TAGS ('dbx_pii_phone' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_insurance` ALTER COLUMN `preauth_required` SET TAGS ('dbx_business_glossary_term' = 'Pre-Authorization Required Flag');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_insurance` ALTER COLUMN `referral_number` SET TAGS ('dbx_business_glossary_term' = 'Referral Number');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_insurance` ALTER COLUMN `reimbursement_method` SET TAGS ('dbx_business_glossary_term' = 'Expected Reimbursement Method');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_insurance` ALTER COLUMN `reimbursement_method` SET TAGS ('dbx_value_regex' = 'FFS|CAPITATION|BUNDLED|VBP|DRG|PER_DIEM');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_insurance` ALTER COLUMN `subscriber_dob` SET TAGS ('dbx_business_glossary_term' = 'Subscriber Date of Birth');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_insurance` ALTER COLUMN `subscriber_dob` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_insurance` ALTER COLUMN `subscriber_dob` SET TAGS ('dbx_pii_identifier' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_insurance` ALTER COLUMN `subscriber_relationship` SET TAGS ('dbx_business_glossary_term' = 'Subscriber Relationship');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_insurance` ALTER COLUMN `subscriber_relationship` SET TAGS ('dbx_value_regex' = 'SELF|SPOUSE|CHILD|OTHER');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_insurance` ALTER COLUMN `subscriber_relationship` SET TAGS ('dbx_pii_person_data' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_insurance` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Updated Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`encounter_authorization` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`encounter_authorization` SET TAGS ('dbx_subdomain' = 'financial_coverage');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`encounter_authorization` ALTER COLUMN `encounter_authorization_id` SET TAGS ('dbx_business_glossary_term' = 'Encounter Authorization ID');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`encounter_authorization` ALTER COLUMN `clinician_id` SET TAGS ('dbx_business_glossary_term' = 'Requesting Provider ID');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`encounter_authorization` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Authorization Coordinator Employee Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`encounter_authorization` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`encounter_authorization` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`encounter_authorization` ALTER COLUMN `cost_center_id` SET TAGS ('dbx_business_glossary_term' = 'Cost Center Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`encounter_authorization` ALTER COLUMN `coverage_policy_id` SET TAGS ('dbx_business_glossary_term' = 'Coverage Policy Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`encounter_authorization` ALTER COLUMN `coverage_policy_id` SET TAGS ('dbx_pii_category' = 'person_data');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`encounter_authorization` ALTER COLUMN `cpt_code_id` SET TAGS ('dbx_business_glossary_term' = 'Cpt Code Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`encounter_authorization` ALTER COLUMN `demographics_id` SET TAGS ('dbx_business_glossary_term' = 'Patient ID');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`encounter_authorization` ALTER COLUMN `drg_id` SET TAGS ('dbx_business_glossary_term' = 'Drg Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`encounter_authorization` ALTER COLUMN `hcpcs_code_id` SET TAGS ('dbx_business_glossary_term' = 'Hcpcs Code Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`encounter_authorization` ALTER COLUMN `icd_code_id` SET TAGS ('dbx_business_glossary_term' = 'Icd10 Diagnosis Code Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`encounter_authorization` ALTER COLUMN `interface_channel_id` SET TAGS ('dbx_business_glossary_term' = 'Interface Channel Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`encounter_authorization` ALTER COLUMN `material_master_id` SET TAGS ('dbx_business_glossary_term' = 'Material Master Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`encounter_authorization` ALTER COLUMN `payer_id` SET TAGS ('dbx_business_glossary_term' = 'Payer ID');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`encounter_authorization` ALTER COLUMN `prior_auth_rule_id` SET TAGS ('dbx_business_glossary_term' = 'Prior Auth Rule Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`encounter_authorization` ALTER COLUMN `research_study_id` SET TAGS ('dbx_business_glossary_term' = 'Research Study Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`encounter_authorization` ALTER COLUMN `visit_id` SET TAGS ('dbx_business_glossary_term' = 'Encounter ID');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`encounter_authorization` ALTER COLUMN `appeal_decision` SET TAGS ('dbx_business_glossary_term' = 'Appeal Decision');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`encounter_authorization` ALTER COLUMN `appeal_decision` SET TAGS ('dbx_value_regex' = 'upheld|overturned|partial|pending');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`encounter_authorization` ALTER COLUMN `appeal_submitted_date` SET TAGS ('dbx_business_glossary_term' = 'Appeal Submitted Date');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`encounter_authorization` ALTER COLUMN `authorization_number` SET TAGS ('dbx_business_glossary_term' = 'Authorization Number');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`encounter_authorization` ALTER COLUMN `authorization_status` SET TAGS ('dbx_business_glossary_term' = 'Authorization Status');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`encounter_authorization` ALTER COLUMN `authorization_status` SET TAGS ('dbx_value_regex' = 'approved|denied|pending|appealed|retro_authorized|cancelled');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`encounter_authorization` ALTER COLUMN `authorization_type` SET TAGS ('dbx_business_glossary_term' = 'Authorization Type');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`encounter_authorization` ALTER COLUMN `authorization_type` SET TAGS ('dbx_value_regex' = 'prior|concurrent|retrospective|expedited');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`encounter_authorization` ALTER COLUMN `authorized_amount` SET TAGS ('dbx_business_glossary_term' = 'Authorized Amount');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`encounter_authorization` ALTER COLUMN `authorized_amount` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`encounter_authorization` ALTER COLUMN `authorized_days` SET TAGS ('dbx_business_glossary_term' = 'Authorized Days');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`encounter_authorization` ALTER COLUMN `authorized_units` SET TAGS ('dbx_business_glossary_term' = 'Authorized Units');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`encounter_authorization` ALTER COLUMN `clinical_indication` SET TAGS ('dbx_business_glossary_term' = 'Clinical Indication');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`encounter_authorization` ALTER COLUMN `cpt_code` SET TAGS ('dbx_business_glossary_term' = 'Current Procedural Terminology (CPT) Code');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`encounter_authorization` ALTER COLUMN `cpt_code` SET TAGS ('dbx_value_regex' = '^[0-9]{4}[0-9A-Z]$');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`encounter_authorization` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`encounter_authorization` ALTER COLUMN `days_used` SET TAGS ('dbx_business_glossary_term' = 'Days Used');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`encounter_authorization` ALTER COLUMN `denial_reason_code` SET TAGS ('dbx_business_glossary_term' = 'Denial Reason Code');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`encounter_authorization` ALTER COLUMN `denial_reason_description` SET TAGS ('dbx_business_glossary_term' = 'Denial Reason Description');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`encounter_authorization` ALTER COLUMN `end_date` SET TAGS ('dbx_business_glossary_term' = 'Authorization End Date');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`encounter_authorization` ALTER COLUMN `extension_authorization_number` SET TAGS ('dbx_business_glossary_term' = 'Extension Authorization Number');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`encounter_authorization` ALTER COLUMN `extension_requested_flag` SET TAGS ('dbx_business_glossary_term' = 'Authorization Extension Requested Flag');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`encounter_authorization` ALTER COLUMN `facility_type` SET TAGS ('dbx_business_glossary_term' = 'Authorized Facility Type');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`encounter_authorization` ALTER COLUMN `hcpcs_code` SET TAGS ('dbx_business_glossary_term' = 'Healthcare Common Procedure Coding System (HCPCS) Code');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`encounter_authorization` ALTER COLUMN `hcpcs_code` SET TAGS ('dbx_value_regex' = '^[A-Z][0-9]{4}$');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`encounter_authorization` ALTER COLUMN `icd10_diagnosis_code` SET TAGS ('dbx_business_glossary_term' = 'International Classification of Diseases 10th Revision (ICD-10) Diagnosis Code');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`encounter_authorization` ALTER COLUMN `icd10_diagnosis_code` SET TAGS ('dbx_value_regex' = '^[A-Z][0-9]{2}(.[0-9A-Z]{1,4})?$');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`encounter_authorization` ALTER COLUMN `icd10_diagnosis_code` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`encounter_authorization` ALTER COLUMN `icd10_diagnosis_code` SET TAGS ('dbx_pii_health' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`encounter_authorization` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Authorization Notes');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`encounter_authorization` ALTER COLUMN `payer_authorization_reference` SET TAGS ('dbx_business_glossary_term' = 'Payer Authorization Reference Number');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`encounter_authorization` ALTER COLUMN `payer_decision_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Payer Decision Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`encounter_authorization` ALTER COLUMN `payer_reviewer_name` SET TAGS ('dbx_business_glossary_term' = 'Payer Reviewer Name');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`encounter_authorization` ALTER COLUMN `payer_reviewer_npi` SET TAGS ('dbx_business_glossary_term' = 'Payer Reviewer National Provider Identifier (NPI)');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`encounter_authorization` ALTER COLUMN `payer_reviewer_npi` SET TAGS ('dbx_value_regex' = '^[0-9]{10}$');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`encounter_authorization` ALTER COLUMN `peer_to_peer_outcome` SET TAGS ('dbx_business_glossary_term' = 'Peer-to-Peer (P2P) Review Outcome');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`encounter_authorization` ALTER COLUMN `peer_to_peer_outcome` SET TAGS ('dbx_value_regex' = 'approved|denied|partial|pending');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`encounter_authorization` ALTER COLUMN `peer_to_peer_review_date` SET TAGS ('dbx_business_glossary_term' = 'Peer-to-Peer (P2P) Review Date');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`encounter_authorization` ALTER COLUMN `peer_to_peer_review_flag` SET TAGS ('dbx_business_glossary_term' = 'Peer-to-Peer (P2P) Review Flag');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`encounter_authorization` ALTER COLUMN `request_submitted_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Authorization Request Submitted Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`encounter_authorization` ALTER COLUMN `retro_authorization_reason` SET TAGS ('dbx_business_glossary_term' = 'Retrospective Authorization Reason');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`encounter_authorization` ALTER COLUMN `service_type` SET TAGS ('dbx_business_glossary_term' = 'Authorized Service Type');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`encounter_authorization` ALTER COLUMN `source_system_auth_code` SET TAGS ('dbx_business_glossary_term' = 'Source System Authorization ID');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`encounter_authorization` ALTER COLUMN `start_date` SET TAGS ('dbx_business_glossary_term' = 'Authorization Start Date');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`encounter_authorization` ALTER COLUMN `submission_method` SET TAGS ('dbx_business_glossary_term' = 'Authorization Submission Method');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`encounter_authorization` ALTER COLUMN `submission_method` SET TAGS ('dbx_value_regex' = 'electronic|phone|fax|portal|edi');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`encounter_authorization` ALTER COLUMN `units_used` SET TAGS ('dbx_business_glossary_term' = 'Units Used');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`encounter_authorization` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Updated Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`encounter_authorization` ALTER COLUMN `urgency_level` SET TAGS ('dbx_business_glossary_term' = 'Authorization Urgency Level');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`encounter_authorization` ALTER COLUMN `urgency_level` SET TAGS ('dbx_value_regex' = 'routine|urgent|emergent|expedited');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_status_history` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_status_history` SET TAGS ('dbx_subdomain' = 'encounter_management');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_status_history` ALTER COLUMN `visit_status_history_id` SET TAGS ('dbx_business_glossary_term' = 'Visit Status History ID');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_status_history` ALTER COLUMN `bed_id` SET TAGS ('dbx_business_glossary_term' = 'Bed ID');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_status_history` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Changed By User ID');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_status_history` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_status_history` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_status_history` ALTER COLUMN `clinician_id` SET TAGS ('dbx_business_glossary_term' = 'Attending Provider ID');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_status_history` ALTER COLUMN `consent_record_id` SET TAGS ('dbx_business_glossary_term' = 'Corrected Record ID');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_status_history` ALTER COLUMN `demographics_id` SET TAGS ('dbx_business_glossary_term' = 'Patient ID');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_status_history` ALTER COLUMN `demographics_id` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_status_history` ALTER COLUMN `demographics_id` SET TAGS ('dbx_pii_identifier' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_status_history` ALTER COLUMN `drg_id` SET TAGS ('dbx_business_glossary_term' = 'Drg Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_status_history` ALTER COLUMN `message_log_id` SET TAGS ('dbx_business_glossary_term' = 'HL7 Message Control ID');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_status_history` ALTER COLUMN `message_log_id` SET TAGS ('dbx_pii_category' = 'person_data');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_status_history` ALTER COLUMN `org_unit_id` SET TAGS ('dbx_business_glossary_term' = 'Department ID');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_status_history` ALTER COLUMN `care_site_id` SET TAGS ('dbx_business_glossary_term' = 'Facility ID');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_status_history` ALTER COLUMN `visit_id` SET TAGS ('dbx_business_glossary_term' = 'Visit ID');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_status_history` ALTER COLUMN `visit_transfer_destination_facility_care_site_id` SET TAGS ('dbx_business_glossary_term' = 'Transfer Destination Facility ID');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_status_history` ALTER COLUMN `admission_source_code` SET TAGS ('dbx_business_glossary_term' = 'Admission Source Code');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_status_history` ALTER COLUMN `adt_event_reason_code` SET TAGS ('dbx_business_glossary_term' = 'Admit Discharge Transfer (ADT) Event Reason Code');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_status_history` ALTER COLUMN `adt_event_type` SET TAGS ('dbx_business_glossary_term' = 'Admit Discharge Transfer (ADT) Event Type');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_status_history` ALTER COLUMN `adt_event_type` SET TAGS ('dbx_value_regex' = 'A01|A02|A03|A04|A05|A06');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_status_history` ALTER COLUMN `care_setting` SET TAGS ('dbx_business_glossary_term' = 'Care Setting');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_status_history` ALTER COLUMN `changed_by_role` SET TAGS ('dbx_business_glossary_term' = 'Changed By User Role');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_status_history` ALTER COLUMN `changed_by_role` SET TAGS ('dbx_value_regex' = 'physician|nurse|registrar|care_coordinator|system|other');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_status_history` ALTER COLUMN `changed_by_user_name` SET TAGS ('dbx_business_glossary_term' = 'Changed By User Name');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_status_history` ALTER COLUMN `changed_by_user_name` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_status_history` ALTER COLUMN `changed_by_user_name` SET TAGS ('dbx_pii_identifier' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_status_history` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_status_history` ALTER COLUMN `department_name` SET TAGS ('dbx_business_glossary_term' = 'Department Name');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_status_history` ALTER COLUMN `discharge_disposition_code` SET TAGS ('dbx_business_glossary_term' = 'Discharge Disposition Code');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_status_history` ALTER COLUMN `duration_in_status_minutes` SET TAGS ('dbx_business_glossary_term' = 'Duration in Status (Minutes)');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_status_history` ALTER COLUMN `effective_date` SET TAGS ('dbx_business_glossary_term' = 'Effective Date');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_status_history` ALTER COLUMN `encounter_number` SET TAGS ('dbx_business_glossary_term' = 'Encounter Number');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_status_history` ALTER COLUMN `financial_class` SET TAGS ('dbx_business_glossary_term' = 'Financial Class');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_status_history` ALTER COLUMN `is_corrected` SET TAGS ('dbx_business_glossary_term' = 'Is Corrected Record Indicator');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_status_history` ALTER COLUMN `is_current_status` SET TAGS ('dbx_business_glossary_term' = 'Is Current Status Indicator');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_status_history` ALTER COLUMN `is_system_generated` SET TAGS ('dbx_business_glossary_term' = 'Is System Generated Indicator');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_status_history` ALTER COLUMN `los_at_event_hours` SET TAGS ('dbx_business_glossary_term' = 'Length of Stay at Event (Hours)');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_status_history` ALTER COLUMN `mrn` SET TAGS ('dbx_business_glossary_term' = 'Medical Record Number (MRN)');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_status_history` ALTER COLUMN `mrn` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_status_history` ALTER COLUMN `mrn` SET TAGS ('dbx_pii_identifier' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_status_history` ALTER COLUMN `new_status` SET TAGS ('dbx_business_glossary_term' = 'New Visit Status');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_status_history` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Status Change Notes');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_status_history` ALTER COLUMN `previous_status` SET TAGS ('dbx_business_glossary_term' = 'Previous Visit Status');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_status_history` ALTER COLUMN `room_number` SET TAGS ('dbx_business_glossary_term' = 'Room Number');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_status_history` ALTER COLUMN `sequence_number` SET TAGS ('dbx_business_glossary_term' = 'Status Sequence Number');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_status_history` ALTER COLUMN `source_system_event_code` SET TAGS ('dbx_business_glossary_term' = 'Source System Event ID');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_status_history` ALTER COLUMN `status_change_reason` SET TAGS ('dbx_business_glossary_term' = 'Status Change Reason');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_status_history` ALTER COLUMN `status_change_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Status Change Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_status_history` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Updated Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` SET TAGS ('dbx_subdomain' = 'clinical_documentation');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` ALTER COLUMN `triage_assessment_id` SET TAGS ('dbx_business_glossary_term' = 'Triage Assessment ID');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` ALTER COLUMN `triage_assessment_id` SET TAGS ('dbx_pii_category' = 'person_data');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` ALTER COLUMN `care_site_id` SET TAGS ('dbx_business_glossary_term' = 'Facility ID');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` ALTER COLUMN `clinician_id` SET TAGS ('dbx_business_glossary_term' = 'Triage Nurse Provider ID');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` ALTER COLUMN `mpi_record_id` SET TAGS ('dbx_business_glossary_term' = 'Patient ID');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` ALTER COLUMN `prior_triage_assessment_id` SET TAGS ('dbx_business_glossary_term' = 'Prior Triage Assessment ID');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` ALTER COLUMN `prior_triage_assessment_id` SET TAGS ('dbx_pii_category' = 'person_data');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Triage Nurse Employee Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii_category' = 'person_data');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` ALTER COLUMN `visit_id` SET TAGS ('dbx_business_glossary_term' = 'Encounter ID');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` ALTER COLUMN `acuity_change_reason` SET TAGS ('dbx_business_glossary_term' = 'Acuity Change Reason');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` ALTER COLUMN `acuity_change_reason` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` ALTER COLUMN `acuity_change_reason` SET TAGS ('dbx_pii_health' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` ALTER COLUMN `ama_flag` SET TAGS ('dbx_business_glossary_term' = 'Against Medical Advice (AMA) Flag');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` ALTER COLUMN `arrival_mode` SET TAGS ('dbx_business_glossary_term' = 'Mode of Arrival');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` ALTER COLUMN `arrival_mode` SET TAGS ('dbx_value_regex' = 'ambulance|walk_in|helicopter|police|private_vehicle|transfer');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` ALTER COLUMN `chief_complaint` SET TAGS ('dbx_business_glossary_term' = 'Chief Complaint');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` ALTER COLUMN `chief_complaint` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` ALTER COLUMN `chief_complaint` SET TAGS ('dbx_pii_health' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` ALTER COLUMN `chief_complaint_code` SET TAGS ('dbx_business_glossary_term' = 'Chief Complaint SNOMED CT Code');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` ALTER COLUMN `diastolic_bp_mmhg` SET TAGS ('dbx_business_glossary_term' = 'Diastolic Blood Pressure (BP) in mmHg');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` ALTER COLUMN `diastolic_bp_mmhg` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` ALTER COLUMN `diastolic_bp_mmhg` SET TAGS ('dbx_pii_health' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` ALTER COLUMN `door_arrival_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Door Arrival Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` ALTER COLUMN `esi_level` SET TAGS ('dbx_business_glossary_term' = 'Emergency Severity Index (ESI) Level');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` ALTER COLUMN `glasgow_coma_score` SET TAGS ('dbx_business_glossary_term' = 'Glasgow Coma Scale (GCS) Score');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` ALTER COLUMN `glasgow_coma_score` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` ALTER COLUMN `glasgow_coma_score` SET TAGS ('dbx_pii_health' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` ALTER COLUMN `heart_rate_bpm` SET TAGS ('dbx_business_glossary_term' = 'Heart Rate (HR) in Beats Per Minute (BPM)');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` ALTER COLUMN `heart_rate_bpm` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` ALTER COLUMN `heart_rate_bpm` SET TAGS ('dbx_pii_health' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` ALTER COLUMN `interpreter_language` SET TAGS ('dbx_business_glossary_term' = 'Interpreter Language');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` ALTER COLUMN `interpreter_language` SET TAGS ('dbx_pii_category' = 'person_data');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` ALTER COLUMN `interpreter_required_flag` SET TAGS ('dbx_business_glossary_term' = 'Interpreter Required Flag');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` ALTER COLUMN `isolation_required_flag` SET TAGS ('dbx_business_glossary_term' = 'Isolation Required Flag');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` ALTER COLUMN `isolation_type` SET TAGS ('dbx_business_glossary_term' = 'Isolation Precaution Type');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` ALTER COLUMN `isolation_type` SET TAGS ('dbx_value_regex' = 'airborne|droplet|contact|neutropenic|standard');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` ALTER COLUMN `lwbs_flag` SET TAGS ('dbx_business_glossary_term' = 'Left Without Being Seen (LWBS) Flag');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` ALTER COLUMN `lwbs_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Left Without Being Seen (LWBS) Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` ALTER COLUMN `mental_health_flag` SET TAGS ('dbx_business_glossary_term' = 'Mental Health Presentation Flag');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` ALTER COLUMN `mental_health_flag` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` ALTER COLUMN `mental_health_flag` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` ALTER COLUMN `pain_scale_type` SET TAGS ('dbx_business_glossary_term' = 'Pain Assessment Scale Type');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` ALTER COLUMN `pain_scale_type` SET TAGS ('dbx_value_regex' = 'numeric|faces|flacc|verbal|behavioral');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` ALTER COLUMN `pain_score` SET TAGS ('dbx_business_glossary_term' = 'Pain Score');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` ALTER COLUMN `pain_score` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` ALTER COLUMN `pain_score` SET TAGS ('dbx_pii_health' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` ALTER COLUMN `record_created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` ALTER COLUMN `record_updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Last Updated Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` ALTER COLUMN `respiratory_rate_bpm` SET TAGS ('dbx_business_glossary_term' = 'Respiratory Rate (RR) in Breaths Per Minute');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` ALTER COLUMN `respiratory_rate_bpm` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` ALTER COLUMN `respiratory_rate_bpm` SET TAGS ('dbx_pii_health' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` ALTER COLUMN `sepsis_alert_flag` SET TAGS ('dbx_business_glossary_term' = 'Sepsis Alert Flag');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` ALTER COLUMN `source_system_record_code` SET TAGS ('dbx_business_glossary_term' = 'Source System Record ID');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` ALTER COLUMN `spo2_percent` SET TAGS ('dbx_business_glossary_term' = 'Oxygen Saturation (SpO2) Percentage');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` ALTER COLUMN `spo2_percent` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` ALTER COLUMN `spo2_percent` SET TAGS ('dbx_pii_health' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` ALTER COLUMN `stroke_alert_flag` SET TAGS ('dbx_business_glossary_term' = 'Stroke Alert Flag');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` ALTER COLUMN `systolic_bp_mmhg` SET TAGS ('dbx_business_glossary_term' = 'Systolic Blood Pressure (BP) in mmHg');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` ALTER COLUMN `systolic_bp_mmhg` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` ALTER COLUMN `systolic_bp_mmhg` SET TAGS ('dbx_pii_health' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` ALTER COLUMN `temperature_celsius` SET TAGS ('dbx_business_glossary_term' = 'Body Temperature in Degrees Celsius');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` ALTER COLUMN `temperature_celsius` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` ALTER COLUMN `temperature_celsius` SET TAGS ('dbx_pii_health' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` ALTER COLUMN `temperature_route` SET TAGS ('dbx_business_glossary_term' = 'Temperature Measurement Route');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` ALTER COLUMN `temperature_route` SET TAGS ('dbx_value_regex' = 'oral|rectal|axillary|tympanic|temporal');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` ALTER COLUMN `trauma_activation_flag` SET TAGS ('dbx_business_glossary_term' = 'Trauma Activation Flag');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` ALTER COLUMN `trauma_level` SET TAGS ('dbx_business_glossary_term' = 'Trauma Activation Level');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` ALTER COLUMN `trauma_level` SET TAGS ('dbx_value_regex' = 'level_1|level_2|level_3');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` ALTER COLUMN `triage_category` SET TAGS ('dbx_business_glossary_term' = 'Triage Category');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` ALTER COLUMN `triage_category` SET TAGS ('dbx_value_regex' = 'emergent|urgent|semi_urgent|non_urgent|immediate');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` ALTER COLUMN `triage_category` SET TAGS ('dbx_pii_category' = 'person_data');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` ALTER COLUMN `triage_completed_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Triage Completion Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` ALTER COLUMN `triage_completed_timestamp` SET TAGS ('dbx_pii_category' = 'person_data');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` ALTER COLUMN `triage_number` SET TAGS ('dbx_business_glossary_term' = 'Triage Assessment Number');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` ALTER COLUMN `triage_number` SET TAGS ('dbx_pii_category' = 'person_data');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` ALTER COLUMN `triage_nurse_npi` SET TAGS ('dbx_business_glossary_term' = 'Triage Nurse National Provider Identifier (NPI)');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` ALTER COLUMN `triage_nurse_npi` SET TAGS ('dbx_value_regex' = '^[0-9]{10}$');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` ALTER COLUMN `triage_nurse_npi` SET TAGS ('dbx_pii_category' = 'person_data');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` ALTER COLUMN `triage_reassessment_flag` SET TAGS ('dbx_business_glossary_term' = 'Triage Reassessment Flag');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` ALTER COLUMN `triage_reassessment_flag` SET TAGS ('dbx_pii_category' = 'person_data');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` ALTER COLUMN `triage_status` SET TAGS ('dbx_business_glossary_term' = 'Triage Assessment Status');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` ALTER COLUMN `triage_status` SET TAGS ('dbx_value_regex' = 'in_progress|completed|amended|voided');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` ALTER COLUMN `triage_status` SET TAGS ('dbx_pii_category' = 'person_data');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` ALTER COLUMN `triage_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Triage Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` ALTER COLUMN `triage_timestamp` SET TAGS ('dbx_pii_category' = 'person_data');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` ALTER COLUMN `weight_kg` SET TAGS ('dbx_business_glossary_term' = 'Patient Weight in Kilograms');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` ALTER COLUMN `weight_kg` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` ALTER COLUMN `weight_kg` SET TAGS ('dbx_pii_health' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`readmission` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`readmission` SET TAGS ('dbx_subdomain' = 'patient_flow');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`readmission` ALTER COLUMN `readmission_id` SET TAGS ('dbx_business_glossary_term' = 'Readmission ID');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`readmission` ALTER COLUMN `care_site_id` SET TAGS ('dbx_business_glossary_term' = 'Facility ID');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`readmission` ALTER COLUMN `clinician_id` SET TAGS ('dbx_business_glossary_term' = 'Attending Provider ID');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`readmission` ALTER COLUMN `compliance_regulatory_submission_id` SET TAGS ('dbx_business_glossary_term' = 'Regulatory Submission Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`readmission` ALTER COLUMN `demographics_id` SET TAGS ('dbx_business_glossary_term' = 'Patient ID');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`readmission` ALTER COLUMN `demographics_id` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`readmission` ALTER COLUMN `demographics_id` SET TAGS ('dbx_pii_identifier' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`readmission` ALTER COLUMN `drg_id` SET TAGS ('dbx_business_glossary_term' = 'Index Drg Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`readmission` ALTER COLUMN `payer_id` SET TAGS ('dbx_business_glossary_term' = 'Payer ID');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`readmission` ALTER COLUMN `visit_id` SET TAGS ('dbx_business_glossary_term' = 'Readmission Encounter ID');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`readmission` ALTER COLUMN `readmission_visit_id` SET TAGS ('dbx_business_glossary_term' = 'Index Encounter ID');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`readmission` ALTER COLUMN `aco_attributed` SET TAGS ('dbx_business_glossary_term' = 'Accountable Care Organization (ACO) Attributed Flag');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`readmission` ALTER COLUMN `admission_date` SET TAGS ('dbx_business_glossary_term' = 'Readmission Admission Date');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`readmission` ALTER COLUMN `admit_source` SET TAGS ('dbx_business_glossary_term' = 'Readmission Admission Source');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`readmission` ALTER COLUMN `admit_source` SET TAGS ('dbx_value_regex' = 'ed|physician_referral|transfer|direct_admit|other');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`readmission` ALTER COLUMN `care_gap_identified` SET TAGS ('dbx_business_glossary_term' = 'Care Gap Identified');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`readmission` ALTER COLUMN `care_gap_identified` SET TAGS ('dbx_value_regex' = 'no_follow_up_appointment|medication_reconciliation_gap|no_discharge_instructions|no_post_acute_referral|no_care_gap');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`readmission` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`readmission` ALTER COLUMN `days_to_readmission` SET TAGS ('dbx_business_glossary_term' = 'Days to Readmission');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`readmission` ALTER COLUMN `drg_code` SET TAGS ('dbx_business_glossary_term' = 'Readmission Diagnosis-Related Group (DRG) Code');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`readmission` ALTER COLUMN `estimated_penalty_amount` SET TAGS ('dbx_business_glossary_term' = 'Estimated HRRP Penalty Amount');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`readmission` ALTER COLUMN `estimated_penalty_amount` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`readmission` ALTER COLUMN `follow_up_appointment_date` SET TAGS ('dbx_business_glossary_term' = 'Post-Discharge Follow-Up Appointment Date');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`readmission` ALTER COLUMN `follow_up_appointment_scheduled` SET TAGS ('dbx_business_glossary_term' = 'Post-Discharge Follow-Up Appointment Scheduled Flag');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`readmission` ALTER COLUMN `hrrp_excess_readmission_ratio` SET TAGS ('dbx_business_glossary_term' = 'Hospital Readmissions Reduction Program (HRRP) Excess Readmission Ratio');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`readmission` ALTER COLUMN `hrrp_measure_category` SET TAGS ('dbx_business_glossary_term' = 'Hospital Readmissions Reduction Program (HRRP) Measure Category');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`readmission` ALTER COLUMN `index_discharge_date` SET TAGS ('dbx_business_glossary_term' = 'Index Discharge Date');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`readmission` ALTER COLUMN `index_discharge_disposition` SET TAGS ('dbx_business_glossary_term' = 'Index Discharge Disposition');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`readmission` ALTER COLUMN `index_los_days` SET TAGS ('dbx_business_glossary_term' = 'Index Length of Stay (LOS) Days');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`readmission` ALTER COLUMN `index_primary_icd10_code` SET TAGS ('dbx_business_glossary_term' = 'Index Primary International Classification of Diseases 10th Revision (ICD-10) Diagnosis Code');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`readmission` ALTER COLUMN `index_primary_icd10_code` SET TAGS ('dbx_value_regex' = '^[A-Z][0-9A-Z]{1,6}$');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`readmission` ALTER COLUMN `is_hrrp_applicable` SET TAGS ('dbx_business_glossary_term' = 'Hospital Readmissions Reduction Program (HRRP) Applicable Flag');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`readmission` ALTER COLUMN `is_related_to_index` SET TAGS ('dbx_business_glossary_term' = 'Clinically Related to Index Encounter Flag');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`readmission` ALTER COLUMN `los_days` SET TAGS ('dbx_business_glossary_term' = 'Readmission Length of Stay (LOS) Days');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`readmission` ALTER COLUMN `medication_reconciliation_completed` SET TAGS ('dbx_business_glossary_term' = 'Medication Reconciliation Completed Flag');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`readmission` ALTER COLUMN `payer_type` SET TAGS ('dbx_business_glossary_term' = 'Payer Type');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`readmission` ALTER COLUMN `payer_type` SET TAGS ('dbx_value_regex' = 'medicare|medicaid|commercial|self_pay|other');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`readmission` ALTER COLUMN `preventability_assessment` SET TAGS ('dbx_business_glossary_term' = 'Readmission Preventability Assessment');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`readmission` ALTER COLUMN `preventability_assessment` SET TAGS ('dbx_value_regex' = 'potentially_preventable|not_preventable|undetermined');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`readmission` ALTER COLUMN `primary_icd10_code` SET TAGS ('dbx_business_glossary_term' = 'Readmission Primary International Classification of Diseases 10th Revision (ICD-10) Diagnosis Code');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`readmission` ALTER COLUMN `primary_icd10_code` SET TAGS ('dbx_value_regex' = '^[A-Z][0-9A-Z]{1,6}$');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`readmission` ALTER COLUMN `review_completed_date` SET TAGS ('dbx_business_glossary_term' = 'Readmission Review Completed Date');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`readmission` ALTER COLUMN `reviewer_notes` SET TAGS ('dbx_business_glossary_term' = 'Readmission Reviewer Notes');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`readmission` ALTER COLUMN `risk_score` SET TAGS ('dbx_business_glossary_term' = 'Readmission Risk Score');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`readmission` ALTER COLUMN `risk_score_model` SET TAGS ('dbx_business_glossary_term' = 'Readmission Risk Score Model');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`readmission` ALTER COLUMN `risk_score_model` SET TAGS ('dbx_value_regex' = 'LACE|HOSPITAL|BOOST|epic_model|custom');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`readmission` ALTER COLUMN `root_cause_category` SET TAGS ('dbx_business_glossary_term' = 'Readmission Root Cause Category');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`readmission` ALTER COLUMN `sdoh_flag` SET TAGS ('dbx_business_glossary_term' = 'Social Determinants of Health (SDOH) Contributing Flag');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`readmission` ALTER COLUMN `readmission_status` SET TAGS ('dbx_business_glossary_term' = 'Readmission Status');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`readmission` ALTER COLUMN `readmission_status` SET TAGS ('dbx_value_regex' = 'pending_review|confirmed|excluded|appealed|closed');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`readmission` ALTER COLUMN `tracking_number` SET TAGS ('dbx_business_glossary_term' = 'Readmission Tracking Number');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`readmission` ALTER COLUMN `transition_of_care_completed` SET TAGS ('dbx_business_glossary_term' = 'Transition of Care Completed Flag');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`readmission` ALTER COLUMN `readmission_type` SET TAGS ('dbx_business_glossary_term' = 'Readmission Type');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`readmission` ALTER COLUMN `readmission_type` SET TAGS ('dbx_value_regex' = 'planned|unplanned');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`readmission` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Updated Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`readmission` ALTER COLUMN `window` SET TAGS ('dbx_business_glossary_term' = 'Readmission Time Window');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`readmission` ALTER COLUMN `window` SET TAGS ('dbx_value_regex' = '7_day|30_day|90_day');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` SET TAGS ('dbx_subdomain' = 'clinical_documentation');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `discharge_summary_id` SET TAGS ('dbx_business_glossary_term' = 'Discharge Summary Identifier (ID)');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `addended_discharge_summary_id` SET TAGS ('dbx_business_glossary_term' = 'Addended Discharge Summary Id');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `addended_discharge_summary_id` SET TAGS ('dbx_self_ref_fk' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `care_site_id` SET TAGS ('dbx_business_glossary_term' = 'Facility Identifier (ID)');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `care_transition_notification_id` SET TAGS ('dbx_business_glossary_term' = 'Care Transition Notification Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Case Manager Employee Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii_category' = 'person_data');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `cda_document_id` SET TAGS ('dbx_business_glossary_term' = 'Source Document Identifier (ID)');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `compliance_regulatory_submission_id` SET TAGS ('dbx_business_glossary_term' = 'Regulatory Submission Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `cost_center_id` SET TAGS ('dbx_business_glossary_term' = 'Cost Center Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `demographics_id` SET TAGS ('dbx_business_glossary_term' = 'Patient Identifier (ID)');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `drg_assignment_id` SET TAGS ('dbx_business_glossary_term' = 'Drg Assignment Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `clinician_id` SET TAGS ('dbx_business_glossary_term' = 'Discharging Provider Identifier (ID)');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `requisition_id` SET TAGS ('dbx_business_glossary_term' = 'Requisition Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `subject_enrollment_id` SET TAGS ('dbx_business_glossary_term' = 'Subject Enrollment Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `tertiary_discharge_follow_up_provider_clinician_id` SET TAGS ('dbx_business_glossary_term' = 'Follow-Up Provider Identifier (ID)');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `visit_id` SET TAGS ('dbx_business_glossary_term' = 'Encounter Identifier (ID)');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `activity_restrictions` SET TAGS ('dbx_business_glossary_term' = 'Activity Restrictions');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `care_transition_plan_completed` SET TAGS ('dbx_business_glossary_term' = 'Care Transition Plan Completed Flag');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `compliance_flag` SET TAGS ('dbx_business_glossary_term' = 'Compliance Flag');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `diet_instructions` SET TAGS ('dbx_business_glossary_term' = 'Diet Instructions');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `discharge_condition` SET TAGS ('dbx_business_glossary_term' = 'Discharge Condition');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `discharge_condition` SET TAGS ('dbx_value_regex' = 'improved|stable|deteriorated|unchanged|expired');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `discharge_date` SET TAGS ('dbx_business_glossary_term' = 'Discharge Date');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `discharge_disposition` SET TAGS ('dbx_business_glossary_term' = 'Discharge Disposition');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `discharge_disposition_code` SET TAGS ('dbx_business_glossary_term' = 'Discharge Disposition Code');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `discharge_instructions_issued` SET TAGS ('dbx_business_glossary_term' = 'Discharge Instructions Issued Flag');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `discharge_instructions_text` SET TAGS ('dbx_business_glossary_term' = 'Discharge Instructions Text');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `discharge_instructions_text` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `discharge_medications_prescribed` SET TAGS ('dbx_business_glossary_term' = 'Discharge Medications Prescribed');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `discharge_medications_prescribed` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `discharge_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Discharge Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `discharging_provider_npi` SET TAGS ('dbx_business_glossary_term' = 'Discharging Provider National Provider Identifier (NPI)');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `durable_medical_equipment_ordered` SET TAGS ('dbx_business_glossary_term' = 'Durable Medical Equipment (DME) Ordered');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `durable_medical_equipment_ordered` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `durable_medical_equipment_ordered` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `follow_up_appointment_date` SET TAGS ('dbx_business_glossary_term' = 'Follow-Up Appointment Date');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `follow_up_instructions` SET TAGS ('dbx_business_glossary_term' = 'Follow-Up Instructions');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `follow_up_scheduled` SET TAGS ('dbx_business_glossary_term' = 'Follow-Up Appointment Scheduled Flag');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `functional_status_at_discharge` SET TAGS ('dbx_business_glossary_term' = 'Functional Status at Discharge');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `home_health_referral_made` SET TAGS ('dbx_business_glossary_term' = 'Home Health Referral Made Flag');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `home_health_referral_made` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `home_health_referral_made` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `hospital_course_narrative` SET TAGS ('dbx_business_glossary_term' = 'Hospital Course Narrative');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `hospital_course_narrative` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `length_of_stay_days` SET TAGS ('dbx_business_glossary_term' = 'Length of Stay (LOS) in Days');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `medication_reconciliation_completed` SET TAGS ('dbx_business_glossary_term' = 'Medication Reconciliation Completed Flag');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `mrn` SET TAGS ('dbx_business_glossary_term' = 'Medical Record Number (MRN)');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `mrn` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `mrn` SET TAGS ('dbx_pii_identifier' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `number` SET TAGS ('dbx_business_glossary_term' = 'Discharge Summary Number');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `patient_education_provided` SET TAGS ('dbx_business_glossary_term' = 'Patient Education Provided Flag');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `patient_education_topics` SET TAGS ('dbx_business_glossary_term' = 'Patient Education Topics');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `principal_diagnosis_code` SET TAGS ('dbx_business_glossary_term' = 'Principal Diagnosis Code');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `principal_diagnosis_code` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `principal_diagnosis_code` SET TAGS ('dbx_pii_health' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `principal_diagnosis_description` SET TAGS ('dbx_business_glossary_term' = 'Principal Diagnosis Description');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `principal_diagnosis_description` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `principal_diagnosis_description` SET TAGS ('dbx_pii_health' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `procedures_performed_summary` SET TAGS ('dbx_business_glossary_term' = 'Procedures Performed Summary');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `procedures_performed_summary` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `secondary_diagnosis_count` SET TAGS ('dbx_business_glossary_term' = 'Secondary Diagnosis Count');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `secondary_diagnosis_count` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `secondary_diagnosis_count` SET TAGS ('dbx_pii_health' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `summary_authored_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Summary Authored Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `summary_finalized_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Summary Finalized Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `summary_of_hospitalization` SET TAGS ('dbx_business_glossary_term' = 'Summary of Hospitalization');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `summary_of_hospitalization` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `summary_status` SET TAGS ('dbx_business_glossary_term' = 'Discharge Summary Status');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `summary_status` SET TAGS ('dbx_value_regex' = 'draft|preliminary|final|amended|corrected|cancelled');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `time_to_completion_hours` SET TAGS ('dbx_business_glossary_term' = 'Time to Completion in Hours');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Updated Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `warning_signs` SET TAGS ('dbx_business_glossary_term' = 'Warning Signs');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `wound_care_instructions` SET TAGS ('dbx_business_glossary_term' = 'Wound Care Instructions');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` SET TAGS ('dbx_subdomain' = 'patient_flow');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `transfer_request_id` SET TAGS ('dbx_business_glossary_term' = 'Transfer Request Identifier (ID)');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `care_transition_notification_id` SET TAGS ('dbx_business_glossary_term' = 'Care Transition Notification Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `bed_id` SET TAGS ('dbx_business_glossary_term' = 'Destination Bed Identifier (ID)');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `care_site_id` SET TAGS ('dbx_business_glossary_term' = 'Destination Facility Identifier (ID)');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Approved By User Identifier (ID)');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `mpi_record_id` SET TAGS ('dbx_business_glossary_term' = 'Patient Identifier (ID)');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `origin_bed_id` SET TAGS ('dbx_business_glossary_term' = 'Origin Bed Identifier (ID)');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `cost_center_id` SET TAGS ('dbx_business_glossary_term' = 'Origin Cost Center Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `original_transfer_request_id` SET TAGS ('dbx_business_glossary_term' = 'Original Transfer Request Id');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `original_transfer_request_id` SET TAGS ('dbx_self_ref_fk' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `primary_transfer_care_site_id` SET TAGS ('dbx_business_glossary_term' = 'Origin Facility Identifier (ID)');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `clinician_id` SET TAGS ('dbx_business_glossary_term' = 'Requesting Provider Identifier (ID)');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `visit_id` SET TAGS ('dbx_business_glossary_term' = 'Encounter Identifier (ID)');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `accepting_provider_npi` SET TAGS ('dbx_business_glossary_term' = 'Accepting Provider National Provider Identifier (NPI)');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `actual_transfer_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Actual Transfer Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `acuity_level` SET TAGS ('dbx_business_glossary_term' = 'Patient Acuity Level');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `acuity_level` SET TAGS ('dbx_value_regex' = 'critical|acute|stable|routine');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `approval_required` SET TAGS ('dbx_business_glossary_term' = 'Approval Required Flag');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `approval_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Approval Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `bed_availability_confirmed` SET TAGS ('dbx_business_glossary_term' = 'Bed Availability Confirmed Flag');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `cancellation_reason` SET TAGS ('dbx_business_glossary_term' = 'Cancellation Reason');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `cancellation_reason` SET TAGS ('dbx_pii_person_data' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `clinical_indication` SET TAGS ('dbx_business_glossary_term' = 'Clinical Indication');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `denial_reason` SET TAGS ('dbx_business_glossary_term' = 'Denial Reason');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `destination_unit_code` SET TAGS ('dbx_business_glossary_term' = 'Destination Unit Code');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `emtala_certification_completed` SET TAGS ('dbx_business_glossary_term' = 'Emergency Medical Treatment and Labor Act (EMTALA) Certification Completed Flag');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `emtala_certification_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Emergency Medical Treatment and Labor Act (EMTALA) Certification Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `emtala_compliant` SET TAGS ('dbx_business_glossary_term' = 'Emergency Medical Treatment and Labor Act (EMTALA) Compliant Flag');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `isolation_required` SET TAGS ('dbx_business_glossary_term' = 'Isolation Required Flag');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `isolation_type` SET TAGS ('dbx_business_glossary_term' = 'Isolation Type');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `isolation_type` SET TAGS ('dbx_value_regex' = 'contact|droplet|airborne|protective|none');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `level_of_care_required` SET TAGS ('dbx_business_glossary_term' = 'Level of Care Required');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `medical_records_sent` SET TAGS ('dbx_business_glossary_term' = 'Medical Records Sent Flag');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `medical_records_sent` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `medical_records_sent` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `medical_records_sent_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Medical Records Sent Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `medical_records_sent_timestamp` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `medical_records_sent_timestamp` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `mrn` SET TAGS ('dbx_business_glossary_term' = 'Medical Record Number (MRN)');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `mrn` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `mrn` SET TAGS ('dbx_pii_identifier' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `number` SET TAGS ('dbx_business_glossary_term' = 'Transfer Request Number');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `origin_unit_code` SET TAGS ('dbx_business_glossary_term' = 'Origin Unit Code');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `patient_consent_obtained` SET TAGS ('dbx_business_glossary_term' = 'Patient Consent Obtained Flag');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `patient_consent_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Patient Consent Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `patient_stability_score` SET TAGS ('dbx_business_glossary_term' = 'Patient Stability Score');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `primary_diagnosis_code` SET TAGS ('dbx_business_glossary_term' = 'Primary Diagnosis Code (ICD-10)');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `primary_diagnosis_code` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `primary_diagnosis_code` SET TAGS ('dbx_pii_health' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `primary_diagnosis_description` SET TAGS ('dbx_business_glossary_term' = 'Primary Diagnosis Description');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `primary_diagnosis_description` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `primary_diagnosis_description` SET TAGS ('dbx_pii_health' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `request_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Transfer Request Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `requested_transfer_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Requested Transfer Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `requesting_provider_npi` SET TAGS ('dbx_business_glossary_term' = 'Requesting Provider National Provider Identifier (NPI)');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `source_system_record_code` SET TAGS ('dbx_business_glossary_term' = 'Source System Record Identifier (ID)');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `specialty_service_required` SET TAGS ('dbx_business_glossary_term' = 'Specialty Service Required');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `transfer_reason` SET TAGS ('dbx_business_glossary_term' = 'Transfer Reason');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `transfer_reason_code` SET TAGS ('dbx_business_glossary_term' = 'Transfer Reason Code');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `transfer_status` SET TAGS ('dbx_business_glossary_term' = 'Transfer Request Status');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `transfer_type` SET TAGS ('dbx_business_glossary_term' = 'Transfer Type');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `transfer_type` SET TAGS ('dbx_value_regex' = 'inter_facility|intra_facility|emergency|elective|specialty_care|higher_level_of_care');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `transport_mode` SET TAGS ('dbx_business_glossary_term' = 'Transport Mode');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `transport_mode` SET TAGS ('dbx_value_regex' = 'ambulance|air_ambulance|wheelchair_van|private_vehicle|walk');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `transport_provider` SET TAGS ('dbx_business_glossary_term' = 'Transport Provider');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Updated Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_coverage` SET TAGS ('dbx_data_type' = 'association_data');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_coverage` SET TAGS ('dbx_subdomain' = 'financial_coverage');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_coverage` SET TAGS ('dbx_association_edges' = 'encounter.visit,insurance.payer');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_coverage` ALTER COLUMN `visit_coverage_id` SET TAGS ('dbx_business_glossary_term' = 'Visit Coverage - Visit Coverage Id');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_coverage` ALTER COLUMN `visit_coverage_id` SET TAGS ('dbx_pii_category' = 'person_data');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_coverage` ALTER COLUMN `payer_id` SET TAGS ('dbx_business_glossary_term' = 'Visit Coverage - Payer Id');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_coverage` ALTER COLUMN `visit_id` SET TAGS ('dbx_business_glossary_term' = 'Visit Coverage - Visit Id');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_coverage` ALTER COLUMN `authorization_number` SET TAGS ('dbx_business_glossary_term' = 'Prior Authorization Number');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_coverage` ALTER COLUMN `authorization_status` SET TAGS ('dbx_business_glossary_term' = 'Authorization Status');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_coverage` ALTER COLUMN `copay_amount` SET TAGS ('dbx_business_glossary_term' = 'Patient Copayment Amount');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_coverage` ALTER COLUMN `coverage_effective_date` SET TAGS ('dbx_business_glossary_term' = 'Coverage Effective Date');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_coverage` ALTER COLUMN `coverage_effective_date` SET TAGS ('dbx_pii_category' = 'person_data');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_coverage` ALTER COLUMN `coverage_sequence` SET TAGS ('dbx_business_glossary_term' = 'Coverage Sequence');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_coverage` ALTER COLUMN `coverage_sequence` SET TAGS ('dbx_pii_category' = 'person_data');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_coverage` ALTER COLUMN `coverage_termination_date` SET TAGS ('dbx_business_glossary_term' = 'Coverage Termination Date');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_coverage` ALTER COLUMN `coverage_termination_date` SET TAGS ('dbx_pii_category' = 'person_data');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_coverage` ALTER COLUMN `deductible_met_amount` SET TAGS ('dbx_business_glossary_term' = 'Deductible Met Amount');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_coverage` ALTER COLUMN `eligibility_status` SET TAGS ('dbx_business_glossary_term' = 'Eligibility Verification Status');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_coverage` ALTER COLUMN `eligibility_verification_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Eligibility Verification Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_coverage` ALTER COLUMN `network_status` SET TAGS ('dbx_business_glossary_term' = 'Network Participation Status');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_coverage` ALTER COLUMN `subscriber_relationship` SET TAGS ('dbx_business_glossary_term' = 'Subscriber Relationship');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_coverage` ALTER COLUMN `subscriber_relationship` SET TAGS ('dbx_pii_person_data' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_recall_impact` SET TAGS ('dbx_data_type' = 'association_data');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_recall_impact` SET TAGS ('dbx_subdomain' = 'encounter_management');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_recall_impact` SET TAGS ('dbx_association_edges' = 'encounter.visit,supply.recall_notice');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_recall_impact` ALTER COLUMN `visit_recall_impact_id` SET TAGS ('dbx_business_glossary_term' = 'Visit Recall Impact - Visit Recall Impact Id');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_recall_impact` ALTER COLUMN `clinician_id` SET TAGS ('dbx_business_glossary_term' = 'Assigned Clinician ID');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_recall_impact` ALTER COLUMN `recall_notice_id` SET TAGS ('dbx_business_glossary_term' = 'Visit Recall Impact - Recall Notice Id');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_recall_impact` ALTER COLUMN `visit_id` SET TAGS ('dbx_business_glossary_term' = 'Visit Recall Impact - Visit Id');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_recall_impact` ALTER COLUMN `clinical_review_completed` SET TAGS ('dbx_business_glossary_term' = 'Clinical Review Completed Flag');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_recall_impact` ALTER COLUMN `clinical_review_date` SET TAGS ('dbx_business_glossary_term' = 'Clinical Review Date');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_recall_impact` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_recall_impact` ALTER COLUMN `follow_up_due_date` SET TAGS ('dbx_business_glossary_term' = 'Follow-Up Due Date');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_recall_impact` ALTER COLUMN `follow_up_required` SET TAGS ('dbx_business_glossary_term' = 'Follow-Up Required Flag');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_recall_impact` ALTER COLUMN `last_updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Last Updated Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_recall_impact` ALTER COLUMN `lot_serial_match_confirmed` SET TAGS ('dbx_business_glossary_term' = 'Lot/Serial Match Confirmed Flag');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_recall_impact` ALTER COLUMN `notification_date` SET TAGS ('dbx_business_glossary_term' = 'Patient Notification Date');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_recall_impact` ALTER COLUMN `notification_date` SET TAGS ('dbx_phi' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_recall_impact` ALTER COLUMN `patient_impact_assessment` SET TAGS ('dbx_business_glossary_term' = 'Patient Impact Assessment');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_recall_impact` ALTER COLUMN `patient_notification_status` SET TAGS ('dbx_business_glossary_term' = 'Patient Notification Status');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_recall_impact` ALTER COLUMN `patient_notification_status` SET TAGS ('dbx_phi' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_recall_impact` ALTER COLUMN `product_actually_used` SET TAGS ('dbx_business_glossary_term' = 'Product Actually Used Flag');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_recall_impact` ALTER COLUMN `remediation_action_taken` SET TAGS ('dbx_business_glossary_term' = 'Remediation Action Taken');
-ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_recall_impact` ALTER COLUMN `remediation_date` SET TAGS ('dbx_business_glossary_term' = 'Remediation Action Date');
+ALTER SCHEMA `vibe_healthcare_v1`.`encounter` SET TAGS ('pii_division' = 'operations');
+ALTER SCHEMA `vibe_healthcare_v1`.`encounter` SET TAGS ('pii_domain' = 'encounter');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` SET TAGS ('pii_data_type' = 'master_data');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` SET TAGS ('pii_subdomain' = 'encounter_management');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` SET TAGS ('pii_vibe_mutated' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` SET TAGS ('pii_structure_enforced' = 'v22domains');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `visit_id` SET TAGS ('pii_business_glossary_term' = 'Visit ID');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `care_site_id` SET TAGS ('pii_business_glossary_term' = 'Facility ID');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `cost_center_id` SET TAGS ('pii_business_glossary_term' = 'Cost Center Id (Foreign Key)');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `drg_id` SET TAGS ('pii_business_glossary_term' = 'Drg Id (Foreign Key)');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `insurance_coverage_id` SET TAGS ('pii_business_glossary_term' = 'Primary Insurance Coverage ID');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `employee_id` SET TAGS ('pii_business_glossary_term' = 'Primary Nurse Employee Id (Foreign Key)');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `employee_id` SET TAGS ('pii_confidential' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `employee_id` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `clinician_id` SET TAGS ('pii_business_glossary_term' = 'Admitting Provider ID');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `clinician_id` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `clinician_id` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `clinician_id` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `clinician_id` SET TAGS ('pii_identifier' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `clinician_id` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `clinician_id` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `clinician_id` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `mpi_record_id` SET TAGS ('pii_business_glossary_term' = 'Patient ID');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `mpi_record_id` SET TAGS ('pii_sensitivity' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `research_study_id` SET TAGS ('pii_business_glossary_term' = 'Research Study Id (Foreign Key)');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `tertiary_visit_discharging_provider_clinician_id` SET TAGS ('pii_business_glossary_term' = 'Discharging Provider ID');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `training_completion_id` SET TAGS ('pii_business_glossary_term' = 'Training Completion Id (Foreign Key)');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `admission_source` SET TAGS ('pii_business_glossary_term' = 'Admission Source');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `admission_source` SET TAGS ('pii_value_regex' = 'emergency_department|direct_admission|transfer|referral|birth');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `admission_timestamp` SET TAGS ('pii_business_glossary_term' = 'Admission Timestamp');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `admission_timestamp` SET TAGS ('pii_sensitivity' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `admission_type` SET TAGS ('pii_business_glossary_term' = 'Admission Type');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `admission_type` SET TAGS ('pii_value_regex' = 'elective|urgent|emergent|newborn|trauma');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `admitting_diagnosis_code` SET TAGS ('pii_business_glossary_term' = 'Admitting Diagnosis ICD-10 Code');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `admitting_diagnosis_code` SET TAGS ('pii_value_regex' = '^[A-Z][0-9A-Z]{1,6}(.[0-9A-Z]{1,4})?$');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `admitting_diagnosis_code` SET TAGS ('pii_sensitivity' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `admitting_diagnosis_code` SET TAGS ('pii_restricted' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `admitting_diagnosis_code` SET TAGS ('pii_health' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `admitting_diagnosis_code` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `admitting_diagnosis_code` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `admitting_diagnosis_code` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `admitting_diagnosis_code` SET TAGS ('pii_identifier' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `admitting_diagnosis_code` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `admitting_diagnosis_code` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `admitting_diagnosis_code` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `care_setting` SET TAGS ('pii_business_glossary_term' = 'Care Setting');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `care_setting` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `care_setting` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `care_setting` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `care_setting` SET TAGS ('pii_identifier' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `care_setting` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `care_setting` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `care_setting` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `care_transition_plan_completed` SET TAGS ('pii_business_glossary_term' = 'Care Transition Plan Completed Flag');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `consent_obtained` SET TAGS ('pii_business_glossary_term' = 'Informed Consent Obtained Flag');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `converted_to_inpatient` SET TAGS ('pii_business_glossary_term' = 'Converted to Inpatient Flag');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `created_timestamp` SET TAGS ('pii_business_glossary_term' = 'Record Created Timestamp');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `discharge_disposition` SET TAGS ('pii_business_glossary_term' = 'Discharge Disposition');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `discharge_disposition` SET TAGS ('pii_value_regex' = 'home|snf|rehab|ama|expired|hospice');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `discharge_instructions_issued` SET TAGS ('pii_business_glossary_term' = 'Discharge Instructions Issued Flag');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `discharge_timestamp` SET TAGS ('pii_business_glossary_term' = 'Discharge Timestamp');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `discharge_timestamp` SET TAGS ('pii_sensitivity' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `drg_type` SET TAGS ('pii_business_glossary_term' = 'Diagnosis-Related Group (DRG) Type');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `drg_type` SET TAGS ('pii_value_regex' = 'MS-DRG|APR-DRG|AP-DRG');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `drg_weight` SET TAGS ('pii_business_glossary_term' = 'Diagnosis-Related Group (DRG) Relative Weight');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `emtala_compliant` SET TAGS ('pii_business_glossary_term' = 'Emergency Medical Treatment and Labor Act (EMTALA) Compliance Flag');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `encounter_number` SET TAGS ('pii_business_glossary_term' = 'Encounter Number');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `encounter_number` SET TAGS ('pii_sensitivity' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `expected_los_days` SET TAGS ('pii_business_glossary_term' = 'Expected Length of Stay (LOS) in Days');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `financial_class` SET TAGS ('pii_business_glossary_term' = 'Financial Class');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `financial_class` SET TAGS ('pii_value_regex' = 'commercial|medicare|medicaid|self_pay|workers_comp');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `follow_up_scheduled` SET TAGS ('pii_business_glossary_term' = 'Follow-Up Appointment Scheduled Flag');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `inpatient_conversion_timestamp` SET TAGS ('pii_business_glossary_term' = 'Inpatient Conversion Timestamp');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `length_of_stay_days` SET TAGS ('pii_business_glossary_term' = 'Length of Stay (LOS) in Days');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `moon_delivered_timestamp` SET TAGS ('pii_business_glossary_term' = 'Medicare Outpatient Observation Notice (MOON) Delivery Timestamp');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `moon_delivered_timestamp` SET TAGS ('pii_sensitivity' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `mrn` SET TAGS ('pii_business_glossary_term' = 'Medical Record Number (MRN)');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `mrn` SET TAGS ('pii_sensitivity' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `mrn` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `mrn` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `mrn` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `mrn` SET TAGS ('pii_identifier' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `mrn` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `mrn` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `mrn` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `observation_hours` SET TAGS ('pii_business_glossary_term' = 'Total Observation Hours');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `observation_hours` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `observation_hours` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `observation_hours` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `observation_hours` SET TAGS ('pii_health' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `observation_hours` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `observation_hours` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `observation_hours` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `observation_status` SET TAGS ('pii_business_glossary_term' = 'Observation Status Flag');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `observation_status` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `observation_status` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `observation_status` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `observation_status` SET TAGS ('pii_health' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `observation_status` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `observation_status` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `observation_status` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `point_of_service_code` SET TAGS ('pii_business_glossary_term' = 'Place of Service (POS) Code');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `principal_icd10_diagnosis_code` SET TAGS ('pii_business_glossary_term' = 'Principal ICD-10 Diagnosis Code');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `principal_icd10_diagnosis_code` SET TAGS ('pii_value_regex' = '^[A-Z][0-9A-Z]{1,6}(.[0-9A-Z]{1,4})?$');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `principal_icd10_diagnosis_code` SET TAGS ('pii_sensitivity' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `principal_icd10_diagnosis_code` SET TAGS ('pii_restricted' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `principal_icd10_diagnosis_code` SET TAGS ('pii_health' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `principal_icd10_diagnosis_code` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `principal_icd10_diagnosis_code` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `principal_icd10_diagnosis_code` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `principal_icd10_diagnosis_code` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `principal_icd10_diagnosis_code` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `principal_icd10_diagnosis_code` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `readmission_flag` SET TAGS ('pii_business_glossary_term' = 'Readmission Flag');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `readmission_risk_score` SET TAGS ('pii_business_glossary_term' = 'Readmission Risk Score');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `source_encounter_code` SET TAGS ('pii_business_glossary_term' = 'Source System Encounter ID');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `telehealth_connection_quality` SET TAGS ('pii_business_glossary_term' = 'Telehealth Connection Quality');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `telehealth_connection_quality` SET TAGS ('pii_value_regex' = 'excellent|good|fair|poor|failed');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `telehealth_connection_quality` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `telehealth_connection_quality` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `telehealth_connection_quality` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `telehealth_connection_quality` SET TAGS ('pii_health' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `telehealth_connection_quality` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `telehealth_connection_quality` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `telehealth_connection_quality` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `telehealth_platform` SET TAGS ('pii_business_glossary_term' = 'Telehealth Platform');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `telehealth_platform` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `telehealth_platform` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `telehealth_platform` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `telehealth_platform` SET TAGS ('pii_health' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `telehealth_platform` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `telehealth_platform` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `telehealth_platform` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `two_midnight_compliant` SET TAGS ('pii_business_glossary_term' = 'Two-Midnight Rule Compliance Flag');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `updated_timestamp` SET TAGS ('pii_business_glossary_term' = 'Record Last Updated Timestamp');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `visit_status` SET TAGS ('pii_business_glossary_term' = 'Visit Status');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `visit_status` SET TAGS ('pii_value_regex' = 'scheduled|arrived|in_progress|discharged|cancelled|no_show');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `visit_type` SET TAGS ('pii_business_glossary_term' = 'Visit Type');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit` ALTER COLUMN `visit_type` SET TAGS ('pii_value_regex' = 'inpatient|outpatient|emergency|observation|telehealth|ambulatory');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`adt_event` SET TAGS ('pii_data_type' = 'transactional_data');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`adt_event` SET TAGS ('pii_subdomain' = 'encounter_management');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`adt_event` SET TAGS ('pii_vibe_mutated' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`adt_event` SET TAGS ('pii_structure_enforced' = 'v22domains');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`adt_event` SET TAGS ('pii_vibe_structure' = 'required');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`adt_event` ALTER COLUMN `adt_event_id` SET TAGS ('pii_business_glossary_term' = 'Admit Discharge Transfer (ADT) Event ID');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`adt_event` ALTER COLUMN `clinician_id` SET TAGS ('pii_business_glossary_term' = 'Responsible Provider ID');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`adt_event` ALTER COLUMN `demographics_id` SET TAGS ('pii_business_glossary_term' = 'Patient ID');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`adt_event` ALTER COLUMN `demographics_id` SET TAGS ('pii_sensitivity' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`adt_event` ALTER COLUMN `drg_id` SET TAGS ('pii_business_glossary_term' = 'Drg Id (Foreign Key)');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`adt_event` ALTER COLUMN `message_log_id` SET TAGS ('pii_business_glossary_term' = 'Health Level Seven (HL7) Message ID');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`adt_event` ALTER COLUMN `prior_event_adt_event_id` SET TAGS ('pii_business_glossary_term' = 'Prior ADT Event ID');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`adt_event` ALTER COLUMN `employee_id` SET TAGS ('pii_business_glossary_term' = 'Transporting Employee Id (Foreign Key)');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`adt_event` ALTER COLUMN `employee_id` SET TAGS ('pii_confidential' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`adt_event` ALTER COLUMN `employee_id` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`adt_event` ALTER COLUMN `employee_id` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`adt_event` ALTER COLUMN `employee_id` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`adt_event` ALTER COLUMN `employee_id` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`adt_event` ALTER COLUMN `employee_id` SET TAGS ('pii_identifier' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`adt_event` ALTER COLUMN `employee_id` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`adt_event` ALTER COLUMN `employee_id` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`adt_event` ALTER COLUMN `employee_id` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`adt_event` ALTER COLUMN `visit_id` SET TAGS ('pii_business_glossary_term' = 'Encounter ID');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`adt_event` ALTER COLUMN `accepting_provider_npi` SET TAGS ('pii_business_glossary_term' = 'Accepting Provider National Provider Identifier (NPI)');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`adt_event` ALTER COLUMN `accepting_provider_npi` SET TAGS ('pii_value_regex' = '^[0-9]{10}$');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`adt_event` ALTER COLUMN `accepting_provider_npi` SET TAGS ('pii_sensitivity' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`adt_event` ALTER COLUMN `accepting_provider_npi` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`adt_event` ALTER COLUMN `accepting_provider_npi` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`adt_event` ALTER COLUMN `accepting_provider_npi` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`adt_event` ALTER COLUMN `accepting_provider_npi` SET TAGS ('pii_identifier' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`adt_event` ALTER COLUMN `accepting_provider_npi` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`adt_event` ALTER COLUMN `accepting_provider_npi` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`adt_event` ALTER COLUMN `accepting_provider_npi` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`adt_event` ALTER COLUMN `admission_source_code` SET TAGS ('pii_business_glossary_term' = 'Admission Source Code');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`adt_event` ALTER COLUMN `ama_flag` SET TAGS ('pii_business_glossary_term' = 'Against Medical Advice (AMA) Discharge Flag');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`adt_event` ALTER COLUMN `bed_assigned_timestamp` SET TAGS ('pii_business_glossary_term' = 'Bed Assigned Timestamp');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`adt_event` ALTER COLUMN `bed_request_timestamp` SET TAGS ('pii_business_glossary_term' = 'Bed Request Timestamp');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`adt_event` ALTER COLUMN `cancel_reason` SET TAGS ('pii_business_glossary_term' = 'ADT Event Cancellation Reason');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`adt_event` ALTER COLUMN `clinical_reason_for_transfer` SET TAGS ('pii_business_glossary_term' = 'Clinical Reason for Transfer');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`adt_event` ALTER COLUMN `clinical_reason_for_transfer` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`adt_event` ALTER COLUMN `clinical_reason_for_transfer` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`adt_event` ALTER COLUMN `clinical_reason_for_transfer` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`adt_event` ALTER COLUMN `clinical_reason_for_transfer` SET TAGS ('pii_health' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`adt_event` ALTER COLUMN `clinical_reason_for_transfer` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`adt_event` ALTER COLUMN `clinical_reason_for_transfer` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`adt_event` ALTER COLUMN `clinical_reason_for_transfer` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`adt_event` ALTER COLUMN `created_timestamp` SET TAGS ('pii_business_glossary_term' = 'Record Created Timestamp');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`adt_event` ALTER COLUMN `discharge_disposition_code` SET TAGS ('pii_business_glossary_term' = 'Discharge Disposition Code');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`adt_event` ALTER COLUMN `drg_type` SET TAGS ('pii_business_glossary_term' = 'Diagnosis-Related Group (DRG) Type');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`adt_event` ALTER COLUMN `drg_type` SET TAGS ('pii_value_regex' = 'MS-DRG|APR-DRG|IR-DRG');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`adt_event` ALTER COLUMN `emtala_compliant` SET TAGS ('pii_business_glossary_term' = 'Emergency Medical Treatment and Labor Act (EMTALA) Transfer Compliance Flag');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`adt_event` ALTER COLUMN `emtala_transfer_form_completed` SET TAGS ('pii_business_glossary_term' = 'EMTALA Transfer Form Completed Flag');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`adt_event` ALTER COLUMN `event_recorded_timestamp` SET TAGS ('pii_business_glossary_term' = 'ADT Event Recorded Timestamp');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`adt_event` ALTER COLUMN `event_status` SET TAGS ('pii_business_glossary_term' = 'ADT Event Status');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`adt_event` ALTER COLUMN `event_status` SET TAGS ('pii_value_regex' = 'active|cancelled|corrected|pending');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`adt_event` ALTER COLUMN `event_timestamp` SET TAGS ('pii_business_glossary_term' = 'ADT Event Timestamp');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`adt_event` ALTER COLUMN `event_type_code` SET TAGS ('pii_business_glossary_term' = 'ADT Event Type Code');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`adt_event` ALTER COLUMN `event_type_code` SET TAGS ('pii_value_regex' = 'A01|A02|A03|A04|A05|A06');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`adt_event` ALTER COLUMN `event_type_description` SET TAGS ('pii_business_glossary_term' = 'ADT Event Type Description');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`adt_event` ALTER COLUMN `from_bed_code` SET TAGS ('pii_business_glossary_term' = 'From Bed Code');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`adt_event` ALTER COLUMN `from_unit_code` SET TAGS ('pii_business_glossary_term' = 'From Unit Code');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`adt_event` ALTER COLUMN `isolation_flag` SET TAGS ('pii_business_glossary_term' = 'Patient Isolation Flag');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`adt_event` ALTER COLUMN `isolation_type` SET TAGS ('pii_business_glossary_term' = 'Isolation Type');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`adt_event` ALTER COLUMN `isolation_type` SET TAGS ('pii_value_regex' = 'contact|droplet|airborne|protective|none');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`adt_event` ALTER COLUMN `leave_of_absence_reason` SET TAGS ('pii_business_glossary_term' = 'Leave of Absence Reason');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`adt_event` ALTER COLUMN `level_of_care_code` SET TAGS ('pii_business_glossary_term' = 'Level of Care Code');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`adt_event` ALTER COLUMN `patient_class_code` SET TAGS ('pii_business_glossary_term' = 'Patient Class Code');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`adt_event` ALTER COLUMN `patient_stability_score` SET TAGS ('pii_business_glossary_term' = 'Patient Stability Score at Transfer');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`adt_event` ALTER COLUMN `patient_stability_score` SET TAGS ('pii_value_regex' = 'stable|guarded|critical|unstable');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`adt_event` ALTER COLUMN `readmission_risk_flag` SET TAGS ('pii_business_glossary_term' = 'Readmission Risk Flag');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`adt_event` ALTER COLUMN `sending_application` SET TAGS ('pii_business_glossary_term' = 'Sending Application');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`adt_event` ALTER COLUMN `sending_facility` SET TAGS ('pii_business_glossary_term' = 'Sending Facility');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`adt_event` ALTER COLUMN `sequence_number` SET TAGS ('pii_business_glossary_term' = 'ADT Event Sequence Number');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`adt_event` ALTER COLUMN `source_system_event_code` SET TAGS ('pii_business_glossary_term' = 'Source System ADT Event ID');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`adt_event` ALTER COLUMN `source_system_name` SET TAGS ('pii_business_glossary_term' = 'Source System Name');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`adt_event` ALTER COLUMN `source_system_name` SET TAGS ('pii_value_regex' = 'EPIC|CERNER|MEDITECH');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`adt_event` ALTER COLUMN `source_system_name` SET TAGS ('pii_sensitivity' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`adt_event` ALTER COLUMN `source_system_name` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`adt_event` ALTER COLUMN `source_system_name` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`adt_event` ALTER COLUMN `source_system_name` SET TAGS ('pii_name' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`adt_event` ALTER COLUMN `source_system_name` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`adt_event` ALTER COLUMN `source_system_name` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`adt_event` ALTER COLUMN `source_system_name` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`adt_event` ALTER COLUMN `to_bed_code` SET TAGS ('pii_business_glossary_term' = 'To Bed Code');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`adt_event` ALTER COLUMN `to_room_code` SET TAGS ('pii_business_glossary_term' = 'To Room Code');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`adt_event` ALTER COLUMN `to_unit_code` SET TAGS ('pii_business_glossary_term' = 'To Unit Code');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`adt_event` ALTER COLUMN `transition_type` SET TAGS ('pii_business_glossary_term' = 'Care Transition Type');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`adt_event` ALTER COLUMN `transition_type` SET TAGS ('pii_value_regex' = 'inter_unit|level_of_care_change|inter_facility|internal_transfer|external_transfer');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`adt_event` ALTER COLUMN `transport_mode` SET TAGS ('pii_business_glossary_term' = 'Transport Mode');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`adt_event` ALTER COLUMN `transport_mode` SET TAGS ('pii_value_regex' = 'ambulance|helicopter|wheelchair|stretcher|ambulatory|private_vehicle');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`adt_event` ALTER COLUMN `updated_timestamp` SET TAGS ('pii_business_glossary_term' = 'Record Updated Timestamp');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`adt_event` ALTER COLUMN `vibe_structure_marker` SET TAGS ('pii_vibe_structure' = 'applied');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`adt_event` ALTER COLUMN `visit_type_code` SET TAGS ('pii_business_glossary_term' = 'Visit Type Code');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`adt_event` ALTER COLUMN `visit_type_code` SET TAGS ('pii_value_regex' = 'inpatient|outpatient|emergency|observation|telehealth|ambulatory');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_provider` SET TAGS ('pii_data_type' = 'association_data');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_provider` SET TAGS ('pii_subdomain' = 'encounter_management');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_provider` SET TAGS ('pii_vibe_mutated' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_provider` SET TAGS ('pii_structure_enforced' = 'v22domains');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_provider` ALTER COLUMN `visit_provider_id` SET TAGS ('pii_business_glossary_term' = 'Visit Provider ID');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_provider` ALTER COLUMN `cost_center_id` SET TAGS ('pii_business_glossary_term' = 'Cost Center Id (Foreign Key)');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_provider` ALTER COLUMN `insurance_network_participation_id` SET TAGS ('pii_business_glossary_term' = 'Network Participation Id (Foreign Key)');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_provider` ALTER COLUMN `network_affiliation_id` SET TAGS ('pii_business_glossary_term' = 'Network Affiliation Id (Foreign Key)');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_provider` ALTER COLUMN `payer_id` SET TAGS ('pii_business_glossary_term' = 'Payer ID');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_provider` ALTER COLUMN `clinician_id` SET TAGS ('pii_business_glossary_term' = 'Provider ID');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_provider` ALTER COLUMN `provider_payer_enrollment_id` SET TAGS ('pii_business_glossary_term' = 'Payer Enrollment Id (Foreign Key)');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_provider` ALTER COLUMN `referral_order_id` SET TAGS ('pii_business_glossary_term' = 'Consult Request ID');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_provider` ALTER COLUMN `stark_arrangement_id` SET TAGS ('pii_business_glossary_term' = 'Stark Arrangement Id (Foreign Key)');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_provider` ALTER COLUMN `employee_id` SET TAGS ('pii_business_glossary_term' = 'Supervising Nurse Employee Id (Foreign Key)');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_provider` ALTER COLUMN `employee_id` SET TAGS ('pii_confidential' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_provider` ALTER COLUMN `employee_id` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_provider` ALTER COLUMN `tertiary_visit_supervising_provider_clinician_id` SET TAGS ('pii_business_glossary_term' = 'Supervising Provider ID');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_provider` ALTER COLUMN `visit_id` SET TAGS ('pii_business_glossary_term' = 'Visit ID');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_provider` ALTER COLUMN `admission_source_role` SET TAGS ('pii_business_glossary_term' = 'Admission Source Role');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_provider` ALTER COLUMN `admission_source_role` SET TAGS ('pii_value_regex' = 'admitting|referring|transferring|none');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_provider` ALTER COLUMN `assignment_end_timestamp` SET TAGS ('pii_business_glossary_term' = 'Provider Assignment End Timestamp');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_provider` ALTER COLUMN `assignment_start_timestamp` SET TAGS ('pii_business_glossary_term' = 'Provider Assignment Start Timestamp');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_provider` ALTER COLUMN `assignment_status` SET TAGS ('pii_business_glossary_term' = 'Provider Assignment Status');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_provider` ALTER COLUMN `assignment_status` SET TAGS ('pii_value_regex' = 'active|inactive|pending|cancelled|transferred');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_provider` ALTER COLUMN `assignment_type` SET TAGS ('pii_business_glossary_term' = 'Provider Assignment Type');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_provider` ALTER COLUMN `assignment_type` SET TAGS ('pii_value_regex' = 'scheduled|unscheduled|emergency|coverage|consult_request');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_provider` ALTER COLUMN `billing_provider_npi` SET TAGS ('pii_business_glossary_term' = 'Billing Provider National Provider Identifier (NPI)');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_provider` ALTER COLUMN `billing_provider_npi` SET TAGS ('pii_value_regex' = '^[0-9]{10}$');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_provider` ALTER COLUMN `billing_provider_npi` SET TAGS ('pii_sensitivity' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_provider` ALTER COLUMN `billing_provider_npi` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_provider` ALTER COLUMN `billing_provider_npi` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_provider` ALTER COLUMN `billing_provider_npi` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_provider` ALTER COLUMN `billing_provider_npi` SET TAGS ('pii_identifier' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_provider` ALTER COLUMN `billing_provider_npi` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_provider` ALTER COLUMN `billing_provider_npi` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_provider` ALTER COLUMN `billing_provider_npi` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_provider` ALTER COLUMN `care_setting` SET TAGS ('pii_business_glossary_term' = 'Care Setting');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_provider` ALTER COLUMN `care_setting` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_provider` ALTER COLUMN `care_setting` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_provider` ALTER COLUMN `care_setting` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_provider` ALTER COLUMN `care_setting` SET TAGS ('pii_identifier' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_provider` ALTER COLUMN `care_setting` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_provider` ALTER COLUMN `care_setting` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_provider` ALTER COLUMN `care_setting` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_provider` ALTER COLUMN `care_team_sequence` SET TAGS ('pii_business_glossary_term' = 'Care Team Sequence');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_provider` ALTER COLUMN `comments` SET TAGS ('pii_business_glossary_term' = 'Assignment Comments');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_provider` ALTER COLUMN `cosignature_required` SET TAGS ('pii_business_glossary_term' = 'Co-Signature Required Flag');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_provider` ALTER COLUMN `created_timestamp` SET TAGS ('pii_business_glossary_term' = 'Record Created Timestamp');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_provider` ALTER COLUMN `credentialing_verified_flag` SET TAGS ('pii_business_glossary_term' = 'Credentialing Verified Flag');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_provider` ALTER COLUMN `drg_attribution_flag` SET TAGS ('pii_business_glossary_term' = 'Diagnosis-Related Group (DRG) Attribution Flag');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_provider` ALTER COLUMN `effective_date` SET TAGS ('pii_business_glossary_term' = 'Effective Date');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_provider` ALTER COLUMN `handoff_reference` SET TAGS ('pii_business_glossary_term' = 'Handoff Documentation Reference');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_provider` ALTER COLUMN `is_attending_of_record` SET TAGS ('pii_business_glossary_term' = 'Attending of Record Flag');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_provider` ALTER COLUMN `is_primary_provider` SET TAGS ('pii_business_glossary_term' = 'Primary Provider Flag');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_provider` ALTER COLUMN `locum_tenens_flag` SET TAGS ('pii_business_glossary_term' = 'Locum Tenens Flag');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_provider` ALTER COLUMN `mips_eligible_flag` SET TAGS ('pii_business_glossary_term' = 'Merit-based Incentive Payment System (MIPS) Eligible Flag');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_provider` ALTER COLUMN `note_count` SET TAGS ('pii_business_glossary_term' = 'Clinical Note Count');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_provider` ALTER COLUMN `npi` SET TAGS ('pii_business_glossary_term' = 'National Provider Identifier (NPI)');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_provider` ALTER COLUMN `npi` SET TAGS ('pii_value_regex' = '^[0-9]{10}$');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_provider` ALTER COLUMN `npi` SET TAGS ('pii_sensitivity' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_provider` ALTER COLUMN `npi` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_provider` ALTER COLUMN `npi` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_provider` ALTER COLUMN `npi` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_provider` ALTER COLUMN `npi` SET TAGS ('pii_identifier' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_provider` ALTER COLUMN `npi` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_provider` ALTER COLUMN `npi` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_provider` ALTER COLUMN `npi` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_provider` ALTER COLUMN `on_call_flag` SET TAGS ('pii_business_glossary_term' = 'On-Call Assignment Flag');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_provider` ALTER COLUMN `order_count` SET TAGS ('pii_business_glossary_term' = 'Order Count');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_provider` ALTER COLUMN `participation_duration_minutes` SET TAGS ('pii_business_glossary_term' = 'Provider Participation Duration (Minutes)');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_provider` ALTER COLUMN `place_of_service_code` SET TAGS ('pii_business_glossary_term' = 'Place of Service (POS) Code');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_provider` ALTER COLUMN `place_of_service_code` SET TAGS ('pii_value_regex' = '^[0-9]{2}$');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_provider` ALTER COLUMN `privilege_type` SET TAGS ('pii_business_glossary_term' = 'Clinical Privilege Type');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_provider` ALTER COLUMN `privilege_type` SET TAGS ('pii_value_regex' = 'full|provisional|temporary|locum_tenens|telemedicine');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_provider` ALTER COLUMN `provider_role` SET TAGS ('pii_business_glossary_term' = 'Provider Role');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_provider` ALTER COLUMN `provider_type` SET TAGS ('pii_business_glossary_term' = 'Provider Type');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_provider` ALTER COLUMN `rendering_provider_npi` SET TAGS ('pii_business_glossary_term' = 'Rendering Provider National Provider Identifier (NPI)');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_provider` ALTER COLUMN `rendering_provider_npi` SET TAGS ('pii_value_regex' = '^[0-9]{10}$');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_provider` ALTER COLUMN `rendering_provider_npi` SET TAGS ('pii_sensitivity' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_provider` ALTER COLUMN `rendering_provider_npi` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_provider` ALTER COLUMN `rendering_provider_npi` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_provider` ALTER COLUMN `rendering_provider_npi` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_provider` ALTER COLUMN `rendering_provider_npi` SET TAGS ('pii_identifier' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_provider` ALTER COLUMN `rendering_provider_npi` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_provider` ALTER COLUMN `rendering_provider_npi` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_provider` ALTER COLUMN `rendering_provider_npi` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_provider` ALTER COLUMN `rvu_credit_flag` SET TAGS ('pii_business_glossary_term' = 'Relative Value Unit (RVU) Credit Flag');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_provider` ALTER COLUMN `rvu_work_units` SET TAGS ('pii_business_glossary_term' = 'Relative Value Unit (RVU) Work Units');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_provider` ALTER COLUMN `source_system_record_code` SET TAGS ('pii_business_glossary_term' = 'Source System Record ID');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_provider` ALTER COLUMN `specialty_at_assignment` SET TAGS ('pii_business_glossary_term' = 'Provider Specialty at Assignment');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_provider` ALTER COLUMN `telehealth_flag` SET TAGS ('pii_business_glossary_term' = 'Telehealth Encounter Flag');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_provider` ALTER COLUMN `telehealth_flag` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_provider` ALTER COLUMN `telehealth_flag` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_provider` ALTER COLUMN `telehealth_flag` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_provider` ALTER COLUMN `telehealth_flag` SET TAGS ('pii_health' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_provider` ALTER COLUMN `telehealth_flag` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_provider` ALTER COLUMN `telehealth_flag` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_provider` ALTER COLUMN `telehealth_flag` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_provider` ALTER COLUMN `updated_timestamp` SET TAGS ('pii_business_glossary_term' = 'Record Updated Timestamp');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` SET TAGS ('pii_data_type' = 'transactional_data');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` SET TAGS ('pii_subdomain' = 'clinical_documentation');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` SET TAGS ('pii_vibe_mutated' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` SET TAGS ('pii_structure_enforced' = 'v22domains');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` ALTER COLUMN `drg_assignment_id` SET TAGS ('pii_business_glossary_term' = 'Drg Assignment Identifier');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` ALTER COLUMN `care_site_id` SET TAGS ('pii_business_glossary_term' = 'Facility ID');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` ALTER COLUMN `clinician_id` SET TAGS ('pii_business_glossary_term' = 'Attending Provider ID');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` ALTER COLUMN `drg_id` SET TAGS ('pii_business_glossary_term' = 'Drg Id (Foreign Key)');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` ALTER COLUMN `employee_id` SET TAGS ('pii_business_glossary_term' = 'Coder ID');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` ALTER COLUMN `employee_id` SET TAGS ('pii_confidential' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` ALTER COLUMN `employee_id` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` ALTER COLUMN `mpi_record_id` SET TAGS ('pii_business_glossary_term' = 'Patient ID');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` ALTER COLUMN `mpi_record_id` SET TAGS ('pii_sensitivity' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` ALTER COLUMN `payer_id` SET TAGS ('pii_business_glossary_term' = 'Payer ID');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` ALTER COLUMN `visit_id` SET TAGS ('pii_business_glossary_term' = 'Encounter ID');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` ALTER COLUMN `actual_los` SET TAGS ('pii_business_glossary_term' = 'Actual Length of Stay (LOS)');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` ALTER COLUMN `admit_source_code` SET TAGS ('pii_business_glossary_term' = 'Admission Source Code');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` ALTER COLUMN `admit_source_code` SET TAGS ('pii_value_regex' = '^[0-9]{1,2}$');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` ALTER COLUMN `appeal_status` SET TAGS ('pii_business_glossary_term' = 'DRG Appeal Status');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` ALTER COLUMN `appeal_status` SET TAGS ('pii_value_regex' = 'not_appealed|pending|upheld|overturned|withdrawn');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` ALTER COLUMN `arithmetic_mean_los` SET TAGS ('pii_business_glossary_term' = 'Arithmetic Mean Length of Stay (LOS)');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` ALTER COLUMN `assignment_status` SET TAGS ('pii_business_glossary_term' = 'DRG Assignment Status');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` ALTER COLUMN `assignment_status` SET TAGS ('pii_value_regex' = 'preliminary|final|amended|voided');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` ALTER COLUMN `assignment_type` SET TAGS ('pii_business_glossary_term' = 'DRG Assignment Type');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` ALTER COLUMN `assignment_type` SET TAGS ('pii_value_regex' = 'initial|working|final|appeal|rac_review');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` ALTER COLUMN `base_payment_rate` SET TAGS ('pii_business_glossary_term' = 'DRG Base Payment Rate');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` ALTER COLUMN `cc_mcc_flag` SET TAGS ('pii_business_glossary_term' = 'Complication and Comorbidity / Major Complication and Comorbidity (CC/MCC) Flag');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` ALTER COLUMN `cdi_query_count` SET TAGS ('pii_business_glossary_term' = 'Clinical Documentation Improvement (CDI) Query Count');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` ALTER COLUMN `cdi_query_response_flag` SET TAGS ('pii_business_glossary_term' = 'Clinical Documentation Improvement (CDI) Query Response Flag');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` ALTER COLUMN `created_timestamp` SET TAGS ('pii_business_glossary_term' = 'Record Created Timestamp');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` ALTER COLUMN `discharge_status_code` SET TAGS ('pii_business_glossary_term' = 'Patient Discharge Status Code');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` ALTER COLUMN `discharge_status_code` SET TAGS ('pii_value_regex' = '^[0-9]{2}$');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` ALTER COLUMN `drg_changed_flag` SET TAGS ('pii_business_glossary_term' = 'DRG Changed Flag');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` ALTER COLUMN `drg_description` SET TAGS ('pii_business_glossary_term' = 'Diagnosis-Related Group (DRG) Description');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` ALTER COLUMN `drg_version` SET TAGS ('pii_business_glossary_term' = 'Diagnosis-Related Group (DRG) Version');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` ALTER COLUMN `drg_version` SET TAGS ('pii_value_regex' = 'MS-DRG|APR-DRG|IR-DRG');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` ALTER COLUMN `drg_version_number` SET TAGS ('pii_business_glossary_term' = 'Diagnosis-Related Group (DRG) Version Number');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` ALTER COLUMN `drg_version_number` SET TAGS ('pii_value_regex' = '^v?[0-9]{1,2}(.[0-9]{1,2})?$');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` ALTER COLUMN `drg_weight` SET TAGS ('pii_business_glossary_term' = 'Diagnosis-Related Group (DRG) Relative Weight');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` ALTER COLUMN `expected_reimbursement` SET TAGS ('pii_business_glossary_term' = 'Expected DRG Reimbursement Amount');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` ALTER COLUMN `finalized_timestamp` SET TAGS ('pii_business_glossary_term' = 'DRG Finalized Timestamp');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` ALTER COLUMN `geometric_mean_los` SET TAGS ('pii_business_glossary_term' = 'Geometric Mean Length of Stay (LOS)');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` ALTER COLUMN `geometric_mean_los` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` ALTER COLUMN `geometric_mean_los` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` ALTER COLUMN `geometric_mean_los` SET TAGS ('pii_address' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` ALTER COLUMN `geometric_mean_los` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` ALTER COLUMN `geometric_mean_los` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` ALTER COLUMN `geometric_mean_los` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` ALTER COLUMN `grouper_software` SET TAGS ('pii_business_glossary_term' = 'Grouper Software Name');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` ALTER COLUMN `grouper_software_version` SET TAGS ('pii_business_glossary_term' = 'Grouper Software Version');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` ALTER COLUMN `grouping_date` SET TAGS ('pii_business_glossary_term' = 'DRG Grouping Date');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` ALTER COLUMN `initial_drg_code` SET TAGS ('pii_business_glossary_term' = 'Initial Working Diagnosis-Related Group (DRG) Code');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` ALTER COLUMN `initial_drg_code` SET TAGS ('pii_value_regex' = '^[0-9]{3}$');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` ALTER COLUMN `initial_drg_weight` SET TAGS ('pii_business_glossary_term' = 'Initial Working Diagnosis-Related Group (DRG) Relative Weight');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` ALTER COLUMN `is_outlier` SET TAGS ('pii_business_glossary_term' = 'Cost Outlier Indicator');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` ALTER COLUMN `mdc_code` SET TAGS ('pii_business_glossary_term' = 'Major Diagnostic Category (MDC) Code');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` ALTER COLUMN `mdc_code` SET TAGS ('pii_value_regex' = '^(P[RR]E|[0-9]{1,2})$');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` ALTER COLUMN `mdc_description` SET TAGS ('pii_business_glossary_term' = 'Major Diagnostic Category (MDC) Description');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` ALTER COLUMN `outlier_payment` SET TAGS ('pii_business_glossary_term' = 'Outlier Payment Amount');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` ALTER COLUMN `patient_type` SET TAGS ('pii_business_glossary_term' = 'Patient Type');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` ALTER COLUMN `patient_type` SET TAGS ('pii_value_regex' = 'inpatient|observation|short_stay');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` ALTER COLUMN `principal_diagnosis_code` SET TAGS ('pii_business_glossary_term' = 'Principal Diagnosis ICD-10-CM Code');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` ALTER COLUMN `principal_diagnosis_code` SET TAGS ('pii_value_regex' = '^[A-Z][0-9A-Z]{2,6}(.[0-9A-Z]{1,4})?$');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` ALTER COLUMN `principal_diagnosis_code` SET TAGS ('pii_sensitivity' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` ALTER COLUMN `principal_diagnosis_code` SET TAGS ('pii_restricted' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` ALTER COLUMN `principal_diagnosis_code` SET TAGS ('pii_health' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` ALTER COLUMN `principal_diagnosis_code` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` ALTER COLUMN `principal_diagnosis_code` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` ALTER COLUMN `principal_diagnosis_code` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` ALTER COLUMN `principal_diagnosis_code` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` ALTER COLUMN `principal_diagnosis_code` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` ALTER COLUMN `principal_diagnosis_code` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` ALTER COLUMN `principal_diagnosis_description` SET TAGS ('pii_business_glossary_term' = 'Principal Diagnosis Description');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` ALTER COLUMN `principal_diagnosis_description` SET TAGS ('pii_sensitivity' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` ALTER COLUMN `principal_diagnosis_description` SET TAGS ('pii_restricted' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` ALTER COLUMN `principal_diagnosis_description` SET TAGS ('pii_health' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` ALTER COLUMN `principal_diagnosis_description` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` ALTER COLUMN `principal_diagnosis_description` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` ALTER COLUMN `principal_diagnosis_description` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` ALTER COLUMN `principal_diagnosis_description` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` ALTER COLUMN `principal_diagnosis_description` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` ALTER COLUMN `principal_diagnosis_description` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` ALTER COLUMN `principal_procedure_code` SET TAGS ('pii_business_glossary_term' = 'Principal Procedure ICD-10-PCS Code');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` ALTER COLUMN `principal_procedure_code` SET TAGS ('pii_value_regex' = '^[0-9A-Z]{7}$');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` ALTER COLUMN `principal_procedure_code` SET TAGS ('pii_sensitivity' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` ALTER COLUMN `principal_procedure_code` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` ALTER COLUMN `principal_procedure_code` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` ALTER COLUMN `principal_procedure_code` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` ALTER COLUMN `principal_procedure_code` SET TAGS ('pii_health' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` ALTER COLUMN `principal_procedure_code` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` ALTER COLUMN `principal_procedure_code` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` ALTER COLUMN `principal_procedure_code` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` ALTER COLUMN `procedure_count` SET TAGS ('pii_business_glossary_term' = 'Procedure Code Count');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` ALTER COLUMN `procedure_count` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` ALTER COLUMN `procedure_count` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` ALTER COLUMN `procedure_count` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` ALTER COLUMN `procedure_count` SET TAGS ('pii_health' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` ALTER COLUMN `procedure_count` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` ALTER COLUMN `procedure_count` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` ALTER COLUMN `procedure_count` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` ALTER COLUMN `rac_review_flag` SET TAGS ('pii_business_glossary_term' = 'Recovery Audit Contractor (RAC) Review Flag');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` ALTER COLUMN `secondary_diagnosis_count` SET TAGS ('pii_business_glossary_term' = 'Secondary Diagnosis Count');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` ALTER COLUMN `secondary_diagnosis_count` SET TAGS ('pii_sensitivity' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` ALTER COLUMN `secondary_diagnosis_count` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` ALTER COLUMN `secondary_diagnosis_count` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` ALTER COLUMN `secondary_diagnosis_count` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` ALTER COLUMN `secondary_diagnosis_count` SET TAGS ('pii_health' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` ALTER COLUMN `secondary_diagnosis_count` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` ALTER COLUMN `secondary_diagnosis_count` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` ALTER COLUMN `secondary_diagnosis_count` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` ALTER COLUMN `transfer_case_flag` SET TAGS ('pii_business_glossary_term' = 'Transfer Case Flag');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`drg_assignment` ALTER COLUMN `updated_timestamp` SET TAGS ('pii_business_glossary_term' = 'Record Updated Timestamp');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` SET TAGS ('pii_data_type' = 'transactional_data');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` SET TAGS ('pii_subdomain' = 'clinical_documentation');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` SET TAGS ('pii_vibe_mutated' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` SET TAGS ('pii_structure_enforced' = 'v22domains');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `visit_diagnosis_id` SET TAGS ('pii_business_glossary_term' = 'Visit Diagnosis ID');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `visit_diagnosis_id` SET TAGS ('pii_primary_key' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `visit_diagnosis_id` SET TAGS ('pii_sensitivity' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `visit_diagnosis_id` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `visit_diagnosis_id` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `visit_diagnosis_id` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `visit_diagnosis_id` SET TAGS ('pii_health' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `visit_diagnosis_id` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `visit_diagnosis_id` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `visit_diagnosis_id` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `clinician_id` SET TAGS ('pii_business_glossary_term' = 'Attending Provider ID');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `icd_code_id` SET TAGS ('pii_business_glossary_term' = 'Icd Code Id (Foreign Key)');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `material_master_id` SET TAGS ('pii_business_glossary_term' = 'Material Master Id (Foreign Key)');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `mpi_record_id` SET TAGS ('pii_business_glossary_term' = 'Patient ID');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `mpi_record_id` SET TAGS ('pii_sensitivity' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `note_id` SET TAGS ('pii_business_glossary_term' = 'Clinical Note ID');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `research_study_id` SET TAGS ('pii_business_glossary_term' = 'Research Study Id (Foreign Key)');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `snomed_concept_id` SET TAGS ('pii_business_glossary_term' = 'Snomed Concept Id (Foreign Key)');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `visit_id` SET TAGS ('pii_business_glossary_term' = 'Encounter ID');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `bill_indicator` SET TAGS ('pii_business_glossary_term' = 'Billable Diagnosis Indicator');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `cc_mcc_indicator` SET TAGS ('pii_business_glossary_term' = 'Complication/Comorbidity (CC) / Major Complication/Comorbidity (MCC) Indicator');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `cc_mcc_indicator` SET TAGS ('pii_value_regex' = 'CC|MCC|HAC|none');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `chronic_condition_flag` SET TAGS ('pii_business_glossary_term' = 'Chronic Condition Flag');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `chronic_condition_flag` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `chronic_condition_flag` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `chronic_condition_flag` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `chronic_condition_flag` SET TAGS ('pii_health' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `chronic_condition_flag` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `chronic_condition_flag` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `chronic_condition_flag` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `coded_date` SET TAGS ('pii_business_glossary_term' = 'Diagnosis Coded Date');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `coding_provider_npi` SET TAGS ('pii_business_glossary_term' = 'Coding Provider National Provider Identifier (NPI)');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `coding_provider_npi` SET TAGS ('pii_value_regex' = '^[0-9]{10}$');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `coding_provider_npi` SET TAGS ('pii_sensitivity' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `coding_provider_npi` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `coding_provider_npi` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `coding_provider_npi` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `coding_provider_npi` SET TAGS ('pii_identifier' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `coding_provider_npi` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `coding_provider_npi` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `coding_provider_npi` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `coding_status` SET TAGS ('pii_business_glossary_term' = 'Coding Status');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `coding_status` SET TAGS ('pii_value_regex' = 'pending|coded|validated|queried|amended|final');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `created_timestamp` SET TAGS ('pii_business_glossary_term' = 'Record Created Timestamp');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `diagnosis_rank` SET TAGS ('pii_business_glossary_term' = 'Diagnosis Rank');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `diagnosis_rank` SET TAGS ('pii_sensitivity' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `diagnosis_rank` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `diagnosis_rank` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `diagnosis_rank` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `diagnosis_rank` SET TAGS ('pii_health' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `diagnosis_rank` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `diagnosis_rank` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `diagnosis_rank` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `diagnosis_seq_num` SET TAGS ('pii_business_glossary_term' = 'Diagnosis Sequence Number');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `diagnosis_seq_num` SET TAGS ('pii_sensitivity' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `diagnosis_seq_num` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `diagnosis_seq_num` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `diagnosis_seq_num` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `diagnosis_seq_num` SET TAGS ('pii_health' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `diagnosis_seq_num` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `diagnosis_seq_num` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `diagnosis_seq_num` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `diagnosis_source` SET TAGS ('pii_business_glossary_term' = 'Diagnosis Source');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `diagnosis_source` SET TAGS ('pii_value_regex' = 'physician|coder|cdi_specialist|system|imported');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `diagnosis_source` SET TAGS ('pii_sensitivity' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `diagnosis_source` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `diagnosis_source` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `diagnosis_source` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `diagnosis_source` SET TAGS ('pii_health' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `diagnosis_source` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `diagnosis_source` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `diagnosis_source` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `diagnosis_type` SET TAGS ('pii_business_glossary_term' = 'Diagnosis Type');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `diagnosis_type` SET TAGS ('pii_value_regex' = 'admitting|principal|secondary|discharge|working|final');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `diagnosis_type` SET TAGS ('pii_sensitivity' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `diagnosis_type` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `diagnosis_type` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `diagnosis_type` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `diagnosis_type` SET TAGS ('pii_health' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `diagnosis_type` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `diagnosis_type` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `diagnosis_type` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `drg_code` SET TAGS ('pii_business_glossary_term' = 'Diagnosis-Related Group (DRG) Code');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `drg_code` SET TAGS ('pii_value_regex' = '^[0-9]{3}$');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `drg_relevance_flag` SET TAGS ('pii_business_glossary_term' = 'Diagnosis-Related Group (DRG) Relevance Flag');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `drg_type` SET TAGS ('pii_business_glossary_term' = 'Diagnosis-Related Group (DRG) Type');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `drg_type` SET TAGS ('pii_value_regex' = 'MS-DRG|APR-DRG|IR-DRG');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `encounter_diagnosis_comment` SET TAGS ('pii_business_glossary_term' = 'Encounter Diagnosis Comment');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `encounter_diagnosis_comment` SET TAGS ('pii_sensitivity' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `encounter_diagnosis_comment` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `encounter_diagnosis_comment` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `encounter_diagnosis_comment` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `encounter_diagnosis_comment` SET TAGS ('pii_health' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `encounter_diagnosis_comment` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `encounter_diagnosis_comment` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `encounter_diagnosis_comment` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `encounter_diagnosis_source_code` SET TAGS ('pii_business_glossary_term' = 'Encounter Diagnosis Source System ID');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `encounter_diagnosis_source_code` SET TAGS ('pii_sensitivity' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `encounter_diagnosis_source_code` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `encounter_diagnosis_source_code` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `encounter_diagnosis_source_code` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `encounter_diagnosis_source_code` SET TAGS ('pii_health' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `encounter_diagnosis_source_code` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `encounter_diagnosis_source_code` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `encounter_diagnosis_source_code` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `external_cause_code` SET TAGS ('pii_business_glossary_term' = 'External Cause of Injury (ICD-10-CM) Code');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `external_cause_code` SET TAGS ('pii_value_regex' = '^[VWX][0-9A-Z]{2,6}(.[0-9A-Z]{1,4})?$|^Y[0-9A-Z]{2,6}(.[0-9A-Z]{1,4})?$');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `external_cause_code` SET TAGS ('pii_sensitivity' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `hai_flag` SET TAGS ('pii_business_glossary_term' = 'Healthcare-Associated Infection (HAI) Flag');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `hcc_category_code` SET TAGS ('pii_business_glossary_term' = 'Hierarchical Condition Category (HCC) Category Code');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `hcc_flag` SET TAGS ('pii_business_glossary_term' = 'Hierarchical Condition Category (HCC) Flag');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `icd10_code` SET TAGS ('pii_business_glossary_term' = 'International Classification of Diseases 10th Revision (ICD-10) Code');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `icd10_code` SET TAGS ('pii_value_regex' = '^[A-Z][0-9A-Z]{1,6}(.[0-9A-Z]{1,4})?$');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `icd10_code` SET TAGS ('pii_sensitivity' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `icd10_description` SET TAGS ('pii_business_glossary_term' = 'International Classification of Diseases 10th Revision (ICD-10) Diagnosis Description');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `icd10_description` SET TAGS ('pii_sensitivity' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `icd10_version` SET TAGS ('pii_business_glossary_term' = 'ICD-10-CM Fiscal Year Version');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `icd10_version` SET TAGS ('pii_value_regex' = '^FY[0-9]{4}$');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `icd10_version` SET TAGS ('pii_sensitivity' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `mental_health_flag` SET TAGS ('pii_business_glossary_term' = 'Mental Health Diagnosis Flag');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `mental_health_flag` SET TAGS ('pii_restricted' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `mental_health_flag` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `mental_health_flag` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `mental_health_flag` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `mental_health_flag` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `mental_health_flag` SET TAGS ('pii_health' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `mental_health_flag` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `mental_health_flag` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `mental_health_flag` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `onset_date` SET TAGS ('pii_business_glossary_term' = 'Diagnosis Onset Date');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `onset_date` SET TAGS ('pii_sensitivity' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `poa_indicator` SET TAGS ('pii_business_glossary_term' = 'Present on Admission (POA) Indicator');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `poa_indicator` SET TAGS ('pii_value_regex' = 'Y|N|U|W|1');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `primary_diagnosis_flag` SET TAGS ('pii_business_glossary_term' = 'Primary Diagnosis Flag');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `primary_diagnosis_flag` SET TAGS ('pii_sensitivity' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `primary_diagnosis_flag` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `primary_diagnosis_flag` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `primary_diagnosis_flag` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `primary_diagnosis_flag` SET TAGS ('pii_health' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `primary_diagnosis_flag` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `primary_diagnosis_flag` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `primary_diagnosis_flag` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `quality_measure_flag` SET TAGS ('pii_business_glossary_term' = 'Quality Measure Flag');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `reportable_condition_flag` SET TAGS ('pii_business_glossary_term' = 'Reportable Condition Flag');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `reportable_condition_flag` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `reportable_condition_flag` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `reportable_condition_flag` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `reportable_condition_flag` SET TAGS ('pii_health' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `reportable_condition_flag` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `reportable_condition_flag` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `reportable_condition_flag` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `resolved_date` SET TAGS ('pii_business_glossary_term' = 'Diagnosis Resolved Date');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `sdoh_flag` SET TAGS ('pii_business_glossary_term' = 'Social Determinants of Health (SDOH) Flag');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `snomed_code` SET TAGS ('pii_business_glossary_term' = 'Systematized Nomenclature of Medicine Clinical Terms (SNOMED CT) Code');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `snomed_code` SET TAGS ('pii_value_regex' = '^[0-9]{6,18}$');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `visit_diagnosis_status` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `visit_diagnosis_status` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `visit_diagnosis_status` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `visit_diagnosis_status` SET TAGS ('pii_health' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `visit_diagnosis_status` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `visit_diagnosis_status` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `visit_diagnosis_status` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `visit_diagnosis_status` SET TAGS ('pii_classification' = 'confidential');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `visit_diagnosis_status` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `substance_use_flag` SET TAGS ('pii_business_glossary_term' = 'Substance Use Disorder (SUD) Flag');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_diagnosis` ALTER COLUMN `updated_timestamp` SET TAGS ('pii_business_glossary_term' = 'Record Updated Timestamp');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` SET TAGS ('pii_data_type' = 'transactional_data');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` SET TAGS ('pii_subdomain' = 'clinical_documentation');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` SET TAGS ('pii_vibe_mutated' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` SET TAGS ('pii_structure_enforced' = 'v22domains');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `visit_procedure_id` SET TAGS ('pii_business_glossary_term' = 'Visit Procedure ID');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `visit_procedure_id` SET TAGS ('pii_primary_key' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `visit_procedure_id` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `visit_procedure_id` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `visit_procedure_id` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `visit_procedure_id` SET TAGS ('pii_health' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `visit_procedure_id` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `visit_procedure_id` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `visit_procedure_id` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `audit_finding_id` SET TAGS ('pii_business_glossary_term' = 'Audit Finding Id (Foreign Key)');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `cost_center_id` SET TAGS ('pii_business_glossary_term' = 'Cost Center Id (Foreign Key)');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `cpt_code_id` SET TAGS ('pii_business_glossary_term' = 'Cpt Code Id (Foreign Key)');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `hcpcs_code_id` SET TAGS ('pii_business_glossary_term' = 'Hcpcs Code Id (Foreign Key)');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `icd_code_id` SET TAGS ('pii_business_glossary_term' = 'Icd10 Pcs Code Id (Foreign Key)');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `interventional_procedure_id` SET TAGS ('pii_business_glossary_term' = 'Interventional Procedure Id (Foreign Key)');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `interventional_procedure_id` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `interventional_procedure_id` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `interventional_procedure_id` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `interventional_procedure_id` SET TAGS ('pii_health' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `interventional_procedure_id` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `interventional_procedure_id` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `interventional_procedure_id` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `material_master_id` SET TAGS ('pii_business_glossary_term' = 'Material Master Id (Foreign Key)');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `mpi_record_id` SET TAGS ('pii_business_glossary_term' = 'Patient ID');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `mpi_record_id` SET TAGS ('pii_sensitivity' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `or_suite_id` SET TAGS ('pii_business_glossary_term' = 'Operating Room (OR) / Procedure Room ID');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `clinician_id` SET TAGS ('pii_business_glossary_term' = 'Performing Provider ID');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `privileging_id` SET TAGS ('pii_business_glossary_term' = 'Privileging Id (Foreign Key)');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `research_study_id` SET TAGS ('pii_business_glossary_term' = 'Research Study Id (Foreign Key)');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `snomed_concept_id` SET TAGS ('pii_business_glossary_term' = 'Snomed Concept Id (Foreign Key)');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `visit_id` SET TAGS ('pii_business_glossary_term' = 'Encounter ID');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `anesthesia_type` SET TAGS ('pii_business_glossary_term' = 'Anesthesia Type');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `anesthesia_type` SET TAGS ('pii_value_regex' = 'general|regional|local|monitored_anesthesia_care|none');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `asa_class` SET TAGS ('pii_business_glossary_term' = 'American Society of Anesthesiologists (ASA) Physical Status Classification');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `asa_class` SET TAGS ('pii_value_regex' = 'I|II|III|IV|V|VI');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `body_site` SET TAGS ('pii_business_glossary_term' = 'Procedure Body Site');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `cancellation_reason` SET TAGS ('pii_business_glossary_term' = 'Procedure Cancellation Reason');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `cancellation_reason` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `cancellation_reason` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `cancellation_reason` SET TAGS ('pii_phone' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `cancellation_reason` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `cancellation_reason` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `cancellation_reason` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `charge_amount` SET TAGS ('pii_business_glossary_term' = 'Procedure Charge Amount');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `charge_code` SET TAGS ('pii_business_glossary_term' = 'Charge Description Master (CDM) Charge Code');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `complication_description` SET TAGS ('pii_business_glossary_term' = 'Procedure Complication Description');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `complication_description` SET TAGS ('pii_sensitivity' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `complication_flag` SET TAGS ('pii_business_glossary_term' = 'Procedure Complication Flag');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `consent_obtained_flag` SET TAGS ('pii_business_glossary_term' = 'Informed Consent Obtained Flag');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `cpt_code` SET TAGS ('pii_business_glossary_term' = 'Current Procedural Terminology (CPT) Code');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `cpt_code` SET TAGS ('pii_value_regex' = '^[0-9]{4}[0-9A-Z]$');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `cpt_modifier_1` SET TAGS ('pii_business_glossary_term' = 'CPT Modifier 1');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `cpt_modifier_1` SET TAGS ('pii_value_regex' = '^[A-Z0-9]{2}$');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `cpt_modifier_2` SET TAGS ('pii_business_glossary_term' = 'CPT Modifier 2');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `cpt_modifier_2` SET TAGS ('pii_value_regex' = '^[A-Z0-9]{2}$');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `created_timestamp` SET TAGS ('pii_business_glossary_term' = 'Record Created Timestamp');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `drg_relevant_flag` SET TAGS ('pii_business_glossary_term' = 'Diagnosis-Related Group (DRG) Relevant Procedure Flag');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `hcpcs_code` SET TAGS ('pii_business_glossary_term' = 'Healthcare Common Procedure Coding System (HCPCS) Code');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `hcpcs_code` SET TAGS ('pii_value_regex' = '^[A-Z][0-9]{4}$');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `icd10_pcs_code` SET TAGS ('pii_business_glossary_term' = 'ICD-10 Procedure Coding System (ICD-10-PCS) Code');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `icd10_pcs_code` SET TAGS ('pii_value_regex' = '^[0-9A-HJ-NP-Z]{7}$');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `icd10_pcs_code` SET TAGS ('pii_sensitivity' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `implant_flag` SET TAGS ('pii_business_glossary_term' = 'Implant Used Flag');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `is_cancelled` SET TAGS ('pii_business_glossary_term' = 'Procedure Cancelled Flag');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `is_cancelled` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `is_cancelled` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `is_cancelled` SET TAGS ('pii_phone' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `is_cancelled` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `is_cancelled` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `is_cancelled` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `is_elective` SET TAGS ('pii_business_glossary_term' = 'Elective Procedure Flag');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `is_principal_procedure` SET TAGS ('pii_business_glossary_term' = 'Principal Procedure Flag');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `is_principal_procedure` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `is_principal_procedure` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `is_principal_procedure` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `is_principal_procedure` SET TAGS ('pii_health' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `is_principal_procedure` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `is_principal_procedure` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `is_principal_procedure` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `laterality` SET TAGS ('pii_business_glossary_term' = 'Procedure Laterality');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `laterality` SET TAGS ('pii_value_regex' = 'left|right|bilateral|unilateral|not_applicable');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `performing_provider_npi` SET TAGS ('pii_business_glossary_term' = 'Performing Provider National Provider Identifier (NPI)');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `performing_provider_npi` SET TAGS ('pii_value_regex' = '^[0-9]{10}$');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `performing_provider_npi` SET TAGS ('pii_sensitivity' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `performing_provider_npi` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `performing_provider_npi` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `performing_provider_npi` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `performing_provider_npi` SET TAGS ('pii_identifier' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `performing_provider_npi` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `performing_provider_npi` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `performing_provider_npi` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `procedure_date` SET TAGS ('pii_business_glossary_term' = 'Procedure Date');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `procedure_date` SET TAGS ('pii_sensitivity' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `procedure_date` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `procedure_date` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `procedure_date` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `procedure_date` SET TAGS ('pii_health' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `procedure_date` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `procedure_date` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `procedure_date` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `procedure_description` SET TAGS ('pii_business_glossary_term' = 'Procedure Description');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `procedure_description` SET TAGS ('pii_sensitivity' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `procedure_description` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `procedure_description` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `procedure_description` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `procedure_description` SET TAGS ('pii_health' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `procedure_description` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `procedure_description` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `procedure_description` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `procedure_end_timestamp` SET TAGS ('pii_business_glossary_term' = 'Procedure End Timestamp');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `procedure_end_timestamp` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `procedure_end_timestamp` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `procedure_end_timestamp` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `procedure_end_timestamp` SET TAGS ('pii_health' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `procedure_end_timestamp` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `procedure_end_timestamp` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `procedure_end_timestamp` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `procedure_number` SET TAGS ('pii_business_glossary_term' = 'Procedure Number');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `procedure_number` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `procedure_number` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `procedure_number` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `procedure_number` SET TAGS ('pii_health' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `procedure_number` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `procedure_number` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `procedure_number` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `procedure_start_timestamp` SET TAGS ('pii_business_glossary_term' = 'Procedure Start Timestamp');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `procedure_start_timestamp` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `procedure_start_timestamp` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `procedure_start_timestamp` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `procedure_start_timestamp` SET TAGS ('pii_health' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `procedure_start_timestamp` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `procedure_start_timestamp` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `procedure_start_timestamp` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `procedure_status` SET TAGS ('pii_business_glossary_term' = 'Procedure Status');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `procedure_status` SET TAGS ('pii_value_regex' = 'completed|in-progress|not-done|entered-in-error|unknown');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `procedure_status` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `procedure_status` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `procedure_status` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `procedure_status` SET TAGS ('pii_health' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `procedure_status` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `procedure_status` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `procedure_status` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `procedure_type` SET TAGS ('pii_business_glossary_term' = 'Procedure Type');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `procedure_type` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `procedure_type` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `procedure_type` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `procedure_type` SET TAGS ('pii_health' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `procedure_type` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `procedure_type` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `procedure_type` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `quantity` SET TAGS ('pii_business_glossary_term' = 'Procedure Quantity');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `rvu_total` SET TAGS ('pii_business_glossary_term' = 'Relative Value Unit (RVU) — Total');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `rvu_work` SET TAGS ('pii_business_glossary_term' = 'Relative Value Unit (RVU) — Work Component');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `sequence_number` SET TAGS ('pii_business_glossary_term' = 'Procedure Sequence Number');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `snomed_code` SET TAGS ('pii_business_glossary_term' = 'Systematized Nomenclature of Medicine Clinical Terms (SNOMED CT) Procedure Code');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `snomed_code` SET TAGS ('pii_value_regex' = '^[0-9]{6,18}$');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `source_system_procedure_code` SET TAGS ('pii_business_glossary_term' = 'Source System Procedure ID');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `source_system_procedure_code` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `source_system_procedure_code` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `source_system_procedure_code` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `source_system_procedure_code` SET TAGS ('pii_health' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `source_system_procedure_code` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `source_system_procedure_code` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `source_system_procedure_code` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `visit_procedure_status` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `visit_procedure_status` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `visit_procedure_status` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `visit_procedure_status` SET TAGS ('pii_health' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `visit_procedure_status` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `visit_procedure_status` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `visit_procedure_status` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `surgical_approach` SET TAGS ('pii_business_glossary_term' = 'Surgical Approach');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `surgical_approach` SET TAGS ('pii_value_regex' = 'open|laparoscopic|robotic|endoscopic|percutaneous|other');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `timeout_performed_flag` SET TAGS ('pii_business_glossary_term' = 'Surgical Time-Out Performed Flag');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `udi` SET TAGS ('pii_business_glossary_term' = 'Unique Device Identifier (UDI)');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `updated_timestamp` SET TAGS ('pii_business_glossary_term' = 'Record Updated Timestamp');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `wound_class` SET TAGS ('pii_business_glossary_term' = 'Wound Classification');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_procedure` ALTER COLUMN `wound_class` SET TAGS ('pii_value_regex' = 'clean|clean_contaminated|contaminated|dirty_infected');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`bed_assignment` SET TAGS ('pii_data_type' = 'transactional_data');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`bed_assignment` SET TAGS ('pii_subdomain' = 'encounter_management');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`bed_assignment` SET TAGS ('pii_vibe_mutated' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`bed_assignment` SET TAGS ('pii_structure_enforced' = 'v22domains');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`bed_assignment` SET TAGS ('pii_vibe_structure' = 'required');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`bed_assignment` ALTER COLUMN `bed_assignment_id` SET TAGS ('pii_business_glossary_term' = 'Bed Assignment ID');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`bed_assignment` ALTER COLUMN `employee_id` SET TAGS ('pii_business_glossary_term' = 'Assigning Nurse Employee Id (Foreign Key)');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`bed_assignment` ALTER COLUMN `employee_id` SET TAGS ('pii_confidential' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`bed_assignment` ALTER COLUMN `employee_id` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`bed_assignment` ALTER COLUMN `care_site_id` SET TAGS ('pii_business_glossary_term' = 'Facility ID');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`bed_assignment` ALTER COLUMN `clinician_id` SET TAGS ('pii_business_glossary_term' = 'Assigned Provider ID');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`bed_assignment` ALTER COLUMN `mpi_record_id` SET TAGS ('pii_business_glossary_term' = 'Patient ID');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`bed_assignment` ALTER COLUMN `mpi_record_id` SET TAGS ('pii_sensitivity' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`bed_assignment` ALTER COLUMN `bed_id` SET TAGS ('pii_business_glossary_term' = 'Bed ID');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`bed_assignment` ALTER COLUMN `visit_id` SET TAGS ('pii_business_glossary_term' = 'Encounter ID');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`bed_assignment` ALTER COLUMN `admission_date` SET TAGS ('pii_business_glossary_term' = 'Admission Date');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`bed_assignment` ALTER COLUMN `admission_date` SET TAGS ('pii_sensitivity' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`bed_assignment` ALTER COLUMN `admission_source_code` SET TAGS ('pii_business_glossary_term' = 'Admission Source Code');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`bed_assignment` ALTER COLUMN `adt_event_type` SET TAGS ('pii_business_glossary_term' = 'ADT (Admit, Discharge, Transfer) Event Type');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`bed_assignment` ALTER COLUMN `assignment_end_timestamp` SET TAGS ('pii_business_glossary_term' = 'Bed Assignment End Timestamp');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`bed_assignment` ALTER COLUMN `assignment_number` SET TAGS ('pii_business_glossary_term' = 'Bed Assignment Number');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`bed_assignment` ALTER COLUMN `assignment_reason` SET TAGS ('pii_business_glossary_term' = 'Bed Assignment Reason');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`bed_assignment` ALTER COLUMN `assignment_start_timestamp` SET TAGS ('pii_business_glossary_term' = 'Bed Assignment Start Timestamp');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`bed_assignment` ALTER COLUMN `assignment_status` SET TAGS ('pii_business_glossary_term' = 'Bed Assignment Status');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`bed_assignment` ALTER COLUMN `assignment_status` SET TAGS ('pii_value_regex' = 'pending|active|completed|cancelled|transferred');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`bed_assignment` ALTER COLUMN `bed_class` SET TAGS ('pii_business_glossary_term' = 'Bed Class');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`bed_assignment` ALTER COLUMN `bed_class` SET TAGS ('pii_value_regex' = 'inpatient|outpatient|observation|emergency|behavioral_health|rehabilitation');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`bed_assignment` ALTER COLUMN `bed_gender_designation` SET TAGS ('pii_business_glossary_term' = 'Bed Gender Designation');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`bed_assignment` ALTER COLUMN `bed_gender_designation` SET TAGS ('pii_value_regex' = 'male|female|any');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`bed_assignment` ALTER COLUMN `bed_gender_designation` SET TAGS ('pii_sensitivity' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`bed_assignment` ALTER COLUMN `bed_gender_designation` SET TAGS ('pii_person' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`bed_assignment` ALTER COLUMN `bed_hold_reason` SET TAGS ('pii_business_glossary_term' = 'Bed Hold Reason');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`bed_assignment` ALTER COLUMN `bed_hold_reason` SET TAGS ('pii_value_regex' = 'procedure|imaging|therapy|family_request|clinical_hold|none');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`bed_assignment` ALTER COLUMN `bed_request_source` SET TAGS ('pii_business_glossary_term' = 'Bed Request Source');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`bed_assignment` ALTER COLUMN `bed_type` SET TAGS ('pii_business_glossary_term' = 'Bed Type');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`bed_assignment` ALTER COLUMN `bed_type` SET TAGS ('pii_value_regex' = 'icu|telemetry|med_surg|isolation|observation|step_down');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`bed_assignment` ALTER COLUMN `created_timestamp` SET TAGS ('pii_business_glossary_term' = 'Record Created Timestamp');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`bed_assignment` ALTER COLUMN `discharge_date` SET TAGS ('pii_business_glossary_term' = 'Discharge Date');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`bed_assignment` ALTER COLUMN `discharge_date` SET TAGS ('pii_sensitivity' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`bed_assignment` ALTER COLUMN `discharge_disposition_code` SET TAGS ('pii_business_glossary_term' = 'Discharge Disposition Code');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`bed_assignment` ALTER COLUMN `expected_discharge_date` SET TAGS ('pii_business_glossary_term' = 'Expected Discharge Date');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`bed_assignment` ALTER COLUMN `floor_number` SET TAGS ('pii_business_glossary_term' = 'Floor Number');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`bed_assignment` ALTER COLUMN `housekeeping_status_at_assignment` SET TAGS ('pii_business_glossary_term' = 'Housekeeping Status at Assignment');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`bed_assignment` ALTER COLUMN `housekeeping_status_at_assignment` SET TAGS ('pii_value_regex' = 'clean|dirty|in_progress|inspected|out_of_service');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`bed_assignment` ALTER COLUMN `is_isolation_bed` SET TAGS ('pii_business_glossary_term' = 'Is Isolation Bed Flag');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`bed_assignment` ALTER COLUMN `is_observation_status` SET TAGS ('pii_business_glossary_term' = 'Is Observation Status Flag');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`bed_assignment` ALTER COLUMN `is_observation_status` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`bed_assignment` ALTER COLUMN `is_observation_status` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`bed_assignment` ALTER COLUMN `is_observation_status` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`bed_assignment` ALTER COLUMN `is_observation_status` SET TAGS ('pii_health' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`bed_assignment` ALTER COLUMN `is_observation_status` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`bed_assignment` ALTER COLUMN `is_observation_status` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`bed_assignment` ALTER COLUMN `is_observation_status` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`bed_assignment` ALTER COLUMN `is_private_room` SET TAGS ('pii_business_glossary_term' = 'Is Private Room Flag');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`bed_assignment` ALTER COLUMN `is_telemetry_monitored` SET TAGS ('pii_business_glossary_term' = 'Is Telemetry Monitored Flag');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`bed_assignment` ALTER COLUMN `isolation_type` SET TAGS ('pii_business_glossary_term' = 'Isolation Type');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`bed_assignment` ALTER COLUMN `isolation_type` SET TAGS ('pii_value_regex' = 'contact|droplet|airborne|protective|none');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`bed_assignment` ALTER COLUMN `los_days` SET TAGS ('pii_business_glossary_term' = 'Length of Stay (LOS) Days');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`bed_assignment` ALTER COLUMN `nursing_station_code` SET TAGS ('pii_business_glossary_term' = 'Nursing Station Code');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`bed_assignment` ALTER COLUMN `patient_class` SET TAGS ('pii_business_glossary_term' = 'Patient Class');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`bed_assignment` ALTER COLUMN `patient_class` SET TAGS ('pii_value_regex' = 'inpatient|outpatient|observation|emergency|recurring|preadmit');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`bed_assignment` ALTER COLUMN `request_timestamp` SET TAGS ('pii_business_glossary_term' = 'Bed Request Timestamp');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`bed_assignment` ALTER COLUMN `request_to_assignment_minutes` SET TAGS ('pii_business_glossary_term' = 'Bed Request to Assignment Elapsed Time (Minutes)');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`bed_assignment` ALTER COLUMN `room_number` SET TAGS ('pii_business_glossary_term' = 'Room Number');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`bed_assignment` ALTER COLUMN `sequence` SET TAGS ('pii_business_glossary_term' = 'Bed Assignment Sequence Number');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`bed_assignment` ALTER COLUMN `source_system_assignment_code` SET TAGS ('pii_business_glossary_term' = 'Source System Assignment ID');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`bed_assignment` ALTER COLUMN `unit_code` SET TAGS ('pii_business_glossary_term' = 'Unit Code');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`bed_assignment` ALTER COLUMN `unit_name` SET TAGS ('pii_business_glossary_term' = 'Unit Name');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`bed_assignment` ALTER COLUMN `unit_name` SET TAGS ('pii_sensitivity' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`bed_assignment` ALTER COLUMN `unit_name` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`bed_assignment` ALTER COLUMN `unit_name` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`bed_assignment` ALTER COLUMN `unit_name` SET TAGS ('pii_name' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`bed_assignment` ALTER COLUMN `unit_name` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`bed_assignment` ALTER COLUMN `unit_name` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`bed_assignment` ALTER COLUMN `unit_name` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`bed_assignment` ALTER COLUMN `updated_timestamp` SET TAGS ('pii_business_glossary_term' = 'Record Updated Timestamp');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`bed_assignment` ALTER COLUMN `vibe_structure_marker` SET TAGS ('pii_vibe_structure' = 'applied');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`bed_assignment` ALTER COLUMN `wing_or_pod` SET TAGS ('pii_business_glossary_term' = 'Wing or Pod');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_insurance` SET TAGS ('pii_data_type' = 'transactional_data');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_insurance` SET TAGS ('pii_subdomain' = 'financial_coverage');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_insurance` SET TAGS ('pii_vibe_mutated' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_insurance` SET TAGS ('pii_structure_enforced' = 'v22domains');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_insurance` ALTER COLUMN `visit_insurance_id` SET TAGS ('pii_business_glossary_term' = 'Visit Insurance ID');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_insurance` ALTER COLUMN `health_plan_id` SET TAGS ('pii_business_glossary_term' = 'Health Plan Id (Foreign Key)');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_insurance` ALTER COLUMN `health_plan_id` SET TAGS ('pii_restricted' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_insurance` ALTER COLUMN `health_plan_id` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_insurance` ALTER COLUMN `health_plan_id` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_insurance` ALTER COLUMN `health_plan_id` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_insurance` ALTER COLUMN `health_plan_id` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_insurance` ALTER COLUMN `health_plan_id` SET TAGS ('pii_health' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_insurance` ALTER COLUMN `health_plan_id` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_insurance` ALTER COLUMN `health_plan_id` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_insurance` ALTER COLUMN `health_plan_id` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_insurance` ALTER COLUMN `insurance_coverage_id` SET TAGS ('pii_business_glossary_term' = 'Insurance Coverage ID');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_insurance` ALTER COLUMN `payer_contract_id` SET TAGS ('pii_business_glossary_term' = 'Payer Contract ID');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_insurance` ALTER COLUMN `payer_id` SET TAGS ('pii_business_glossary_term' = 'Payer ID');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_insurance` ALTER COLUMN `subscriber_id` SET TAGS ('pii_business_glossary_term' = 'Subscriber ID');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_insurance` ALTER COLUMN `subscriber_id` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_insurance` ALTER COLUMN `subscriber_id` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_insurance` ALTER COLUMN `subscriber_id` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_insurance` ALTER COLUMN `subscriber_id` SET TAGS ('pii_identifier' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_insurance` ALTER COLUMN `subscriber_id` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_insurance` ALTER COLUMN `subscriber_id` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_insurance` ALTER COLUMN `subscriber_id` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_insurance` ALTER COLUMN `visit_id` SET TAGS ('pii_business_glossary_term' = 'Visit ID');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_insurance` ALTER COLUMN `mpi_record_id` SET TAGS ('pii_business_glossary_term' = 'Member ID');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_insurance` ALTER COLUMN `mpi_record_id` SET TAGS ('pii_sensitivity' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_insurance` ALTER COLUMN `visit_mpi_record_id` SET TAGS ('pii_business_glossary_term' = 'Patient ID');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_insurance` ALTER COLUMN `visit_mpi_record_id` SET TAGS ('pii_sensitivity' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_insurance` ALTER COLUMN `authorization_effective_date` SET TAGS ('pii_business_glossary_term' = 'Authorization Effective Date');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_insurance` ALTER COLUMN `authorization_expiration_date` SET TAGS ('pii_business_glossary_term' = 'Authorization Expiration Date');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_insurance` ALTER COLUMN `authorization_number` SET TAGS ('pii_business_glossary_term' = 'Prior Authorization Number');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_insurance` ALTER COLUMN `authorization_status` SET TAGS ('pii_business_glossary_term' = 'Prior Authorization Status');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_insurance` ALTER COLUMN `authorization_status` SET TAGS ('pii_value_regex' = 'APPROVED|PENDING|DENIED|NOT_REQUIRED|EXPIRED');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_insurance` ALTER COLUMN `billing_npi` SET TAGS ('pii_business_glossary_term' = 'Billing National Provider Identifier (NPI)');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_insurance` ALTER COLUMN `billing_npi` SET TAGS ('pii_value_regex' = '^[0-9]{10}$');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_insurance` ALTER COLUMN `billing_npi` SET TAGS ('pii_sensitivity' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_insurance` ALTER COLUMN `billing_npi` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_insurance` ALTER COLUMN `billing_npi` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_insurance` ALTER COLUMN `billing_npi` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_insurance` ALTER COLUMN `billing_npi` SET TAGS ('pii_identifier' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_insurance` ALTER COLUMN `billing_npi` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_insurance` ALTER COLUMN `billing_npi` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_insurance` ALTER COLUMN `billing_npi` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_insurance` ALTER COLUMN `claim_form_type` SET TAGS ('pii_business_glossary_term' = 'Claim Form Type');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_insurance` ALTER COLUMN `claim_form_type` SET TAGS ('pii_value_regex' = 'CMS_1500|UB_04|ELECTRONIC_837P|ELECTRONIC_837I');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_insurance` ALTER COLUMN `cob_notes` SET TAGS ('pii_business_glossary_term' = 'Coordination of Benefits (COB) Notes');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_insurance` ALTER COLUMN `coinsurance_rate` SET TAGS ('pii_business_glossary_term' = 'Coinsurance Rate');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_insurance` ALTER COLUMN `copay_amount` SET TAGS ('pii_business_glossary_term' = 'Copay Amount');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_insurance` ALTER COLUMN `coverage_effective_date` SET TAGS ('pii_business_glossary_term' = 'Coverage Effective Date');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_insurance` ALTER COLUMN `coverage_sequence` SET TAGS ('pii_business_glossary_term' = 'Coverage Sequence (Coordination of Benefits)');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_insurance` ALTER COLUMN `coverage_termination_date` SET TAGS ('pii_business_glossary_term' = 'Coverage Termination Date');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_insurance` ALTER COLUMN `coverage_type` SET TAGS ('pii_business_glossary_term' = 'Coverage Type');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_insurance` ALTER COLUMN `coverage_type` SET TAGS ('pii_value_regex' = 'MEDICAL|DENTAL|VISION|BEHAVIORAL_HEALTH|PHARMACY');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_insurance` ALTER COLUMN `created_timestamp` SET TAGS ('pii_business_glossary_term' = 'Record Created Timestamp');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_insurance` ALTER COLUMN `deductible_amount` SET TAGS ('pii_business_glossary_term' = 'Deductible Amount');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_insurance` ALTER COLUMN `deductible_met_amount` SET TAGS ('pii_business_glossary_term' = 'Deductible Met Amount');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_insurance` ALTER COLUMN `eligibility_status` SET TAGS ('pii_business_glossary_term' = 'Eligibility Verification Status');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_insurance` ALTER COLUMN `eligibility_status` SET TAGS ('pii_value_regex' = 'VERIFIED|PENDING|INACTIVE|UNABLE_TO_VERIFY|NOT_ELIGIBLE');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_insurance` ALTER COLUMN `eligibility_verification_method` SET TAGS ('pii_business_glossary_term' = 'Eligibility Verification Method');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_insurance` ALTER COLUMN `eligibility_verification_method` SET TAGS ('pii_value_regex' = 'ELECTRONIC|PHONE|PORTAL|MANUAL|REAL_TIME');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_insurance` ALTER COLUMN `eligibility_verified_date` SET TAGS ('pii_business_glossary_term' = 'Eligibility Verified Date');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_insurance` ALTER COLUMN `financial_class` SET TAGS ('pii_business_glossary_term' = 'Financial Class');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_insurance` ALTER COLUMN `group_number` SET TAGS ('pii_business_glossary_term' = 'Insurance Group Number');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_insurance` ALTER COLUMN `group_number` SET TAGS ('pii_sensitivity' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_insurance` ALTER COLUMN `insurance_type_code` SET TAGS ('pii_business_glossary_term' = 'Insurance Type Code');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_insurance` ALTER COLUMN `insurance_verification_source` SET TAGS ('pii_business_glossary_term' = 'Insurance Verification Source System');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_insurance` ALTER COLUMN `insurance_verification_source` SET TAGS ('pii_value_regex' = 'EPIC|CERNER|CHANGE_HEALTHCARE|AVAILITY|MANUAL|PAYER_PORTAL');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_insurance` ALTER COLUMN `network_status` SET TAGS ('pii_business_glossary_term' = 'Network Status');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_insurance` ALTER COLUMN `network_status` SET TAGS ('pii_value_regex' = 'IN_NETWORK|OUT_OF_NETWORK|UNKNOWN');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_insurance` ALTER COLUMN `out_of_pocket_max` SET TAGS ('pii_business_glossary_term' = 'Out-of-Pocket Maximum');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_insurance` ALTER COLUMN `out_of_pocket_met_amount` SET TAGS ('pii_business_glossary_term' = 'Out-of-Pocket Met Amount');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_insurance` ALTER COLUMN `payer_phone` SET TAGS ('pii_business_glossary_term' = 'Payer Phone Number');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_insurance` ALTER COLUMN `payer_phone` SET TAGS ('pii_value_regex' = '^+?[0-9-s().]{7,20}$');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_insurance` ALTER COLUMN `payer_phone` SET TAGS ('pii_sensitivity' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_insurance` ALTER COLUMN `payer_phone` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_insurance` ALTER COLUMN `payer_phone` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_insurance` ALTER COLUMN `payer_phone` SET TAGS ('pii_phone' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_insurance` ALTER COLUMN `payer_phone` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_insurance` ALTER COLUMN `payer_phone` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_insurance` ALTER COLUMN `payer_phone` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_insurance` ALTER COLUMN `preauth_required` SET TAGS ('pii_business_glossary_term' = 'Pre-Authorization Required Flag');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_insurance` ALTER COLUMN `referral_number` SET TAGS ('pii_business_glossary_term' = 'Referral Number');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_insurance` ALTER COLUMN `reimbursement_method` SET TAGS ('pii_business_glossary_term' = 'Expected Reimbursement Method');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_insurance` ALTER COLUMN `reimbursement_method` SET TAGS ('pii_value_regex' = 'FFS|CAPITATION|BUNDLED|VBP|DRG|PER_DIEM');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_insurance` ALTER COLUMN `subscriber_dob` SET TAGS ('pii_business_glossary_term' = 'Subscriber Date of Birth');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_insurance` ALTER COLUMN `subscriber_dob` SET TAGS ('pii_sensitivity' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_insurance` ALTER COLUMN `subscriber_dob` SET TAGS ('pii_restricted' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_insurance` ALTER COLUMN `subscriber_dob` SET TAGS ('pii_identifier' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_insurance` ALTER COLUMN `subscriber_relationship` SET TAGS ('pii_business_glossary_term' = 'Subscriber Relationship');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_insurance` ALTER COLUMN `subscriber_relationship` SET TAGS ('pii_value_regex' = 'SELF|SPOUSE|CHILD|OTHER');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_insurance` ALTER COLUMN `updated_timestamp` SET TAGS ('pii_business_glossary_term' = 'Record Updated Timestamp');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_status_history` SET TAGS ('pii_data_type' = 'transactional_data');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_status_history` SET TAGS ('pii_subdomain' = 'encounter_management');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_status_history` SET TAGS ('pii_vibe_mutated' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_status_history` SET TAGS ('pii_structure_enforced' = 'v22domains');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_status_history` ALTER COLUMN `visit_status_history_id` SET TAGS ('pii_business_glossary_term' = 'Visit Status History ID');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_status_history` ALTER COLUMN `bed_id` SET TAGS ('pii_business_glossary_term' = 'Bed ID');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_status_history` ALTER COLUMN `clinician_id` SET TAGS ('pii_business_glossary_term' = 'Attending Provider ID');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_status_history` ALTER COLUMN `corrected_record_visit_status_history_id` SET TAGS ('pii_business_glossary_term' = 'Corrected Record ID');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_status_history` ALTER COLUMN `demographics_id` SET TAGS ('pii_business_glossary_term' = 'Patient ID');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_status_history` ALTER COLUMN `demographics_id` SET TAGS ('pii_sensitivity' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_status_history` ALTER COLUMN `drg_id` SET TAGS ('pii_business_glossary_term' = 'Drg Id (Foreign Key)');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_status_history` ALTER COLUMN `employee_id` SET TAGS ('pii_business_glossary_term' = 'Changed By User ID');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_status_history` ALTER COLUMN `employee_id` SET TAGS ('pii_confidential' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_status_history` ALTER COLUMN `employee_id` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_status_history` ALTER COLUMN `message_log_id` SET TAGS ('pii_business_glossary_term' = 'HL7 Message Control ID');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_status_history` ALTER COLUMN `org_unit_id` SET TAGS ('pii_business_glossary_term' = 'Department ID');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_status_history` ALTER COLUMN `care_site_id` SET TAGS ('pii_business_glossary_term' = 'Facility ID');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_status_history` ALTER COLUMN `visit_id` SET TAGS ('pii_business_glossary_term' = 'Visit ID');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_status_history` ALTER COLUMN `visit_transfer_destination_facility_care_site_id` SET TAGS ('pii_business_glossary_term' = 'Transfer Destination Facility ID');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_status_history` ALTER COLUMN `visit_transfer_destination_facility_care_site_id` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_status_history` ALTER COLUMN `visit_transfer_destination_facility_care_site_id` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_status_history` ALTER COLUMN `visit_transfer_destination_facility_care_site_id` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_status_history` ALTER COLUMN `visit_transfer_destination_facility_care_site_id` SET TAGS ('pii_identifier' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_status_history` ALTER COLUMN `visit_transfer_destination_facility_care_site_id` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_status_history` ALTER COLUMN `visit_transfer_destination_facility_care_site_id` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_status_history` ALTER COLUMN `visit_transfer_destination_facility_care_site_id` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_status_history` ALTER COLUMN `admission_source_code` SET TAGS ('pii_business_glossary_term' = 'Admission Source Code');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_status_history` ALTER COLUMN `adt_event_reason_code` SET TAGS ('pii_business_glossary_term' = 'Admit Discharge Transfer (ADT) Event Reason Code');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_status_history` ALTER COLUMN `adt_event_type` SET TAGS ('pii_business_glossary_term' = 'Admit Discharge Transfer (ADT) Event Type');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_status_history` ALTER COLUMN `adt_event_type` SET TAGS ('pii_value_regex' = 'A01|A02|A03|A04|A05|A06');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_status_history` ALTER COLUMN `care_setting` SET TAGS ('pii_business_glossary_term' = 'Care Setting');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_status_history` ALTER COLUMN `care_setting` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_status_history` ALTER COLUMN `care_setting` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_status_history` ALTER COLUMN `care_setting` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_status_history` ALTER COLUMN `care_setting` SET TAGS ('pii_identifier' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_status_history` ALTER COLUMN `care_setting` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_status_history` ALTER COLUMN `care_setting` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_status_history` ALTER COLUMN `care_setting` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_status_history` ALTER COLUMN `changed_by_role` SET TAGS ('pii_business_glossary_term' = 'Changed By User Role');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_status_history` ALTER COLUMN `changed_by_role` SET TAGS ('pii_value_regex' = 'physician|nurse|registrar|care_coordinator|system|other');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_status_history` ALTER COLUMN `changed_by_user_name` SET TAGS ('pii_business_glossary_term' = 'Changed By User Name');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_status_history` ALTER COLUMN `changed_by_user_name` SET TAGS ('pii_sensitivity' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_status_history` ALTER COLUMN `changed_by_user_name` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_status_history` ALTER COLUMN `changed_by_user_name` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_status_history` ALTER COLUMN `changed_by_user_name` SET TAGS ('pii_name' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_status_history` ALTER COLUMN `changed_by_user_name` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_status_history` ALTER COLUMN `changed_by_user_name` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_status_history` ALTER COLUMN `changed_by_user_name` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_status_history` ALTER COLUMN `created_timestamp` SET TAGS ('pii_business_glossary_term' = 'Record Created Timestamp');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_status_history` ALTER COLUMN `department_name` SET TAGS ('pii_business_glossary_term' = 'Department Name');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_status_history` ALTER COLUMN `department_name` SET TAGS ('pii_sensitivity' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_status_history` ALTER COLUMN `department_name` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_status_history` ALTER COLUMN `department_name` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_status_history` ALTER COLUMN `department_name` SET TAGS ('pii_name' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_status_history` ALTER COLUMN `department_name` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_status_history` ALTER COLUMN `department_name` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_status_history` ALTER COLUMN `department_name` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_status_history` ALTER COLUMN `discharge_disposition_code` SET TAGS ('pii_business_glossary_term' = 'Discharge Disposition Code');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_status_history` ALTER COLUMN `duration_in_status_minutes` SET TAGS ('pii_business_glossary_term' = 'Duration in Status (Minutes)');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_status_history` ALTER COLUMN `effective_date` SET TAGS ('pii_business_glossary_term' = 'Effective Date');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_status_history` ALTER COLUMN `encounter_number` SET TAGS ('pii_business_glossary_term' = 'Encounter Number');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_status_history` ALTER COLUMN `encounter_number` SET TAGS ('pii_sensitivity' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_status_history` ALTER COLUMN `financial_class` SET TAGS ('pii_business_glossary_term' = 'Financial Class');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_status_history` ALTER COLUMN `is_corrected` SET TAGS ('pii_business_glossary_term' = 'Is Corrected Record Indicator');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_status_history` ALTER COLUMN `is_current_status` SET TAGS ('pii_business_glossary_term' = 'Is Current Status Indicator');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_status_history` ALTER COLUMN `is_system_generated` SET TAGS ('pii_business_glossary_term' = 'Is System Generated Indicator');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_status_history` ALTER COLUMN `los_at_event_hours` SET TAGS ('pii_business_glossary_term' = 'Length of Stay at Event (Hours)');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_status_history` ALTER COLUMN `mrn` SET TAGS ('pii_business_glossary_term' = 'Medical Record Number (MRN)');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_status_history` ALTER COLUMN `mrn` SET TAGS ('pii_sensitivity' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_status_history` ALTER COLUMN `mrn` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_status_history` ALTER COLUMN `mrn` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_status_history` ALTER COLUMN `mrn` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_status_history` ALTER COLUMN `mrn` SET TAGS ('pii_identifier' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_status_history` ALTER COLUMN `mrn` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_status_history` ALTER COLUMN `mrn` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_status_history` ALTER COLUMN `mrn` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_status_history` ALTER COLUMN `new_status` SET TAGS ('pii_business_glossary_term' = 'New Visit Status');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_status_history` ALTER COLUMN `notes` SET TAGS ('pii_business_glossary_term' = 'Status Change Notes');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_status_history` ALTER COLUMN `previous_status` SET TAGS ('pii_business_glossary_term' = 'Previous Visit Status');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_status_history` ALTER COLUMN `room_number` SET TAGS ('pii_business_glossary_term' = 'Room Number');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_status_history` ALTER COLUMN `sequence_number` SET TAGS ('pii_business_glossary_term' = 'Status Sequence Number');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_status_history` ALTER COLUMN `source_system_event_code` SET TAGS ('pii_business_glossary_term' = 'Source System Event ID');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_status_history` ALTER COLUMN `status_change_reason` SET TAGS ('pii_business_glossary_term' = 'Status Change Reason');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_status_history` ALTER COLUMN `status_change_timestamp` SET TAGS ('pii_business_glossary_term' = 'Status Change Timestamp');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_status_history` ALTER COLUMN `updated_timestamp` SET TAGS ('pii_business_glossary_term' = 'Record Updated Timestamp');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` SET TAGS ('pii_data_type' = 'transactional_data');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` SET TAGS ('pii_subdomain' = 'clinical_documentation');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` SET TAGS ('pii_vibe_mutated' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` SET TAGS ('pii_structure_enforced' = 'v22domains');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` ALTER COLUMN `triage_assessment_id` SET TAGS ('pii_business_glossary_term' = 'Triage Assessment ID');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` ALTER COLUMN `care_site_id` SET TAGS ('pii_business_glossary_term' = 'Facility ID');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` ALTER COLUMN `clinician_id` SET TAGS ('pii_business_glossary_term' = 'Triage Nurse Provider ID');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` ALTER COLUMN `mpi_record_id` SET TAGS ('pii_business_glossary_term' = 'Patient ID');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` ALTER COLUMN `mpi_record_id` SET TAGS ('pii_sensitivity' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` ALTER COLUMN `prior_triage_assessment_id` SET TAGS ('pii_business_glossary_term' = 'Prior Triage Assessment ID');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` ALTER COLUMN `employee_id` SET TAGS ('pii_business_glossary_term' = 'Triage Nurse Employee Id (Foreign Key)');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` ALTER COLUMN `employee_id` SET TAGS ('pii_confidential' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` ALTER COLUMN `employee_id` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` ALTER COLUMN `visit_id` SET TAGS ('pii_business_glossary_term' = 'Encounter ID');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` ALTER COLUMN `acuity_change_reason` SET TAGS ('pii_business_glossary_term' = 'Acuity Change Reason');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` ALTER COLUMN `ama_flag` SET TAGS ('pii_business_glossary_term' = 'Against Medical Advice (AMA) Flag');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` ALTER COLUMN `arrival_mode` SET TAGS ('pii_business_glossary_term' = 'Mode of Arrival');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` ALTER COLUMN `arrival_mode` SET TAGS ('pii_value_regex' = 'ambulance|walk_in|helicopter|police|private_vehicle|transfer');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` ALTER COLUMN `chief_complaint` SET TAGS ('pii_business_glossary_term' = 'Chief Complaint');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` ALTER COLUMN `chief_complaint` SET TAGS ('pii_sensitivity' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` ALTER COLUMN `chief_complaint_code` SET TAGS ('pii_business_glossary_term' = 'Chief Complaint SNOMED CT Code');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` ALTER COLUMN `chief_complaint_code` SET TAGS ('pii_sensitivity' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` ALTER COLUMN `diastolic_bp_mmhg` SET TAGS ('pii_business_glossary_term' = 'Diastolic Blood Pressure (BP) in mmHg');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` ALTER COLUMN `diastolic_bp_mmhg` SET TAGS ('pii_sensitivity' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` ALTER COLUMN `door_arrival_timestamp` SET TAGS ('pii_business_glossary_term' = 'Door Arrival Timestamp');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` ALTER COLUMN `door_arrival_timestamp` SET TAGS ('pii_sensitivity' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` ALTER COLUMN `esi_level` SET TAGS ('pii_business_glossary_term' = 'Emergency Severity Index (ESI) Level');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` ALTER COLUMN `glasgow_coma_score` SET TAGS ('pii_business_glossary_term' = 'Glasgow Coma Scale (GCS) Score');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` ALTER COLUMN `glasgow_coma_score` SET TAGS ('pii_sensitivity' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` ALTER COLUMN `heart_rate_bpm` SET TAGS ('pii_business_glossary_term' = 'Heart Rate (HR) in Beats Per Minute (BPM)');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` ALTER COLUMN `heart_rate_bpm` SET TAGS ('pii_sensitivity' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` ALTER COLUMN `interpreter_language` SET TAGS ('pii_business_glossary_term' = 'Interpreter Language');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` ALTER COLUMN `interpreter_required_flag` SET TAGS ('pii_business_glossary_term' = 'Interpreter Required Flag');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` ALTER COLUMN `isolation_required_flag` SET TAGS ('pii_business_glossary_term' = 'Isolation Required Flag');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` ALTER COLUMN `isolation_type` SET TAGS ('pii_business_glossary_term' = 'Isolation Precaution Type');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` ALTER COLUMN `isolation_type` SET TAGS ('pii_value_regex' = 'airborne|droplet|contact|neutropenic|standard');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` ALTER COLUMN `lwbs_flag` SET TAGS ('pii_business_glossary_term' = 'Left Without Being Seen (LWBS) Flag');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` ALTER COLUMN `lwbs_timestamp` SET TAGS ('pii_business_glossary_term' = 'Left Without Being Seen (LWBS) Timestamp');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` ALTER COLUMN `mental_health_flag` SET TAGS ('pii_business_glossary_term' = 'Mental Health Presentation Flag');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` ALTER COLUMN `mental_health_flag` SET TAGS ('pii_restricted' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` ALTER COLUMN `mental_health_flag` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` ALTER COLUMN `mental_health_flag` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` ALTER COLUMN `mental_health_flag` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` ALTER COLUMN `mental_health_flag` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` ALTER COLUMN `mental_health_flag` SET TAGS ('pii_health' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` ALTER COLUMN `mental_health_flag` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` ALTER COLUMN `mental_health_flag` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` ALTER COLUMN `mental_health_flag` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` ALTER COLUMN `pain_scale_type` SET TAGS ('pii_business_glossary_term' = 'Pain Assessment Scale Type');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` ALTER COLUMN `pain_scale_type` SET TAGS ('pii_value_regex' = 'numeric|faces|flacc|verbal|behavioral');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` ALTER COLUMN `pain_score` SET TAGS ('pii_business_glossary_term' = 'Pain Score');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` ALTER COLUMN `pain_score` SET TAGS ('pii_sensitivity' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` ALTER COLUMN `record_created_timestamp` SET TAGS ('pii_business_glossary_term' = 'Record Created Timestamp');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` ALTER COLUMN `record_updated_timestamp` SET TAGS ('pii_business_glossary_term' = 'Record Last Updated Timestamp');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` ALTER COLUMN `respiratory_rate_bpm` SET TAGS ('pii_business_glossary_term' = 'Respiratory Rate (RR) in Breaths Per Minute');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` ALTER COLUMN `respiratory_rate_bpm` SET TAGS ('pii_sensitivity' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` ALTER COLUMN `sepsis_alert_flag` SET TAGS ('pii_business_glossary_term' = 'Sepsis Alert Flag');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` ALTER COLUMN `source_system_record_code` SET TAGS ('pii_business_glossary_term' = 'Source System Record ID');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` ALTER COLUMN `spo2_percent` SET TAGS ('pii_business_glossary_term' = 'Oxygen Saturation (SpO2) Percentage');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` ALTER COLUMN `spo2_percent` SET TAGS ('pii_sensitivity' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` ALTER COLUMN `stroke_alert_flag` SET TAGS ('pii_business_glossary_term' = 'Stroke Alert Flag');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` ALTER COLUMN `systolic_bp_mmhg` SET TAGS ('pii_business_glossary_term' = 'Systolic Blood Pressure (BP) in mmHg');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` ALTER COLUMN `systolic_bp_mmhg` SET TAGS ('pii_sensitivity' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` ALTER COLUMN `temperature_celsius` SET TAGS ('pii_business_glossary_term' = 'Body Temperature in Degrees Celsius');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` ALTER COLUMN `temperature_celsius` SET TAGS ('pii_sensitivity' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` ALTER COLUMN `temperature_route` SET TAGS ('pii_business_glossary_term' = 'Temperature Measurement Route');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` ALTER COLUMN `temperature_route` SET TAGS ('pii_value_regex' = 'oral|rectal|axillary|tympanic|temporal');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` ALTER COLUMN `trauma_activation_flag` SET TAGS ('pii_business_glossary_term' = 'Trauma Activation Flag');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` ALTER COLUMN `trauma_level` SET TAGS ('pii_business_glossary_term' = 'Trauma Activation Level');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` ALTER COLUMN `trauma_level` SET TAGS ('pii_value_regex' = 'level_1|level_2|level_3');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` ALTER COLUMN `triage_category` SET TAGS ('pii_business_glossary_term' = 'Triage Category');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` ALTER COLUMN `triage_category` SET TAGS ('pii_value_regex' = 'emergent|urgent|semi_urgent|non_urgent|immediate');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` ALTER COLUMN `triage_completed_timestamp` SET TAGS ('pii_business_glossary_term' = 'Triage Completion Timestamp');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` ALTER COLUMN `triage_number` SET TAGS ('pii_business_glossary_term' = 'Triage Assessment Number');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` ALTER COLUMN `triage_nurse_npi` SET TAGS ('pii_business_glossary_term' = 'Triage Nurse National Provider Identifier (NPI)');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` ALTER COLUMN `triage_nurse_npi` SET TAGS ('pii_value_regex' = '^[0-9]{10}$');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` ALTER COLUMN `triage_nurse_npi` SET TAGS ('pii_sensitivity' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` ALTER COLUMN `triage_nurse_npi` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` ALTER COLUMN `triage_nurse_npi` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` ALTER COLUMN `triage_nurse_npi` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` ALTER COLUMN `triage_nurse_npi` SET TAGS ('pii_identifier' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` ALTER COLUMN `triage_nurse_npi` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` ALTER COLUMN `triage_nurse_npi` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` ALTER COLUMN `triage_nurse_npi` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` ALTER COLUMN `triage_reassessment_flag` SET TAGS ('pii_business_glossary_term' = 'Triage Reassessment Flag');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` ALTER COLUMN `triage_status` SET TAGS ('pii_business_glossary_term' = 'Triage Assessment Status');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` ALTER COLUMN `triage_status` SET TAGS ('pii_value_regex' = 'in_progress|completed|amended|voided');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` ALTER COLUMN `triage_timestamp` SET TAGS ('pii_business_glossary_term' = 'Triage Timestamp');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` ALTER COLUMN `weight_kg` SET TAGS ('pii_business_glossary_term' = 'Patient Weight in Kilograms');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`triage_assessment` ALTER COLUMN `weight_kg` SET TAGS ('pii_sensitivity' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`readmission` SET TAGS ('pii_data_type' = 'transactional_data');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`readmission` SET TAGS ('pii_subdomain' = 'clinical_documentation');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`readmission` SET TAGS ('pii_vibe_mutated' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`readmission` SET TAGS ('pii_structure_enforced' = 'v22domains');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`readmission` ALTER COLUMN `readmission_id` SET TAGS ('pii_business_glossary_term' = 'Readmission ID');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`readmission` ALTER COLUMN `care_site_id` SET TAGS ('pii_business_glossary_term' = 'Facility ID');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`readmission` ALTER COLUMN `clinician_id` SET TAGS ('pii_business_glossary_term' = 'Attending Provider ID');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`readmission` ALTER COLUMN `compliance_regulatory_submission_id` SET TAGS ('pii_business_glossary_term' = 'Regulatory Submission Id (Foreign Key)');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`readmission` ALTER COLUMN `demographics_id` SET TAGS ('pii_business_glossary_term' = 'Patient ID');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`readmission` ALTER COLUMN `demographics_id` SET TAGS ('pii_sensitivity' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`readmission` ALTER COLUMN `drg_id` SET TAGS ('pii_business_glossary_term' = 'Index Drg Id (Foreign Key)');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`readmission` ALTER COLUMN `payer_id` SET TAGS ('pii_business_glossary_term' = 'Payer ID');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`readmission` ALTER COLUMN `visit_id` SET TAGS ('pii_business_glossary_term' = 'Readmission Encounter ID');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`readmission` ALTER COLUMN `aco_attributed` SET TAGS ('pii_business_glossary_term' = 'Accountable Care Organization (ACO) Attributed Flag');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`readmission` ALTER COLUMN `admission_date` SET TAGS ('pii_business_glossary_term' = 'Readmission Admission Date');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`readmission` ALTER COLUMN `admission_date` SET TAGS ('pii_sensitivity' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`readmission` ALTER COLUMN `admit_source` SET TAGS ('pii_business_glossary_term' = 'Readmission Admission Source');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`readmission` ALTER COLUMN `admit_source` SET TAGS ('pii_value_regex' = 'ed|physician_referral|transfer|direct_admit|other');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`readmission` ALTER COLUMN `care_gap_identified` SET TAGS ('pii_business_glossary_term' = 'Care Gap Identified');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`readmission` ALTER COLUMN `care_gap_identified` SET TAGS ('pii_value_regex' = 'no_follow_up_appointment|medication_reconciliation_gap|no_discharge_instructions|no_post_acute_referral|no_care_gap');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`readmission` ALTER COLUMN `created_timestamp` SET TAGS ('pii_business_glossary_term' = 'Record Created Timestamp');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`readmission` ALTER COLUMN `days_to_readmission` SET TAGS ('pii_business_glossary_term' = 'Days to Readmission');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`readmission` ALTER COLUMN `drg_code` SET TAGS ('pii_business_glossary_term' = 'Readmission Diagnosis-Related Group (DRG) Code');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`readmission` ALTER COLUMN `estimated_penalty_amount` SET TAGS ('pii_business_glossary_term' = 'Estimated HRRP Penalty Amount');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`readmission` ALTER COLUMN `follow_up_appointment_date` SET TAGS ('pii_business_glossary_term' = 'Post-Discharge Follow-Up Appointment Date');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`readmission` ALTER COLUMN `follow_up_appointment_scheduled` SET TAGS ('pii_business_glossary_term' = 'Post-Discharge Follow-Up Appointment Scheduled Flag');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`readmission` ALTER COLUMN `hrrp_excess_readmission_ratio` SET TAGS ('pii_business_glossary_term' = 'Hospital Readmissions Reduction Program (HRRP) Excess Readmission Ratio');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`readmission` ALTER COLUMN `hrrp_measure_category` SET TAGS ('pii_business_glossary_term' = 'Hospital Readmissions Reduction Program (HRRP) Measure Category');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`readmission` ALTER COLUMN `index_discharge_date` SET TAGS ('pii_business_glossary_term' = 'Index Discharge Date');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`readmission` ALTER COLUMN `index_discharge_disposition` SET TAGS ('pii_business_glossary_term' = 'Index Discharge Disposition');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`readmission` ALTER COLUMN `index_los_days` SET TAGS ('pii_business_glossary_term' = 'Index Length of Stay (LOS) Days');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`readmission` ALTER COLUMN `index_primary_icd10_code` SET TAGS ('pii_business_glossary_term' = 'Index Primary International Classification of Diseases 10th Revision (ICD-10) Diagnosis Code');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`readmission` ALTER COLUMN `index_primary_icd10_code` SET TAGS ('pii_value_regex' = '^[A-Z][0-9A-Z]{1,6}$');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`readmission` ALTER COLUMN `index_primary_icd10_code` SET TAGS ('pii_sensitivity' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`readmission` ALTER COLUMN `is_hrrp_applicable` SET TAGS ('pii_business_glossary_term' = 'Hospital Readmissions Reduction Program (HRRP) Applicable Flag');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`readmission` ALTER COLUMN `is_related_to_index` SET TAGS ('pii_business_glossary_term' = 'Clinically Related to Index Encounter Flag');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`readmission` ALTER COLUMN `los_days` SET TAGS ('pii_business_glossary_term' = 'Readmission Length of Stay (LOS) Days');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`readmission` ALTER COLUMN `medication_reconciliation_completed` SET TAGS ('pii_business_glossary_term' = 'Medication Reconciliation Completed Flag');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`readmission` ALTER COLUMN `medication_reconciliation_completed` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`readmission` ALTER COLUMN `medication_reconciliation_completed` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`readmission` ALTER COLUMN `medication_reconciliation_completed` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`readmission` ALTER COLUMN `medication_reconciliation_completed` SET TAGS ('pii_health' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`readmission` ALTER COLUMN `medication_reconciliation_completed` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`readmission` ALTER COLUMN `medication_reconciliation_completed` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`readmission` ALTER COLUMN `medication_reconciliation_completed` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`readmission` ALTER COLUMN `payer_type` SET TAGS ('pii_business_glossary_term' = 'Payer Type');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`readmission` ALTER COLUMN `payer_type` SET TAGS ('pii_value_regex' = 'medicare|medicaid|commercial|self_pay|other');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`readmission` ALTER COLUMN `preventability_assessment` SET TAGS ('pii_business_glossary_term' = 'Readmission Preventability Assessment');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`readmission` ALTER COLUMN `preventability_assessment` SET TAGS ('pii_value_regex' = 'potentially_preventable|not_preventable|undetermined');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`readmission` ALTER COLUMN `primary_icd10_code` SET TAGS ('pii_business_glossary_term' = 'Readmission Primary International Classification of Diseases 10th Revision (ICD-10) Diagnosis Code');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`readmission` ALTER COLUMN `primary_icd10_code` SET TAGS ('pii_value_regex' = '^[A-Z][0-9A-Z]{1,6}$');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`readmission` ALTER COLUMN `primary_icd10_code` SET TAGS ('pii_sensitivity' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`readmission` ALTER COLUMN `readmission_status` SET TAGS ('pii_business_glossary_term' = 'Readmission Status');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`readmission` ALTER COLUMN `readmission_status` SET TAGS ('pii_value_regex' = 'pending_review|confirmed|excluded|appealed|closed');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`readmission` ALTER COLUMN `readmission_type` SET TAGS ('pii_business_glossary_term' = 'Readmission Type');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`readmission` ALTER COLUMN `readmission_type` SET TAGS ('pii_value_regex' = 'planned|unplanned');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`readmission` ALTER COLUMN `review_completed_date` SET TAGS ('pii_business_glossary_term' = 'Readmission Review Completed Date');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`readmission` ALTER COLUMN `reviewer_notes` SET TAGS ('pii_business_glossary_term' = 'Readmission Reviewer Notes');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`readmission` ALTER COLUMN `risk_score` SET TAGS ('pii_business_glossary_term' = 'Readmission Risk Score');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`readmission` ALTER COLUMN `risk_score_model` SET TAGS ('pii_business_glossary_term' = 'Readmission Risk Score Model');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`readmission` ALTER COLUMN `risk_score_model` SET TAGS ('pii_value_regex' = 'LACE|HOSPITAL|BOOST|epic_model|custom');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`readmission` ALTER COLUMN `root_cause_category` SET TAGS ('pii_business_glossary_term' = 'Readmission Root Cause Category');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`readmission` ALTER COLUMN `sdoh_flag` SET TAGS ('pii_business_glossary_term' = 'Social Determinants of Health (SDOH) Contributing Flag');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`readmission` ALTER COLUMN `tracking_number` SET TAGS ('pii_business_glossary_term' = 'Readmission Tracking Number');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`readmission` ALTER COLUMN `transition_of_care_completed` SET TAGS ('pii_business_glossary_term' = 'Transition of Care Completed Flag');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`readmission` ALTER COLUMN `updated_timestamp` SET TAGS ('pii_business_glossary_term' = 'Record Updated Timestamp');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`readmission` ALTER COLUMN `window` SET TAGS ('pii_business_glossary_term' = 'Readmission Time Window');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`readmission` ALTER COLUMN `window` SET TAGS ('pii_value_regex' = '7_day|30_day|90_day');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` SET TAGS ('pii_data_type' = 'transactional_data');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` SET TAGS ('pii_subdomain' = 'clinical_documentation');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` SET TAGS ('pii_vibe_mutated' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` SET TAGS ('pii_structure_enforced' = 'v22domains');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` SET TAGS ('pii_vibe_structure' = 'required');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `discharge_summary_id` SET TAGS ('pii_business_glossary_term' = 'Discharge Summary Identifier (ID)');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `addended_discharge_summary_id` SET TAGS ('pii_business_glossary_term' = 'Addended Discharge Summary Id');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `care_site_id` SET TAGS ('pii_business_glossary_term' = 'Facility Identifier (ID)');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `care_transition_notification_id` SET TAGS ('pii_business_glossary_term' = 'Care Transition Notification Id (Foreign Key)');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `employee_id` SET TAGS ('pii_business_glossary_term' = 'Case Manager Employee Id (Foreign Key)');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `employee_id` SET TAGS ('pii_confidential' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `employee_id` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `cda_document_id` SET TAGS ('pii_business_glossary_term' = 'Source Document Identifier (ID)');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `cost_center_id` SET TAGS ('pii_business_glossary_term' = 'Cost Center Id (Foreign Key)');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `demographics_id` SET TAGS ('pii_business_glossary_term' = 'Patient Identifier (ID)');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `demographics_id` SET TAGS ('pii_sensitivity' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `drg_assignment_id` SET TAGS ('pii_business_glossary_term' = 'Drg Assignment Id (Foreign Key)');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `clinician_id` SET TAGS ('pii_business_glossary_term' = 'Discharging Provider Identifier (ID)');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `requisition_id` SET TAGS ('pii_business_glossary_term' = 'Requisition Id (Foreign Key)');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `subject_enrollment_id` SET TAGS ('pii_business_glossary_term' = 'Subject Enrollment Id (Foreign Key)');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `tertiary_discharge_follow_up_provider_clinician_id` SET TAGS ('pii_business_glossary_term' = 'Follow-Up Provider Identifier (ID)');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `visit_id` SET TAGS ('pii_business_glossary_term' = 'Encounter Identifier (ID)');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `activity_restrictions` SET TAGS ('pii_business_glossary_term' = 'Activity Restrictions');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `care_transition_plan_completed` SET TAGS ('pii_business_glossary_term' = 'Care Transition Plan Completed Flag');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `compliance_flag` SET TAGS ('pii_business_glossary_term' = 'Compliance Flag');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `created_timestamp` SET TAGS ('pii_business_glossary_term' = 'Record Created Timestamp');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `diet_instructions` SET TAGS ('pii_business_glossary_term' = 'Diet Instructions');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `discharge_condition` SET TAGS ('pii_business_glossary_term' = 'Discharge Condition');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `discharge_condition` SET TAGS ('pii_value_regex' = 'improved|stable|deteriorated|unchanged|expired');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `discharge_condition` SET TAGS ('pii_sensitivity' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `discharge_condition` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `discharge_condition` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `discharge_condition` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `discharge_condition` SET TAGS ('pii_health' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `discharge_condition` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `discharge_condition` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `discharge_condition` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `discharge_date` SET TAGS ('pii_business_glossary_term' = 'Discharge Date');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `discharge_date` SET TAGS ('pii_sensitivity' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `discharge_disposition` SET TAGS ('pii_business_glossary_term' = 'Discharge Disposition');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `discharge_disposition_code` SET TAGS ('pii_business_glossary_term' = 'Discharge Disposition Code');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `discharge_instructions_issued` SET TAGS ('pii_business_glossary_term' = 'Discharge Instructions Issued Flag');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `discharge_instructions_text` SET TAGS ('pii_business_glossary_term' = 'Discharge Instructions Text');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `discharge_instructions_text` SET TAGS ('pii_sensitivity' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `discharge_medications_prescribed` SET TAGS ('pii_business_glossary_term' = 'Discharge Medications Prescribed');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `discharge_medications_prescribed` SET TAGS ('pii_sensitivity' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `discharge_medications_prescribed` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `discharge_medications_prescribed` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `discharge_medications_prescribed` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `discharge_medications_prescribed` SET TAGS ('pii_health' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `discharge_medications_prescribed` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `discharge_medications_prescribed` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `discharge_medications_prescribed` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `discharge_summary_number` SET TAGS ('pii_business_glossary_term' = 'Discharge Summary Number');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `discharge_timestamp` SET TAGS ('pii_business_glossary_term' = 'Discharge Timestamp');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `discharge_timestamp` SET TAGS ('pii_sensitivity' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `discharging_provider_npi` SET TAGS ('pii_business_glossary_term' = 'Discharging Provider National Provider Identifier (NPI)');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `discharging_provider_npi` SET TAGS ('pii_sensitivity' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `discharging_provider_npi` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `discharging_provider_npi` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `discharging_provider_npi` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `discharging_provider_npi` SET TAGS ('pii_identifier' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `discharging_provider_npi` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `discharging_provider_npi` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `discharging_provider_npi` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `durable_medical_equipment_ordered` SET TAGS ('pii_business_glossary_term' = 'Durable Medical Equipment (DME) Ordered');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `durable_medical_equipment_ordered` SET TAGS ('pii_restricted' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `durable_medical_equipment_ordered` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `follow_up_appointment_date` SET TAGS ('pii_business_glossary_term' = 'Follow-Up Appointment Date');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `follow_up_instructions` SET TAGS ('pii_business_glossary_term' = 'Follow-Up Instructions');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `follow_up_scheduled` SET TAGS ('pii_business_glossary_term' = 'Follow-Up Appointment Scheduled Flag');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `functional_status_at_discharge` SET TAGS ('pii_business_glossary_term' = 'Functional Status at Discharge');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `functional_status_at_discharge` SET TAGS ('pii_sensitivity' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `home_health_referral_made` SET TAGS ('pii_business_glossary_term' = 'Home Health Referral Made Flag');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `home_health_referral_made` SET TAGS ('pii_restricted' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `home_health_referral_made` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `home_health_referral_made` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `home_health_referral_made` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `home_health_referral_made` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `home_health_referral_made` SET TAGS ('pii_health' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `home_health_referral_made` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `home_health_referral_made` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `home_health_referral_made` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `hospital_course_narrative` SET TAGS ('pii_business_glossary_term' = 'Hospital Course Narrative');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `hospital_course_narrative` SET TAGS ('pii_sensitivity' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `length_of_stay_days` SET TAGS ('pii_business_glossary_term' = 'Length of Stay (LOS) in Days');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `medication_reconciliation_completed` SET TAGS ('pii_business_glossary_term' = 'Medication Reconciliation Completed Flag');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `medication_reconciliation_completed` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `medication_reconciliation_completed` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `medication_reconciliation_completed` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `medication_reconciliation_completed` SET TAGS ('pii_health' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `medication_reconciliation_completed` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `medication_reconciliation_completed` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `medication_reconciliation_completed` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `mrn` SET TAGS ('pii_business_glossary_term' = 'Medical Record Number (MRN)');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `mrn` SET TAGS ('pii_sensitivity' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `mrn` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `mrn` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `mrn` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `mrn` SET TAGS ('pii_identifier' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `mrn` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `mrn` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `mrn` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `patient_education_provided` SET TAGS ('pii_business_glossary_term' = 'Patient Education Provided Flag');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `patient_education_topics` SET TAGS ('pii_business_glossary_term' = 'Patient Education Topics');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `principal_diagnosis_code` SET TAGS ('pii_business_glossary_term' = 'Principal Diagnosis Code');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `principal_diagnosis_code` SET TAGS ('pii_sensitivity' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `principal_diagnosis_code` SET TAGS ('pii_restricted' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `principal_diagnosis_code` SET TAGS ('pii_health' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `principal_diagnosis_code` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `principal_diagnosis_code` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `principal_diagnosis_code` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `principal_diagnosis_code` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `principal_diagnosis_code` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `principal_diagnosis_code` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `principal_diagnosis_description` SET TAGS ('pii_business_glossary_term' = 'Principal Diagnosis Description');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `principal_diagnosis_description` SET TAGS ('pii_sensitivity' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `principal_diagnosis_description` SET TAGS ('pii_restricted' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `principal_diagnosis_description` SET TAGS ('pii_health' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `principal_diagnosis_description` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `principal_diagnosis_description` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `principal_diagnosis_description` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `principal_diagnosis_description` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `principal_diagnosis_description` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `principal_diagnosis_description` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `procedures_performed_summary` SET TAGS ('pii_business_glossary_term' = 'Procedures Performed Summary');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `procedures_performed_summary` SET TAGS ('pii_sensitivity' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `procedures_performed_summary` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `procedures_performed_summary` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `procedures_performed_summary` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `procedures_performed_summary` SET TAGS ('pii_health' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `procedures_performed_summary` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `procedures_performed_summary` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `procedures_performed_summary` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `secondary_diagnosis_count` SET TAGS ('pii_business_glossary_term' = 'Secondary Diagnosis Count');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `secondary_diagnosis_count` SET TAGS ('pii_sensitivity' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `secondary_diagnosis_count` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `secondary_diagnosis_count` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `secondary_diagnosis_count` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `secondary_diagnosis_count` SET TAGS ('pii_health' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `secondary_diagnosis_count` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `secondary_diagnosis_count` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `secondary_diagnosis_count` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `summary_authored_timestamp` SET TAGS ('pii_business_glossary_term' = 'Summary Authored Timestamp');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `summary_finalized_timestamp` SET TAGS ('pii_business_glossary_term' = 'Summary Finalized Timestamp');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `summary_of_hospitalization` SET TAGS ('pii_business_glossary_term' = 'Summary of Hospitalization');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `summary_of_hospitalization` SET TAGS ('pii_sensitivity' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `summary_status` SET TAGS ('pii_business_glossary_term' = 'Discharge Summary Status');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `summary_status` SET TAGS ('pii_value_regex' = 'draft|preliminary|final|amended|corrected|cancelled');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `time_to_completion_hours` SET TAGS ('pii_business_glossary_term' = 'Time to Completion in Hours');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `updated_timestamp` SET TAGS ('pii_business_glossary_term' = 'Record Updated Timestamp');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `vibe_structure_marker` SET TAGS ('pii_vibe_structure' = 'applied');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `warning_signs` SET TAGS ('pii_business_glossary_term' = 'Warning Signs');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`discharge_summary` ALTER COLUMN `wound_care_instructions` SET TAGS ('pii_business_glossary_term' = 'Wound Care Instructions');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` SET TAGS ('pii_data_type' = 'transactional_data');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` SET TAGS ('pii_subdomain' = 'encounter_management');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` SET TAGS ('pii_vibe_mutated' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` SET TAGS ('pii_structure_enforced' = 'v22domains');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `transfer_request_id` SET TAGS ('pii_business_glossary_term' = 'Transfer Request Identifier (ID)');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `care_transition_notification_id` SET TAGS ('pii_business_glossary_term' = 'Care Transition Notification Id (Foreign Key)');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `bed_id` SET TAGS ('pii_business_glossary_term' = 'Destination Bed Identifier (ID)');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `bed_id` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `bed_id` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `bed_id` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `bed_id` SET TAGS ('pii_identifier' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `bed_id` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `bed_id` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `bed_id` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `care_site_id` SET TAGS ('pii_business_glossary_term' = 'Destination Facility Identifier (ID)');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `care_site_id` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `care_site_id` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `care_site_id` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `care_site_id` SET TAGS ('pii_identifier' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `care_site_id` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `care_site_id` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `care_site_id` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `employee_id` SET TAGS ('pii_business_glossary_term' = 'Approved By User Identifier (ID)');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `employee_id` SET TAGS ('pii_confidential' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `employee_id` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `mpi_record_id` SET TAGS ('pii_business_glossary_term' = 'Patient Identifier (ID)');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `mpi_record_id` SET TAGS ('pii_sensitivity' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `origin_bed_id` SET TAGS ('pii_business_glossary_term' = 'Origin Bed Identifier (ID)');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `cost_center_id` SET TAGS ('pii_business_glossary_term' = 'Origin Cost Center Id (Foreign Key)');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `original_transfer_request_id` SET TAGS ('pii_business_glossary_term' = 'Original Transfer Request Id');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `primary_transfer_care_site_id` SET TAGS ('pii_business_glossary_term' = 'Origin Facility Identifier (ID)');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `clinician_id` SET TAGS ('pii_business_glossary_term' = 'Requesting Provider Identifier (ID)');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `visit_id` SET TAGS ('pii_business_glossary_term' = 'Encounter Identifier (ID)');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `accepting_provider_npi` SET TAGS ('pii_business_glossary_term' = 'Accepting Provider National Provider Identifier (NPI)');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `accepting_provider_npi` SET TAGS ('pii_sensitivity' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `accepting_provider_npi` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `accepting_provider_npi` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `accepting_provider_npi` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `accepting_provider_npi` SET TAGS ('pii_identifier' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `accepting_provider_npi` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `accepting_provider_npi` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `accepting_provider_npi` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `actual_transfer_timestamp` SET TAGS ('pii_business_glossary_term' = 'Actual Transfer Timestamp');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `acuity_level` SET TAGS ('pii_business_glossary_term' = 'Patient Acuity Level');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `acuity_level` SET TAGS ('pii_value_regex' = 'critical|acute|stable|routine');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `approval_required` SET TAGS ('pii_business_glossary_term' = 'Approval Required Flag');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `approval_timestamp` SET TAGS ('pii_business_glossary_term' = 'Approval Timestamp');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `bed_availability_confirmed` SET TAGS ('pii_business_glossary_term' = 'Bed Availability Confirmed Flag');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `cancellation_reason` SET TAGS ('pii_business_glossary_term' = 'Cancellation Reason');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `cancellation_reason` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `cancellation_reason` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `cancellation_reason` SET TAGS ('pii_phone' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `cancellation_reason` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `cancellation_reason` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `cancellation_reason` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `clinical_indication` SET TAGS ('pii_business_glossary_term' = 'Clinical Indication');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `clinical_indication` SET TAGS ('pii_sensitivity' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `clinical_indication` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `clinical_indication` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `clinical_indication` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `clinical_indication` SET TAGS ('pii_health' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `clinical_indication` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `clinical_indication` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `clinical_indication` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `created_timestamp` SET TAGS ('pii_business_glossary_term' = 'Record Created Timestamp');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `denial_reason` SET TAGS ('pii_business_glossary_term' = 'Denial Reason');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `destination_unit_code` SET TAGS ('pii_business_glossary_term' = 'Destination Unit Code');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `destination_unit_code` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `destination_unit_code` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `destination_unit_code` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `destination_unit_code` SET TAGS ('pii_identifier' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `destination_unit_code` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `destination_unit_code` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `destination_unit_code` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `emtala_certification_completed` SET TAGS ('pii_business_glossary_term' = 'Emergency Medical Treatment and Labor Act (EMTALA) Certification Completed Flag');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `emtala_certification_timestamp` SET TAGS ('pii_business_glossary_term' = 'Emergency Medical Treatment and Labor Act (EMTALA) Certification Timestamp');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `emtala_compliant` SET TAGS ('pii_business_glossary_term' = 'Emergency Medical Treatment and Labor Act (EMTALA) Compliant Flag');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `isolation_required` SET TAGS ('pii_business_glossary_term' = 'Isolation Required Flag');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `isolation_type` SET TAGS ('pii_business_glossary_term' = 'Isolation Type');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `isolation_type` SET TAGS ('pii_value_regex' = 'contact|droplet|airborne|protective|none');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `level_of_care_required` SET TAGS ('pii_business_glossary_term' = 'Level of Care Required');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `medical_records_sent` SET TAGS ('pii_business_glossary_term' = 'Medical Records Sent Flag');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `medical_records_sent` SET TAGS ('pii_restricted' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `medical_records_sent` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `medical_records_sent_timestamp` SET TAGS ('pii_business_glossary_term' = 'Medical Records Sent Timestamp');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `medical_records_sent_timestamp` SET TAGS ('pii_restricted' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `medical_records_sent_timestamp` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `mrn` SET TAGS ('pii_business_glossary_term' = 'Medical Record Number (MRN)');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `mrn` SET TAGS ('pii_sensitivity' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `mrn` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `mrn` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `mrn` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `mrn` SET TAGS ('pii_identifier' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `mrn` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `mrn` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `mrn` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `origin_unit_code` SET TAGS ('pii_business_glossary_term' = 'Origin Unit Code');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `patient_consent_obtained` SET TAGS ('pii_business_glossary_term' = 'Patient Consent Obtained Flag');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `patient_consent_timestamp` SET TAGS ('pii_business_glossary_term' = 'Patient Consent Timestamp');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `patient_stability_score` SET TAGS ('pii_business_glossary_term' = 'Patient Stability Score');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `patient_stability_score` SET TAGS ('pii_sensitivity' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `primary_diagnosis_code` SET TAGS ('pii_business_glossary_term' = 'Primary Diagnosis Code (ICD-10)');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `primary_diagnosis_code` SET TAGS ('pii_sensitivity' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `primary_diagnosis_code` SET TAGS ('pii_restricted' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `primary_diagnosis_code` SET TAGS ('pii_health' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `primary_diagnosis_code` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `primary_diagnosis_code` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `primary_diagnosis_code` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `primary_diagnosis_code` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `primary_diagnosis_code` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `primary_diagnosis_code` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `primary_diagnosis_description` SET TAGS ('pii_business_glossary_term' = 'Primary Diagnosis Description');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `primary_diagnosis_description` SET TAGS ('pii_sensitivity' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `primary_diagnosis_description` SET TAGS ('pii_restricted' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `primary_diagnosis_description` SET TAGS ('pii_health' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `primary_diagnosis_description` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `primary_diagnosis_description` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `primary_diagnosis_description` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `primary_diagnosis_description` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `primary_diagnosis_description` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `primary_diagnosis_description` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `request_timestamp` SET TAGS ('pii_business_glossary_term' = 'Transfer Request Timestamp');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `requested_transfer_timestamp` SET TAGS ('pii_business_glossary_term' = 'Requested Transfer Timestamp');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `requesting_provider_npi` SET TAGS ('pii_business_glossary_term' = 'Requesting Provider National Provider Identifier (NPI)');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `requesting_provider_npi` SET TAGS ('pii_sensitivity' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `requesting_provider_npi` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `requesting_provider_npi` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `requesting_provider_npi` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `requesting_provider_npi` SET TAGS ('pii_identifier' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `requesting_provider_npi` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `requesting_provider_npi` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `requesting_provider_npi` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `source_system_record_code` SET TAGS ('pii_business_glossary_term' = 'Source System Record Identifier (ID)');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `specialty_service_required` SET TAGS ('pii_business_glossary_term' = 'Specialty Service Required');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `transfer_reason` SET TAGS ('pii_business_glossary_term' = 'Transfer Reason');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `transfer_reason_code` SET TAGS ('pii_business_glossary_term' = 'Transfer Reason Code');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `transfer_request_number` SET TAGS ('pii_business_glossary_term' = 'Transfer Request Number');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `transfer_status` SET TAGS ('pii_business_glossary_term' = 'Transfer Request Status');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `transfer_type` SET TAGS ('pii_business_glossary_term' = 'Transfer Type');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `transfer_type` SET TAGS ('pii_value_regex' = 'inter_facility|intra_facility|emergency|elective|specialty_care|higher_level_of_care');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `transport_mode` SET TAGS ('pii_business_glossary_term' = 'Transport Mode');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `transport_mode` SET TAGS ('pii_value_regex' = 'ambulance|air_ambulance|wheelchair_van|private_vehicle|walk');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `transport_provider` SET TAGS ('pii_business_glossary_term' = 'Transport Provider');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`transfer_request` ALTER COLUMN `updated_timestamp` SET TAGS ('pii_business_glossary_term' = 'Record Updated Timestamp');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_coverage` SET TAGS ('pii_data_type' = 'association_data');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_coverage` SET TAGS ('pii_subdomain' = 'financial_coverage');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_coverage` SET TAGS ('pii_association_edges' = 'encounter.visit,insurance.payer');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_coverage` SET TAGS ('pii_vibe_mutated' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_coverage` SET TAGS ('pii_structure_enforced' = 'v22domains');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_coverage` ALTER COLUMN `visit_coverage_id` SET TAGS ('pii_business_glossary_term' = 'Visit Coverage - Visit Coverage Id');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_coverage` ALTER COLUMN `member_enrollment_id` SET TAGS ('pii_sensitivity' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_coverage` ALTER COLUMN `member_enrollment_id` SET TAGS ('pii_confidential' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_coverage` ALTER COLUMN `member_enrollment_id` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_coverage` ALTER COLUMN `payer_id` SET TAGS ('pii_business_glossary_term' = 'Visit Coverage - Payer Id');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_coverage` ALTER COLUMN `visit_id` SET TAGS ('pii_business_glossary_term' = 'Visit Coverage - Visit Id');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_coverage` ALTER COLUMN `authorization_number` SET TAGS ('pii_business_glossary_term' = 'Prior Authorization Number');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_coverage` ALTER COLUMN `authorization_status` SET TAGS ('pii_business_glossary_term' = 'Authorization Status');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_coverage` ALTER COLUMN `copay_amount` SET TAGS ('pii_business_glossary_term' = 'Patient Copayment Amount');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_coverage` ALTER COLUMN `coverage_effective_date` SET TAGS ('pii_business_glossary_term' = 'Coverage Effective Date');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_coverage` ALTER COLUMN `coverage_sequence` SET TAGS ('pii_business_glossary_term' = 'Coverage Sequence');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_coverage` ALTER COLUMN `coverage_termination_date` SET TAGS ('pii_business_glossary_term' = 'Coverage Termination Date');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_coverage` ALTER COLUMN `deductible_met_amount` SET TAGS ('pii_business_glossary_term' = 'Deductible Met Amount');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_coverage` ALTER COLUMN `eligibility_status` SET TAGS ('pii_business_glossary_term' = 'Eligibility Verification Status');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_coverage` ALTER COLUMN `eligibility_verification_timestamp` SET TAGS ('pii_business_glossary_term' = 'Eligibility Verification Timestamp');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_coverage` ALTER COLUMN `group_number` SET TAGS ('pii_sensitivity' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_coverage` ALTER COLUMN `network_status` SET TAGS ('pii_business_glossary_term' = 'Network Participation Status');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_coverage` ALTER COLUMN `plan_name` SET TAGS ('pii_sensitivity' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_coverage` ALTER COLUMN `plan_name` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_coverage` ALTER COLUMN `plan_name` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_coverage` ALTER COLUMN `plan_name` SET TAGS ('pii_name' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_coverage` ALTER COLUMN `plan_name` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_coverage` ALTER COLUMN `plan_name` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_coverage` ALTER COLUMN `plan_name` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_coverage` ALTER COLUMN `subscriber_relationship` SET TAGS ('pii_business_glossary_term' = 'Subscriber Relationship');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_recall_impact` SET TAGS ('pii_data_type' = 'association_data');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_recall_impact` SET TAGS ('pii_subdomain' = 'clinical_documentation');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_recall_impact` SET TAGS ('pii_association_edges' = 'encounter.visit,supply.recall_notice');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_recall_impact` SET TAGS ('pii_vibe_mutated' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_recall_impact` SET TAGS ('pii_structure_enforced' = 'v22domains');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_recall_impact` ALTER COLUMN `visit_recall_impact_id` SET TAGS ('pii_business_glossary_term' = 'Visit Recall Impact - Visit Recall Impact Id');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_recall_impact` ALTER COLUMN `clinician_id` SET TAGS ('pii_business_glossary_term' = 'Assigned Clinician ID');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_recall_impact` ALTER COLUMN `recall_notice_id` SET TAGS ('pii_business_glossary_term' = 'Visit Recall Impact - Recall Notice Id');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_recall_impact` ALTER COLUMN `visit_id` SET TAGS ('pii_business_glossary_term' = 'Visit Recall Impact - Visit Id');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_recall_impact` ALTER COLUMN `clinical_review_completed` SET TAGS ('pii_business_glossary_term' = 'Clinical Review Completed Flag');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_recall_impact` ALTER COLUMN `clinical_review_completed` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_recall_impact` ALTER COLUMN `clinical_review_completed` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_recall_impact` ALTER COLUMN `clinical_review_completed` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_recall_impact` ALTER COLUMN `clinical_review_completed` SET TAGS ('pii_health' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_recall_impact` ALTER COLUMN `clinical_review_completed` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_recall_impact` ALTER COLUMN `clinical_review_completed` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_recall_impact` ALTER COLUMN `clinical_review_completed` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_recall_impact` ALTER COLUMN `clinical_review_date` SET TAGS ('pii_business_glossary_term' = 'Clinical Review Date');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_recall_impact` ALTER COLUMN `clinical_review_date` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_recall_impact` ALTER COLUMN `clinical_review_date` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_recall_impact` ALTER COLUMN `clinical_review_date` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_recall_impact` ALTER COLUMN `clinical_review_date` SET TAGS ('pii_health' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_recall_impact` ALTER COLUMN `clinical_review_date` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_recall_impact` ALTER COLUMN `clinical_review_date` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_recall_impact` ALTER COLUMN `clinical_review_date` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_recall_impact` ALTER COLUMN `created_timestamp` SET TAGS ('pii_business_glossary_term' = 'Record Created Timestamp');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_recall_impact` ALTER COLUMN `follow_up_due_date` SET TAGS ('pii_business_glossary_term' = 'Follow-Up Due Date');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_recall_impact` ALTER COLUMN `follow_up_required` SET TAGS ('pii_business_glossary_term' = 'Follow-Up Required Flag');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_recall_impact` ALTER COLUMN `last_updated_timestamp` SET TAGS ('pii_business_glossary_term' = 'Record Last Updated Timestamp');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_recall_impact` ALTER COLUMN `lot_serial_match_confirmed` SET TAGS ('pii_business_glossary_term' = 'Lot/Serial Match Confirmed Flag');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_recall_impact` ALTER COLUMN `notification_date` SET TAGS ('pii_business_glossary_term' = 'Patient Notification Date');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_recall_impact` ALTER COLUMN `patient_impact_assessment` SET TAGS ('pii_business_glossary_term' = 'Patient Impact Assessment');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_recall_impact` ALTER COLUMN `patient_impact_assessment` SET TAGS ('pii_sensitivity' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_recall_impact` ALTER COLUMN `patient_notification_status` SET TAGS ('pii_business_glossary_term' = 'Patient Notification Status');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_recall_impact` ALTER COLUMN `product_actually_used` SET TAGS ('pii_business_glossary_term' = 'Product Actually Used Flag');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_recall_impact` ALTER COLUMN `remediation_action_taken` SET TAGS ('pii_business_glossary_term' = 'Remediation Action Taken');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`visit_recall_impact` ALTER COLUMN `remediation_date` SET TAGS ('pii_business_glossary_term' = 'Remediation Action Date');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`encounter_authorization` SET TAGS ('pii_data_type' = 'transactional_data');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`encounter_authorization` SET TAGS ('pii_subdomain' = 'financial_coverage');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`encounter_authorization` SET TAGS ('pii_mvm_alias' = 'encounter.authorization');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`encounter_authorization` SET TAGS ('pii_structure_enforced' = 'v22domains');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`encounter_authorization` SET TAGS ('pii_ssot_role' = 'canonical');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`encounter_authorization` SET TAGS ('pii_ssot' = 'primary');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`encounter_authorization` SET TAGS ('pii_ssot_pair' = 'order.order_authorization');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`encounter_authorization` SET TAGS ('pii_distinct_document' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`encounter_authorization` SET TAGS ('pii_ssot_note' = 'distinct_domain_scope_not_duplicate');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`encounter_authorization` SET TAGS ('pii_ssot_reference' = 'order.order_authorization');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`encounter_authorization` SET TAGS ('pii_duplicate_pair' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`encounter_authorization` SET TAGS ('pii_ssot_primary' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`encounter_authorization` SET TAGS ('pii_mvm_ecm_reconciled' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`encounter_authorization` SET TAGS ('pii_ecm_superset' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`encounter_authorization` ALTER COLUMN `encounter_authorization_id` SET TAGS ('pii_business_glossary_term' = 'Encounter Authorization Identifier');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`encounter_authorization` ALTER COLUMN `clinician_id` SET TAGS ('pii_business_glossary_term' = 'Clinician Identifier');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`encounter_authorization` ALTER COLUMN `payer_id` SET TAGS ('pii_business_glossary_term' = 'Payer Identifier');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`encounter_authorization` ALTER COLUMN `visit_id` SET TAGS ('pii_business_glossary_term' = 'Visit Identifier');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`encounter_authorization` ALTER COLUMN `appeal_decision` SET TAGS ('pii_business_glossary_term' = 'Appeal Decision');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`encounter_authorization` ALTER COLUMN `appeal_submitted_date` SET TAGS ('pii_business_glossary_term' = 'Appeal Submitted Date');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`encounter_authorization` ALTER COLUMN `authorization_number` SET TAGS ('pii_business_glossary_term' = 'Authorization Number');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`encounter_authorization` ALTER COLUMN `authorization_scope` SET TAGS ('pii_discriminator' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`encounter_authorization` ALTER COLUMN `authorization_status` SET TAGS ('pii_business_glossary_term' = 'Authorization Status');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`encounter_authorization` ALTER COLUMN `authorization_type` SET TAGS ('pii_business_glossary_term' = 'Authorization Type');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`encounter_authorization` ALTER COLUMN `authorized_amount` SET TAGS ('pii_business_glossary_term' = 'Authorized Amount');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`encounter_authorization` ALTER COLUMN `authorized_days` SET TAGS ('pii_business_glossary_term' = 'Authorized Days');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`encounter_authorization` ALTER COLUMN `authorized_units` SET TAGS ('pii_business_glossary_term' = 'Authorized Units');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`encounter_authorization` ALTER COLUMN `clinical_indication` SET TAGS ('pii_business_glossary_term' = 'Clinical Indication');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`encounter_authorization` ALTER COLUMN `clinical_indication` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`encounter_authorization` ALTER COLUMN `clinical_indication` SET TAGS ('pii_sensitivity' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`encounter_authorization` ALTER COLUMN `clinical_indication` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`encounter_authorization` ALTER COLUMN `clinical_indication` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`encounter_authorization` ALTER COLUMN `clinical_indication` SET TAGS ('pii_health' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`encounter_authorization` ALTER COLUMN `clinical_indication` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`encounter_authorization` ALTER COLUMN `clinical_indication` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`encounter_authorization` ALTER COLUMN `clinical_indication` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`encounter_authorization` ALTER COLUMN `cpt_code` SET TAGS ('pii_business_glossary_term' = 'CPT Code');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`encounter_authorization` ALTER COLUMN `created_timestamp` SET TAGS ('pii_business_glossary_term' = 'Created Timestamp');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`encounter_authorization` ALTER COLUMN `denial_reason_code` SET TAGS ('pii_business_glossary_term' = 'Denial Reason Code');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`encounter_authorization` ALTER COLUMN `denial_reason_description` SET TAGS ('pii_business_glossary_term' = 'Denial Reason Description');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`encounter_authorization` ALTER COLUMN `end_date` SET TAGS ('pii_business_glossary_term' = 'End Date');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`encounter_authorization` ALTER COLUMN `icd10_diagnosis_code` SET TAGS ('pii_business_glossary_term' = 'ICD-10 Diagnosis Code');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`encounter_authorization` ALTER COLUMN `icd10_diagnosis_code` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`encounter_authorization` ALTER COLUMN `icd10_diagnosis_code` SET TAGS ('pii_sensitivity' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`encounter_authorization` ALTER COLUMN `icd10_diagnosis_code` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`encounter_authorization` ALTER COLUMN `icd10_diagnosis_code` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`encounter_authorization` ALTER COLUMN `icd10_diagnosis_code` SET TAGS ('pii_health' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`encounter_authorization` ALTER COLUMN `icd10_diagnosis_code` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`encounter_authorization` ALTER COLUMN `icd10_diagnosis_code` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`encounter_authorization` ALTER COLUMN `icd10_diagnosis_code` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`encounter_authorization` ALTER COLUMN `mvm_source_names` SET TAGS ('pii_business_glossary_term' = 'encounter.authorization');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`encounter_authorization` ALTER COLUMN `mvm_source_names` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`encounter_authorization` ALTER COLUMN `mvm_source_names` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`encounter_authorization` ALTER COLUMN `mvm_source_names` SET TAGS ('pii_name' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`encounter_authorization` ALTER COLUMN `mvm_source_names` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`encounter_authorization` ALTER COLUMN `mvm_source_names` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`encounter_authorization` ALTER COLUMN `mvm_source_names` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`encounter_authorization` ALTER COLUMN `payer_decision_timestamp` SET TAGS ('pii_business_glossary_term' = 'Payer Decision Timestamp');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`encounter_authorization` ALTER COLUMN `peer_to_peer_review_date` SET TAGS ('pii_business_glossary_term' = 'Peer to Peer Review Date');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`encounter_authorization` ALTER COLUMN `peer_to_peer_review_flag` SET TAGS ('pii_business_glossary_term' = 'Peer to Peer Review Flag');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`encounter_authorization` ALTER COLUMN `request_submitted_timestamp` SET TAGS ('pii_business_glossary_term' = 'Request Submitted Timestamp');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`encounter_authorization` ALTER COLUMN `start_date` SET TAGS ('pii_business_glossary_term' = 'Start Date');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`encounter_authorization` ALTER COLUMN `updated_timestamp` SET TAGS ('pii_business_glossary_term' = 'Updated Timestamp');
+ALTER TABLE `vibe_healthcare_v1`.`encounter`.`encounter_authorization` ALTER COLUMN `urgency_level` SET TAGS ('pii_business_glossary_term' = 'Urgency Level');

@@ -1,5 +1,5 @@
--- Schema for Domain: quality | Business:  | Version: v2_ecm
--- Generated on: 2026-07-10 12:59:04
+-- Schema for Domain: quality | Business: Manufacturing | Version: v2_ecm
+-- Generated on: 2026-07-03 05:59:37
 
 -- ========= DATABASE =========
 CREATE DATABASE IF NOT EXISTS `vibe_manufacturing_v1`.`quality` COMMENT 'Quality assurance and control domain encompassing SPC, Cp/Cpk indices, inspection plans, NCRs, CAPAs, PPAP, APQP, and FMEA records. Manages in-process and final inspection results, supplier quality audits, compliance testing, and regulatory conformance data aligned with ISO 9001 and SAP QM.';
@@ -37,15 +37,15 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`quality`.`inspection_plan` (
     `last_modified_timestamp` TIMESTAMP COMMENT 'Date and time when the inspection plan record was last updated in the source system. Used for change tracking, data lineage, and incremental lakehouse ingestion.',
     `long_text_description` STRING COMMENT 'Detailed narrative description of the inspection plan scope, special instructions, safety precautions, and any additional context required by the inspector. Corresponds to SAP QM long text on the task list header.',
     `lower_tolerance_limit` DECIMAL(18,2) COMMENT 'Lower specification limit for the primary inspection characteristic. Values below this limit result in a non-conformance. Used in SPC and Cp/Cpk capability index calculations.',
-    `next_review_date` DATE COMMENT 'Date by which the inspection plan must be reviewed and revalidated to ensure continued suitability and compliance with current product specifications and regulatory requirements.',
-    `operation_number` STRING COMMENT 'Routing operation number within the inspection plan, corresponding to the SAP QM task list operation (PLPO.VORNR). Defines the sequence of inspection steps within the plan.. Valid values are `^[0-9]{4}$`',
+    `next_review_date` TIMESTAMP COMMENT 'Date by which the inspection plan must be reviewed and revalidated to ensure continued suitability and compliance with current product specifications and regulatory requirements.',
+    `operation_number` DECIMAL(18,2) COMMENT 'Routing operation number within the inspection plan, corresponding to the SAP QM task list operation (PLPO.VORNR). Defines the sequence of inspection steps within the plan.',
     `plan_name` STRING COMMENT 'Human-readable name or short description of the inspection plan, identifying the product, process, or operation it governs.',
     `plan_number` STRING COMMENT 'Externally-known alphanumeric identifier for the inspection plan, aligned with SAP QM plan group and plan group counter. Used for cross-system reference and document control.. Valid values are `^QP-[A-Z0-9]{2,10}-[0-9]{4,8}$`',
     `plan_status` STRING COMMENT 'Current lifecycle state of the inspection plan. Controls whether the plan is available for use in production inspection operations. Draft plans are under development; active plans are approved for use; obsolete plans are superseded.. Valid values are `draft|active|inactive|obsolete|under_review`',
     `plan_type` STRING COMMENT 'Classification of the inspection plan by its operational purpose. Covers in-process, final inspection, receiving inspection, supplier audit, PPAP (Production Part Approval Process), APQP (Advanced Product Quality Planning), and first article inspection types. [ENUM-REF-CANDIDATE: in_process|final_inspection|receiving|supplier_audit|ppap|apqp|first_article — promote to reference product]',
     `plan_version` STRING COMMENT 'Version or revision number of the inspection plan, corresponding to the SAP QM plan group counter. Tracks engineering changes and revisions aligned with ECO/ECN processes.. Valid values are `^[0-9]{2}$`',
     `plant_code` STRING COMMENT 'SAP plant code identifying the manufacturing facility or site where this inspection plan is applicable. Inspection plans are plant-specific in SAP QM.. Valid values are `^[A-Z0-9]{4}$`',
-    `ppap_level` STRING COMMENT 'PPAP submission level (1–5) required for this inspection plan, per AIAG PPAP standard. Level 1 requires only a Part Submission Warrant; Level 3 is the default full submission; Level 5 requires records reviewed at the manufacturing site.. Valid values are `1|2|3|4|5`',
+    `ppap_level` DECIMAL(18,2) COMMENT 'PPAP submission level (1–5) required for this inspection plan, per AIAG PPAP standard. Level 1 requires only a Part Submission Warrant; Level 3 is the default full submission; Level 5 requires records reviewed at the manufacturing site.',
     `product_group_code` STRING COMMENT 'SAP material group or product family code to which this inspection plan applies. Enables grouping of inspection plans by product category for reporting and analytics.',
     `revision_reason` STRING COMMENT 'Description of the reason for the current plan version, such as an ECO (Engineering Change Order), CAPA (Corrective and Preventive Action) outcome, customer complaint, or regulatory update.',
     `sample_size` STRING COMMENT 'Number of units to be drawn from the inspection lot for evaluation. Determined by the sampling procedure and AQL level. A value of zero indicates 100% inspection.',
@@ -91,7 +91,7 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`quality`.`inspection_lot` (
     `disposition_timestamp` TIMESTAMP COMMENT 'Date and time when the usage decision (disposition) was formally recorded in the quality management system. Marks the closure of the active inspection phase and triggers downstream stock posting or NCR creation.',
     `dynamic_modification_rule` STRING COMMENT 'Code or name of the dynamic modification rule applied to automatically adjust the inspection level (normal/tightened/reduced/skip) based on cumulative quality history for this material-supplier or material-plant combination. Aligns with SAP QM dynamic modification.',
     `inspection_end_timestamp` TIMESTAMP COMMENT 'Date and time when all inspection activities and results recording were completed for this lot. Combined with inspection_start_timestamp to compute inspection cycle time (Lead Time metric).',
-    `inspection_level` STRING COMMENT 'Current inspection severity level applied to this lot based on the supplier or process quality history. normal = standard AQL sampling; tightened = increased scrutiny due to recent failures; reduced = relaxed sampling due to consistent quality; skip = lot accepted without inspection based on skip-lot qualification.. Valid values are `normal|tightened|reduced|skip`',
+    `inspection_level` DECIMAL(18,2) COMMENT 'Current inspection severity level applied to this lot based on the supplier or process quality history. normal = standard AQL sampling; tightened = increased scrutiny due to recent failures; reduced = relaxed sampling due to consistent quality; skip = lot accepted without inspection based on skip-lot qualification.',
     `inspection_method` STRING COMMENT 'Primary inspection method applied to this lot: visual = visual examination; dimensional = measurement against dimensional tolerances; functional = operational/performance testing; destructive = destructive testing (sample consumed); non_destructive = NDT methods (ultrasonic, X-ray, etc.); chemical = chemical composition analysis; electrical = electrical parameter testing. [ENUM-REF-CANDIDATE: visual|dimensional|functional|destructive|non_destructive|chemical|electrical — 7 candidates stripped; promote to reference product]',
     `inspection_start_timestamp` TIMESTAMP COMMENT 'Date and time when physical inspection activities commenced for this lot. Used to calculate inspection cycle time and monitor SLA compliance for quality turnaround.',
     `inspection_type_code` STRING COMMENT 'SAP QM inspection type code classifying the origin and nature of the inspection lot. Standard SAP codes: 01=Goods Receipt from Purchase Order (incoming), 04=Goods Receipt from Production Order (final), 05=Goods Issue, 06=Delivery to Customer, 08=In-Process Inspection, 10=Recurring Inspection, 89=RMA/Customer Return Receipt. [ENUM-REF-CANDIDATE: 01|04|05|06|08|10|89 — promote to reference product for full SAP inspection type catalogue]',
@@ -106,8 +106,8 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`quality`.`inspection_lot` (
     `nonconforming_quantity` DECIMAL(18,2) COMMENT 'Quantity of units or material within the lot that failed to meet specification requirements. Expressed in the same unit of measure as lot_quantity. Used to calculate reject rate and determine disposition scope.',
     `overall_result` STRING COMMENT 'Summarized quality outcome of the inspection lot based on all characteristic results evaluated against acceptance criteria. passed = all characteristics within specification; failed = one or more characteristics out of specification; conditionally_passed = passed with documented deviations; pending = results not yet fully recorded.. Valid values are `passed|failed|conditionally_passed|pending`',
     `plant_code` STRING COMMENT 'SAP plant code identifying the manufacturing facility or site where the inspection lot was created and executed. Supports multi-plant quality reporting and compliance.',
-    `required_end_date` DATE COMMENT 'Target date by which the inspection lot must be completed and a usage decision recorded, as defined by the inspection plan or production schedule. Supports SLA monitoring and escalation management.',
-    `revision_level` STRING COMMENT 'Engineering revision or drawing revision level of the material or part at the time of inspection. Ensures inspection results are traceable to the correct design revision, supporting Engineering Change Order (ECO) and ECN management.',
+    `required_end_date` TIMESTAMP COMMENT 'Target date by which the inspection lot must be completed and a usage decision recorded, as defined by the inspection plan or production schedule. Supports SLA monitoring and escalation management.',
+    `revision_level` DECIMAL(18,2) COMMENT 'Engineering revision or drawing revision level of the material or part at the time of inspection. Ensures inspection results are traceable to the correct design revision, supporting Engineering Change Order (ECO) and ECN management.',
     `rma_number` STRING COMMENT 'Return Material Authorization (RMA) number associated with this inspection lot when triggered by a customer return receipt. Enables traceability from returned goods inspection back to the original customer complaint and RMA process.',
     `sample_drawing_procedure` STRING COMMENT 'Code or name of the sampling procedure applied to determine the sample size for this inspection lot (e.g., AQL 1.0, AQL 2.5, 100% inspection, skip-lot). Derived from the inspection plan sampling scheme.',
     `sample_size` DECIMAL(18,2) COMMENT 'Actual number of units or quantity drawn from the lot for physical inspection, as determined by the sampling procedure in the inspection plan. May differ from the planned sample size if adjustments were made.',
@@ -131,13 +131,13 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`quality`.`inspection_result` (
     `project_header_id` BIGINT COMMENT 'Foreign key linking to project.project_header. Business justification: Inspection results for a project’s production runs are tied to the project header to aggregate quality metrics in project performance dashboards.',
     `purchase_order_id` BIGINT COMMENT 'Foreign key linking to procurement.purchase_order. Business justification: Required for Supplier Performance Report linking inspection results to the purchase order that supplied the material, enabling root‑cause analysis per supplier.',
     `quote_line_id` BIGINT COMMENT 'Foreign key linking to sales.quote_line. Business justification: Inspection results must be tied to the originating quote line for quality reporting and warranty analysis.',
-    `production_run_id` BIGINT COMMENT 'Foreign key linking to production.run. Business justification: Run‑level quality reports aggregate inspection results per production run for OEE and compliance dashboards.',
+    `run_id` BIGINT COMMENT 'Foreign key linking to production.run. Business justification: Run‑level quality reports aggregate inspection results per production run for OEE and compliance dashboards.',
     `request_id` BIGINT COMMENT 'Foreign key linking to service.request. Business justification: Specific inspection result can generate a service request for repair/calibration; required for result‑driven service actions.',
     `sku_master_id` BIGINT COMMENT 'Foreign key linking to product.sku_master. Business justification: Inspection results are recorded for each inspected product SKU; linking allows quality dashboards to aggregate results by SKU.',
     `work_center_id` BIGINT COMMENT 'Reference to the manufacturing work center or production cell where the inspection was performed. Supports OEE and quality-by-location analysis.',
     `attribute_result` STRING COMMENT 'Pass/fail judgment for attribute-type inspection characteristics (e.g., visual defect present/absent, functional test pass/fail). Null for variable characteristics where measured_value is populated.. Valid values are `pass|fail|not_applicable`',
     `batch_number` STRING COMMENT 'Manufacturing batch or lot number of the material being inspected. Enables full traceability from quality result to production batch for recall management and regulatory compliance.',
-    `calibration_due_date` DATE COMMENT 'Date by which the measurement device used for this inspection must next be calibrated. Captured at time of measurement to flag results obtained with overdue equipment, supporting ISO/IEC 17025 traceability requirements.',
+    `calibration_due_date` TIMESTAMP COMMENT 'Date by which the measurement device used for this inspection must next be calibrated. Captured at time of measurement to flag results obtained with overdue equipment, supporting ISO/IEC 17025 traceability requirements.',
     `characteristic_type` STRING COMMENT 'Classification of the inspection characteristic: variable (measurable numeric value), attribute (pass/fail judgment), visual (visual inspection), or functional (functional performance test). Determines the applicable SPC methodology.. Valid values are `variable|attribute|visual|functional`',
     `cp_index` DECIMAL(18,2) COMMENT 'Process capability index Cp measuring the ratio of the specification width to the process spread (6-sigma). Indicates whether the process is capable of meeting specification limits regardless of centering. Cp ≥ 1.33 is typically required per PPAP.',
     `cpk_index` DECIMAL(18,2) COMMENT 'Process capability index Cpk measuring the ratio of the nearest specification limit to the process mean, accounting for process centering. Cpk ≥ 1.33 is typically required for PPAP approval. Key metric for supplier quality and process performance reporting.',
@@ -145,7 +145,7 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`quality`.`inspection_result` (
     `defect_code` STRING COMMENT 'Standardized defect classification code identifying the type of nonconformance detected (e.g., DIM-OOT for out-of-tolerance dimension, SURF-SCR for surface scratch). Feeds Pareto analysis and CAPA root cause categorization. [ENUM-REF-CANDIDATE: promote to reference product for defect code catalog]',
     `defect_count` STRING COMMENT 'Number of defects or nonconformances detected for this characteristic within the inspected sample. Used for defect rate calculation, Pareto analysis, and NCR triggering thresholds.',
     `defect_description` STRING COMMENT 'Free-text description of the nonconformance or defect observed during inspection. Provides context beyond the defect code for root cause analysis and CAPA documentation.',
-    `inspection_date` DATE COMMENT 'Calendar date on which the inspection was performed. Used for daily/weekly quality trend reporting and shift-level aggregation without requiring timestamp precision.',
+    `inspection_date` TIMESTAMP COMMENT 'Calendar date on which the inspection was performed. Used for daily/weekly quality trend reporting and shift-level aggregation without requiring timestamp precision.',
     `inspection_method` STRING COMMENT 'Method used to perform the inspection: manual (operator measurement), automated (CMM or inline sensor), semi_automated, destructive (material consumed in test), or non_destructive (NDT methods such as ultrasonic, X-ray). Affects result reliability and sampling plan selection.. Valid values are `manual|automated|semi_automated|destructive|non_destructive`',
     `inspection_stage` STRING COMMENT 'Stage in the production or supply chain process at which the inspection was performed: incoming (goods receipt), in_process (during manufacturing), final (finished goods), outgoing (pre-shipment), or supplier (at supplier site).. Valid values are `incoming|in_process|final|outgoing|supplier`',
     `inspection_timestamp` TIMESTAMP COMMENT 'Date and time when the inspection measurement was physically recorded. The principal business event timestamp for this result. Used for SPC time-series analysis, shift-based quality reporting, and audit trail.',
@@ -192,10 +192,10 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`quality`.`ncr` (
     `stock_location_id` BIGINT COMMENT 'Foreign key linking to inventory.stock_location. Business justification: NCR records the location of non‑conforming material in the warehouse for quarantine and retrieval, essential for corrective action tracking.',
     `supplier_id` BIGINT COMMENT 'Identifier of the supplier associated with the non-conformance, applicable for supplier-type NCRs (incoming material failures) or return-to-supplier dispositions. Maps to SAP Ariba/MM vendor master.',
     `work_center_id` BIGINT COMMENT 'Identifier of the specific work center, production cell, or shop floor station where the non-conformance was detected during manufacturing execution. Sourced from SAP PP/MES.',
-    `actual_closure_date` DATE COMMENT 'Actual date on which the NCR was formally closed after verification of all corrective actions and disposition completion. Used for cycle time KPI calculation.',
+    `actual_closure_date` TIMESTAMP COMMENT 'Actual date on which the NCR was formally closed after verification of all corrective actions and disposition completion. Used for cycle time KPI calculation.',
     `batch_number` STRING COMMENT 'Production batch or lot number of the affected material. Enables batch-level traceability and supports recall or containment scope determination. Maps to SAP batch management.',
     `containment_action` STRING COMMENT 'Description of immediate containment actions taken to prevent further non-conforming product from reaching the customer or next process step (e.g., quarantine, 100% inspection, production hold). Corresponds to 8D Step D3.',
-    `containment_completed_date` DATE COMMENT 'Date by which all immediate containment actions were verified as complete. Used for 8D D3 closure tracking and customer reporting.',
+    `containment_completed_date` TIMESTAMP COMMENT 'Date by which all immediate containment actions were verified as complete. Used for 8D D3 closure tracking and customer reporting.',
     `created_timestamp` TIMESTAMP COMMENT 'System timestamp when the NCR record was first created in the data platform (Silver layer ingestion). Used for audit trail and data lineage.',
     `customer_complaint_number` STRING COMMENT 'Customer-provided reference number for the complaint or quality issue, as received from the customer or logged in Salesforce Service Cloud. Enables cross-reference with customer records.',
     `customer_notification_required` BOOLEAN COMMENT 'Indicates whether the customer must be formally notified of this non-conformance (e.g., for shipped non-conforming product, field safety issues, or contractual quality notification requirements).',
@@ -224,7 +224,7 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`quality`.`ncr` (
     `sap_qm_notification_type` STRING COMMENT 'SAP QM notification type code mapped to this NCR: Q1 (customer complaint), Q2 (internal quality notification), Q3 (supplier quality notification). Enables direct traceability to the SAP QM source record.. Valid values are `Q1|Q2|Q3`',
     `serial_number` STRING COMMENT 'Serial number of the specific unit affected by the non-conformance, where serialized tracking applies (e.g., finished goods, capital equipment). Enables unit-level traceability.',
     `severity` STRING COMMENT 'Severity level of the non-conformance based on impact to safety, quality, regulatory compliance, or customer satisfaction: critical (safety/regulatory risk), major (significant quality impact), minor (limited impact), observation (potential risk noted).. Valid values are `critical|major|minor|observation`',
-    `target_closure_date` DATE COMMENT 'Planned date by which the NCR is expected to be fully closed, including all corrective actions verified. Used for SLA tracking and escalation management.',
+    `target_closure_date` TIMESTAMP COMMENT 'Planned date by which the NCR is expected to be fully closed, including all corrective actions verified. Used for SLA tracking and escalation management.',
     `updated_timestamp` TIMESTAMP COMMENT 'System timestamp of the most recent modification to the NCR record. Used for change tracking and audit compliance.',
     CONSTRAINT pk_ncr PRIMARY KEY(`ncr_id`)
 ) COMMENT 'Non-Conformance Report (NCR) serving as the single, unified quality event record for ALL deviations from specifications, standards, or requirements regardless of detection source or reporting channel. Encompasses internal defects, customer complaints (including 8D problem-solving), supplier non-conformances, field returns/RMA dispositions, and audit-triggered findings. Captures non-conformance type (internal/customer/supplier/field-return/audit), affected material/product/serial number, detection source (incoming inspection, in-process, final inspection, field/customer, audit, supplier delivery), severity classification, containment actions, root cause analysis, disposition decision (use-as-is, rework, scrap, return-to-supplier, repair, replace, credit, no-fault-found), RMA tracking fields (return authorization number, customer reference, repair actions, return shipment status), SAP QM notification type mapping (Q1/Q2/Q3), and linkage to CAPA for corrective/preventive action. Supports 8D methodology for customer-facing issues. Aligned with ISO 9001 clause 8.7 (control of nonconforming outputs), clause 10.2 (corrective action), and integrates with Salesforce Service Cloud for customer-originated events.';
@@ -244,25 +244,25 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`quality`.`capa` (
     `regulatory_requirement_id` BIGINT COMMENT 'Foreign key linking to compliance.regulatory_requirement. Business justification: CAPA initiatives often stem from regulatory findings; linking to the requirement clarifies the regulatory driver of the corrective action.',
     `sku_master_id` BIGINT COMMENT 'Foreign key linking to product.sku_master. Business justification: CAPA actions address root causes of defects on a particular product SKU; linking provides product‑centric corrective action tracking.',
     `supplier_id` BIGINT COMMENT 'Identifier of the supplier associated with this CAPA when the root cause is attributed to a supplied material, component, or service. Links to the supplier master for supplier quality performance tracking via SAP Ariba.',
-    `action_implementation_date` DATE COMMENT 'The date on which the corrective and/or preventive actions were fully implemented in the production process or quality system. Marks the transition from planning to execution phase.',
-    `actual_closure_date` DATE COMMENT 'The actual calendar date on which the CAPA was formally closed after successful verification of effectiveness. Null if the CAPA is still open. Used to calculate actual cycle time versus target.',
+    `action_implementation_date` TIMESTAMP COMMENT 'The date on which the corrective and/or preventive actions were fully implemented in the production process or quality system. Marks the transition from planning to execution phase.',
+    `actual_closure_date` TIMESTAMP COMMENT 'The actual calendar date on which the CAPA was formally closed after successful verification of effectiveness. Null if the CAPA is still open. Used to calculate actual cycle time versus target.',
     `affected_process_code` STRING COMMENT 'Identifier of the manufacturing process, work center, or production routing step where the nonconformity was detected or originated. Sourced from SAP PP routing or Siemens Opcenter MES process definition.',
-    `approval_date` DATE COMMENT 'The date on which the CAPA was formally approved for closure by the authorized quality approver. Represents the final lifecycle milestone before the record is archived.',
+    `approval_date` TIMESTAMP COMMENT 'The date on which the CAPA was formally approved for closure by the authorized quality approver. Represents the final lifecycle milestone before the record is archived.',
     `capa_number` STRING COMMENT 'Human-readable, externally-known business identifier for the CAPA record, typically formatted as CAPA-YYYY-NNNNNN. Used in communications, audit trails, and regulatory submissions. Sourced from SAP QM notification numbering.. Valid values are `^CAPA-[0-9]{4}-[0-9]{6}$`',
     `capa_status` STRING COMMENT 'Current lifecycle state of the CAPA record. Tracks progression from initial creation through root cause analysis, action implementation, effectiveness verification, and formal closure per ISO 9001 Clause 10.2.. Valid values are `draft|open|in_progress|pending_verification|closed|cancelled`',
     `capa_type` STRING COMMENT 'Classifies whether the action is corrective (addressing an existing nonconformity), preventive (eliminating a potential nonconformity), or both. Drives workflow routing and reporting in SAP QM.. Valid values are `corrective|preventive|both`',
-    `containment_completion_date` DATE COMMENT 'The date on which all immediate containment actions were completed and verified. Used to measure response speed and compliance with customer-mandated containment timelines.',
+    `containment_completion_date` TIMESTAMP COMMENT 'The date on which all immediate containment actions were completed and verified. Used to measure response speed and compliance with customer-mandated containment timelines.',
     `corrective_action_plan` STRING COMMENT 'Detailed description of the permanent corrective actions planned to eliminate the root cause of the nonconformity and prevent recurrence. Includes process changes, design modifications, procedure updates, or training interventions.',
     `created_timestamp` TIMESTAMP COMMENT 'System timestamp recording when the CAPA record was first created in the quality management system. Used for audit trail, data lineage, and Silver layer ingestion tracking.',
-    `customer_notification_date` DATE COMMENT 'The date on which the customer was formally notified of the nonconformity and the corrective action plan. Null if customer notification is not required or has not yet occurred.',
+    `customer_notification_date` TIMESTAMP COMMENT 'The date on which the customer was formally notified of the nonconformity and the corrective action plan. Null if customer notification is not required or has not yet occurred.',
     `customer_notification_required` BOOLEAN COMMENT 'Indicates whether the customer must be formally notified of the nonconformity and the corrective action taken. Driven by customer contract requirements, product safety implications, or regulatory obligations.',
     `department_code` STRING COMMENT 'Organizational department or cost center responsible for the process or area where the nonconformity originated. Used for departmental quality KPI reporting and accountability tracking.',
     `eco_number` STRING COMMENT 'Reference number of the Engineering Change Order (ECO) raised in Siemens Teamcenter PLM as a result of this CAPA, when the corrective action requires a design or BOM modification.',
-    `effectiveness_verification_date` DATE COMMENT 'The date on which the effectiveness of the implemented actions was formally verified and documented. Required for CAPA closure per ISO 9001 Clause 10.2.',
+    `effectiveness_verification_date` TIMESTAMP COMMENT 'The date on which the effectiveness of the implemented actions was formally verified and documented. Required for CAPA closure per ISO 9001 Clause 10.2.',
     `effectiveness_verification_method` STRING COMMENT 'Description of the method used to verify that the implemented corrective and preventive actions were effective in eliminating the root cause and preventing recurrence. May include SPC monitoring, re-audit, production run data review, or customer feedback analysis.',
     `effectiveness_verified` BOOLEAN COMMENT 'Indicates whether the corrective and preventive actions have been formally verified as effective. True when verification is complete and documented; False when verification is pending or failed. Required gate for CAPA closure.',
     `immediate_containment_action` STRING COMMENT 'Description of the short-term containment actions taken immediately upon detection of the nonconformity to prevent further defective product from reaching the customer or next process step. Corresponds to D3 in the 8D methodology.',
-    `initiated_date` DATE COMMENT 'The calendar date on which the CAPA was formally opened and initiated. Represents the principal business event timestamp for the CAPA lifecycle. Used to calculate cycle time and compliance with response time SLAs.',
+    `initiated_date` TIMESTAMP COMMENT 'The calendar date on which the CAPA was formally opened and initiated. Represents the principal business event timestamp for the CAPA lifecycle. Used to calculate cycle time and compliance with response time SLAs.',
     `last_updated_timestamp` TIMESTAMP COMMENT 'System timestamp recording the most recent modification to the CAPA record. Used for change detection in incremental data pipeline loads and audit trail compliance.',
     `lessons_learned` STRING COMMENT 'Summary of key lessons learned from the CAPA investigation and resolution that should be shared across the organization to prevent similar issues. Feeds into the knowledge management and APQP process for future product launches.',
     `n8d_report_number` STRING COMMENT 'Reference number of the formal 8D (Eight Disciplines) problem-solving report associated with this CAPA, if applicable. Used when customer-mandated 8D reporting is required, particularly in automotive and industrial OEM supply chains.',
@@ -280,7 +280,7 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`quality`.`capa` (
     `root_cause_description` STRING COMMENT 'Detailed narrative of the identified root cause(s) of the nonconformity as determined through the root cause analysis. This is the foundational finding that drives the corrective action plan.',
     `source_reference_number` STRING COMMENT 'The identifier of the originating document or record that triggered this CAPA, such as an NCR number, audit finding reference, customer complaint ticket number, or SAP QM notification number. Enables traceability back to the triggering event.',
     `source_type` STRING COMMENT 'Category of the triggering event that initiated the CAPA. Indicates whether the CAPA originated from a Non-Conformance Report (NCR), customer complaint, internal or external audit finding, shop floor quality event, supplier quality issue, or regulatory inspection finding. [ENUM-REF-CANDIDATE: ncr|customer_complaint|audit_finding|internal_quality_event|supplier_issue|regulatory_finding|field_failure|warranty_claim — promote to reference product]. Valid values are `ncr|customer_complaint|audit_finding|internal_quality_event|supplier_issue|regulatory_finding`',
-    `target_closure_date` DATE COMMENT 'The planned date by which all corrective and preventive actions must be implemented and verified as effective. Used for on-time closure KPI tracking and escalation management.',
+    `target_closure_date` TIMESTAMP COMMENT 'The planned date by which all corrective and preventive actions must be implemented and verified as effective. Used for on-time closure KPI tracking and escalation management.',
     `title` STRING COMMENT 'Short, descriptive title summarizing the quality problem or improvement opportunity addressed by this CAPA. Used in dashboards, reports, and management reviews.',
     CONSTRAINT pk_capa PRIMARY KEY(`capa_id`)
 ) COMMENT 'Corrective and Preventive Action (CAPA) record managing the full lifecycle of quality improvement actions triggered by NCRs, audit findings, customer complaints, or internal quality events. Tracks root cause analysis (5-Why, Ishikawa), corrective action plan, preventive action plan, responsible owner, target dates, verification of effectiveness, and closure status per ISO 9001 clause 10.2.';
@@ -297,8 +297,8 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`quality`.`fmea` (
     `supplier_id` BIGINT COMMENT 'Reference to the supplier responsible for the component or sub-process being analyzed, when the FMEA covers a supplier-provided item. Links to the supplier master in SAP Ariba or SAP S/4HANA MM for supplier quality management purposes.',
     `action_priority` STRING COMMENT 'AIAG-VDA Action Priority classification (High, Medium, Low) assigned to the failure mode based on the combination of Severity, Occurrence, and Detection ratings. Replaces the legacy RPN-only prioritization approach introduced in the 2019 AIAG-VDA FMEA Handbook. Core AIAG-VDA Step 7 field.. Valid values are `high|medium|low`',
     `action_taken` STRING COMMENT 'Description of the actual corrective or preventive action implemented to address the failure mode. Documents what was done versus what was recommended, enabling traceability for PPAP and audit purposes. Core AIAG-VDA Step 9 field.',
-    `actual_completion_date` DATE COMMENT 'Date on which the recommended action was actually implemented and verified as complete. Compared against target_completion_date to measure action closure timeliness. Formatted as yyyy-MM-dd.',
-    `approved_date` DATE COMMENT 'Date on which the FMEA was formally reviewed and approved by the responsible engineering and quality authority. Required for PPAP submission and regulatory compliance documentation. Formatted as yyyy-MM-dd.',
+    `actual_completion_date` TIMESTAMP COMMENT 'Date on which the recommended action was actually implemented and verified as complete. Compared against target_completion_date to measure action closure timeliness. Formatted as yyyy-MM-dd.',
+    `approved_date` TIMESTAMP COMMENT 'Date on which the FMEA was formally reviewed and approved by the responsible engineering and quality authority. Required for PPAP submission and regulatory compliance documentation. Formatted as yyyy-MM-dd.',
     `created_timestamp` TIMESTAMP COMMENT 'System timestamp recording when the FMEA record was first created in the data platform. Used for data lineage, audit trail, and Silver layer ingestion tracking. Formatted as yyyy-MM-ddTHH:mm:ss.SSSXXX.',
     `current_detection_controls` STRING COMMENT 'Description of existing design verification or process monitoring controls that detect the failure mode or cause before the product reaches the customer. Examples include inspection plans, SPC monitoring, functional testing, and CMM measurement. Core AIAG-VDA Step 7 field.',
     `current_prevention_controls` STRING COMMENT 'Description of existing design or process controls that prevent the failure cause from occurring or reduce the occurrence rate. Examples include design standards, material specifications, process parameters, and mistake-proofing (poka-yoke) devices. Core AIAG-VDA Step 6 field.',
@@ -310,8 +310,8 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`quality`.`fmea` (
     `fmea_status` STRING COMMENT 'Current lifecycle state of the FMEA document within the Siemens Teamcenter PLM workflow. Controls whether the FMEA is editable, under review, formally released for production use, or retired.. Valid values are `draft|in_review|approved|released|obsolete|superseded`',
     `fmea_type` STRING COMMENT 'Classification of the FMEA by analysis scope: DFMEA (Design FMEA) evaluates design-related failure modes; PFMEA (Process FMEA) evaluates manufacturing process failure modes; SFMEA (System FMEA) evaluates system-level interactions; MFMEA (Machinery FMEA) evaluates equipment failure modes. Aligned with AIAG-VDA methodology.. Valid values are `DFMEA|PFMEA|SFMEA|MFMEA`',
     `function_description` STRING COMMENT 'Description of the intended function or purpose of the item, component, or process step being analyzed. Defines what the element is supposed to do under normal operating conditions. Core AIAG-VDA Step 3 field.',
-    `initiated_date` DATE COMMENT 'Date on which the FMEA analysis was formally initiated or first created. Marks the start of the FMEA lifecycle and is used for APQP timing and project milestone tracking. Formatted as yyyy-MM-dd.',
-    `last_review_date` DATE COMMENT 'Date of the most recent periodic review of the FMEA. FMEAs must be reviewed and updated when design or process changes occur, when field failures are reported, or on a scheduled basis per the quality management system. Formatted as yyyy-MM-dd.',
+    `initiated_date` TIMESTAMP COMMENT 'Date on which the FMEA analysis was formally initiated or first created. Marks the start of the FMEA lifecycle and is used for APQP timing and project milestone tracking. Formatted as yyyy-MM-dd.',
+    `last_review_date` TIMESTAMP COMMENT 'Date of the most recent periodic review of the FMEA. FMEAs must be reviewed and updated when design or process changes occur, when field failures are reported, or on a scheduled basis per the quality management system. Formatted as yyyy-MM-dd.',
     `occurrence_rating` STRING COMMENT 'Numeric rating (1–10) estimating the likelihood or frequency of the failure cause occurring. A rating of 10 indicates near-certain occurrence; 1 indicates extremely unlikely. Based on historical failure data, process capability (Cp/Cpk), or engineering judgment. Core AIAG-VDA Step 6 field.',
     `part_name` STRING COMMENT 'Human-readable name or description of the part, component, or process step being analyzed. Corresponds to the item description in the Bill of Materials (BOM) or process routing.',
     `part_number` STRING COMMENT 'Engineering part number or material number of the component or assembly being analyzed in the FMEA. Sourced from SAP S/4HANA MM or Siemens Teamcenter PLM BOM. Used to cross-reference PPAP and APQP documentation.',
@@ -330,7 +330,7 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`quality`.`fmea` (
     `scope` STRING COMMENT 'Description of the boundaries and scope of the FMEA analysis, including what is included and excluded from the analysis. Defines the system boundary, interfaces, and assumptions. Required for AIAG-VDA Step 2 (Structure Analysis).',
     `severity_rating` STRING COMMENT 'Numeric rating (1–10) assessing the seriousness of the failure effect on the customer or downstream process. A rating of 10 indicates a safety-critical or regulatory non-compliance failure; 1 indicates no discernible effect. Defined per AIAG-VDA severity evaluation criteria. Core AIAG-VDA Step 5 field.',
     `special_characteristic_code` STRING COMMENT 'Designation indicating whether the failure mode relates to a special product or process characteristic requiring enhanced control. SC = Special Characteristic; CC = Critical Characteristic; KPC = Key Product Characteristic; KCC = Key Control Characteristic. Drives control plan and inspection plan requirements.. Valid values are `SC|CC|KPC|KCC|`',
-    `target_completion_date` DATE COMMENT 'Planned date by which the recommended action must be implemented and verified. Used for action tracking and escalation management in the FMEA review cycle. Formatted as yyyy-MM-dd.',
+    `target_completion_date` TIMESTAMP COMMENT 'Planned date by which the recommended action must be implemented and verified. Used for action tracking and escalation management in the FMEA review cycle. Formatted as yyyy-MM-dd.',
     `team_members` STRING COMMENT 'Comma-separated list or description of cross-functional team members who participated in the FMEA analysis session. Typically includes representatives from design engineering, manufacturing, quality, and supplier quality. Required for AIAG-VDA Step 1 documentation.',
     `title` STRING COMMENT 'Descriptive title of the FMEA document identifying the product, component, or process being analyzed. Used for search, retrieval, and display in PLM and quality management systems.',
     `updated_timestamp` TIMESTAMP COMMENT 'System timestamp recording when the FMEA record was last modified in the data platform. Supports change tracking, data quality monitoring, and incremental load processing in the Databricks Lakehouse Silver layer. Formatted as yyyy-MM-ddTHH:mm:ss.SSSXXX.',
@@ -358,11 +358,11 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`quality`.`control_plan` (
     `characteristic_type` STRING COMMENT 'Indicates whether the characteristic is measured on a variable (continuous numeric) or attribute (pass/fail, go/no-go) scale. Determines the applicable SPC (Statistical Process Control) methodology and control chart type.. Valid values are `variable|attribute`',
     `control_method` STRING COMMENT 'The process control technique applied to monitor and control this characteristic (e.g., SPC X-bar/R Chart, Pre-control Chart, Poka-yoke, Visual Standard, Attribute Control Chart, Process Parameter Monitoring). Core APQP deliverable field.',
     `control_type` STRING COMMENT 'Indicates whether the control is a prevention control (prevents the defect from occurring) or a detection control (detects the defect after it has occurred). Aligns with PFMEA prevention/detection control columns.. Valid values are `prevention|detection`',
-    `cpk_minimum_required` DECIMAL(18,2) COMMENT 'The minimum acceptable Cpk (Process Capability Index) value required for this characteristic to be considered capable. Typically 1.33 for production and 1.67 for critical/safety characteristics per AIAG PPAP requirements.',
+    `cpk_minimum_required` BOOLEAN COMMENT 'The minimum acceptable Cpk (Process Capability Index) value required for this characteristic to be considered capable. Typically 1.33 for production and 1.67 for critical/safety characteristics per AIAG PPAP requirements.',
     `created_timestamp` TIMESTAMP COMMENT 'Timestamp when this control plan record was first created in the system. Supports audit trail requirements under ISO 9001 document control and data lineage tracking in the Databricks lakehouse.',
-    `effective_date` DATE COMMENT 'Date from which this revision of the control plan becomes active and must be followed on the shop floor. Aligns with the ECO/ECN implementation date in Siemens Teamcenter PLM.',
+    `effective_date` TIMESTAMP COMMENT 'Date from which this revision of the control plan becomes active and must be followed on the shop floor. Aligns with the ECO/ECN implementation date in Siemens Teamcenter PLM.',
     `error_proofing_method` STRING COMMENT 'Description of the poka-yoke or error-proofing device/method applied at this process step to prevent or detect non-conformances (e.g., Torque monitoring with automatic shutdown, Vision system barcode verification, Fixture limit switch). Reduces reliance on operator inspection.',
-    `expiry_date` DATE COMMENT 'Date on which this control plan revision expires or is superseded. Null for open-ended plans. Used to enforce periodic review cycles mandated by ISO 9001 and customer-specific requirements.',
+    `expiry_date` TIMESTAMP COMMENT 'Date on which this control plan revision expires or is superseded. Null for open-ended plans. Used to enforce periodic review cycles mandated by ISO 9001 and customer-specific requirements.',
     `gauge_type` STRING COMMENT 'Type or category of measurement instrument or gauge used for this characteristic (e.g., Vernier Caliper, CMM, Go/No-Go Gauge, Torque Tester, Vision System). Used for gauge calibration scheduling and MSA planning.',
     `is_ctq` BOOLEAN COMMENT 'Indicates whether this characteristic is designated as Critical-to-Quality (CTQ), meaning it directly impacts customer satisfaction, safety, or regulatory compliance. CTQ characteristics receive enhanced monitoring and are mandatory in PPAP submissions.',
     `is_regulatory_requirement` BOOLEAN COMMENT 'Indicates whether this characteristic is controlled to meet a specific regulatory or certification requirement (e.g., CE Marking, UL, IEC 62443, EPA, OSHA). Drives mandatory retention of inspection records for regulatory audit purposes.',
@@ -411,7 +411,7 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`quality`.`ppap_submission` (
     `control_plan_number` STRING COMMENT 'Document reference number for the Control Plan included in the PPAP package. PPAP Element 6. The control plan defines inspection and monitoring activities for production. Traceable to SAP QM inspection plan.',
     `cpk_minimum` DECIMAL(18,2) COMMENT 'Minimum Cpk value recorded across all critical and significant characteristics in the initial process capability study. Used to assess whether the process meets the customers capability requirements (typically Cpk ≥ 1.67 for new processes).',
     `created_timestamp` TIMESTAMP COMMENT 'Timestamp when the PPAP submission record was first created in the system. Represents the audit trail creation event. Populated automatically by the quality management system.',
-    `customer_approval_date` DATE COMMENT 'Date on which the customer issued the formal PPAP disposition (approved, conditionally approved, or rejected). Null if disposition has not yet been received.',
+    `customer_approval_date` TIMESTAMP COMMENT 'Date on which the customer issued the formal PPAP disposition (approved, conditionally approved, or rejected). Null if disposition has not yet been received.',
     `customer_approver_name` STRING COMMENT 'Name of the customers quality representative or engineer who reviewed and issued the formal PPAP disposition. Recorded for audit trail and accountability purposes.',
     `customer_part_number` STRING COMMENT 'The customers own part number or drawing number for the submitted component, used for cross-reference between the manufacturers and customers part identification systems.',
     `customer_specific_requirements_status` STRING COMMENT 'Status indicating whether all customer-specific requirements (PPAP Element 15) have been addressed in the submission. Customers may have additional requirements beyond the standard AIAG PPAP elements.. Valid values are `met|not_met|not_applicable`',
@@ -419,7 +419,7 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`quality`.`ppap_submission` (
     `dimensional_results_status` STRING COMMENT 'Overall status of the dimensional inspection results (PPAP Element 10) indicating whether all measured dimensions conform to the design record tolerances. Pass = all characteristics within tolerance; Fail = one or more out of tolerance; Conditional = deviations accepted with customer concession.. Valid values are `pass|fail|conditional`',
     `imds_submission_reference` STRING COMMENT 'Submission identifier in the International Material Data System (IMDS) for material composition reporting. Required for automotive and industrial parts to comply with REACH, RoHS, and ELV regulations. PPAP Element 13 supporting document.',
     `initial_process_study_number` STRING COMMENT 'Document reference number for the Initial Process Capability Study (Preliminary Process Capability) included in the PPAP package. PPAP Element 8. Contains Cp/Cpk indices for critical characteristics.',
-    `interim_approval_expiry_date` DATE COMMENT 'Expiry date of a conditional or interim PPAP approval granted by the customer. Production is authorized only until this date, after which a full approval or resubmission is required. Null if disposition is full approval or rejection.',
+    `interim_approval_expiry_date` TIMESTAMP COMMENT 'Expiry date of a conditional or interim PPAP approval granted by the customer. Production is authorized only until this date, after which a full approval or resubmission is required. Null if disposition is full approval or rejection.',
     `is_safety_critical_part` BOOLEAN COMMENT 'Flag indicating whether the submitted part is classified as safety-critical, requiring enhanced PPAP scrutiny, additional testing, and regulatory compliance documentation. Safety-critical parts may require higher PPAP submission levels.',
     `last_updated_timestamp` TIMESTAMP COMMENT 'Timestamp of the most recent modification to the PPAP submission record. Used for audit trail, data lineage, and change tracking in the Databricks Silver Layer.',
     `manufacturing_process_description` STRING COMMENT 'Brief description of the key manufacturing processes used to produce the part (e.g., CNC machining, injection molding, stamping, welding). Summarizes the process flow documented in the PPAP element.',
@@ -427,16 +427,16 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`quality`.`ppap_submission` (
     `material_test_results_status` STRING COMMENT 'Overall status of material and functional test results (PPAP Element 11) confirming that the part meets all material specifications and functional performance requirements defined in the design record.. Valid values are `pass|fail|not_applicable`',
     `msa_study_number` STRING COMMENT 'Document reference number for the Measurement System Analysis (MSA) study included in the PPAP package. PPAP Element 7. Validates the measurement systems used for inspection. Aligns with AIAG MSA 4th Edition.',
     `part_name` STRING COMMENT 'Human-readable description or name of the part or assembly being submitted for PPAP approval, as recorded in the design record.',
-    `part_revision_level` STRING COMMENT 'Engineering change revision level of the part at the time of PPAP submission, as tracked in the design record and PLM system. Ensures the submission corresponds to the correct design iteration.',
+    `part_revision_level` DECIMAL(18,2) COMMENT 'Engineering change revision level of the part at the time of PPAP submission, as tracked in the design record and PLM system. Ensures the submission corresponds to the correct design iteration.',
     `pfmea_number` STRING COMMENT 'Document reference number for the Process Failure Mode and Effects Analysis (PFMEA) included in the PPAP package. PPAP Element 5. Identifies the PFMEA document in Siemens Teamcenter PLM.',
     `production_run_quantity` STRING COMMENT 'Total number of parts produced during the significant production run used to generate PPAP samples and process capability data. Typically a minimum of 300 consecutive pieces per AIAG requirements.',
-    `psw_authorization_date` DATE COMMENT 'Date on which the suppliers authorized representative signed the Part Submission Warrant (PSW), certifying the completeness and accuracy of the PPAP submission package.',
+    `psw_authorization_date` TIMESTAMP COMMENT 'Date on which the suppliers authorized representative signed the Part Submission Warrant (PSW), certifying the completeness and accuracy of the PPAP submission package.',
     `psw_disposition` STRING COMMENT 'Customers formal disposition recorded on the Part Submission Warrant (PSW), the cover document of the PPAP package. Approved = full production authorization; Interim Approval = conditional authorization with defined expiry; Rejected = resubmission required.. Valid values are `approved|interim_approval|rejected`',
     `regulatory_compliance_status` STRING COMMENT 'Status of the parts compliance with applicable regulatory requirements (e.g., REACH, RoHS, CE Marking, UL certification) as documented in the PPAP package. Ensures the submission addresses all relevant regulatory conformance obligations.. Valid values are `compliant|non_compliant|pending|not_applicable`',
     `rejection_reason` STRING COMMENT 'Detailed description of the reason(s) for PPAP rejection or conditional approval issued by the customer. Populated when submission_status is rejected or psw_disposition is rejected. Used to drive corrective actions.',
-    `resubmission_due_date` DATE COMMENT 'Target date by which a corrected PPAP package must be resubmitted to the customer following a rejection or conditional approval. Agreed between supplier and customer quality teams.',
+    `resubmission_due_date` TIMESTAMP COMMENT 'Target date by which a corrected PPAP package must be resubmitted to the customer following a rejection or conditional approval. Agreed between supplier and customer quality teams.',
     `sample_quantity` STRING COMMENT 'Number of sample parts produced from the production run and submitted to the customer as part of the PPAP package. PPAP Element 9. AIAG typically requires a minimum of 300 consecutive pieces for initial process studies.',
-    `submission_date` DATE COMMENT 'Date on which the completed PPAP package was formally submitted to the customer for review and approval. Represents the principal business event timestamp for this transaction.',
+    `submission_date` TIMESTAMP COMMENT 'Date on which the completed PPAP package was formally submitted to the customer for review and approval. Represents the principal business event timestamp for this transaction.',
     `submission_level` STRING COMMENT 'AIAG-defined PPAP submission level (1 through 5) indicating the extent of documentation and samples required by the customer. Level 1 = Part Submission Warrant only; Level 5 = Full submission retained at manufacturing site.',
     `submission_notes` STRING COMMENT 'Free-text field for additional notes, clarifications, or special conditions associated with the PPAP submission. May include customer-specific instructions, deviations, or open action items.',
     `submission_number` STRING COMMENT 'Externally-known business identifier for the PPAP submission package, typically assigned by the quality management system (SAP QM) or PLM system. Used for cross-system traceability and customer communication.',
@@ -455,8 +455,8 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`quality`.`supplier_quality_audi
     `previous_audit_supplier_quality_audit_id` BIGINT COMMENT 'Reference to the immediately preceding audit record for this supplier, enabling audit history chaining and trend analysis across audit cycles.',
     `procurement_contract_id` BIGINT COMMENT 'Foreign key linking to procurement.procurement_contract. Business justification: Links audit findings to the relevant procurement contract, supporting contract‑based supplier performance evaluation.',
     `supplier_id` BIGINT COMMENT 'Reference to the supplier organization being audited. Links to the supplier master record in SAP Ariba.',
-    `actual_end_date` DATE COMMENT 'Actual date on which the audit was completed. Used to calculate audit duration and measure schedule adherence.',
-    `actual_start_date` DATE COMMENT 'Actual date on which the audit commenced. May differ from planned start date due to scheduling changes or supplier availability.',
+    `actual_end_date` TIMESTAMP COMMENT 'Actual date on which the audit was completed. Used to calculate audit duration and measure schedule adherence.',
+    `actual_start_date` TIMESTAMP COMMENT 'Actual date on which the audit commenced. May differ from planned start date due to scheduling changes or supplier availability.',
     `audit_category` STRING COMMENT 'Indicates whether the audit was a planned/scheduled event, an unscheduled/reactive audit triggered by quality issues, a follow-up to a previous audit, or a re-audit after corrective actions.. Valid values are `scheduled|unscheduled|follow_up|re_audit`',
     `audit_duration_days` DECIMAL(18,2) COMMENT 'Total number of working days spent conducting the audit, including on-site or remote sessions. Used for resource planning and audit program management.',
     `audit_method` STRING COMMENT 'Delivery method of the audit: on-site visit to the supplier facility, remote/virtual audit conducted electronically, or hybrid combining both approaches.. Valid values are `on_site|remote|hybrid`',
@@ -470,31 +470,31 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`quality`.`supplier_quality_audi
     `audit_status` STRING COMMENT 'Current lifecycle state of the supplier quality audit. Tracks progression from planning through execution to closure.. Valid values are `planned|in_progress|completed|cancelled|on_hold`',
     `audit_team_members` STRING COMMENT 'Comma-separated list of names or employee IDs of additional audit team members who participated in the audit alongside the lead auditor.',
     `audit_type` STRING COMMENT 'Classification of the audit by its primary focus: system audit (management system evaluation), process audit (manufacturing process evaluation), product audit (product conformance evaluation), or combined.. Valid values are `system|process|product|combined`',
-    `capa_due_date` DATE COMMENT 'Deadline by which the supplier must submit their CAPA plan in response to audit non-conformances. Typically 30–90 days from audit report issuance.',
+    `capa_due_date` TIMESTAMP COMMENT 'Deadline by which the supplier must submit their CAPA plan in response to audit non-conformances. Typically 30–90 days from audit report issuance.',
     `capa_required` BOOLEAN COMMENT 'Indicates whether the audit findings require the supplier to submit a formal Corrective and Preventive Action (CAPA) plan. True when major or critical non-conformances are identified.',
     `capa_status` STRING COMMENT 'Current status of the CAPA process associated with this audit. Tracks the lifecycle from initial requirement through supplier submission, review, acceptance, and closure. [ENUM-REF-CANDIDATE: not_required|pending|submitted|under_review|accepted|rejected|closed — promote to reference product]',
-    `capa_submission_date` DATE COMMENT 'Actual date on which the supplier submitted their CAPA plan. Used to measure supplier responsiveness and track on-time CAPA compliance.',
+    `capa_submission_date` TIMESTAMP COMMENT 'Actual date on which the supplier submitted their CAPA plan. Used to measure supplier responsiveness and track on-time CAPA compliance.',
     `confidentiality_agreement_signed` BOOLEAN COMMENT 'Indicates whether a non-disclosure or confidentiality agreement was signed by the audit team prior to conducting the audit at the supplier facility.',
     `conforming_items_count` STRING COMMENT 'Number of checklist items where the supplier demonstrated full conformance to the requirement. Used in audit score computation.',
     `created_timestamp` TIMESTAMP COMMENT 'Timestamp when the supplier quality audit record was first created in the system. Supports audit trail and data lineage requirements.',
     `findings_summary` STRING COMMENT 'Narrative summary of key audit findings, including strengths, weaknesses, and areas of concern identified during the audit. Captured in the formal audit report.',
-    `iso_9001_clause_coverage` STRING COMMENT 'Comma-separated list of ISO 9001:2015 clauses evaluated during the audit (e.g., 4.1,5.1,6.1,8.4,9.1). Enables gap analysis against the full standard.',
+    `iso_9001_clause_coverage` BOOLEAN COMMENT 'Comma-separated list of ISO 9001:2015 clauses evaluated during the audit (e.g., 4.1,5.1,6.1,8.4,9.1). Enables gap analysis against the full standard.',
     `last_updated_timestamp` TIMESTAMP COMMENT 'Timestamp of the most recent modification to the supplier quality audit record. Used for change tracking and data synchronization in the Databricks Silver layer.',
     `lead_auditor_name` STRING COMMENT 'Full name of the lead auditor responsible for planning, executing, and reporting the supplier quality audit.',
     `major_ncr_count` STRING COMMENT 'Number of major non-conformances identified during the audit. A major NCR indicates a significant failure to meet a requirement that could result in product non-conformance or system breakdown.',
     `minor_ncr_count` STRING COMMENT 'Number of minor non-conformances identified during the audit. A minor NCR indicates a partial failure or isolated lapse that does not immediately threaten product quality.',
     `observation_count` STRING COMMENT 'Number of observations or opportunities for improvement noted during the audit that do not constitute formal non-conformances but warrant supplier attention.',
-    `planned_end_date` DATE COMMENT 'Scheduled end date for the audit as defined in the audit plan.',
-    `planned_start_date` DATE COMMENT 'Scheduled start date for the audit as defined in the audit plan. Used for resource planning and supplier notification.',
+    `planned_end_date` TIMESTAMP COMMENT 'Scheduled end date for the audit as defined in the audit plan.',
+    `planned_start_date` TIMESTAMP COMMENT 'Scheduled start date for the audit as defined in the audit plan. Used for resource planning and supplier notification.',
     `ppap_assessment_included` BOOLEAN COMMENT 'Indicates whether a Production Part Approval Process (PPAP) readiness or compliance assessment was included as part of this audit scope.',
     `re_audit_required` BOOLEAN COMMENT 'Indicates whether a follow-up re-audit is required to verify the effectiveness of corrective actions taken by the supplier.',
-    `re_audit_scheduled_date` DATE COMMENT 'Planned date for the follow-up re-audit to verify corrective action effectiveness. Populated only when re_audit_required is True.',
-    `report_issued_date` DATE COMMENT 'Date on which the formal audit report was issued to the supplier. Used to track reporting timeliness and trigger corrective action deadlines.',
+    `re_audit_scheduled_date` TIMESTAMP COMMENT 'Planned date for the follow-up re-audit to verify corrective action effectiveness. Populated only when re_audit_required is True.',
+    `report_issued_date` TIMESTAMP COMMENT 'Date on which the formal audit report was issued to the supplier. Used to track reporting timeliness and trigger corrective action deadlines.',
     `supplier_contact_name` STRING COMMENT 'Name of the primary supplier representative or quality manager who participated in the audit on behalf of the supplier organization.',
     `supplier_facility_country` STRING COMMENT 'ISO 3166-1 alpha-3 country code of the supplier facility location where the audit was conducted.. Valid values are `^[A-Z]{3}$`',
     `supplier_facility_name` STRING COMMENT 'Name of the specific supplier facility or plant location where the audit was conducted or to which the remote audit applies.',
-    `supplier_qualification_level` STRING COMMENT 'Supplier qualification tier assigned or updated as a result of this audit outcome. Drives procurement decisions in SAP Ariba and SAP MM sourcing.. Valid values are `preferred|approved|conditional|probationary|disqualified`',
-    `total_checklist_items` STRING COMMENT 'Total number of checklist items or audit questions evaluated during the audit. Used as the denominator for scoring calculations.',
+    `supplier_qualification_level` DECIMAL(18,2) COMMENT 'Supplier qualification tier assigned or updated as a result of this audit outcome. Drives procurement decisions in SAP Ariba and SAP MM sourcing.',
+    `total_checklist_items` DECIMAL(18,2) COMMENT 'Total number of checklist items or audit questions evaluated during the audit. Used as the denominator for scoring calculations.',
     CONSTRAINT pk_supplier_quality_audit PRIMARY KEY(`supplier_quality_audit_id`)
 ) COMMENT 'Supplier quality audit record documenting scheduled and unscheduled audits conducted at supplier facilities or remotely. Captures audit type (system, process, product), audit scope, checklist results, findings, major/minor non-conformances, audit score, corrective action requirements, and re-audit schedule. Supports SAP Ariba supplier qualification and ISO 9001 clause 8.4 supplier control.';
 
@@ -505,6 +505,7 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`quality`.`customer_complaint` (
     `customer_contact_id` BIGINT COMMENT 'Reference to the specific contact person at the customer organization who reported the complaint.',
     `line_id` BIGINT COMMENT 'Foreign key linking to order.order_line. Business justification: Links complaints to the precise order line, enabling root‑cause analysis and targeted corrective actions.',
     `ncr_id` BIGINT COMMENT 'Foreign key linking to quality.ncr. Business justification: Customer Complaint may stem from an NCR; link complaint to NCR for traceability.',
+    `purchase_order_id` BIGINT COMMENT 'Foreign key linking to procurement.purchase_order. Business justification: Customer complaints are linked to the originating purchase order to identify supplier responsibility in complaint handling process.',
     `regulatory_requirement_id` BIGINT COMMENT 'Foreign key linking to compliance.regulatory_requirement. Business justification: Regulatory‑reportable customer complaints must be tied to the specific regulation they impact for compliance tracking and reporting.',
     `employee_id` BIGINT COMMENT 'Foreign key linking to workforce.employee. Business justification: REQUIRED: Each customer complaint is assigned to a responsible engineer; linking enables root‑cause tracking and KPI reporting.',
     `order_intake_id` BIGINT COMMENT 'Foreign key linking to sales.order_intake. Business justification: Complaints are investigated against the exact order intake that generated the sale, supporting root‑cause analysis.',
@@ -513,7 +514,7 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`quality`.`customer_complaint` (
     `sku_master_id` BIGINT COMMENT 'Foreign key linking to product.sku_master. Business justification: Customer complaints reference the affected product SKU; FK enables complaint analysis and warranty reporting per SKU.',
     `affected_batch_number` STRING COMMENT 'Manufacturing batch or lot number of the affected product. Critical for batch recall analysis, SPC investigation, and supplier quality correlation.',
     `affected_serial_number` STRING COMMENT 'Serial number of the specific unit reported in the complaint. Enables unit-level traceability through manufacturing, shipping, and field service records.',
-    `closure_date` DATE COMMENT 'Date on which the complaint was formally closed following customer acceptance of the resolution and verification of corrective action effectiveness.',
+    `closure_date` TIMESTAMP COMMENT 'Date on which the complaint was formally closed following customer acceptance of the resolution and verification of corrective action effectiveness.',
     `complaint_description` STRING COMMENT 'Full narrative description of the customer complaint including observed symptoms, conditions of failure, and customer-reported impact. Corresponds to SAP QM QN Problem Description field.',
     `complaint_number` STRING COMMENT 'Externally-visible, human-readable complaint reference number used in customer communications and SAP QM Quality Notification (QN). Format: CC-YYYY-NNNNNN.. Valid values are `^CC-[0-9]{4}-[0-9]{6}$`',
     `complaint_source` STRING COMMENT 'Origin channel or party type from which the complaint was received. Supports segmentation of complaint volumes by customer tier.. Valid values are `oem_customer|distributor|end_user|field_service|warranty_claim|regulatory_body`',
@@ -521,14 +522,14 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`quality`.`customer_complaint` (
     `complaint_title` STRING COMMENT 'Short, human-readable summary title of the complaint as entered by the quality engineer or service representative. Used in dashboards and notification emails.',
     `complaint_type` STRING COMMENT 'Categorization of the complaint by nature of the issue. Used for trend analysis, routing, and regulatory reporting. [ENUM-REF-CANDIDATE: product_defect|field_failure|delivery_issue|documentation_error|safety_concern|performance_deviation — promote to reference product]. Valid values are `product_defect|field_failure|delivery_issue|documentation_error|safety_concern|performance_deviation`',
     `containment_action` STRING COMMENT 'Immediate containment action taken to prevent further defective product from reaching the customer, corresponding to Step D3 of the 8D problem-solving methodology. Includes field holds, sorting, or shipment stops.',
-    `containment_date` DATE COMMENT 'Date on which the containment action was implemented. Used to measure response speed and SLA compliance for initial containment.',
-    `corrective_action_completed_date` DATE COMMENT 'Actual date on which the permanent corrective action was fully implemented and verified effective.',
+    `containment_date` TIMESTAMP COMMENT 'Date on which the containment action was implemented. Used to measure response speed and SLA compliance for initial containment.',
+    `corrective_action_completed_date` TIMESTAMP COMMENT 'Actual date on which the permanent corrective action was fully implemented and verified effective.',
     `corrective_action_description` STRING COMMENT 'Description of the permanent corrective action selected and implemented to eliminate the root cause, corresponding to 8D Steps D5 (select) and D6 (implement). May trigger an Engineering Change Order (ECO) or Engineering Change Notice (ECN).',
-    `corrective_action_due_date` DATE COMMENT 'Target date by which the permanent corrective action must be implemented and verified. Used for SLA tracking and escalation management.',
+    `corrective_action_due_date` TIMESTAMP COMMENT 'Target date by which the permanent corrective action must be implemented and verified. Used for SLA tracking and escalation management.',
     `created_timestamp` TIMESTAMP COMMENT 'System audit timestamp recording when this complaint record was first created in the data platform.',
     `customer_acceptance_status` STRING COMMENT 'Status of the customers acceptance of the proposed resolution or 8D corrective action response. Determines whether the complaint can be formally closed.. Valid values are `accepted|rejected|pending|conditionally_accepted`',
     `customer_order_number` STRING COMMENT 'SAP SD sales order number associated with the delivery of the affected product. Links complaint to order fulfillment and revenue impact analysis.',
-    `customer_response_date` DATE COMMENT 'Date on which the formal response (e.g., 8D report, corrective action plan) was communicated to the customer. Used for SLA compliance measurement.',
+    `customer_response_date` TIMESTAMP COMMENT 'Date on which the formal response (e.g., 8D report, corrective action plan) was communicated to the customer. Used for SLA compliance measurement.',
     `defect_location` STRING COMMENT 'Physical location or component area on the product where the defect or failure was observed. Supports PFMEA and design engineering root cause analysis.',
     `eight_d_report_number` STRING COMMENT 'Reference number of the formal 8D (Eight Disciplines) problem-solving report issued to the customer. Required by many OEM customers as part of complaint resolution documentation.',
     `failure_code` STRING COMMENT 'Standardized alphanumeric code from the quality defect code catalog identifying the failure mode. Used for statistical analysis and SPC trending. Corresponds to SAP QM defect code.. Valid values are `^[A-Z]{2,4}-[0-9]{3,6}$`',
@@ -541,14 +542,14 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`quality`.`customer_complaint` (
     `quantity_complained` STRING COMMENT 'Number of units reported as defective or non-conforming in the complaint. Used for severity assessment and potential recall scope estimation.',
     `quantity_returned` STRING COMMENT 'Number of units physically returned by the customer under a Return Material Authorization (RMA). May differ from quantity complained if partial returns occur.',
     `received_timestamp` TIMESTAMP COMMENT 'Precise date and time when the complaint was received and logged in the system. Used for SLA response-time measurement.',
-    `reported_date` DATE COMMENT 'Calendar date on which the customer formally reported or submitted the complaint. Used as the principal business event date for SLA and aging calculations.',
+    `reported_date` TIMESTAMP COMMENT 'Calendar date on which the customer formally reported or submitted the complaint. Used as the principal business event date for SLA and aging calculations.',
     `resolution_type` STRING COMMENT 'Type of resolution provided to the customer. Drives financial impact tracking (credit notes, replacements) and customer satisfaction measurement.. Valid values are `replacement|repair|credit_note|rework|no_fault_found|goodwill`',
     `rma_number` STRING COMMENT 'Return Material Authorization number issued to the customer for physical return of defective units. Links complaint to logistics return process.',
     `root_cause_category` STRING COMMENT 'Standardized category of the identified root cause. Enables Pareto analysis of complaint drivers across design, process, material, and supplier dimensions. [ENUM-REF-CANDIDATE: design|process|material|supplier|handling|measurement|other — 7 candidates stripped; promote to reference product]',
     `root_cause_description` STRING COMMENT 'Narrative description of the verified root cause of the complaint, corresponding to Step D4 of the 8D methodology. May reference 5-Why analysis, fishbone diagram, or PFMEA findings.',
     `salesforce_case_number` STRING COMMENT 'Cross-reference identifier from Salesforce Service Cloud case record linked to this complaint, enabling traceability between CRM and quality management systems.',
     `sap_qn_number` STRING COMMENT 'SAP QM Quality Notification number corresponding to this complaint, used for traceability within SAP S/4HANA QM module.',
-    `severity_level` STRING COMMENT 'Severity classification of the complaint based on customer impact, safety risk, and regulatory implications. Drives escalation rules and response SLA targets. Aligned with FMEA severity ranking.. Valid values are `critical|major|minor|observation`',
+    `severity_level` DECIMAL(18,2) COMMENT 'Severity classification of the complaint based on customer impact, safety risk, and regulatory implications. Drives escalation rules and response SLA targets. Aligned with FMEA severity ranking.',
     `updated_timestamp` TIMESTAMP COMMENT 'System audit timestamp recording the most recent modification to this complaint record.',
     CONSTRAINT pk_customer_complaint PRIMARY KEY(`customer_complaint_id`)
 ) COMMENT 'Customer complaint and field quality issue record capturing reported defects, failures, or dissatisfaction from OEM customers, distributors, or end users. Tracks complaint description, affected product/serial number, failure mode, 8D problem-solving steps, containment actions, root cause, corrective actions, and customer response. Integrates with Salesforce Service Cloud and SAP QM QN.';
@@ -566,7 +567,7 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`quality`.`spc` (
     `active_rule_set` STRING COMMENT 'Identifies the specific set of out-of-control detection rules configured for this chart. Determines which pattern tests are evaluated during real-time monitoring in Siemens Opcenter MES.. Valid values are `western_electric|nelson|aiag|custom|none`',
     `auto_recalculate_limits` BOOLEAN COMMENT 'Indicates whether the system should automatically recalculate control limits when a specified number of new subgroups have been collected. Supports dynamic SPC limit management in Siemens Opcenter MES.',
     `baseline_sample_count` STRING COMMENT 'Number of subgroups used to establish the initial control limits (UCL, LCL, CL) during the chart setup phase. Typically a minimum of 25 subgroups is required per ANSI/ASQ standards to ensure statistically valid control limits.',
-    `capability_assessment_date` DATE COMMENT 'Date on which the current Cp, Cpk, Pp, Ppk indices were last calculated and recorded. Used to determine whether capability data is current and whether recalculation is required per the control plan review cycle.',
+    `capability_assessment_date` TIMESTAMP COMMENT 'Date on which the current Cp, Cpk, Pp, Ppk indices were last calculated and recorded. Used to determine whether capability data is current and whether recalculation is required per the control plan review cycle.',
     `center_line` DECIMAL(18,2) COMMENT 'The process mean or grand average used as the center line of the SPC chart. Represents the expected process level when in statistical control. For X-bar charts this is the grand mean; for p-charts this is the average proportion nonconforming.',
     `characteristic_criticality` STRING COMMENT 'Criticality classification of the monitored characteristic based on its impact on product safety, function, or regulatory compliance. Critical characteristics (safety/regulatory) require tighter capability targets (Cpk ≥ 1.67). Aligns with DFMEA/PFMEA severity ratings.. Valid values are `critical|significant|major|minor`',
     `characteristic_name` STRING COMMENT 'Name of the quality characteristic or process parameter being monitored (e.g., Shaft Outer Diameter, Surface Roughness Ra, Weld Tensile Strength, Solder Joint Void Percentage). Aligns with the inspection characteristic in SAP QM.',
@@ -587,11 +588,11 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`quality`.`spc` (
     `last_updated_timestamp` TIMESTAMP COMMENT 'Timestamp of the most recent modification to this SPC chart configuration record. Used for change tracking, audit compliance, and data lineage in the Databricks Silver Layer.',
     `lower_control_limit` DECIMAL(18,2) COMMENT 'Statistically derived lower control limit for the SPC chart, calculated as the process mean minus three standard deviations (3-sigma) or equivalent. Signals an out-of-control condition when breached. May be zero or null for attribute charts where negative values are not meaningful.',
     `lower_spec_limit` DECIMAL(18,2) COMMENT 'Engineering lower specification limit for the monitored characteristic as defined in the product drawing, design specification, or customer requirement. Distinct from the statistical LCL. Used to calculate process capability indices (Cp, Cpk).',
-    `min_cpk_required` DECIMAL(18,2) COMMENT 'Minimum acceptable Cpk value required for this characteristic as specified by the customer, engineering, or quality standard. Typically 1.33 for standard characteristics and 1.67 for critical/safety characteristics per AIAG PPAP requirements.',
+    `min_cpk_required` BOOLEAN COMMENT 'Minimum acceptable Cpk value required for this characteristic as specified by the customer, engineering, or quality standard. Typically 1.33 for standard characteristics and 1.67 for critical/safety characteristics per AIAG PPAP requirements.',
     `nelson_rules_enabled` BOOLEAN COMMENT 'Indicates whether the Nelson rules (8 rules for detecting non-random patterns) are active for this SPC chart in addition to or instead of Western Electric rules. Nelson rules extend WECO with additional run and trend tests.',
     `out_of_control_action_plan` STRING COMMENT 'Reference to or description of the Out-of-Control Action Plan (OCAP) that operators must follow when an SPC violation is detected. Defines the escalation path, containment actions, and notification requirements.',
     `pp_index` DECIMAL(18,2) COMMENT 'Process performance index Pp calculated using the overall (long-term) standard deviation rather than the within-subgroup standard deviation. Used in PPAP submissions to assess long-term process performance potential.',
-    `ppap_submission_level` STRING COMMENT 'PPAP submission level associated with this SPC characteristic, indicating the depth of documentation required for customer approval. Level 3 (full submission) is the default; levels 1–5 vary by customer requirement.. Valid values are `level_1|level_2|level_3|level_4|level_5`',
+    `ppap_submission_level` DECIMAL(18,2) COMMENT 'PPAP submission level associated with this SPC characteristic, indicating the depth of documentation required for customer approval. Level 3 (full submission) is the default; levels 1–5 vary by customer requirement.',
     `ppk_index` DECIMAL(18,2) COMMENT 'Process performance index Ppk measuring actual long-term process performance accounting for both process spread and centering using overall standard deviation. Used alongside Cpk in PPAP submissions and ongoing process monitoring.',
     `recalculation_trigger_count` STRING COMMENT 'Number of new subgroups that must be collected before an automatic recalculation of control limits is triggered. Applicable only when auto_recalculate_limits is true. Null otherwise.',
     `revision_number` STRING COMMENT 'Version or revision identifier for the SPC chart configuration, incremented when control limits, specification limits, or chart parameters are updated following an Engineering Change Order (ECO) or process improvement event.. Valid values are `^[A-Z0-9]{1,5}$`',
@@ -614,8 +615,8 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`quality`.`quality_audit` (
     `org_unit_id` BIGINT COMMENT 'Reference to the internal department being audited if the audit is an internal audit. Null for external audits.',
     `previous_audit_quality_audit_id` BIGINT COMMENT 'Reference to the previous audit of the same entity, enabling audit history tracking and trend analysis.',
     `supplier_id` BIGINT COMMENT 'Reference to the supplier master record if the audit is a supplier audit. Null for internal or customer audits.',
-    `actual_end_date` DATE COMMENT 'Actual date when the audit was completed, including closing meeting and final observations.',
-    `actual_start_date` DATE COMMENT 'Actual date when the audit commenced, which may differ from the planned start date due to scheduling changes.',
+    `actual_end_date` TIMESTAMP COMMENT 'Actual date when the audit was completed, including closing meeting and final observations.',
+    `actual_start_date` TIMESTAMP COMMENT 'Actual date when the audit commenced, which may differ from the planned start date due to scheduling changes.',
     `audit_category` STRING COMMENT 'Categorization of the audit by the relationship to the audited party: internal (own departments/processes), external supplier (supplier facilities), external subcontractor (subcontractor sites), external customer (customer-mandated), certification (third-party certification body), surveillance (ongoing certification monitoring), or special (triggered by incident or complaint). [ENUM-REF-CANDIDATE: internal|external_supplier|external_subcontractor|external_customer|certification|surveillance|special — 7 candidates stripped; promote to reference product]',
     `audit_method` STRING COMMENT 'The method by which the audit is conducted: on-site (physical presence at audited location), remote (virtual audit via video/document sharing), hybrid (combination of on-site and remote), or document review (desk audit of documentation only).. Valid values are `on_site|remote|hybrid|document_review`',
     `audit_number` STRING COMMENT 'Business identifier for the audit, externally visible and used for tracking and reference across systems and documentation.. Valid values are `^[A-Z]{2,4}-[0-9]{4}-[0-9]{4}$`',
@@ -630,11 +631,11 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`quality`.`quality_audit` (
     `auditee_contact_email` STRING COMMENT 'Email address of the auditee contact for audit coordination and communication.. Valid values are `^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+.[a-zA-Z]{2,}$`',
     `auditee_contact_name` STRING COMMENT 'Name of the primary contact person at the audited entity responsible for coordinating the audit and providing access to information.',
     `auditor_independence_verified` BOOLEAN COMMENT 'Flag indicating whether auditor independence and impartiality have been verified per ISO 19011 requirements, ensuring no conflict of interest.',
-    `capa_due_date` DATE COMMENT 'Target date by which corrective and preventive actions must be completed and submitted for verification.',
+    `capa_due_date` TIMESTAMP COMMENT 'Target date by which corrective and preventive actions must be completed and submitted for verification.',
     `capa_required` BOOLEAN COMMENT 'Flag indicating whether corrective and preventive actions are required based on the audit findings.',
     `capa_status` STRING COMMENT 'Current status of the CAPA process: not required, pending (awaiting submission), submitted, under review, approved, rejected, verified (effectiveness confirmed), or closed. [ENUM-REF-CANDIDATE: not_required|pending|submitted|under_review|approved|rejected|verified|closed — 8 candidates stripped; promote to reference product]',
-    `capa_submission_date` DATE COMMENT 'Actual date when the auditee submitted the CAPA plan or evidence of corrective actions taken.',
-    `closure_date` DATE COMMENT 'Date when the audit was formally closed after all findings were addressed, CAPAs verified, and re-audit (if required) completed.',
+    `capa_submission_date` TIMESTAMP COMMENT 'Actual date when the auditee submitted the CAPA plan or evidence of corrective actions taken.',
+    `closure_date` TIMESTAMP COMMENT 'Date when the audit was formally closed after all findings were addressed, CAPAs verified, and re-audit (if required) completed.',
     `conforming_items_count` STRING COMMENT 'Number of checklist items found to be in full conformance with the audit criteria.',
     `created_timestamp` TIMESTAMP COMMENT 'Timestamp when the audit record was first created in the system.',
     `duration_days` DECIMAL(18,2) COMMENT 'Total duration of the audit in days, calculated from actual start to actual end date.',
@@ -647,16 +648,16 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`quality`.`quality_audit` (
     `minor_ncr_count` STRING COMMENT 'Number of minor non-conformances identified during the audit. Minor NCRs represent isolated or less significant deviations that do not critically impact the QMS.',
     `objective` STRING COMMENT 'Statement of the audits purpose and intended outcomes, such as QMS conformance verification, process effectiveness assessment, supplier qualification, or compliance validation.',
     `observation_count` STRING COMMENT 'Number of observations or opportunities for improvement noted during the audit that do not constitute non-conformances but warrant attention.',
-    `planned_end_date` DATE COMMENT 'Scheduled end date for the audit as defined in the audit program or audit plan.',
-    `planned_start_date` DATE COMMENT 'Scheduled start date for the audit as defined in the audit program or audit plan.',
+    `planned_end_date` TIMESTAMP COMMENT 'Scheduled end date for the audit as defined in the audit program or audit plan.',
+    `planned_start_date` TIMESTAMP COMMENT 'Scheduled start date for the audit as defined in the audit program or audit plan.',
     `re_audit_required` BOOLEAN COMMENT 'Flag indicating whether a follow-up re-audit is required to verify the effectiveness of corrective actions or to address major non-conformances.',
-    `re_audit_scheduled_date` DATE COMMENT 'Scheduled date for the follow-up re-audit to verify corrective action effectiveness.',
+    `re_audit_scheduled_date` TIMESTAMP COMMENT 'Scheduled date for the follow-up re-audit to verify corrective action effectiveness.',
     `report_document_reference` STRING COMMENT 'Document management system reference or file path to the formal audit report document.',
-    `report_issued_date` DATE COMMENT 'Date when the formal audit report was issued and distributed to relevant stakeholders.',
+    `report_issued_date` TIMESTAMP COMMENT 'Date when the formal audit report was issued and distributed to relevant stakeholders.',
     `score` DECIMAL(18,2) COMMENT 'Numerical score or rating assigned to the audit based on conformance level, typically expressed as a percentage or on a defined scale (e.g., VDA 6.3 scoring).',
     `standard` STRING COMMENT 'The quality standard or framework against which the audit is conducted, such as ISO 9001:2015, IATF 16949, VDA 6.3, AS9100, ISO 13485, or customer-specific requirements.',
     `team_members` STRING COMMENT 'Comma-separated list of audit team member names or employee IDs participating in the audit alongside the lead auditor.',
-    `total_checklist_items` STRING COMMENT 'Total number of checklist items or audit criteria evaluated during the audit.',
+    `total_checklist_items` DECIMAL(18,2) COMMENT 'Total number of checklist items or audit criteria evaluated during the audit.',
     CONSTRAINT pk_quality_audit PRIMARY KEY(`quality_audit_id`)
 ) COMMENT 'Quality audit record documenting all scheduled and unscheduled audits regardless of target — internal departments, supplier facilities, subcontractor sites, or customer-mandated assessments. Captures audit type (system audit, process audit, product audit, layered process audit), target scope (internal department/process, supplier site, subcontractor, remote), audit program/schedule reference, checklist criteria and results, findings classification (major non-conformance, minor non-conformance, observation, opportunity for improvement), audit score/rating, auditor qualification and independence verification, evidence collected, corrective action requirements with CAPA linkage, re-audit schedule, and closure status. Supports ISO 9001 clause 9.2 (internal audit), clause 8.4 (externally provided processes — supplier control), VDA 6.3 process audit methodology, and SAP Ariba supplier qualification workflows.';
 
@@ -665,15 +666,15 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`quality`.`apqp_project` (
     `customer_account_id` BIGINT COMMENT 'Identifier of the customer for whom this APQP project is being executed. Links to the customer master.',
     `employee_id` BIGINT COMMENT 'Employee identifier of the program manager responsible for overall APQP project execution and coordination.',
     `sku_master_id` BIGINT COMMENT 'Identifier of the product or component being launched or changed under this APQP project.',
-    `actual_completion_date` DATE COMMENT 'Actual date when the APQP project was completed and all deliverables were approved.',
-    `actual_start_date` DATE COMMENT 'Actual date when the APQP project activities commenced.',
+    `actual_completion_date` TIMESTAMP COMMENT 'Actual date when the APQP project was completed and all deliverables were approved.',
+    `actual_start_date` TIMESTAMP COMMENT 'Actual date when the APQP project activities commenced.',
     `apqp_phase` STRING COMMENT 'Current APQP phase: Phase 1 (Plan and Define), Phase 2 (Product Design and Development), Phase 3 (Process Design and Development), Phase 4 (Product and Process Validation), Phase 5 (Feedback Assessment and Corrective Action).. Valid values are `phase_1|phase_2|phase_3|phase_4|phase_5`',
-    `control_plan_completion_date` DATE COMMENT 'Date when the control plan was completed and approved.',
+    `control_plan_completion_date` TIMESTAMP COMMENT 'Date when the control plan was completed and approved.',
     `control_plan_status` STRING COMMENT 'Completion status of the control plan deliverable, defining the process controls, inspection methods, and reaction plans for the manufacturing process.. Valid values are `not_started|in_progress|completed|approved`',
     `created_timestamp` TIMESTAMP COMMENT 'Timestamp when this APQP project record was first created in the system.',
     `cross_functional_team_members` STRING COMMENT 'Comma-separated list or text description of cross-functional team members involved in the APQP project (engineering, manufacturing, quality, supply chain, etc.).',
     `customer_approval_status` STRING COMMENT 'Overall customer approval status for the APQP project and production launch authorization.. Valid values are `pending|approved|conditional_approval|rejected`',
-    `design_fmea_completion_date` DATE COMMENT 'Date when the Design FMEA was completed and approved by the cross-functional team.',
+    `design_fmea_completion_date` TIMESTAMP COMMENT 'Date when the Design FMEA was completed and approved by the cross-functional team.',
     `design_fmea_status` STRING COMMENT 'Completion status of the Design FMEA deliverable, a critical Phase 2 output identifying potential design failure modes.. Valid values are `not_started|in_progress|completed|approved`',
     `gate_review_1_status` STRING COMMENT 'Status of the Phase 1 gate review, assessing readiness to proceed to product design and development.. Valid values are `not_started|scheduled|passed|failed|waived`',
     `gate_review_2_status` STRING COMMENT 'Status of the Phase 2 gate review, assessing product design completion and readiness for process design.. Valid values are `not_started|scheduled|passed|failed|waived`',
@@ -681,22 +682,22 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`quality`.`apqp_project` (
     `gate_review_4_status` STRING COMMENT 'Status of the Phase 4 gate review, assessing product and process validation completion and readiness for production launch.. Valid values are `not_started|scheduled|passed|failed|waived`',
     `last_modified_timestamp` TIMESTAMP COMMENT 'Timestamp when this APQP project record was last updated.',
     `lessons_learned_documented` BOOLEAN COMMENT 'Indicates whether lessons learned from this APQP project have been documented for continuous improvement (Phase 5 activity).',
-    `planned_completion_date` DATE COMMENT 'Target date for completing all APQP phases and achieving customer approval for production launch.',
-    `planned_start_date` DATE COMMENT 'Planned date for the APQP project to commence, typically aligned with the product development timeline.',
-    `ppap_approval_date` DATE COMMENT 'Date when the customer approved the PPAP submission, authorizing full production.',
-    `ppap_level` STRING COMMENT 'PPAP submission level required by the customer, ranging from Level 1 (warrant only) to Level 5 (full submission with samples and complete documentation).. Valid values are `level_1|level_2|level_3|level_4|level_5`',
+    `planned_completion_date` TIMESTAMP COMMENT 'Target date for completing all APQP phases and achieving customer approval for production launch.',
+    `planned_start_date` TIMESTAMP COMMENT 'Planned date for the APQP project to commence, typically aligned with the product development timeline.',
+    `ppap_approval_date` TIMESTAMP COMMENT 'Date when the customer approved the PPAP submission, authorizing full production.',
+    `ppap_level` DECIMAL(18,2) COMMENT 'PPAP submission level required by the customer, ranging from Level 1 (warrant only) to Level 5 (full submission with samples and complete documentation).',
     `ppap_status` STRING COMMENT 'Status of the PPAP submission and approval process, the final gate for customer approval to begin production.. Valid values are `not_started|in_progress|submitted|approved|rejected`',
-    `ppap_submission_date` DATE COMMENT 'Date when the PPAP package was submitted to the customer for approval.',
+    `ppap_submission_date` TIMESTAMP COMMENT 'Date when the PPAP package was submitted to the customer for approval.',
     `process_flow_diagram_status` STRING COMMENT 'Completion status of the process flow diagram deliverable, documenting the manufacturing process steps and sequence.. Valid values are `not_started|in_progress|completed|approved`',
-    `process_fmea_completion_date` DATE COMMENT 'Date when the Process FMEA was completed and approved by the cross-functional team.',
+    `process_fmea_completion_date` TIMESTAMP COMMENT 'Date when the Process FMEA was completed and approved by the cross-functional team.',
     `process_fmea_status` STRING COMMENT 'Completion status of the Process FMEA deliverable, a critical Phase 3 output identifying potential manufacturing process failure modes.. Valid values are `not_started|in_progress|completed|approved`',
     `project_name` STRING COMMENT 'Descriptive name of the APQP project, typically reflecting the product or component being launched.',
     `project_notes` STRING COMMENT 'Free-text field for capturing additional notes, issues, or context related to the APQP project execution.',
     `project_number` STRING COMMENT 'Business identifier for the APQP project, typically assigned by the quality or engineering department for external reference and tracking.',
     `project_status` STRING COMMENT 'Current lifecycle status of the APQP project indicating its progress through the quality planning process.. Valid values are `initiated|planning|in_progress|on_hold|completed|cancelled`',
     `project_type` STRING COMMENT 'Classification of the APQP project based on the nature of the change or launch being managed.. Valid values are `new_product|engineering_change|process_change|supplier_change|customer_request|cost_reduction`',
-    `risk_level` STRING COMMENT 'Overall risk assessment for the APQP project based on product complexity, process capability, and customer requirements.. Valid values are `low|medium|high|critical`',
-    `target_production_date` DATE COMMENT 'Planned date for the product to enter full production following successful APQP completion and customer approval.',
+    `risk_level` DECIMAL(18,2) COMMENT 'Overall risk assessment for the APQP project based on product complexity, process capability, and customer requirements.',
+    `target_production_date` TIMESTAMP COMMENT 'Planned date for the product to enter full production following successful APQP completion and customer approval.',
     CONSTRAINT pk_apqp_project PRIMARY KEY(`apqp_project_id`)
 ) COMMENT 'Advanced Product Quality Planning (APQP) project record managing the structured quality planning process for new product launches and engineering changes. Tracks APQP phase (1-5), project milestones, deliverable completion status (design FMEA, process flow, control plan, PPAP), gate review outcomes, responsible engineers, and customer approval status. Aligned with AIAG APQP 2nd Edition.';
 
@@ -708,29 +709,29 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`quality`.`compliance_test` (
     `employee_id` BIGINT COMMENT 'Employee identifier for the test engineer or quality engineer responsible for overseeing and validating the compliance test.',
     `applicable_standard` STRING COMMENT 'The regulatory standard, certification requirement, or industry specification that this compliance test is designed to verify, such as UL 508, IEC 61131, CE marking directives, or customer-specific qualification standards.',
     `batch_number` STRING COMMENT 'Manufacturing batch or lot number of the product or material tested, enabling traceability to specific production runs.',
-    `certificate_issued_date` DATE COMMENT 'Date on which the compliance certificate was officially issued by the certifying body or testing laboratory.',
+    `certificate_issued_date` TIMESTAMP COMMENT 'Date on which the compliance certificate was officially issued by the certifying body or testing laboratory.',
     `certificate_number` STRING COMMENT 'Unique identifier for the compliance certificate issued upon successful completion of the test, such as UL listing number, CE certificate number, or other regulatory certification identifier.',
-    `certificate_valid_from_date` DATE COMMENT 'Start date of the validity period for the compliance certificate, indicating when the certification becomes effective.',
-    `certificate_valid_until_date` DATE COMMENT 'End date of the validity period for the compliance certificate, after which re-testing or re-certification may be required.',
+    `certificate_valid_from_date` TIMESTAMP COMMENT 'Start date of the validity period for the compliance certificate, indicating when the certification becomes effective.',
+    `certificate_valid_until_date` TIMESTAMP COMMENT 'End date of the validity period for the compliance certificate, after which re-testing or re-certification may be required.',
     `corrective_action_required` BOOLEAN COMMENT 'Flag indicating whether corrective actions are required to address test failures or non-conformances before the product can be certified or released.',
     `created_timestamp` TIMESTAMP COMMENT 'Timestamp when the compliance test record was first created in the system, supporting audit trail and data lineage requirements.',
-    `customer_notification_date` DATE COMMENT 'Date on which the customer was formally notified of the compliance test results and any associated actions or implications.',
+    `customer_notification_date` TIMESTAMP COMMENT 'Date on which the customer was formally notified of the compliance test results and any associated actions or implications.',
     `customer_notification_required` BOOLEAN COMMENT 'Flag indicating whether the customer must be formally notified of the compliance test results, particularly in cases of failures or conditional passes.',
     `customer_specification_reference` STRING COMMENT 'Reference to customer-specific technical specifications, qualification requirements, or contractual testing obligations that this compliance test addresses.',
     `failure_description` STRING COMMENT 'Detailed description of any failures, non-conformances, or deviations observed during the compliance test, including specific failure modes and conditions.',
-    `laboratory_accreditation_number` STRING COMMENT 'Accreditation number or certification identifier for the testing laboratory, demonstrating its authorization to perform compliance testing under relevant standards.',
+    `laboratory_accreditation_number` DECIMAL(18,2) COMMENT 'Accreditation number or certification identifier for the testing laboratory, demonstrating its authorization to perform compliance testing under relevant standards.',
     `laboratory_name` STRING COMMENT 'Name of the specific laboratory or testing facility that performed the compliance test, including internal lab names or external accredited laboratory names.',
     `last_modified_timestamp` TIMESTAMP COMMENT 'Timestamp when the compliance test record was last updated, supporting change tracking and audit trail requirements.',
     `plant_code` STRING COMMENT 'Manufacturing plant or facility code where the tested product was produced, linking to the organizational structure.',
-    `ppap_submission_level` STRING COMMENT 'PPAP submission level associated with this compliance test, indicating the extent of documentation and testing required for customer approval in automotive or regulated industries.. Valid values are `level_1|level_2|level_3|level_4|level_5`',
+    `ppap_submission_level` DECIMAL(18,2) COMMENT 'PPAP submission level associated with this compliance test, indicating the extent of documentation and testing required for customer approval in automotive or regulated industries.',
     `product_description` STRING COMMENT 'Textual description of the product, component, or material being tested, providing context for the compliance test scope.',
     `regulation_reference` STRING COMMENT 'Specific regulatory requirement, directive, or legal framework reference that mandates this compliance test, including clause or section numbers where applicable.',
     `regulatory_impact_flag` BOOLEAN COMMENT 'Flag indicating whether this compliance test has regulatory implications that could affect product market authorization, safety certifications, or legal compliance status.',
     `remarks` STRING COMMENT 'Additional notes, observations, or comments related to the compliance test, including special conditions, deviations from standard procedures, or contextual information.',
     `retest_required` BOOLEAN COMMENT 'Flag indicating whether a retest is required due to test failure, conditional pass, certificate expiration, or product design changes.',
-    `retest_scheduled_date` DATE COMMENT 'Planned date for conducting a retest to address failures, verify corrective actions, or renew expired certifications.',
+    `retest_scheduled_date` TIMESTAMP COMMENT 'Planned date for conducting a retest to address failures, verify corrective actions, or renew expired certifications.',
     `serial_number` STRING COMMENT 'Unique serial number of the individual unit or sample subjected to compliance testing, providing item-level traceability.',
-    `test_completion_date` DATE COMMENT 'Date when the compliance test activities were completed and final results were determined.',
+    `test_completion_date` TIMESTAMP COMMENT 'Date when the compliance test activities were completed and final results were determined.',
     `test_conditions` STRING COMMENT 'Environmental and operational conditions under which the compliance test was performed, including temperature, humidity, voltage, frequency, load conditions, and any other relevant parameters.',
     `test_cost_amount` DECIMAL(18,2) COMMENT 'Total cost incurred for conducting the compliance test, including laboratory fees, material costs, and internal resource costs.',
     `test_cost_currency_code` STRING COMMENT 'Three-letter ISO 4217 currency code for the test cost amount, such as USD, EUR, or CNY.. Valid values are `^[A-Z]{3}$`',
@@ -741,7 +742,7 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`quality`.`compliance_test` (
     `test_report_number` STRING COMMENT 'Unique identifier for the formal test report document that contains detailed results, observations, and conclusions from the compliance test.',
     `test_result` STRING COMMENT 'Final outcome of the compliance test indicating whether the product or component passed, failed, conditionally passed, was not applicable, or is still in progress.. Valid values are `pass|fail|conditional|not_applicable|in_progress`',
     `test_scope` STRING COMMENT 'Detailed description of what is being tested, including the specific product components, assemblies, materials, or systems covered by this compliance test.',
-    `test_start_date` DATE COMMENT 'Date when the compliance test activities commenced at the testing laboratory or facility.',
+    `test_start_date` TIMESTAMP COMMENT 'Date when the compliance test activities commenced at the testing laboratory or facility.',
     `test_status` STRING COMMENT 'Current lifecycle status of the compliance test indicating whether it is planned, in progress, completed, passed, failed, or conditionally passed pending additional verification.. Valid values are `planned|in_progress|completed|passed|failed|conditional_pass`',
     `test_type` STRING COMMENT 'Category of compliance test performed, such as safety testing, electrical testing, environmental testing, mechanical testing, performance testing, electromagnetic compatibility (EMC), chemical analysis, or material testing. [ENUM-REF-CANDIDATE: safety|electrical|environmental|mechanical|performance|emc|chemical|material — 8 candidates stripped; promote to reference product]',
     CONSTRAINT pk_compliance_test PRIMARY KEY(`compliance_test_id`)
@@ -758,15 +759,15 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`quality`.`notification` (
     `primary_notification_reported_by_employee_id` BIGINT COMMENT 'Identifier of the employee who reported or created the quality notification. Links to human resources master data.',
     `supplier_id` BIGINT COMMENT 'Identifier of the supplier responsible for the defective material (for Q2 supplier defect notifications). Links to supplier master data.',
     `work_center_id` BIGINT COMMENT 'Identifier of the work center or production line where the quality issue occurred. Enables root cause analysis by location.',
-    `actual_closure_date` DATE COMMENT 'Actual date when the quality notification was closed. Used for performance measurement and cycle time analysis.',
+    `actual_closure_date` TIMESTAMP COMMENT 'Actual date when the quality notification was closed. Used for performance measurement and cycle time analysis.',
     `affected_quantity` DECIMAL(18,2) COMMENT 'Quantity of material or units affected by the quality issue. Used for impact assessment and containment planning.',
     `batch_number` STRING COMMENT 'Batch or lot number of the affected material. Critical for traceability, containment, and recall management.',
     `capa_required` BOOLEAN COMMENT 'Flag indicating whether a formal CAPA is required for this quality notification. Triggers CAPA workflow when true.',
     `containment_action` STRING COMMENT 'Immediate actions taken to contain the quality issue and prevent further impact (e.g., quarantine, production stop, customer notification, recall). Critical for risk mitigation.',
-    `containment_completed_date` DATE COMMENT 'Date when containment actions were completed and verified. Tracks response effectiveness.',
+    `containment_completed_date` TIMESTAMP COMMENT 'Date when containment actions were completed and verified. Tracks response effectiveness.',
     `created_timestamp` TIMESTAMP COMMENT 'Date and time when the quality notification record was first created in the system. Audit trail for record creation.',
     `customer_complaint_number` STRING COMMENT 'External complaint reference number provided by the customer. Used for cross-reference and customer communication.',
-    `customer_notification_date` DATE COMMENT 'Date when the customer was formally notified of the quality issue. Compliance and relationship management tracking.',
+    `customer_notification_date` TIMESTAMP COMMENT 'Date when the customer was formally notified of the quality issue. Compliance and relationship management tracking.',
     `customer_notification_required` BOOLEAN COMMENT 'Flag indicating whether customer notification is required for this quality issue. Triggers customer communication workflow.',
     `defect_category` STRING COMMENT 'High-level classification grouping of the defect type (e.g., dimensional, functional, cosmetic, material, assembly). Used for trend analysis and reporting.',
     `defect_code` STRING COMMENT 'Standardized code classifying the type of defect or quality issue. Links to defect catalog for consistent categorization and analysis.',
@@ -794,7 +795,7 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`quality`.`notification` (
     `root_cause_description` STRING COMMENT 'Detailed description of the identified root cause of the quality issue. Result of root cause analysis investigation.',
     `sales_order_number` STRING COMMENT 'Sales order number for customer-related quality issues. Links notification to order fulfillment context.',
     `serial_number` STRING COMMENT 'Serial number of the specific unit or equipment affected by the quality issue. Enables precise traceability for serialized items.',
-    `target_closure_date` DATE COMMENT 'Planned or target date for completing investigation and closing the quality notification. Used for SLA tracking and escalation.',
+    `target_closure_date` TIMESTAMP COMMENT 'Planned or target date for completing investigation and closing the quality notification. Used for SLA tracking and escalation.',
     `title` STRING COMMENT 'Brief summary or headline describing the quality issue. Used for quick identification and reporting.',
     `updated_timestamp` TIMESTAMP COMMENT 'Date and time of the most recent update to the quality notification record. Audit trail for change tracking.',
     CONSTRAINT pk_notification PRIMARY KEY(`notification_id`)
@@ -804,9 +805,10 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`quality`.`rma_disposition` (
     `rma_disposition_id` BIGINT COMMENT 'Unique identifier for the RMA disposition record. Primary key for tracking quality disposition decisions on returned products.',
     `customer_account_id` BIGINT COMMENT 'Identifier of the customer account that initiated the return. Links to the customer master data.',
     `employee_id` BIGINT COMMENT 'Employee identifier of the quality inspector who performed the incoming inspection and failure verification.',
-    `order_rma_id` BIGINT COMMENT 'add column order_rma_id (BIGINT) with FK to order.order_rma.order_rma_id - RMA dispositions must reference the originating RMA',
+    `ncr_id` BIGINT COMMENT '',
     `primary_rma_authority_employee_id` BIGINT COMMENT 'Employee identifier of the authorized person who made the disposition decision, ensuring accountability.',
-    `service_rma_id` BIGINT COMMENT 'add column service_rma_id (BIGINT) with FK to service.service_rma.service_rma_id - RMA dispositions should also link to service RMAs',
+    `request_id` BIGINT COMMENT '',
+    `sku_master_id` BIGINT COMMENT '',
     `stock_location_id` BIGINT COMMENT 'Foreign key linking to inventory.stock_location. Business justification: RMA disposition needs to reference the storage location where returned material is held, required for inventory reconciliation and warranty processing.',
     `supplier_id` BIGINT COMMENT 'Identifier of the supplier responsible for the defect, if supplier responsibility is confirmed.',
     `batch_number` STRING COMMENT 'Production batch or lot number of the returned product, used for batch-level quality analysis and potential recall actions.',
@@ -814,29 +816,42 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`quality`.`rma_disposition` (
     `created_timestamp` TIMESTAMP COMMENT 'System timestamp when this RMA disposition record was first created in the data system.',
     `credit_amount` DECIMAL(18,2) COMMENT 'Monetary credit amount issued to the customer if disposition was credit, in the transaction currency.',
     `credit_currency_code` STRING COMMENT 'Three-letter ISO 4217 currency code for the credit amount (e.g., USD, EUR, CNY).. Valid values are `^[A-Z]{3}$`',
+    `currency_code` STRING COMMENT '',
     `customer_reference_number` STRING COMMENT 'Customers own reference or tracking number for this return, used for cross-reference in customer communications.',
+    `disposition_code` STRING COMMENT '',
     `disposition_decision` STRING COMMENT 'Final disposition decision for the returned material, determining the action to be taken and financial impact. [ENUM-REF-CANDIDATE: repair|replace|scrap|credit|return_to_customer|use_as_is|rework — 7 candidates stripped; promote to reference product]',
+    `disposition_notes` STRING COMMENT '',
+    `disposition_reason` STRING COMMENT '',
+    `disposition_status` STRING COMMENT '',
     `disposition_timestamp` TIMESTAMP COMMENT 'Date and time when the disposition decision was made and authorized.',
+    `disposition_type` STRING COMMENT '',
     `failure_code_confirmed` STRING COMMENT 'Standardized failure code assigned by quality inspection based on actual findings, used for defect trending and FMEA analysis.',
     `failure_code_reported` STRING COMMENT 'Standardized failure code selected by customer or service representative at time of return initiation.',
     `failure_description_confirmed` STRING COMMENT 'Detailed description of the actual failure or defect as confirmed by quality inspection, which may differ from the customer-reported failure.',
     `failure_description_reported` STRING COMMENT 'Customers description of the failure or defect as reported at the time of RMA initiation.',
     `incoming_inspection_result` STRING COMMENT 'Result of the incoming quality inspection performed upon receipt of the returned product.. Valid values are `defect_confirmed|no_fault_found|different_defect|damaged_in_transit|incomplete_return`',
     `inspection_completed_date` DATE COMMENT 'Date when the incoming inspection and failure analysis were completed.',
+    `inspection_result` STRING COMMENT '',
+    `quantity_disposed` DECIMAL(18,2) COMMENT '',
     `quantity_returned` DECIMAL(18,2) COMMENT 'Number of units returned under this RMA. May be fractional for bulk materials measured by weight or volume.',
+    `quantity_uom` STRING COMMENT '',
+    `received_timestamp` TIMESTAMP COMMENT '',
     `receiving_plant_code` STRING COMMENT 'SAP plant code of the facility that received the returned material for inspection and disposition.',
     `receiving_warehouse_location` STRING COMMENT 'Specific warehouse location or storage bin where the returned material is held pending disposition.',
     `repair_action_performed` STRING COMMENT 'Description of the repair or rework actions performed on the returned product, if disposition was repair or rework.',
     `repair_completed_date` DATE COMMENT 'Date when repair or rework activities were completed and the product was ready for return or reuse.',
     `replacement_material_number` STRING COMMENT 'Material number of the replacement product sent to the customer, if disposition was replace.',
+    `replacement_order_number` STRING COMMENT '',
     `replacement_serial_number` STRING COMMENT 'Serial number of the replacement unit shipped to the customer, enabling traceability of the replacement.',
     `return_initiated_date` DATE COMMENT 'Date when the RMA was authorized and the return process was initiated by the customer or service team.',
+    `return_reason_code` STRING COMMENT '',
     `return_received_timestamp` TIMESTAMP COMMENT 'Date and time when the returned product was physically received at the inspection facility or warehouse.',
     `return_shipment_date` DATE COMMENT 'Date when the repaired or replacement product was shipped back to the customer.',
     `return_to_customer_status` STRING COMMENT 'Status of the return shipment to the customer for repaired or replaced products.. Valid values are `not_applicable|pending|shipped|delivered|cancelled`',
     `return_tracking_number` STRING COMMENT 'Carrier tracking number for the return shipment to the customer, enabling delivery confirmation.',
     `returned_material_description` STRING COMMENT 'Full text description of the returned material for human readability and reporting.',
     `returned_material_number` STRING COMMENT 'Material number (SKU) of the product being returned. References the product master in SAP MM.',
+    `returned_quantity` DECIMAL(18,2) COMMENT '',
     `rma_number` STRING COMMENT 'Business identifier for the return authorization. Externally-known reference number used by customers and service teams to track the return.. Valid values are `^RMA-[A-Z0-9]{8,12}$`',
     `rma_status` STRING COMMENT 'Current lifecycle status of the RMA process, tracking progression from initiation through final disposition. [ENUM-REF-CANDIDATE: initiated|in_transit|received|inspection_in_progress|disposition_complete|closed|cancelled — 7 candidates stripped; promote to reference product]',
     `rma_type` STRING COMMENT 'Classification of the return reason category, determining handling procedures and cost allocation.. Valid values are `warranty|non_warranty|field_service|customer_complaint|recall|goodwill`',
@@ -844,6 +859,7 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`quality`.`rma_disposition` (
     `root_cause_description` STRING COMMENT 'Detailed explanation of the root cause determined through failure analysis, supporting CAPA and continuous improvement.',
     `salesforce_case_reference` STRING COMMENT 'Reference to the originating service case in Salesforce Service Cloud that initiated this RMA.',
     `sap_qm_notification_number` STRING COMMENT 'Quality notification number generated in SAP QM module for tracking the quality issue associated with this RMA.. Valid values are `^[0-9]{10,12}$`',
+    `scrap_disposition_flag` BOOLEAN COMMENT '',
     `serial_number` STRING COMMENT 'Unique serial number of the specific unit being returned, enabling traceability to manufacturing batch and production history.',
     `supplier_responsibility_flag` BOOLEAN COMMENT 'Indicates whether the root cause is attributable to a supplier defect, triggering supplier quality notification and potential cost recovery.',
     `unit_of_measure` STRING COMMENT 'Unit of measure for the returned quantity (each, kilogram, meter, liter, etc.). [ENUM-REF-CANDIDATE: EA|KG|LB|M|FT|L|GAL|M2|M3 — 9 candidates stripped; promote to reference product]',
@@ -854,10 +870,15 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`quality`.`rma_disposition` (
 
 CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`quality`.`certificate_of_conformance` (
     `certificate_of_conformance_id` BIGINT COMMENT 'Primary key for certificate_of_conformance',
+    `employee_id` BIGINT COMMENT '',
     `customer_account_id` BIGINT COMMENT 'Identifier of the customer to whom this certificate is issued. Links to customer master data.',
     `inspection_lot_id` BIGINT COMMENT 'Foreign key linking to quality.inspection_lot. Business justification: Certificate of Conformance is issued for a specific Inspection Lot; replace string with FK.',
-    `employee_id` BIGINT COMMENT 'Employee identifier of the inspector who performed the quality inspection. Links to HR master data for competency verification.',
+    `inspector_employee_id` BIGINT COMMENT 'Employee identifier of the inspector who performed the quality inspection. Links to HR master data for competency verification.',
     `material_master_id` BIGINT COMMENT 'Identifier of the material or product for which this certificate is issued. Links to master material data.',
+    `shipment_id` BIGINT COMMENT '',
+    `sku_master_id` BIGINT COMMENT '',
+    `supplier_id` BIGINT COMMENT '',
+    `applicable_standard` STRING COMMENT '',
     `authorized_signatory_name` STRING COMMENT 'Name of the authorized person who signed and approved the certificate for release. Typically a quality manager or authorized representative.',
     `authorized_signatory_title` STRING COMMENT 'Job title or position of the authorized signatory (e.g., Quality Manager, Plant Manager, Authorized Representative).',
     `batch_number` STRING COMMENT 'Manufacturing batch or lot number for which this certificate applies. Critical for traceability and recall management.',
@@ -869,24 +890,32 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`quality`.`certificate_of_confor
     `created_timestamp` TIMESTAMP COMMENT 'Timestamp when this certificate record was first created in the system. Audit trail for record creation.',
     `customer_name` STRING COMMENT 'Name of the customer receiving this certificate. Denormalized for certificate document completeness.',
     `customer_order_number` STRING COMMENT 'Customers purchase order number or reference number for which this certificate is issued. Enables customer-side traceability.',
+    `customer_part_number` STRING COMMENT '',
     `customer_specific_requirements` STRING COMMENT 'Additional customer-specific requirements or clauses that must be included in the certificate per customer contract or specification.',
     `delivery_number` STRING COMMENT 'Shipment or delivery document number for the material covered by this certificate. Links certificate to logistics execution.',
     `digital_signature_reference` STRING COMMENT 'Identifier or hash of the digital signature applied to the certificate for authenticity and non-repudiation. Used for electronic certificates.',
     `document_url` STRING COMMENT 'URL or file path to the PDF or electronic document of the certificate stored in the document management system.',
+    `expiry_date` TIMESTAMP COMMENT '',
     `inspection_date` DATE COMMENT 'Date when the quality inspection or testing was performed for this certificate.',
     `inspector_name` STRING COMMENT 'Name of the quality inspector or technician who performed the inspection and testing.',
-    `issued_date` DATE COMMENT 'Date when the certificate was officially issued and released to the customer or recipient.',
+    `issue_date` TIMESTAMP COMMENT '',
+    `issued_date` TIMESTAMP COMMENT 'Date when the certificate was officially issued and released to the customer or recipient.',
     `issued_timestamp` TIMESTAMP COMMENT 'Precise timestamp when the certificate was officially issued, including time zone information for global traceability.',
     `lot_number` STRING COMMENT 'Production lot number associated with the certified material. May differ from batch number depending on manufacturing process.',
+    `lot_quantity` DECIMAL(18,2) COMMENT '',
     `material_description` STRING COMMENT 'Full description of the material or product covered by this certificate. Provides human-readable identification.',
     `material_number` STRING COMMENT 'Material number (SKU) of the product or material covered by this certificate. Corresponds to SAP material master.',
+    `material_specification` STRING COMMENT '',
+    `part_number` STRING COMMENT '',
     `plant_code` STRING COMMENT 'Manufacturing plant or facility code where the certified material was produced or inspected.',
     `plant_name` STRING COMMENT 'Full name of the manufacturing plant or facility that produced the certified material.',
-    `ppap_level` STRING COMMENT 'PPAP submission level if this certificate is part of a PPAP package. Levels 1-5 define the documentation requirements per AIAG PPAP standard.. Valid values are `Level_1|Level_2|Level_3|Level_4|Level_5|Not_Applicable`',
+    `ppap_level` DECIMAL(18,2) COMMENT 'PPAP submission level if this certificate is part of a PPAP package. Levels 1-5 define the documentation requirements per AIAG PPAP standard.',
     `ppap_submission_number` STRING COMMENT 'PPAP submission identifier if this certificate is part of a PPAP package submitted to the customer.',
     `production_order_number` STRING COMMENT 'Manufacturing order number under which the certified material was produced. Links certificate to production execution records.',
     `quantity_certified` DECIMAL(18,2) COMMENT 'Quantity of material covered by this certificate. Represents the amount tested and certified as conforming.',
+    `quantity_uom` STRING COMMENT '',
     `regulatory_compliance_statement` STRING COMMENT 'Statement of compliance with applicable regulatory requirements (e.g., RoHS, REACH, FDA, CE marking). Lists regulations the product conforms to.',
+    `regulatory_reference` STRING COMMENT '',
     `revision_date` DATE COMMENT 'Date of the most recent revision to this certificate. Null for initial issue.',
     `revision_number` STRING COMMENT 'Version number of the certificate. Increments with each revision or correction. Initial issue is typically 0 or 1.',
     `revision_reason` STRING COMMENT 'Explanation for why the certificate was revised. Documents the nature of corrections or updates made.',
@@ -895,7 +924,9 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`quality`.`certificate_of_confor
     `signature_date` DATE COMMENT 'Date when the authorized signatory signed and approved the certificate.',
     `specification_reference` STRING COMMENT 'Reference to the product specification, standard, or drawing against which conformance is certified (e.g., ASTM A36, DIN 1234, customer spec XYZ-001).',
     `specification_version` STRING COMMENT 'Version or revision of the specification document referenced. Ensures traceability to correct specification revision.',
+    `standard_reference` STRING COMMENT '',
     `test_method_reference` STRING COMMENT 'Reference to the test methods or standards used for inspection and testing (e.g., ASTM E8, ISO 6892, EN 10002). May list multiple methods.',
+    `test_report_number` STRING COMMENT '',
     `test_results_summary` STRING COMMENT 'Summary of key test results and measurements included in the certificate. May include chemical composition, mechanical properties, dimensional checks, etc.',
     `unit_of_measure` STRING COMMENT 'Unit of measure for the certified quantity (e.g., EA, KG, M, L). Follows ISO 31 or SAP UoM standards.',
     `updated_timestamp` TIMESTAMP COMMENT 'Timestamp when this certificate record was last modified. Audit trail for record changes.',
@@ -904,48 +935,76 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`quality`.`certificate_of_confor
 
 CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`quality`.`measurement_system` (
     `measurement_system_id` BIGINT COMMENT 'Unique system-generated identifier for the measurement system record.',
+    `calibration_standard_id` BIGINT COMMENT '',
     `control_system_id` BIGINT COMMENT 'Foreign key linking to automation.control_system. Business justification: Calibration traceability links each measurement system to the control system that consumes its data; needed for Calibration Compliance reports.',
     `cost_center_id` BIGINT COMMENT 'Foreign key linking to finance.cost_center. Business justification: Calibration and maintenance of measurement systems generate costs; linking to cost center enables equipment cost accounting.',
-    `employee_id` BIGINT COMMENT 'Identifier of the engineer responsible for the measurement systems performance and compliance.',
     `equipment_register_id` BIGINT COMMENT 'Foreign key linking to asset.equipment_register. Business justification: Connects measurement instruments to the asset they are installed on, required for calibration scheduling and traceability.',
+    `employee_id` BIGINT COMMENT 'Identifier of the engineer responsible for the measurement systems performance and compliance.',
+    `measurement_responsible_employee_id` BIGINT COMMENT '',
     `reference_measurement_system_id` BIGINT COMMENT 'Self-referencing FK on measurement_system (reference_measurement_system_id)',
     `regulatory_requirement_id` BIGINT COMMENT 'Foreign key linking to compliance.regulatory_requirement. Business justification: Measurement systems must be calibrated and validated against regulatory standards; the FK records the governing regulation.',
     `supplier_id` BIGINT COMMENT 'Foreign key linking to supplier.supplier. Business justification: Measurement System contracts and calibrations are managed per equipment supplier; linking supports supplier contract compliance and calibration schedule reporting.',
+    `acceptance_status` STRING COMMENT '',
     `asset_tag` STRING COMMENT 'Internal asset tag used for tracking within the enterprise asset management system.',
-    `calibration_certificate_number` STRING COMMENT 'Reference number of the calibration certificate issued by the lab.',
-    `calibration_interval_days` STRING COMMENT 'Planned number of days between mandatory calibrations.',
-    `calibration_lab` STRING COMMENT 'Name of the accredited laboratory that performed the calibration.',
-    `calibration_status` STRING COMMENT 'Current status of the calibration schedule.. Valid values are `calibrated|due|overdue|out_of_service`',
+    `bias_value` DECIMAL(18,2) COMMENT '',
+    `calibration_certificate_number` DECIMAL(18,2) COMMENT 'Reference number of the calibration certificate issued by the lab.',
+    `calibration_due_date` TIMESTAMP COMMENT '',
+    `calibration_interval_days` DECIMAL(18,2) COMMENT 'Planned number of days between mandatory calibrations.',
+    `calibration_lab` DECIMAL(18,2) COMMENT 'Name of the accredited laboratory that performed the calibration.',
+    `calibration_status` DECIMAL(18,2) COMMENT 'Current status of the calibration schedule.',
+    `created_timestamp` TIMESTAMP COMMENT '',
     `measurement_system_description` STRING COMMENT 'Detailed description of the measurement system purpose and application.',
     `effective_from` DATE COMMENT 'Date from which the measurement system is considered in service.',
     `effective_until` DATE COMMENT 'Date after which the measurement system is no longer in service (null if open‑ended).',
+    `gage_rr_percent` DECIMAL(18,2) COMMENT '',
+    `gauge_number` STRING COMMENT '',
     `gauge_rr_repeatability` DECIMAL(18,2) COMMENT 'Percentage repeatability component from the Gauge R&R study.',
     `gauge_rr_reproducibility` DECIMAL(18,2) COMMENT 'Percentage reproducibility component from the Gauge R&R study.',
     `gauge_rr_study_date` DATE COMMENT 'Date the most recent Gauge Repeatability & Reproducibility study was performed.',
     `gauge_rr_total_variation` DECIMAL(18,2) COMMENT 'Combined variation percentage from the Gauge R&R study.',
+    `gauge_type` STRING COMMENT '',
     `installation_date` DATE COMMENT 'Date the measurement system was installed and became operational.',
-    `last_calibration_date` DATE COMMENT 'Date the most recent calibration was performed.',
+    `is_capable` BOOLEAN COMMENT '',
+    `last_calibration_date` TIMESTAMP COMMENT 'Date the most recent calibration was performed.',
     `last_maintenance_date` DATE COMMENT 'Date the most recent preventive maintenance was performed.',
     `lifecycle_status` STRING COMMENT 'Current lifecycle state of the measurement system.. Valid values are `active|inactive|retired|decommissioned|maintenance`',
+    `linearity_value` DECIMAL(18,2) COMMENT '',
     `maintenance_interval_days` STRING COMMENT 'Planned number of days between preventive maintenance activities.',
     `maintenance_status` STRING COMMENT 'Current status of the maintenance schedule.. Valid values are `scheduled|completed|overdue|deferred`',
+    `measurement_range` STRING COMMENT '',
     `measurement_range_max` DECIMAL(18,2) COMMENT 'Highest value the system can accurately measure.',
     `measurement_range_min` DECIMAL(18,2) COMMENT 'Lowest value the system can accurately measure.',
     `measurement_uncertainty` STRING COMMENT 'Stated measurement uncertainty (e.g., ±0.02 mm) as defined by the calibration certificate.',
+    `measurement_unit` STRING COMMENT '',
     `model_number` STRING COMMENT 'Model number assigned by the manufacturer.',
     `msa_method` STRING COMMENT 'Methodology used for the MSA (e.g., Gauge R&R, Bias).. Valid values are `gauge_rr|attribute|bias|linearity|stability|repeatability`',
     `msa_result` STRING COMMENT 'Outcome of the MSA indicating whether the system meets acceptance criteria.. Valid values are `acceptable|unacceptable`',
     `msa_study_date` DATE COMMENT 'Date the most recent Measurement System Analysis was conducted.',
     `measurement_system_name` STRING COMMENT 'Human‑readable name of the measurement system.',
-    `next_calibration_due_date` DATE COMMENT 'Scheduled date for the next calibration based on the interval.',
+    `ndc_value` DECIMAL(18,2) COMMENT '',
+    `next_calibration_due_date` TIMESTAMP COMMENT 'Scheduled date for the next calibration based on the interval.',
     `next_maintenance_due_date` DATE COMMENT 'Scheduled date for the next preventive maintenance.',
+    `number_of_appraisers` STRING COMMENT '',
+    `number_of_parts` STRING COMMENT '',
+    `number_of_trials` STRING COMMENT '',
     `plant_code` STRING COMMENT 'Code of the plant where the measurement system is installed.',
     `record_created_timestamp` TIMESTAMP COMMENT 'Timestamp when the measurement system record was first created in the system.',
     `record_updated_timestamp` TIMESTAMP COMMENT 'Timestamp of the most recent update to the measurement system record.',
+    `repeatability_value` DECIMAL(18,2) COMMENT '',
+    `reproducibility_value` DECIMAL(18,2) COMMENT '',
+    `resolution_value` DECIMAL(18,2) COMMENT '',
     `serial_number` STRING COMMENT 'Unique serial number stamped on the device.',
+    `stability_status` STRING COMMENT '',
+    `stability_value` DECIMAL(18,2) COMMENT '',
+    `study_date` TIMESTAMP COMMENT '',
+    `study_method` STRING COMMENT '',
+    `study_status` STRING COMMENT '',
     `system_code` STRING COMMENT 'Enterprise-wide unique code assigned to the measurement system (e.g., MS-2023-001).',
+    `system_name` STRING COMMENT '',
+    `system_number` STRING COMMENT '',
     `system_type` STRING COMMENT 'Category of measurement technology used by the system.. Valid values are `gauge|laser|vision|ultrasonic|temperature|pressure`',
     `unit_of_measure` STRING COMMENT 'Physical unit used for the measurement output.. Valid values are `mm|in|µm|mm/s|psi|celsius`',
+    `updated_timestamp` TIMESTAMP COMMENT '',
     `work_center_code` STRING COMMENT 'Identifier of the work center or production line that uses the measurement system.',
     CONSTRAINT pk_measurement_system PRIMARY KEY(`measurement_system_id`)
 ) COMMENT 'Unified measurement system management record covering instrument calibration events, Gauge R&R studies, and measurement system analysis results for quality inspection equipment';
@@ -953,25 +1012,47 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`quality`.`measurement_system` (
 CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`quality`.`audit_program` (
     `audit_program_id` BIGINT COMMENT 'Primary key for audit_program',
     `employee_id` BIGINT COMMENT 'Identifier of the primary owner (person or role) responsible for the audit program.',
+    `org_unit_id` BIGINT COMMENT '',
+    `owner_employee_id` BIGINT COMMENT '',
     `parent_audit_program_id` BIGINT COMMENT 'Self-referencing FK on audit_program (parent_audit_program_id)',
+    `regulatory_requirement_id` BIGINT COMMENT '',
+    `approved_by` STRING COMMENT '',
+    `approved_date` TIMESTAMP COMMENT '',
     `associated_department` STRING COMMENT 'Business department responsible for owning or executing the audit program.',
     `audit_method` STRING COMMENT 'Methodology used to conduct the audit.',
     `audit_owner_role` STRING COMMENT 'Role of the audit owner within the organization.',
+    `completed_audit_count` STRING COMMENT '',
     `created_timestamp` TIMESTAMP COMMENT 'Timestamp when the audit program record was first created in the system.',
     `audit_program_description` STRING COMMENT 'Detailed description of the audit programs objectives, scope, and methodology.',
     `effective_end_date` DATE COMMENT 'Date when the audit program expires or is superseded; null if open‑ended.',
     `effective_start_date` DATE COMMENT 'Date when the audit program becomes effective and can be scheduled.',
+    `end_date` TIMESTAMP COMMENT '',
+    `fiscal_year` STRING COMMENT '',
+    `frequency` STRING COMMENT '',
     `frequency_unit` STRING COMMENT 'Time unit for the audit recurrence interval.',
-    `frequency_value` STRING COMMENT 'Numeric part of the audit recurrence interval (e.g., 3).',
+    `frequency_value` DECIMAL(18,2) COMMENT 'Numeric part of the audit recurrence interval (e.g., 3).',
     `is_mandatory` BOOLEAN COMMENT 'Indicates whether the audit program is mandatory for the applicable scope.',
     `audit_program_name` STRING COMMENT 'Human‑readable name of the audit program.',
     `notes` STRING COMMENT 'Free‑form field for any supplemental information or comments.',
+    `objective` STRING COMMENT '',
+    `period_end_date` TIMESTAMP COMMENT '',
+    `period_start_date` TIMESTAMP COMMENT '',
+    `planned_audit_count` STRING COMMENT '',
     `program_code` STRING COMMENT 'Business identifier or code used to reference the audit program in external systems.',
+    `program_description` STRING COMMENT '',
+    `program_name` STRING COMMENT '',
+    `program_number` STRING COMMENT '',
+    `program_scope` STRING COMMENT '',
+    `program_status` STRING COMMENT '',
     `program_type` STRING COMMENT 'Classification of the audit program indicating its purpose or origin.',
+    `program_year` STRING COMMENT '',
     `regulatory_standard` STRING COMMENT 'Regulatory or industry standard that the audit program is designed to satisfy.',
     `required_resources` STRING COMMENT 'Comma‑separated list of resources (personnel, equipment, tools) needed to execute the program.',
-    `risk_level` STRING COMMENT 'Risk classification assigned to the audit program based on impact and likelihood.',
+    `risk_level` DECIMAL(18,2) COMMENT 'Risk classification assigned to the audit program based on impact and likelihood.',
     `scope` STRING COMMENT 'Area or entity that the audit program covers.',
+    `standard` STRING COMMENT '',
+    `standard_reference` STRING COMMENT '',
+    `start_date` TIMESTAMP COMMENT '',
     `audit_program_status` STRING COMMENT 'Current lifecycle status of the audit program.',
     `updated_by` STRING COMMENT 'User identifier of the person who last updated the audit program record.',
     `updated_timestamp` TIMESTAMP COMMENT 'Timestamp of the most recent modification to the audit program record.',
@@ -982,14 +1063,22 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`quality`.`audit_program` (
 
 CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`quality`.`audit_checklist` (
     `audit_checklist_id` BIGINT COMMENT 'Primary key for audit_checklist',
+    `audit_program_id` BIGINT COMMENT '',
+    `employee_id` BIGINT COMMENT '',
     `parent_audit_checklist_id` BIGINT COMMENT 'Self-referencing FK on audit_checklist (parent_audit_checklist_id)',
-    `regulatory_requirement_id` BIGINT COMMENT 'add column regulatory_requirement_id (BIGINT) with FK to compliance.regulatory_requirement.regulatory_requirement_id - audit checklists are derived from regulatory requirements',
+    `regulatory_requirement_id` BIGINT COMMENT '',
     `applicable_process` STRING COMMENT 'Name of the manufacturing process or functional area to which the checklist applies.',
     `audit_result` STRING COMMENT 'Outcome of the audit (e.g., pass, fail, observations).',
     `audit_scope` STRING COMMENT 'Defines the boundaries (e.g., plant, line, equipment) covered by the checklist.',
     `audit_status` STRING COMMENT 'Current execution state of an audit using this checklist.',
     `audit_type` STRING COMMENT 'Nature of the audit (internal, external, or regulatory).',
     `audit_checklist_category` STRING COMMENT 'High‑level classification of the checklist (e.g., process, product, system, environment, safety).',
+    `checklist_name` STRING COMMENT '',
+    `checklist_number` STRING COMMENT '',
+    `checklist_status` STRING COMMENT '',
+    `checklist_type` STRING COMMENT '',
+    `checklist_version` STRING COMMENT '',
+    `clause_reference` STRING COMMENT '',
     `compliance_standard` STRING COMMENT 'Reference to the external standard or regulation the checklist supports (e.g., ISO 9001, ISO 14001).',
     `control_limit_lower` DECIMAL(18,2) COMMENT 'Lower statistical control limit for the measured parameter.',
     `control_limit_upper` DECIMAL(18,2) COMMENT 'Upper statistical control limit for the measured parameter.',
@@ -1002,21 +1091,32 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`quality`.`audit_checklist` (
     `effective_date` DATE COMMENT 'Date from which the checklist version becomes active.',
     `evidence_required` BOOLEAN COMMENT 'Specifies if supporting evidence must be attached to the audit record.',
     `evidence_type` STRING COMMENT 'Preferred format of evidence to be collected.',
-    `expiration_date` DATE COMMENT 'Date after which the checklist is retired (nullable).',
+    `expected_evidence` STRING COMMENT '',
+    `expiration_date` TIMESTAMP COMMENT 'Date after which the checklist is retired (nullable).',
+    `expiry_date` TIMESTAMP COMMENT '',
     `frequency` STRING COMMENT 'How often the checklist is required to be executed.',
     `is_archived` BOOLEAN COMMENT 'Indicates whether the checklist has been archived and is no longer active.',
     `is_mandatory` BOOLEAN COMMENT 'Indicates whether the checklist must be performed for the associated process.',
+    `item_count` STRING COMMENT '',
     `last_reviewed_date` DATE COMMENT 'Date when the checklist was last reviewed for relevance.',
+    `max_score` DECIMAL(18,2) COMMENT '',
     `measurement_unit` STRING COMMENT 'Unit of measure for any quantitative target in the checklist (e.g., mm, kg, %).',
     `audit_checklist_name` STRING COMMENT 'Human‑readable title of the audit checklist.',
     `notes` STRING COMMENT 'Free‑form field for any supplemental information.',
     `owner_department` STRING COMMENT 'Department that owns and maintains the checklist.',
+    `passing_score` DECIMAL(18,2) COMMENT '',
+    `question_category` STRING COMMENT '',
+    `question_text` STRING COMMENT '',
     `related_system` STRING COMMENT 'Name of the equipment, software, or system the checklist pertains to.',
     `responsible_role` STRING COMMENT 'Organizational role or job title accountable for performing the checklist.',
     `review_cycle_months` STRING COMMENT 'Number of months between mandatory reviews of the checklist.',
-    `risk_level` STRING COMMENT 'Risk rating associated with the checklist items.',
+    `revision_number` STRING COMMENT '',
+    `risk_level` DECIMAL(18,2) COMMENT 'Risk rating associated with the checklist items.',
     `sample_size` STRING COMMENT 'Number of items to be inspected per audit execution.',
     `sampling_method` STRING COMMENT 'Method used to select items for inspection within the checklist.',
+    `scoring_method` STRING COMMENT '',
+    `standard_clause` STRING COMMENT '',
+    `standard_reference` STRING COMMENT '',
     `statistical_control` BOOLEAN COMMENT 'Indicates whether statistical process control limits are applied.',
     `audit_checklist_status` STRING COMMENT 'Current lifecycle status of the checklist definition.',
     `target_value` DECIMAL(18,2) COMMENT 'Numeric target that must be met or not exceeded during the audit.',
@@ -1024,35 +1124,60 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`quality`.`audit_checklist` (
     `updated_by` STRING COMMENT 'User identifier of the person who last modified the checklist record.',
     `updated_timestamp` TIMESTAMP COMMENT 'Timestamp of the most recent modification to the checklist record.',
     `version` STRING COMMENT 'Version identifier for the checklist (e.g., v1.2).',
+    `weight_factor` DECIMAL(18,2) COMMENT '',
+    `weighting` DECIMAL(18,2) COMMENT '',
     `created_by` STRING COMMENT 'User identifier of the person who created the checklist record.',
     CONSTRAINT pk_audit_checklist PRIMARY KEY(`audit_checklist_id`)
 ) COMMENT 'Master reference table for audit_checklist. Referenced by checklist_id.';
 
 CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`quality`.`inspection_characteristic` (
     `inspection_characteristic_id` BIGINT COMMENT 'Primary key for inspection_characteristic',
+    `component_id` BIGINT COMMENT '',
+    `inspection_plan_id` BIGINT COMMENT '',
+    `measurement_system_id` BIGINT COMMENT '',
     `parent_inspection_characteristic_id` BIGINT COMMENT 'Self-referencing FK on inspection_characteristic (parent_inspection_characteristic_id)',
+    `characteristic_class` STRING COMMENT '',
+    `characteristic_code` STRING COMMENT '',
+    `characteristic_name` STRING COMMENT '',
+    `characteristic_number` STRING COMMENT '',
     `characteristic_type` STRING COMMENT 'Category of the characteristic indicating the nature of the measurement.',
     `inspection_characteristic_code` STRING COMMENT 'Unique alphanumeric code assigned by engineering to identify the characteristic across systems.',
+    `control_indicator` STRING COMMENT '',
     `created_timestamp` TIMESTAMP COMMENT 'Timestamp when the characteristic record was first created.',
-    `criticality_level` STRING COMMENT 'Impact level of the characteristic on product quality and compliance.',
+    `criticality_level` DECIMAL(18,2) COMMENT 'Impact level of the characteristic on product quality and compliance.',
     `data_collection_system` STRING COMMENT 'System that records the measurement data (e.g., MES, PLC, manual log).',
     `inspection_characteristic_description` STRING COMMENT 'Detailed description of what the characteristic measures and why it is important.',
     `effective_from` DATE COMMENT 'Date when the characteristic becomes valid for use.',
     `effective_until` DATE COMMENT 'Date when the characteristic is retired or superseded (null if open‑ended).',
     `frequency_per_shift` STRING COMMENT 'Number of times this characteristic is inspected each production shift.',
     `inspection_method` STRING COMMENT 'Method used to capture the characteristic (e.g., manual, automated sensor).',
+    `inspection_method_code` STRING COMMENT '',
+    `is_critical` BOOLEAN COMMENT '',
+    `is_critical_to_quality` BOOLEAN COMMENT '',
     `is_required` BOOLEAN COMMENT 'Indicates whether the characteristic must be inspected for every unit.',
+    `is_safety_characteristic` BOOLEAN COMMENT '',
     `is_statistical_process_control` BOOLEAN COMMENT 'True if the characteristic is used in SPC calculations (Cp/Cpk).',
     `lifecycle_status` STRING COMMENT 'Current status of the characteristic definition.',
     `lower_spec_limit` DECIMAL(18,2) COMMENT 'Minimum acceptable value for the characteristic.',
     `measurement_tool` STRING COMMENT 'Tool or equipment used to perform the measurement (e.g., caliper, laser scanner).',
     `measurement_unit` STRING COMMENT 'Unit of measure used for the characteristic (e.g., mm, °C, psi).',
     `inspection_characteristic_name` STRING COMMENT 'Human‑readable name of the inspection characteristic used in reports and work instructions.',
+    `nominal_value` DECIMAL(18,2) COMMENT '',
     `notes` STRING COMMENT 'Free‑form field for any supplemental information or remarks.',
+    `operation_number` DECIMAL(18,2) COMMENT '',
+    `sample_size` STRING COMMENT '',
     `sampling_plan` STRING COMMENT 'Definition of the sampling approach (e.g., 1‑in‑5, 100% inspection).',
+    `sampling_procedure` STRING COMMENT '',
+    `sampling_procedure_code` STRING COMMENT '',
+    `sequence_number` STRING COMMENT '',
+    `spc_enabled` BOOLEAN COMMENT '',
     `spec_source` STRING COMMENT 'Origin of the specification limits for the characteristic.',
+    `special_characteristic_code` STRING COMMENT '',
     `target_value` DECIMAL(18,2) COMMENT 'Nominal target value that the characteristic is expected to meet.',
     `tolerance` DECIMAL(18,2) COMMENT 'Allowed deviation from the target value, expressed in the same unit as measurement_unit.',
+    `tolerance_lower` DECIMAL(18,2) COMMENT '',
+    `tolerance_upper` DECIMAL(18,2) COMMENT '',
+    `unit_of_measure` STRING COMMENT '',
     `updated_timestamp` TIMESTAMP COMMENT 'Timestamp of the most recent update to the characteristic record.',
     `upper_spec_limit` DECIMAL(18,2) COMMENT 'Maximum acceptable value for the characteristic.',
     CONSTRAINT pk_inspection_characteristic PRIMARY KEY(`inspection_characteristic_id`)
@@ -1084,10 +1209,14 @@ ALTER TABLE `vibe_manufacturing_v1`.`quality`.`quality_audit` ADD CONSTRAINT `fk
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`compliance_test` ADD CONSTRAINT `fk_quality_compliance_test_capa_id` FOREIGN KEY (`capa_id`) REFERENCES `vibe_manufacturing_v1`.`quality`.`capa`(`capa_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`notification` ADD CONSTRAINT `fk_quality_notification_capa_id` FOREIGN KEY (`capa_id`) REFERENCES `vibe_manufacturing_v1`.`quality`.`capa`(`capa_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`notification` ADD CONSTRAINT `fk_quality_notification_ncr_id` FOREIGN KEY (`ncr_id`) REFERENCES `vibe_manufacturing_v1`.`quality`.`ncr`(`ncr_id`);
+ALTER TABLE `vibe_manufacturing_v1`.`quality`.`rma_disposition` ADD CONSTRAINT `fk_quality_rma_disposition_ncr_id` FOREIGN KEY (`ncr_id`) REFERENCES `vibe_manufacturing_v1`.`quality`.`ncr`(`ncr_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`certificate_of_conformance` ADD CONSTRAINT `fk_quality_certificate_of_conformance_inspection_lot_id` FOREIGN KEY (`inspection_lot_id`) REFERENCES `vibe_manufacturing_v1`.`quality`.`inspection_lot`(`inspection_lot_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`measurement_system` ADD CONSTRAINT `fk_quality_measurement_system_reference_measurement_system_id` FOREIGN KEY (`reference_measurement_system_id`) REFERENCES `vibe_manufacturing_v1`.`quality`.`measurement_system`(`measurement_system_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`audit_program` ADD CONSTRAINT `fk_quality_audit_program_parent_audit_program_id` FOREIGN KEY (`parent_audit_program_id`) REFERENCES `vibe_manufacturing_v1`.`quality`.`audit_program`(`audit_program_id`);
+ALTER TABLE `vibe_manufacturing_v1`.`quality`.`audit_checklist` ADD CONSTRAINT `fk_quality_audit_checklist_audit_program_id` FOREIGN KEY (`audit_program_id`) REFERENCES `vibe_manufacturing_v1`.`quality`.`audit_program`(`audit_program_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`audit_checklist` ADD CONSTRAINT `fk_quality_audit_checklist_parent_audit_checklist_id` FOREIGN KEY (`parent_audit_checklist_id`) REFERENCES `vibe_manufacturing_v1`.`quality`.`audit_checklist`(`audit_checklist_id`);
+ALTER TABLE `vibe_manufacturing_v1`.`quality`.`inspection_characteristic` ADD CONSTRAINT `fk_quality_inspection_characteristic_inspection_plan_id` FOREIGN KEY (`inspection_plan_id`) REFERENCES `vibe_manufacturing_v1`.`quality`.`inspection_plan`(`inspection_plan_id`);
+ALTER TABLE `vibe_manufacturing_v1`.`quality`.`inspection_characteristic` ADD CONSTRAINT `fk_quality_inspection_characteristic_measurement_system_id` FOREIGN KEY (`measurement_system_id`) REFERENCES `vibe_manufacturing_v1`.`quality`.`measurement_system`(`measurement_system_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`inspection_characteristic` ADD CONSTRAINT `fk_quality_inspection_characteristic_parent_inspection_characteristic_id` FOREIGN KEY (`parent_inspection_characteristic_id`) REFERENCES `vibe_manufacturing_v1`.`quality`.`inspection_characteristic`(`inspection_characteristic_id`);
 
 -- ========= TAGS =========
@@ -1134,8 +1263,9 @@ ALTER TABLE `vibe_manufacturing_v1`.`quality`.`inspection_plan` ALTER COLUMN `lo
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`inspection_plan` ALTER COLUMN `lower_tolerance_limit` SET TAGS ('dbx_business_glossary_term' = 'Lower Tolerance Limit (LTL)');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`inspection_plan` ALTER COLUMN `next_review_date` SET TAGS ('dbx_business_glossary_term' = 'Next Scheduled Review Date');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`inspection_plan` ALTER COLUMN `operation_number` SET TAGS ('dbx_business_glossary_term' = 'Inspection Operation Number');
-ALTER TABLE `vibe_manufacturing_v1`.`quality`.`inspection_plan` ALTER COLUMN `operation_number` SET TAGS ('dbx_value_regex' = '^[0-9]{4}$');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`inspection_plan` ALTER COLUMN `plan_name` SET TAGS ('dbx_business_glossary_term' = 'Inspection Plan Name');
+ALTER TABLE `vibe_manufacturing_v1`.`quality`.`inspection_plan` ALTER COLUMN `plan_name` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`quality`.`inspection_plan` ALTER COLUMN `plan_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`inspection_plan` ALTER COLUMN `plan_number` SET TAGS ('dbx_business_glossary_term' = 'Inspection Plan Number');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`inspection_plan` ALTER COLUMN `plan_number` SET TAGS ('dbx_value_regex' = '^QP-[A-Z0-9]{2,10}-[0-9]{4,8}$');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`inspection_plan` ALTER COLUMN `plan_status` SET TAGS ('dbx_business_glossary_term' = 'Inspection Plan Status');
@@ -1146,7 +1276,6 @@ ALTER TABLE `vibe_manufacturing_v1`.`quality`.`inspection_plan` ALTER COLUMN `pl
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`inspection_plan` ALTER COLUMN `plant_code` SET TAGS ('dbx_business_glossary_term' = 'Plant Code');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`inspection_plan` ALTER COLUMN `plant_code` SET TAGS ('dbx_value_regex' = '^[A-Z0-9]{4}$');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`inspection_plan` ALTER COLUMN `ppap_level` SET TAGS ('dbx_business_glossary_term' = 'Production Part Approval Process (PPAP) Level');
-ALTER TABLE `vibe_manufacturing_v1`.`quality`.`inspection_plan` ALTER COLUMN `ppap_level` SET TAGS ('dbx_value_regex' = '1|2|3|4|5');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`inspection_plan` ALTER COLUMN `product_group_code` SET TAGS ('dbx_business_glossary_term' = 'Product Group Code');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`inspection_plan` ALTER COLUMN `revision_reason` SET TAGS ('dbx_business_glossary_term' = 'Revision Reason');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`inspection_plan` ALTER COLUMN `sample_size` SET TAGS ('dbx_business_glossary_term' = 'Sample Size');
@@ -1194,7 +1323,6 @@ ALTER TABLE `vibe_manufacturing_v1`.`quality`.`inspection_lot` ALTER COLUMN `dis
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`inspection_lot` ALTER COLUMN `dynamic_modification_rule` SET TAGS ('dbx_business_glossary_term' = 'Dynamic Modification Rule');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`inspection_lot` ALTER COLUMN `inspection_end_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Inspection End Timestamp');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`inspection_lot` ALTER COLUMN `inspection_level` SET TAGS ('dbx_business_glossary_term' = 'Inspection Level');
-ALTER TABLE `vibe_manufacturing_v1`.`quality`.`inspection_lot` ALTER COLUMN `inspection_level` SET TAGS ('dbx_value_regex' = 'normal|tightened|reduced|skip');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`inspection_lot` ALTER COLUMN `inspection_method` SET TAGS ('dbx_business_glossary_term' = 'Inspection Method');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`inspection_lot` ALTER COLUMN `inspection_start_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Inspection Start Timestamp');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`inspection_lot` ALTER COLUMN `inspection_type_code` SET TAGS ('dbx_business_glossary_term' = 'Inspection Type Code');
@@ -1236,7 +1364,7 @@ ALTER TABLE `vibe_manufacturing_v1`.`quality`.`inspection_result` ALTER COLUMN `
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`inspection_result` ALTER COLUMN `project_header_id` SET TAGS ('dbx_business_glossary_term' = 'Project Header Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`inspection_result` ALTER COLUMN `purchase_order_id` SET TAGS ('dbx_business_glossary_term' = 'Purchase Order Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`inspection_result` ALTER COLUMN `quote_line_id` SET TAGS ('dbx_business_glossary_term' = 'Quote Line Id (Foreign Key)');
-ALTER TABLE `vibe_manufacturing_v1`.`quality`.`inspection_result` ALTER COLUMN `production_run_id` SET TAGS ('dbx_business_glossary_term' = 'Run Id (Foreign Key)');
+ALTER TABLE `vibe_manufacturing_v1`.`quality`.`inspection_result` ALTER COLUMN `run_id` SET TAGS ('dbx_business_glossary_term' = 'Run Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`inspection_result` ALTER COLUMN `request_id` SET TAGS ('dbx_business_glossary_term' = 'Service Request Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`inspection_result` ALTER COLUMN `sku_master_id` SET TAGS ('dbx_business_glossary_term' = 'Sku Master Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`inspection_result` ALTER COLUMN `work_center_id` SET TAGS ('dbx_business_glossary_term' = 'Work Center ID');
@@ -1283,7 +1411,7 @@ ALTER TABLE `vibe_manufacturing_v1`.`quality`.`inspection_result` ALTER COLUMN `
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`inspection_result` ALTER COLUMN `usage_decision_code` SET TAGS ('dbx_business_glossary_term' = 'Usage Decision Code (UD)');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`inspection_result` ALTER COLUMN `usage_decision_code` SET TAGS ('dbx_value_regex' = 'accept|reject|rework|scrap|conditional_release');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`ncr` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_manufacturing_v1`.`quality`.`ncr` SET TAGS ('dbx_subdomain' = 'nonconformance_resolution');
+ALTER TABLE `vibe_manufacturing_v1`.`quality`.`ncr` SET TAGS ('dbx_subdomain' = 'nonconformance_management');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`ncr` ALTER COLUMN `ncr_id` SET TAGS ('dbx_business_glossary_term' = 'Non-Conformance Report (NCR) ID');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`ncr` ALTER COLUMN `alarm_event_id` SET TAGS ('dbx_business_glossary_term' = 'Alarm Event Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`ncr` ALTER COLUMN `cost_center_id` SET TAGS ('dbx_business_glossary_term' = 'Cost Center Id (Foreign Key)');
@@ -1348,7 +1476,7 @@ ALTER TABLE `vibe_manufacturing_v1`.`quality`.`ncr` ALTER COLUMN `severity` SET 
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`ncr` ALTER COLUMN `target_closure_date` SET TAGS ('dbx_business_glossary_term' = 'Target Closure Date');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`ncr` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Last Updated Timestamp');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`capa` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_manufacturing_v1`.`quality`.`capa` SET TAGS ('dbx_subdomain' = 'nonconformance_resolution');
+ALTER TABLE `vibe_manufacturing_v1`.`quality`.`capa` SET TAGS ('dbx_subdomain' = 'nonconformance_management');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`capa` ALTER COLUMN `capa_id` SET TAGS ('dbx_business_glossary_term' = 'Corrective and Preventive Action (CAPA) ID');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`capa` ALTER COLUMN `automation_change_request_id` SET TAGS ('dbx_business_glossary_term' = 'Automation Change Request Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`capa` ALTER COLUMN `component_id` SET TAGS ('dbx_business_glossary_term' = 'Component Id (Foreign Key)');
@@ -1412,7 +1540,7 @@ ALTER TABLE `vibe_manufacturing_v1`.`quality`.`capa` ALTER COLUMN `source_type` 
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`capa` ALTER COLUMN `target_closure_date` SET TAGS ('dbx_business_glossary_term' = 'CAPA Target Closure Date');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`capa` ALTER COLUMN `title` SET TAGS ('dbx_business_glossary_term' = 'CAPA Title');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`fmea` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_manufacturing_v1`.`quality`.`fmea` SET TAGS ('dbx_subdomain' = 'process_assurance');
+ALTER TABLE `vibe_manufacturing_v1`.`quality`.`fmea` SET TAGS ('dbx_subdomain' = 'risk_planning');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`fmea` ALTER COLUMN `fmea_id` SET TAGS ('dbx_business_glossary_term' = 'Failure Mode and Effects Analysis (FMEA) ID');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`fmea` ALTER COLUMN `capa_id` SET TAGS ('dbx_business_glossary_term' = 'Corrective and Preventive Action (CAPA) ID');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`fmea` ALTER COLUMN `customer_account_id` SET TAGS ('dbx_business_glossary_term' = 'Customer ID');
@@ -1447,6 +1575,8 @@ ALTER TABLE `vibe_manufacturing_v1`.`quality`.`fmea` ALTER COLUMN `initiated_dat
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`fmea` ALTER COLUMN `last_review_date` SET TAGS ('dbx_business_glossary_term' = 'Last Review Date');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`fmea` ALTER COLUMN `occurrence_rating` SET TAGS ('dbx_business_glossary_term' = 'Occurrence (O) Rating');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`fmea` ALTER COLUMN `part_name` SET TAGS ('dbx_business_glossary_term' = 'Part Name');
+ALTER TABLE `vibe_manufacturing_v1`.`quality`.`fmea` ALTER COLUMN `part_name` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`quality`.`fmea` ALTER COLUMN `part_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`fmea` ALTER COLUMN `part_number` SET TAGS ('dbx_business_glossary_term' = 'Part Number');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`fmea` ALTER COLUMN `plant_code` SET TAGS ('dbx_business_glossary_term' = 'Plant Code');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`fmea` ALTER COLUMN `process_step` SET TAGS ('dbx_business_glossary_term' = 'Process Step');
@@ -1471,7 +1601,7 @@ ALTER TABLE `vibe_manufacturing_v1`.`quality`.`fmea` ALTER COLUMN `team_members`
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`fmea` ALTER COLUMN `title` SET TAGS ('dbx_business_glossary_term' = 'FMEA Title');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`fmea` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Updated Timestamp');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`control_plan` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_manufacturing_v1`.`quality`.`control_plan` SET TAGS ('dbx_subdomain' = 'process_assurance');
+ALTER TABLE `vibe_manufacturing_v1`.`quality`.`control_plan` SET TAGS ('dbx_subdomain' = 'inspection_control');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`control_plan` ALTER COLUMN `control_plan_id` SET TAGS ('dbx_business_glossary_term' = 'Control Plan ID');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`control_plan` ALTER COLUMN `control_system_id` SET TAGS ('dbx_business_glossary_term' = 'Control System Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`control_plan` ALTER COLUMN `cost_center_id` SET TAGS ('dbx_business_glossary_term' = 'Cost Center Id (Foreign Key)');
@@ -1491,6 +1621,8 @@ ALTER TABLE `vibe_manufacturing_v1`.`quality`.`control_plan` ALTER COLUMN `appro
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`control_plan` ALTER COLUMN `characteristic_class` SET TAGS ('dbx_business_glossary_term' = 'Characteristic Classification');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`control_plan` ALTER COLUMN `characteristic_class` SET TAGS ('dbx_value_regex' = 'critical|significant|major|minor');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`control_plan` ALTER COLUMN `characteristic_name` SET TAGS ('dbx_business_glossary_term' = 'Characteristic Name');
+ALTER TABLE `vibe_manufacturing_v1`.`quality`.`control_plan` ALTER COLUMN `characteristic_name` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`quality`.`control_plan` ALTER COLUMN `characteristic_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`control_plan` ALTER COLUMN `characteristic_number` SET TAGS ('dbx_business_glossary_term' = 'Characteristic Number');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`control_plan` ALTER COLUMN `characteristic_type` SET TAGS ('dbx_business_glossary_term' = 'Characteristic Type');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`control_plan` ALTER COLUMN `characteristic_type` SET TAGS ('dbx_value_regex' = 'variable|attribute');
@@ -1512,6 +1644,8 @@ ALTER TABLE `vibe_manufacturing_v1`.`quality`.`control_plan` ALTER COLUMN `lower
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`control_plan` ALTER COLUMN `measurement_method` SET TAGS ('dbx_business_glossary_term' = 'Measurement Method');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`control_plan` ALTER COLUMN `nominal_value` SET TAGS ('dbx_business_glossary_term' = 'Nominal Value');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`control_plan` ALTER COLUMN `part_name` SET TAGS ('dbx_business_glossary_term' = 'Part Name / Description');
+ALTER TABLE `vibe_manufacturing_v1`.`quality`.`control_plan` ALTER COLUMN `part_name` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`quality`.`control_plan` ALTER COLUMN `part_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`control_plan` ALTER COLUMN `part_number` SET TAGS ('dbx_business_glossary_term' = 'Part Number');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`control_plan` ALTER COLUMN `part_revision` SET TAGS ('dbx_business_glossary_term' = 'Part Revision Level');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`control_plan` ALTER COLUMN `part_revision` SET TAGS ('dbx_value_regex' = '^[A-Z0-9]{1,5}$');
@@ -1523,6 +1657,8 @@ ALTER TABLE `vibe_manufacturing_v1`.`quality`.`control_plan` ALTER COLUMN `plan_
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`control_plan` ALTER COLUMN `plan_type` SET TAGS ('dbx_value_regex' = 'prototype|pre-launch|production');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`control_plan` ALTER COLUMN `plant_code` SET TAGS ('dbx_business_glossary_term' = 'Plant Code');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`control_plan` ALTER COLUMN `process_step_name` SET TAGS ('dbx_business_glossary_term' = 'Process Step Name');
+ALTER TABLE `vibe_manufacturing_v1`.`quality`.`control_plan` ALTER COLUMN `process_step_name` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`quality`.`control_plan` ALTER COLUMN `process_step_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`control_plan` ALTER COLUMN `process_step_number` SET TAGS ('dbx_business_glossary_term' = 'Process Step Number');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`control_plan` ALTER COLUMN `reaction_plan` SET TAGS ('dbx_business_glossary_term' = 'Reaction Plan');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`control_plan` ALTER COLUMN `revision_number` SET TAGS ('dbx_business_glossary_term' = 'Revision Number');
@@ -1535,7 +1671,7 @@ ALTER TABLE `vibe_manufacturing_v1`.`quality`.`control_plan` ALTER COLUMN `upper
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`control_plan` ALTER COLUMN `upper_spec_limit` SET TAGS ('dbx_business_glossary_term' = 'Upper Specification Limit (USL)');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`control_plan` ALTER COLUMN `work_center_code` SET TAGS ('dbx_business_glossary_term' = 'Work Center Code');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`ppap_submission` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_manufacturing_v1`.`quality`.`ppap_submission` SET TAGS ('dbx_subdomain' = 'process_assurance');
+ALTER TABLE `vibe_manufacturing_v1`.`quality`.`ppap_submission` SET TAGS ('dbx_subdomain' = 'risk_planning');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`ppap_submission` ALTER COLUMN `ppap_submission_id` SET TAGS ('dbx_business_glossary_term' = 'Ppap Submission Identifier');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`ppap_submission` ALTER COLUMN `capa_id` SET TAGS ('dbx_business_glossary_term' = 'Capa Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`ppap_submission` ALTER COLUMN `cost_center_id` SET TAGS ('dbx_business_glossary_term' = 'Cost Center Id (Foreign Key)');
@@ -1561,6 +1697,9 @@ ALTER TABLE `vibe_manufacturing_v1`.`quality`.`ppap_submission` ALTER COLUMN `cp
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`ppap_submission` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`ppap_submission` ALTER COLUMN `customer_approval_date` SET TAGS ('dbx_business_glossary_term' = 'Customer Approval Date');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`ppap_submission` ALTER COLUMN `customer_approver_name` SET TAGS ('dbx_business_glossary_term' = 'Customer Approver Name');
+ALTER TABLE `vibe_manufacturing_v1`.`quality`.`ppap_submission` ALTER COLUMN `customer_approver_name` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`quality`.`ppap_submission` ALTER COLUMN `customer_approver_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`quality`.`ppap_submission` ALTER COLUMN `customer_approver_name` SET TAGS ('dbx_mask_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`ppap_submission` ALTER COLUMN `customer_part_number` SET TAGS ('dbx_business_glossary_term' = 'Customer Part Number');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`ppap_submission` ALTER COLUMN `customer_specific_requirements_status` SET TAGS ('dbx_business_glossary_term' = 'Customer-Specific Requirements Status');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`ppap_submission` ALTER COLUMN `customer_specific_requirements_status` SET TAGS ('dbx_value_regex' = 'met|not_met|not_applicable');
@@ -1578,6 +1717,8 @@ ALTER TABLE `vibe_manufacturing_v1`.`quality`.`ppap_submission` ALTER COLUMN `ma
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`ppap_submission` ALTER COLUMN `material_test_results_status` SET TAGS ('dbx_value_regex' = 'pass|fail|not_applicable');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`ppap_submission` ALTER COLUMN `msa_study_number` SET TAGS ('dbx_business_glossary_term' = 'Measurement System Analysis (MSA) Study Number');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`ppap_submission` ALTER COLUMN `part_name` SET TAGS ('dbx_business_glossary_term' = 'Part Name');
+ALTER TABLE `vibe_manufacturing_v1`.`quality`.`ppap_submission` ALTER COLUMN `part_name` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`quality`.`ppap_submission` ALTER COLUMN `part_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`ppap_submission` ALTER COLUMN `part_revision_level` SET TAGS ('dbx_business_glossary_term' = 'Part Revision Level');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`ppap_submission` ALTER COLUMN `pfmea_number` SET TAGS ('dbx_business_glossary_term' = 'Process Failure Mode and Effects Analysis (PFMEA) Number');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`ppap_submission` ALTER COLUMN `production_run_quantity` SET TAGS ('dbx_business_glossary_term' = 'Significant Production Run Quantity');
@@ -1599,7 +1740,7 @@ ALTER TABLE `vibe_manufacturing_v1`.`quality`.`ppap_submission` ALTER COLUMN `su
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`ppap_submission` ALTER COLUMN `submission_status` SET TAGS ('dbx_value_regex' = 'draft|submitted|under_review|approved|conditionally_approved|rejected');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`ppap_submission` ALTER COLUMN `tooling_number` SET TAGS ('dbx_business_glossary_term' = 'Tooling Number');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`supplier_quality_audit` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_manufacturing_v1`.`quality`.`supplier_quality_audit` SET TAGS ('dbx_subdomain' = 'audit_management');
+ALTER TABLE `vibe_manufacturing_v1`.`quality`.`supplier_quality_audit` SET TAGS ('dbx_subdomain' = 'audit_assurance');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`supplier_quality_audit` ALTER COLUMN `supplier_quality_audit_id` SET TAGS ('dbx_business_glossary_term' = 'Supplier Quality Audit ID');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`supplier_quality_audit` ALTER COLUMN `audit_checklist_id` SET TAGS ('dbx_business_glossary_term' = 'Audit Checklist ID');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`supplier_quality_audit` ALTER COLUMN `audit_plan_id` SET TAGS ('dbx_business_glossary_term' = 'Audit Plan ID');
@@ -1642,6 +1783,8 @@ ALTER TABLE `vibe_manufacturing_v1`.`quality`.`supplier_quality_audit` ALTER COL
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`supplier_quality_audit` ALTER COLUMN `iso_9001_clause_coverage` SET TAGS ('dbx_business_glossary_term' = 'ISO 9001 Clause Coverage');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`supplier_quality_audit` ALTER COLUMN `last_updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Last Updated Timestamp');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`supplier_quality_audit` ALTER COLUMN `lead_auditor_name` SET TAGS ('dbx_business_glossary_term' = 'Lead Auditor Name');
+ALTER TABLE `vibe_manufacturing_v1`.`quality`.`supplier_quality_audit` ALTER COLUMN `lead_auditor_name` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`quality`.`supplier_quality_audit` ALTER COLUMN `lead_auditor_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`supplier_quality_audit` ALTER COLUMN `major_ncr_count` SET TAGS ('dbx_business_glossary_term' = 'Major Non-Conformance Report (NCR) Count');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`supplier_quality_audit` ALTER COLUMN `minor_ncr_count` SET TAGS ('dbx_business_glossary_term' = 'Minor Non-Conformance Report (NCR) Count');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`supplier_quality_audit` ALTER COLUMN `observation_count` SET TAGS ('dbx_business_glossary_term' = 'Audit Observation Count');
@@ -1652,21 +1795,25 @@ ALTER TABLE `vibe_manufacturing_v1`.`quality`.`supplier_quality_audit` ALTER COL
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`supplier_quality_audit` ALTER COLUMN `re_audit_scheduled_date` SET TAGS ('dbx_business_glossary_term' = 'Re-Audit Scheduled Date');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`supplier_quality_audit` ALTER COLUMN `report_issued_date` SET TAGS ('dbx_business_glossary_term' = 'Audit Report Issued Date');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`supplier_quality_audit` ALTER COLUMN `supplier_contact_name` SET TAGS ('dbx_business_glossary_term' = 'Supplier Contact Name');
-ALTER TABLE `vibe_manufacturing_v1`.`quality`.`supplier_quality_audit` ALTER COLUMN `supplier_contact_name` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`quality`.`supplier_quality_audit` ALTER COLUMN `supplier_contact_name` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`quality`.`supplier_quality_audit` ALTER COLUMN `supplier_contact_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`supplier_quality_audit` ALTER COLUMN `supplier_facility_country` SET TAGS ('dbx_business_glossary_term' = 'Supplier Facility Country');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`supplier_quality_audit` ALTER COLUMN `supplier_facility_country` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`supplier_quality_audit` ALTER COLUMN `supplier_facility_name` SET TAGS ('dbx_business_glossary_term' = 'Supplier Facility Name');
+ALTER TABLE `vibe_manufacturing_v1`.`quality`.`supplier_quality_audit` ALTER COLUMN `supplier_facility_name` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`quality`.`supplier_quality_audit` ALTER COLUMN `supplier_facility_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`quality`.`supplier_quality_audit` ALTER COLUMN `supplier_facility_name` SET TAGS ('dbx_mask' = 'non_prod');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`supplier_quality_audit` ALTER COLUMN `supplier_qualification_level` SET TAGS ('dbx_business_glossary_term' = 'Supplier Qualification Level');
-ALTER TABLE `vibe_manufacturing_v1`.`quality`.`supplier_quality_audit` ALTER COLUMN `supplier_qualification_level` SET TAGS ('dbx_value_regex' = 'preferred|approved|conditional|probationary|disqualified');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`supplier_quality_audit` ALTER COLUMN `total_checklist_items` SET TAGS ('dbx_business_glossary_term' = 'Total Checklist Items');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`customer_complaint` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_manufacturing_v1`.`quality`.`customer_complaint` SET TAGS ('dbx_subdomain' = 'nonconformance_resolution');
+ALTER TABLE `vibe_manufacturing_v1`.`quality`.`customer_complaint` SET TAGS ('dbx_subdomain' = 'nonconformance_management');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`customer_complaint` ALTER COLUMN `customer_complaint_id` SET TAGS ('dbx_business_glossary_term' = 'Customer Complaint ID');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`customer_complaint` ALTER COLUMN `capa_id` SET TAGS ('dbx_business_glossary_term' = 'Corrective and Preventive Action (CAPA) ID');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`customer_complaint` ALTER COLUMN `customer_account_id` SET TAGS ('dbx_business_glossary_term' = 'Customer Account ID');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`customer_complaint` ALTER COLUMN `customer_contact_id` SET TAGS ('dbx_business_glossary_term' = 'Customer Contact ID');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`customer_complaint` ALTER COLUMN `line_id` SET TAGS ('dbx_business_glossary_term' = 'Order Line Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`customer_complaint` ALTER COLUMN `ncr_id` SET TAGS ('dbx_business_glossary_term' = 'Ncr Id (Foreign Key)');
+ALTER TABLE `vibe_manufacturing_v1`.`quality`.`customer_complaint` ALTER COLUMN `purchase_order_id` SET TAGS ('dbx_business_glossary_term' = 'Purchase Order Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`customer_complaint` ALTER COLUMN `regulatory_requirement_id` SET TAGS ('dbx_business_glossary_term' = 'Regulatory Requirement Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`customer_complaint` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Responsible Engineer Employee Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`customer_complaint` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
@@ -1721,10 +1868,9 @@ ALTER TABLE `vibe_manufacturing_v1`.`quality`.`customer_complaint` ALTER COLUMN 
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`customer_complaint` ALTER COLUMN `salesforce_case_number` SET TAGS ('dbx_business_glossary_term' = 'Salesforce Service Cloud Case Number');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`customer_complaint` ALTER COLUMN `sap_qn_number` SET TAGS ('dbx_business_glossary_term' = 'SAP Quality Management (QM) Quality Notification (QN) Number');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`customer_complaint` ALTER COLUMN `severity_level` SET TAGS ('dbx_business_glossary_term' = 'Complaint Severity Level');
-ALTER TABLE `vibe_manufacturing_v1`.`quality`.`customer_complaint` ALTER COLUMN `severity_level` SET TAGS ('dbx_value_regex' = 'critical|major|minor|observation');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`customer_complaint` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Last Updated Timestamp');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`spc` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_manufacturing_v1`.`quality`.`spc` SET TAGS ('dbx_subdomain' = 'process_assurance');
+ALTER TABLE `vibe_manufacturing_v1`.`quality`.`spc` SET TAGS ('dbx_subdomain' = 'inspection_control');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`spc` ALTER COLUMN `spc_id` SET TAGS ('dbx_business_glossary_term' = 'Spc Identifier');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`spc` ALTER COLUMN `control_plan_id` SET TAGS ('dbx_business_glossary_term' = 'Control Plan Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`spc` ALTER COLUMN `cost_center_id` SET TAGS ('dbx_business_glossary_term' = 'Cost Center Id (Foreign Key)');
@@ -1743,9 +1889,13 @@ ALTER TABLE `vibe_manufacturing_v1`.`quality`.`spc` ALTER COLUMN `center_line` S
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`spc` ALTER COLUMN `characteristic_criticality` SET TAGS ('dbx_business_glossary_term' = 'Characteristic Criticality Classification');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`spc` ALTER COLUMN `characteristic_criticality` SET TAGS ('dbx_value_regex' = 'critical|significant|major|minor');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`spc` ALTER COLUMN `characteristic_name` SET TAGS ('dbx_business_glossary_term' = 'Monitored Characteristic Name');
+ALTER TABLE `vibe_manufacturing_v1`.`quality`.`spc` ALTER COLUMN `characteristic_name` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`quality`.`spc` ALTER COLUMN `characteristic_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`spc` ALTER COLUMN `characteristic_type` SET TAGS ('dbx_business_glossary_term' = 'Characteristic Type');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`spc` ALTER COLUMN `characteristic_type` SET TAGS ('dbx_value_regex' = 'variable|attribute');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`spc` ALTER COLUMN `chart_name` SET TAGS ('dbx_business_glossary_term' = 'SPC Chart Name');
+ALTER TABLE `vibe_manufacturing_v1`.`quality`.`spc` ALTER COLUMN `chart_name` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`quality`.`spc` ALTER COLUMN `chart_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`spc` ALTER COLUMN `chart_number` SET TAGS ('dbx_business_glossary_term' = 'SPC Chart Number');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`spc` ALTER COLUMN `chart_number` SET TAGS ('dbx_value_regex' = '^SPC-[A-Z0-9]{3,10}-[0-9]{4,8}$');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`spc` ALTER COLUMN `chart_status` SET TAGS ('dbx_business_glossary_term' = 'SPC Chart Status');
@@ -1769,7 +1919,6 @@ ALTER TABLE `vibe_manufacturing_v1`.`quality`.`spc` ALTER COLUMN `nelson_rules_e
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`spc` ALTER COLUMN `out_of_control_action_plan` SET TAGS ('dbx_business_glossary_term' = 'Out-of-Control Action Plan (OCAP)');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`spc` ALTER COLUMN `pp_index` SET TAGS ('dbx_business_glossary_term' = 'Process Performance Index (Pp)');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`spc` ALTER COLUMN `ppap_submission_level` SET TAGS ('dbx_business_glossary_term' = 'Production Part Approval Process (PPAP) Submission Level');
-ALTER TABLE `vibe_manufacturing_v1`.`quality`.`spc` ALTER COLUMN `ppap_submission_level` SET TAGS ('dbx_value_regex' = 'level_1|level_2|level_3|level_4|level_5');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`spc` ALTER COLUMN `ppk_index` SET TAGS ('dbx_business_glossary_term' = 'Process Performance Index (Ppk)');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`spc` ALTER COLUMN `recalculation_trigger_count` SET TAGS ('dbx_business_glossary_term' = 'Control Limit Recalculation Trigger Count');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`spc` ALTER COLUMN `revision_number` SET TAGS ('dbx_business_glossary_term' = 'SPC Chart Revision Number');
@@ -1783,7 +1932,7 @@ ALTER TABLE `vibe_manufacturing_v1`.`quality`.`spc` ALTER COLUMN `upper_control_
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`spc` ALTER COLUMN `upper_spec_limit` SET TAGS ('dbx_business_glossary_term' = 'Upper Specification Limit (USL)');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`spc` ALTER COLUMN `western_electric_rules_enabled` SET TAGS ('dbx_business_glossary_term' = 'Western Electric Rules Enabled');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`quality_audit` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_manufacturing_v1`.`quality`.`quality_audit` SET TAGS ('dbx_subdomain' = 'audit_management');
+ALTER TABLE `vibe_manufacturing_v1`.`quality`.`quality_audit` SET TAGS ('dbx_subdomain' = 'audit_assurance');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`quality_audit` ALTER COLUMN `quality_audit_id` SET TAGS ('dbx_business_glossary_term' = 'Quality Audit ID');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`quality_audit` ALTER COLUMN `audit_checklist_id` SET TAGS ('dbx_business_glossary_term' = 'Checklist ID');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`quality_audit` ALTER COLUMN `audit_program_id` SET TAGS ('dbx_business_glossary_term' = 'Audit Program ID');
@@ -1810,13 +1959,16 @@ ALTER TABLE `vibe_manufacturing_v1`.`quality`.`quality_audit` ALTER COLUMN `audi
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`quality_audit` ALTER COLUMN `audited_entity_country` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`quality_audit` ALTER COLUMN `audited_entity_location` SET TAGS ('dbx_business_glossary_term' = 'Audited Entity Location');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`quality_audit` ALTER COLUMN `audited_entity_name` SET TAGS ('dbx_business_glossary_term' = 'Audited Entity Name');
+ALTER TABLE `vibe_manufacturing_v1`.`quality`.`quality_audit` ALTER COLUMN `audited_entity_name` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`quality`.`quality_audit` ALTER COLUMN `audited_entity_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`quality_audit` ALTER COLUMN `audited_entity_type` SET TAGS ('dbx_business_glossary_term' = 'Audited Entity Type');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`quality_audit` ALTER COLUMN `auditee_contact_email` SET TAGS ('dbx_business_glossary_term' = 'Auditee Contact Email');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`quality_audit` ALTER COLUMN `auditee_contact_email` SET TAGS ('dbx_value_regex' = '^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+.[a-zA-Z]{2,}$');
-ALTER TABLE `vibe_manufacturing_v1`.`quality`.`quality_audit` ALTER COLUMN `auditee_contact_email` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`quality`.`quality_audit` ALTER COLUMN `auditee_contact_email` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`quality`.`quality_audit` ALTER COLUMN `auditee_contact_email` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`quality_audit` ALTER COLUMN `auditee_contact_name` SET TAGS ('dbx_business_glossary_term' = 'Auditee Contact Name');
-ALTER TABLE `vibe_manufacturing_v1`.`quality`.`quality_audit` ALTER COLUMN `auditee_contact_name` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`quality`.`quality_audit` ALTER COLUMN `auditee_contact_name` SET TAGS ('dbx_pii_identifier' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`quality`.`quality_audit` ALTER COLUMN `auditee_contact_name` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`quality`.`quality_audit` ALTER COLUMN `auditee_contact_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`quality_audit` ALTER COLUMN `auditor_independence_verified` SET TAGS ('dbx_business_glossary_term' = 'Auditor Independence Verified');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`quality_audit` ALTER COLUMN `capa_due_date` SET TAGS ('dbx_business_glossary_term' = 'Corrective and Preventive Action (CAPA) Due Date');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`quality_audit` ALTER COLUMN `capa_required` SET TAGS ('dbx_business_glossary_term' = 'Corrective and Preventive Action (CAPA) Required');
@@ -1830,6 +1982,8 @@ ALTER TABLE `vibe_manufacturing_v1`.`quality`.`quality_audit` ALTER COLUMN `evid
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`quality_audit` ALTER COLUMN `findings_summary` SET TAGS ('dbx_business_glossary_term' = 'Findings Summary');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`quality_audit` ALTER COLUMN `last_modified_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Last Modified Timestamp');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`quality_audit` ALTER COLUMN `lead_auditor_name` SET TAGS ('dbx_business_glossary_term' = 'Lead Auditor Name');
+ALTER TABLE `vibe_manufacturing_v1`.`quality`.`quality_audit` ALTER COLUMN `lead_auditor_name` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`quality`.`quality_audit` ALTER COLUMN `lead_auditor_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`quality_audit` ALTER COLUMN `lead_auditor_qualification` SET TAGS ('dbx_business_glossary_term' = 'Lead Auditor Qualification');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`quality_audit` ALTER COLUMN `major_ncr_count` SET TAGS ('dbx_business_glossary_term' = 'Major Non-Conformance Report (NCR) Count');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`quality_audit` ALTER COLUMN `minor_ncr_count` SET TAGS ('dbx_business_glossary_term' = 'Minor Non-Conformance Report (NCR) Count');
@@ -1846,7 +2000,7 @@ ALTER TABLE `vibe_manufacturing_v1`.`quality`.`quality_audit` ALTER COLUMN `stan
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`quality_audit` ALTER COLUMN `team_members` SET TAGS ('dbx_business_glossary_term' = 'Audit Team Members');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`quality_audit` ALTER COLUMN `total_checklist_items` SET TAGS ('dbx_business_glossary_term' = 'Total Checklist Items');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`apqp_project` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_manufacturing_v1`.`quality`.`apqp_project` SET TAGS ('dbx_subdomain' = 'process_assurance');
+ALTER TABLE `vibe_manufacturing_v1`.`quality`.`apqp_project` SET TAGS ('dbx_subdomain' = 'risk_planning');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`apqp_project` ALTER COLUMN `apqp_project_id` SET TAGS ('dbx_business_glossary_term' = 'Advanced Product Quality Planning (APQP) Project ID');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`apqp_project` ALTER COLUMN `customer_account_id` SET TAGS ('dbx_business_glossary_term' = 'Customer ID');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`apqp_project` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Program Manager Employee ID');
@@ -1881,7 +2035,6 @@ ALTER TABLE `vibe_manufacturing_v1`.`quality`.`apqp_project` ALTER COLUMN `plann
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`apqp_project` ALTER COLUMN `planned_start_date` SET TAGS ('dbx_business_glossary_term' = 'Planned Start Date');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`apqp_project` ALTER COLUMN `ppap_approval_date` SET TAGS ('dbx_business_glossary_term' = 'PPAP Approval Date');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`apqp_project` ALTER COLUMN `ppap_level` SET TAGS ('dbx_business_glossary_term' = 'PPAP Submission Level');
-ALTER TABLE `vibe_manufacturing_v1`.`quality`.`apqp_project` ALTER COLUMN `ppap_level` SET TAGS ('dbx_value_regex' = 'level_1|level_2|level_3|level_4|level_5');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`apqp_project` ALTER COLUMN `ppap_status` SET TAGS ('dbx_business_glossary_term' = 'Production Part Approval Process (PPAP) Status');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`apqp_project` ALTER COLUMN `ppap_status` SET TAGS ('dbx_value_regex' = 'not_started|in_progress|submitted|approved|rejected');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`apqp_project` ALTER COLUMN `ppap_submission_date` SET TAGS ('dbx_business_glossary_term' = 'PPAP Submission Date');
@@ -1891,6 +2044,8 @@ ALTER TABLE `vibe_manufacturing_v1`.`quality`.`apqp_project` ALTER COLUMN `proce
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`apqp_project` ALTER COLUMN `process_fmea_status` SET TAGS ('dbx_business_glossary_term' = 'Process Failure Mode and Effects Analysis (PFMEA) Status');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`apqp_project` ALTER COLUMN `process_fmea_status` SET TAGS ('dbx_value_regex' = 'not_started|in_progress|completed|approved');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`apqp_project` ALTER COLUMN `project_name` SET TAGS ('dbx_business_glossary_term' = 'APQP Project Name');
+ALTER TABLE `vibe_manufacturing_v1`.`quality`.`apqp_project` ALTER COLUMN `project_name` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`quality`.`apqp_project` ALTER COLUMN `project_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`apqp_project` ALTER COLUMN `project_notes` SET TAGS ('dbx_business_glossary_term' = 'APQP Project Notes');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`apqp_project` ALTER COLUMN `project_number` SET TAGS ('dbx_business_glossary_term' = 'APQP Project Number');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`apqp_project` ALTER COLUMN `project_status` SET TAGS ('dbx_business_glossary_term' = 'APQP Project Status');
@@ -1898,10 +2053,9 @@ ALTER TABLE `vibe_manufacturing_v1`.`quality`.`apqp_project` ALTER COLUMN `proje
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`apqp_project` ALTER COLUMN `project_type` SET TAGS ('dbx_business_glossary_term' = 'APQP Project Type');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`apqp_project` ALTER COLUMN `project_type` SET TAGS ('dbx_value_regex' = 'new_product|engineering_change|process_change|supplier_change|customer_request|cost_reduction');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`apqp_project` ALTER COLUMN `risk_level` SET TAGS ('dbx_business_glossary_term' = 'APQP Project Risk Level');
-ALTER TABLE `vibe_manufacturing_v1`.`quality`.`apqp_project` ALTER COLUMN `risk_level` SET TAGS ('dbx_value_regex' = 'low|medium|high|critical');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`apqp_project` ALTER COLUMN `target_production_date` SET TAGS ('dbx_business_glossary_term' = 'Target Production Date');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`compliance_test` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_manufacturing_v1`.`quality`.`compliance_test` SET TAGS ('dbx_subdomain' = 'certification_compliance');
+ALTER TABLE `vibe_manufacturing_v1`.`quality`.`compliance_test` SET TAGS ('dbx_subdomain' = 'risk_planning');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`compliance_test` ALTER COLUMN `compliance_test_id` SET TAGS ('dbx_business_glossary_term' = 'Compliance Test ID');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`compliance_test` ALTER COLUMN `capa_id` SET TAGS ('dbx_business_glossary_term' = 'Corrective and Preventive Action (CAPA) ID');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`compliance_test` ALTER COLUMN `customer_account_id` SET TAGS ('dbx_business_glossary_term' = 'Customer ID');
@@ -1923,10 +2077,11 @@ ALTER TABLE `vibe_manufacturing_v1`.`quality`.`compliance_test` ALTER COLUMN `cu
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`compliance_test` ALTER COLUMN `failure_description` SET TAGS ('dbx_business_glossary_term' = 'Failure Description');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`compliance_test` ALTER COLUMN `laboratory_accreditation_number` SET TAGS ('dbx_business_glossary_term' = 'Laboratory Accreditation Number');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`compliance_test` ALTER COLUMN `laboratory_name` SET TAGS ('dbx_business_glossary_term' = 'Laboratory Name');
+ALTER TABLE `vibe_manufacturing_v1`.`quality`.`compliance_test` ALTER COLUMN `laboratory_name` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`quality`.`compliance_test` ALTER COLUMN `laboratory_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`compliance_test` ALTER COLUMN `last_modified_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Last Modified Timestamp');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`compliance_test` ALTER COLUMN `plant_code` SET TAGS ('dbx_business_glossary_term' = 'Plant Code');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`compliance_test` ALTER COLUMN `ppap_submission_level` SET TAGS ('dbx_business_glossary_term' = 'Production Part Approval Process (PPAP) Submission Level');
-ALTER TABLE `vibe_manufacturing_v1`.`quality`.`compliance_test` ALTER COLUMN `ppap_submission_level` SET TAGS ('dbx_value_regex' = 'level_1|level_2|level_3|level_4|level_5');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`compliance_test` ALTER COLUMN `product_description` SET TAGS ('dbx_business_glossary_term' = 'Product Description');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`compliance_test` ALTER COLUMN `regulation_reference` SET TAGS ('dbx_business_glossary_term' = 'Regulation Reference');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`compliance_test` ALTER COLUMN `regulatory_impact_flag` SET TAGS ('dbx_business_glossary_term' = 'Regulatory Impact Flag');
@@ -1941,6 +2096,8 @@ ALTER TABLE `vibe_manufacturing_v1`.`quality`.`compliance_test` ALTER COLUMN `te
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`compliance_test` ALTER COLUMN `test_cost_currency_code` SET TAGS ('dbx_business_glossary_term' = 'Test Cost Currency Code');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`compliance_test` ALTER COLUMN `test_cost_currency_code` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`compliance_test` ALTER COLUMN `test_engineer_name` SET TAGS ('dbx_business_glossary_term' = 'Test Engineer Name');
+ALTER TABLE `vibe_manufacturing_v1`.`quality`.`compliance_test` ALTER COLUMN `test_engineer_name` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`quality`.`compliance_test` ALTER COLUMN `test_engineer_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`compliance_test` ALTER COLUMN `test_laboratory` SET TAGS ('dbx_business_glossary_term' = 'Test Laboratory');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`compliance_test` ALTER COLUMN `test_laboratory` SET TAGS ('dbx_value_regex' = 'internal|external_accredited|customer_facility|third_party');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`compliance_test` ALTER COLUMN `test_number` SET TAGS ('dbx_business_glossary_term' = 'Test Number');
@@ -1954,7 +2111,7 @@ ALTER TABLE `vibe_manufacturing_v1`.`quality`.`compliance_test` ALTER COLUMN `te
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`compliance_test` ALTER COLUMN `test_status` SET TAGS ('dbx_value_regex' = 'planned|in_progress|completed|passed|failed|conditional_pass');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`compliance_test` ALTER COLUMN `test_type` SET TAGS ('dbx_business_glossary_term' = 'Test Type');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`notification` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_manufacturing_v1`.`quality`.`notification` SET TAGS ('dbx_subdomain' = 'nonconformance_resolution');
+ALTER TABLE `vibe_manufacturing_v1`.`quality`.`notification` SET TAGS ('dbx_subdomain' = 'nonconformance_management');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`notification` ALTER COLUMN `notification_id` SET TAGS ('dbx_business_glossary_term' = 'Notification Identifier');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`notification` ALTER COLUMN `capa_id` SET TAGS ('dbx_business_glossary_term' = 'Corrective and Preventive Action (CAPA) ID');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`notification` ALTER COLUMN `customer_account_id` SET TAGS ('dbx_business_glossary_term' = 'Customer ID');
@@ -1993,6 +2150,9 @@ ALTER TABLE `vibe_manufacturing_v1`.`quality`.`notification` ALTER COLUMN `notif
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`notification` ALTER COLUMN `notification_type` SET TAGS ('dbx_business_glossary_term' = 'Quality Notification Type');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`notification` ALTER COLUMN `notification_type` SET TAGS ('dbx_value_regex' = 'Q1|Q2|Q3|Q4|Q5|QA');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`notification` ALTER COLUMN `owner_name` SET TAGS ('dbx_business_glossary_term' = 'Owner Employee Name');
+ALTER TABLE `vibe_manufacturing_v1`.`quality`.`notification` ALTER COLUMN `owner_name` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`quality`.`notification` ALTER COLUMN `owner_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`quality`.`notification` ALTER COLUMN `owner_name` SET TAGS ('dbx_mask_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`notification` ALTER COLUMN `plant_code` SET TAGS ('dbx_business_glossary_term' = 'Plant Code');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`notification` ALTER COLUMN `priority` SET TAGS ('dbx_business_glossary_term' = 'Quality Notification Priority');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`notification` ALTER COLUMN `priority` SET TAGS ('dbx_value_regex' = 'critical|high|medium|low');
@@ -2002,6 +2162,8 @@ ALTER TABLE `vibe_manufacturing_v1`.`quality`.`notification` ALTER COLUMN `quali
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`notification` ALTER COLUMN `quantity_uom` SET TAGS ('dbx_business_glossary_term' = 'Quantity Unit of Measure (UOM)');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`notification` ALTER COLUMN `regulatory_impact_flag` SET TAGS ('dbx_business_glossary_term' = 'Regulatory Impact Flag');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`notification` ALTER COLUMN `reported_by_name` SET TAGS ('dbx_business_glossary_term' = 'Reported By Employee Name');
+ALTER TABLE `vibe_manufacturing_v1`.`quality`.`notification` ALTER COLUMN `reported_by_name` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`quality`.`notification` ALTER COLUMN `reported_by_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`notification` ALTER COLUMN `reported_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Reported Timestamp');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`notification` ALTER COLUMN `rma_number` SET TAGS ('dbx_business_glossary_term' = 'Return Material Authorization (RMA) Number');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`notification` ALTER COLUMN `root_cause_category` SET TAGS ('dbx_business_glossary_term' = 'Root Cause Category');
@@ -2012,7 +2174,7 @@ ALTER TABLE `vibe_manufacturing_v1`.`quality`.`notification` ALTER COLUMN `targe
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`notification` ALTER COLUMN `title` SET TAGS ('dbx_business_glossary_term' = 'Quality Notification Title');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`notification` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Updated Timestamp');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`rma_disposition` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_manufacturing_v1`.`quality`.`rma_disposition` SET TAGS ('dbx_subdomain' = 'nonconformance_resolution');
+ALTER TABLE `vibe_manufacturing_v1`.`quality`.`rma_disposition` SET TAGS ('dbx_subdomain' = 'nonconformance_management');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`rma_disposition` ALTER COLUMN `rma_disposition_id` SET TAGS ('dbx_business_glossary_term' = 'Return Material Authorization (RMA) Disposition ID');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`rma_disposition` ALTER COLUMN `customer_account_id` SET TAGS ('dbx_business_glossary_term' = 'Customer Account ID');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`rma_disposition` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Inspector Employee ID');
@@ -2070,15 +2232,19 @@ ALTER TABLE `vibe_manufacturing_v1`.`quality`.`rma_disposition` ALTER COLUMN `un
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`rma_disposition` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Updated Timestamp');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`rma_disposition` ALTER COLUMN `warranty_claim_flag` SET TAGS ('dbx_business_glossary_term' = 'Warranty Claim Flag');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`certificate_of_conformance` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_manufacturing_v1`.`quality`.`certificate_of_conformance` SET TAGS ('dbx_subdomain' = 'certification_compliance');
+ALTER TABLE `vibe_manufacturing_v1`.`quality`.`certificate_of_conformance` SET TAGS ('dbx_subdomain' = 'risk_planning');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`certificate_of_conformance` ALTER COLUMN `certificate_of_conformance_id` SET TAGS ('dbx_business_glossary_term' = 'Certificate Of Conformance Identifier');
-ALTER TABLE `vibe_manufacturing_v1`.`quality`.`certificate_of_conformance` ALTER COLUMN `customer_account_id` SET TAGS ('dbx_business_glossary_term' = 'Customer ID');
-ALTER TABLE `vibe_manufacturing_v1`.`quality`.`certificate_of_conformance` ALTER COLUMN `inspection_lot_id` SET TAGS ('dbx_business_glossary_term' = 'Inspection Lot Id (Foreign Key)');
-ALTER TABLE `vibe_manufacturing_v1`.`quality`.`certificate_of_conformance` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Inspector Employee ID');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`certificate_of_conformance` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`certificate_of_conformance` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`quality`.`certificate_of_conformance` ALTER COLUMN `customer_account_id` SET TAGS ('dbx_business_glossary_term' = 'Customer ID');
+ALTER TABLE `vibe_manufacturing_v1`.`quality`.`certificate_of_conformance` ALTER COLUMN `inspection_lot_id` SET TAGS ('dbx_business_glossary_term' = 'Inspection Lot Id (Foreign Key)');
+ALTER TABLE `vibe_manufacturing_v1`.`quality`.`certificate_of_conformance` ALTER COLUMN `inspector_employee_id` SET TAGS ('dbx_business_glossary_term' = 'Inspector Employee ID');
+ALTER TABLE `vibe_manufacturing_v1`.`quality`.`certificate_of_conformance` ALTER COLUMN `inspector_employee_id` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`quality`.`certificate_of_conformance` ALTER COLUMN `inspector_employee_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`certificate_of_conformance` ALTER COLUMN `material_master_id` SET TAGS ('dbx_business_glossary_term' = 'Material ID');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`certificate_of_conformance` ALTER COLUMN `authorized_signatory_name` SET TAGS ('dbx_business_glossary_term' = 'Authorized Signatory Name');
+ALTER TABLE `vibe_manufacturing_v1`.`quality`.`certificate_of_conformance` ALTER COLUMN `authorized_signatory_name` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`quality`.`certificate_of_conformance` ALTER COLUMN `authorized_signatory_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`certificate_of_conformance` ALTER COLUMN `authorized_signatory_title` SET TAGS ('dbx_business_glossary_term' = 'Authorized Signatory Title');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`certificate_of_conformance` ALTER COLUMN `batch_number` SET TAGS ('dbx_business_glossary_term' = 'Batch Number');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`certificate_of_conformance` ALTER COLUMN `certificate_language` SET TAGS ('dbx_business_glossary_term' = 'Certificate Language');
@@ -2092,6 +2258,10 @@ ALTER TABLE `vibe_manufacturing_v1`.`quality`.`certificate_of_conformance` ALTER
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`certificate_of_conformance` ALTER COLUMN `customer_name` SET TAGS ('dbx_business_glossary_term' = 'Customer Name');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`certificate_of_conformance` ALTER COLUMN `customer_name` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`certificate_of_conformance` ALTER COLUMN `customer_name` SET TAGS ('dbx_pii_identifier' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`quality`.`certificate_of_conformance` ALTER COLUMN `customer_name` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`quality`.`certificate_of_conformance` ALTER COLUMN `customer_name` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`quality`.`certificate_of_conformance` ALTER COLUMN `customer_name` SET TAGS ('dbx_mask' = 'non_prod');
+ALTER TABLE `vibe_manufacturing_v1`.`quality`.`certificate_of_conformance` ALTER COLUMN `customer_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`certificate_of_conformance` ALTER COLUMN `customer_order_number` SET TAGS ('dbx_business_glossary_term' = 'Customer Order Number');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`certificate_of_conformance` ALTER COLUMN `customer_specific_requirements` SET TAGS ('dbx_business_glossary_term' = 'Customer-Specific Requirements');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`certificate_of_conformance` ALTER COLUMN `delivery_number` SET TAGS ('dbx_business_glossary_term' = 'Delivery Number');
@@ -2099,6 +2269,8 @@ ALTER TABLE `vibe_manufacturing_v1`.`quality`.`certificate_of_conformance` ALTER
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`certificate_of_conformance` ALTER COLUMN `document_url` SET TAGS ('dbx_business_glossary_term' = 'Certificate Document URL');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`certificate_of_conformance` ALTER COLUMN `inspection_date` SET TAGS ('dbx_business_glossary_term' = 'Inspection Date');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`certificate_of_conformance` ALTER COLUMN `inspector_name` SET TAGS ('dbx_business_glossary_term' = 'Inspector Name');
+ALTER TABLE `vibe_manufacturing_v1`.`quality`.`certificate_of_conformance` ALTER COLUMN `inspector_name` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`quality`.`certificate_of_conformance` ALTER COLUMN `inspector_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`certificate_of_conformance` ALTER COLUMN `issued_date` SET TAGS ('dbx_business_glossary_term' = 'Certificate Issued Date');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`certificate_of_conformance` ALTER COLUMN `issued_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Certificate Issued Timestamp');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`certificate_of_conformance` ALTER COLUMN `lot_number` SET TAGS ('dbx_business_glossary_term' = 'Lot Number');
@@ -2106,8 +2278,9 @@ ALTER TABLE `vibe_manufacturing_v1`.`quality`.`certificate_of_conformance` ALTER
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`certificate_of_conformance` ALTER COLUMN `material_number` SET TAGS ('dbx_business_glossary_term' = 'Material Number');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`certificate_of_conformance` ALTER COLUMN `plant_code` SET TAGS ('dbx_business_glossary_term' = 'Plant Code');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`certificate_of_conformance` ALTER COLUMN `plant_name` SET TAGS ('dbx_business_glossary_term' = 'Plant Name');
+ALTER TABLE `vibe_manufacturing_v1`.`quality`.`certificate_of_conformance` ALTER COLUMN `plant_name` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`quality`.`certificate_of_conformance` ALTER COLUMN `plant_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`certificate_of_conformance` ALTER COLUMN `ppap_level` SET TAGS ('dbx_business_glossary_term' = 'Production Part Approval Process (PPAP) Level');
-ALTER TABLE `vibe_manufacturing_v1`.`quality`.`certificate_of_conformance` ALTER COLUMN `ppap_level` SET TAGS ('dbx_value_regex' = 'Level_1|Level_2|Level_3|Level_4|Level_5|Not_Applicable');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`certificate_of_conformance` ALTER COLUMN `ppap_submission_number` SET TAGS ('dbx_business_glossary_term' = 'Production Part Approval Process (PPAP) Submission Number');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`certificate_of_conformance` ALTER COLUMN `production_order_number` SET TAGS ('dbx_business_glossary_term' = 'Production Order Number');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`certificate_of_conformance` ALTER COLUMN `quantity_certified` SET TAGS ('dbx_business_glossary_term' = 'Quantity Certified');
@@ -2125,14 +2298,16 @@ ALTER TABLE `vibe_manufacturing_v1`.`quality`.`certificate_of_conformance` ALTER
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`certificate_of_conformance` ALTER COLUMN `unit_of_measure` SET TAGS ('dbx_business_glossary_term' = 'Unit of Measure (UoM)');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`certificate_of_conformance` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Updated Timestamp');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`measurement_system` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_manufacturing_v1`.`quality`.`measurement_system` SET TAGS ('dbx_subdomain' = 'certification_compliance');
+ALTER TABLE `vibe_manufacturing_v1`.`quality`.`measurement_system` SET TAGS ('dbx_subdomain' = 'inspection_control');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`measurement_system` ALTER COLUMN `measurement_system_id` SET TAGS ('dbx_business_glossary_term' = 'Measurement System Identifier');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`measurement_system` ALTER COLUMN `control_system_id` SET TAGS ('dbx_business_glossary_term' = 'Control System Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`measurement_system` ALTER COLUMN `cost_center_id` SET TAGS ('dbx_business_glossary_term' = 'Cost Center Id (Foreign Key)');
+ALTER TABLE `vibe_manufacturing_v1`.`quality`.`measurement_system` ALTER COLUMN `equipment_register_id` SET TAGS ('dbx_business_glossary_term' = 'Equipment Register Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`measurement_system` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Responsible Engineer Identifier');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`measurement_system` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`measurement_system` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`quality`.`measurement_system` ALTER COLUMN `equipment_register_id` SET TAGS ('dbx_business_glossary_term' = 'Equipment Register Id (Foreign Key)');
+ALTER TABLE `vibe_manufacturing_v1`.`quality`.`measurement_system` ALTER COLUMN `measurement_responsible_employee_id` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`quality`.`measurement_system` ALTER COLUMN `measurement_responsible_employee_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`measurement_system` ALTER COLUMN `reference_measurement_system_id` SET TAGS ('dbx_business_glossary_term' = 'Reference Measurement System Id');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`measurement_system` ALTER COLUMN `reference_measurement_system_id` SET TAGS ('dbx_self_ref_fk' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`measurement_system` ALTER COLUMN `regulatory_requirement_id` SET TAGS ('dbx_business_glossary_term' = 'Regulatory Requirement Id (Foreign Key)');
@@ -2142,7 +2317,6 @@ ALTER TABLE `vibe_manufacturing_v1`.`quality`.`measurement_system` ALTER COLUMN 
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`measurement_system` ALTER COLUMN `calibration_interval_days` SET TAGS ('dbx_business_glossary_term' = 'Calibration Interval (Days)');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`measurement_system` ALTER COLUMN `calibration_lab` SET TAGS ('dbx_business_glossary_term' = 'Calibration Laboratory');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`measurement_system` ALTER COLUMN `calibration_status` SET TAGS ('dbx_business_glossary_term' = 'Calibration Status');
-ALTER TABLE `vibe_manufacturing_v1`.`quality`.`measurement_system` ALTER COLUMN `calibration_status` SET TAGS ('dbx_value_regex' = 'calibrated|due|overdue|out_of_service');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`measurement_system` ALTER COLUMN `measurement_system_description` SET TAGS ('dbx_business_glossary_term' = 'Measurement System Description');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`measurement_system` ALTER COLUMN `effective_from` SET TAGS ('dbx_business_glossary_term' = 'Effective From Date');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`measurement_system` ALTER COLUMN `effective_until` SET TAGS ('dbx_business_glossary_term' = 'Effective Until Date');
@@ -2168,6 +2342,8 @@ ALTER TABLE `vibe_manufacturing_v1`.`quality`.`measurement_system` ALTER COLUMN 
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`measurement_system` ALTER COLUMN `msa_result` SET TAGS ('dbx_value_regex' = 'acceptable|unacceptable');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`measurement_system` ALTER COLUMN `msa_study_date` SET TAGS ('dbx_business_glossary_term' = 'MSA Study Date');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`measurement_system` ALTER COLUMN `measurement_system_name` SET TAGS ('dbx_business_glossary_term' = 'Measurement System Name');
+ALTER TABLE `vibe_manufacturing_v1`.`quality`.`measurement_system` ALTER COLUMN `measurement_system_name` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`quality`.`measurement_system` ALTER COLUMN `measurement_system_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`measurement_system` ALTER COLUMN `next_calibration_due_date` SET TAGS ('dbx_business_glossary_term' = 'Next Calibration Due Date');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`measurement_system` ALTER COLUMN `next_maintenance_due_date` SET TAGS ('dbx_business_glossary_term' = 'Next Maintenance Due Date');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`measurement_system` ALTER COLUMN `plant_code` SET TAGS ('dbx_business_glossary_term' = 'Plant Code');
@@ -2175,17 +2351,20 @@ ALTER TABLE `vibe_manufacturing_v1`.`quality`.`measurement_system` ALTER COLUMN 
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`measurement_system` ALTER COLUMN `record_updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Updated Timestamp');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`measurement_system` ALTER COLUMN `serial_number` SET TAGS ('dbx_business_glossary_term' = 'Serial Number');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`measurement_system` ALTER COLUMN `system_code` SET TAGS ('dbx_business_glossary_term' = 'Measurement System Code');
+ALTER TABLE `vibe_manufacturing_v1`.`quality`.`measurement_system` ALTER COLUMN `system_name` SET TAGS ('dbx_sensitivity' = 'pii');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`measurement_system` ALTER COLUMN `system_type` SET TAGS ('dbx_business_glossary_term' = 'Measurement System Type');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`measurement_system` ALTER COLUMN `system_type` SET TAGS ('dbx_value_regex' = 'gauge|laser|vision|ultrasonic|temperature|pressure');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`measurement_system` ALTER COLUMN `unit_of_measure` SET TAGS ('dbx_business_glossary_term' = 'Unit of Measure');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`measurement_system` ALTER COLUMN `unit_of_measure` SET TAGS ('dbx_value_regex' = 'mm|in|µm|mm/s|psi|celsius');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`measurement_system` ALTER COLUMN `work_center_code` SET TAGS ('dbx_business_glossary_term' = 'Work Center Code');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`audit_program` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_manufacturing_v1`.`quality`.`audit_program` SET TAGS ('dbx_subdomain' = 'audit_management');
+ALTER TABLE `vibe_manufacturing_v1`.`quality`.`audit_program` SET TAGS ('dbx_subdomain' = 'audit_assurance');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`audit_program` ALTER COLUMN `audit_program_id` SET TAGS ('dbx_business_glossary_term' = 'Audit Program Identifier');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`audit_program` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Employee Id');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`audit_program` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`audit_program` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`quality`.`audit_program` ALTER COLUMN `owner_employee_id` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`quality`.`audit_program` ALTER COLUMN `owner_employee_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`audit_program` ALTER COLUMN `parent_audit_program_id` SET TAGS ('dbx_business_glossary_term' = 'Parent Audit Program Id');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`audit_program` ALTER COLUMN `parent_audit_program_id` SET TAGS ('dbx_self_ref_fk' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`audit_program` ALTER COLUMN `associated_department` SET TAGS ('dbx_business_glossary_term' = 'Associated Department');
@@ -2199,8 +2378,11 @@ ALTER TABLE `vibe_manufacturing_v1`.`quality`.`audit_program` ALTER COLUMN `freq
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`audit_program` ALTER COLUMN `frequency_value` SET TAGS ('dbx_business_glossary_term' = 'Frequency Value');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`audit_program` ALTER COLUMN `is_mandatory` SET TAGS ('dbx_business_glossary_term' = 'Is Mandatory');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`audit_program` ALTER COLUMN `audit_program_name` SET TAGS ('dbx_business_glossary_term' = 'Name');
+ALTER TABLE `vibe_manufacturing_v1`.`quality`.`audit_program` ALTER COLUMN `audit_program_name` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`quality`.`audit_program` ALTER COLUMN `audit_program_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`audit_program` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Notes');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`audit_program` ALTER COLUMN `program_code` SET TAGS ('dbx_business_glossary_term' = 'Program Code');
+ALTER TABLE `vibe_manufacturing_v1`.`quality`.`audit_program` ALTER COLUMN `program_name` SET TAGS ('dbx_sensitivity' = 'pii');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`audit_program` ALTER COLUMN `program_type` SET TAGS ('dbx_business_glossary_term' = 'Program Type');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`audit_program` ALTER COLUMN `regulatory_standard` SET TAGS ('dbx_business_glossary_term' = 'Regulatory Standard');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`audit_program` ALTER COLUMN `required_resources` SET TAGS ('dbx_business_glossary_term' = 'Required Resources');
@@ -2212,8 +2394,10 @@ ALTER TABLE `vibe_manufacturing_v1`.`quality`.`audit_program` ALTER COLUMN `upda
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`audit_program` ALTER COLUMN `version_number` SET TAGS ('dbx_business_glossary_term' = 'Version Number');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`audit_program` ALTER COLUMN `created_by` SET TAGS ('dbx_business_glossary_term' = 'Created By');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`audit_checklist` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_manufacturing_v1`.`quality`.`audit_checklist` SET TAGS ('dbx_subdomain' = 'audit_management');
+ALTER TABLE `vibe_manufacturing_v1`.`quality`.`audit_checklist` SET TAGS ('dbx_subdomain' = 'audit_assurance');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`audit_checklist` ALTER COLUMN `audit_checklist_id` SET TAGS ('dbx_business_glossary_term' = 'Audit Checklist Identifier');
+ALTER TABLE `vibe_manufacturing_v1`.`quality`.`audit_checklist` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`quality`.`audit_checklist` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`audit_checklist` ALTER COLUMN `parent_audit_checklist_id` SET TAGS ('dbx_business_glossary_term' = 'Parent Audit Checklist Id');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`audit_checklist` ALTER COLUMN `parent_audit_checklist_id` SET TAGS ('dbx_self_ref_fk' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`audit_checklist` ALTER COLUMN `applicable_process` SET TAGS ('dbx_business_glossary_term' = 'Applicable Process');
@@ -2222,6 +2406,7 @@ ALTER TABLE `vibe_manufacturing_v1`.`quality`.`audit_checklist` ALTER COLUMN `au
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`audit_checklist` ALTER COLUMN `audit_status` SET TAGS ('dbx_business_glossary_term' = 'Audit Status');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`audit_checklist` ALTER COLUMN `audit_type` SET TAGS ('dbx_business_glossary_term' = 'Audit Type');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`audit_checklist` ALTER COLUMN `audit_checklist_category` SET TAGS ('dbx_business_glossary_term' = 'Category');
+ALTER TABLE `vibe_manufacturing_v1`.`quality`.`audit_checklist` ALTER COLUMN `checklist_name` SET TAGS ('dbx_sensitivity' = 'pii');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`audit_checklist` ALTER COLUMN `compliance_standard` SET TAGS ('dbx_business_glossary_term' = 'Compliance Standard');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`audit_checklist` ALTER COLUMN `control_limit_lower` SET TAGS ('dbx_business_glossary_term' = 'Control Limit Lower');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`audit_checklist` ALTER COLUMN `control_limit_upper` SET TAGS ('dbx_business_glossary_term' = 'Control Limit Upper');
@@ -2241,6 +2426,8 @@ ALTER TABLE `vibe_manufacturing_v1`.`quality`.`audit_checklist` ALTER COLUMN `is
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`audit_checklist` ALTER COLUMN `last_reviewed_date` SET TAGS ('dbx_business_glossary_term' = 'Last Reviewed Date');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`audit_checklist` ALTER COLUMN `measurement_unit` SET TAGS ('dbx_business_glossary_term' = 'Measurement Unit');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`audit_checklist` ALTER COLUMN `audit_checklist_name` SET TAGS ('dbx_business_glossary_term' = 'Name');
+ALTER TABLE `vibe_manufacturing_v1`.`quality`.`audit_checklist` ALTER COLUMN `audit_checklist_name` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`quality`.`audit_checklist` ALTER COLUMN `audit_checklist_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`audit_checklist` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Notes');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`audit_checklist` ALTER COLUMN `owner_department` SET TAGS ('dbx_business_glossary_term' = 'Owner Department');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`audit_checklist` ALTER COLUMN `related_system` SET TAGS ('dbx_business_glossary_term' = 'Related System');
@@ -2262,6 +2449,7 @@ ALTER TABLE `vibe_manufacturing_v1`.`quality`.`inspection_characteristic` SET TA
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`inspection_characteristic` ALTER COLUMN `inspection_characteristic_id` SET TAGS ('dbx_business_glossary_term' = 'Inspection Characteristic Identifier');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`inspection_characteristic` ALTER COLUMN `parent_inspection_characteristic_id` SET TAGS ('dbx_business_glossary_term' = 'Parent Inspection Characteristic Id');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`inspection_characteristic` ALTER COLUMN `parent_inspection_characteristic_id` SET TAGS ('dbx_self_ref_fk' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`quality`.`inspection_characteristic` ALTER COLUMN `characteristic_name` SET TAGS ('dbx_sensitivity' = 'pii');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`inspection_characteristic` ALTER COLUMN `characteristic_type` SET TAGS ('dbx_business_glossary_term' = 'Characteristic Type');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`inspection_characteristic` ALTER COLUMN `inspection_characteristic_code` SET TAGS ('dbx_business_glossary_term' = 'Code');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`inspection_characteristic` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
@@ -2279,6 +2467,8 @@ ALTER TABLE `vibe_manufacturing_v1`.`quality`.`inspection_characteristic` ALTER 
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`inspection_characteristic` ALTER COLUMN `measurement_tool` SET TAGS ('dbx_business_glossary_term' = 'Measurement Tool');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`inspection_characteristic` ALTER COLUMN `measurement_unit` SET TAGS ('dbx_business_glossary_term' = 'Measurement Unit');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`inspection_characteristic` ALTER COLUMN `inspection_characteristic_name` SET TAGS ('dbx_business_glossary_term' = 'Name');
+ALTER TABLE `vibe_manufacturing_v1`.`quality`.`inspection_characteristic` ALTER COLUMN `inspection_characteristic_name` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`quality`.`inspection_characteristic` ALTER COLUMN `inspection_characteristic_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`inspection_characteristic` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Notes');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`inspection_characteristic` ALTER COLUMN `sampling_plan` SET TAGS ('dbx_business_glossary_term' = 'Sampling Plan');
 ALTER TABLE `vibe_manufacturing_v1`.`quality`.`inspection_characteristic` ALTER COLUMN `spec_source` SET TAGS ('dbx_business_glossary_term' = 'Spec Source');

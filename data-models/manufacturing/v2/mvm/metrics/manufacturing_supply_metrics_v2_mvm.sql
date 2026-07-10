@@ -1,189 +1,74 @@
--- Metric views for domain: supply | Business: Manufacturing | Version: 2 | Generated on: 2026-07-10 14:42:54
-
-CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`supply_capacity_plan`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Capacity Plan business metrics"
-  source: "`vibe_manufacturing_v1`.`supply`.`capacity_plan`"
-  dimensions:
-    - name: "Capacity Category"
-      expr: capacity_category
-    - name: "Capacity Load Profile"
-      expr: capacity_load_profile
-    - name: "Capacity Source System"
-      expr: capacity_source_system
-    - name: "Capacity Unit"
-      expr: capacity_unit
-    - name: "Is Bottleneck"
-      expr: is_bottleneck
-    - name: "Last Mrp Run Date"
-      expr: last_mrp_run_date
-    - name: "Leveling Strategy"
-      expr: leveling_strategy
-    - name: "Mrp Controller"
-      expr: mrp_controller
-    - name: "Notes"
-      expr: notes
-    - name: "Plan Created Timestamp"
-      expr: plan_created_timestamp
-    - name: "Plan Status"
-      expr: plan_status
-    - name: "Plan Type"
-      expr: plan_type
-    - name: "Plan Updated Timestamp"
-      expr: plan_updated_timestamp
-    - name: "Planning Horizon"
-      expr: planning_horizon
-    - name: "Planning Period End Date"
-      expr: planning_period_end_date
-    - name: "Planning Period Start Date"
-      expr: planning_period_start_date
-  measures:
-    - name: "Row Count"
-      expr: COUNT(1)
-    - name: "Distinct Capacity Plan"
-      expr: COUNT(DISTINCT capacity_plan_id)
-    - name: "Total Available Capacity Hours"
-      expr: SUM(available_capacity_hours)
-    - name: "Average Available Capacity Hours"
-      expr: AVG(available_capacity_hours)
-    - name: "Total Capacity Buffer Hours"
-      expr: SUM(capacity_buffer_hours)
-    - name: "Average Capacity Buffer Hours"
-      expr: AVG(capacity_buffer_hours)
-    - name: "Total Capacity Utilization Rate"
-      expr: SUM(capacity_utilization_rate)
-    - name: "Average Capacity Utilization Rate"
-      expr: AVG(capacity_utilization_rate)
-    - name: "Total Critical Ratio"
-      expr: SUM(critical_ratio)
-    - name: "Average Critical Ratio"
-      expr: AVG(critical_ratio)
-    - name: "Total Efficiency Rate"
-      expr: SUM(efficiency_rate)
-    - name: "Average Efficiency Rate"
-      expr: AVG(efficiency_rate)
-    - name: "Total Leveling Adjustment Hours"
-      expr: SUM(leveling_adjustment_hours)
-    - name: "Average Leveling Adjustment Hours"
-      expr: AVG(leveling_adjustment_hours)
-    - name: "Total Overload Hours"
-      expr: SUM(overload_hours)
-    - name: "Average Overload Hours"
-      expr: AVG(overload_hours)
-    - name: "Total Planned Downtime Hours"
-      expr: SUM(planned_downtime_hours)
-    - name: "Average Planned Downtime Hours"
-      expr: AVG(planned_downtime_hours)
-    - name: "Total Queue Time Hours"
-      expr: SUM(queue_time_hours)
-    - name: "Average Queue Time Hours"
-      expr: AVG(queue_time_hours)
-    - name: "Total Required Capacity Hours"
-      expr: SUM(required_capacity_hours)
-    - name: "Average Required Capacity Hours"
-      expr: AVG(required_capacity_hours)
-    - name: "Total Run Time Hours"
-      expr: SUM(run_time_hours)
-    - name: "Average Run Time Hours"
-      expr: AVG(run_time_hours)
-    - name: "Total Setup Time Hours"
-      expr: SUM(setup_time_hours)
-    - name: "Average Setup Time Hours"
-      expr: AVG(setup_time_hours)
-$$;
+-- Metric views for domain: supply | Business: Manufacturing | Version: 2 | Generated on: 2026-07-03 07:46:30
 
 CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`supply_demand_forecast`
 WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Demand Forecast business metrics"
+  comment: "Demand forecast accuracy, bias, and volume metrics for planning and S&OP steering decisions."
   source: "`vibe_manufacturing_v1`.`supply`.`demand_forecast`"
   dimensions:
-    - name: "Approval Comments"
-      expr: approval_comments
-    - name: "Consensus Approval Date"
-      expr: consensus_approval_date
-    - name: "Created Timestamp"
-      expr: created_timestamp
-    - name: "Customer Segment Code"
-      expr: customer_segment_code
-    - name: "Demand Class"
-      expr: demand_class
-    - name: "Demand Pattern"
-      expr: demand_pattern
-    - name: "Forecast Consumption Flag"
-      expr: forecast_consumption_flag
-    - name: "Forecast Generation Timestamp"
-      expr: forecast_generation_timestamp
-    - name: "Forecast Horizon Days"
-      expr: forecast_horizon_days
-    - name: "Forecast Model Code"
-      expr: forecast_model_code
-    - name: "Forecast Model Name"
-      expr: forecast_model_name
-    - name: "Forecast Number"
-      expr: forecast_number
-    - name: "Forecast Status"
+    - name: "forecast_status"
       expr: forecast_status
-    - name: "Last Modified Timestamp"
-      expr: last_modified_timestamp
-    - name: "Mrp Area Code"
-      expr: mrp_area_code
-    - name: "Notes"
-      expr: notes
+      comment: "Current status of the forecast (e.g., draft, approved, rejected)."
+    - name: "forecast_model_name"
+      expr: forecast_model_name
+      comment: "Name of the forecasting model used (e.g., ARIMA, exponential smoothing)."
+    - name: "demand_class"
+      expr: demand_class
+      comment: "Classification of demand type (e.g., independent, dependent, service)."
+    - name: "demand_pattern"
+      expr: demand_pattern
+      comment: "Observed demand pattern (e.g., seasonal, trend, erratic, lumpy)."
+    - name: "customer_segment_code"
+      expr: customer_segment_code
+      comment: "Customer segment code for demand segmentation analysis."
+    - name: "scenario_name"
+      expr: scenario_name
+      comment: "Planning scenario name (e.g., baseline, optimistic, pessimistic)."
+    - name: "promotional_flag"
+      expr: promotional_flag
+      comment: "Indicates whether the forecast includes promotional uplift."
+    - name: "outlier_flag"
+      expr: outlier_flag
+      comment: "Flags forecasts identified as statistical outliers."
+    - name: "forecast_horizon_days"
+      expr: forecast_horizon_days
+      comment: "Forecast horizon in days (e.g., 30, 60, 90)."
+    - name: "planning_period_month"
+      expr: DATE_TRUNC('MONTH', planning_period_start_date)
+      comment: "Planning period start month for time-series analysis."
+    - name: "consensus_approval_month"
+      expr: DATE_TRUNC('MONTH', consensus_approval_date)
+      comment: "Month when consensus approval was granted."
   measures:
-    - name: "Row Count"
+    - name: "total_forecast_quantity"
+      expr: SUM(CAST(forecast_quantity AS DOUBLE))
+      comment: "Total forecasted demand quantity across all items and periods."
+    - name: "avg_forecast_accuracy_percent"
+      expr: AVG(CAST(forecast_accuracy_percent AS DOUBLE))
+      comment: "Average forecast accuracy percentage — key KPI for demand planning effectiveness."
+    - name: "avg_bias_percent"
+      expr: AVG(CAST(bias_percent AS DOUBLE))
+      comment: "Average forecast bias percentage — measures systematic over/under-forecasting."
+    - name: "avg_mape"
+      expr: AVG(CAST(mean_absolute_percentage_error AS DOUBLE))
+      comment: "Average Mean Absolute Percentage Error — standard forecast accuracy metric."
+    - name: "total_sales_adjustment_quantity"
+      expr: SUM(CAST(sales_adjustment_quantity AS DOUBLE))
+      comment: "Total manual sales adjustments applied to statistical forecasts."
+    - name: "avg_promotional_uplift_percent"
+      expr: AVG(CAST(promotional_uplift_percent AS DOUBLE))
+      comment: "Average promotional uplift percentage applied to base forecasts."
+    - name: "forecast_count"
       expr: COUNT(1)
-    - name: "Distinct Demand Forecast"
-      expr: COUNT(DISTINCT demand_forecast_id)
-    - name: "Total Bias Percent"
-      expr: SUM(bias_percent)
-    - name: "Average Bias Percent"
-      expr: AVG(bias_percent)
-    - name: "Total Confidence Interval Lower"
-      expr: SUM(confidence_interval_lower)
-    - name: "Average Confidence Interval Lower"
-      expr: AVG(confidence_interval_lower)
-    - name: "Total Confidence Interval Upper"
-      expr: SUM(confidence_interval_upper)
-    - name: "Average Confidence Interval Upper"
-      expr: AVG(confidence_interval_upper)
-    - name: "Total Confidence Level Percent"
-      expr: SUM(confidence_level_percent)
-    - name: "Average Confidence Level Percent"
-      expr: AVG(confidence_level_percent)
-    - name: "Total Forecast Accuracy Percent"
-      expr: SUM(forecast_accuracy_percent)
-    - name: "Average Forecast Accuracy Percent"
-      expr: AVG(forecast_accuracy_percent)
-    - name: "Total Forecast Quantity"
-      expr: SUM(forecast_quantity)
-    - name: "Average Forecast Quantity"
-      expr: AVG(forecast_quantity)
-    - name: "Total Mean Absolute Percentage Error"
-      expr: SUM(mean_absolute_percentage_error)
-    - name: "Average Mean Absolute Percentage Error"
-      expr: AVG(mean_absolute_percentage_error)
-    - name: "Total Promotional Uplift Percent"
-      expr: SUM(promotional_uplift_percent)
-    - name: "Average Promotional Uplift Percent"
-      expr: AVG(promotional_uplift_percent)
-    - name: "Total Sales Adjustment Quantity"
-      expr: SUM(sales_adjustment_quantity)
-    - name: "Average Sales Adjustment Quantity"
-      expr: AVG(sales_adjustment_quantity)
-    - name: "Total Seasonality Index"
-      expr: SUM(seasonality_index)
-    - name: "Average Seasonality Index"
-      expr: AVG(seasonality_index)
-    - name: "Total Trend Coefficient"
-      expr: SUM(trend_coefficient)
-    - name: "Average Trend Coefficient"
-      expr: AVG(trend_coefficient)
+      comment: "Total number of forecast records."
+    - name: "distinct_sku_count"
+      expr: COUNT(DISTINCT sku_master_id)
+      comment: "Number of distinct SKUs with active forecasts."
+    - name: "outlier_forecast_count"
+      expr: SUM(CASE WHEN outlier_flag = TRUE THEN 1 ELSE 0 END)
+      comment: "Count of forecasts flagged as outliers requiring review."
 $$;
 
 CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`supply_material_requirement`
@@ -191,90 +76,64 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Material Requirement business metrics"
+  comment: "MRP requirement planning metrics — net requirements, exceptions, and inventory balance KPIs for production and procurement decisions."
   source: "`vibe_manufacturing_v1`.`supply`.`material_requirement`"
   dimensions:
-    - name: "Abc Indicator"
-      expr: abc_indicator
-    - name: "Bom Explosion Date"
-      expr: bom_explosion_date
-    - name: "Created Timestamp"
-      expr: created_timestamp
-    - name: "Exception Message Code"
-      expr: exception_message_code
-    - name: "Exception Message Text"
-      expr: exception_message_text
-    - name: "Firming Date"
-      expr: firming_date
-    - name: "Goods Receipt Processing Time Days"
-      expr: goods_receipt_processing_time_days
-    - name: "In House Production Time Days"
-      expr: in_house_production_time_days
-    - name: "Last Modified Timestamp"
-      expr: last_modified_timestamp
-    - name: "Lot Size Key"
-      expr: lot_size_key
-    - name: "Mrp Controller"
-      expr: mrp_controller
-    - name: "Mrp Element Type"
+    - name: "requirement_status"
+      expr: requirement_status
+      comment: "Status of the material requirement (e.g., open, firmed, converted)."
+    - name: "mrp_element_type"
       expr: mrp_element_type
-    - name: "Mrp Run Timestamp"
-      expr: mrp_run_timestamp
-    - name: "Planned Delivery Time Days"
-      expr: planned_delivery_time_days
-    - name: "Planning Time Fence Days"
-      expr: planning_time_fence_days
-    - name: "Procurement Type"
+      comment: "Type of MRP element (e.g., planned order, purchase requisition, stock transfer)."
+    - name: "procurement_type"
       expr: procurement_type
+      comment: "Procurement type (e.g., in-house production, external procurement, both)."
+    - name: "abc_indicator"
+      expr: abc_indicator
+      comment: "ABC classification indicator for inventory prioritization."
+    - name: "exception_message_code"
+      expr: exception_message_code
+      comment: "MRP exception message code (e.g., reschedule in, reschedule out, cancel)."
+    - name: "plant_code"
+      expr: plant_code
+      comment: "Manufacturing plant or distribution center code."
+    - name: "mrp_controller"
+      expr: mrp_controller
+      comment: "MRP controller responsible for the material."
+    - name: "requirement_month"
+      expr: DATE_TRUNC('MONTH', requirement_date)
+      comment: "Month of the material requirement date."
+    - name: "lot_size_key"
+      expr: lot_size_key
+      comment: "Lot sizing procedure key (e.g., EX=lot-for-lot, FX=fixed lot size)."
   measures:
-    - name: "Row Count"
+    - name: "total_gross_requirement_quantity"
+      expr: SUM(CAST(gross_requirement_quantity AS DOUBLE))
+      comment: "Total gross material requirements before netting against available inventory."
+    - name: "total_net_requirement_quantity"
+      expr: SUM(CAST(net_requirement_quantity AS DOUBLE))
+      comment: "Total net material requirements after netting — drives procurement and production decisions."
+    - name: "total_planned_order_quantity"
+      expr: SUM(CAST(planned_order_quantity AS DOUBLE))
+      comment: "Total planned order quantity generated by MRP to cover net requirements."
+    - name: "total_scheduled_receipt_quantity"
+      expr: SUM(CAST(scheduled_receipt_quantity AS DOUBLE))
+      comment: "Total scheduled receipts (open orders) expected to arrive."
+    - name: "total_safety_stock_quantity"
+      expr: SUM(CAST(safety_stock_quantity AS DOUBLE))
+      comment: "Total safety stock quantity maintained across all materials."
+    - name: "avg_projected_available_balance"
+      expr: AVG(CAST(projected_available_balance AS DOUBLE))
+      comment: "Average projected available inventory balance after requirements and receipts."
+    - name: "requirement_count"
       expr: COUNT(1)
-    - name: "Distinct Material Requirement"
-      expr: COUNT(DISTINCT material_requirement_id)
-    - name: "Total Gross Requirement Quantity"
-      expr: SUM(gross_requirement_quantity)
-    - name: "Average Gross Requirement Quantity"
-      expr: AVG(gross_requirement_quantity)
-    - name: "Total Maximum Order Quantity"
-      expr: SUM(maximum_order_quantity)
-    - name: "Average Maximum Order Quantity"
-      expr: AVG(maximum_order_quantity)
-    - name: "Total Minimum Order Quantity"
-      expr: SUM(minimum_order_quantity)
-    - name: "Average Minimum Order Quantity"
-      expr: AVG(minimum_order_quantity)
-    - name: "Total Net Requirement Quantity"
-      expr: SUM(net_requirement_quantity)
-    - name: "Average Net Requirement Quantity"
-      expr: AVG(net_requirement_quantity)
-    - name: "Total Pegging Requirement Reference"
-      expr: SUM(pegging_requirement_reference)
-    - name: "Average Pegging Requirement Reference"
-      expr: AVG(pegging_requirement_reference)
-    - name: "Total Planned Order Quantity"
-      expr: SUM(planned_order_quantity)
-    - name: "Average Planned Order Quantity"
-      expr: AVG(planned_order_quantity)
-    - name: "Total Projected Available Balance"
-      expr: SUM(projected_available_balance)
-    - name: "Average Projected Available Balance"
-      expr: AVG(projected_available_balance)
-    - name: "Total Reorder Point Quantity"
-      expr: SUM(reorder_point_quantity)
-    - name: "Average Reorder Point Quantity"
-      expr: AVG(reorder_point_quantity)
-    - name: "Total Rounding Value"
-      expr: SUM(rounding_value)
-    - name: "Average Rounding Value"
-      expr: AVG(rounding_value)
-    - name: "Total Safety Stock Quantity"
-      expr: SUM(safety_stock_quantity)
-    - name: "Average Safety Stock Quantity"
-      expr: AVG(safety_stock_quantity)
-    - name: "Total Scheduled Receipt Quantity"
-      expr: SUM(scheduled_receipt_quantity)
-    - name: "Average Scheduled Receipt Quantity"
-      expr: AVG(scheduled_receipt_quantity)
+      comment: "Total number of material requirement records."
+    - name: "exception_count"
+      expr: SUM(CASE WHEN exception_message_code IS NOT NULL AND exception_message_code != '' THEN 1 ELSE 0 END)
+      comment: "Count of requirements with MRP exceptions requiring planner action."
+    - name: "distinct_material_count"
+      expr: COUNT(DISTINCT material_master_id)
+      comment: "Number of distinct materials with active requirements."
 $$;
 
 CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`supply_mrp_run`
@@ -282,168 +141,67 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Mrp Run business metrics"
+  comment: "MRP execution performance metrics — run duration, throughput, exception rates, and planning effectiveness KPIs."
   source: "`vibe_manufacturing_v1`.`supply`.`mrp_run`"
   dimensions:
-    - name: "Actual End Timestamp"
-      expr: actual_end_timestamp
-    - name: "Actual Start Timestamp"
-      expr: actual_start_timestamp
-    - name: "Bom Explosion Level"
-      expr: bom_explosion_level
-    - name: "Completion Notes"
-      expr: completion_notes
-    - name: "Created Timestamp"
-      expr: created_timestamp
-    - name: "Demand Time Fence Days"
-      expr: demand_time_fence_days
-    - name: "Error Messages Count"
-      expr: error_messages_count
-    - name: "Exception Messages Count"
-      expr: exception_messages_count
-    - name: "Include Forecast Flag"
-      expr: include_forecast_flag
-    - name: "Include Safety Stock Flag"
-      expr: include_safety_stock_flag
-    - name: "Include Wip Flag"
-      expr: include_wip_flag
-    - name: "Last Modified Timestamp"
-      expr: last_modified_timestamp
-    - name: "Lead Time Offset Days"
-      expr: lead_time_offset_days
-    - name: "Lot Sizing Rule"
+    - name: "run_status"
+      expr: run_status
+      comment: "Status of the MRP run (e.g., scheduled, running, completed, failed)."
+    - name: "run_type"
+      expr: run_type
+      comment: "Type of MRP run (e.g., regenerative, net change, single-level)."
+    - name: "planning_mode"
+      expr: planning_mode
+      comment: "Planning mode (e.g., make-to-stock, make-to-order, assemble-to-order)."
+    - name: "plant_code"
+      expr: plant_code
+      comment: "Plant code for which the MRP run was executed."
+    - name: "lot_sizing_rule"
       expr: lot_sizing_rule
-    - name: "Materials Processed Count"
-      expr: materials_processed_count
-    - name: "Planned Orders Cancelled Count"
-      expr: planned_orders_cancelled_count
+      comment: "Lot sizing rule applied during the run (e.g., lot-for-lot, fixed lot size, period lot size)."
+    - name: "safety_stock_method"
+      expr: safety_stock_method
+      comment: "Safety stock calculation method used (e.g., fixed, dynamic, service level)."
+    - name: "scheduling_method"
+      expr: scheduling_method
+      comment: "Scheduling method (e.g., forward, backward, lead time scheduling)."
+    - name: "run_month"
+      expr: DATE_TRUNC('MONTH', actual_start_timestamp)
+      comment: "Month when the MRP run was started."
+    - name: "include_forecast_flag"
+      expr: include_forecast_flag
+      comment: "Indicates whether demand forecasts were included in the run."
+    - name: "include_safety_stock_flag"
+      expr: include_safety_stock_flag
+      comment: "Indicates whether safety stock was considered in the run."
   measures:
-    - name: "Row Count"
+    - name: "avg_run_duration_minutes"
+      expr: AVG(CAST(run_duration_minutes AS DOUBLE))
+      comment: "Average MRP run duration in minutes — key performance indicator for planning system efficiency."
+    - name: "total_materials_processed"
+      expr: SUM(CAST(materials_processed_count AS DOUBLE))
+      comment: "Total number of materials processed across all MRP runs."
+    - name: "total_planned_orders_created"
+      expr: SUM(CAST(planned_orders_created_count AS DOUBLE))
+      comment: "Total planned orders created by MRP — measures planning output volume."
+    - name: "total_planned_orders_cancelled"
+      expr: SUM(CAST(planned_orders_cancelled_count AS DOUBLE))
+      comment: "Total planned orders cancelled by MRP — indicates demand volatility or planning instability."
+    - name: "total_planned_orders_rescheduled"
+      expr: SUM(CAST(planned_orders_rescheduled_count AS DOUBLE))
+      comment: "Total planned orders rescheduled by MRP — measures planning nervousness."
+    - name: "total_exception_messages"
+      expr: SUM(CAST(exception_messages_count AS DOUBLE))
+      comment: "Total exception messages generated — requires planner review and action."
+    - name: "total_error_messages"
+      expr: SUM(CAST(error_messages_count AS DOUBLE))
+      comment: "Total error messages generated — indicates data quality or configuration issues."
+    - name: "mrp_run_count"
       expr: COUNT(1)
-    - name: "Distinct Mrp Run"
-      expr: COUNT(DISTINCT mrp_run_id)
-$$;
-
-CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`supply_order_pegging`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Order Pegging business metrics"
-  source: "`vibe_manufacturing_v1`.`supply`.`order_pegging`"
-  dimensions:
-    - name: "Created Timestamp"
-      expr: created_timestamp
-    - name: "Last Modified Timestamp"
-      expr: last_modified_timestamp
-    - name: "Pegging Date"
-      expr: pegging_date
-    - name: "Pegging Level"
-      expr: pegging_level
-    - name: "Pegging Status"
-      expr: pegging_status
-    - name: "Pegging Type"
-      expr: pegging_type
-    - name: "Created Timestamp Month"
-      expr: DATE_TRUNC('MONTH', created_timestamp)
-    - name: "Last Modified Timestamp Month"
-      expr: DATE_TRUNC('MONTH', last_modified_timestamp)
-  measures:
-    - name: "Row Count"
-      expr: COUNT(1)
-    - name: "Distinct Order Pegging"
-      expr: COUNT(DISTINCT order_pegging_id)
-    - name: "Total Pegged Quantity"
-      expr: SUM(pegged_quantity)
-    - name: "Average Pegged Quantity"
-      expr: AVG(pegged_quantity)
-$$;
-
-CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`supply_plan`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Plan business metrics"
-  source: "`vibe_manufacturing_v1`.`supply`.`plan`"
-  dimensions:
-    - name: "Approval Timestamp"
-      expr: approval_timestamp
-    - name: "Created Timestamp"
-      expr: created_timestamp
-    - name: "Last Modified Timestamp"
-      expr: last_modified_timestamp
-    - name: "Lead Time Days"
-      expr: lead_time_days
-    - name: "Lot Sizing Procedure"
-      expr: lot_sizing_procedure
-    - name: "Material Group Code"
-      expr: material_group_code
-    - name: "Mrp Controller Code"
-      expr: mrp_controller_code
-    - name: "Notes"
-      expr: notes
-    - name: "Plan Number"
-      expr: plan_number
-    - name: "Plan Status"
-      expr: plan_status
-    - name: "Planning Horizon Days"
-      expr: planning_horizon_days
-    - name: "Planning Method"
-      expr: planning_method
-    - name: "Planning Period End Date"
-      expr: planning_period_end_date
-    - name: "Planning Period Start Date"
-      expr: planning_period_start_date
-    - name: "Planning Run Timestamp"
-      expr: planning_run_timestamp
-    - name: "Planning Strategy"
-      expr: planning_strategy
-  measures:
-    - name: "Row Count"
-      expr: COUNT(1)
-    - name: "Distinct Plan"
-      expr: COUNT(DISTINCT plan_id)
-    - name: "Total Capacity Utilization Percentage"
-      expr: SUM(capacity_utilization_percentage)
-    - name: "Average Capacity Utilization Percentage"
-      expr: AVG(capacity_utilization_percentage)
-    - name: "Total Demand Forecast Quantity"
-      expr: SUM(demand_forecast_quantity)
-    - name: "Average Demand Forecast Quantity"
-      expr: AVG(demand_forecast_quantity)
-    - name: "Total Maximum Lot Size"
-      expr: SUM(maximum_lot_size)
-    - name: "Average Maximum Lot Size"
-      expr: AVG(maximum_lot_size)
-    - name: "Total Minimum Lot Size"
-      expr: SUM(minimum_lot_size)
-    - name: "Average Minimum Lot Size"
-      expr: AVG(minimum_lot_size)
-    - name: "Total Planned Supply Quantity"
-      expr: SUM(planned_supply_quantity)
-    - name: "Average Planned Supply Quantity"
-      expr: AVG(planned_supply_quantity)
-    - name: "Total Reorder Point Quantity"
-      expr: SUM(reorder_point_quantity)
-    - name: "Average Reorder Point Quantity"
-      expr: AVG(reorder_point_quantity)
-    - name: "Total Rounding Value"
-      expr: SUM(rounding_value)
-    - name: "Average Rounding Value"
-      expr: AVG(rounding_value)
-    - name: "Total Safety Stock Quantity"
-      expr: SUM(safety_stock_quantity)
-    - name: "Average Safety Stock Quantity"
-      expr: AVG(safety_stock_quantity)
-    - name: "Total Variance Percentage"
-      expr: SUM(variance_percentage)
-    - name: "Average Variance Percentage"
-      expr: AVG(variance_percentage)
-    - name: "Total Variance Quantity"
-      expr: SUM(variance_quantity)
-    - name: "Average Variance Quantity"
-      expr: AVG(variance_quantity)
+      comment: "Total number of MRP runs executed."
+    - name: "completed_run_count"
+      expr: SUM(CASE WHEN run_status = 'completed' THEN 1 ELSE 0 END)
+      comment: "Count of successfully completed MRP runs."
 $$;
 
 CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`supply_planned_order`
@@ -451,74 +209,153 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Planned Order business metrics"
+  comment: "Planned order proposal metrics — volumes, lead times, capacity requirements, and conversion rates for production and procurement planning."
   source: "`vibe_manufacturing_v1`.`supply`.`planned_order`"
   dimensions:
-    - name: "Converted Order Number"
-      expr: converted_order_number
-    - name: "Converted Timestamp"
-      expr: converted_timestamp
-    - name: "Created Timestamp"
-      expr: created_timestamp
-    - name: "Deletion Flag"
-      expr: deletion_flag
-    - name: "Exception Code"
-      expr: exception_code
-    - name: "Exception Message"
-      expr: exception_message
-    - name: "Firmed Timestamp"
-      expr: firmed_timestamp
-    - name: "Firming Indicator"
-      expr: firming_indicator
-    - name: "Last Modified Timestamp"
-      expr: last_modified_timestamp
-    - name: "Lot Size Rule"
-      expr: lot_size_rule
-    - name: "Mrp Controller"
-      expr: mrp_controller
-    - name: "Multi Tier Supplier Flag"
-      expr: multi_tier_supplier_flag
-    - name: "Order Type"
+    - name: "proposal_status"
+      expr: proposal_status
+      comment: "Status of the planned order proposal (e.g., proposed, firmed, converted, deleted)."
+    - name: "order_type"
       expr: order_type
-    - name: "Planner Notes"
-      expr: planner_notes
-    - name: "Planner Override Date"
-      expr: planner_override_date
-    - name: "Planning Run Timestamp"
-      expr: planning_run_timestamp
+      comment: "Type of planned order (e.g., production order, purchase requisition, stock transfer)."
+    - name: "plant_code"
+      expr: plant_code
+      comment: "Plant code where the order is planned."
+    - name: "mrp_controller"
+      expr: mrp_controller
+      comment: "MRP controller responsible for the planned order."
+    - name: "priority_code"
+      expr: priority_code
+      comment: "Priority code for order execution (e.g., high, medium, low)."
+    - name: "lot_size_rule"
+      expr: lot_size_rule
+      comment: "Lot sizing rule applied (e.g., lot-for-lot, fixed lot size, economic order quantity)."
+    - name: "firming_indicator"
+      expr: firming_indicator
+      comment: "Indicates whether the planned order has been firmed by a planner."
+    - name: "deletion_flag"
+      expr: deletion_flag
+      comment: "Indicates whether the planned order is marked for deletion."
+    - name: "exception_code"
+      expr: exception_code
+      comment: "Exception code indicating planning issues (e.g., capacity shortage, material shortage)."
+    - name: "scheduled_start_month"
+      expr: DATE_TRUNC('MONTH', scheduled_start_date)
+      comment: "Month of the planned order scheduled start date."
+    - name: "requirement_month"
+      expr: DATE_TRUNC('MONTH', requirement_date)
+      comment: "Month of the requirement date driving the planned order."
   measures:
-    - name: "Row Count"
+    - name: "total_planned_quantity"
+      expr: SUM(CAST(planned_quantity AS DOUBLE))
+      comment: "Total planned order quantity — represents planned production and procurement volume."
+    - name: "total_required_capacity_hours"
+      expr: SUM(CAST(required_capacity_hours AS DOUBLE))
+      comment: "Total capacity hours required to execute all planned orders — critical for capacity planning."
+    - name: "total_available_capacity_hours"
+      expr: SUM(CAST(available_capacity_hours AS DOUBLE))
+      comment: "Total available capacity hours — used to calculate capacity utilization."
+    - name: "avg_supply_risk_score"
+      expr: AVG(CAST(supply_risk_score AS DOUBLE))
+      comment: "Average supply risk score across planned orders — indicates supply chain vulnerability."
+    - name: "total_safety_stock_quantity"
+      expr: SUM(CAST(safety_stock_quantity AS DOUBLE))
+      comment: "Total safety stock quantity associated with planned orders."
+    - name: "planned_order_count"
       expr: COUNT(1)
-    - name: "Distinct Planned Order"
-      expr: COUNT(DISTINCT planned_order_id)
-    - name: "Total Available Capacity Hours"
-      expr: SUM(available_capacity_hours)
-    - name: "Average Available Capacity Hours"
-      expr: AVG(available_capacity_hours)
-    - name: "Total Moq Quantity"
-      expr: SUM(moq_quantity)
-    - name: "Average Moq Quantity"
-      expr: AVG(moq_quantity)
-    - name: "Total Planned Quantity"
-      expr: SUM(planned_quantity)
-    - name: "Average Planned Quantity"
-      expr: AVG(planned_quantity)
-    - name: "Total Planner Override Quantity"
-      expr: SUM(planner_override_quantity)
-    - name: "Average Planner Override Quantity"
-      expr: AVG(planner_override_quantity)
-    - name: "Total Required Capacity Hours"
-      expr: SUM(required_capacity_hours)
-    - name: "Average Required Capacity Hours"
-      expr: AVG(required_capacity_hours)
-    - name: "Total Safety Stock Quantity"
-      expr: SUM(safety_stock_quantity)
-    - name: "Average Safety Stock Quantity"
-      expr: AVG(safety_stock_quantity)
-    - name: "Total Supply Risk Score"
-      expr: SUM(supply_risk_score)
-    - name: "Average Supply Risk Score"
-      expr: AVG(supply_risk_score)
+      comment: "Total number of planned orders."
+    - name: "firmed_order_count"
+      expr: SUM(CASE WHEN firming_indicator = TRUE THEN 1 ELSE 0 END)
+      comment: "Count of firmed planned orders — indicates planner commitment."
+    - name: "converted_order_count"
+      expr: SUM(CASE WHEN converted_order_number IS NOT NULL AND converted_order_number != '' THEN 1 ELSE 0 END)
+      comment: "Count of planned orders converted to firm orders — measures planning execution rate."
+    - name: "exception_order_count"
+      expr: SUM(CASE WHEN exception_code IS NOT NULL AND exception_code != '' THEN 1 ELSE 0 END)
+      comment: "Count of planned orders with exceptions requiring planner intervention."
+    - name: "distinct_sku_count"
+      expr: COUNT(DISTINCT sku_master_id)
+      comment: "Number of distinct SKUs with planned orders."
+$$;
+
+CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`supply_safety_stock_policy`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Safety stock policy effectiveness metrics — coverage, service levels, holding costs, and inventory optimization KPIs."
+  source: "`vibe_manufacturing_v1`.`supply`.`safety_stock_policy`"
+  dimensions:
+    - name: "policy_status"
+      expr: policy_status
+      comment: "Status of the safety stock policy (e.g., active, inactive, under review)."
+    - name: "calculation_method"
+      expr: calculation_method
+      comment: "Method used to calculate safety stock (e.g., fixed days, service level, statistical)."
+    - name: "abc_classification"
+      expr: abc_classification
+      comment: "ABC classification for inventory prioritization (A=high value, B=medium, C=low)."
+    - name: "xyz_classification"
+      expr: xyz_classification
+      comment: "XYZ classification for demand variability (X=stable, Y=variable, Z=erratic)."
+    - name: "criticality_code"
+      expr: criticality_code
+      comment: "Material criticality code (e.g., critical, important, standard)."
+    - name: "procurement_type"
+      expr: procurement_type
+      comment: "Procurement type (e.g., in-house production, external procurement)."
+    - name: "mrp_type"
+      expr: mrp_type
+      comment: "MRP type (e.g., reorder point planning, MRP, consumption-based planning)."
+    - name: "plant_code"
+      expr: plant_code
+      comment: "Plant code where the safety stock policy applies."
+    - name: "mrp_controller"
+      expr: mrp_controller
+      comment: "MRP controller responsible for the policy."
+    - name: "coverage_profile"
+      expr: coverage_profile
+      comment: "Coverage profile defining safety stock strategy (e.g., seasonal, standard, promotional)."
+    - name: "effective_month"
+      expr: DATE_TRUNC('MONTH', effective_from_date)
+      comment: "Month when the policy became effective."
+  measures:
+    - name: "total_safety_stock_quantity"
+      expr: SUM(CAST(safety_stock_quantity AS DOUBLE))
+      comment: "Total safety stock quantity across all materials — represents inventory investment for service level protection."
+    - name: "total_reorder_point_quantity"
+      expr: SUM(CAST(reorder_point_quantity AS DOUBLE))
+      comment: "Total reorder point quantity — triggers replenishment when inventory falls below this level."
+    - name: "avg_service_level_target_percent"
+      expr: AVG(CAST(service_level_target_percent AS DOUBLE))
+      comment: "Average target service level percentage — key KPI for inventory availability goals."
+    - name: "avg_demand_variability_coefficient"
+      expr: AVG(CAST(demand_variability_coefficient AS DOUBLE))
+      comment: "Average demand variability coefficient — measures demand uncertainty driving safety stock needs."
+    - name: "avg_lead_time_variability_days"
+      expr: AVG(CAST(lead_time_variability_days AS DOUBLE))
+      comment: "Average lead time variability in days — measures supply uncertainty."
+    - name: "avg_holding_cost_percent_annual"
+      expr: AVG(CAST(holding_cost_percent_annual AS DOUBLE))
+      comment: "Average annual holding cost percentage — used to calculate inventory carrying costs."
+    - name: "avg_stockout_cost_per_unit"
+      expr: AVG(CAST(stockout_cost_per_unit AS DOUBLE))
+      comment: "Average stockout cost per unit — represents business impact of inventory shortages."
+    - name: "total_maximum_stock_level"
+      expr: SUM(CAST(maximum_stock_level AS DOUBLE))
+      comment: "Total maximum stock level across all materials — upper inventory target."
+    - name: "total_minimum_stock_level"
+      expr: SUM(CAST(minimum_stock_level AS DOUBLE))
+      comment: "Total minimum stock level across all materials — lower inventory threshold."
+    - name: "policy_count"
+      expr: COUNT(1)
+      comment: "Total number of safety stock policies."
+    - name: "active_policy_count"
+      expr: SUM(CASE WHEN policy_status = 'active' THEN 1 ELSE 0 END)
+      comment: "Count of active safety stock policies."
+    - name: "distinct_material_count"
+      expr: COUNT(DISTINCT material_master_id)
+      comment: "Number of distinct materials with safety stock policies."
 $$;
 
 CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`supply_sourcing_rule`
@@ -526,147 +363,77 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Sourcing Rule business metrics"
+  comment: "Sourcing strategy and supplier allocation metrics — lead times, pricing, risk levels, and procurement optimization KPIs."
   source: "`vibe_manufacturing_v1`.`supply`.`sourcing_rule`"
   dimensions:
-    - name: "Automatic Po Flag"
-      expr: automatic_po_flag
-    - name: "Created By User"
-      expr: created_by_user
-    - name: "Created Timestamp"
-      expr: created_timestamp
-    - name: "Currency Code"
-      expr: currency_code
-    - name: "Exception Reason"
-      expr: exception_reason
-    - name: "Gr Processing Time Days"
-      expr: gr_processing_time_days
-    - name: "Incoterms"
-      expr: incoterms
-    - name: "Incoterms Location"
-      expr: incoterms_location
-    - name: "Last Modified By User"
-      expr: last_modified_by_user
-    - name: "Last Modified Timestamp"
-      expr: last_modified_timestamp
-    - name: "Last Moq Negotiation Date"
-      expr: last_moq_negotiation_date
-    - name: "Lot Sizing Procedure"
-      expr: lot_sizing_procedure
-    - name: "Make Or Buy Indicator"
+    - name: "rule_status"
+      expr: rule_status
+      comment: "Status of the sourcing rule (e.g., active, inactive, pending approval)."
+    - name: "sourcing_type"
+      expr: sourcing_type
+      comment: "Type of sourcing (e.g., single source, multi-source, preferred supplier)."
+    - name: "make_or_buy_indicator"
       expr: make_or_buy_indicator
-    - name: "Notes"
-      expr: notes
-    - name: "Order Unit"
-      expr: order_unit
-    - name: "Payment Terms"
-      expr: payment_terms
+      comment: "Indicates whether the material is made in-house or purchased externally."
+    - name: "preferred_supplier_flag"
+      expr: preferred_supplier_flag
+      comment: "Indicates whether this is a preferred supplier sourcing rule."
+    - name: "supply_risk_level"
+      expr: supply_risk_level
+      comment: "Supply risk level (e.g., low, medium, high, critical)."
+    - name: "purchasing_organization"
+      expr: purchasing_organization
+      comment: "Purchasing organization responsible for the sourcing rule."
+    - name: "purchasing_group"
+      expr: purchasing_group
+      comment: "Purchasing group managing the sourcing relationship."
+    - name: "lot_sizing_procedure"
+      expr: lot_sizing_procedure
+      comment: "Lot sizing procedure applied (e.g., lot-for-lot, fixed lot size, economic order quantity)."
+    - name: "quota_arrangement_flag"
+      expr: quota_arrangement_flag
+      comment: "Indicates whether quota arrangement is used for multi-source allocation."
+    - name: "automatic_po_flag"
+      expr: automatic_po_flag
+      comment: "Indicates whether purchase orders are automatically generated."
+    - name: "planner_approved_flag"
+      expr: planner_approved_flag
+      comment: "Indicates whether the sourcing rule has been approved by a planner."
+    - name: "valid_from_month"
+      expr: DATE_TRUNC('MONTH', valid_from_date)
+      comment: "Month when the sourcing rule became valid."
   measures:
-    - name: "Row Count"
+    - name: "avg_standard_price"
+      expr: AVG(CAST(standard_price AS DOUBLE))
+      comment: "Average standard price across sourcing rules — key input for cost planning and variance analysis."
+    - name: "avg_allocation_percentage"
+      expr: AVG(CAST(allocation_percentage AS DOUBLE))
+      comment: "Average supplier allocation percentage — measures sourcing diversification."
+    - name: "avg_planned_delivery_time_days"
+      expr: AVG(CAST(planned_delivery_time_days AS DOUBLE))
+      comment: "Average planned delivery lead time in days — critical for MRP planning and inventory optimization."
+    - name: "avg_moq"
+      expr: AVG(CAST(moq AS DOUBLE))
+      comment: "Average minimum order quantity — impacts lot sizing and inventory levels."
+    - name: "avg_maximum_order_quantity"
+      expr: AVG(CAST(maximum_order_quantity AS DOUBLE))
+      comment: "Average maximum order quantity — constrains procurement flexibility."
+    - name: "total_fixed_lot_size"
+      expr: SUM(CAST(fixed_lot_size AS DOUBLE))
+      comment: "Total fixed lot size across all sourcing rules."
+    - name: "sourcing_rule_count"
       expr: COUNT(1)
-    - name: "Distinct Sourcing Rule"
-      expr: COUNT(DISTINCT sourcing_rule_id)
-    - name: "Total Allocation Percentage"
-      expr: SUM(allocation_percentage)
-    - name: "Average Allocation Percentage"
-      expr: AVG(allocation_percentage)
-    - name: "Total Fixed Lot Size"
-      expr: SUM(fixed_lot_size)
-    - name: "Average Fixed Lot Size"
-      expr: AVG(fixed_lot_size)
-    - name: "Total Lot Size Rounding Value"
-      expr: SUM(lot_size_rounding_value)
-    - name: "Average Lot Size Rounding Value"
-      expr: AVG(lot_size_rounding_value)
-    - name: "Total Maximum Order Quantity"
-      expr: SUM(maximum_order_quantity)
-    - name: "Average Maximum Order Quantity"
-      expr: AVG(maximum_order_quantity)
-    - name: "Total Moq"
-      expr: SUM(moq)
-    - name: "Average Moq"
-      expr: AVG(moq)
-    - name: "Total Standard Price"
-      expr: SUM(standard_price)
-    - name: "Average Standard Price"
-      expr: AVG(standard_price)
-$$;
-
-CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`supply_supply_plant`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Supply Plant business metrics"
-  source: "`vibe_manufacturing_v1`.`supply`.`supply_plant`"
-  dimensions:
-    - name: "Capacity Unit"
-      expr: capacity_unit
-    - name: "City"
-      expr: city
-    - name: "Closing Date"
-      expr: closing_date
-    - name: "Compliance Certifications"
-      expr: compliance_certifications
-    - name: "Country Code"
-      expr: country_code
-    - name: "Created Timestamp"
-      expr: created_timestamp
-    - name: "Energy Source"
-      expr: energy_source
-    - name: "Is Primary Plant"
-      expr: is_primary_plant
-    - name: "Last Maintenance Date"
-      expr: last_maintenance_date
-    - name: "Location Address"
-      expr: location_address
-    - name: "Maintenance Window"
-      expr: maintenance_window
-    - name: "Manager Email"
-      expr: manager_email
-    - name: "Manager Name"
-      expr: manager_name
-    - name: "Manager Phone"
-      expr: manager_phone
-    - name: "Name"
-      expr: name
-    - name: "Next Maintenance Date"
-      expr: next_maintenance_date
-  measures:
-    - name: "Row Count"
-      expr: COUNT(1)
-    - name: "Distinct Supply Plant"
-      expr: COUNT(DISTINCT delivery_id)
-    - name: "Total Capacity"
-      expr: SUM(capacity)
-    - name: "Average Capacity"
-      expr: AVG(capacity)
-    - name: "Total Carbon Emission Factor"
-      expr: SUM(carbon_emission_factor)
-    - name: "Average Carbon Emission Factor"
-      expr: AVG(carbon_emission_factor)
-    - name: "Total Latitude"
-      expr: SUM(latitude)
-    - name: "Average Latitude"
-      expr: AVG(latitude)
-    - name: "Total Longitude"
-      expr: SUM(longitude)
-    - name: "Average Longitude"
-      expr: AVG(longitude)
-    - name: "Total Power Capacity Mw"
-      expr: SUM(power_capacity_mw)
-    - name: "Average Power Capacity Mw"
-      expr: AVG(power_capacity_mw)
-    - name: "Total Shift Hours"
-      expr: SUM(shift_hours)
-    - name: "Average Shift Hours"
-      expr: AVG(shift_hours)
-    - name: "Total Site Area Sqm"
-      expr: SUM(site_area_sqm)
-    - name: "Average Site Area Sqm"
-      expr: AVG(site_area_sqm)
-    - name: "Total Water Usage Cubic M"
-      expr: SUM(water_usage_cubic_m)
-    - name: "Average Water Usage Cubic M"
-      expr: AVG(water_usage_cubic_m)
+      comment: "Total number of sourcing rules."
+    - name: "active_rule_count"
+      expr: SUM(CASE WHEN rule_status = 'active' THEN 1 ELSE 0 END)
+      comment: "Count of active sourcing rules."
+    - name: "preferred_supplier_count"
+      expr: SUM(CASE WHEN preferred_supplier_flag = TRUE THEN 1 ELSE 0 END)
+      comment: "Count of sourcing rules with preferred supplier designation."
+    - name: "high_risk_sourcing_count"
+      expr: SUM(CASE WHEN supply_risk_level = 'high' OR supply_risk_level = 'critical' THEN 1 ELSE 0 END)
+      comment: "Count of sourcing rules with high or critical supply risk — requires mitigation action."
+    - name: "distinct_material_count"
+      expr: COUNT(DISTINCT material_master_id)
+      comment: "Number of distinct materials with sourcing rules."
 $$;

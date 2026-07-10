@@ -1,86 +1,142 @@
--- Metric views for domain: finance | Business: Manufacturing | Version: 2 | Generated on: 2026-07-10 11:52:40
+-- Metric views for domain: finance | Business: Manufacturing | Version: 2 | Generated on: 2026-07-03 05:35:52
+
+CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`finance_journal_entry`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Core general ledger posting metrics tracking debit/credit volumes, reversal rates, and posting activity by period, company code, and document type — essential for period-close governance and audit readiness."
+  source: "`vibe_manufacturing_v1`.`finance`.`journal_entry`"
+  dimensions:
+    - name: "fiscal_year"
+      expr: fiscal_year
+      comment: "Fiscal year of the journal entry for period-over-period trend analysis."
+    - name: "fiscal_period"
+      expr: fiscal_period
+      comment: "Fiscal period (month) within the fiscal year for granular period-close tracking."
+    - name: "posting_period"
+      expr: posting_period
+      comment: "Posting period used to slice GL activity by accounting period."
+    - name: "document_type"
+      expr: document_type
+      comment: "Journal entry document type (e.g., SA, KR, DR) for categorizing posting activity."
+    - name: "company_code"
+      expr: company_code
+      comment: "Company code associated with the journal entry for legal-entity-level reporting."
+    - name: "posting_status"
+      expr: posting_status
+      comment: "Status of the posting (posted, parked, reversed) for close-process monitoring."
+    - name: "posting_date"
+      expr: DATE_TRUNC('month', posting_date)
+      comment: "Month-truncated posting date for monthly GL activity trending."
+    - name: "currency_code"
+      expr: currency_code
+      comment: "Transaction currency for multi-currency GL analysis."
+    - name: "segment"
+      expr: segment
+      comment: "Business segment for segment-level P&L reporting."
+    - name: "reversal_flag"
+      expr: CAST(reversal_flag AS STRING)
+      comment: "Indicates whether the journal entry is a reversal, used to measure reversal rate."
+  measures:
+    - name: "total_journal_entries"
+      expr: COUNT(1)
+      comment: "Total number of journal entries posted — baseline volume metric for period-close workload assessment."
+    - name: "total_debit_amount"
+      expr: SUM(CAST(debit_amount AS DOUBLE))
+      comment: "Sum of all debit postings in transaction currency — measures total debit-side GL activity."
+    - name: "total_credit_amount"
+      expr: SUM(CAST(credit_amount AS DOUBLE))
+      comment: "Sum of all credit postings in transaction currency — measures total credit-side GL activity."
+    - name: "total_net_amount"
+      expr: SUM(CAST(net_amount AS DOUBLE))
+      comment: "Net amount across all journal entries — used to verify balanced ledger (should approach zero for balanced periods)."
+    - name: "total_tax_amount"
+      expr: SUM(CAST(tax_amount_total AS DOUBLE))
+      comment: "Total tax posted across journal entries — supports tax liability reporting and compliance."
+    - name: "reversal_entry_count"
+      expr: COUNT(CASE WHEN reversal_flag = TRUE THEN 1 END)
+      comment: "Count of reversal journal entries — high reversal counts signal posting quality issues or period-close rework."
+    - name: "manual_adjusted_entry_count"
+      expr: COUNT(CASE WHEN is_adjusted = TRUE THEN 1 END)
+      comment: "Count of manually adjusted entries — elevated counts indicate control weaknesses requiring audit attention."
+    - name: "avg_net_amount_per_entry"
+      expr: AVG(CAST(net_amount AS DOUBLE))
+      comment: "Average net amount per journal entry — helps detect anomalous large postings that may require review."
+    - name: "local_currency_total"
+      expr: SUM(CAST(local_currency_amount AS DOUBLE))
+      comment: "Total local currency amount posted — used for statutory reporting in entity's functional currency."
+    - name: "transaction_currency_total"
+      expr: SUM(CAST(transaction_currency_amount AS DOUBLE))
+      comment: "Total transaction currency amount — supports foreign currency exposure analysis."
+$$;
 
 CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`finance_ap_invoice`
 WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Accounts payable invoice metrics covering payment performance, discount capture, tax exposure, and three-way match compliance. Used by CFO and AP leadership to manage supplier payment obligations and working capital."
+  comment: "Accounts payable invoice metrics covering invoice volumes, payment performance, discount capture, tax liability, and three-way match compliance — critical for cash flow management and supplier payment governance."
   source: "`vibe_manufacturing_v1`.`finance`.`ap_invoice`"
   dimensions:
     - name: "invoice_type"
       expr: invoice_type
-      comment: "Type of AP invoice (standard, credit memo, etc.) for segmenting payables by document category."
-    - name: "payment_status"
-      expr: payment_status
-      comment: "Current payment status of the invoice (open, paid, blocked) for cash flow and aging analysis."
-    - name: "payment_method"
-      expr: payment_method
-      comment: "Method used for payment (ACH, wire, check) to analyze payment channel mix."
-    - name: "three_way_match_status"
-      expr: three_way_match_status
-      comment: "Status of PO/GR/invoice three-way match for compliance and exception management."
+      comment: "Type of AP invoice (standard, credit memo, etc.) for categorizing payables activity."
     - name: "approval_status"
       expr: approval_status
-      comment: "Invoice approval workflow status to track bottlenecks in the AP process."
+      comment: "Invoice approval status for tracking bottlenecks in the AP approval workflow."
+    - name: "three_way_match_status"
+      expr: three_way_match_status
+      comment: "Three-way match status (matched, unmatched, exception) — key control metric for procurement compliance."
+    - name: "currency_code"
+      expr: currency_code
+      comment: "Invoice currency for multi-currency payables analysis."
     - name: "tax_code"
       expr: tax_code
-      comment: "Tax code applied to the invoice for tax reporting and jurisdiction analysis."
-    - name: "currency"
-      expr: currency
-      comment: "Invoice currency for multi-currency payables analysis."
+      comment: "Tax code applied to the invoice for tax liability segmentation."
     - name: "posting_date"
-      expr: posting_date
-      comment: "Date the invoice was posted to the ledger for period-based payables reporting."
-    - name: "due_date"
-      expr: due_date
-      comment: "Invoice due date for aging and cash flow forecasting."
-    - name: "payment_terms"
-      expr: payment_terms
-      comment: "Contractual payment terms (Net 30, Net 60) for working capital analysis."
+      expr: DATE_TRUNC('month', posting_date)
+      comment: "Month-truncated posting date for monthly AP accrual and cash flow planning."
+    - name: "due_date_month"
+      expr: DATE_TRUNC('month', due_date)
+      comment: "Month-truncated due date for cash outflow forecasting."
+    - name: "tax_exempt_flag"
+      expr: CAST(tax_exempt_flag AS STRING)
+      comment: "Whether the invoice is tax-exempt — used for tax compliance segmentation."
+    - name: "bank_statement_reconciliation_status"
+      expr: bank_statement_reconciliation_status
+      comment: "Reconciliation status of the invoice against bank statement — supports treasury reconciliation."
   measures:
+    - name: "total_ap_invoices"
+      expr: COUNT(1)
+      comment: "Total number of AP invoices — baseline volume for AP workload and vendor activity measurement."
     - name: "total_gross_amount"
       expr: SUM(CAST(gross_amount AS DOUBLE))
-      comment: "Total gross AP invoice amount. Core payables liability measure used by CFO to assess total supplier obligations."
+      comment: "Total gross invoice amount — represents total payables liability before discounts and tax adjustments."
     - name: "total_net_amount"
       expr: SUM(CAST(net_amount AS DOUBLE))
-      comment: "Total net AP invoice amount after discounts and adjustments. Used for cash flow planning."
+      comment: "Total net invoice amount after discounts — actual cash outflow obligation to suppliers."
     - name: "total_tax_amount"
       expr: SUM(CAST(tax_amount AS DOUBLE))
-      comment: "Total tax amount across AP invoices. Used for tax liability reporting and compliance."
+      comment: "Total tax amount on AP invoices — supports input tax recovery and VAT reporting."
     - name: "total_payment_amount"
       expr: SUM(CAST(payment_amount AS DOUBLE))
-      comment: "Total amount already paid against AP invoices. Used to compute outstanding payables balance."
+      comment: "Total amount paid against AP invoices — measures actual cash disbursements to suppliers."
     - name: "total_discount_taken"
       expr: SUM(CAST(discount_taken AS DOUBLE))
-      comment: "Total early payment discounts captured. Measures treasury efficiency in leveraging supplier discount terms."
-    - name: "total_withholding_tax_amount"
+      comment: "Total early payment discounts captured — measures effectiveness of discount capture program."
+    - name: "total_withholding_tax"
       expr: SUM(CAST(withholding_tax_amount AS DOUBLE))
-      comment: "Total withholding tax deducted from supplier payments. Required for tax authority reporting."
-    - name: "invoice_count"
-      expr: COUNT(1)
-      comment: "Total number of AP invoices. Baseline volume metric for AP workload and process benchmarking."
-    - name: "avg_gross_amount_per_invoice"
-      expr: AVG(CAST(gross_amount AS DOUBLE))
-      comment: "Average gross invoice amount. Indicates typical transaction size and helps detect anomalies."
-    - name: "avg_cash_discount_percentage"
-      expr: AVG(CAST(cash_discount_percentage AS DOUBLE))
-      comment: "Average early payment discount percentage available. Benchmarks supplier discount terms portfolio."
-    - name: "avg_tax_rate"
-      expr: AVG(CAST(tax_rate AS DOUBLE))
-      comment: "Average effective tax rate across AP invoices. Used for tax planning and jurisdiction benchmarking."
-    - name: "tax_exempt_invoice_count"
-      expr: COUNT(CASE WHEN tax_exempt_flag = TRUE THEN 1 END)
-      comment: "Number of tax-exempt AP invoices. Used for tax compliance audits and exemption certificate management."
+      comment: "Total withholding tax deducted — required for statutory withholding tax compliance reporting."
     - name: "unmatched_invoice_count"
       expr: COUNT(CASE WHEN three_way_match_status != 'MATCHED' THEN 1 END)
-      comment: "Number of invoices failing three-way match. Critical risk metric for AP fraud prevention and audit compliance."
-    - name: "blocked_invoice_count"
-      expr: COUNT(CASE WHEN payment_block_reason IS NOT NULL THEN 1 END)
-      comment: "Number of invoices with a payment block. Indicates AP exceptions requiring resolution before payment."
-    - name: "distinct_supplier_count"
-      expr: COUNT(DISTINCT supplier_id)
-      comment: "Number of distinct suppliers invoiced. Used for supplier concentration and spend diversification analysis."
+      comment: "Count of invoices failing three-way match — high count signals procurement control failures requiring intervention."
+    - name: "avg_invoice_gross_amount"
+      expr: AVG(CAST(gross_amount AS DOUBLE))
+      comment: "Average gross invoice amount — benchmarks typical invoice size for anomaly detection and vendor spend analysis."
+    - name: "pending_approval_invoice_count"
+      expr: COUNT(CASE WHEN approval_status NOT IN ('APPROVED','PAID') THEN 1 END)
+      comment: "Count of invoices pending approval — measures AP processing backlog and workflow efficiency."
 $$;
 
 CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`finance_ar_item`
@@ -88,162 +144,76 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Accounts receivable item metrics covering outstanding balances, aging, collection performance, and dispute management. Used by CFO, AR leadership, and credit managers to optimize cash collection and reduce DSO."
+  comment: "Accounts receivable metrics covering outstanding balances, aging, collection performance, dispute rates, and write-off exposure — essential for working capital management and credit risk oversight."
   source: "`vibe_manufacturing_v1`.`finance`.`ar_item`"
   dimensions:
     - name: "aging_bucket"
       expr: aging_bucket
-      comment: "Aging bucket classification (current, 30-60, 60-90, 90+) for receivables aging analysis."
-    - name: "collection_status"
-      expr: collection_status
-      comment: "Current collection status of the AR item for collections team prioritization."
-    - name: "dispute_status"
-      expr: dispute_status
-      comment: "Dispute status of the AR item to track contested receivables and resolution pipeline."
-    - name: "dunning_level"
-      expr: dunning_level
-      comment: "Dunning escalation level indicating how many collection notices have been sent."
-    - name: "payment_method"
-      expr: payment_method
-      comment: "Payment method used or expected for the AR item."
+      comment: "AR aging bucket (current, 30-60, 60-90, 90+ days) for receivables aging analysis."
     - name: "currency_code"
       expr: currency_code
-      comment: "Currency of the AR item for multi-currency receivables reporting."
-    - name: "payment_terms"
-      expr: payment_terms
-      comment: "Payment terms governing the receivable for DSO and working capital analysis."
-    - name: "due_date"
-      expr: due_date
-      comment: "Due date of the AR item for cash flow forecasting and overdue identification."
-    - name: "posting_date"
-      expr: posting_date
-      comment: "Posting date for period-based AR reporting."
-    - name: "record_status"
-      expr: record_status
-      comment: "Record lifecycle status (open, cleared, written off) for AR portfolio health assessment."
+      comment: "Invoice currency for multi-currency AR analysis."
+    - name: "collection_status"
+      expr: collection_status
+      comment: "Collection status of the AR item for tracking collections effectiveness."
+    - name: "dispute_status"
+      expr: dispute_status
+      comment: "Dispute status for measuring disputed receivables exposure."
+    - name: "dunning_level"
+      expr: dunning_level
+      comment: "Dunning level reached for the AR item — higher levels indicate escalating collection risk."
+    - name: "cleared_flag"
+      expr: CAST(cleared_flag AS STRING)
+      comment: "Whether the AR item has been cleared/paid — used to segment open vs. closed receivables."
+    - name: "write_off_flag"
+      expr: CAST(write_off_flag AS STRING)
+      comment: "Whether the AR item has been written off — used to measure bad debt exposure."
+    - name: "credit_memo_flag"
+      expr: CAST(credit_memo_flag AS STRING)
+      comment: "Whether the item is a credit memo — used to net credit adjustments against gross AR."
+    - name: "posting_date_month"
+      expr: DATE_TRUNC('month', posting_date)
+      comment: "Month-truncated posting date for monthly AR trend analysis."
+    - name: "due_date_month"
+      expr: DATE_TRUNC('month', due_date)
+      comment: "Month-truncated due date for cash inflow forecasting."
+    - name: "segment"
+      expr: segment
+      comment: "Business segment for segment-level AR and revenue reporting."
   measures:
     - name: "total_open_amount"
       expr: SUM(CAST(open_amount AS DOUBLE))
-      comment: "Total outstanding AR balance. Primary receivables KPI used by CFO to assess cash collection exposure."
+      comment: "Total open (uncollected) AR amount — primary measure of outstanding receivables and working capital tied up in AR."
     - name: "total_invoice_amount"
       expr: SUM(CAST(invoice_amount AS DOUBLE))
-      comment: "Total invoiced amount across AR items. Baseline revenue recognition and billing completeness measure."
-    - name: "total_net_amount"
-      expr: SUM(CAST(net_amount AS DOUBLE))
-      comment: "Total net AR amount after discounts and adjustments. Used for accurate receivables valuation."
+      comment: "Total invoiced amount — gross AR before payments and adjustments."
+    - name: "total_cleared_amount"
+      expr: SUM(CAST(cleared_amount AS DOUBLE))
+      comment: "Total amount cleared/collected — measures collections effectiveness and cash conversion."
     - name: "total_write_off_amount"
       expr: SUM(CAST(write_off_amount AS DOUBLE))
-      comment: "Total amount written off as uncollectable. Key bad debt metric for credit risk management and provisioning."
+      comment: "Total amount written off as bad debt — critical risk metric for credit loss provisioning."
     - name: "total_credit_memo_amount"
       expr: SUM(CAST(credit_memo_amount AS DOUBLE))
-      comment: "Total credit memo value issued against AR. Tracks returns, disputes, and billing corrections."
+      comment: "Total credit memo adjustments — measures volume of billing corrections and customer credits."
     - name: "total_discount_amount"
       expr: SUM(CAST(discount_amount AS DOUBLE))
-      comment: "Total early payment discounts granted to customers. Measures cost of accelerating cash collection."
+      comment: "Total discounts granted on AR items — measures cost of early payment incentives."
     - name: "total_tax_amount"
       expr: SUM(CAST(tax_amount AS DOUBLE))
-      comment: "Total tax amount on AR items. Required for VAT/GST reporting and tax authority reconciliation."
-    - name: "total_last_payment_amount"
-      expr: SUM(CAST(last_payment_amount AS DOUBLE))
-      comment: "Total of most recent payments received. Used to assess recent collection activity and cash inflow."
-    - name: "ar_item_count"
-      expr: COUNT(1)
-      comment: "Total number of AR line items. Baseline volume metric for AR workload and portfolio size."
-    - name: "overdue_item_count"
-      expr: COUNT(CASE WHEN cleared_flag = FALSE AND aging_bucket != 'CURRENT' THEN 1 END)
-      comment: "Number of overdue AR items. Critical collections KPI driving dunning and escalation decisions."
-    - name: "written_off_item_count"
-      expr: COUNT(CASE WHEN write_off_flag = TRUE THEN 1 END)
-      comment: "Number of AR items written off. Measures bad debt incidence for credit policy evaluation."
-    - name: "disputed_item_count"
+      comment: "Total tax component of AR items — supports output tax reporting and VAT compliance."
+    - name: "overdue_ar_count"
+      expr: COUNT(CASE WHEN cleared_flag = FALSE AND aging_bucket NOT IN ('CURRENT','0-30') THEN 1 END)
+      comment: "Count of overdue AR items — measures collections backlog and credit risk exposure."
+    - name: "disputed_ar_count"
       expr: COUNT(CASE WHEN dispute_status IS NOT NULL AND dispute_status != 'RESOLVED' THEN 1 END)
-      comment: "Number of AR items under active dispute. Tracks billing quality and customer satisfaction issues."
+      comment: "Count of AR items under active dispute — high count signals billing quality or customer satisfaction issues."
     - name: "avg_open_amount_per_item"
       expr: AVG(CAST(open_amount AS DOUBLE))
-      comment: "Average open AR balance per item. Indicates typical receivable size for portfolio benchmarking."
-    - name: "avg_exchange_rate"
-      expr: AVG(CAST(exchange_rate AS DOUBLE))
-      comment: "Average FX exchange rate applied to AR items. Used for currency risk monitoring."
-    - name: "distinct_customer_count"
-      expr: COUNT(DISTINCT customer_account_id)
-      comment: "Number of distinct customers with open AR. Used for customer concentration and credit exposure analysis."
-$$;
-
-CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`finance_journal_entry`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "General ledger journal entry metrics covering posting volumes, debit/credit balances, reversal rates, and compliance flags. Used by controllers and auditors to ensure ledger integrity and period-close quality."
-  source: "`vibe_manufacturing_v1`.`finance`.`journal_entry`"
-  dimensions:
-    - name: "document_type"
-      expr: document_type
-      comment: "Journal entry document type (SA, AB, etc.) for categorizing posting activity by transaction class."
-    - name: "posting_status"
-      expr: posting_status
-      comment: "Posting status (posted, parked, simulated) for period-close completeness monitoring."
-    - name: "fiscal_year"
-      expr: fiscal_year
-      comment: "Fiscal year of the journal entry for year-over-year financial trend analysis."
-    - name: "fiscal_period"
-      expr: fiscal_period
-      comment: "Fiscal period for monthly close and period-end reporting."
-    - name: "currency_code"
-      expr: currency_code
-      comment: "Transaction currency for multi-currency ledger analysis."
-    - name: "posting_date"
-      expr: posting_date
-      comment: "Date the entry was posted to the ledger for time-series analysis."
-    - name: "business_area"
-      expr: business_area
-      comment: "Business area dimension for segment-level P&L and balance sheet reporting."
-    - name: "segment"
-      expr: segment
-      comment: "Reporting segment for IFRS 8 / ASC 280 segment disclosure requirements."
-    - name: "tax_code"
-      expr: tax_code
-      comment: "Tax code on the journal entry for indirect tax reporting."
-  measures:
-    - name: "total_debit_amount"
-      expr: SUM(CAST(total_debit_amount AS DOUBLE))
-      comment: "Total debit postings in the ledger. Core measure for ledger activity volume and balance verification."
-    - name: "total_credit_amount"
-      expr: SUM(CAST(total_credit_amount AS DOUBLE))
-      comment: "Total credit postings in the ledger. Used with total debits to verify double-entry balance integrity."
-    - name: "total_net_amount"
-      expr: SUM(CAST(net_amount AS DOUBLE))
-      comment: "Net posting amount (debits minus credits) per journal entry. Used for period P&L and balance sheet impact."
-    - name: "total_tax_amount"
-      expr: SUM(CAST(tax_amount_total AS DOUBLE))
-      comment: "Total tax amount posted via journal entries. Required for indirect tax reconciliation and reporting."
+      comment: "Average open amount per AR item — benchmarks typical receivable size for anomaly detection."
     - name: "total_local_currency_amount"
       expr: SUM(CAST(local_currency_amount AS DOUBLE))
-      comment: "Total posting amount in local currency. Used for statutory reporting and local GAAP compliance."
-    - name: "total_transaction_currency_amount"
-      expr: SUM(CAST(transaction_currency_amount AS DOUBLE))
-      comment: "Total posting amount in transaction currency. Used for FX exposure and multi-currency consolidation."
-    - name: "journal_entry_count"
-      expr: COUNT(1)
-      comment: "Total number of journal entries posted. Baseline volume metric for close workload and audit scope."
-    - name: "reversal_count"
-      expr: COUNT(CASE WHEN reversal_indicator = TRUE THEN 1 END)
-      comment: "Number of reversed journal entries. High reversal rates signal posting errors and process quality issues."
-    - name: "adjusted_entry_count"
-      expr: COUNT(CASE WHEN is_adjusted = TRUE THEN 1 END)
-      comment: "Number of adjusted journal entries. Tracks post-close adjustments that may indicate control weaknesses."
-    - name: "gaap_compliant_entry_count"
-      expr: COUNT(CASE WHEN gaap_compliance_flag = TRUE THEN 1 END)
-      comment: "Number of entries flagged as GAAP compliant. Used for audit readiness and compliance reporting."
-    - name: "ifrs_compliant_entry_count"
-      expr: COUNT(CASE WHEN ifrs_compliance_flag = TRUE THEN 1 END)
-      comment: "Number of entries flagged as IFRS compliant. Required for dual-reporting entities."
-    - name: "avg_net_amount_per_entry"
-      expr: AVG(CAST(net_amount AS DOUBLE))
-      comment: "Average net posting amount per journal entry. Helps detect unusually large or small entries for audit."
-    - name: "avg_exchange_rate"
-      expr: AVG(CAST(exchange_rate AS DOUBLE))
-      comment: "Average FX rate applied across journal entries. Used for currency translation analysis."
+      comment: "Total AR in local/functional currency — required for statutory balance sheet reporting."
 $$;
 
 CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`finance_cost_center`
@@ -251,111 +221,55 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Cost center financial performance metrics covering budget utilization, variance, and overhead analysis. Used by CFO, controllers, and department heads to manage cost discipline and budget adherence."
+  comment: "Cost center performance metrics tracking budget utilization, actual vs. planned cost variance, and overhead classification — used by CFO and controllers to manage departmental spending and cost efficiency."
   source: "`vibe_manufacturing_v1`.`finance`.`cost_center`"
   dimensions:
-    - name: "cost_center_type"
-      expr: cost_center_type
-      comment: "Type of cost center (production, overhead, admin) for cost structure analysis."
-    - name: "cost_center_status"
-      expr: cost_center_status
-      comment: "Active/inactive status of the cost center for portfolio management."
-    - name: "cost_center_group"
-      expr: cost_center_group
-      comment: "Grouping of cost centers for hierarchical reporting and consolidation."
     - name: "hierarchy_level"
       expr: hierarchy_level
-      comment: "Hierarchy level of the cost center for drill-down reporting."
+      comment: "Cost center hierarchy level for organizational drill-down in cost reporting."
+    - name: "hierarchy_path"
+      expr: hierarchy_path
+      comment: "Full hierarchy path for cost center tree navigation in management reporting."
+    - name: "controlling_area_code"
+      expr: controlling_area_code
+      comment: "Controlling area for multi-entity cost management segmentation."
     - name: "currency_code"
       expr: currency_code
-      comment: "Currency of the cost center for multi-currency cost reporting."
+      comment: "Cost center currency for multi-currency cost analysis."
+    - name: "is_overhead"
+      expr: CAST(is_overhead AS STRING)
+      comment: "Whether the cost center is classified as overhead — used to separate direct vs. indirect cost analysis."
     - name: "owner_department"
       expr: owner_department
-      comment: "Department owning the cost center for accountability and chargeback analysis."
+      comment: "Owning department for accountability-based cost reporting."
+    - name: "location_code"
+      expr: location_code
+      comment: "Physical location of the cost center for geographic cost analysis."
     - name: "valid_from"
-      expr: valid_from
-      comment: "Effective start date of the cost center for temporal cost analysis."
+      expr: DATE_TRUNC('year', valid_from)
+      comment: "Year the cost center became valid — used for lifecycle and vintage analysis."
   measures:
     - name: "total_actual_cost"
       expr: SUM(CAST(actual_cost AS DOUBLE))
-      comment: "Total actual costs incurred across cost centers. Primary cost management KPI for CFO and controllers."
+      comment: "Total actual costs incurred across cost centers — primary measure for cost performance monitoring."
     - name: "total_budget_amount"
       expr: SUM(CAST(budget_amount AS DOUBLE))
-      comment: "Total budgeted cost across cost centers. Baseline for budget vs. actual variance analysis."
+      comment: "Total budgeted amount across cost centers — baseline for budget vs. actual variance analysis."
     - name: "total_variance_amount"
       expr: SUM(CAST(variance_amount AS DOUBLE))
-      comment: "Total budget variance (actual minus budget). Negative variance signals overspend requiring management action."
-    - name: "cost_center_count"
-      expr: COUNT(1)
-      comment: "Total number of cost centers. Used for organizational complexity and cost structure benchmarking."
-    - name: "overhead_cost_center_count"
-      expr: COUNT(CASE WHEN is_overhead = TRUE THEN 1 END)
-      comment: "Number of overhead cost centers. Used to assess overhead burden and rationalization opportunities."
+      comment: "Total budget variance (actual minus budget) — negative values indicate overspend requiring management action."
     - name: "avg_actual_cost_per_center"
       expr: AVG(CAST(actual_cost AS DOUBLE))
-      comment: "Average actual cost per cost center. Benchmarks cost center size and identifies outliers."
-    - name: "avg_budget_amount_per_center"
-      expr: AVG(CAST(budget_amount AS DOUBLE))
-      comment: "Average budgeted amount per cost center. Used for budget allocation benchmarking."
-    - name: "avg_variance_amount_per_center"
-      expr: AVG(CAST(variance_amount AS DOUBLE))
-      comment: "Average variance per cost center. Identifies systemic over/under-spending patterns."
-$$;
-
-CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`finance_profit_center`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Profit center performance metrics covering actual vs. planned profit, budget utilization, and OEE targets. Used by CFO and business unit leaders to evaluate segment profitability and resource allocation."
-  source: "`vibe_manufacturing_v1`.`finance`.`profit_center`"
-  dimensions:
-    - name: "profit_center_type"
-      expr: profit_center_type
-      comment: "Type of profit center (product line, geography, business unit) for profitability segmentation."
-    - name: "profit_center_status"
-      expr: profit_center_status
-      comment: "Active/inactive status for profit center portfolio management."
-    - name: "profit_center_group"
-      expr: profit_center_group
-      comment: "Grouping of profit centers for hierarchical P&L reporting."
-    - name: "segment"
-      expr: segment
-      comment: "Reporting segment for IFRS 8 / ASC 280 segment disclosure."
-    - name: "region"
-      expr: region
-      comment: "Geographic region of the profit center for regional P&L analysis."
-    - name: "currency_code"
-      expr: currency_code
-      comment: "Currency of the profit center for multi-currency profitability reporting."
-    - name: "hierarchy_level"
-      expr: hierarchy_level
-      comment: "Hierarchy level for drill-down P&L analysis."
-    - name: "valid_from"
-      expr: valid_from
-      comment: "Effective start date for temporal profit center analysis."
-  measures:
-    - name: "total_actual_profit"
-      expr: SUM(CAST(actual_profit AS DOUBLE))
-      comment: "Total actual profit across profit centers. Primary P&L KPI used by CFO and business unit leaders."
-    - name: "total_planned_profit"
-      expr: SUM(CAST(planned_profit AS DOUBLE))
-      comment: "Total planned profit across profit centers. Baseline for actual vs. plan variance analysis."
-    - name: "total_budget_amount"
-      expr: SUM(CAST(budget_amount AS DOUBLE))
-      comment: "Total budgeted amount across profit centers. Used for budget adherence and resource allocation decisions."
-    - name: "profit_center_count"
+      comment: "Average actual cost per cost center — benchmarks cost center spending for peer comparison."
+    - name: "avg_budget_utilization_amount"
+      expr: AVG(CAST(actual_cost AS DOUBLE) / NULLIF(CAST(budget_amount AS DOUBLE), 0))
+      comment: "Average ratio of actual cost to budget per cost center — measures budget utilization efficiency across the portfolio."
+    - name: "overspent_cost_center_count"
+      expr: COUNT(CASE WHEN actual_cost > budget_amount THEN 1 END)
+      comment: "Count of cost centers exceeding their budget — key governance metric for financial control and corrective action."
+    - name: "total_cost_centers"
       expr: COUNT(1)
-      comment: "Total number of profit centers. Used for organizational structure and reporting complexity analysis."
-    - name: "reportable_profit_center_count"
-      expr: COUNT(CASE WHEN is_reportable = TRUE THEN 1 END)
-      comment: "Number of profit centers included in external reporting. Used for segment disclosure compliance."
-    - name: "avg_actual_profit_per_center"
-      expr: AVG(CAST(actual_profit AS DOUBLE))
-      comment: "Average actual profit per profit center. Benchmarks profitability across business units."
-    - name: "avg_oee_target_percent"
-      expr: AVG(CAST(oee_target_percent AS DOUBLE))
-      comment: "Average OEE target percentage across profit centers. Links financial targets to operational efficiency goals."
+      comment: "Total number of active cost centers — baseline for organizational cost structure sizing."
 $$;
 
 CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`finance_budget`
@@ -363,64 +277,70 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Financial budget metrics covering planned, committed, and revised spend by category, fiscal year, and approval status. Used by CFO, FP&A, and department heads to manage budget cycles and variance."
+  comment: "Enterprise budget performance metrics tracking planned vs. actual spend, committed amounts, budget approval status, and variance by fiscal year, cost center, and budget type — core CFO dashboard KPIs."
   source: "`vibe_manufacturing_v1`.`finance`.`finance_budget`"
   dimensions:
-    - name: "budget_type"
-      expr: budget_type
-      comment: "Type of budget (operating, capital, project) for budget portfolio analysis."
-    - name: "budget_category"
-      expr: budget_category
-      comment: "Budget category for granular spend classification and reporting."
-    - name: "approval_status"
-      expr: approval_status
-      comment: "Budget approval status for governance and authorization tracking."
-    - name: "finance_budget_status"
-      expr: finance_budget_status
-      comment: "Lifecycle status of the budget record for active vs. archived budget management."
     - name: "fiscal_year"
       expr: fiscal_year
-      comment: "Fiscal year of the budget for annual planning and year-over-year comparison."
+      comment: "Fiscal year for annual budget cycle analysis and year-over-year comparison."
     - name: "period"
       expr: period
-      comment: "Budget period for monthly/quarterly budget tracking."
+      comment: "Budget period (month/quarter) for intra-year budget tracking."
+    - name: "budget_status"
+      expr: budget_status
+      comment: "Budget approval and execution status for governance monitoring."
     - name: "currency_code"
       expr: currency_code
-      comment: "Currency of the budget for multi-currency planning."
+      comment: "Budget currency for multi-currency financial planning."
     - name: "department_code"
       expr: department_code
-      comment: "Department owning the budget for accountability and chargeback analysis."
+      comment: "Department owning the budget line for accountability reporting."
     - name: "region_code"
       expr: region_code
-      comment: "Geographic region of the budget for regional financial planning."
+      comment: "Geographic region for regional budget allocation analysis."
+    - name: "is_capex"
+      expr: CAST(is_capex AS STRING)
+      comment: "Whether the budget line is capital expenditure — used to separate CapEx from OpEx budget analysis."
+    - name: "is_opex"
+      expr: CAST(is_opex AS STRING)
+      comment: "Whether the budget line is operational expenditure — used for OpEx budget tracking."
+    - name: "approval_status"
+      expr: approval_status
+      comment: "Budget approval status for tracking budget governance and sign-off completeness."
+    - name: "effective_start_date_month"
+      expr: DATE_TRUNC('month', effective_start_date)
+      comment: "Month the budget period starts — used for budget timeline analysis."
   measures:
+    - name: "total_budget_amount"
+      expr: SUM(CAST(budget_amount AS DOUBLE))
+      comment: "Total approved budget amount — primary measure of planned financial commitment for the period."
+    - name: "total_actual_amount"
+      expr: SUM(CAST(actual_amount AS DOUBLE))
+      comment: "Total actual spend against budget — measures execution against financial plan."
+    - name: "total_committed_amount"
+      expr: SUM(CAST(committed_amount AS DOUBLE))
+      comment: "Total committed (obligated but not yet spent) amount — critical for cash flow forecasting and budget availability."
     - name: "total_planned_amount"
       expr: SUM(CAST(total_planned_amount AS DOUBLE))
-      comment: "Total planned budget amount. Primary FP&A KPI for annual budget size and resource allocation decisions."
-    - name: "total_committed_amount"
-      expr: SUM(CAST(total_committed_amount AS DOUBLE))
-      comment: "Total committed spend against budget. Measures budget consumption and remaining availability."
+      comment: "Total planned amount across all budget lines — baseline for budget planning completeness."
     - name: "total_revised_amount"
       expr: SUM(CAST(total_revised_amount AS DOUBLE))
-      comment: "Total revised budget amount after reforecasting. Tracks budget agility and mid-year adjustments."
-    - name: "budget_record_count"
-      expr: COUNT(1)
-      comment: "Total number of budget records. Baseline for budget complexity and planning process scope."
-    - name: "capex_budget_count"
-      expr: COUNT(CASE WHEN is_capex = TRUE THEN 1 END)
-      comment: "Number of CapEx budget records. Used for capital investment planning and approval governance."
-    - name: "opex_budget_count"
-      expr: COUNT(CASE WHEN is_opex = TRUE THEN 1 END)
-      comment: "Number of OpEx budget records. Used for operating cost planning and efficiency benchmarking."
-    - name: "active_budget_count"
-      expr: COUNT(CASE WHEN is_active = TRUE THEN 1 END)
-      comment: "Number of currently active budgets. Used for budget portfolio management and governance."
-    - name: "avg_planned_amount_per_budget"
-      expr: AVG(CAST(total_planned_amount AS DOUBLE))
-      comment: "Average planned budget amount per record. Benchmarks budget size across departments and periods."
+      comment: "Total revised budget amount after amendments — measures budget flexibility and reforecast activity."
     - name: "avg_variance_threshold_percent"
       expr: AVG(CAST(variance_threshold_percent AS DOUBLE))
-      comment: "Average variance tolerance threshold across budgets. Used to calibrate budget control tightness."
+      comment: "Average variance threshold set across budget lines — indicates organizational tolerance for budget deviation."
+    - name: "unapproved_budget_count"
+      expr: COUNT(CASE WHEN approved_flag = FALSE THEN 1 END)
+      comment: "Count of budget lines not yet approved — measures budget governance completeness and approval backlog."
+    - name: "total_budget_lines"
+      expr: COUNT(1)
+      comment: "Total number of budget lines — baseline for budget structure complexity and planning coverage."
+    - name: "capex_budget_total"
+      expr: SUM(CASE WHEN is_capex = TRUE THEN CAST(budget_amount AS DOUBLE) ELSE 0 END)
+      comment: "Total CapEx budget — used by CFO to monitor capital investment commitments against board-approved CapEx envelope."
+    - name: "opex_budget_total"
+      expr: SUM(CASE WHEN is_opex = TRUE THEN CAST(budget_amount AS DOUBLE) ELSE 0 END)
+      comment: "Total OpEx budget — used to track operational cost commitments and manage P&L impact."
 $$;
 
 CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`finance_fixed_asset`
@@ -428,129 +348,67 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Fixed asset financial metrics covering net book value, depreciation, acquisition cost, and insurance coverage. Used by CFO, asset managers, and auditors to manage the capital asset base and depreciation schedules."
+  comment: "Fixed asset portfolio metrics covering net book value, accumulated depreciation, acquisition cost, and asset lifecycle status — essential for balance sheet accuracy, CapEx ROI tracking, and asset management governance."
   source: "`vibe_manufacturing_v1`.`finance`.`fixed_asset`"
   dimensions:
     - name: "asset_class"
       expr: asset_class
-      comment: "Asset class (machinery, buildings, vehicles) for capital asset portfolio segmentation."
-    - name: "fixed_asset_status"
-      expr: fixed_asset_status
-      comment: "Lifecycle status of the fixed asset (active, retired, disposed) for asset portfolio management."
+      comment: "Asset class (machinery, buildings, vehicles, etc.) for asset portfolio segmentation."
     - name: "depreciation_method"
       expr: depreciation_method
-      comment: "Depreciation method (straight-line, declining balance) for depreciation policy analysis."
-    - name: "asset_origin"
-      expr: asset_origin
-      comment: "Origin of the asset (purchased, leased, constructed) for capital structure analysis."
+      comment: "Depreciation method applied (straight-line, declining balance) for accounting policy analysis."
+    - name: "fixed_asset_status"
+      expr: fixed_asset_status
+      comment: "Current status of the fixed asset (active, retired, disposed) for lifecycle management."
+    - name: "currency_code"
+      expr: currency_code
+      comment: "Asset currency for multi-currency balance sheet reporting."
+    - name: "capitalized_flag"
+      expr: CAST(capitalized_flag AS STRING)
+      comment: "Whether the asset has been capitalized — used to separate capitalized vs. expensed assets."
     - name: "plant"
       expr: plant
       comment: "Plant location of the fixed asset for geographic asset distribution analysis."
     - name: "department_responsible"
       expr: department_responsible
       comment: "Department responsible for the asset for accountability and cost allocation."
-    - name: "capitalized_flag"
-      expr: capitalized_flag
-      comment: "Whether the asset has been capitalized. Used to distinguish active capital assets from pending items."
-    - name: "acquisition_date"
-      expr: acquisition_date
-      comment: "Date of asset acquisition for asset age and replacement cycle analysis."
+    - name: "acquisition_date_year"
+      expr: DATE_TRUNC('year', acquisition_date)
+      comment: "Year of acquisition for asset vintage analysis and depreciation schedule planning."
+    - name: "asset_origin"
+      expr: asset_origin
+      comment: "Origin of the asset (purchased, leased, transferred) for asset sourcing analysis."
   measures:
-    - name: "total_acquisition_cost"
-      expr: SUM(CAST(acquisition_cost AS DOUBLE))
-      comment: "Total acquisition cost of fixed assets. Primary capital base metric for balance sheet and investment analysis."
     - name: "total_net_book_value"
       expr: SUM(CAST(net_book_value AS DOUBLE))
-      comment: "Total net book value of fixed assets. Core balance sheet metric for asset valuation and impairment assessment."
+      comment: "Total net book value of all fixed assets — primary balance sheet measure for PP&E reporting."
+    - name: "total_acquisition_cost"
+      expr: SUM(CAST(acquisition_cost AS DOUBLE))
+      comment: "Total gross acquisition cost of fixed assets — measures total capital invested in the asset base."
     - name: "total_accumulated_depreciation"
       expr: SUM(CAST(accumulated_depreciation AS DOUBLE))
-      comment: "Total accumulated depreciation. Measures asset aging and remaining useful life across the portfolio."
-    - name: "total_salvage_value"
-      expr: SUM(CAST(salvage_value AS DOUBLE))
-      comment: "Total estimated salvage value of fixed assets. Used for depreciation base calculation and disposal planning."
+      comment: "Total accumulated depreciation — measures asset aging and remaining useful life across the portfolio."
     - name: "total_replacement_cost"
       expr: SUM(CAST(replacement_cost AS DOUBLE))
-      comment: "Total replacement cost of fixed assets. Used for insurance adequacy and capital replacement planning."
-    - name: "total_insurance_coverage_amount"
-      expr: SUM(CAST(insurance_coverage_amount AS DOUBLE))
-      comment: "Total insurance coverage across fixed assets. Used to assess insurance adequacy vs. replacement cost."
+      comment: "Total estimated replacement cost — used for insurance adequacy assessment and CapEx planning."
+    - name: "total_salvage_value"
+      expr: SUM(CAST(salvage_value AS DOUBLE))
+      comment: "Total residual/salvage value of assets — used in depreciation calculations and disposal planning."
     - name: "total_tax_net_book_value"
       expr: SUM(CAST(tax_net_book_value AS DOUBLE))
-      comment: "Total tax net book value. Used for deferred tax calculation and tax depreciation reporting."
-    - name: "total_tax_accumulated_depreciation"
-      expr: SUM(CAST(tax_accumulated_depreciation AS DOUBLE))
-      comment: "Total tax accumulated depreciation. Required for tax basis reporting and deferred tax liability calculation."
-    - name: "fixed_asset_count"
-      expr: COUNT(1)
-      comment: "Total number of fixed assets. Baseline for asset portfolio size and management complexity."
-    - name: "capitalized_asset_count"
-      expr: COUNT(CASE WHEN capitalized_flag = TRUE THEN 1 END)
-      comment: "Number of capitalized fixed assets. Tracks active capital base for balance sheet reporting."
+      comment: "Total tax net book value — required for deferred tax calculation and tax compliance reporting."
+    - name: "total_insurance_coverage"
+      expr: SUM(CAST(insurance_coverage_amount AS DOUBLE))
+      comment: "Total insurance coverage across fixed assets — used to assess insurance adequacy vs. replacement cost."
     - name: "avg_net_book_value_per_asset"
       expr: AVG(CAST(net_book_value AS DOUBLE))
-      comment: "Average net book value per fixed asset. Benchmarks asset value and identifies high-value asset concentrations."
-    - name: "avg_tax_depreciation_rate"
-      expr: AVG(CAST(tax_depreciation_rate AS DOUBLE))
-      comment: "Average tax depreciation rate across fixed assets. Used for tax planning and deferred tax modeling."
-$$;
-
-CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`finance_cost_allocation`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Cost allocation metrics covering allocation amounts, methods, and posting status. Used by controllers and FP&A to ensure accurate cost distribution across cost objects and validate allocation cycle integrity."
-  source: "`vibe_manufacturing_v1`.`finance`.`cost_allocation`"
-  dimensions:
-    - name: "allocation_method"
-      expr: allocation_method
-      comment: "Method used for cost allocation (activity-based, percentage, statistical) for methodology analysis."
-    - name: "allocation_category"
-      expr: allocation_category
-      comment: "Category of cost allocation for classification and reporting."
-    - name: "posting_status"
-      expr: posting_status
-      comment: "Posting status of the allocation (posted, pending, reversed) for period-close monitoring."
-    - name: "fiscal_year"
-      expr: fiscal_year
-      comment: "Fiscal year of the allocation for annual cost distribution analysis."
-    - name: "fiscal_period"
-      expr: fiscal_period
-      comment: "Fiscal period for monthly cost allocation reporting."
-    - name: "currency_code"
-      expr: currency_code
-      comment: "Currency of the allocation for multi-currency cost reporting."
-    - name: "cost_object_type"
-      expr: cost_object_type
-      comment: "Type of cost object receiving the allocation for cost structure analysis."
-    - name: "allocation_date"
-      expr: allocation_date
-      comment: "Date of the allocation posting for time-series cost distribution analysis."
-    - name: "is_manual_allocation"
-      expr: is_manual_allocation
-      comment: "Flag indicating manual vs. automated allocation. Used to assess allocation process automation maturity."
-  measures:
-    - name: "total_allocation_amount"
-      expr: SUM(CAST(allocation_amount AS DOUBLE))
-      comment: "Total cost allocated across all allocation records. Primary measure for cost distribution volume and completeness."
-    - name: "allocation_record_count"
+      comment: "Average net book value per fixed asset — benchmarks asset value for portfolio health assessment."
+    - name: "total_fixed_assets"
       expr: COUNT(1)
-      comment: "Total number of cost allocation records. Baseline for allocation cycle complexity and workload."
-    - name: "manual_allocation_count"
-      expr: COUNT(CASE WHEN is_manual_allocation = TRUE THEN 1 END)
-      comment: "Number of manual allocations. High manual counts indicate automation gaps and control risks."
-    - name: "reversal_allocation_count"
-      expr: COUNT(CASE WHEN reversal_indicator = TRUE THEN 1 END)
-      comment: "Number of reversed allocations. Indicates allocation errors and rework in the cost distribution process."
-    - name: "avg_allocation_amount"
-      expr: AVG(CAST(allocation_amount AS DOUBLE))
-      comment: "Average allocation amount per record. Benchmarks typical allocation size for anomaly detection."
-    - name: "avg_allocation_percentage"
-      expr: AVG(CAST(allocation_percentage AS DOUBLE))
-      comment: "Average allocation percentage applied. Used to validate allocation driver consistency across cycles."
-    - name: "distinct_cost_object_count"
-      expr: COUNT(DISTINCT cost_object_id)
-      comment: "Number of distinct cost objects receiving allocations. Measures allocation breadth and cost distribution coverage."
+      comment: "Total count of fixed assets in the register — baseline for asset portfolio size and management scope."
+    - name: "fully_depreciated_asset_count"
+      expr: COUNT(CASE WHEN net_book_value <= 0 THEN 1 END)
+      comment: "Count of fully depreciated assets still in service — signals aging asset base requiring CapEx refresh planning."
 $$;
 
 CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`finance_capex_request`
@@ -558,55 +416,129 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Capital expenditure request metrics covering estimated amounts, ROI, approval pipeline, and payback analysis. Used by CFO, investment committee, and FP&A to govern capital allocation decisions."
+  comment: "Capital expenditure request pipeline metrics tracking approval rates, requested vs. approved amounts, ROI expectations, and CapEx pipeline by category and priority — used by CFO and investment committee for CapEx governance."
   source: "`vibe_manufacturing_v1`.`finance`.`capex_request`"
   dimensions:
     - name: "request_status"
       expr: request_status
-      comment: "Approval status of the CapEx request (submitted, approved, rejected) for pipeline management."
+      comment: "CapEx request status (submitted, approved, rejected, in-progress) for pipeline stage analysis."
     - name: "approval_stage"
       expr: approval_stage
-      comment: "Current approval stage for tracking CapEx governance workflow."
+      comment: "Current approval stage for tracking CapEx governance workflow progress."
     - name: "asset_category"
       expr: asset_category
-      comment: "Category of asset being requested (equipment, IT, infrastructure) for capital portfolio analysis."
-    - name: "funding_source"
-      expr: funding_source
-      comment: "Source of funding for the CapEx request for capital structure analysis."
+      comment: "Asset category (machinery, IT, infrastructure) for CapEx portfolio segmentation."
     - name: "priority"
       expr: priority
-      comment: "Priority level of the CapEx request for investment prioritization."
+      comment: "Business priority of the CapEx request for investment prioritization analysis."
     - name: "currency_code"
       expr: currency_code
-      comment: "Currency of the CapEx request for multi-currency capital planning."
+      comment: "Request currency for multi-currency CapEx portfolio analysis."
+    - name: "funding_source"
+      expr: funding_source
+      comment: "Source of funding (internal, debt, equity) for CapEx financing analysis."
+    - name: "requesting_department"
+      expr: requesting_department
+      comment: "Department requesting the CapEx for departmental investment allocation analysis."
     - name: "capitalized_flag"
-      expr: capitalized_flag
-      comment: "Whether the requested asset has been capitalized. Tracks CapEx execution completion."
-    - name: "request_date"
-      expr: request_date
-      comment: "Date the CapEx request was submitted for pipeline age and cycle time analysis."
+      expr: CAST(capitalized_flag AS STRING)
+      comment: "Whether the request has been capitalized — tracks conversion from request to asset."
     - name: "regulatory_approval_needed"
-      expr: regulatory_approval_needed
-      comment: "Flag indicating regulatory approval requirement. Used for compliance-gated CapEx tracking."
+      expr: CAST(regulatory_approval_needed AS STRING)
+      comment: "Whether regulatory approval is required — used to flag compliance-sensitive CapEx requests."
+    - name: "request_date_year"
+      expr: DATE_TRUNC('year', request_date)
+      comment: "Year of request submission for annual CapEx pipeline trend analysis."
   measures:
+    - name: "total_requested_amount"
+      expr: SUM(CAST(requested_amount AS DOUBLE))
+      comment: "Total CapEx amount requested — measures the full investment pipeline before approval filtering."
+    - name: "total_approved_amount"
+      expr: SUM(CAST(approved_amount AS DOUBLE))
+      comment: "Total CapEx amount approved — measures committed capital investment and board-approved spend envelope."
     - name: "total_estimated_amount"
       expr: SUM(CAST(estimated_amount AS DOUBLE))
-      comment: "Total estimated CapEx investment requested. Primary capital planning KPI for investment committee decisions."
-    - name: "capex_request_count"
-      expr: COUNT(1)
-      comment: "Total number of CapEx requests. Baseline for capital pipeline volume and governance workload."
-    - name: "approved_request_count"
-      expr: COUNT(CASE WHEN request_status = 'APPROVED' THEN 1 END)
-      comment: "Number of approved CapEx requests. Tracks capital authorization rate and investment pipeline."
-    - name: "capitalized_request_count"
-      expr: COUNT(CASE WHEN capitalized_flag = TRUE THEN 1 END)
-      comment: "Number of CapEx requests that have been capitalized. Measures CapEx execution completion rate."
-    - name: "avg_estimated_amount"
-      expr: AVG(CAST(estimated_amount AS DOUBLE))
-      comment: "Average estimated CapEx amount per request. Benchmarks investment size and identifies outliers."
+      comment: "Total estimated CapEx amount — used for budget planning and cash flow forecasting."
     - name: "avg_expected_roi_percent"
       expr: AVG(CAST(expected_roi_percent AS DOUBLE))
-      comment: "Average expected ROI across CapEx requests. Key investment quality metric for capital allocation decisions."
+      comment: "Average expected ROI across CapEx requests — used by investment committee to prioritize highest-return projects."
+    - name: "avg_roi_percentage"
+      expr: AVG(CAST(roi_percentage AS DOUBLE))
+      comment: "Average ROI percentage across approved CapEx — measures portfolio-level return on capital investment."
+    - name: "total_capex_requests"
+      expr: COUNT(1)
+      comment: "Total number of CapEx requests submitted — baseline for investment pipeline volume and governance workload."
+    - name: "approved_request_count"
+      expr: COUNT(CASE WHEN request_status = 'APPROVED' THEN 1 END)
+      comment: "Count of approved CapEx requests — measures investment committee throughput and approval rate."
+    - name: "pending_approval_count"
+      expr: COUNT(CASE WHEN request_status NOT IN ('APPROVED','REJECTED','CANCELLED') THEN 1 END)
+      comment: "Count of CapEx requests pending approval — measures governance backlog and decision cycle time."
+    - name: "avg_approved_amount"
+      expr: AVG(CAST(approved_amount AS DOUBLE))
+      comment: "Average approved CapEx amount per request — benchmarks typical investment size for portfolio planning."
+$$;
+
+CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`finance_cost_allocation`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Cost allocation metrics tracking allocation volumes, amounts, methods, and posting status — used by controllers to validate cost distribution accuracy and ensure overhead is correctly absorbed across cost objects."
+  source: "`vibe_manufacturing_v1`.`finance`.`cost_allocation`"
+  dimensions:
+    - name: "allocation_method"
+      expr: allocation_method
+      comment: "Allocation method used (percentage, statistical key figure, fixed amount) for methodology analysis."
+    - name: "allocation_category"
+      expr: allocation_category
+      comment: "Category of cost allocation (overhead, direct, indirect) for cost type segmentation."
+    - name: "allocation_status"
+      expr: allocation_status
+      comment: "Status of the allocation posting for close-process monitoring."
+    - name: "fiscal_year"
+      expr: fiscal_year
+      comment: "Fiscal year of the allocation for period-over-period trend analysis."
+    - name: "fiscal_period"
+      expr: fiscal_period
+      comment: "Fiscal period of the allocation for monthly cost distribution tracking."
+    - name: "currency_code"
+      expr: currency_code
+      comment: "Allocation currency for multi-currency cost management."
+    - name: "posting_status"
+      expr: posting_status
+      comment: "Posting status of the allocation for period-close completeness monitoring."
+    - name: "is_manual_allocation"
+      expr: CAST(is_manual_allocation AS STRING)
+      comment: "Whether the allocation was manually created — high manual rates indicate automation gaps."
+    - name: "reversal_indicator"
+      expr: CAST(reversal_indicator AS STRING)
+      comment: "Whether the allocation was reversed — used to measure allocation correction activity."
+    - name: "allocation_date_month"
+      expr: DATE_TRUNC('month', allocation_date)
+      comment: "Month of allocation for monthly cost distribution trend analysis."
+  measures:
+    - name: "total_allocation_amount"
+      expr: SUM(CAST(allocation_amount AS DOUBLE))
+      comment: "Total cost allocated across all allocation records — measures total overhead and indirect cost distributed."
+    - name: "avg_allocation_amount"
+      expr: AVG(CAST(allocation_amount AS DOUBLE))
+      comment: "Average allocation amount per record — benchmarks typical allocation size for anomaly detection."
+    - name: "avg_allocation_percentage"
+      expr: AVG(CAST(allocation_percentage AS DOUBLE))
+      comment: "Average allocation percentage applied — used to validate allocation basis consistency across cost centers."
+    - name: "manual_allocation_count"
+      expr: COUNT(CASE WHEN is_manual_allocation = TRUE THEN 1 END)
+      comment: "Count of manual allocations — high manual counts signal automation gaps in cost distribution processes."
+    - name: "reversal_allocation_count"
+      expr: COUNT(CASE WHEN reversal_indicator = TRUE THEN 1 END)
+      comment: "Count of reversed allocations — measures allocation correction activity and posting quality."
+    - name: "total_allocations"
+      expr: COUNT(1)
+      comment: "Total number of cost allocation records — baseline for allocation process volume and complexity."
+    - name: "unposted_allocation_count"
+      expr: COUNT(CASE WHEN posting_status != 'POSTED' THEN 1 END)
+      comment: "Count of allocations not yet posted — measures period-close completeness for cost distribution."
 $$;
 
 CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`finance_intercompany_transaction`
@@ -614,70 +546,194 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Intercompany transaction metrics covering transfer pricing, elimination status, and cross-entity flows. Used by group controllers and tax teams to manage consolidation eliminations and transfer pricing compliance."
+  comment: "Intercompany transaction metrics tracking elimination status, transfer pricing, reconciliation gaps, and cross-entity transaction volumes — critical for consolidated financial reporting and transfer pricing compliance."
   source: "`vibe_manufacturing_v1`.`finance`.`intercompany_transaction`"
   dimensions:
     - name: "transaction_type"
       expr: transaction_type
-      comment: "Type of intercompany transaction (sale, loan, service) for elimination and consolidation analysis."
+      comment: "Type of intercompany transaction (sale, loan, service, royalty) for elimination categorization."
     - name: "transaction_subtype"
       expr: transaction_subtype
-      comment: "Subtype for granular intercompany transaction classification."
+      comment: "Sub-type for granular intercompany transaction classification."
     - name: "intercompany_transaction_status"
       expr: intercompany_transaction_status
-      comment: "Processing status of the intercompany transaction for period-close monitoring."
+      comment: "Transaction status for tracking intercompany processing and elimination completeness."
     - name: "elimination_status"
       expr: elimination_status
-      comment: "Consolidation elimination status. Critical for group reporting accuracy and audit compliance."
+      comment: "Elimination status — uneliminated transactions cause consolidation errors and must be resolved before close."
+    - name: "reconciliation_status"
+      expr: reconciliation_status
+      comment: "Reconciliation status between sending and receiving entities — mismatches require investigation."
+    - name: "currency_code"
+      expr: currency_code
+      comment: "Transaction currency for multi-currency intercompany analysis."
     - name: "approval_status"
       expr: approval_status
-      comment: "Approval status of the intercompany transaction for governance tracking."
+      comment: "Approval status of the intercompany transaction for governance monitoring."
     - name: "fiscal_year"
       expr: fiscal_year
-      comment: "Fiscal year for annual intercompany flow analysis."
+      comment: "Fiscal year for annual intercompany volume and elimination analysis."
     - name: "posting_period"
       expr: posting_period
-      comment: "Posting period for monthly intercompany reconciliation."
-    - name: "amount_currency"
-      expr: amount_currency
-      comment: "Transaction currency for multi-currency intercompany analysis."
+      comment: "Posting period for monthly intercompany reconciliation tracking."
     - name: "transfer_pricing_method"
       expr: transfer_pricing_method
-      comment: "Transfer pricing methodology applied (CUP, cost-plus, TNMM) for tax compliance analysis."
+      comment: "Transfer pricing method applied (arm's length, cost-plus, etc.) for tax compliance analysis."
+    - name: "elimination_flag"
+      expr: CAST(elimination_flag AS STRING)
+      comment: "Whether the transaction has been flagged for elimination in consolidation."
   measures:
-    - name: "total_gross_amount"
+    - name: "total_transaction_amount"
+      expr: SUM(CAST(transaction_amount AS DOUBLE))
+      comment: "Total intercompany transaction amount — measures scale of cross-entity activity requiring elimination in consolidation."
+    - name: "total_amount_gross"
       expr: SUM(CAST(amount_gross AS DOUBLE))
-      comment: "Total gross intercompany transaction amount. Primary measure for group consolidation elimination scope."
-    - name: "total_net_amount"
+      comment: "Total gross intercompany amount — used for elimination journal preparation in group consolidation."
+    - name: "total_amount_net"
       expr: SUM(CAST(amount_net AS DOUBLE))
-      comment: "Total net intercompany amount. Used for transfer pricing analysis and arm's-length compliance."
+      comment: "Total net intercompany amount after tax — measures net intercompany exposure for consolidation."
     - name: "total_tax_amount"
-      expr: SUM(CAST(amount_tax AS DOUBLE))
-      comment: "Total tax on intercompany transactions. Required for indirect tax and withholding tax compliance."
+      expr: SUM(CAST(tax_amount AS DOUBLE))
+      comment: "Total tax on intercompany transactions — supports transfer pricing tax compliance and deferred tax analysis."
     - name: "total_local_currency_amount"
       expr: SUM(CAST(local_currency_amount AS DOUBLE))
-      comment: "Total intercompany amount in local currency. Used for statutory reporting and FX translation."
-    - name: "total_transfer_price"
-      expr: SUM(CAST(transfer_price AS DOUBLE))
-      comment: "Total transfer price across intercompany transactions. Core transfer pricing compliance metric."
-    - name: "transaction_count"
-      expr: COUNT(1)
-      comment: "Total number of intercompany transactions. Baseline for consolidation complexity and elimination workload."
-    - name: "eliminated_transaction_count"
-      expr: COUNT(CASE WHEN elimination_flag = TRUE THEN 1 END)
-      comment: "Number of intercompany transactions eliminated in consolidation. Tracks group reporting completeness."
-    - name: "reversal_transaction_count"
-      expr: COUNT(CASE WHEN reversal_indicator = TRUE THEN 1 END)
-      comment: "Number of reversed intercompany transactions. Indicates posting errors in the intercompany process."
+      comment: "Total intercompany amount in local currency — used for entity-level statutory reporting."
     - name: "avg_markup_percentage"
       expr: AVG(CAST(markup_percentage AS DOUBLE))
-      comment: "Average markup percentage on intercompany transactions. Used for transfer pricing policy compliance monitoring."
-    - name: "avg_exchange_rate"
-      expr: AVG(CAST(exchange_rate AS DOUBLE))
-      comment: "Average FX rate applied to intercompany transactions. Used for currency translation analysis."
-    - name: "distinct_sending_entity_count"
-      expr: COUNT(DISTINCT intercompany_company_code_id)
-      comment: "Number of distinct sending legal entities. Measures intercompany network complexity for consolidation planning."
+      comment: "Average markup percentage on intercompany transactions — key transfer pricing compliance metric monitored by tax authorities."
+    - name: "uneliminated_transaction_count"
+      expr: COUNT(CASE WHEN elimination_flag = FALSE OR elimination_status != 'ELIMINATED' THEN 1 END)
+      comment: "Count of intercompany transactions not yet eliminated — uneliminated items cause consolidation errors and must be resolved before close."
+    - name: "unreconciled_transaction_count"
+      expr: COUNT(CASE WHEN reconciliation_status != 'RECONCILED' THEN 1 END)
+      comment: "Count of unreconciled intercompany transactions — measures intercompany matching gaps requiring entity-to-entity resolution."
+    - name: "total_intercompany_transactions"
+      expr: COUNT(1)
+      comment: "Total number of intercompany transactions — baseline for consolidation workload and intercompany activity volume."
+    - name: "avg_transfer_price"
+      expr: AVG(CAST(transfer_price AS DOUBLE))
+      comment: "Average transfer price across intercompany transactions — used to benchmark pricing consistency for transfer pricing documentation."
+$$;
+
+CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`finance_profit_center`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Profit center performance metrics tracking actual vs. planned profit, budget utilization, and OEE targets — used by segment leaders and CFO to evaluate business unit financial performance."
+  source: "`vibe_manufacturing_v1`.`finance`.`profit_center`"
+  dimensions:
+    - name: "profit_center_type"
+      expr: profit_center_type
+      comment: "Type of profit center (product line, geography, business unit) for portfolio segmentation."
+    - name: "profit_center_group"
+      expr: profit_center_group
+      comment: "Profit center group for hierarchical P&L reporting."
+    - name: "segment"
+      expr: segment
+      comment: "Business segment for segment-level profitability analysis."
+    - name: "region"
+      expr: region
+      comment: "Geographic region for regional P&L performance analysis."
+    - name: "currency_code"
+      expr: currency_code
+      comment: "Profit center currency for multi-currency profitability reporting."
+    - name: "profit_center_status"
+      expr: profit_center_status
+      comment: "Status of the profit center (active, inactive) for portfolio management."
+    - name: "hierarchy_level"
+      expr: hierarchy_level
+      comment: "Hierarchy level for organizational drill-down in P&L reporting."
+    - name: "valid_from_year"
+      expr: DATE_TRUNC('year', valid_from)
+      comment: "Year the profit center became valid — used for lifecycle analysis."
+  measures:
+    - name: "total_actual_profit"
+      expr: SUM(CAST(actual_profit AS DOUBLE))
+      comment: "Total actual profit across profit centers — primary P&L measure for business unit performance evaluation."
+    - name: "total_planned_profit"
+      expr: SUM(CAST(planned_profit AS DOUBLE))
+      comment: "Total planned profit across profit centers — baseline for profit vs. plan variance analysis."
+    - name: "total_budget_amount"
+      expr: SUM(CAST(budget_amount AS DOUBLE))
+      comment: "Total budget allocated to profit centers — measures financial resource allocation across business units."
+    - name: "avg_oee_target_percent"
+      expr: AVG(CAST(oee_target_percent AS DOUBLE))
+      comment: "Average OEE target across profit centers — links financial performance to operational efficiency targets."
+    - name: "profit_vs_plan_variance"
+      expr: SUM(CAST(actual_profit AS DOUBLE) - CAST(planned_profit AS DOUBLE))
+      comment: "Total profit variance (actual minus planned) — negative values trigger management intervention and reforecast."
+    - name: "total_profit_centers"
+      expr: COUNT(1)
+      comment: "Total number of profit centers — baseline for business unit portfolio size and reporting complexity."
+    - name: "underperforming_profit_center_count"
+      expr: COUNT(CASE WHEN actual_profit < planned_profit THEN 1 END)
+      comment: "Count of profit centers below plan — measures breadth of underperformance requiring strategic intervention."
+$$;
+
+CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`finance_internal_order`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Internal order financial metrics tracking budget consumption, actual vs. planned costs, commitment levels, and settlement status — used by project controllers and cost managers to govern discretionary spend."
+  source: "`vibe_manufacturing_v1`.`finance`.`internal_order`"
+  dimensions:
+    - name: "order_type"
+      expr: order_type
+      comment: "Internal order type (CapEx, maintenance, marketing, R&D) for spend category analysis."
+    - name: "internal_order_status"
+      expr: internal_order_status
+      comment: "Order status (created, released, technically complete, settled) for lifecycle monitoring."
+    - name: "approval_status"
+      expr: approval_status
+      comment: "Approval status for governance and authorization tracking."
+    - name: "currency_code"
+      expr: currency_code
+      comment: "Order currency for multi-currency cost management."
+    - name: "capex_flag"
+      expr: CAST(capex_flag AS STRING)
+      comment: "Whether the order is CapEx — used to separate capital from operational spend."
+    - name: "opex_flag"
+      expr: CAST(opex_flag AS STRING)
+      comment: "Whether the order is OpEx — used for operational cost tracking."
+    - name: "controlling_area"
+      expr: controlling_area
+      comment: "Controlling area for multi-entity cost management."
+    - name: "release_status"
+      expr: release_status
+      comment: "Release status of the internal order for workflow governance."
+    - name: "order_date_month"
+      expr: DATE_TRUNC('month', order_date)
+      comment: "Month the order was created for trend analysis of discretionary spend initiation."
+  measures:
+    - name: "total_actual_cost"
+      expr: SUM(CAST(actual_cost AS DOUBLE))
+      comment: "Total actual costs posted to internal orders — measures discretionary spend execution against authorization."
+    - name: "total_budget_amount"
+      expr: SUM(CAST(budget_amount AS DOUBLE))
+      comment: "Total budget authorized for internal orders — baseline for budget vs. actual variance analysis."
+    - name: "total_committed_amount"
+      expr: SUM(CAST(committed_amount AS DOUBLE))
+      comment: "Total committed (obligated) amount on internal orders — critical for available budget calculation."
+    - name: "total_planned_amount"
+      expr: SUM(CAST(planned_amount AS DOUBLE))
+      comment: "Total planned cost on internal orders — used for cost forecasting and budget adequacy assessment."
+    - name: "total_variance_amount"
+      expr: SUM(CAST(variance_amount AS DOUBLE))
+      comment: "Total cost variance (actual minus budget) — negative values indicate overspend requiring management action."
+    - name: "avg_variance_percent"
+      expr: AVG(CAST(variance_percent AS DOUBLE))
+      comment: "Average variance percentage across internal orders — measures overall budget discipline for discretionary spend."
+    - name: "total_internal_orders"
+      expr: COUNT(1)
+      comment: "Total number of internal orders — baseline for discretionary spend portfolio size."
+    - name: "overbudget_order_count"
+      expr: COUNT(CASE WHEN actual_cost > budget_amount THEN 1 END)
+      comment: "Count of internal orders exceeding budget — key governance metric for cost control and authorization compliance."
+    - name: "unsettled_order_count"
+      expr: COUNT(CASE WHEN internal_order_status NOT IN ('SETTLED','CLOSED') THEN 1 END)
+      comment: "Count of internal orders not yet settled — measures period-close completeness for cost object settlement."
 $$;
 
 CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`finance_cost_estimate`
@@ -685,114 +741,58 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Cost estimate metrics covering estimated vs. actual cost accuracy, unit pricing, and estimate portfolio management. Used by FP&A, product costing teams, and operations to validate standard costs and pricing decisions."
+  comment: "Product and project cost estimate metrics tracking estimated vs. actual cost components, estimate accuracy, and costing coverage — used by cost engineers and CFO to validate standard costs and support pricing decisions."
   source: "`vibe_manufacturing_v1`.`finance`.`cost_estimate`"
   dimensions:
-    - name: "cost_category"
-      expr: cost_category
-      comment: "Category of cost estimate (material, labor, overhead) for cost structure analysis."
-    - name: "cost_estimate_status"
-      expr: cost_estimate_status
-      comment: "Status of the cost estimate (draft, approved, released) for estimate lifecycle management."
+    - name: "estimate_type"
+      expr: estimate_type
+      comment: "Type of cost estimate (standard, preliminary, actual) for estimate lifecycle analysis."
+    - name: "estimate_status"
+      expr: estimate_status
+      comment: "Status of the cost estimate (draft, released, marked) for costing governance."
     - name: "confidence_level"
       expr: confidence_level
       comment: "Confidence level of the estimate for risk-adjusted cost planning."
     - name: "currency_code"
       expr: currency_code
-      comment: "Currency of the cost estimate for multi-currency standard costing."
+      comment: "Estimate currency for multi-currency costing analysis."
     - name: "unit_of_measure"
       expr: unit_of_measure
-      comment: "Unit of measure for the cost estimate for per-unit cost analysis."
-    - name: "estimate_date"
-      expr: estimate_date
-      comment: "Date the estimate was created for temporal cost trend analysis."
-    - name: "valid_from"
-      expr: valid_from
-      comment: "Effective start date of the cost estimate for standard cost period management."
-    - name: "risk_factor"
-      expr: risk_factor
-      comment: "Risk factor applied to the estimate for contingency and risk-adjusted cost analysis."
+      comment: "Unit of measure for the cost estimate for quantity-normalized cost analysis."
+    - name: "estimate_date_year"
+      expr: DATE_TRUNC('year', estimate_date)
+      comment: "Year of estimate creation for vintage and trend analysis."
+    - name: "valid_from_year"
+      expr: DATE_TRUNC('year', valid_from)
+      comment: "Year the estimate became valid for costing period analysis."
   measures:
-    - name: "total_estimated_cost"
-      expr: SUM(CAST(total_estimated_cost AS DOUBLE))
-      comment: "Total estimated cost across all estimates. Primary standard costing KPI for product pricing and margin planning."
-    - name: "total_estimate_amount_gross"
+    - name: "total_estimated_cost_gross"
       expr: SUM(CAST(estimate_amount_gross AS DOUBLE))
-      comment: "Total gross estimate amount. Used for cost baseline and budget planning."
-    - name: "total_estimate_amount_net"
+      comment: "Total gross estimated cost — measures total cost commitment in the estimate portfolio."
+    - name: "total_estimated_cost_net"
       expr: SUM(CAST(estimate_amount_net AS DOUBLE))
-      comment: "Total net estimate amount after adjustments. Used for net cost planning and margin analysis."
-    - name: "total_estimate_tax_amount"
-      expr: SUM(CAST(estimate_tax_amount AS DOUBLE))
-      comment: "Total tax amount on cost estimates. Used for tax-inclusive cost planning."
-    - name: "cost_estimate_count"
-      expr: COUNT(1)
-      comment: "Total number of cost estimates. Baseline for costing portfolio size and standard cost coverage."
+      comment: "Total net estimated cost — used for pricing and margin analysis."
+    - name: "total_material_cost"
+      expr: SUM(CAST(material_cost AS DOUBLE))
+      comment: "Total material cost component across estimates — used to analyze material cost as a driver of total product cost."
+    - name: "total_labor_cost"
+      expr: SUM(CAST(labor_cost AS DOUBLE))
+      comment: "Total labor cost component across estimates — measures labor cost contribution to product/project cost."
+    - name: "total_overhead_cost"
+      expr: SUM(CAST(overhead_cost AS DOUBLE))
+      comment: "Total overhead cost component — measures overhead absorption rate and its impact on product cost."
+    - name: "total_estimated_cost_all"
+      expr: SUM(CAST(total_estimated_cost AS DOUBLE))
+      comment: "Total estimated cost across all estimates — primary measure for cost portfolio sizing and budget adequacy."
     - name: "avg_unit_price"
       expr: AVG(CAST(unit_price AS DOUBLE))
-      comment: "Average unit price across cost estimates. Benchmarks standard cost per unit for pricing decisions."
+      comment: "Average unit price across cost estimates — used for pricing benchmarking and margin analysis."
+    - name: "total_cost_estimates"
+      expr: COUNT(1)
+      comment: "Total number of cost estimates — baseline for costing coverage and standard cost maintenance workload."
     - name: "avg_total_estimated_cost"
       expr: AVG(CAST(total_estimated_cost AS DOUBLE))
-      comment: "Average total estimated cost per estimate. Used to benchmark estimate size and detect outliers."
-    - name: "avg_quantity"
-      expr: AVG(CAST(quantity AS DOUBLE))
-      comment: "Average quantity per cost estimate. Used for volume-based cost analysis and economies of scale assessment."
-$$;
-
-CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`finance_gl_account`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "General ledger account metrics covering account portfolio composition, balance analysis, and account type distribution. Used by controllers and auditors to manage the chart of accounts and ledger health."
-  source: "`vibe_manufacturing_v1`.`finance`.`gl_account`"
-  dimensions:
-    - name: "account_type"
-      expr: account_type
-      comment: "GL account type (asset, liability, equity, revenue, expense) for financial statement classification."
-    - name: "account_category"
-      expr: account_category
-      comment: "Account category for sub-classification within account types."
-    - name: "account_group"
-      expr: account_group
-      comment: "Account group for hierarchical chart of accounts reporting."
-    - name: "gl_account_status"
-      expr: gl_account_status
-      comment: "Active/inactive status of the GL account for account portfolio management."
-    - name: "balance_type"
-      expr: balance_type
-      comment: "Balance type (debit/credit normal balance) for financial statement presentation."
-    - name: "currency_code"
-      expr: currency_code
-      comment: "Currency of the GL account for multi-currency ledger analysis."
-    - name: "segment"
-      expr: segment
-      comment: "Reporting segment for segment-level financial reporting."
-    - name: "functional_area"
-      expr: functional_area
-      comment: "Functional area for cost-of-sales and functional expense reporting."
-  measures:
-    - name: "total_current_balance"
-      expr: SUM(CAST(current_balance AS DOUBLE))
-      comment: "Total current balance across GL accounts. Core balance sheet and P&L measure for financial position assessment."
-    - name: "total_opening_balance"
-      expr: SUM(CAST(opening_balance AS DOUBLE))
-      comment: "Total opening balance across GL accounts. Used for period movement analysis and reconciliation."
-    - name: "gl_account_count"
-      expr: COUNT(1)
-      comment: "Total number of GL accounts. Baseline for chart of accounts complexity and rationalization analysis."
-    - name: "active_account_count"
-      expr: COUNT(CASE WHEN gl_account_status = 'ACTIVE' AND is_deprecated = FALSE THEN 1 END)
-      comment: "Number of active, non-deprecated GL accounts. Used for chart of accounts hygiene and simplification."
-    - name: "budget_enabled_account_count"
-      expr: COUNT(CASE WHEN is_budget_enabled = TRUE THEN 1 END)
-      comment: "Number of GL accounts enabled for budgeting. Measures budget coverage across the chart of accounts."
-    - name: "intercompany_account_count"
-      expr: COUNT(CASE WHEN is_intercompany = TRUE THEN 1 END)
-      comment: "Number of intercompany GL accounts. Used for consolidation elimination scope and intercompany reconciliation."
-    - name: "avg_current_balance"
-      expr: AVG(CAST(current_balance AS DOUBLE))
-      comment: "Average current balance per GL account. Used to identify high-balance accounts for audit focus."
+      comment: "Average total estimated cost per estimate — benchmarks typical cost estimate size for anomaly detection."
 $$;
 
 CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`finance_allocation_cycle`
@@ -800,35 +800,106 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Cost allocation cycle metrics covering cycle amounts, frequency, and status. Used by controllers to monitor allocation cycle execution and ensure complete cost distribution each period."
+  comment: "Cost allocation cycle execution metrics tracking cycle completion, allocated amounts, and cycle frequency — used by controllers to monitor overhead allocation process health and period-close readiness."
   source: "`vibe_manufacturing_v1`.`finance`.`allocation_cycle`"
   dimensions:
     - name: "cycle_type"
       expr: cycle_type
-      comment: "Type of allocation cycle (assessment, distribution, settlement) for cycle classification."
-    - name: "allocation_cycle_status"
-      expr: allocation_cycle_status
+      comment: "Type of allocation cycle (assessment, distribution, settlement) for process categorization."
+    - name: "cycle_status"
+      expr: cycle_status
       comment: "Execution status of the allocation cycle for period-close monitoring."
-    - name: "frequency"
-      expr: frequency
-      comment: "Frequency of the allocation cycle (monthly, quarterly) for scheduling analysis."
     - name: "allocation_method"
       expr: allocation_method
-      comment: "Method used in the allocation cycle for methodology governance."
+      comment: "Allocation method used in the cycle for methodology governance."
+    - name: "fiscal_year"
+      expr: fiscal_year
+      comment: "Fiscal year of the allocation cycle for annual trend analysis."
+    - name: "period"
+      expr: period
+      comment: "Accounting period of the cycle for monthly close tracking."
+    - name: "frequency"
+      expr: frequency
+      comment: "Cycle frequency (monthly, quarterly, annual) for scheduling analysis."
     - name: "currency_code"
       expr: currency_code
-      comment: "Currency of the allocation cycle for multi-currency cost distribution."
-    - name: "effective_from"
-      expr: effective_from
-      comment: "Effective start date of the allocation cycle for temporal analysis."
+      comment: "Cycle currency for multi-currency allocation analysis."
+    - name: "effective_from_year"
+      expr: DATE_TRUNC('year', effective_from)
+      comment: "Year the cycle became effective for lifecycle analysis."
   measures:
+    - name: "total_allocated_amount"
+      expr: SUM(CAST(total_allocated_amount AS DOUBLE))
+      comment: "Total amount allocated across all cycles — measures scale of overhead distribution activity."
     - name: "total_allocation_amount"
       expr: SUM(CAST(total_allocation_amount AS DOUBLE))
-      comment: "Total amount allocated across all cycles. Primary measure for cost distribution completeness and volume."
-    - name: "allocation_cycle_count"
+      comment: "Total allocation amount planned for cycles — used to compare planned vs. executed allocation volumes."
+    - name: "total_allocation_cycles"
       expr: COUNT(1)
-      comment: "Total number of allocation cycles. Baseline for allocation process complexity and governance scope."
-    - name: "avg_allocation_amount_per_cycle"
-      expr: AVG(CAST(total_allocation_amount AS DOUBLE))
-      comment: "Average allocation amount per cycle. Benchmarks cycle size and identifies unusually large or small cycles."
+      comment: "Total number of allocation cycles — baseline for period-close workload and allocation process complexity."
+    - name: "completed_cycle_count"
+      expr: COUNT(CASE WHEN cycle_status = 'COMPLETED' THEN 1 END)
+      comment: "Count of completed allocation cycles — measures period-close progress for overhead distribution."
+    - name: "pending_cycle_count"
+      expr: COUNT(CASE WHEN cycle_status NOT IN ('COMPLETED','CANCELLED') THEN 1 END)
+      comment: "Count of allocation cycles not yet completed — measures period-close backlog for cost allocation."
+    - name: "avg_allocated_amount_per_cycle"
+      expr: AVG(CAST(total_allocated_amount AS DOUBLE))
+      comment: "Average allocated amount per cycle — benchmarks typical cycle size for anomaly detection and capacity planning."
+$$;
+
+CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`finance_bank_account`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Treasury bank account metrics tracking cash balances, transaction limits, and account health — used by treasury to manage liquidity, cash pooling, and banking relationship governance."
+  source: "`vibe_manufacturing_v1`.`finance`.`bank_account`"
+  dimensions:
+    - name: "account_type"
+      expr: account_type
+      comment: "Bank account type (current, savings, escrow) for liquidity classification."
+    - name: "account_status"
+      expr: account_status
+      comment: "Account status (active, dormant, closed) for account portfolio management."
+    - name: "currency_code"
+      expr: currency_code
+      comment: "Account currency for multi-currency cash position analysis."
+    - name: "bank_country_code"
+      expr: bank_country_code
+      comment: "Country of the bank for geographic cash distribution analysis."
+    - name: "bank_name"
+      expr: bank_name
+      comment: "Bank name for banking relationship concentration analysis."
+    - name: "treasury_region"
+      expr: treasury_region
+      comment: "Treasury region for regional cash management and pooling analysis."
+    - name: "cash_pool_membership"
+      expr: cash_pool_membership
+      comment: "Cash pool membership for notional pooling and cash concentration analysis."
+    - name: "active_flag"
+      expr: CAST(active_flag AS STRING)
+      comment: "Whether the account is active — used to filter active accounts for cash position reporting."
+    - name: "effective_from_year"
+      expr: DATE_TRUNC('year', effective_from)
+      comment: "Year the account became effective for account lifecycle analysis."
+  measures:
+    - name: "total_current_balance"
+      expr: SUM(CAST(current_balance AS DOUBLE))
+      comment: "Total current cash balance across all bank accounts — primary treasury metric for enterprise liquidity position."
+    - name: "total_balance"
+      expr: SUM(CAST(balance AS DOUBLE))
+      comment: "Total balance across bank accounts — used for cash position reporting and liquidity management."
+    - name: "total_daily_transaction_limit"
+      expr: SUM(CAST(daily_transaction_limit AS DOUBLE))
+      comment: "Total daily transaction limit across accounts — measures authorized payment capacity for treasury operations."
+    - name: "avg_current_balance"
+      expr: AVG(CAST(current_balance AS DOUBLE))
+      comment: "Average current balance per bank account — benchmarks typical account balance for idle cash detection."
+    - name: "total_bank_accounts"
+      expr: COUNT(1)
+      comment: "Total number of bank accounts — baseline for banking relationship complexity and account rationalization analysis."
+    - name: "active_account_count"
+      expr: COUNT(CASE WHEN active_flag = TRUE THEN 1 END)
+      comment: "Count of active bank accounts — used for banking relationship governance and account rationalization."
 $$;

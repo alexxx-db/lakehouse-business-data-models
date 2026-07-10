@@ -1,109 +1,62 @@
--- Metric views for domain: radiology | Business: Healthcare | Version: 2 | Generated on: 2026-07-10 14:53:25
+-- Metric views for domain: radiology | Business: Healthcare | Version: 2 | Generated on: 2026-07-02 07:21:53
 
 CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`radiology_imaging_order`
 WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Imaging order operational and throughput KPIs for radiology department steering: order volume, STAT/portable mix, cancellations, prior-auth performance, and exam turnaround."
+  comment: "Imaging order operations KPIs: volume, STAT mix, cancellations, prior-auth, and critical-finding rates. Steers radiology throughput and access."
   source: "`vibe_healthcare_v1`.`radiology`.`imaging_order`"
   dimensions:
     - name: "modality_type"
       expr: modality_type
-      comment: "Imaging modality (CT, MR, XR, US, etc.) for volume and utilization analysis by modality line."
-    - name: "order_status"
-      expr: order_status
-      comment: "Current lifecycle status of the imaging order (ordered, scheduled, completed, cancelled)."
+      comment: "Imaging modality (CT, MR, XR, US, etc.) for capacity and mix analysis."
     - name: "order_priority"
       expr: order_priority
-      comment: "Clinical priority of the order (STAT, routine) for acuity mix analysis."
-    - name: "body_part"
-      expr: body_part
-      comment: "Anatomical region imaged, for service-line grouping."
+      comment: "Order priority (routine, STAT, urgent) for turnaround SLA analysis."
+    - name: "order_status"
+      expr: order_status
+      comment: "Current order status for pipeline monitoring."
     - name: "order_source"
       expr: order_source
-      comment: "Origin of the order (ED, inpatient, outpatient) for referral channel analysis."
+      comment: "Origin of order (ED, inpatient, outpatient) for demand steering."
     - name: "prior_auth_status"
       expr: prior_auth_status
-      comment: "Prior authorization status for payer/revenue-cycle risk grouping."
+      comment: "Prior authorization status for revenue-risk monitoring."
+    - name: "referring_department"
+      expr: referring_department
+      comment: "Referring department for demand attribution."
+    - name: "body_part"
+      expr: body_part
+      comment: "Body part imaged for service-line mix analysis."
     - name: "ordered_month"
       expr: DATE_TRUNC('MONTH', ordered_timestamp)
-      comment: "Month the order was placed, for trended volume analysis."
+      comment: "Month bucket of order placement for trending."
   measures:
-    - name: "Imaging Order Count"
+    - name: "Order Volume"
       expr: COUNT(1)
-      comment: "Total imaging orders; baseline demand and capacity-planning volume metric."
-    - name: "Distinct Patients Ordered"
-      expr: COUNT(DISTINCT demographics_id)
-      comment: "Unique patients receiving imaging orders; measures reach of imaging services."
-    - name: "STAT Override Count"
-      expr: SUM(CASE WHEN is_stat_override = TRUE THEN 1 ELSE 0 END)
-      comment: "Count of STAT-override orders; high override rates signal capacity strain and prioritization risk."
-    - name: "Cancelled Order Count"
+      comment: "Total imaging orders placed; core demand/throughput measure."
+    - name: "Distinct Ordered Studies"
+      expr: COUNT(DISTINCT imaging_order_id)
+      comment: "Distinct imaging orders for deduplicated volume."
+    - name: "STAT Order Count"
+      expr: SUM(CASE WHEN order_priority = 'STAT' THEN 1 ELSE 0 END)
+      comment: "Count of STAT orders; indicates urgent workload burden."
+    - name: "STAT Order Rate Pct"
+      expr: ROUND(100.0 * SUM(CASE WHEN order_priority = 'STAT' THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percent of orders that are STAT; high values strain urgent capacity."
+    - name: "Cancellation Count"
       expr: SUM(CASE WHEN order_status = 'Cancelled' THEN 1 ELSE 0 END)
-      comment: "Cancelled imaging orders; drives lost-capacity and revenue-leakage investigation."
-    - name: "Critical Finding Order Count"
-      expr: SUM(CASE WHEN critical_finding_flag = TRUE THEN 1 ELSE 0 END)
-      comment: "Orders flagged with critical findings; drives patient-safety communication compliance."
-    - name: "Portable Exam Count"
-      expr: SUM(CASE WHEN is_portable = TRUE THEN 1 ELSE 0 END)
-      comment: "Portable imaging exams; informs mobile-equipment staffing and utilization decisions."
-    - name: "Contrast Required Count"
-      expr: SUM(CASE WHEN contrast_required = TRUE THEN 1 ELSE 0 END)
-      comment: "Orders requiring contrast; drives contrast supply forecasting and safety screening load."
-    - name: "Avg CTDI Radiation Dose"
-      expr: AVG(CAST(radiation_dose_ctdi AS DOUBLE))
-      comment: "Average CTDI dose per order; core radiation-safety and dose-optimization KPI."
-$$;
-
-CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`radiology_reader_assignment`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Radiologist reading productivity and turnaround KPIs: SLA compliance, RVU productivity, subspecialty matching, and teleradiology utilization."
-  source: "`vibe_healthcare_v1`.`radiology`.`reader_assignment`"
-  dimensions:
-    - name: "modality"
-      expr: modality
-      comment: "Modality of the read for productivity segmentation."
-    - name: "priority"
-      expr: priority
-      comment: "Read priority (STAT, routine) for turnaround expectation grouping."
-    - name: "assignment_status"
-      expr: assignment_status
-      comment: "Status of the reader assignment for worklist state analysis."
-    - name: "assignment_type"
-      expr: assignment_type
-      comment: "Type of assignment (auto, manual, self) for worklist-routing effectiveness."
-    - name: "reading_site"
-      expr: reading_site
-      comment: "Site where the read was performed, for distributed-reading analysis."
-    - name: "assigned_month"
-      expr: DATE_TRUNC('MONTH', assigned_timestamp)
-      comment: "Month of assignment for trended productivity."
-  measures:
-    - name: "Reader Assignment Count"
-      expr: COUNT(1)
-      comment: "Total reading assignments; baseline radiologist workload volume."
-    - name: "SLA Met Count"
-      expr: SUM(CASE WHEN sla_met = TRUE THEN 1 ELSE 0 END)
-      comment: "Assignments meeting turnaround SLA; core service-level and patient-flow KPI."
-    - name: "Teleradiology Read Count"
-      expr: SUM(CASE WHEN is_teleradiology = TRUE THEN 1 ELSE 0 END)
-      comment: "Teleradiology reads; informs outsourcing cost and coverage-gap decisions."
-    - name: "Subspecialty Matched Count"
-      expr: SUM(CASE WHEN subspecialty_match = TRUE THEN 1 ELSE 0 END)
-      comment: "Reads matched to radiologist subspecialty; drives quality and routing-rule tuning."
-    - name: "Total RVU"
-      expr: SUM(CAST(rvu_value AS DOUBLE))
-      comment: "Total relative value units read; primary radiologist productivity and compensation KPI."
-    - name: "Avg RVU Per Read"
-      expr: AVG(CAST(rvu_value AS DOUBLE))
-      comment: "Average RVU per assignment; complexity-mix indicator."
-    - name: "Critical Finding Assignment Count"
-      expr: SUM(CASE WHEN critical_finding_flag = TRUE THEN 1 ELSE 0 END)
-      comment: "Assignments with critical findings; safety-escalation workload."
+      comment: "Cancelled orders; wasted scheduling capacity."
+    - name: "Cancellation Rate Pct"
+      expr: ROUND(100.0 * SUM(CASE WHEN order_status = 'Cancelled' THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percent of orders cancelled; access and scheduling efficiency signal."
+    - name: "Prior Auth Denial Count"
+      expr: SUM(CASE WHEN prior_auth_status = 'Denied' THEN 1 ELSE 0 END)
+      comment: "Orders with denied prior authorization; revenue-at-risk driver."
+    - name: "Critical Finding Order Rate Pct"
+      expr: ROUND(100.0 * SUM(CASE WHEN critical_finding_flag = TRUE THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percent of orders flagged with critical findings; clinical acuity signal."
 $$;
 
 CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`radiology_study`
@@ -111,49 +64,96 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Radiology study production KPIs: study volume, STAT read completion, critical findings, external imports, and storage footprint for PACS capacity planning."
+  comment: "Study-level KPIs for throughput, contrast utilization, radiation dose, and report finalization. Steers operational efficiency and safety."
   source: "`vibe_healthcare_v1`.`radiology`.`radiology_study`"
   dimensions:
-    - name: "study_status"
-      expr: study_status
-      comment: "Study lifecycle status for production-state analysis."
-    - name: "report_status"
-      expr: report_status
-      comment: "Report status of the study, for reporting-backlog analysis."
+    - name: "modality_type"
+      expr: modality_type
+      comment: "Modality of the study for capacity and dose analysis."
     - name: "body_part_examined"
       expr: body_part_examined
-      comment: "Anatomical region examined for service-line grouping."
-    - name: "priority"
-      expr: priority
-      comment: "Study priority for acuity-mix analysis."
+      comment: "Anatomy examined for service-line mix."
+    - name: "study_status"
+      expr: study_status
+      comment: "Study lifecycle status for pipeline monitoring."
+    - name: "report_status"
+      expr: report_status
+      comment: "Report status for reporting-backlog analysis."
     - name: "pacs_status"
       expr: pacs_status
-      comment: "PACS archive status for storage-lifecycle management."
+      comment: "PACS archive status for image availability tracking."
     - name: "study_month"
       expr: DATE_TRUNC('MONTH', study_date)
-      comment: "Month of study for trended volume analysis."
+      comment: "Month of study for volume trending."
   measures:
-    - name: "Study Count"
+    - name: "Study Volume"
       expr: COUNT(1)
-      comment: "Total radiology studies performed; core imaging production volume KPI."
-    - name: "Distinct Patients Studied"
-      expr: COUNT(DISTINCT demographics_id)
-      comment: "Unique patients imaged; population reach measure."
-    - name: "Critical Finding Study Count"
-      expr: SUM(CASE WHEN critical_finding_flag = TRUE THEN 1 ELSE 0 END)
-      comment: "Studies with critical findings; drives safety-notification compliance."
-    - name: "External Import Count"
-      expr: SUM(CASE WHEN is_external_import = TRUE THEN 1 ELSE 0 END)
-      comment: "Externally imported studies; informs outside-imaging reconciliation and duplicate-scan avoidance."
-    - name: "Contrast Administered Count"
-      expr: SUM(CASE WHEN contrast_administered = TRUE THEN 1 ELSE 0 END)
-      comment: "Studies with contrast administered; contrast-safety and supply demand."
-    - name: "Total Storage MB"
-      expr: SUM(CAST(size_mb AS DOUBLE))
-      comment: "Total PACS storage consumed; capital storage-capacity planning KPI."
-    - name: "Avg CTDI Vol Dose"
+      comment: "Total imaging studies performed; core productivity measure."
+    - name: "Contrast Study Rate Pct"
+      expr: ROUND(100.0 * SUM(CASE WHEN contrast_administered_flag = TRUE THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percent of studies using contrast; drives supply cost and safety monitoring."
+    - name: "Critical Finding Rate Pct"
+      expr: ROUND(100.0 * SUM(CASE WHEN critical_finding_flag = TRUE THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percent of studies with critical findings; clinical acuity and notification-load signal."
+    - name: "Avg CTDI Vol Dose mGy"
       expr: AVG(CAST(radiation_dose_ctdi_vol AS DOUBLE))
-      comment: "Average CTDI volume dose per study; radiation-safety optimization KPI."
+      comment: "Average CTDIvol radiation dose; patient safety and dose-optimization KPI."
+    - name: "Avg DLP Dose mGy cm"
+      expr: AVG(CAST(radiation_dose_dlp AS DOUBLE))
+      comment: "Average dose-length-product; radiation safety monitoring."
+    - name: "Finalized Report Rate Pct"
+      expr: ROUND(100.0 * SUM(CASE WHEN report_status = 'Finalized' THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percent of studies with finalized reports; reporting completeness KPI."
+$$;
+
+CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`radiology_reader_assignment`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Radiologist worklist KPIs: turnaround time, SLA compliance, RVU productivity, subspecialty matching, and teleradiology routing. Steers reading efficiency."
+  source: "`vibe_healthcare_v1`.`radiology`.`reader_assignment`"
+  dimensions:
+    - name: "modality"
+      expr: modality
+      comment: "Modality of assigned study for productivity by modality."
+    - name: "priority"
+      expr: priority
+      comment: "Reading priority for SLA analysis."
+    - name: "assignment_status"
+      expr: assignment_status
+      comment: "Assignment status for worklist monitoring."
+    - name: "assignment_type"
+      expr: assignment_type
+      comment: "Assignment type (self, auto, manual) for routing analysis."
+    - name: "reading_site"
+      expr: reading_site
+      comment: "Reading location for distributed-reading performance."
+    - name: "assigned_month"
+      expr: DATE_TRUNC('MONTH', assigned_timestamp)
+      comment: "Month of assignment for trending."
+  measures:
+    - name: "Assignment Volume"
+      expr: COUNT(1)
+      comment: "Total reader assignments; reading workload measure."
+    - name: "Total RVU"
+      expr: SUM(CAST(rvu_value AS DOUBLE))
+      comment: "Total relative value units read; radiologist productivity and revenue proxy."
+    - name: "Avg RVU Per Assignment"
+      expr: AVG(CAST(rvu_value AS DOUBLE))
+      comment: "Average RVU per read; case-complexity/productivity signal."
+    - name: "Avg Turnaround Minutes"
+      expr: AVG(CAST(tat_minutes AS DOUBLE))
+      comment: "Average reading turnaround time; core operational SLA metric."
+    - name: "SLA Met Rate Pct"
+      expr: ROUND(100.0 * SUM(CASE WHEN sla_met = TRUE THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percent of reads meeting SLA target; service-level performance KPI."
+    - name: "Subspecialty Match Rate Pct"
+      expr: ROUND(100.0 * SUM(CASE WHEN subspecialty_match = TRUE THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percent of reads matched to subspecialist; quality and appropriateness KPI."
+    - name: "Teleradiology Read Rate Pct"
+      expr: ROUND(100.0 * SUM(CASE WHEN is_teleradiology = TRUE THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percent of reads routed to teleradiology; outsourcing/cost steering signal."
 $$;
 
 CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`radiology_critical_result`
@@ -161,96 +161,43 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Critical result communication KPIs measuring Joint Commission / patient-safety compliance: notification turnaround, acknowledgment, escalation, and read-back performance."
+  comment: "Critical result notification KPIs: acknowledgment, escalation, and read-back compliance. Steers patient safety and Joint Commission compliance."
   source: "`vibe_healthcare_v1`.`radiology`.`critical_result`"
   dimensions:
     - name: "finding_severity"
       expr: finding_severity
-      comment: "Severity classification of the critical finding for acuity segmentation."
+      comment: "Severity of the critical finding for acuity segmentation."
     - name: "finding_category"
       expr: finding_category
-      comment: "Category of the critical finding for pattern analysis."
-    - name: "notification_status"
-      expr: notification_status
-      comment: "Status of critical-result notification for closed-loop compliance."
+      comment: "Category of critical finding for pattern analysis."
     - name: "notification_method"
       expr: notification_method
-      comment: "Method used to notify (phone, EHR alert) for channel effectiveness."
-    - name: "tjc_compliance_status"
-      expr: tjc_compliance_status
-      comment: "Joint Commission compliance status for regulatory reporting."
+      comment: "Method of provider notification for channel-effectiveness analysis."
+    - name: "notification_status"
+      expr: notification_status
+      comment: "Notification status for outstanding-alert monitoring."
+    - name: "modality"
+      expr: modality
+      comment: "Modality that generated the finding."
     - name: "finding_month"
       expr: DATE_TRUNC('MONTH', finding_datetime)
-      comment: "Month of the critical finding for trended safety analysis."
+      comment: "Month of finding for trending."
   measures:
-    - name: "Critical Result Count"
+    - name: "Critical Result Volume"
       expr: COUNT(1)
-      comment: "Total critical results requiring communication; safety workload baseline."
-    - name: "Escalated Result Count"
-      expr: SUM(CASE WHEN escalation_flag = TRUE THEN 1 ELSE 0 END)
-      comment: "Critical results escalated; indicates first-attempt notification failures needing process fixes."
-    - name: "Read Back Performed Count"
-      expr: SUM(CASE WHEN read_back_performed = TRUE THEN 1 ELSE 0 END)
-      comment: "Results with read-back confirmation; closed-loop communication compliance KPI."
-    - name: "EMTALA Applicable Count"
-      expr: SUM(CASE WHEN emtala_applicable = TRUE THEN 1 ELSE 0 END)
-      comment: "EMTALA-relevant critical results; regulatory-exposure tracking."
+      comment: "Total critical results; patient-safety workload measure."
+    - name: "Acknowledged Rate Pct"
+      expr: ROUND(100.0 * SUM(CASE WHEN acknowledged_flag = TRUE THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percent of critical results acknowledged; closed-loop communication compliance."
+    - name: "Escalation Rate Pct"
+      expr: ROUND(100.0 * SUM(CASE WHEN escalation_flag = TRUE THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percent of critical results escalated; notification breakdown signal."
+    - name: "Read Back Compliance Rate Pct"
+      expr: ROUND(100.0 * SUM(CASE WHEN read_back_performed = TRUE THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percent with read-back performed; TJC safety-protocol compliance KPI."
     - name: "Patient Safety Event Count"
       expr: SUM(CASE WHEN patient_safety_event_flag = TRUE THEN 1 ELSE 0 END)
-      comment: "Critical results linked to a patient-safety event; risk-management escalation KPI."
-    - name: "Distinct Patients With Critical Results"
-      expr: COUNT(DISTINCT demographics_id)
-      comment: "Unique patients with critical findings; population-safety measure."
-$$;
-
-CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`radiology_dose_record`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Radiation dose management KPIs for ALARA / regulatory dose-registry compliance: dose alerts, physicist review, DRL comparison, and cumulative dose exposure."
-  source: "`vibe_healthcare_v1`.`radiology`.`dose_record`"
-  dimensions:
-    - name: "modality_type"
-      expr: modality_type
-      comment: "Modality generating the dose for dose-optimization by equipment type."
-    - name: "body_part_examined"
-      expr: body_part_examined
-      comment: "Body region examined for anatomical dose benchmarking."
-    - name: "dose_alert_threshold_type"
-      expr: dose_alert_threshold_type
-      comment: "Type of dose alert threshold applied for alert-governance analysis."
-    - name: "drl_comparison_result"
-      expr: drl_comparison_result
-      comment: "Result of comparison to diagnostic reference levels for benchmarking."
-    - name: "dose_registry_submission_status"
-      expr: dose_registry_submission_status
-      comment: "Status of ACR dose-registry submission for regulatory compliance."
-    - name: "study_month"
-      expr: DATE_TRUNC('MONTH', study_date)
-      comment: "Month of the dosed study for trended safety analysis."
-  measures:
-    - name: "Dose Record Count"
-      expr: COUNT(1)
-      comment: "Total dose records captured; radiation-safety monitoring baseline."
-    - name: "Dose Alert Count"
-      expr: SUM(CASE WHEN dose_alert_flag = TRUE THEN 1 ELSE 0 END)
-      comment: "Dose records exceeding alert thresholds; core ALARA safety KPI triggering review."
-    - name: "Physicist Review Count"
-      expr: SUM(CASE WHEN physicist_review_flag = TRUE THEN 1 ELSE 0 END)
-      comment: "Dose records reviewed by physicist; safety-oversight compliance measure."
-    - name: "Avg Effective Dose mSv"
-      expr: AVG(CAST(effective_dose_msv AS DOUBLE))
-      comment: "Average effective dose in mSv; primary population radiation-exposure KPI."
-    - name: "Avg Cumulative Dose mSv"
-      expr: AVG(CAST(cumulative_dose_msv AS DOUBLE))
-      comment: "Average cumulative patient dose; long-term exposure-risk monitoring."
-    - name: "Avg DLP"
-      expr: AVG(CAST(dlp_mgy_cm AS DOUBLE))
-      comment: "Average dose-length product; CT dose-optimization benchmark."
-    - name: "Distinct Patients Dosed"
-      expr: COUNT(DISTINCT mpi_record_id)
-      comment: "Unique patients with dose records; population-exposure denominator."
+      comment: "Critical results tied to a patient safety event; risk-management driver."
 $$;
 
 CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`radiology_appointment`
@@ -258,140 +205,43 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Radiology scheduling KPIs: appointment volume, no-shows, reschedules, STAT/portable mix, and authorization status for access and utilization management."
+  comment: "Scheduling KPIs: no-show, cancellation, insurance verification, and reschedule behavior. Steers access, capacity, and revenue-cycle readiness."
   source: "`vibe_healthcare_v1`.`radiology`.`radiology_appointment`"
   dimensions:
-    - name: "appointment_status"
-      expr: appointment_status
-      comment: "Appointment lifecycle status for access and completion analysis."
-    - name: "appointment_type"
-      expr: appointment_type
-      comment: "Type of appointment for scheduling-mix analysis."
     - name: "modality_type"
       expr: modality_type
-      comment: "Modality scheduled for capacity utilization by equipment line."
+      comment: "Modality of appointment for capacity planning."
+    - name: "appointment_status"
+      expr: appointment_status
+      comment: "Appointment status for pipeline monitoring."
+    - name: "care_setting"
+      expr: care_setting
+      comment: "Care setting (outpatient, inpatient) for demand segmentation."
+    - name: "insurance_verification_status"
+      expr: insurance_verification_status
+      comment: "Insurance verification status for revenue-cycle readiness."
     - name: "auth_status"
       expr: auth_status
-      comment: "Authorization status for payer/revenue-cycle risk."
-    - name: "body_part"
-      expr: body_part
-      comment: "Body region scheduled for service-line grouping."
+      comment: "Authorization status for financial-clearance monitoring."
     - name: "scheduled_month"
-      expr: DATE_TRUNC('MONTH', scheduled_start_datetime)
-      comment: "Month of scheduled appointment for trended demand analysis."
+      expr: DATE_TRUNC('MONTH', scheduled_date)
+      comment: "Month of scheduled appointment for trending."
   measures:
-    - name: "Appointment Count"
+    - name: "Appointment Volume"
       expr: COUNT(1)
-      comment: "Total radiology appointments; access and capacity baseline."
-    - name: "No Show Count"
-      expr: SUM(CASE WHEN appointment_status = 'No Show' THEN 1 ELSE 0 END)
-      comment: "No-show appointments; lost-capacity and access-management KPI."
-    - name: "Cancelled Appointment Count"
+      comment: "Total scheduled appointments; access/capacity measure."
+    - name: "No Show Rate Pct"
+      expr: ROUND(100.0 * SUM(CASE WHEN no_show_flag = TRUE THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percent of no-shows; lost capacity and revenue signal."
+    - name: "Cancellation Count"
       expr: SUM(CASE WHEN appointment_status = 'Cancelled' THEN 1 ELSE 0 END)
-      comment: "Cancelled appointments; slot-recovery and overbooking-policy driver."
-    - name: "STAT Appointment Count"
-      expr: SUM(CASE WHEN is_stat = TRUE THEN 1 ELSE 0 END)
-      comment: "STAT appointments; acuity-mix and capacity-strain indicator."
-    - name: "Contrast Required Appointment Count"
-      expr: SUM(CASE WHEN contrast_required = TRUE THEN 1 ELSE 0 END)
-      comment: "Appointments requiring contrast; contrast-supply and screening prep planning."
-    - name: "Distinct Patients Scheduled"
-      expr: COUNT(DISTINCT mpi_record_id)
-      comment: "Unique patients scheduled; access-reach measure."
-$$;
-
-CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`radiology_teleradiology_case`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Teleradiology vendor performance and cost KPIs: turnaround compliance, transmission success, reconciliation discrepancies, and critical-finding handling for outsourcing governance."
-  source: "`vibe_healthcare_v1`.`radiology`.`teleradiology_case`"
-  dimensions:
-    - name: "case_status"
-      expr: case_status
-      comment: "Teleradiology case status for workflow-state analysis."
-    - name: "priority_level"
-      expr: priority_level
-      comment: "Case priority for turnaround expectation segmentation."
-    - name: "modality_code"
-      expr: modality_code
-      comment: "Modality of the teleradiology case for vendor-mix analysis."
-    - name: "billing_responsibility"
-      expr: billing_responsibility
-      comment: "Which party bills the read for revenue-cycle attribution."
-    - name: "report_reconciliation_status"
-      expr: report_reconciliation_status
-      comment: "Reconciliation status of the final report for QA governance."
-    - name: "created_month"
-      expr: DATE_TRUNC('MONTH', created_timestamp)
-      comment: "Month the case was created for trended vendor-volume analysis."
-  measures:
-    - name: "Teleradiology Case Count"
-      expr: COUNT(1)
-      comment: "Total teleradiology cases; outsourcing volume and spend baseline."
-    - name: "SLA Met Case Count"
-      expr: SUM(CASE WHEN sla_met = TRUE THEN 1 ELSE 0 END)
-      comment: "Cases meeting turnaround SLA; vendor service-level compliance KPI."
-    - name: "Transmission Success Count"
-      expr: SUM(CASE WHEN transmission_success = TRUE THEN 1 ELSE 0 END)
-      comment: "Successful transmissions; interoperability reliability KPI."
-    - name: "Reconciliation Discrepancy Count"
-      expr: SUM(CASE WHEN reconciliation_discrepancy_flag = TRUE THEN 1 ELSE 0 END)
-      comment: "Cases with preliminary-vs-final discrepancies; vendor-quality and safety KPI."
-    - name: "Critical Finding Case Count"
-      expr: SUM(CASE WHEN critical_finding_flag = TRUE THEN 1 ELSE 0 END)
-      comment: "Teleradiology cases with critical findings; escalation-compliance monitoring."
-    - name: "Distinct Vendors Used"
-      expr: COUNT(DISTINCT vendor_id)
-      comment: "Unique teleradiology vendors; vendor-concentration and contract-negotiation insight."
-$$;
-
-CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`radiology_peer_review`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Radiology peer-review quality KPIs (RADPEER / OPPE-FPPE): discrepancy rates, escalations, and blinded-review compliance for physician-quality governance."
-  source: "`vibe_healthcare_v1`.`radiology`.`radiology_peer_review`"
-  dimensions:
-    - name: "review_status"
-      expr: review_status
-      comment: "Status of the peer review for completion tracking."
-    - name: "review_type"
-      expr: review_type
-      comment: "Type of peer review (prospective, retrospective) for program-mix analysis."
-    - name: "review_disposition"
-      expr: review_disposition
-      comment: "Disposition of the review for outcome classification."
-    - name: "discrepancy_category"
-      expr: discrepancy_category
-      comment: "Category of any discrepancy found for quality-trend analysis."
-    - name: "subspecialty"
-      expr: subspecialty
-      comment: "Radiologist subspecialty for competency benchmarking."
-    - name: "review_month"
-      expr: DATE_TRUNC('MONTH', review_datetime)
-      comment: "Month of review for trended quality analysis."
-  measures:
-    - name: "Peer Review Count"
-      expr: COUNT(1)
-      comment: "Total peer reviews performed; quality-program activity baseline."
-    - name: "Discrepancy Case Count"
-      expr: SUM(CASE WHEN discrepancy_type IS NOT NULL THEN 1 ELSE 0 END)
-      comment: "Reviews with an identified discrepancy; core diagnostic-accuracy quality KPI."
-    - name: "Escalated To Chair Count"
-      expr: SUM(CASE WHEN escalated_to_chair_flag = TRUE THEN 1 ELSE 0 END)
-      comment: "Reviews escalated to department chair; serious-discrepancy governance KPI."
-    - name: "Patient Safety Event Count"
-      expr: SUM(CASE WHEN patient_safety_event_flag = TRUE THEN 1 ELSE 0 END)
-      comment: "Peer reviews tied to patient-safety events; risk-management linkage."
-    - name: "Blinded Review Count"
-      expr: SUM(CASE WHEN blinded_review_flag = TRUE THEN 1 ELSE 0 END)
-      comment: "Blinded peer reviews; program-integrity/methodology compliance measure."
-    - name: "Subspecialty Matched Review Count"
-      expr: SUM(CASE WHEN subspecialty_matched_flag = TRUE THEN 1 ELSE 0 END)
-      comment: "Reviews performed by subspecialty-matched reviewers; review-quality KPI."
+      comment: "Cancelled appointments; scheduling efficiency signal."
+    - name: "Insurance Verified Rate Pct"
+      expr: ROUND(100.0 * SUM(CASE WHEN insurance_verification_status = 'Verified' THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percent of appointments insurance-verified before service; revenue-cycle KPI."
+    - name: "Billing Eligible Rate Pct"
+      expr: ROUND(100.0 * SUM(CASE WHEN billing_eligibility_flag = TRUE THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percent of appointments financially cleared for billing; denial-prevention KPI."
 $$;
 
 CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`radiology_report`
@@ -399,87 +249,116 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Radiology report finalization and communication KPIs: report volume, STAT priority, critical-finding communication, and addendum activity for reporting-quality governance."
+  comment: "Radiology report KPIs: finalization, critical-finding communication, STAT priority, and addendum activity. Steers reporting quality and closed-loop communication."
   source: "`vibe_healthcare_v1`.`radiology`.`report`"
   dimensions:
     - name: "report_status"
       expr: report_status
-      comment: "Report lifecycle status for reporting-backlog analysis."
-    - name: "body_part"
-      expr: body_part
-      comment: "Body region reported for service-line grouping."
+      comment: "Report lifecycle status for backlog analysis."
     - name: "modality_code"
       expr: modality_code
-      comment: "Modality of the reported study for reporting-mix analysis."
+      comment: "Modality of the report for mix analysis."
+    - name: "body_part"
+      expr: body_part
+      comment: "Body part reported for service-line mix."
     - name: "rads_category"
       expr: rads_category
-      comment: "Structured RADS category assigned for standardized-reporting compliance."
-    - name: "created_month"
-      expr: DATE_TRUNC('MONTH', created_timestamp)
-      comment: "Month the report was created for trended volume analysis."
+      comment: "Structured RADS reporting category for quality analysis."
   measures:
-    - name: "Report Count"
+    - name: "Report Volume"
       expr: COUNT(1)
-      comment: "Total radiology reports; reporting production baseline."
-    - name: "Critical Finding Report Count"
-      expr: SUM(CASE WHEN critical_finding_flag = TRUE THEN 1 ELSE 0 END)
-      comment: "Reports flagged with critical findings; safety-communication workload."
-    - name: "Critical Finding Communicated Count"
-      expr: SUM(CASE WHEN critical_finding_communicated_flag = TRUE THEN 1 ELSE 0 END)
-      comment: "Critical findings communicated; closed-loop safety-communication compliance KPI."
-    - name: "STAT Priority Report Count"
-      expr: SUM(CASE WHEN stat_priority_flag = TRUE THEN 1 ELSE 0 END)
-      comment: "STAT-priority reports; acuity-mix and turnaround-priority indicator."
-    - name: "Distinct Reporting Radiologists"
-      expr: COUNT(DISTINCT report_reading_radiologist_clinician_id)
-      comment: "Unique reading radiologists; reporting capacity and coverage measure."
+      comment: "Total radiology reports; reporting productivity measure."
+    - name: "Critical Finding Communicated Rate Pct"
+      expr: ROUND(100.0 * SUM(CASE WHEN critical_finding_communicated_flag = TRUE THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percent of reports with communicated critical findings; closed-loop safety KPI."
+    - name: "STAT Report Rate Pct"
+      expr: ROUND(100.0 * SUM(CASE WHEN stat_priority_flag = TRUE THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percent of STAT-priority reports; urgent reporting-load signal."
+    - name: "Critical Finding Report Rate Pct"
+      expr: ROUND(100.0 * SUM(CASE WHEN critical_finding_flag = TRUE THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percent of reports flagged with critical findings; acuity signal."
 $$;
 
-CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`radiology_contrast_admin`
+CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`radiology_follow_up`
 WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Contrast administration safety KPIs: adverse reactions, extravasation, premedication, and screening compliance for contrast-safety governance."
-  source: "`vibe_healthcare_v1`.`radiology`.`contrast_admin`"
+  comment: "Incidental/actionable follow-up KPIs: care-gap closure, lost-to-follow-up, escalation, and notification. Steers population-health and malpractice-risk reduction."
+  source: "`vibe_healthcare_v1`.`radiology`.`follow_up`"
   dimensions:
-    - name: "modality"
-      expr: modality
-      comment: "Modality of the contrast study for safety segmentation."
-    - name: "agent_class"
-      expr: agent_class
-      comment: "Class of contrast agent for agent-specific safety analysis."
-    - name: "route_of_administration"
-      expr: route_of_administration
-      comment: "Administration route for procedural safety grouping."
-    - name: "administration_status"
-      expr: administration_status
-      comment: "Status of the contrast administration for completion tracking."
-    - name: "body_region"
-      expr: body_region
-      comment: "Body region for anatomical safety analysis."
-    - name: "administration_month"
-      expr: DATE_TRUNC('MONTH', administration_datetime)
-      comment: "Month of administration for trended safety analysis."
+    - name: "follow_up_status"
+      expr: follow_up_status
+      comment: "Follow-up status for closure-tracking."
+    - name: "priority_level"
+      expr: priority_level
+      comment: "Priority of the follow-up recommendation for triage."
+    - name: "recommended_modality"
+      expr: recommended_modality
+      comment: "Recommended follow-up modality for demand forecasting."
+    - name: "population_health_cohort"
+      expr: population_health_cohort
+      comment: "Population-health cohort for care-gap program targeting."
+    - name: "due_month"
+      expr: DATE_TRUNC('MONTH', due_date)
+      comment: "Month follow-up is due for backlog planning."
   measures:
-    - name: "Contrast Administration Count"
+    - name: "Follow Up Volume"
       expr: COUNT(1)
-      comment: "Total contrast administrations; safety-monitoring and supply baseline."
-    - name: "Adverse Reaction Count"
-      expr: SUM(CASE WHEN adverse_reaction_occurred = TRUE THEN 1 ELSE 0 END)
-      comment: "Contrast adverse reactions; core contrast-safety KPI driving protocol review."
-    - name: "Extravasation Count"
-      expr: SUM(CASE WHEN extravasation_occurred = TRUE THEN 1 ELSE 0 END)
-      comment: "Extravasation events; injector-technique and safety-improvement KPI."
-    - name: "Premedication Given Count"
-      expr: SUM(CASE WHEN premedication_given = TRUE THEN 1 ELSE 0 END)
-      comment: "Premedicated administrations; allergy-prophylaxis compliance measure."
-    - name: "Power Injector Used Count"
-      expr: SUM(CASE WHEN power_injector_used = TRUE THEN 1 ELSE 0 END)
-      comment: "Administrations using a power injector; equipment-utilization and extravasation-risk analysis."
-    - name: "Avg Dose Volume mL"
-      expr: AVG(CAST(dose_volume_ml AS DOUBLE))
-      comment: "Average contrast volume administered; dose-optimization and supply-cost KPI."
+      comment: "Total follow-up recommendations; care-continuity workload."
+    - name: "Care Gap Rate Pct"
+      expr: ROUND(100.0 * SUM(CASE WHEN care_gap_flag = TRUE THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percent flagged as care gaps; population-health intervention driver."
+    - name: "Lost To Follow Up Count"
+      expr: SUM(CASE WHEN lost_to_follow_up_date IS NOT NULL THEN 1 ELSE 0 END)
+      comment: "Recommendations lost to follow-up; malpractice-risk and quality signal."
+    - name: "Escalation Rate Pct"
+      expr: ROUND(100.0 * SUM(CASE WHEN escalation_flag = TRUE THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percent of follow-ups escalated; unresolved-recommendation signal."
+    - name: "Completed Follow Up Count"
+      expr: SUM(CASE WHEN follow_up_status = 'Completed' THEN 1 ELSE 0 END)
+      comment: "Completed follow-ups; care-gap closure outcome."
+$$;
+
+CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`radiology_dose_record`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Radiation dose safety KPIs: mean dose metrics, reference-level exceedances, and dose-alert rates. Steers ALARA and regulatory dose-registry compliance."
+  source: "`vibe_healthcare_v1`.`radiology`.`dose_record`"
+  dimensions:
+    - name: "modality_type"
+      expr: modality_type
+      comment: "Modality of the dose record for dose benchmarking."
+    - name: "body_part_examined"
+      expr: body_part_examined
+      comment: "Anatomy examined for dose comparison."
+    - name: "drl_comparison_result"
+      expr: drl_comparison_result
+      comment: "Diagnostic reference level comparison result for outlier analysis."
+    - name: "dose_registry_submission_status"
+      expr: dose_registry_submission_status
+      comment: "Dose registry submission status for regulatory compliance."
+    - name: "study_month"
+      expr: DATE_TRUNC('MONTH', study_date)
+      comment: "Month of study for dose trending."
+  measures:
+    - name: "Dose Record Volume"
+      expr: COUNT(1)
+      comment: "Total dose records; safety monitoring coverage."
+    - name: "Avg Effective Dose mSv"
+      expr: AVG(CAST(effective_dose_msv AS DOUBLE))
+      comment: "Average effective dose; core patient radiation-safety KPI."
+    - name: "Avg CTDI Vol mGy"
+      expr: AVG(CAST(ctdi_vol_mgy AS DOUBLE))
+      comment: "Average CTDIvol; dose-optimization benchmarking."
+    - name: "Reference Level Exceedance Rate Pct"
+      expr: ROUND(100.0 * SUM(CASE WHEN exceeds_reference_level_flag = TRUE THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percent exceeding diagnostic reference level; safety-outlier KPI."
+    - name: "Dose Alert Rate Pct"
+      expr: ROUND(100.0 * SUM(CASE WHEN dose_alert_flag = TRUE THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percent triggering dose alerts; ALARA intervention signal."
 $$;
 
 CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`radiology_interventional_procedure`
@@ -487,44 +366,240 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Interventional radiology procedure KPIs: procedure volume, technical success, complications, and fluoroscopy/radiation dose for IR quality and safety governance."
+  comment: "Interventional radiology KPIs: technical success, complications, sedation, fluoroscopy dose, and blood loss. Steers procedural quality and safety."
   source: "`vibe_healthcare_v1`.`radiology`.`interventional_procedure`"
   dimensions:
     - name: "procedure_category"
       expr: procedure_category
-      comment: "Category of IR procedure for service-line grouping."
-    - name: "procedure_status"
-      expr: procedure_status
-      comment: "Status of the procedure for completion analysis."
-    - name: "anesthesia_type"
-      expr: anesthesia_type
-      comment: "Anesthesia used for complexity and safety segmentation."
+      comment: "Procedure category for service-line quality analysis."
     - name: "body_region"
       expr: body_region
-      comment: "Body region of the procedure for anatomical grouping."
-    - name: "complication_severity"
-      expr: complication_severity
-      comment: "Severity of any complication for quality-outcome analysis."
+      comment: "Body region treated for mix analysis."
+    - name: "procedure_status"
+      expr: procedure_status
+      comment: "Procedure status for pipeline monitoring."
+    - name: "anesthesia_type"
+      expr: anesthesia_type
+      comment: "Anesthesia type for sedation-safety analysis."
     - name: "procedure_month"
-      expr: DATE_TRUNC('MONTH', procedure_start_timestamp)
-      comment: "Month of procedure for trended volume analysis."
+      expr: DATE_TRUNC('MONTH', procedure_datetime)
+      comment: "Month of procedure for volume trending."
   measures:
-    - name: "Procedure Count"
+    - name: "Procedure Volume"
       expr: COUNT(1)
-      comment: "Total interventional procedures; IR production and capacity baseline."
-    - name: "Technical Success Count"
-      expr: SUM(CASE WHEN technical_success = TRUE THEN 1 ELSE 0 END)
-      comment: "Technically successful procedures; core IR quality-outcome KPI."
-    - name: "Complication Count"
-      expr: SUM(CASE WHEN complication_occurred = TRUE THEN 1 ELSE 0 END)
-      comment: "Procedures with complications; safety and outcome-improvement KPI."
-    - name: "Implant Used Count"
-      expr: SUM(CASE WHEN implant_used = TRUE THEN 1 ELSE 0 END)
-      comment: "Procedures using implants; device-cost and UDI-traceability tracking."
-    - name: "Avg Fluoroscopy Time Minutes"
-      expr: AVG(CAST(fluoroscopy_time_minutes AS DOUBLE))
-      comment: "Average fluoroscopy time; radiation-safety and dose-optimization KPI."
-    - name: "Avg Radiation Dose Kerma"
-      expr: AVG(CAST(radiation_dose_kerma_mgy AS DOUBLE))
-      comment: "Average air-kerma radiation dose; IR radiation-safety benchmark."
+      comment: "Total interventional procedures; IR productivity measure."
+    - name: "Technical Success Rate Pct"
+      expr: ROUND(100.0 * SUM(CASE WHEN technical_success_flag = TRUE THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percent of procedures technically successful; core IR quality KPI."
+    - name: "Complication Rate Pct"
+      expr: ROUND(100.0 * SUM(CASE WHEN complication_flag = TRUE THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percent with complications; patient-safety and quality driver."
+    - name: "Avg Fluoroscopy Time Min"
+      expr: AVG(CAST(fluoroscopy_time_min AS DOUBLE))
+      comment: "Average fluoroscopy time; operator dose and efficiency signal."
+    - name: "Avg Blood Loss mL"
+      expr: AVG(CAST(blood_loss_ml AS DOUBLE))
+      comment: "Average estimated blood loss; procedural safety indicator."
+    - name: "Moderate Sedation Rate Pct"
+      expr: ROUND(100.0 * SUM(CASE WHEN moderate_sedation_flag = TRUE THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percent using moderate sedation; sedation-resource and safety signal."
+$$;
+
+CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`radiology_peer_review`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Radiologist peer-review KPIs: discrepancy rate, agreement, and RADPEER scoring. Steers OPPE/FPPE quality governance."
+  source: "`vibe_healthcare_v1`.`radiology`.`radiology_peer_review`"
+  dimensions:
+    - name: "review_type"
+      expr: review_type
+      comment: "Type of peer review for program analysis."
+    - name: "discrepancy_category"
+      expr: discrepancy_category
+      comment: "Discrepancy category for pattern analysis."
+    - name: "modality"
+      expr: modality
+      comment: "Modality reviewed for quality by modality."
+    - name: "subspecialty"
+      expr: subspecialty
+      comment: "Subspecialty of the review for quality segmentation."
+    - name: "review_month"
+      expr: DATE_TRUNC('MONTH', review_datetime)
+      comment: "Month of review for trending."
+  measures:
+    - name: "Peer Review Volume"
+      expr: COUNT(1)
+      comment: "Total peer reviews completed; quality-program coverage."
+    - name: "Discrepancy Rate Pct"
+      expr: ROUND(100.0 * SUM(CASE WHEN discrepancy_flag = TRUE THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percent of reviews with discrepancies; core interpretive-quality KPI."
+    - name: "Agreement Rate Pct"
+      expr: ROUND(100.0 * SUM(CASE WHEN agreement_flag = TRUE THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percent of reviews in agreement; interpretive consistency signal."
+    - name: "Escalated To Chair Count"
+      expr: SUM(CASE WHEN escalated_to_chair_flag = TRUE THEN 1 ELSE 0 END)
+      comment: "Reviews escalated to department chair; serious-discrepancy driver."
+    - name: "Patient Safety Event Count"
+      expr: SUM(CASE WHEN patient_safety_event_flag = TRUE THEN 1 ELSE 0 END)
+      comment: "Reviews tied to patient safety events; risk-management signal."
+$$;
+
+CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`radiology_teleradiology_case`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Teleradiology outsourcing KPIs: SLA/TAT, reconciliation discrepancy, and transmission success. Steers vendor performance and cost."
+  source: "`vibe_healthcare_v1`.`radiology`.`teleradiology_case`"
+  dimensions:
+    - name: "case_status"
+      expr: case_status
+      comment: "Teleradiology case status for pipeline monitoring."
+    - name: "priority_level"
+      expr: priority_level
+      comment: "Case priority for SLA analysis."
+    - name: "modality_code"
+      expr: modality_code
+      comment: "Modality of the case for vendor mix analysis."
+    - name: "billing_responsibility"
+      expr: billing_responsibility
+      comment: "Billing responsibility for revenue-attribution analysis."
+    - name: "sent_month"
+      expr: DATE_TRUNC('MONTH', sent_timestamp)
+      comment: "Month case was sent for volume trending."
+  measures:
+    - name: "Teleradiology Case Volume"
+      expr: COUNT(1)
+      comment: "Total teleradiology cases; outsourced-reading workload."
+    - name: "Avg Turnaround Minutes"
+      expr: AVG(CAST(actual_tat_minutes AS DOUBLE))
+      comment: "Average actual turnaround; vendor service-level KPI."
+    - name: "SLA Met Rate Pct"
+      expr: ROUND(100.0 * SUM(CASE WHEN sla_met = TRUE THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percent of cases meeting SLA; vendor performance KPI."
+    - name: "Reconciliation Discrepancy Rate Pct"
+      expr: ROUND(100.0 * SUM(CASE WHEN reconciliation_discrepancy_flag = TRUE THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percent with prelim-vs-final discrepancy; quality-assurance KPI."
+    - name: "Transmission Success Rate Pct"
+      expr: ROUND(100.0 * SUM(CASE WHEN transmission_success = TRUE THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percent of successful transmissions; interoperability-reliability signal."
+$$;
+
+CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`radiology_report_distribution`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Report distribution KPIs: delivery success, acknowledgment, SLA compliance, and escalation. Steers closed-loop result-delivery reliability (thin-product expansion per VREQ-036)."
+  source: "`vibe_healthcare_v1`.`radiology`.`report_distribution`"
+  dimensions:
+    - name: "delivery_method"
+      expr: delivery_method
+      comment: "Delivery channel (fax, direct, portal) for channel-performance analysis."
+    - name: "delivery_status"
+      expr: delivery_status
+      comment: "Delivery status for undelivered-result monitoring."
+    - name: "recipient_type"
+      expr: recipient_type
+      comment: "Type of recipient for distribution-pattern analysis."
+    - name: "distribution_priority"
+      expr: distribution_priority
+      comment: "Distribution priority for SLA segmentation."
+    - name: "distribution_month"
+      expr: DATE_TRUNC('MONTH', distribution_timestamp)
+      comment: "Month of distribution for trending."
+  measures:
+    - name: "Distribution Volume"
+      expr: COUNT(1)
+      comment: "Total report distributions; delivery workload measure."
+    - name: "Delivery Confirmed Rate Pct"
+      expr: ROUND(100.0 * SUM(CASE WHEN delivery_confirmed_flag = TRUE THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percent of confirmed deliveries; result-delivery reliability KPI."
+    - name: "Acknowledged Rate Pct"
+      expr: ROUND(100.0 * SUM(CASE WHEN acknowledged_flag = TRUE THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percent of acknowledged deliveries; closed-loop communication KPI."
+    - name: "SLA Compliance Rate Pct"
+      expr: ROUND(100.0 * SUM(CASE WHEN sla_compliance_flag = TRUE THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percent of distributions meeting SLA; delivery-timeliness KPI."
+    - name: "Escalation Rate Pct"
+      expr: ROUND(100.0 * SUM(CASE WHEN escalation_flag = TRUE THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percent of distributions escalated; failed-delivery signal."
+$$;
+
+CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`radiology_transmission`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Image transmission KPIs: success rate, SLA, and retransmission burden. Steers PACS/interoperability reliability."
+  source: "`vibe_healthcare_v1`.`radiology`.`transmission`"
+  dimensions:
+    - name: "transmission_type"
+      expr: transmission_type
+      comment: "Type of transmission for pattern analysis."
+    - name: "transmission_status"
+      expr: transmission_status
+      comment: "Transmission status for failure monitoring."
+    - name: "destination_system"
+      expr: destination_system
+      comment: "Destination system for endpoint-reliability analysis."
+    - name: "transmission_month"
+      expr: DATE_TRUNC('MONTH', transmission_timestamp)
+      comment: "Month of transmission for trending."
+  measures:
+    - name: "Transmission Volume"
+      expr: COUNT(1)
+      comment: "Total transmissions; interoperability workload measure."
+    - name: "Success Rate Pct"
+      expr: ROUND(100.0 * SUM(CASE WHEN success = TRUE THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percent of successful transmissions; core reliability KPI."
+    - name: "SLA Met Rate Pct"
+      expr: ROUND(100.0 * SUM(CASE WHEN sla_met_flag = TRUE THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percent of transmissions meeting SLA; timeliness KPI."
+    - name: "Total Bytes Transmitted"
+      expr: SUM(CAST(bytes_transmitted AS DOUBLE))
+      comment: "Total data volume transmitted; infrastructure-load and capacity signal."
+$$;
+
+CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`radiology_contrast_admin`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Contrast administration safety KPIs: adverse-reaction rate, extravasation, premedication, and metformin-hold compliance. Steers contrast-safety governance."
+  source: "`vibe_healthcare_v1`.`radiology`.`contrast_admin`"
+  dimensions:
+    - name: "agent_class"
+      expr: agent_class
+      comment: "Contrast agent class for safety benchmarking."
+    - name: "route_of_administration"
+      expr: route_of_administration
+      comment: "Route of administration for reaction-pattern analysis."
+    - name: "administration_status"
+      expr: administration_status
+      comment: "Administration status for completeness monitoring."
+    - name: "body_region"
+      expr: body_region
+      comment: "Body region for mix analysis."
+    - name: "administration_month"
+      expr: DATE_TRUNC('MONTH', administration_datetime)
+      comment: "Month of administration for trending."
+  measures:
+    - name: "Contrast Admin Volume"
+      expr: COUNT(1)
+      comment: "Total contrast administrations; safety-monitoring coverage."
+    - name: "Adverse Reaction Rate Pct"
+      expr: ROUND(100.0 * SUM(CASE WHEN adverse_reaction_occurred = TRUE THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percent with adverse reactions; core contrast-safety KPI."
+    - name: "Extravasation Rate Pct"
+      expr: ROUND(100.0 * SUM(CASE WHEN extravasation_occurred = TRUE THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percent with extravasation; injection-technique safety signal."
+    - name: "Premedication Rate Pct"
+      expr: ROUND(100.0 * SUM(CASE WHEN premedication_given = TRUE THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percent premedicated; allergy-prophylaxis protocol adherence."
+    - name: "Metformin Held Rate Pct"
+      expr: ROUND(100.0 * SUM(CASE WHEN metformin_held = TRUE THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percent with metformin held; nephrotoxicity-safety protocol compliance."
 $$;

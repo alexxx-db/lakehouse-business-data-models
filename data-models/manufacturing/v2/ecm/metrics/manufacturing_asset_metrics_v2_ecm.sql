@@ -1,133 +1,80 @@
--- Metric views for domain: asset | Business: Manufacturing | Version: 2 | Generated on: 2026-07-10 11:52:40
-
-CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`asset_equipment_register`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Core equipment asset KPIs tracking fleet health, replacement value, maintenance readiness, and operational status distribution across the equipment register."
-  source: "`vibe_manufacturing_v1`.`asset`.`equipment_register`"
-  dimensions:
-    - name: "asset_category"
-      expr: asset_category
-      comment: "Equipment asset category for fleet segmentation (e.g. rotating, static, electrical)."
-    - name: "equipment_class"
-      expr: equipment_class
-      comment: "Equipment class for grouping similar asset types in performance analysis."
-    - name: "operational_status"
-      expr: operational_status
-      comment: "Current operational status of the equipment (active, decommissioned, standby) for availability reporting."
-    - name: "maintenance_strategy"
-      expr: maintenance_strategy
-      comment: "Maintenance strategy applied to the asset (preventive, predictive, corrective) for strategy effectiveness analysis."
-    - name: "safety_classification"
-      expr: safety_classification
-      comment: "Safety classification of the equipment for risk-based prioritization."
-    - name: "criticality_ranking"
-      expr: criticality_ranking
-      comment: "Asset criticality ranking for prioritizing maintenance investment and risk management."
-    - name: "work_center_code"
-      expr: work_center_code
-      comment: "Work center where the equipment is assigned for operational planning."
-  measures:
-    - name: "total_equipment_count"
-      expr: COUNT(1)
-      comment: "Total number of registered equipment assets. Baseline fleet size KPI used for capacity and investment planning."
-    - name: "total_replacement_value"
-      expr: SUM(CAST(replacement_value AS DOUBLE))
-      comment: "Total replacement value of all registered equipment assets. Critical for insurance, capital budgeting, and asset lifecycle investment decisions."
-    - name: "avg_replacement_value"
-      expr: AVG(CAST(replacement_value AS DOUBLE))
-      comment: "Average replacement value per equipment asset. Used to benchmark asset investment levels and prioritize high-value asset maintenance."
-    - name: "avg_mean_time_between_failures_hours"
-      expr: AVG(CAST(mean_time_between_failures AS DOUBLE))
-      comment: "Average MTBF across the equipment fleet. A key reliability KPI — declining MTBF signals deteriorating fleet health requiring maintenance strategy review."
-    - name: "avg_mean_time_to_repair_hours"
-      expr: AVG(CAST(mean_time_to_repair AS DOUBLE))
-      comment: "Average MTTR across the equipment fleet. Measures maintenance responsiveness — high MTTR indicates resource or spare parts constraints impacting production availability."
-    - name: "total_rated_capacity"
-      expr: SUM(CAST(rated_capacity AS DOUBLE))
-      comment: "Total rated capacity across all equipment assets. Used for production capacity planning and utilization benchmarking."
-    - name: "total_power_rating_kw"
-      expr: SUM(CAST(power_rating_kw AS DOUBLE))
-      comment: "Total installed power rating in kilowatts across the fleet. Supports energy management and sustainability reporting."
-    - name: "equipment_with_overdue_maintenance_count"
-      expr: COUNT(CASE WHEN next_maintenance_due_date < CURRENT_DATE() THEN 1 END)
-      comment: "Number of equipment assets with overdue maintenance. A critical operational risk KPI — high counts indicate maintenance backlog threatening reliability and compliance."
-    - name: "equipment_with_expired_warranty_count"
-      expr: COUNT(CASE WHEN warranty_expiry_date < CURRENT_DATE() THEN 1 END)
-      comment: "Number of equipment assets with expired warranties. Drives warranty renewal and risk exposure decisions for asset protection."
-    - name: "distinct_plant_count"
-      expr: COUNT(DISTINCT plant_id)
-      comment: "Number of distinct plants with registered equipment. Used for geographic asset distribution analysis and plant-level investment planning."
-$$;
+-- Metric views for domain: asset | Business: Manufacturing | Version: 2 | Generated on: 2026-07-03 05:35:52
 
 CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`asset_work_order`
 WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Work order execution KPIs measuring maintenance cost, labor efficiency, schedule adherence, and backlog across all asset work orders."
+  comment: "Operational KPIs for asset maintenance work orders — tracks cost performance, labor efficiency, downtime impact, and schedule adherence to steer maintenance investment decisions."
   source: "`vibe_manufacturing_v1`.`asset`.`asset_work_order`"
   dimensions:
     - name: "work_order_status"
       expr: work_order_status
-      comment: "Current status of the work order (open, in-progress, completed, cancelled) for backlog and throughput analysis."
-    - name: "work_order_source"
-      expr: work_order_source
-      comment: "Origin of the work order (preventive, corrective, inspection, breakdown) for maintenance strategy effectiveness analysis."
+      comment: "Current status of the work order (e.g. Open, In Progress, Closed) for pipeline and backlog analysis."
     - name: "priority"
       expr: priority
-      comment: "Work order priority level for resource allocation and SLA compliance monitoring."
-    - name: "tpm_pillar"
-      expr: tpm_pillar
-      comment: "Total Productive Maintenance pillar associated with the work order for TPM program performance tracking."
+      comment: "Work order priority level (e.g. Critical, High, Medium, Low) to assess urgency distribution."
+    - name: "work_order_source"
+      expr: work_order_source
+      comment: "Origin of the work order (e.g. PM Schedule, Breakdown, Inspection) to understand reactive vs. proactive maintenance split."
+    - name: "asset_criticality"
+      expr: asset_criticality
+      comment: "Criticality classification of the asset being maintained, enabling risk-weighted maintenance analysis."
     - name: "capex_opex_classification"
       expr: capex_opex_classification
-      comment: "CapEx vs OpEx classification for financial reporting and budget management."
+      comment: "Whether the work order is classified as capital expenditure or operating expenditure for financial reporting."
+    - name: "tpm_pillar"
+      expr: tpm_pillar
+      comment: "Total Productive Maintenance pillar (e.g. Autonomous, Planned, Quality) for TPM program tracking."
     - name: "craft_type"
       expr: craft_type
-      comment: "Craft or trade type required for the work order for workforce planning and skills gap analysis."
+      comment: "Trade or craft type assigned to the work order (e.g. Electrical, Mechanical) for workforce planning."
+    - name: "planned_start_month"
+      expr: DATE_TRUNC('MONTH', planned_start_date)
+      comment: "Month of planned start date for trend analysis of maintenance scheduling."
+    - name: "actual_start_month"
+      expr: DATE_TRUNC('MONTH', actual_start_date)
+      comment: "Month of actual start date for comparing planned vs. actual maintenance execution trends."
     - name: "is_production_impacting"
       expr: is_production_impacting
-      comment: "Flag indicating whether the work order impacts production. Used to prioritize critical maintenance and quantify production risk."
+      comment: "Flag indicating whether the work order caused production impact, for OEE and availability analysis."
   measures:
     - name: "total_work_orders"
       expr: COUNT(1)
-      comment: "Total number of work orders. Baseline maintenance activity volume KPI for workload and capacity planning."
+      comment: "Total number of work orders — baseline volume metric for maintenance workload assessment."
     - name: "total_actual_labor_cost"
       expr: SUM(CAST(actual_labor_cost AS DOUBLE))
-      comment: "Total actual labor cost across all work orders. Core maintenance cost KPI for budget management and cost control."
+      comment: "Total actual labor cost across all work orders — key input to maintenance cost management and budget variance."
     - name: "total_actual_material_cost"
       expr: SUM(CAST(actual_material_cost AS DOUBLE))
-      comment: "Total actual material cost across all work orders. Drives spare parts inventory investment and procurement decisions."
+      comment: "Total actual material cost across all work orders — tracks spare parts and consumables spend."
     - name: "total_maintenance_cost"
       expr: SUM(CAST(actual_labor_cost AS DOUBLE) + CAST(actual_material_cost AS DOUBLE))
-      comment: "Total combined maintenance cost (labor + materials). Primary maintenance spend KPI for executive cost management and budget variance analysis."
-    - name: "total_planned_labor_hours"
-      expr: SUM(CAST(planned_labor_hours AS DOUBLE))
-      comment: "Total planned labor hours across all work orders. Used for workforce capacity planning and scheduling."
-    - name: "total_actual_labor_hours"
-      expr: SUM(CAST(actual_labor_hours AS DOUBLE))
-      comment: "Total actual labor hours consumed. Compared against planned hours to measure maintenance execution efficiency."
-    - name: "total_downtime_duration_hours"
+      comment: "Combined labor and material cost per work order set — total maintenance spend for cost center reporting."
+    - name: "avg_actual_labor_hours"
+      expr: AVG(CAST(actual_labor_hours AS DOUBLE))
+      comment: "Average actual labor hours per work order — measures workforce efficiency and job complexity."
+    - name: "total_downtime_hours"
       expr: SUM(CAST(downtime_duration_hours AS DOUBLE))
-      comment: "Total asset downtime hours caused by work orders. Directly linked to production loss — a key OEE and availability KPI."
-    - name: "avg_downtime_duration_hours"
+      comment: "Total asset downtime hours caused by maintenance work orders — directly linked to production availability loss."
+    - name: "avg_downtime_hours_per_wo"
       expr: AVG(CAST(downtime_duration_hours AS DOUBLE))
-      comment: "Average downtime duration per work order. Measures maintenance responsiveness and impact on production availability."
-    - name: "total_estimated_cost"
+      comment: "Average downtime hours per work order — indicates typical disruption magnitude per maintenance event."
+    - name: "labor_cost_variance"
+      expr: SUM(CAST(actual_labor_cost AS DOUBLE) - CAST(planned_labor_hours AS DOUBLE))
+      comment: "Aggregate variance between actual labor cost and planned labor hours (as cost proxy) — signals estimation accuracy and budget overruns."
+    - name: "material_cost_variance"
+      expr: SUM(CAST(actual_material_cost AS DOUBLE) - CAST(planned_material_cost AS DOUBLE))
+      comment: "Aggregate variance between actual and planned material cost — identifies procurement and estimation gaps."
+    - name: "total_estimated_cost_sum"
       expr: SUM(CAST(total_estimated_cost AS DOUBLE))
-      comment: "Total estimated cost across all work orders. Used for budget forecasting and cost variance analysis against actuals."
-    - name: "production_impacting_work_order_count"
+      comment: "Sum of total estimated costs across work orders — used for budget forecasting and approval thresholds."
+    - name: "production_impacting_wo_count"
       expr: COUNT(CASE WHEN is_production_impacting = TRUE THEN 1 END)
-      comment: "Number of work orders that impact production. Quantifies production risk exposure from maintenance activities."
-    - name: "safety_permit_required_count"
-      expr: COUNT(CASE WHEN safety_permit_required = TRUE THEN 1 END)
-      comment: "Number of work orders requiring safety permits. Tracks safety compliance workload and regulatory adherence."
-    - name: "overdue_work_order_count"
-      expr: COUNT(CASE WHEN planned_finish_date < CURRENT_TIMESTAMP() AND work_order_status NOT IN ('Completed', 'Closed', 'Cancelled') THEN 1 END)
-      comment: "Number of work orders past their planned finish date and not yet closed. Measures maintenance backlog and schedule adherence — a critical operational risk indicator."
+      comment: "Count of work orders that caused production impact — key metric for OEE availability component and risk management."
+    - name: "avg_planned_labor_hours"
+      expr: AVG(CAST(planned_labor_hours AS DOUBLE))
+      comment: "Average planned labor hours per work order — baseline for workforce capacity planning."
 $$;
 
 CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`asset_downtime_event`
@@ -135,132 +82,76 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Asset downtime KPIs measuring production loss, downtime duration, failure patterns, and OEE availability impact to drive reliability improvement decisions."
+  comment: "Asset availability and downtime KPIs — tracks duration, frequency, cost impact, and root cause of downtime events to drive OEE improvement and reliability investment decisions."
   source: "`vibe_manufacturing_v1`.`asset`.`asset_downtime_event`"
   dimensions:
     - name: "downtime_category"
       expr: downtime_category
-      comment: "Category of downtime event (planned, unplanned, breakdown) for root cause and trend analysis."
+      comment: "High-level category of downtime (e.g. Mechanical, Electrical, Process) for Pareto analysis."
     - name: "downtime_type"
       expr: downtime_type
-      comment: "Type of downtime for granular failure classification and maintenance strategy alignment."
+      comment: "Type of downtime (e.g. Planned, Unplanned, External) to distinguish controllable vs. uncontrollable losses."
     - name: "failure_class"
       expr: failure_class
-      comment: "Failure class code for FMEA-aligned root cause analysis and reliability improvement prioritization."
+      comment: "Failure classification code for root cause categorization and FMEA alignment."
     - name: "failure_code"
       expr: failure_code
-      comment: "Specific failure code for detailed failure mode tracking and spare parts demand forecasting."
+      comment: "Specific failure code for granular root cause analysis and repeat failure tracking."
     - name: "root_cause_code"
       expr: root_cause_code
-      comment: "Root cause code for systemic failure analysis and corrective action targeting."
+      comment: "Root cause code assigned to the downtime event — drives corrective action prioritization."
     - name: "maintenance_type"
       expr: maintenance_type
-      comment: "Type of maintenance response (corrective, emergency, preventive) for maintenance mix analysis."
+      comment: "Type of maintenance response (e.g. Corrective, Emergency, Preventive) triggered by the downtime event."
+    - name: "event_status"
+      expr: event_status
+      comment: "Current status of the downtime event record (e.g. Open, Closed, Under Investigation)."
     - name: "is_safety_incident"
       expr: is_safety_incident
-      comment: "Flag indicating whether the downtime event involved a safety incident for EHS compliance reporting."
+      comment: "Flag indicating whether the downtime event involved a safety incident — critical for EHS reporting."
     - name: "is_repeat_failure"
       expr: is_repeat_failure
-      comment: "Flag indicating repeat failures on the same asset for chronic failure identification and CAPA prioritization."
+      comment: "Flag indicating whether this is a repeat failure — key indicator of CAPA effectiveness."
+    - name: "start_month"
+      expr: DATE_TRUNC('MONTH', start_timestamp)
+      comment: "Month of downtime event start for trend analysis of downtime frequency and duration over time."
     - name: "plant_code"
       expr: plant_code
-      comment: "Plant where the downtime event occurred for site-level availability benchmarking."
+      comment: "Plant where the downtime occurred — enables site-level benchmarking of availability performance."
   measures:
     - name: "total_downtime_events"
       expr: COUNT(1)
-      comment: "Total number of downtime events. Baseline reliability KPI for trend analysis and maintenance program effectiveness."
-    - name: "total_downtime_duration_minutes"
+      comment: "Total number of downtime events — baseline frequency metric for reliability trending."
+    - name: "total_downtime_minutes"
       expr: SUM(CAST(duration_minutes AS DOUBLE))
-      comment: "Total downtime duration in minutes. Primary availability KPI — directly drives OEE availability component and production loss calculations."
-    - name: "avg_downtime_duration_minutes"
+      comment: "Total downtime duration in minutes — primary availability loss metric for OEE calculation."
+    - name: "avg_downtime_minutes"
       expr: AVG(CAST(duration_minutes AS DOUBLE))
-      comment: "Average downtime duration per event. Measures severity of individual failures and maintenance response effectiveness."
-    - name: "total_estimated_production_loss_units"
-      expr: SUM(CAST(estimated_production_loss_units AS DOUBLE))
-      comment: "Total estimated production units lost due to downtime. Directly quantifies the business impact of asset failures on throughput."
-    - name: "total_estimated_loss_cost"
-      expr: SUM(CAST(estimated_loss_cost AS DOUBLE))
-      comment: "Total estimated financial loss from downtime events. Executive-level KPI linking asset reliability to revenue impact."
-    - name: "avg_oee_availability_impact_pct"
-      expr: AVG(CAST(oee_availability_impact_pct AS DOUBLE))
-      comment: "Average OEE availability impact percentage per downtime event. Core OEE component KPI for manufacturing performance management."
+      comment: "Average downtime duration per event — proxy for Mean Time To Repair (MTTR) at event level."
     - name: "total_repair_time_minutes"
       expr: SUM(CAST(repair_time_minutes AS DOUBLE))
-      comment: "Total repair time in minutes across all downtime events. Measures maintenance resource consumption and MTTR contribution."
+      comment: "Total active repair time in minutes — distinguishes repair effort from total downtime including waiting."
     - name: "avg_response_time_minutes"
       expr: AVG(CAST(response_time_minutes AS DOUBLE))
-      comment: "Average maintenance response time in minutes. Measures maintenance team responsiveness — high response times amplify production loss."
+      comment: "Average time from failure detection to maintenance response — measures maintenance responsiveness."
+    - name: "total_estimated_production_loss"
+      expr: SUM(CAST(estimated_production_loss_units AS DOUBLE))
+      comment: "Total estimated production units lost due to downtime — quantifies throughput impact for operations leadership."
+    - name: "total_estimated_loss_cost"
+      expr: SUM(CAST(estimated_loss_cost AS DOUBLE))
+      comment: "Total estimated financial cost of production losses from downtime — key input to maintenance ROI analysis."
+    - name: "avg_oee_availability_impact_pct"
+      expr: AVG(CAST(oee_availability_impact_pct AS DOUBLE))
+      comment: "Average OEE availability impact percentage per downtime event — directly feeds OEE dashboard for executive review."
     - name: "repeat_failure_count"
       expr: COUNT(CASE WHEN is_repeat_failure = TRUE THEN 1 END)
-      comment: "Number of repeat failure events. Identifies chronic failure patterns requiring root cause elimination and CAPA investment."
+      comment: "Count of repeat failure events — measures CAPA effectiveness and chronic failure elimination progress."
     - name: "safety_incident_downtime_count"
       expr: COUNT(CASE WHEN is_safety_incident = TRUE THEN 1 END)
-      comment: "Number of downtime events involving safety incidents. Critical EHS KPI for regulatory compliance and safety culture assessment."
-    - name: "distinct_failed_equipment_count"
-      expr: COUNT(DISTINCT equipment_register_id)
-      comment: "Number of distinct equipment assets that experienced downtime. Measures fleet-wide failure breadth for maintenance prioritization."
-$$;
-
-CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`asset_pm_schedule`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Preventive maintenance schedule KPIs measuring PM program coverage, compliance, cost estimation, and schedule health across the asset fleet."
-  source: "`vibe_manufacturing_v1`.`asset`.`asset_pm_schedule`"
-  dimensions:
-    - name: "schedule_status"
-      expr: schedule_status
-      comment: "Current status of the PM schedule (active, inactive, suspended) for program coverage analysis."
-    - name: "maintenance_type"
-      expr: maintenance_type
-      comment: "Type of preventive maintenance (time-based, condition-based, meter-based) for strategy mix analysis."
-    - name: "trigger_type"
-      expr: trigger_type
-      comment: "PM trigger type (calendar, meter, condition) for maintenance strategy effectiveness evaluation."
-    - name: "tpm_pillar"
-      expr: tpm_pillar
-      comment: "TPM pillar associated with the PM schedule for Total Productive Maintenance program tracking."
-    - name: "priority"
-      expr: priority
-      comment: "PM schedule priority for resource allocation and scheduling optimization."
-    - name: "is_safety_critical"
-      expr: is_safety_critical
-      comment: "Flag indicating safety-critical PM tasks for compliance and risk management prioritization."
-    - name: "is_regulatory_required"
-      expr: is_regulatory_required
-      comment: "Flag indicating regulatory-mandated PM tasks for compliance reporting and audit readiness."
-    - name: "frequency_unit"
-      expr: frequency_unit
-      comment: "Frequency unit of the PM schedule (daily, weekly, monthly, annually) for workload distribution analysis."
-  measures:
-    - name: "total_pm_schedules"
-      expr: COUNT(1)
-      comment: "Total number of active PM schedules. Baseline PM program coverage KPI for maintenance planning."
-    - name: "total_estimated_material_cost"
-      expr: SUM(CAST(estimated_material_cost AS DOUBLE))
-      comment: "Total estimated material cost across all PM schedules. Drives annual maintenance budget planning and spare parts procurement."
-    - name: "avg_estimated_duration_hours"
-      expr: AVG(CAST(estimated_duration_hours AS DOUBLE))
-      comment: "Average estimated duration per PM task. Used for workforce capacity planning and maintenance window scheduling."
-    - name: "total_estimated_downtime_hours"
-      expr: SUM(CAST(estimated_downtime_hours AS DOUBLE))
-      comment: "Total estimated downtime hours from planned PM activities. Critical for production scheduling and OEE planned downtime forecasting."
-    - name: "safety_critical_pm_count"
-      expr: COUNT(CASE WHEN is_safety_critical = TRUE THEN 1 END)
-      comment: "Number of safety-critical PM schedules. Ensures safety-critical maintenance tasks are tracked and never deferred."
-    - name: "regulatory_required_pm_count"
-      expr: COUNT(CASE WHEN is_regulatory_required = TRUE THEN 1 END)
-      comment: "Number of regulatory-mandated PM schedules. Tracks compliance obligations and audit exposure."
-    - name: "overdue_pm_schedule_count"
-      expr: COUNT(CASE WHEN next_due_date < CURRENT_DATE() AND schedule_status = 'Active' THEN 1 END)
-      comment: "Number of PM schedules past their next due date. Measures PM compliance backlog — a leading indicator of equipment reliability risk."
-    - name: "shutdown_required_pm_count"
-      expr: COUNT(CASE WHEN shutdown_required = TRUE THEN 1 END)
-      comment: "Number of PM tasks requiring equipment shutdown. Used for production shutdown planning and minimizing unplanned outages."
-    - name: "distinct_equipment_on_pm_count"
-      expr: COUNT(DISTINCT equipment_register_id)
-      comment: "Number of distinct equipment assets covered by PM schedules. Measures PM program coverage breadth across the fleet."
+      comment: "Count of downtime events involving safety incidents — critical EHS KPI for regulatory and board reporting."
+    - name: "avg_repair_vs_response_ratio"
+      expr: AVG(repair_time_minutes / NULLIF(response_time_minutes, 0))
+      comment: "Ratio of repair time to response time per event — indicates whether delays are in response or actual repair, guiding resource allocation."
 $$;
 
 CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`asset_reliability_record`
@@ -268,64 +159,73 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Asset reliability KPIs measuring MTBF, MTTR, availability, failure rates, and downtime costs to drive reliability-centered maintenance investment decisions."
+  comment: "Asset reliability and availability KPIs — tracks MTBF, MTTR, availability, failure rates, and health scores to guide asset lifecycle and maintenance strategy decisions."
   source: "`vibe_manufacturing_v1`.`asset`.`reliability_record`"
   dimensions:
     - name: "asset_class"
       expr: asset_class
-      comment: "Asset class for fleet-level reliability benchmarking and investment prioritization."
-    - name: "maintenance_strategy"
-      expr: maintenance_strategy
-      comment: "Maintenance strategy applied to the asset for strategy effectiveness evaluation."
+      comment: "Asset class for benchmarking reliability performance across equipment categories."
     - name: "reliability_tier"
       expr: reliability_tier
-      comment: "Reliability tier classification for risk-based maintenance prioritization."
-    - name: "trend_direction"
-      expr: trend_direction
-      comment: "Reliability trend direction (improving, stable, declining) for proactive intervention targeting."
+      comment: "Reliability tier classification (e.g. Tier 1 Critical, Tier 2) for risk-stratified maintenance investment."
     - name: "plant_code"
       expr: plant_code
-      comment: "Plant code for site-level reliability benchmarking and resource allocation."
+      comment: "Plant code for site-level reliability benchmarking and capital investment prioritization."
+    - name: "record_status"
+      expr: record_status
+      comment: "Status of the reliability record (e.g. Active, Archived) to filter current vs. historical data."
     - name: "replacement_recommended"
       expr: replacement_recommended
-      comment: "Flag indicating assets recommended for replacement for capital planning and lifecycle management."
+      comment: "Flag indicating whether asset replacement is recommended — drives CapEx planning decisions."
     - name: "condition_monitoring_enabled"
       expr: condition_monitoring_enabled
-      comment: "Flag indicating whether condition monitoring is active for predictive maintenance program coverage analysis."
+      comment: "Whether condition monitoring is active on the asset — used to assess predictive maintenance coverage."
+    - name: "measurement_period_start_month"
+      expr: DATE_TRUNC('MONTH', CAST(measurement_period_start AS TIMESTAMP))
+      comment: "Month of measurement period start for time-series reliability trending."
+    - name: "trend_direction"
+      expr: trend_direction
+      comment: "Direction of reliability trend (e.g. Improving, Degrading, Stable) for proactive intervention triggers."
+    - name: "failure_mode_dominant"
+      expr: failure_mode_dominant
+      comment: "Dominant failure mode for the asset — guides targeted maintenance strategy selection."
   measures:
-    - name: "avg_mean_time_between_failures_hours"
+    - name: "avg_mean_time_between_failures"
       expr: AVG(CAST(mean_time_between_failures AS DOUBLE))
-      comment: "Average MTBF in hours across reliability records. Primary fleet reliability KPI — declining MTBF triggers maintenance strategy review and capital investment decisions."
-    - name: "avg_mean_time_to_repair_hours"
+      comment: "Average MTBF across assets — primary reliability KPI used in executive reliability dashboards and maintenance strategy reviews."
+    - name: "avg_mean_time_to_repair"
       expr: AVG(CAST(mean_time_to_repair AS DOUBLE))
-      comment: "Average MTTR in hours. Measures maintenance responsiveness — high MTTR drives workforce and spare parts investment decisions."
+      comment: "Average MTTR across assets — measures maintenance efficiency and spare parts availability effectiveness."
     - name: "avg_availability_pct"
       expr: AVG(CAST(availability_pct AS DOUBLE))
-      comment: "Average asset availability percentage. Core OEE availability component — directly linked to production throughput and revenue."
-    - name: "avg_oee_availability_component"
-      expr: AVG(CAST(oee_availability_component AS DOUBLE))
-      comment: "Average OEE availability component across assets. Executive-level manufacturing performance KPI for operational excellence programs."
-    - name: "total_downtime_cost_usd"
+      comment: "Average asset availability percentage — core OEE input and key metric for production capacity planning."
+    - name: "avg_asset_health_score"
+      expr: AVG(CAST(asset_health_score AS DOUBLE))
+      comment: "Average asset health score across the fleet — executive-level indicator of overall asset condition and replacement risk."
+    - name: "total_downtime_cost"
       expr: SUM(CAST(downtime_cost_usd AS DOUBLE))
-      comment: "Total downtime cost in USD across all reliability records. Quantifies the financial impact of asset unreliability for executive investment justification."
+      comment: "Total financial cost of downtime across all assets — key input to maintenance ROI and CapEx justification."
+    - name: "total_failures"
+      expr: SUM(CAST(total_failures AS DOUBLE))
+      comment: "Total number of failures recorded across assets and periods — baseline for failure rate trending."
     - name: "avg_failure_rate"
       expr: AVG(CAST(failure_rate AS DOUBLE))
-      comment: "Average failure rate across assets. Measures fleet-wide reliability health — rising failure rates signal deteriorating asset condition."
-    - name: "total_downtime_hours"
-      expr: SUM(CAST(total_downtime_hours AS DOUBLE))
-      comment: "Total downtime hours across all reliability records. Aggregated availability loss KPI for production planning and maintenance investment justification."
-    - name: "total_uptime_hours"
-      expr: SUM(CAST(total_uptime_hours AS DOUBLE))
-      comment: "Total uptime hours across all reliability records. Measures productive asset utilization for capacity and throughput analysis."
-    - name: "assets_below_availability_target_count"
+      comment: "Average failure rate per asset — used to identify chronic failure assets requiring reliability improvement programs."
+    - name: "assets_below_availability_target"
       expr: COUNT(CASE WHEN availability_pct < availability_target_pct THEN 1 END)
-      comment: "Number of assets performing below their availability target. Identifies underperforming assets requiring immediate maintenance intervention."
-    - name: "replacement_recommended_count"
-      expr: COUNT(CASE WHEN replacement_recommended = TRUE THEN 1 END)
-      comment: "Number of assets recommended for replacement. Drives capital expenditure planning and asset lifecycle management decisions."
+      comment: "Count of assets failing to meet their availability target — drives prioritized maintenance intervention and investment decisions."
     - name: "avg_mtbf_variance_pct"
       expr: AVG(CAST(mtbf_variance_pct AS DOUBLE))
-      comment: "Average MTBF variance percentage against target. Measures reliability program effectiveness — high variance indicates maintenance strategy misalignment."
+      comment: "Average variance between actual and target MTBF — measures reliability program effectiveness against engineering targets."
+    - name: "replacement_recommended_count"
+      expr: COUNT(CASE WHEN replacement_recommended = TRUE THEN 1 END)
+      comment: "Count of assets recommended for replacement — directly informs CapEx budget planning and asset lifecycle decisions."
+    - name: "total_planned_maintenance_hours"
+      expr: SUM(CAST(planned_maintenance_hours AS DOUBLE))
+      comment: "Total planned maintenance hours consumed — used for workforce capacity planning and maintenance budget tracking."
+    - name: "avg_oee_availability_component"
+      expr: AVG(CAST(oee_availability_component AS DOUBLE))
+      comment: "Average OEE availability component across assets — feeds into plant-level OEE calculation for production leadership."
 $$;
 
 CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`asset_capex_asset_record`
@@ -333,61 +233,129 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Capital asset financial KPIs measuring acquisition cost, depreciation, net book value, and asset lifecycle financial health for capital planning and financial reporting."
+  comment: "Capital asset financial KPIs — tracks acquisition cost, depreciation, net book value, and disposal performance to support CapEx planning, financial reporting, and asset lifecycle decisions."
   source: "`vibe_manufacturing_v1`.`asset`.`capex_asset_record`"
   dimensions:
     - name: "asset_category"
       expr: asset_category
-      comment: "Asset category for capital portfolio segmentation and investment analysis."
+      comment: "Asset category (e.g. Machinery, Buildings, IT Equipment) for portfolio-level CapEx analysis."
     - name: "asset_class_code"
       expr: asset_class_code
-      comment: "Asset class code for depreciation policy grouping and financial reporting."
+      comment: "Asset class code for financial reporting and depreciation policy grouping."
     - name: "asset_status"
       expr: asset_status
-      comment: "Current asset status (active, disposed, impaired) for portfolio health monitoring."
+      comment: "Current lifecycle status of the asset (e.g. Active, Disposed, Under Construction) for portfolio health assessment."
     - name: "depreciation_method"
       expr: depreciation_method
-      comment: "Depreciation method applied (straight-line, declining balance) for financial reporting consistency analysis."
+      comment: "Depreciation method applied (e.g. Straight-Line, Declining Balance) for financial reporting consistency checks."
     - name: "plant_code"
       expr: plant_code
-      comment: "Plant code for site-level capital asset distribution and investment analysis."
+      comment: "Plant where the asset is located — enables site-level CapEx and asset value reporting."
     - name: "impairment_indicator"
       expr: impairment_indicator
-      comment: "Flag indicating impaired assets for financial risk and write-down exposure reporting."
-    - name: "capitalization_threshold_met"
-      expr: capitalization_threshold_met
-      comment: "Flag indicating whether the asset met the capitalization threshold for CapEx vs OpEx classification."
+      comment: "Flag indicating whether the asset has been assessed for impairment — critical for financial statement accuracy."
+    - name: "capitalization_date_month"
+      expr: DATE_TRUNC('MONTH', CAST(capitalization_date AS TIMESTAMP))
+      comment: "Month of asset capitalization for CapEx spend timing analysis."
+    - name: "disposal_method"
+      expr: disposal_method
+      comment: "Method of asset disposal (e.g. Sale, Scrap, Transfer) for disposal program performance tracking."
   measures:
     - name: "total_acquisition_cost"
       expr: SUM(CAST(acquisition_cost AS DOUBLE))
-      comment: "Total acquisition cost of all capital assets. Primary CapEx portfolio value KPI for balance sheet and investment planning."
+      comment: "Total acquisition cost of all capital assets — primary CapEx portfolio value metric for CFO and board reporting."
     - name: "total_net_book_value"
       expr: SUM(CAST(net_book_value AS DOUBLE))
-      comment: "Total net book value of all capital assets. Core financial reporting KPI for balance sheet asset valuation."
+      comment: "Total net book value of the asset portfolio — key balance sheet metric for financial reporting and asset management."
     - name: "total_accumulated_depreciation"
       expr: SUM(CAST(accumulated_depreciation AS DOUBLE))
-      comment: "Total accumulated depreciation across all capital assets. Measures asset aging and replacement investment timing."
-    - name: "total_salvage_value"
-      expr: SUM(CAST(salvage_value AS DOUBLE))
-      comment: "Total salvage value of all capital assets. Used for disposal planning and residual value management."
-    - name: "total_impairment_loss_amount"
-      expr: SUM(CAST(impairment_loss_amount AS DOUBLE))
-      comment: "Total impairment loss recognized across the capital asset portfolio. Financial risk KPI for executive reporting and audit compliance."
+      comment: "Total accumulated depreciation across all assets — measures asset aging and replacement fund requirements."
     - name: "avg_useful_life_years"
       expr: AVG(CAST(useful_life_years AS DOUBLE))
-      comment: "Average useful life in years across capital assets. Used for depreciation planning and asset replacement cycle forecasting."
-    - name: "impaired_asset_count"
-      expr: COUNT(CASE WHEN impairment_indicator = TRUE THEN 1 END)
-      comment: "Number of impaired capital assets. Tracks financial write-down exposure and asset portfolio quality."
-    - name: "disposed_asset_count"
-      expr: COUNT(CASE WHEN disposal_date IS NOT NULL THEN 1 END)
-      comment: "Number of disposed capital assets. Measures asset lifecycle turnover and replacement investment activity."
+      comment: "Average useful life of assets — informs long-range CapEx replacement planning cycles."
+    - name: "total_impairment_loss"
+      expr: SUM(CAST(impairment_loss_amount AS DOUBLE))
+      comment: "Total impairment losses recognized — critical financial risk metric for audit and investor reporting."
     - name: "total_disposal_proceeds"
       expr: SUM(CAST(disposal_proceeds AS DOUBLE))
-      comment: "Total proceeds from asset disposals. Used for gain/loss on disposal analysis and capital recycling decisions."
+      comment: "Total proceeds from asset disposals — measures asset monetization effectiveness and disposal program ROI."
+    - name: "total_salvage_value"
+      expr: SUM(CAST(salvage_value AS DOUBLE))
+      comment: "Total estimated salvage value of the asset portfolio — input to depreciation calculations and end-of-life planning."
     - name: "avg_net_book_value"
       expr: AVG(CAST(net_book_value AS DOUBLE))
-      comment: "Average net book value per capital asset. Benchmarks asset depreciation health and replacement timing across the portfolio."
+      comment: "Average net book value per asset — indicates average remaining value and fleet age profile."
+    - name: "impaired_asset_count"
+      expr: COUNT(CASE WHEN impairment_indicator = TRUE THEN 1 END)
+      comment: "Count of assets with impairment indicators — flags financial risk concentration for audit and finance leadership."
+    - name: "total_revaluation_amount"
+      expr: SUM(CAST(revaluation_amount AS DOUBLE))
+      comment: "Total revaluation adjustments applied to assets — tracks fair value adjustments for IFRS/GAAP compliance reporting."
+$$;
+
+CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`asset_pm_schedule`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Preventive maintenance schedule KPIs — tracks PM coverage, compliance, cost estimates, and schedule health to optimize maintenance planning and regulatory adherence."
+  source: "`vibe_manufacturing_v1`.`asset`.`asset_pm_schedule`"
+  dimensions:
+    - name: "schedule_status"
+      expr: schedule_status
+      comment: "Current status of the PM schedule (e.g. Active, Suspended, Expired) for schedule portfolio health monitoring."
+    - name: "maintenance_type"
+      expr: maintenance_type
+      comment: "Type of maintenance (e.g. Preventive, Predictive, Condition-Based) for strategy mix analysis."
+    - name: "trigger_type"
+      expr: trigger_type
+      comment: "PM trigger type (e.g. Time-Based, Meter-Based, Condition-Based) for maintenance strategy optimization."
+    - name: "tpm_pillar"
+      expr: tpm_pillar
+      comment: "TPM pillar alignment of the PM schedule for TPM program maturity assessment."
+    - name: "is_regulatory_required"
+      expr: is_regulatory_required
+      comment: "Flag indicating whether the PM is mandated by regulation — critical for compliance risk management."
+    - name: "is_safety_critical"
+      expr: is_safety_critical
+      comment: "Flag indicating safety-critical PM tasks — prioritization input for maintenance resource allocation."
+    - name: "priority"
+      expr: priority
+      comment: "Priority level of the PM schedule for workload balancing and resource planning."
+    - name: "frequency_unit"
+      expr: frequency_unit
+      comment: "Unit of PM frequency (e.g. Days, Hours, Cycles) for schedule density analysis."
+    - name: "next_due_month"
+      expr: DATE_TRUNC('MONTH', next_due_date)
+      comment: "Month when PM is next due — enables forward-looking workload forecasting for maintenance planning."
+  measures:
+    - name: "total_pm_schedules"
+      expr: COUNT(1)
+      comment: "Total number of active PM schedules — baseline for PM program coverage assessment."
+    - name: "total_estimated_material_cost"
+      expr: SUM(CAST(estimated_material_cost AS DOUBLE))
+      comment: "Total estimated material cost across all PM schedules — key input to maintenance budget planning."
+    - name: "avg_estimated_duration_hours"
+      expr: AVG(CAST(estimated_duration_hours AS DOUBLE))
+      comment: "Average estimated duration per PM task — used for workforce capacity planning and schedule optimization."
+    - name: "total_estimated_downtime_hours"
+      expr: SUM(CAST(estimated_downtime_hours AS DOUBLE))
+      comment: "Total estimated downtime hours from planned PM activities — input to production scheduling and OEE planning."
+    - name: "regulatory_pm_count"
+      expr: COUNT(CASE WHEN is_regulatory_required = TRUE THEN 1 END)
+      comment: "Count of PM schedules mandated by regulation — measures regulatory compliance coverage and risk exposure."
+    - name: "safety_critical_pm_count"
+      expr: COUNT(CASE WHEN is_safety_critical = TRUE THEN 1 END)
+      comment: "Count of safety-critical PM schedules — prioritization metric for EHS and maintenance leadership."
+    - name: "avg_frequency_value"
+      expr: AVG(CAST(frequency_value AS DOUBLE))
+      comment: "Average PM frequency value — indicates maintenance intensity and schedule density across the asset fleet."
+    - name: "avg_condition_threshold_value"
+      expr: AVG(CAST(condition_threshold_value AS DOUBLE))
+      comment: "Average condition threshold value for condition-based PM triggers — used to calibrate predictive maintenance sensitivity."
+    - name: "shutdown_required_pm_count"
+      expr: COUNT(CASE WHEN shutdown_required = TRUE THEN 1 END)
+      comment: "Count of PM schedules requiring equipment shutdown — critical input to production downtime planning and outage scheduling."
 $$;
 
 CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`asset_calibration_record`
@@ -395,55 +363,55 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Instrument calibration KPIs measuring calibration compliance, measurement accuracy, out-of-tolerance rates, and calibration program health for quality and regulatory assurance."
+  comment: "Instrument calibration quality KPIs — tracks calibration accuracy, out-of-tolerance rates, and compliance to ensure measurement system integrity for quality and regulatory purposes."
   source: "`vibe_manufacturing_v1`.`asset`.`calibration_record`"
   dimensions:
-    - name: "calibration_status"
-      expr: calibration_status
-      comment: "Current calibration status (pass, fail, overdue) for compliance monitoring."
-    - name: "calibration_type"
-      expr: calibration_type
-      comment: "Type of calibration (internal, external, on-site) for resource and cost planning."
-    - name: "calibration_method"
-      expr: calibration_method
-      comment: "Calibration method applied for measurement system analysis and standardization."
     - name: "instrument_type"
       expr: instrument_type
-      comment: "Type of instrument being calibrated for fleet-level calibration program management."
+      comment: "Type of instrument being calibrated (e.g. Pressure Gauge, Thermocouple) for calibration program coverage analysis."
     - name: "measurement_parameter"
       expr: measurement_parameter
-      comment: "Physical parameter being measured (temperature, pressure, flow) for calibration scope analysis."
-    - name: "out_of_service"
-      expr: out_of_service
-      comment: "Flag indicating instruments taken out of service due to calibration failure for availability impact tracking."
+      comment: "Physical parameter being measured (e.g. Temperature, Pressure, Flow) for measurement system analysis."
+    - name: "measurement_unit"
+      expr: measurement_unit
+      comment: "Unit of measurement for the calibrated instrument — ensures dimensional consistency in calibration reporting."
     - name: "adjustment_made"
       expr: adjustment_made
-      comment: "Flag indicating whether a calibration adjustment was required for measurement system drift analysis."
+      comment: "Flag indicating whether an adjustment was made during calibration — key indicator of instrument drift and quality risk."
+    - name: "out_of_service"
+      expr: out_of_service
+      comment: "Flag indicating whether the instrument was taken out of service — measures calibration failure impact on operations."
+    - name: "calibration_date_month"
+      expr: DATE_TRUNC('MONTH', calibration_date)
+      comment: "Month of calibration for trend analysis of calibration activity volume and compliance."
+    - name: "external_lab_name"
+      expr: external_lab_name
+      comment: "Name of external calibration laboratory — used for vendor performance and accreditation management."
   measures:
-    - name: "total_calibration_records"
+    - name: "total_calibrations"
       expr: COUNT(1)
-      comment: "Total number of calibration records. Baseline calibration program activity KPI."
-    - name: "out_of_tolerance_count"
-      expr: COUNT(CASE WHEN calibration_status = 'Fail' OR adjustment_made = TRUE THEN 1 END)
-      comment: "Number of calibrations where instruments were out of tolerance. Quality risk KPI — high counts indicate measurement system unreliability affecting product quality."
-    - name: "out_of_service_instrument_count"
-      expr: COUNT(CASE WHEN out_of_service = TRUE THEN 1 END)
-      comment: "Number of instruments currently out of service due to calibration issues. Operational risk KPI for production and quality control availability."
+      comment: "Total number of calibration records — baseline for calibration program activity and compliance coverage."
     - name: "avg_as_found_error"
       expr: AVG(CAST(as_found_error AS DOUBLE))
-      comment: "Average as-found measurement error across calibrations. Measures instrument drift and measurement system stability over time."
+      comment: "Average as-found measurement error — indicates instrument drift magnitude and measurement system risk."
     - name: "avg_as_left_error"
       expr: AVG(CAST(as_left_error AS DOUBLE))
-      comment: "Average as-left measurement error after calibration adjustment. Measures calibration effectiveness and residual measurement uncertainty."
+      comment: "Average as-left measurement error after calibration — measures calibration effectiveness and residual uncertainty."
     - name: "avg_measurement_uncertainty"
       expr: AVG(CAST(measurement_uncertainty AS DOUBLE))
-      comment: "Average measurement uncertainty across calibrated instruments. Quantifies measurement system quality for product conformance decisions."
-    - name: "overdue_calibration_count"
-      expr: COUNT(CASE WHEN calibration_due_date < CURRENT_DATE() AND out_of_service = FALSE THEN 1 END)
-      comment: "Number of instruments with overdue calibrations still in service. Critical compliance risk KPI — overdue calibrations invalidate measurement data and create regulatory exposure."
-    - name: "distinct_calibrated_equipment_count"
-      expr: COUNT(DISTINCT equipment_register_id)
-      comment: "Number of distinct equipment assets with calibration records. Measures calibration program coverage across the instrumented asset fleet."
+      comment: "Average measurement uncertainty across calibrated instruments — key metric for measurement system analysis (MSA) and quality risk."
+    - name: "out_of_service_count"
+      expr: COUNT(CASE WHEN out_of_service = TRUE THEN 1 END)
+      comment: "Count of instruments taken out of service due to calibration failure — measures quality risk from non-conforming measurement equipment."
+    - name: "adjustment_required_count"
+      expr: COUNT(CASE WHEN adjustment_made = TRUE THEN 1 END)
+      comment: "Count of calibrations requiring adjustment — indicates instrument fleet drift rate and maintenance effectiveness."
+    - name: "avg_calibration_interval_days"
+      expr: AVG(CAST(calibration_interval_days AS DOUBLE))
+      comment: "Average calibration interval in days — used to optimize calibration frequency and reduce compliance risk."
+    - name: "avg_tolerance_range"
+      expr: AVG(CAST(tolerance_upper_limit AS DOUBLE) - CAST(tolerance_lower_limit AS DOUBLE))
+      comment: "Average tolerance band width across instruments — measures precision requirements and calibration stringency of the instrument fleet."
 $$;
 
 CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`asset_inspection_event`
@@ -451,114 +419,114 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Asset inspection KPIs measuring inspection outcomes, findings rates, compliance status, and corrective action requirements to drive asset integrity and regulatory compliance."
+  comment: "Asset inspection performance KPIs — tracks inspection outcomes, findings, compliance rates, and corrective action triggers to manage regulatory compliance and asset safety."
   source: "`vibe_manufacturing_v1`.`asset`.`inspection_event`"
   dimensions:
     - name: "inspection_type"
       expr: inspection_type
-      comment: "Type of inspection (statutory, preventive, condition-based) for compliance and program analysis."
+      comment: "Type of inspection (e.g. Statutory, Preventive, Condition) for compliance program coverage analysis."
     - name: "inspection_status"
       expr: inspection_status
-      comment: "Current inspection status (scheduled, in-progress, completed, overdue) for program execution tracking."
+      comment: "Current status of the inspection (e.g. Planned, In Progress, Completed, Overdue) for schedule adherence monitoring."
     - name: "inspection_outcome"
       expr: inspection_outcome
-      comment: "Outcome of the inspection (pass, fail, conditional pass) for asset integrity assessment."
+      comment: "Outcome of the inspection (e.g. Pass, Fail, Conditional Pass) — primary quality gate metric."
+    - name: "inspection_method"
+      expr: inspection_method
+      comment: "Method used for inspection (e.g. Visual, NDT, Ultrasonic) for technique effectiveness analysis."
     - name: "risk_level"
       expr: risk_level
-      comment: "Risk level assigned to the inspection for prioritization and resource allocation."
-    - name: "plant_code"
-      expr: plant_code
-      comment: "Plant where the inspection was conducted for site-level compliance benchmarking."
+      comment: "Risk level assigned to the inspection finding — drives prioritization of corrective actions."
     - name: "corrective_action_required"
       expr: corrective_action_required
-      comment: "Flag indicating whether corrective action is required following the inspection."
-    - name: "certificate_issued"
-      expr: certificate_issued
-      comment: "Flag indicating whether a compliance certificate was issued following the inspection."
+      comment: "Flag indicating whether corrective action is required — key compliance and safety risk indicator."
+    - name: "plant_code"
+      expr: plant_code
+      comment: "Plant where the inspection was conducted — enables site-level compliance benchmarking."
+    - name: "inspection_date_month"
+      expr: DATE_TRUNC('MONTH', inspection_date)
+      comment: "Month of inspection for trend analysis of inspection activity and compliance rates over time."
+    - name: "regulatory_body"
+      expr: regulatory_body
+      comment: "Regulatory body requiring the inspection — used for jurisdiction-specific compliance reporting."
   measures:
-    - name: "total_inspection_events"
+    - name: "total_inspections"
       expr: COUNT(1)
-      comment: "Total number of inspection events. Baseline inspection program activity KPI."
-    - name: "inspections_requiring_corrective_action_count"
+      comment: "Total number of inspection events — baseline for compliance program activity and coverage."
+    - name: "avg_inspection_duration_minutes"
+      expr: AVG(CAST(inspection_duration_minutes AS DOUBLE))
+      comment: "Average inspection duration — used for resource planning and identifying inspection complexity trends."
+    - name: "total_downtime_from_inspections"
+      expr: SUM(CAST(downtime_duration_minutes AS DOUBLE))
+      comment: "Total downtime caused by inspection activities — quantifies production impact of compliance activities."
+    - name: "avg_total_checklist_items"
+      expr: AVG(CAST(total_checklist_items AS DOUBLE))
+      comment: "Average number of checklist items per inspection — measures inspection thoroughness and scope."
+    - name: "corrective_action_required_count"
       expr: COUNT(CASE WHEN corrective_action_required = TRUE THEN 1 END)
-      comment: "Number of inspections requiring corrective action. Measures asset integrity risk exposure and maintenance backlog from inspection findings."
-    - name: "certificates_issued_count"
+      comment: "Count of inspections requiring corrective action — key compliance risk metric for regulatory and safety leadership."
+    - name: "certificate_issued_count"
       expr: COUNT(CASE WHEN certificate_issued = TRUE THEN 1 END)
-      comment: "Number of inspections resulting in certificate issuance. Tracks regulatory compliance achievement and certification program throughput."
+      comment: "Count of inspections resulting in certificate issuance — measures regulatory certification throughput."
     - name: "downtime_caused_count"
       expr: COUNT(CASE WHEN downtime_caused = TRUE THEN 1 END)
-      comment: "Number of inspections that caused equipment downtime. Quantifies production impact of inspection activities for scheduling optimization."
-    - name: "distinct_inspected_equipment_count"
-      expr: COUNT(DISTINCT equipment_register_id)
-      comment: "Number of distinct equipment assets inspected. Measures inspection program coverage across the asset fleet."
-    - name: "overdue_inspection_count"
-      expr: COUNT(CASE WHEN next_inspection_due_date < CURRENT_DATE() AND inspection_status NOT IN ('Completed', 'Closed') THEN 1 END)
-      comment: "Number of inspections past their due date. Critical compliance risk KPI — overdue inspections create regulatory and safety exposure."
+      comment: "Count of inspections that caused asset downtime — measures production impact of compliance activities."
 $$;
 
-CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`asset_failure_record`
+CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`asset_equipment_register`
 WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Asset failure analysis KPIs measuring failure frequency, repair costs, downtime impact, and safety incidents to drive FMEA-based reliability improvement and maintenance investment."
-  source: "`vibe_manufacturing_v1`.`asset`.`failure_record`"
+  comment: "Asset fleet composition and value KPIs — tracks fleet size, replacement value, condition distribution, and maintenance metrics to support asset lifecycle and investment decisions."
+  source: "`vibe_manufacturing_v1`.`asset`.`equipment_register`"
   dimensions:
-    - name: "failure_class_code"
-      expr: failure_class_code
-      comment: "Failure class code for FMEA-aligned failure categorization and reliability analysis."
-    - name: "failure_mode_code"
-      expr: failure_mode_code
-      comment: "Failure mode code for root cause analysis and predictive maintenance model development."
-    - name: "failure_cause_code"
-      expr: failure_cause_code
-      comment: "Root cause code for systemic failure elimination and corrective action targeting."
-    - name: "maintenance_type"
-      expr: maintenance_type
-      comment: "Maintenance response type for analyzing corrective vs preventive maintenance balance."
-    - name: "failure_impact_type"
-      expr: failure_impact_type
-      comment: "Type of business impact from the failure (production, safety, quality, cost) for prioritization."
-    - name: "safety_incident_flag"
-      expr: safety_incident_flag
-      comment: "Flag indicating failures involving safety incidents for EHS compliance and risk management."
-    - name: "plant_code"
-      expr: plant_code
-      comment: "Plant where the failure occurred for site-level reliability benchmarking."
-    - name: "capa_required_flag"
-      expr: capa_required_flag
-      comment: "Flag indicating whether a CAPA is required for the failure for quality system compliance tracking."
+    - name: "asset_category"
+      expr: asset_category
+      comment: "Asset category for fleet composition and portfolio analysis."
+    - name: "equipment_class"
+      expr: equipment_class
+      comment: "Equipment class for technical grouping and maintenance strategy assignment."
+    - name: "condition_grade"
+      expr: condition_grade
+      comment: "Current condition grade of the equipment (e.g. A, B, C, D) — drives replacement prioritization and CapEx planning."
+    - name: "criticality_ranking"
+      expr: criticality_ranking
+      comment: "Criticality ranking of the equipment — used for risk-based maintenance strategy selection."
+    - name: "safety_classification"
+      expr: safety_classification
+      comment: "Safety classification of the equipment — required for EHS compliance and regulatory reporting."
+    - name: "commissioning_month"
+      expr: DATE_TRUNC('MONTH', commissioning_date)
+      comment: "Month of equipment commissioning for fleet age profile analysis."
+    - name: "manufacturer_name"
+      expr: manufacturer_name
+      comment: "Equipment manufacturer — used for vendor performance analysis and OEM contract management."
   measures:
-    - name: "total_failure_records"
+    - name: "total_equipment_count"
       expr: COUNT(1)
-      comment: "Total number of failure records. Baseline failure frequency KPI for reliability trend analysis."
-    - name: "total_repair_cost"
-      expr: SUM(CAST(repair_cost AS DOUBLE))
-      comment: "Total repair cost across all failure records. Primary maintenance cost KPI for budget management and reliability investment justification."
-    - name: "avg_repair_cost"
-      expr: AVG(CAST(repair_cost AS DOUBLE))
-      comment: "Average repair cost per failure. Benchmarks failure severity and guides make-vs-replace decisions for aging assets."
-    - name: "total_downtime_duration_minutes"
-      expr: SUM(CAST(downtime_duration_minutes AS DOUBLE))
-      comment: "Total downtime duration from failures in minutes. Quantifies production availability loss from asset failures."
-    - name: "total_production_units_lost"
-      expr: SUM(CAST(production_units_lost AS DOUBLE))
-      comment: "Total production units lost due to asset failures. Directly links asset reliability to production throughput and revenue impact."
-    - name: "total_mtbf_contribution_hours"
-      expr: SUM(CAST(mtbf_contribution_hours AS DOUBLE))
-      comment: "Total MTBF contribution hours across failure records. Used for fleet-level MTBF calculation and reliability benchmarking."
-    - name: "safety_incident_failure_count"
-      expr: COUNT(CASE WHEN safety_incident_flag = TRUE THEN 1 END)
-      comment: "Number of failures involving safety incidents. Critical EHS KPI for regulatory compliance and safety culture assessment."
-    - name: "capa_required_failure_count"
-      expr: COUNT(CASE WHEN capa_required_flag = TRUE THEN 1 END)
-      comment: "Number of failures requiring corrective and preventive action. Measures quality system workload and systemic failure exposure."
-    - name: "distinct_failed_equipment_count"
-      expr: COUNT(DISTINCT equipment_register_id)
-      comment: "Number of distinct equipment assets with failure records. Measures failure breadth across the fleet for maintenance prioritization."
-    - name: "spare_part_consumed_failure_count"
-      expr: COUNT(CASE WHEN spare_part_consumed_flag = TRUE THEN 1 END)
-      comment: "Number of failures requiring spare part consumption. Drives spare parts inventory planning and stocking strategy decisions."
+      comment: "Total number of registered equipment assets — baseline fleet size metric for asset management reporting."
+    - name: "total_replacement_value"
+      expr: SUM(CAST(replacement_value AS DOUBLE))
+      comment: "Total replacement value of the asset fleet — key metric for insurance, CapEx planning, and asset management strategy."
+    - name: "avg_replacement_value"
+      expr: AVG(CAST(replacement_value AS DOUBLE))
+      comment: "Average replacement value per asset — used for fleet valuation benchmarking and insurance adequacy assessment."
+    - name: "avg_mean_time_between_failures"
+      expr: AVG(CAST(mean_time_between_failures AS DOUBLE))
+      comment: "Average MTBF across the registered fleet — fleet-level reliability indicator for maintenance strategy review."
+    - name: "avg_mean_time_to_repair"
+      expr: AVG(CAST(mean_time_to_repair AS DOUBLE))
+      comment: "Average MTTR across the registered fleet — measures overall maintenance responsiveness and spare parts effectiveness."
+    - name: "total_power_rating_kw"
+      expr: SUM(CAST(power_rating_kw AS DOUBLE))
+      comment: "Total installed power rating in kW across the fleet — used for energy management and capacity planning."
+    - name: "avg_rated_capacity"
+      expr: AVG(CAST(rated_capacity AS DOUBLE))
+      comment: "Average rated capacity across equipment — baseline for production capacity planning and utilization analysis."
+    - name: "total_weight_kg"
+      expr: SUM(CAST(weight_kg AS DOUBLE))
+      comment: "Total weight of registered equipment — used for facility load planning and logistics/relocation planning."
 $$;
 
 CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`asset_warranty`
@@ -566,47 +534,237 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Asset warranty KPIs measuring warranty coverage, claim activity, financial exposure, and expiry risk to optimize warranty recovery and supplier accountability."
+  comment: "Asset warranty portfolio KPIs — tracks warranty coverage, claim activity, remaining value, and expiry risk to optimize warranty utilization and supplier accountability."
   source: "`vibe_manufacturing_v1`.`asset`.`asset_warranty`"
   dimensions:
     - name: "warranty_status"
       expr: warranty_status
-      comment: "Current warranty status (active, expired, claimed) for coverage portfolio management."
+      comment: "Current status of the warranty (e.g. Active, Expired, Claimed) for portfolio health monitoring."
     - name: "warranty_type"
       expr: warranty_type
-      comment: "Type of warranty (OEM, extended, service) for warranty program analysis."
+      comment: "Type of warranty (e.g. OEM, Extended, Service) for coverage mix analysis."
+    - name: "oem_vendor_name"
+      expr: oem_vendor_name
+      comment: "OEM vendor providing the warranty — used for vendor accountability and warranty claim performance tracking."
     - name: "labor_coverage_flag"
       expr: labor_coverage_flag
-      comment: "Flag indicating labor coverage inclusion for warranty value assessment."
+      comment: "Flag indicating whether labor costs are covered — used to assess warranty value and cost avoidance."
     - name: "parts_coverage_flag"
       expr: parts_coverage_flag
-      comment: "Flag indicating parts coverage inclusion for warranty scope analysis."
+      comment: "Flag indicating whether parts are covered — key factor in warranty cost avoidance calculation."
     - name: "usage_based_flag"
       expr: usage_based_flag
-      comment: "Flag indicating usage-based warranty terms for condition monitoring alignment."
-    - name: "rma_eligible_flag"
-      expr: rma_eligible_flag
-      comment: "Flag indicating RMA eligibility under warranty for returns management planning."
+      comment: "Flag indicating usage-based warranty terms — used to track consumption against warranty limits."
+    - name: "activation_month"
+      expr: DATE_TRUNC('MONTH', CAST(activation_date AS TIMESTAMP))
+      comment: "Month of warranty activation for cohort analysis of warranty portfolio aging."
   measures:
-    - name: "total_active_warranties"
-      expr: COUNT(CASE WHEN warranty_status = 'Active' THEN 1 END)
-      comment: "Total number of active warranties. Measures warranty coverage portfolio size for risk management."
+    - name: "total_warranties"
+      expr: COUNT(1)
+      comment: "Total number of asset warranties — baseline for warranty portfolio coverage assessment."
     - name: "total_claimed_amount"
       expr: SUM(CAST(total_claimed_amount AS DOUBLE))
-      comment: "Total amount claimed under warranties. Measures warranty recovery value and supplier accountability performance."
+      comment: "Total amount claimed under warranties — measures warranty utilization and cost recovery from suppliers."
     - name: "total_remaining_warranty_value"
       expr: SUM(CAST(remaining_warranty_value AS DOUBLE))
-      comment: "Total remaining warranty value across active warranties. Quantifies unclaimed warranty protection for financial risk management."
-    - name: "total_max_claim_value"
-      expr: SUM(CAST(max_claim_value AS DOUBLE))
-      comment: "Total maximum claimable value across all warranties. Measures total warranty protection ceiling for asset risk coverage analysis."
-    - name: "warranties_expiring_within_90_days_count"
-      expr: COUNT(CASE WHEN expiration_date BETWEEN CURRENT_DATE() AND DATE_ADD(CURRENT_DATE(), 90) AND warranty_status = 'Active' THEN 1 END)
-      comment: "Number of warranties expiring within 90 days. Drives proactive warranty renewal and claim submission before expiry."
+      comment: "Total remaining warranty value across the portfolio — quantifies future cost protection and supplier liability."
+    - name: "avg_duration_months"
+      expr: AVG(CAST(duration_months AS DOUBLE))
+      comment: "Average warranty duration in months — used for warranty coverage gap analysis and procurement negotiation."
+    - name: "total_claims_count"
+      expr: SUM(CAST(total_claims_count AS DOUBLE))
+      comment: "Total number of warranty claims filed — measures warranty utilization rate and supplier quality performance."
+    - name: "avg_max_claim_value"
+      expr: AVG(CAST(max_claim_value AS DOUBLE))
+      comment: "Average maximum claim value per warranty — used to assess warranty coverage adequacy against asset replacement costs."
     - name: "avg_usage_limit_value"
       expr: AVG(CAST(usage_limit_value AS DOUBLE))
-      comment: "Average usage limit value for usage-based warranties. Used for condition monitoring alignment and warranty compliance tracking."
-    - name: "distinct_equipment_under_warranty_count"
-      expr: COUNT(DISTINCT equipment_register_id)
-      comment: "Number of distinct equipment assets under warranty coverage. Measures warranty program coverage breadth for risk management."
+      comment: "Average usage limit value for usage-based warranties — used to monitor consumption against warranty thresholds."
+$$;
+
+CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`asset_failure_record`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Asset failure analysis KPIs — tracks failure frequency, downtime impact, repair costs, and safety incidents to drive root cause elimination and reliability improvement programs."
+  source: "`vibe_manufacturing_v1`.`asset`.`failure_record`"
+  dimensions:
+    - name: "failure_class_code"
+      expr: failure_class_code
+      comment: "Failure class code for Pareto analysis of failure categories driving the most downtime and cost."
+    - name: "failure_mode_code"
+      expr: failure_mode_code
+      comment: "Specific failure mode code — used for FMEA alignment and targeted reliability improvement."
+    - name: "failure_cause_code"
+      expr: failure_cause_code
+      comment: "Root cause code of the failure — drives corrective action prioritization and CAPA program management."
+    - name: "maintenance_type"
+      expr: maintenance_type
+      comment: "Type of maintenance response triggered (e.g. Emergency, Corrective) — measures reactive maintenance burden."
+    - name: "failure_impact_type"
+      expr: failure_impact_type
+      comment: "Type of impact caused by the failure (e.g. Production Loss, Safety, Quality) for risk classification."
+    - name: "safety_incident_flag"
+      expr: safety_incident_flag
+      comment: "Flag indicating whether the failure caused a safety incident — critical EHS metric."
+    - name: "capa_required_flag"
+      expr: capa_required_flag
+      comment: "Flag indicating whether CAPA is required — measures quality system response to failures."
+    - name: "plant_code"
+      expr: plant_code
+      comment: "Plant where the failure occurred — enables site-level failure benchmarking."
+    - name: "failure_datetime_month"
+      expr: DATE_TRUNC('MONTH', failure_datetime)
+      comment: "Month of failure occurrence for trend analysis of failure frequency over time."
+  measures:
+    - name: "total_failure_records"
+      expr: COUNT(1)
+      comment: "Total number of failure records — baseline failure frequency metric for reliability trending."
+    - name: "total_downtime_minutes"
+      expr: SUM(CAST(downtime_duration_minutes AS DOUBLE))
+      comment: "Total downtime duration from failures in minutes — primary availability loss metric for OEE and production planning."
+    - name: "avg_downtime_minutes"
+      expr: AVG(CAST(downtime_duration_minutes AS DOUBLE))
+      comment: "Average downtime per failure event — proxy for MTTR and maintenance response effectiveness."
+    - name: "total_repair_cost"
+      expr: SUM(CAST(repair_cost AS DOUBLE))
+      comment: "Total repair cost across all failure records — key maintenance cost metric for budget management and ROI analysis."
+    - name: "total_production_units_lost"
+      expr: SUM(CAST(production_units_lost AS DOUBLE))
+      comment: "Total production units lost due to failures — quantifies throughput impact for operations and finance leadership."
+    - name: "total_mtbf_contribution_hours"
+      expr: SUM(CAST(mtbf_contribution_hours AS DOUBLE))
+      comment: "Total MTBF contribution hours across failure records — used to calculate fleet-level MTBF for reliability reporting."
+    - name: "safety_incident_failure_count"
+      expr: COUNT(CASE WHEN safety_incident_flag = TRUE THEN 1 END)
+      comment: "Count of failures involving safety incidents — critical EHS KPI for regulatory reporting and board safety reviews."
+    - name: "capa_required_count"
+      expr: COUNT(CASE WHEN capa_required_flag = TRUE THEN 1 END)
+      comment: "Count of failures requiring CAPA — measures quality system workload and chronic failure elimination progress."
+    - name: "spare_part_consumed_count"
+      expr: COUNT(CASE WHEN spare_part_consumed_flag = TRUE THEN 1 END)
+      comment: "Count of failures consuming spare parts — used for spare parts demand forecasting and inventory optimization."
+$$;
+
+CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`asset_condition_reading`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Asset condition monitoring KPIs — tracks sensor readings, threshold breaches, and data quality to support predictive maintenance and condition-based maintenance programs."
+  source: "`vibe_manufacturing_v1`.`asset`.`condition_reading`"
+  dimensions:
+    - name: "measurement_type"
+      expr: measurement_type
+      comment: "Type of measurement being monitored (e.g. Vibration, Temperature, Pressure) for condition monitoring coverage analysis."
+    - name: "reading_type"
+      expr: reading_type
+      comment: "Type of reading (e.g. Continuous, Periodic, Manual) for data collection method analysis."
+    - name: "reading_source"
+      expr: reading_source
+      comment: "Source of the reading (e.g. Sensor, Manual, SCADA) for data quality and coverage assessment."
+    - name: "reading_status"
+      expr: reading_status
+      comment: "Status of the reading (e.g. Valid, Suspect, Rejected) for data quality filtering."
+    - name: "threshold_breached"
+      expr: threshold_breached
+      comment: "Flag indicating whether the reading exceeded a threshold — primary trigger for predictive maintenance alerts."
+    - name: "asset_operating_state"
+      expr: asset_operating_state
+      comment: "Operating state of the asset at time of reading (e.g. Running, Idle, Startup) for context-aware condition analysis."
+    - name: "pm_trigger_flag"
+      expr: pm_trigger_flag
+      comment: "Flag indicating whether the reading triggered a PM work order — measures condition-based maintenance effectiveness."
+    - name: "reading_month"
+      expr: DATE_TRUNC('MONTH', reading_timestamp)
+      comment: "Month of condition reading for trend analysis of asset health over time."
+    - name: "equipment_class"
+      expr: equipment_class
+      comment: "Equipment class of the monitored asset — enables class-level condition benchmarking."
+  measures:
+    - name: "total_readings"
+      expr: COUNT(1)
+      comment: "Total number of condition readings — baseline for condition monitoring coverage and data collection activity."
+    - name: "avg_reading_value"
+      expr: AVG(CAST(reading_value AS DOUBLE))
+      comment: "Average condition reading value — baseline for trend analysis and threshold calibration."
+    - name: "avg_data_quality_score"
+      expr: AVG(CAST(data_quality_score AS DOUBLE))
+      comment: "Average data quality score across readings — measures sensor reliability and data integrity for predictive analytics."
+    - name: "threshold_breach_count"
+      expr: COUNT(CASE WHEN threshold_breached = TRUE THEN 1 END)
+      comment: "Count of readings exceeding thresholds — primary alert volume metric for predictive maintenance program management."
+    - name: "pm_trigger_count"
+      expr: COUNT(CASE WHEN pm_trigger_flag = TRUE THEN 1 END)
+      comment: "Count of readings that triggered PM work orders — measures condition-based maintenance activation rate."
+    - name: "avg_load_percentage"
+      expr: AVG(CAST(load_percentage AS DOUBLE))
+      comment: "Average asset load percentage at time of reading — used for utilization analysis and capacity planning."
+    - name: "avg_delta_value"
+      expr: AVG(CAST(delta_value AS DOUBLE))
+      comment: "Average change in reading value between measurements — measures rate of condition degradation for predictive maintenance models."
+$$;
+
+CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`asset_equipment_allocation`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Equipment utilization and allocation KPIs — tracks allocation rates, usage hours, and cost recovery to optimize asset deployment and identify underutilized equipment."
+  source: "`vibe_manufacturing_v1`.`asset`.`location`"
+  dimensions:
+    - name: "All Records"
+      expr: "1"
+  measures:
+    - name: "total_allocations"
+      expr: COUNT(1)
+      comment: "Total number of equipment allocations — baseline for deployment activity and asset sharing program assessment."
+$$;
+
+CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`asset_compliance_assessment`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Asset regulatory compliance KPIs — tracks assessment scores, compliance status, and corrective action requirements to manage regulatory risk and audit readiness."
+  source: "`vibe_manufacturing_v1`.`asset`.`compliance_assessment`"
+  dimensions:
+    - name: "assessment_type"
+      expr: assessment_type
+      comment: "Type of compliance assessment (e.g. Regulatory, Internal, Third-Party) for compliance program coverage analysis."
+    - name: "assessment_status"
+      expr: assessment_status
+      comment: "Current status of the assessment (e.g. Planned, In Progress, Completed) for compliance program pipeline monitoring."
+    - name: "compliance_status"
+      expr: compliance_status
+      comment: "Overall compliance status result (e.g. Compliant, Non-Compliant, Partially Compliant) — primary regulatory risk indicator."
+    - name: "risk_level"
+      expr: risk_level
+      comment: "Risk level of the compliance finding — drives prioritization of remediation activities."
+    - name: "corrective_action_required"
+      expr: corrective_action_required
+      comment: "Flag indicating whether corrective action is required — key compliance risk metric for regulatory reporting."
+    - name: "assessment_date_month"
+      expr: DATE_TRUNC('MONTH', assessment_date)
+      comment: "Month of assessment for trend analysis of compliance posture over time."
+  measures:
+    - name: "total_assessments"
+      expr: COUNT(1)
+      comment: "Total number of compliance assessments — baseline for regulatory compliance program activity."
+    - name: "avg_compliance_score"
+      expr: AVG(CAST(compliance_score AS DOUBLE))
+      comment: "Average compliance score across assessments — executive-level indicator of overall regulatory compliance posture."
+    - name: "avg_assessment_score"
+      expr: AVG(CAST(assessment_score AS DOUBLE))
+      comment: "Average assessment score — used for trend analysis of compliance performance improvement over time."
+    - name: "non_compliant_count"
+      expr: COUNT(CASE WHEN compliance_status = 'Non-Compliant' THEN 1 END)
+      comment: "Count of non-compliant assessments — critical regulatory risk metric for board and executive reporting."
+    - name: "corrective_action_required_count"
+      expr: COUNT(CASE WHEN corrective_action_required = TRUE THEN 1 END)
+      comment: "Count of assessments requiring corrective action — measures open regulatory risk exposure requiring remediation."
+    - name: "remediation_required_count"
+      expr: COUNT(CASE WHEN remediation_required_flag = TRUE THEN 1 END)
+      comment: "Count of assessments with remediation required — tracks regulatory remediation backlog for compliance leadership."
 $$;

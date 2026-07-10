@@ -1,5 +1,5 @@
 -- Schema for Domain: billing | Business: Manufacturing | Version: v2_mvm
--- Generated on: 2026-07-10 14:44:07
+-- Generated on: 2026-07-03 07:50:02
 
 -- ========= DATABASE =========
 CREATE DATABASE IF NOT EXISTS `vibe_manufacturing_v1`.`billing` COMMENT 'Billing and revenue domain serving as the SSOT for all customer invoices, billing cycles, payment processing, revenue recognition, credit management, collections, payment terms, accounts receivable, and billing dispute resolution across product sales, service contracts, and project-based engagements.';
@@ -7,25 +7,21 @@ CREATE DATABASE IF NOT EXISTS `vibe_manufacturing_v1`.`billing` COMMENT 'Billing
 -- ========= TABLES =========
 CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`billing`.`invoice` (
     `invoice_id` BIGINT COMMENT 'Unique identifier for the invoice record.',
-    `account_site_id` BIGINT COMMENT 'Foreign key linking to customer.account_site. Business justification: Project financial reporting requires each invoice to be tied to the originating project header for profitability analysis.',
-    `asset_plant_id` BIGINT COMMENT 'Foreign key linking to asset.asset_plant. Business justification: In manufacturing, the issuing plant determines the legal entity, VAT registration, and tax jurisdiction on an invoice. Plant-level invoice reporting (revenue by plant, intercompany billing reconciliat',
-    `billing_account_id` BIGINT COMMENT 'Foreign key linking to billing.billing_account. Business justification: An invoice is issued against a billing account — the billing_account is the SSOT for the financial relationship between the manufacturer and the customer in the billing domain. This FK establishes the',
-    `address_id` BIGINT COMMENT 'Foreign key linking to customer.address. Business justification: Invoice billing address drives tax jurisdiction determination, VAT compliance, and regulatory reporting in manufacturing. Normalizing to customer.address eliminates denormalized address fields and ena',
-    `contact_id` BIGINT COMMENT 'Foreign key linking to customer.customer_contact. Business justification: B2B manufacturing invoices are addressed to a specific AP contact at the customer for electronic invoice delivery (EDI, e-invoicing mandates). Linking invoice to customer_contact enables automated rou',
-    `delivery_id` BIGINT COMMENT 'Foreign key linking to order.delivery. Business justification: Delivery-based billing is the standard manufacturing trigger: invoices are created after goods issue against a delivery document. AR teams reconcile invoices to deliveries for revenue recognition, dis',
-    `equipment_register_id` BIGINT COMMENT 'Foreign key linking to asset.equipment_register. Business justification: Lease billing process requires each invoice to reference the leased equipment for revenue recognition and asset tracking.',
-    `field_service_order_id` BIGINT COMMENT 'Foreign key linking to service.field_service_order. Business justification: Field service billing: after a field service order is completed (labor, travel, parts), an invoice is raised against it. Manufacturing service billing requires tracing each invoice to the originating ',
-    `header_id` BIGINT COMMENT 'Foreign key linking to order.order_header. Business justification: REQUIRED: Invoice‑Generation process needs to trace each invoice to its originating sales order for order‑to‑invoice reconciliation and audit reporting.',
-    `order_intake_id` BIGINT COMMENT 'Foreign key linking to sales.order_intake. Business justification: Order‑to‑cash process maps each invoice to its originating order intake record for fulfillment and billing reconciliation.',
+    `billing_schedule_id` BIGINT COMMENT 'Foreign key linking to billing.billing_schedule. Business justification: An invoice generated from a project-based or contract-based engagement should reference the billing schedule milestone that triggered it. billing_schedule defines planned billing milestones; when a mi',
+    `customer_account_id` BIGINT COMMENT 'Identifier of the customer billed by this invoice.',
+    `freight_order_id` BIGINT COMMENT 'Foreign key linking to logistics.freight_order. Business justification: Freight cost billing reconciliation: manufacturing finance teams reconcile invoice freight charges against freight_order.total_freight_cost. A domain expert expects invoices to reference the freight o',
+    `payment_term_id` BIGINT COMMENT '',
     `primary_credit_note_invoice_id` BIGINT COMMENT 'Identifier of the related credit note, if this invoice is a credit note.',
-    `project_id` BIGINT COMMENT 'Foreign key linking to engineering.engineering_project. Business justification: NRE (non-recurring engineering) and milestone billing: ETO manufacturers invoice customers directly against engineering projects for design, tooling, and qualification work. A billing domain expert ex',
-    `rma_id` BIGINT COMMENT 'Foreign key linking to order.order_rma. Business justification: Credit memo invoices in manufacturing are issued against approved RMAs. Finance and AR teams must link the credit note invoice to the originating RMA for refund processing, customer account reconcilia',
+    `purchase_order_id` BIGINT COMMENT 'Foreign key linking to procurement.purchase_order. Business justification: Manufacturing invoices (both supplier AP invoices and customer AR invoices for made-to-order) reference originating POs for three-way matching (PO-GR-Invoice), contract compliance verification, and fi',
     `rep_id` BIGINT COMMENT 'Foreign key linking to sales.rep. Business justification: Commission reports need each invoice linked to the sales rep who closed the deal; essential for performance and payout calculations.',
-    `sla_agreement_id` BIGINT COMMENT 'Foreign key linking to customer.sla_agreement. Business justification: SLA-based billing in manufacturing generates periodic invoices (annual fees, service charges) tied to specific SLA agreements. Finance teams must trace each invoice back to the governing SLA contract ',
-    `warehouse_id` BIGINT COMMENT 'Foreign key linking to inventory.warehouse. Business justification: Warehouse of origin is required for logistics cost allocation, export reporting, and inventory valuation per invoice.',
-    `warranty_id` BIGINT COMMENT 'Foreign key linking to service.service_warranty. Business justification: Warranty claim invoicing: in manufacturing, warranty repair work generates invoices (zero-value, credit, or cost-recovery) tied to the warranty record. Invoice-to-warranty traceability supports warran',
+    `billing_address_line1` STRING COMMENT 'First line of the billing address.',
+    `billing_address_line2` STRING COMMENT 'Second line of the billing address, if applicable.',
+    `billing_city` STRING COMMENT 'City component of the billing address.',
+    `billing_country` STRING COMMENT 'Three‑letter country code of the billing address.',
     `billing_period_end` DATE COMMENT 'End date of the billing period covered by the invoice.',
     `billing_period_start` DATE COMMENT 'Start date of the billing period covered by the invoice.',
+    `billing_postal_code` STRING COMMENT 'Postal code of the billing address.',
+    `billing_state` STRING COMMENT 'State or province component of the billing address.',
     `collection_status` STRING COMMENT 'Current status of the collection process for overdue invoices.. Valid values are `open|in_collection|closed|written_off`',
     `created_timestamp` TIMESTAMP COMMENT 'Timestamp when the invoice record was first created in the system.',
     `currency_code` STRING COMMENT 'Three‑letter ISO currency code of the invoice.',
@@ -33,15 +29,18 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`billing`.`invoice` (
     `discount_rate` DECIMAL(18,2) COMMENT 'Discount rate applied to the invoice before tax.',
     `due_date` DATE COMMENT 'Date by which payment is due.',
     `gross_amount` DECIMAL(18,2) COMMENT 'Total amount before taxes, discounts, and adjustments.',
+    `invoice_number` STRING COMMENT '',
     `invoice_status` STRING COMMENT 'Current lifecycle status of the invoice.. Valid values are `draft|issued|paid|overdue|cancelled|disputed`',
     `invoice_type` STRING COMMENT 'Classification of the invoice document.. Valid values are `standard|credit_note|debit_note|proforma|self_billing`',
     `is_self_billing` BOOLEAN COMMENT 'True if the invoice is generated by the supplier on behalf of the customer (self‑billing).',
+    `issue_date` DATE COMMENT '',
     `issue_timestamp` TIMESTAMP COMMENT 'Date and time when the invoice was issued.',
+    `last_modified_timestamp` TIMESTAMP COMMENT '',
     `net_amount` DECIMAL(18,2) COMMENT 'Final amount payable after taxes and discounts.',
     `number` STRING COMMENT 'Official invoice number assigned by the billing system.',
-    `payment_method` STRING COMMENT 'Method used by the customer to settle the invoice.. Valid values are `credit_card|bank_transfer|cash|check|wire`',
-    `payment_status` STRING COMMENT 'Current status of the payment for this invoice.. Valid values are `pending|paid|failed|partial|refunded`',
-    `payment_terms_code` STRING COMMENT 'Code representing the payment terms applied to the invoice.',
+    `payment_method` DECIMAL(18,2) COMMENT 'Method used by the customer to settle the invoice.',
+    `payment_status` DECIMAL(18,2) COMMENT 'Current status of the payment for this invoice.',
+    `payment_terms_code` DECIMAL(18,2) COMMENT 'Code representing the payment terms applied to the invoice.',
     `po_number` STRING COMMENT 'Purchase order reference supplied by the customer.',
     `tax_amount` DECIMAL(18,2) COMMENT 'Total tax applied to the invoice.',
     `tax_exempt_flag` BOOLEAN COMMENT 'Indicates whether the invoice is exempt from tax.',
@@ -53,27 +52,20 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`billing`.`invoice` (
 CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`billing`.`invoice_line` (
     `invoice_line_id` BIGINT COMMENT 'Unique surrogate key for each invoice line record.',
     `asset_work_order_id` BIGINT COMMENT 'Foreign key linking to asset.work_order. Business justification: Detailed billing of labor/materials per work order requires line‑level association for cost allocation and reporting.',
-    `capa_id` BIGINT COMMENT 'Foreign key linking to quality.capa. Business justification: CAPA-driven supplier charge-back billing is a standard manufacturing process: when a CAPA identifies a supplier-caused defect, a debit/charge-back invoice line is raised against the CAPA record for co',
-    `catalog_entry_id` BIGINT COMMENT 'Foreign key linking to product.catalog_entry. Business justification: Each invoice line in manufacturing billing must trace back to the catalog entry that governed its unit price, minimum order quantity, and price UOM. This supports line-level price variance analysis, c',
-    `compliance_test_id` BIGINT COMMENT 'Foreign key linking to quality.compliance_test. Business justification: Compliance testing costs (third-party lab fees, regulatory certification tests) are invoiced to customers or charged internally in manufacturing. compliance_test carries test_cost_amount and test_cost',
-    `delivery_item_id` BIGINT COMMENT 'Foreign key linking to order.delivery_item. Business justification: Invoice lines in manufacturing billing correspond to specific delivery items (billed quantity = delivered quantity per item). Revenue recognition, short-shipment disputes, and credit note processing a',
-    `eco_id` BIGINT COMMENT 'Foreign key linking to engineering.eco. Business justification: Customer-funded ECO billing: contract manufacturers charge customers for engineering change implementation. Invoice lines for ECO processing fees must reference the specific ECO. This is a standard bi',
+    `billing_schedule_id` BIGINT COMMENT 'Foreign key linking to billing.billing_schedule. Business justification: invoice_line currently carries a denormalized project_milestone_code (STRING) to identify which billing schedule milestone the line item relates to. Adding billing_schedule_id as a proper FK to billin',
     `equipment_register_id` BIGINT COMMENT 'Foreign key linking to asset.equipment_register. Business justification: Service‑charge line items must identify the exact equipment serviced to allocate costs and support maintenance cost analysis.',
     `inspection_lot_id` BIGINT COMMENT 'Foreign key linking to quality.inspection_lot. Business justification: Inspection Service Billing – each inspection lot performed for a customer is charged as a line item on the invoice.',
     `invoice_id` BIGINT COMMENT 'Identifier of the parent invoice header to which this line belongs.',
-    `lot_batch_id` BIGINT COMMENT 'Foreign key linking to inventory.lot_batch. Business justification: Manufacturing traceability requires linking each billed line item to the specific lot/batch shipped. Supports product recall management, ISO 9001 traceability reporting, and regulatory compliance (FDA',
+    `line_id` BIGINT COMMENT 'Foreign key linking to order.order_line. Business justification: REQUIRED: Revenue recognition and audit trails require linking each invoice line to the specific order line it bills.',
+    `lot_batch_id` BIGINT COMMENT 'Foreign key linking to inventory.lot_batch. Business justification: Manufacturing regulatory compliance (pharma, food, aerospace) and customer traceability require invoice lines to reference the specific lot/batch billed. Enables lot-level billing reconciliation, qual',
     `material_master_id` BIGINT COMMENT 'Foreign key linking to inventory.material_master. Business justification: Invoice line items need to reference the exact material being billed. Adding material_master_id (FK → inventory.material_master.material_master_id) creates a proper parent‑child relationship and remov',
     `ncr_id` BIGINT COMMENT 'Foreign key linking to quality.ncr. Business justification: NCR Cost Recovery – non‑conformance handling costs are billed to the customer via a dedicated invoice line.',
-    `order_confirmation_id` BIGINT COMMENT 'Foreign key linking to production.order_confirmation. Business justification: Confirmation-based billing: each invoice line for manufactured goods traces to the specific production order confirmation (yield_quantity, actual_cost_amount) that triggered it. Supports revenue recog',
-    `order_line_id` BIGINT COMMENT 'Foreign key linking to order.order_line. Business justification: REQUIRED: Revenue recognition and audit trails require linking each invoice line to the specific order line it bills.',
     `original_invoice_line_id` BIGINT COMMENT 'Reference to the original invoice line that this credit memo line reverses.',
-    `part_consumption_id` BIGINT COMMENT 'Foreign key linking to service.part_consumption. Business justification: Parts billing reconciliation: each invoice line for parts consumed during service must trace to the part_consumption record to validate quantities, unit prices, and warranty/contract coverage. Manufac',
-    `pm_schedule_id` BIGINT COMMENT 'Foreign key linking to asset.asset_pm_schedule. Business justification: Service contract billing in manufacturing ties each recurring invoice line to the PM schedule item being billed (scheduled maintenance event). This enables contract billing reconciliation — verifying ',
-    `price_book_entry_id` BIGINT COMMENT 'Foreign key linking to sales.price_book_entry. Business justification: Manufacturing invoices must be auditable against the contracted price book entry for pricing compliance, revenue recognition, and customer dispute resolution. Tracing invoice_line to the price_book_en',
-    `project_id` BIGINT COMMENT 'Foreign key linking to engineering.engineering_project. Business justification: Milestone billing: individual invoice lines represent specific engineering project milestones (design review, prototype, PPAP). The existing project_milestone_code is a denormalized reference; a prope',
-    `quote_line_id` BIGINT COMMENT 'Foreign key linking to sales.quote_line. Business justification: Manufacturing billing teams reconcile each invoice line against the originating quote line to verify unit price, discount, and committed delivery terms. This supports revenue recognition accuracy, pri',
+    `payment_term_id` BIGINT COMMENT 'Foreign key linking to billing.payment_term. Business justification: invoice_line has a payment_terms_code column (currently typed as DECIMAL — likely a data quality issue — but semantically represents a payment term code). Individual invoice lines can carry line-speci',
+    `po_line_item_id` BIGINT COMMENT 'Foreign key linking to procurement.po_line_item. Business justification: Line-level invoice verification in manufacturing requires matching invoice lines to PO line items for quantity, price, and tolerance checks. Essential for AP automation and variance analysis in procur',
+    `procurement_goods_receipt_id` BIGINT COMMENT 'Foreign key linking to procurement.procurement_goods_receipt. Business justification: Direct link for three-way match completion: invoice line verification against goods receipt for quantity and quality confirmation. Core AP control in manufacturing to prevent payment for undelivered o',
+    `serialized_unit_id` BIGINT COMMENT 'Foreign key linking to inventory.serialized_unit. Business justification: Serialized manufactured goods (capital equipment, medical devices, aerospace components) require invoice lines to reference the exact serial number billed. Supports warranty activation, service contra',
     `sku_master_id` BIGINT COMMENT 'Foreign key linking to product.sku_master. Business justification: Revenue recognition and product cost allocation require each invoice line to reference the sold SKU; this mapping is essential for financial reporting and compliance.',
-    `test_result_id` BIGINT COMMENT 'Foreign key linking to engineering.test_result. Business justification: Engineering test services billing: PPAP, FAI, DVP&R, and qualification testing are billed to customers as line items. The invoice line must reference the specific test_result record to support audit t',
     `allocation_amount` DECIMAL(18,2) COMMENT 'Monetary amount allocated to the cost center (derived from allocation_percent).',
     `allocation_percent` DECIMAL(18,2) COMMENT 'Percentage of the line amount allocated to the specified cost center.',
     `created_timestamp` TIMESTAMP COMMENT 'Date and time when the invoice line record was created in the system.',
@@ -88,23 +80,25 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`billing`.`invoice_line` (
     `is_credit_memo` BOOLEAN COMMENT 'True if this line represents a credit memo (negative amount).',
     `is_royalty_line` BOOLEAN COMMENT 'True if the line represents a royalty charge.',
     `is_tax_included` BOOLEAN COMMENT 'Indicates whether the unit price already includes tax.',
+    `last_modified_timestamp` TIMESTAMP COMMENT '',
     `line_amount` DECIMAL(18,2) COMMENT 'Total amount for the line before tax and discount (quantity × unit_price).',
     `line_status` STRING COMMENT 'Current processing status of the invoice line.. Valid values are `open|posted|reversed|cancelled`',
     `line_type` STRING COMMENT 'Classification of the line content (product, service, project milestone, fee, or other charge).. Valid values are `product|service|project|fee|charge`',
     `net_amount` DECIMAL(18,2) COMMENT 'Final amount after tax and discount (line_amount + tax_amount – discount_amount).',
     `notes` STRING COMMENT 'Free‑form notes or comments entered by users for this line.',
-    `payment_terms_code` STRING COMMENT 'Code defining the payment terms applicable to this line.',
     `posted_timestamp` TIMESTAMP COMMENT 'Date and time when the line was posted to the financial ledger.',
     `quantity` DECIMAL(18,2) COMMENT 'Amount of the product or service delivered (units, hours, meters, etc.).',
-    `revenue_account` STRING COMMENT 'GL account used for revenue posting of this line.',
-    `revenue_recognition_method` STRING COMMENT 'Method used to recognize revenue for this line, per accounting standards.. Valid values are `percentage_of_completion|completed_contract|point_in_time`',
+    `revenue_account` DECIMAL(18,2) COMMENT 'GL account used for revenue posting of this line.',
+    `revenue_recognition_method` DECIMAL(18,2) COMMENT 'Method used to recognize revenue for this line, per accounting standards.',
     `royalty_rate_percent` DECIMAL(18,2) COMMENT 'Royalty rate applied to the base amount, expressed as a percentage.',
     `service_end_date` DATE COMMENT 'End date of the service period covered by this line (if applicable).',
     `service_start_date` DATE COMMENT 'Start date of the service period covered by this line (if applicable).',
     `tax_amount` DECIMAL(18,2) COMMENT 'Monetary tax amount calculated for this line.',
     `tax_code` STRING COMMENT 'Code that determines the tax rate and rules applicable to this line.',
     `tax_exempt_flag` BOOLEAN COMMENT 'True if the line is exempt from tax, false otherwise.',
+    `tax_rate` DECIMAL(18,2) COMMENT '',
     `tax_rate_percent` DECIMAL(18,2) COMMENT 'Applicable tax rate expressed as a percentage.',
+    `unit_of_measure` STRING COMMENT '',
     `unit_price` DECIMAL(18,2) COMMENT 'Price per single unit of the product or service before taxes and discounts.',
     `uom` STRING COMMENT 'Unit of measure for the quantity (e.g., each, kilogram, liter, meter, hour).. Valid values are `EA|KG|L|M|HRS`',
     `updated_timestamp` TIMESTAMP COMMENT 'Date and time of the most recent update to the invoice line.',
@@ -113,48 +107,50 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`billing`.`invoice_line` (
 
 CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`billing`.`payment` (
     `payment_id` BIGINT COMMENT 'System-generated unique identifier for the payment transaction.',
-    `account_site_id` BIGINT COMMENT 'Foreign key linking to customer.account_site. Business justification: Payments are allocated to projects to track cash flow against project budgets and enable project‑level cash reconciliation.',
-    `billing_account_id` BIGINT COMMENT 'Foreign key linking to billing.billing_account. Business justification: Payments are received and processed against a billing account — the billing_account is the financial account entity in the billing domain. This FK links each payment to its owning billing account, ena',
-    `family_id` BIGINT COMMENT 'Foreign key linking to product.family. Business justification: Anti‑money‑laundering and financial‑regulation monitoring ties each payment to the relevant regulatory requirement.',
-    `project_id` BIGINT COMMENT 'Foreign key linking to engineering.engineering_project. Business justification: NRE milestone payment tracking: customers make staged payments against engineering projects (tooling deposits, prototype payments, PPAP completion). Linking payment to engineering_project enables proj',
+    `customer_account_id` BIGINT COMMENT 'Identifier of the customer who made the payment.',
+    `payment_term_id` BIGINT COMMENT 'Foreign key linking to billing.payment_term. Business justification: payment has a term_code (STRING) column that denotes the payment terms under which the payment was made (e.g., early payment discount terms). Adding payment_term_id as a proper FK to payment_term norm',
+    `purchase_order_id` BIGINT COMMENT 'Foreign key linking to procurement.purchase_order. Business justification: Supplier payments in manufacturing track back to originating POs for cash flow forecasting, commitment tracking, and procurement spend analysis. Enables PO-to-payment lifecycle reporting and supplier ',
+    `sales_contract_id` BIGINT COMMENT 'Foreign key linking to sales.sales_contract. Business justification: Payments are recorded against the governing sales contract to monitor contract cash flow and compliance.',
     `order_intake_id` BIGINT COMMENT 'Foreign key linking to sales.order_intake. Business justification: Advance or partial payments are tied to a specific order intake for accurate order financing and tracking.',
-    `service_contract_id` BIGINT COMMENT 'Foreign key linking to service.service_contract. Business justification: Service contract payment allocation: manufacturing customers make periodic payments against service contracts (annual maintenance fees). Payment-to-service-contract traceability is required for contra',
     `allocated_amount` DECIMAL(18,2) COMMENT 'Total amount of the payment that has been allocated to invoices.',
     `allocation_date` TIMESTAMP COMMENT 'Timestamp when the payment was allocated.',
     `allocation_status` STRING COMMENT 'Status of the payment allocation to invoices.. Valid values are `allocated|partial|unallocated|on_account`',
     `allocation_type` STRING COMMENT 'Nature of the allocation (full, partial, advance, on‑account).. Valid values are `full|partial|advance|on_account`',
+    `amount` DECIMAL(18,2) COMMENT '',
     `amount_discount` DECIMAL(18,2) COMMENT 'Total discount applied to the payment.',
     `amount_gross` DECIMAL(18,2) COMMENT 'Total amount before any discounts, taxes, or fees.',
     `amount_net` DECIMAL(18,2) COMMENT 'Final amount after discounts, taxes, and fees.',
     `bank_name` STRING COMMENT 'Name of the bank handling the payment.',
-    `bank_value_date` DATE COMMENT 'Date on which the bank considers the funds available.',
+    `bank_reference` STRING COMMENT '',
+    `bank_value_date` TIMESTAMP COMMENT 'Date on which the bank considers the funds available.',
     `batch_code` BIGINT COMMENT 'Identifier of the batch that groups this payment with others for processing.',
     `channel` STRING COMMENT 'Channel through which the payment was submitted.. Valid values are `online|mobile|branch|mail|phone`',
     `clearing_document_number` STRING COMMENT 'Reference number of the clearing document generated for the payment.',
     `clearing_status` STRING COMMENT 'Current status of the payment clearing process.. Valid values are `cleared|pending|failed`',
     `created_timestamp` TIMESTAMP COMMENT 'Timestamp when the payment record was first created in the system.',
     `currency_code` STRING COMMENT 'Three-letter ISO 4217 currency code of the payment.',
-    `payment_description` STRING COMMENT 'Free‑form description or notes about the payment.',
+    `payment_description` DECIMAL(18,2) COMMENT 'Free‑form description or notes about the payment.',
     `discount_taken` DECIMAL(18,2) COMMENT 'Monetary discount amount applied to the payment.',
     `due_date` DATE COMMENT 'Date by which the payment was expected according to invoice terms.',
-    `early_payment_discount_applied` BOOLEAN COMMENT 'Indicates whether an early‑payment discount was applied.',
+    `early_payment_discount_applied` DECIMAL(18,2) COMMENT 'Indicates whether an early‑payment discount was applied.',
     `exchange_rate` DECIMAL(18,2) COMMENT 'Exchange rate applied if payment currency differs from company currency.',
     `external_reference` STRING COMMENT 'Reference identifier from external payment gateway or bank.',
     `fee_amount` DECIMAL(18,2) COMMENT 'Any processing fees associated with the payment.',
     `is_reconciled` BOOLEAN COMMENT 'Indicates whether the payment has been reconciled to invoices.',
-    `method` STRING COMMENT 'Instrument used to make the payment.. Valid values are `wire_transfer|ach|check|credit_card|letter_of_credit|cash`',
+    `last_modified_timestamp` TIMESTAMP COMMENT '',
+    `method` DECIMAL(18,2) COMMENT 'Instrument used to make the payment.',
     `notes` STRING COMMENT 'Additional internal notes regarding the payment.',
     `original_amount` DECIMAL(18,2) COMMENT 'Payment amount in the original currency before conversion.',
     `original_currency` STRING COMMENT 'Currency code of the original payment amount.',
     `payment_date` TIMESTAMP COMMENT 'Timestamp when the payment was received or recorded.',
-    `payment_number` STRING COMMENT 'Business-visible reference number assigned to the payment.',
-    `payment_status` STRING COMMENT 'Current lifecycle state of the payment.. Valid values are `pending|processed|failed|reversed|cancelled`',
+    `payment_number` DECIMAL(18,2) COMMENT 'Business-visible reference number assigned to the payment.',
+    `payment_status` DECIMAL(18,2) COMMENT 'Current lifecycle state of the payment.',
     `reconciliation_date` TIMESTAMP COMMENT 'Timestamp when the payment was reconciled.',
+    `reference_number` STRING COMMENT '',
     `remittance_advice_reference` STRING COMMENT 'Reference to the remittance advice supplied by the payer.',
     `sequence` STRING COMMENT 'Sequence number for multiple payments within a batch or settlement.',
     `status_reason` STRING COMMENT 'Free‑text explanation for the current payment status.',
     `tax_amount` DECIMAL(18,2) COMMENT 'Tax component of the payment.',
-    `term_code` STRING COMMENT 'Code representing the payment terms (e.g., NET30, EOM).',
     `transaction_type` STRING COMMENT 'Classification of the payment transaction.. Valid values are `invoice_payment|prepayment|deposit|refund`',
     `updated_timestamp` TIMESTAMP COMMENT 'Timestamp of the most recent update to the payment record.',
     CONSTRAINT pk_payment PRIMARY KEY(`payment_id`)
@@ -162,128 +158,269 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`billing`.`payment` (
 
 CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`billing`.`billing_account` (
     `billing_account_id` BIGINT COMMENT 'System-generated unique identifier for the billing account record.',
-    `address_id` BIGINT COMMENT 'Foreign key linking to customer.address. Business justification: Billing account address governs invoice delivery method, tax jurisdiction assignment, and dunning correspondence in manufacturing ERP. Normalizing to customer.address master eliminates denormalized fi',
-    `customer_account_id` BIGINT COMMENT 'add column customer_account_id (BIGINT) with FK to customer.customer_account.customer_account_id - billing accounts must link to the customer they belong to for AR reconciliation',
-    `rep_id` BIGINT COMMENT 'Foreign key linking to sales.rep. Business justification: In manufacturing, billing accounts are owned by a key account sales rep for AR aging reports segmented by rep, commission reconciliation, and escalation routing. No existing FK links billing_account t',
+    `customer_account_id` BIGINT COMMENT 'P2: Connect customer.billing_account by adding column customer_account_id (BIGINT) with an FK to customer.customer_account.customer_account_id. P2: connect_table: customer.billing_account** - add column customer_account_id (BIGINT) with FK to',
+    `payment_term_id` BIGINT COMMENT 'Foreign key linking to billing.payment_term. Business justification: Billing accounts use a payment term; linking to the payment_term master eliminates the free‑text code and enforces referential integrity.',
     `account_name` STRING COMMENT 'Human‑readable name of the billing account (e.g., customer or partner name).',
     `account_number` STRING COMMENT 'External account number used in invoicing and payment processing.',
+    `account_status` STRING COMMENT '',
     `account_type` STRING COMMENT 'Classification of the account relationship (direct, distributor, OEM, end‑user).. Valid values are `direct|distributor|OEM|end_user`',
-    `auto_payment_enabled` BOOLEAN COMMENT 'Indicates whether automatic payment processing is active.',
+    `auto_pay_flag` BOOLEAN COMMENT '',
+    `auto_payment_enabled` DECIMAL(18,2) COMMENT 'Indicates whether automatic payment processing is active.',
+    `balance_amount` DECIMAL(18,2) COMMENT '',
     `billing_account_status` STRING COMMENT 'Current lifecycle status of the billing account.. Valid values are `active|blocked|dormant|closed`',
+    `billing_address_line1` STRING COMMENT 'First line of the billing address.',
+    `billing_address_line2` STRING COMMENT 'Second line of the billing address (optional).',
+    `billing_city` STRING COMMENT 'City component of the billing address.',
+    `billing_country` STRING COMMENT '',
+    `billing_country_code` STRING COMMENT 'Three‑letter ISO country code for the billing address.',
     `billing_frequency` STRING COMMENT 'How often invoices are generated for the account.. Valid values are `monthly|quarterly|annual|milestone|on_delivery`',
+    `billing_postal_code` STRING COMMENT 'Postal/ZIP code of the billing address.',
+    `billing_state` STRING COMMENT 'State or province component of the billing address.',
     `close_date` DATE COMMENT 'Date when the billing account was closed or deactivated (nullable).',
     `collection_stage` STRING COMMENT 'Current stage in the collections process for overdue balances.. Valid values are `early|mid|late|defaulted`',
     `created_timestamp` TIMESTAMP COMMENT 'Timestamp when the billing account record was first created.',
     `credit_limit_amount` DECIMAL(18,2) COMMENT 'Maximum credit exposure allowed for the account.',
-    `credit_rating` STRING COMMENT 'Credit rating assigned to the account based on financial risk assessment.. Valid values are `AAA|AA|A|BBB|BB|B`',
+    `credit_rating` DECIMAL(18,2) COMMENT 'Credit rating assigned to the account based on financial risk assessment.',
     `currency_code` STRING COMMENT 'Three‑letter ISO 4217 code of the currency used for billing.',
     `current_ar_balance` DECIMAL(18,2) COMMENT 'Outstanding accounts‑receivable balance for the account.',
     `billing_account_description` STRING COMMENT 'Free‑form notes or description about the billing account.',
     `dunning_procedure` STRING COMMENT 'Assigned dunning strategy for overdue payments.',
     `external_account_reference` STRING COMMENT 'Identifier of the account in an external system (e.g., ERP, CRM).',
     `invoice_delivery_method` STRING COMMENT 'Preferred channel for delivering invoices to the customer.. Valid values are `email|EDI|portal|paper`',
-    `last_payment_date` DATE COMMENT 'Date of the most recent payment received.',
+    `last_modified_timestamp` TIMESTAMP COMMENT '',
+    `last_payment_date` TIMESTAMP COMMENT 'Date of the most recent payment received.',
     `next_due_date` DATE COMMENT 'Scheduled date for the next invoice payment.',
     `open_date` DATE COMMENT 'Date when the billing account was created.',
-    `payment_due_day_of_month` STRING COMMENT 'Numeric day of the month when payment is due (1‑31).',
-    `payment_method` STRING COMMENT 'Method used for the most recent payment transaction.. Valid values are `credit_card|bank_transfer|check|cash|direct_debit`',
-    `preferred_payment_method` STRING COMMENT 'Customer’s preferred method for settling invoices.. Valid values are `credit_card|bank_transfer|check|cash|direct_debit`',
+    `payment_due_day_of_month` DECIMAL(18,2) COMMENT 'Numeric day of the month when payment is due (1‑31).',
+    `payment_method` DECIMAL(18,2) COMMENT 'Method used for the most recent payment transaction.',
+    `preferred_payment_method` DECIMAL(18,2) COMMENT 'Customer’s preferred method for settling invoices.',
     `tax_exempt_flag` BOOLEAN COMMENT 'Indicates whether the account is exempt from tax.',
     `tax_exempt_reason` STRING COMMENT 'Reason for tax exemption (e.g., government entity, nonprofit).',
     `tax_region_code` STRING COMMENT 'Three‑letter country code defining the tax jurisdiction.',
-    `tax_registration_number` STRING COMMENT 'Government‑issued tax registration identifier for the account holder.',
+    `tax_registration_number` DECIMAL(18,2) COMMENT 'Government‑issued tax registration identifier for the account holder.',
     `updated_timestamp` TIMESTAMP COMMENT 'Timestamp of the most recent update to the billing account record.',
     `vat_number` STRING COMMENT 'Value‑Added Tax identifier used for tax reporting.',
     CONSTRAINT pk_billing_account PRIMARY KEY(`billing_account_id`)
 ) COMMENT 'Billing-specific account master record representing the financial relationship between Manufacturing and a customer entity for invoicing, credit management, and collections purposes. Captures account number, account name, account type (direct, distributor, OEM, end_user), billing currency, credit limit reference, current AR balance, payment terms code, billing frequency (monthly, milestone, on_delivery), invoice delivery method (email, EDI, portal, paper), tax registration number, VAT ID, dunning procedure assignment, account status (active, blocked, dormant), and preferred payment method. Serves as the billing-domain anchor for all financial transactions — distinct from the customer master in the customer domain which owns identity and relationship data.';
 
+CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`billing`.`dispute` (
+    `dispute_id` BIGINT COMMENT 'System-generated unique identifier for the billing dispute record.',
+    `customer_account_id` BIGINT COMMENT 'Identifier of the customer or external party that raised the dispute.',
+    `delivery_note_id` BIGINT COMMENT 'Foreign key linking to logistics.delivery_note. Business justification: Delivery dispute resolution: manufacturing billing disputes frequently originate from delivery discrepancies (short shipment, wrong quantity, damaged goods). Dispute resolution teams require direct ac',
+    `invoice_id` BIGINT COMMENT '',
+    `header_id` BIGINT COMMENT 'Identifier of the sales order associated with the disputed invoice, if applicable.',
+    `lot_batch_id` BIGINT COMMENT 'Foreign key linking to inventory.lot_batch. Business justification: Manufacturing billing disputes are frequently triggered by lot/batch quality rejections, wrong batch shipped, or expiry issues. Linking dispute to the specific lot_batch enables root-cause analysis, q',
+    `primary_disputed_invoice_id` BIGINT COMMENT 'Identifier of the invoice that is the subject of the dispute.',
+    `created_timestamp` TIMESTAMP COMMENT 'Timestamp when the dispute record was first created in the system.',
+    `currency_code` STRING COMMENT 'Three‑letter ISO currency code for the disputed amount.',
+    `dispute_date` TIMESTAMP COMMENT 'Date and time when the customer raised the billing dispute.',
+    `dispute_number` STRING COMMENT 'External reference number assigned to the dispute for tracking in finance and customer service systems.',
+    `dispute_status` STRING COMMENT 'Current processing state of the dispute.. Valid values are `open|under_review|resolved|escalated|closed`',
+    `disputed_amount` DECIMAL(18,2) COMMENT 'Monetary value of the charge being disputed.',
+    `escalation_flag` BOOLEAN COMMENT 'True if the dispute has been escalated to senior management or a specialized team.',
+    `last_modified_timestamp` TIMESTAMP COMMENT '',
+    `opened_date` DATE COMMENT '',
+    `priority` STRING COMMENT 'Business priority assigned to the dispute for handling urgency.. Valid values are `low|medium|high|critical`',
+    `reason_category` STRING COMMENT 'Category describing why the dispute was raised. [ENUM-REF-CANDIDATE: pricing_error|quantity_discrepancy|quality_issue|delivery_shortfall|duplicate_invoice|contract_mismatch|tax_error — promote to reference product]',
+    `reason_code` STRING COMMENT '',
+    `reason_description` STRING COMMENT 'Detailed free‑text explanation of why the dispute was raised.',
+    `resolution_date` TIMESTAMP COMMENT 'Date and time when the dispute was resolved.',
+    `resolution_notes` STRING COMMENT 'Free‑form notes describing the outcome and any actions taken.',
+    `resolution_type` STRING COMMENT 'Method used to resolve the dispute.. Valid values are `credit_issued|payment_confirmed|partial_adjustment|rejected`',
+    `resolved_amount` DECIMAL(18,2) COMMENT '',
+    `resolved_date` DATE COMMENT '',
+    `updated_timestamp` TIMESTAMP COMMENT 'Timestamp of the most recent modification to the dispute record.',
+    CONSTRAINT pk_dispute PRIMARY KEY(`dispute_id`)
+) COMMENT 'Formal record of a customer-raised dispute against an invoice or billing charge. Captures dispute case number, dispute date, disputed invoice reference, disputed amount, dispute reason category (pricing_error, quantity_discrepancy, quality_issue, delivery_shortfall, duplicate_invoice, contract_mismatch, tax_error), dispute status (open, under_review, resolved, escalated, closed), resolution type (credit_issued, payment_confirmed, partial_adjustment, rejected), resolution date, resolution notes, and responsible AR analyst. Supports CAPA-driven billing quality improvement.';
+
+CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`billing`.`collections` (
+    `collections_id` BIGINT COMMENT 'Primary key for collections',
+    `billing_account_id` BIGINT COMMENT 'P4: Connect billing.collections by adding column billing_account_id (BIGINT) with an FK to billing.billing_account.billing_account_id. P4: connect_table: billing.collections** - add column billing_account_id (BIGINT) with FK to billing.bill',
+    `invoice_id` BIGINT COMMENT 'P5: Connect billing.collections by adding column invoice_id (BIGINT) with an FK to billing.invoice.invoice_id. P5: connect_table: billing.collections** - add column invoice_id (BIGINT) with FK to billing.invoice.invoice_id - collections are',
+    `case_close_date` TIMESTAMP COMMENT 'Date and time when the collections case was closed or resolved.',
+    `case_description` STRING COMMENT 'Free‑form text describing the context or notes for the collections case.',
+    `case_number` STRING COMMENT 'External reference number assigned to the collections case, used in communications and reporting.',
+    `case_open_date` TIMESTAMP COMMENT 'Date and time when the collections case was initially created in the system.',
+    `case_status` STRING COMMENT 'Current lifecycle status of the collections case.. Valid values are `open|in_progress|escalated|resolved|closed`',
+    `case_strategy` DECIMAL(18,2) COMMENT 'Strategic approach applied to the case (e.g., standard reminders, intensive follow‑up, legal action, or write‑off candidate).',
+    `collection_case_number` STRING COMMENT '',
+    `collection_source_system` STRING COMMENT 'Name of the operational system of record that originated the dunning data (e.g., SAP S/4HANA FI‑AR).',
+    `collection_stage` STRING COMMENT 'Current stage of the collections workflow.. Valid values are `detection|reminder|escalation|legal|write_off`',
+    `collection_status` STRING COMMENT '',
+    `communication_method` STRING COMMENT 'Channel used for the most recent dunning communication.. Valid values are `email|letter|phone|legal`',
+    `created_timestamp` TIMESTAMP COMMENT 'Timestamp when the dunning notice record was first created in the data lake.',
+    `currency_code` STRING COMMENT 'Three‑letter ISO currency code for the monetary values in the case.. Valid values are `^[A-Z]{3}$`',
+    `customer_response_status` STRING COMMENT 'Indicator of whether the customer has responded to the latest communication.. Valid values are `responded|no_response|partial`',
+    `days_past_due` STRING COMMENT '',
+    `dunning_charges` DECIMAL(18,2) COMMENT 'Fees applied as part of the dunning process for the case.',
+    `dunning_date` DATE COMMENT 'Date when the most recent dunning notice was issued.',
+    `dunning_level` STRING COMMENT 'Current escalation level of the dunning process (1‑4).',
+    `escalation_flag` BOOLEAN COMMENT 'Indicates whether the case has been escalated beyond standard reminders.',
+    `external_reference_code` STRING COMMENT 'Identifier linking the dunning notice to the originating SAP document or external ledger entry.',
+    `gross_exposure_amount` DECIMAL(18,2) COMMENT 'Total outstanding receivable amount before any adjustments or dunning charges.',
+    `last_contact_date` DATE COMMENT '',
+    `last_modified_timestamp` TIMESTAMP COMMENT '',
+    `legal_action_flag` BOOLEAN COMMENT 'True if legal proceedings have been initiated for the case.',
+    `net_exposure_amount` DECIMAL(18,2) COMMENT 'Outstanding amount after dunning charges are applied.',
+    `next_action_date` DATE COMMENT 'Planned date for the next collection activity or follow‑up.',
+    `notes` STRING COMMENT 'Supplementary remarks entered by the collections agent.',
+    `outstanding_amount` DECIMAL(18,2) COMMENT '',
+    `payment_arrangement_flag` BOOLEAN COMMENT 'Indicates whether a formal payment arrangement is in place.',
+    `payment_arrangement_type` DECIMAL(18,2) COMMENT 'Type of payment arrangement agreed with the customer.',
+    `promise_to_pay_date` DATE COMMENT 'Date promised by the customer for payment of the outstanding amount.',
+    `promised_amount` DECIMAL(18,2) COMMENT 'Amount the customer committed to pay on the promise‑to‑pay date.',
+    `recovered_amount` DECIMAL(18,2) COMMENT '',
+    `response_date` DATE COMMENT 'Date when the customer provided a response to the dunning communication.',
+    `updated_timestamp` TIMESTAMP COMMENT 'Timestamp of the most recent update to the dunning notice record.',
+    `write_off_candidate_flag` BOOLEAN COMMENT 'True if the case is identified as a potential write‑off.',
+    CONSTRAINT pk_collections PRIMARY KEY(`collections_id`)
+) COMMENT 'Collections management record serving as the unified SSOT for the full receivables collections lifecycle — from initial overdue detection through escalation to legal action or write-off referral. At the case level: captures collections case ID, collections strategy (standard, intensive, legal, write_off_candidate), assigned collections agent, customer promise-to-pay date, promised amount, case status (open, in_progress, escalated, resolved, closed), case open date, and total case exposure amount. At the communication level: captures dunning level (1=reminder through 4=legal_action), dunning date, total overdue amount, dunning charges, communication method (email, letter, phone, legal), customer response status, response date, and next action date. Tracks the full collections escalation lifecycle per SAP S/4HANA FI-AR dunning procedures (FBMP/F150) and supports structured collections management for industrial B2B receivables with typical 30-90 day payment cycles.';
+
 CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`billing`.`credit_limit` (
     `credit_limit_id` BIGINT COMMENT 'System-generated unique identifier for the credit limit record.',
-    `billing_account_id` BIGINT COMMENT 'Foreign key linking to billing.billing_account. Business justification: Credit limits are managed at the billing account level in the billing domain. The credit_limit record defines the approved credit exposure for a billing account, and this FK establishes that in-domain',
-    `credit_profile_id` BIGINT COMMENT 'Foreign key linking to customer.credit_profile. Business justification: The billing-side credit limit record is derived from the CRM/customer-master credit profile assessment. AR teams trace which credit profile evaluation drove the current approved credit limit for audit',
+    `customer_account_id` BIGINT COMMENT 'P3: Connect customer.credit_limit by adding column customer_account_id (BIGINT) with an FK to customer.customer_account.customer_account_id. P3: connect_table: customer.credit_limit** - add column customer_account_id (BIGINT) with FK to custo',
+    `amount` DECIMAL(18,2) COMMENT '',
     `approval_status` STRING COMMENT 'Current approval state of the credit limit.. Valid values are `approved|rejected|pending`',
     `approved_timestamp` TIMESTAMP COMMENT 'Timestamp when the credit limit was approved.',
+    `available_credit_amount` DECIMAL(18,2) COMMENT '',
     `created_timestamp` TIMESTAMP COMMENT 'Timestamp when the credit limit record was first created in the system.',
     `credit_block_flag` BOOLEAN COMMENT 'Indicates whether the credit limit is currently blocked from further usage.',
-    `credit_check_method` STRING COMMENT 'Method used to assess creditworthiness for this limit.. Valid values are `automated|manual|external`',
-    `credit_horizon_days` STRING COMMENT 'Number of days over which the credit exposure is evaluated.',
-    `credit_limit_number` STRING COMMENT 'External business identifier for the credit limit, used in accounting and customer communications.',
-    `credit_limit_status` STRING COMMENT 'Current lifecycle status of the credit limit record.. Valid values are `active|inactive|pending|blocked`',
+    `credit_check_method` DECIMAL(18,2) COMMENT 'Method used to assess creditworthiness for this limit.',
+    `credit_horizon_days` DECIMAL(18,2) COMMENT 'Number of days over which the credit exposure is evaluated.',
+    `credit_limit_number` DECIMAL(18,2) COMMENT 'External business identifier for the credit limit, used in accounting and customer communications.',
+    `credit_limit_status` DECIMAL(18,2) COMMENT 'Current lifecycle status of the credit limit record.',
+    `credit_status` STRING COMMENT '',
     `currency_code` STRING COMMENT 'Three‑letter ISO 4217 code of the currency in which the credit limit is denominated.',
     `current_exposure` DECIMAL(18,2) COMMENT 'Current amount of credit already utilized by the customer against this limit.',
+    `effective_date` DATE COMMENT '',
     `effective_from` DATE COMMENT 'Date on which the credit limit becomes effective.',
     `effective_until` DATE COMMENT 'Date on which the credit limit expires; null for open‑ended limits.',
+    `expiration_date` DATE COMMENT '',
+    `last_modified_timestamp` TIMESTAMP COMMENT '',
     `last_review_date` DATE COMMENT 'Date when the credit limit was last reviewed by the credit analyst.',
     `limit_amount` DECIMAL(18,2) COMMENT 'Maximum approved credit exposure amount for the account, expressed in the specified currency.',
     `limit_type` STRING COMMENT 'Classification of the credit limit as individual (per customer) or group (aggregated across a corporate group).. Valid values are `individual|group`',
     `next_review_date` DATE COMMENT 'Planned date for the next credit limit review.',
     `notes` STRING COMMENT 'Free‑form text for additional remarks or justification related to the credit limit.',
+    `review_date` DATE COMMENT '',
     `risk_category` STRING COMMENT 'Risk classification of the credit limit: A=low, B=medium, C=high, D=blocked.. Valid values are `A|B|C|D`',
     `updated_timestamp` TIMESTAMP COMMENT 'Timestamp of the most recent update to the credit limit record.',
     `utilization_percentage` DECIMAL(18,2) COMMENT 'Percentage of the credit limit that is currently used (current_exposure / limit_amount * 100).',
+    `utilized_credit_amount` DECIMAL(18,2) COMMENT '',
     CONSTRAINT pk_credit_limit PRIMARY KEY(`credit_limit_id`)
 ) COMMENT 'Credit management record defining the approved credit exposure limit for a billing account, including current utilization and risk classification. Captures credit limit amount, currency, credit limit type (individual, group), credit exposure current value, credit utilization percentage, credit risk category (A=low, B=medium, C=high, D=blocked), credit check method, credit horizon days, last review date, next review date, credit analyst ID, approval status, and credit block flag. Managed in SAP S/4HANA FI-AR Credit Management (FD32).';
 
-CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`billing`.`tax_determination` (
-    `tax_determination_id` BIGINT COMMENT 'System-generated unique identifier for the tax determination record.',
-    `invoice_id` BIGINT COMMENT 'Identifier of the billing document (invoice) to which this tax determination applies.',
-    `invoice_line_id` BIGINT COMMENT 'Foreign key linking to billing.invoice_line. Business justification: Tax determination records are calculated at the invoice line level — each tax_determination entry captures jurisdiction-specific tax for a specific line item. Currently tax_determination has invoice_i',
-    `sku_master_id` BIGINT COMMENT 'Identifier of the product or service line item that the tax is calculated for.',
-    `supply_plant_id` BIGINT COMMENT 'Foreign key linking to supply.supply_plant. Business justification: Tax jurisdiction in manufacturing is determined by the ship-from plant location (country, state/region). Linking tax_determination to supply_plant enables automated derivation of tax_jurisdiction_coun',
-    `created_timestamp` TIMESTAMP COMMENT 'Date‑time when the tax determination record was created.',
-    `line_sequence` STRING COMMENT 'Ordinal position of the tax line within the invoice.',
-    `reverse_charge_indicator` BOOLEAN COMMENT 'True if reverse charge mechanism applies for this tax line.',
-    `tax_amount` DECIMAL(18,2) COMMENT 'Monetary amount of tax computed for this line.',
-    `tax_base_amount` DECIMAL(18,2) COMMENT 'Monetary amount on which the tax rate is applied.',
-    `tax_calculation_method` STRING COMMENT 'Method used to compute the tax (standard, manual entry, tax engine, rule‑based).. Valid values are `standard|manual|engine|rule_based`',
-    `tax_code` STRING COMMENT 'Internal or regulatory tax code that identifies the specific tax rule applied.',
-    `tax_currency_code` STRING COMMENT 'Three‑letter ISO currency code of the tax amount (e.g., USD, EUR).',
-    `tax_exempt_flag` BOOLEAN COMMENT 'Indicates whether the transaction is exempt from tax (true = exempt).',
-    `tax_exempt_reason` STRING COMMENT 'Reason or justification for tax exemption, if applicable.',
-    `tax_jurisdiction_country` STRING COMMENT 'Three‑letter ISO country code of the tax jurisdiction (e.g., USA, DEU).',
-    `tax_jurisdiction_region` STRING COMMENT 'Region, state, or province code within the country where tax is applied (e.g., CA for California).',
-    `tax_line_description` STRING COMMENT 'Free‑text description of the tax line (e.g., "EU VAT 20% on machinery").',
-    `tax_line_status` STRING COMMENT 'Current processing status of the tax line.. Valid values are `pending|applied|rejected|adjusted`',
-    `tax_override_amount` DECIMAL(18,2) COMMENT 'Manually entered tax amount that overrides the calculated value.',
-    `tax_override_flag` BOOLEAN COMMENT 'True if the tax amount has been manually overridden.',
-    `tax_rate_percent` DECIMAL(18,2) COMMENT 'Applicable tax rate expressed as a percentage.',
-    `tax_registration_number` STRING COMMENT 'Vendor or customer tax registration identifier (e.g., VAT number).',
-    `tax_reporting_period` STRING COMMENT 'Fiscal period (e.g., 2023Q1) for which the tax is reported.',
-    `tax_source_system` STRING COMMENT 'Source system that generated the tax determination (e.g., SAP Tax Service, Vertex).',
-    `tax_type` STRING COMMENT 'Category of tax applied (e.g., VAT, GST, sales tax, withholding tax, excise duty).. Valid values are `VAT|GST|sales_tax|withholding_tax|excise_duty`',
-    `tax_validated_flag` BOOLEAN COMMENT 'Indicates whether the tax calculation has been validated against regulatory rules.',
-    `tax_validated_timestamp` TIMESTAMP COMMENT 'Date‑time when the tax validation was performed.',
-    `taxable_quantity` DECIMAL(18,2) COMMENT 'Quantity of the product/service that is subject to tax calculation.',
-    `updated_timestamp` TIMESTAMP COMMENT 'Date‑time of the most recent update to the tax determination record.',
-    CONSTRAINT pk_tax_determination PRIMARY KEY(`tax_determination_id`)
-) COMMENT 'Tax calculation and compliance record for billing documents, capturing jurisdiction-specific tax codes, rates, exemptions, and computed tax amounts required for multi-country tax reporting. Captures tax country, tax region, tax code, tax type (VAT, GST, sales_tax, withholding_tax, excise_duty), tax base amount, tax rate percentage, tax amount, tax exempt flag, tax exempt reason, tax jurisdiction code, tax registration validation, reverse charge indicator, and tax reporting period. Supports cross-border industrial equipment sales requiring complex tax determination across EU VAT, US sales tax nexus, Indian GST, and withholding tax regimes. Essential for tax audit compliance and automated tax engine integration (Vertex, SAP Tax Service).';
+CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`billing`.`billing_schedule` (
+    `billing_schedule_id` BIGINT COMMENT 'Unique system-generated identifier for each billing schedule record.',
+    `customer_account_id` BIGINT COMMENT 'P6: Connect customer.billing_schedule by adding column customer_account_id (BIGINT) with an FK to customer.customer_account.customer_account_id. P6: connect_table: customer.billing_schedule** - add column customer_account_id (BIGINT) with FK ',
+    `payment_term_id` BIGINT COMMENT 'Foreign key linking to billing.payment_term. Business justification: billing_schedule defines planned billing milestones for project-based or contract-based engagements. Each milestone can have its own payment terms (e.g., Milestone 1 is Net 30, Milestone 2 is Net 60 w',
+    `actual_billed_amount` DECIMAL(18,2) COMMENT 'Monetary amount that was actually invoiced for this milestone.',
+    `actual_billing_date` DATE COMMENT 'Date on which the billing was actually executed.',
+    `billing_currency_code` STRING COMMENT 'Three‑letter ISO 4217 currency code for the planned billing amount.. Valid values are `^[A-Z]{3}$`',
+    `billing_frequency` STRING COMMENT '',
+    `billing_status` STRING COMMENT 'Current lifecycle status of the billing schedule line.. Valid values are `planned|ready_to_bill|billed|on_hold|cancelled`',
+    `created_timestamp` TIMESTAMP COMMENT 'Timestamp when the billing schedule record was first created in the system.',
+    `currency_code` STRING COMMENT '',
+    `discount_amount` DECIMAL(18,2) COMMENT 'Discount subtracted from the planned billing amount, if any.',
+    `end_date` DATE COMMENT '',
+    `installment_count` STRING COMMENT '',
+    `is_retention_applicable` BOOLEAN COMMENT 'Indicates whether a retention amount is associated with this milestone.',
+    `last_modified_timestamp` TIMESTAMP COMMENT '',
+    `line_number` STRING COMMENT 'Sequential number of the schedule line within the contract billing schedule.',
+    `milestone_description` STRING COMMENT 'Free‑text description of the billing milestone purpose or deliverable.',
+    `milestone_type` STRING COMMENT 'Category of the billing milestone (e.g., advance payment, progress billing, final billing, retention release).. Valid values are `advance_payment|progress_billing|final_billing|retention_release`',
+    `next_billing_date` DATE COMMENT '',
+    `notes` STRING COMMENT 'Optional free‑text field for additional comments or special instructions.',
+    `percentage_complete_trigger` DECIMAL(18,2) COMMENT 'Project completion percentage that triggers this billing milestone.',
+    `planned_billing_amount` DECIMAL(18,2) COMMENT 'Monetary amount planned to be invoiced for this milestone.',
+    `planned_billing_date` DATE COMMENT 'Date on which the billing amount is scheduled to be invoiced.',
+    `retention_amount` DECIMAL(18,2) COMMENT 'Monetary amount held as retention for this milestone, if applicable.',
+    `schedule_number` STRING COMMENT '',
+    `schedule_status` STRING COMMENT '',
+    `schedule_type` STRING COMMENT '',
+    `scheduled_amount` DECIMAL(18,2) COMMENT '',
+    `start_date` DATE COMMENT '',
+    `tax_amount` DECIMAL(18,2) COMMENT 'Tax component applied to the planned billing amount.',
+    `updated_timestamp` TIMESTAMP COMMENT 'Timestamp of the most recent update to the billing schedule record.',
+    CONSTRAINT pk_billing_schedule PRIMARY KEY(`billing_schedule_id`)
+) COMMENT 'Planned billing milestone schedule for project-based or contract-based engagements, defining when specific amounts are to be invoiced based on project progress, delivery milestones, or contractual dates. Captures schedule line number, planned billing date, planned billing amount, billing milestone description, milestone type (advance_payment, progress_billing, final_billing, retention_release), percentage complete trigger, actual billing date, actual billed amount, billing status (planned, ready_to_bill, billed, on_hold, cancelled), contract reference, and project WBS element reference. Supports project billing for industrial automation system installations (typically 12-36 month delivery cycles) and milestone-based revenue recognition per IFRS 15 variable consideration guidance.';
 
-CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`billing`.`payment_application` (
-    `payment_application_id` BIGINT COMMENT 'Unique identifier for this payment application record',
-    `invoice_id` BIGINT COMMENT 'Foreign key linking to the invoice receiving payment allocation',
-    `payment_id` BIGINT COMMENT 'Foreign key linking to the payment being applied',
-    `allocated_amount` DECIMAL(18,2) COMMENT 'The specific amount of the payment allocated to this invoice in this application record',
-    `allocation_date` TIMESTAMP COMMENT 'Timestamp when this specific payment-to-invoice allocation was executed',
-    `allocation_sequence` BIGINT COMMENT 'Sequential order in which this allocation was applied when a payment is split across multiple invoices',
-    `allocation_status` STRING COMMENT 'Status of this specific payment-to-invoice allocation',
-    `allocation_type` STRING COMMENT 'Nature of this allocation indicating whether it fully or partially satisfies the invoice',
-    `clearing_status` STRING COMMENT 'Current clearing status of this specific payment-to-invoice allocation in the financial system',
-    `discount_taken` DECIMAL(18,2) COMMENT 'Monetary discount amount applied in this specific payment-to-invoice allocation',
-    `early_payment_discount_applied` BOOLEAN COMMENT 'Indicates whether an early-payment discount was applied to this specific allocation',
-    CONSTRAINT pk_payment_application PRIMARY KEY(`payment_application_id`)
-) COMMENT 'This association product represents the cash application event between payment and invoice. It captures the allocation of customer payment amounts to specific invoices in the accounts receivable process. Each record links one payment to one invoice with attributes that exist only in the context of this allocation relationship, supporting partial payments, split payments across multiple invoices, and on-account payments pending allocation.. Existence Justification: In manufacturing billing operations, payment application (cash application) is a recognized AR business process where customer payments are matched and allocated to invoices. In real operations, bulk remittance payments routinely cover multiple invoices (one payment → many invoices), and large project invoices frequently receive multiple installment payments over time (one invoice → many payments). The business actively manages payment applications as operational records with specific allocation amounts, dates, statuses, and clearing information.';
+CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`billing`.`payment_term` (
+    `payment_term_id` BIGINT COMMENT 'System-generated unique identifier for the payment term record.',
+    `base_payment_term_id` BIGINT COMMENT 'Self-referencing FK on payment_term (base_payment_term_id)',
+    `active_flag` BOOLEAN COMMENT '',
+    `allowed_payment_channel` DECIMAL(18,2) COMMENT 'Channels through which payment can be made (e.g., online portal, mobile app).',
+    `allowed_payment_method` DECIMAL(18,2) COMMENT 'Payment instruments permitted under this term.',
+    `applicable_invoice_type` STRING COMMENT 'Invoice categories to which this payment term can be applied.. Valid values are `standard|credit|debit|proforma|rebate`',
+    `payment_term_code` DECIMAL(18,2) COMMENT '',
+    `created_timestamp` TIMESTAMP COMMENT 'Timestamp when the payment term record was first created.',
+    `currency_code` STRING COMMENT 'Three‑letter ISO 4217 code of the currency applicable to the payment term.. Valid values are `^[A-Z]{3}$`',
+    `payment_term_description` STRING COMMENT '',
+    `discount_days` STRING COMMENT '',
+    `discount_percent` DECIMAL(18,2) COMMENT '',
+    `due_day_of_month` STRING COMMENT '',
+    `early_payment_discount_days` DECIMAL(18,2) COMMENT 'Number of days from invoice date during which the early‑payment discount is available.',
+    `early_payment_discount_percent` DECIMAL(18,2) COMMENT 'Percentage discount applied when payment is made within the early‑payment window.',
+    `effective_date` DATE COMMENT '',
+    `effective_from` DATE COMMENT 'Date when the payment term becomes binding.',
+    `effective_until` DATE COMMENT 'Date when the payment term expires; null for open‑ended terms.',
+    `expiration_date` DATE COMMENT '',
+    `grace_period_days` STRING COMMENT 'Additional days after the net due date before penalties apply.',
+    `installment_flag` BOOLEAN COMMENT '',
+    `is_default` BOOLEAN COMMENT 'Indicates whether this term is the default for new customers or contracts.',
+    `is_tax_exempt` BOOLEAN COMMENT 'Indicates whether taxes are waived for transactions using this term.',
+    `last_modified_timestamp` TIMESTAMP COMMENT '',
+    `max_discount_amount` DECIMAL(18,2) COMMENT 'Upper limit on the monetary value of any discount granted under this term.',
+    `min_payment_amount` DECIMAL(18,2) COMMENT 'Minimum amount that must be paid per invoice under this term.',
+    `payment_term_name` DECIMAL(18,2) COMMENT '',
+    `net_days` STRING COMMENT 'Standard number of days after invoice date when payment is due (e.g., Net 30).',
+    `notes` STRING COMMENT 'Free‑form comments or special conditions related to the payment term.',
+    `payment_term_status` DECIMAL(18,2) COMMENT 'Current lifecycle state of the payment term.',
+    `penalty_rate_percent` DECIMAL(18,2) COMMENT 'Interest or fee percentage charged on overdue amounts.',
+    `penalty_type` STRING COMMENT 'Method of applying the penalty (percentage of overdue amount or flat fee).. Valid values are `percentage|flat_fee`',
+    `tax_exempt_reason` STRING COMMENT 'Explanation for tax exemption (e.g., government incentive, nonprofit status).',
+    `term_code` STRING COMMENT 'Human‑readable code used to reference the payment term in contracts and invoices.. Valid values are `^[A-Z0-9_]{1,20}$`',
+    `term_type` STRING COMMENT 'Category of the payment term (e.g., Net, Discount, Milestone, Retention, Custom).. Valid values are `net|discount|milestone|retention|custom`',
+    `updated_timestamp` TIMESTAMP COMMENT 'Timestamp of the most recent update to the payment term record.',
+    `version_number` STRING COMMENT 'Sequential version of the payment term record for change tracking.',
+    CONSTRAINT pk_payment_term PRIMARY KEY(`payment_term_id`)
+) COMMENT 'Payment terms master defining standard and customer-specific payment conditions (Net 30, Net 60, 2/10 Net 30) applied to billing documents and customer accounts';
+
+CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`billing`.`payment_allocation` (
+    `payment_allocation_id` BIGINT COMMENT 'System-generated unique identifier for this payment allocation record',
+    `invoice_id` BIGINT COMMENT 'Foreign key to billing.invoice - the invoice receiving payment allocation',
+    `payment_id` BIGINT COMMENT 'Foreign key to billing.payment - the payment transaction being allocated',
+    `allocated_amount` DECIMAL(18,2) COMMENT 'Monetary amount of this specific payment allocated to this specific invoice (supports partial and split payments)',
+    `allocation_date` TIMESTAMP COMMENT 'Timestamp when this payment-to-invoice allocation was executed in the cash application process',
+    `allocation_sequence` BIGINT COMMENT 'Sequential order of this allocation when a single payment is split across multiple invoices (supports FIFO, LIFO, or custom allocation rules)',
+    `allocation_status` STRING COMMENT 'Current lifecycle status of this specific allocation (pending, allocated, cleared, reversed, disputed)',
+    `allocation_type` STRING COMMENT 'Nature of this allocation: full (payment covers entire invoice), partial (payment covers portion), advance (payment before invoice), on_account (unallocated funds)',
+    `clearing_document_number` STRING COMMENT 'SAP FI-AR clearing document number generated for this specific allocation',
+    `clearing_status` STRING COMMENT 'SAP FI clearing status for this specific payment-invoice allocation',
+    `created_timestamp` TIMESTAMP COMMENT 'Timestamp when this allocation record was first created in the system',
+    `discount_taken` DECIMAL(18,2) COMMENT 'Monetary discount amount applied at the time of this specific allocation (e.g., early payment discount)',
+    `early_payment_discount_applied` DECIMAL(18,2) COMMENT 'Early payment discount amount applied to this specific allocation based on payment terms',
+    CONSTRAINT pk_payment_allocation PRIMARY KEY(`payment_allocation_id`)
+) COMMENT 'This association product represents the allocation event between payment and invoice in accounts receivable cash application. It captures the specific application of payment funds to invoice balances, supporting partial payments, split payments across multiple invoices, installment billing, and on-account payments. Each record links one payment to one invoice with allocation-specific attributes that exist only in the context of this cash application relationship. Managed in SAP S/4HANA FI-AR clearing documents (F-28, F-32).. Existence Justification: In manufacturing AR operations, payment allocation is a well-established M:N business process. One payment routinely covers multiple invoices (bulk remittance, lockbox processing, wire transfers with remittance advice listing multiple invoice numbers), and one invoice routinely receives multiple payments (installment billing, progress billing for large capital equipment, partial payments from customers with cash flow constraints). Cash application clerks actively manage payment_allocation records daily, matching payments to invoices and resolving exceptions.';
 
 -- ========= FOREIGN KEYS =========
-ALTER TABLE `vibe_manufacturing_v1`.`billing`.`invoice` ADD CONSTRAINT `fk_billing_invoice_billing_account_id` FOREIGN KEY (`billing_account_id`) REFERENCES `vibe_manufacturing_v1`.`billing`.`billing_account`(`billing_account_id`);
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`invoice` ADD CONSTRAINT `fk_billing_invoice_billing_schedule_id` FOREIGN KEY (`billing_schedule_id`) REFERENCES `vibe_manufacturing_v1`.`billing`.`billing_schedule`(`billing_schedule_id`);
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`invoice` ADD CONSTRAINT `fk_billing_invoice_payment_term_id` FOREIGN KEY (`payment_term_id`) REFERENCES `vibe_manufacturing_v1`.`billing`.`payment_term`(`payment_term_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`billing`.`invoice` ADD CONSTRAINT `fk_billing_invoice_primary_credit_note_invoice_id` FOREIGN KEY (`primary_credit_note_invoice_id`) REFERENCES `vibe_manufacturing_v1`.`billing`.`invoice`(`invoice_id`);
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`invoice_line` ADD CONSTRAINT `fk_billing_invoice_line_billing_schedule_id` FOREIGN KEY (`billing_schedule_id`) REFERENCES `vibe_manufacturing_v1`.`billing`.`billing_schedule`(`billing_schedule_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`billing`.`invoice_line` ADD CONSTRAINT `fk_billing_invoice_line_invoice_id` FOREIGN KEY (`invoice_id`) REFERENCES `vibe_manufacturing_v1`.`billing`.`invoice`(`invoice_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`billing`.`invoice_line` ADD CONSTRAINT `fk_billing_invoice_line_original_invoice_line_id` FOREIGN KEY (`original_invoice_line_id`) REFERENCES `vibe_manufacturing_v1`.`billing`.`invoice_line`(`invoice_line_id`);
-ALTER TABLE `vibe_manufacturing_v1`.`billing`.`payment` ADD CONSTRAINT `fk_billing_payment_billing_account_id` FOREIGN KEY (`billing_account_id`) REFERENCES `vibe_manufacturing_v1`.`billing`.`billing_account`(`billing_account_id`);
-ALTER TABLE `vibe_manufacturing_v1`.`billing`.`credit_limit` ADD CONSTRAINT `fk_billing_credit_limit_billing_account_id` FOREIGN KEY (`billing_account_id`) REFERENCES `vibe_manufacturing_v1`.`billing`.`billing_account`(`billing_account_id`);
-ALTER TABLE `vibe_manufacturing_v1`.`billing`.`tax_determination` ADD CONSTRAINT `fk_billing_tax_determination_invoice_id` FOREIGN KEY (`invoice_id`) REFERENCES `vibe_manufacturing_v1`.`billing`.`invoice`(`invoice_id`);
-ALTER TABLE `vibe_manufacturing_v1`.`billing`.`tax_determination` ADD CONSTRAINT `fk_billing_tax_determination_invoice_line_id` FOREIGN KEY (`invoice_line_id`) REFERENCES `vibe_manufacturing_v1`.`billing`.`invoice_line`(`invoice_line_id`);
-ALTER TABLE `vibe_manufacturing_v1`.`billing`.`payment_application` ADD CONSTRAINT `fk_billing_payment_application_invoice_id` FOREIGN KEY (`invoice_id`) REFERENCES `vibe_manufacturing_v1`.`billing`.`invoice`(`invoice_id`);
-ALTER TABLE `vibe_manufacturing_v1`.`billing`.`payment_application` ADD CONSTRAINT `fk_billing_payment_application_payment_id` FOREIGN KEY (`payment_id`) REFERENCES `vibe_manufacturing_v1`.`billing`.`payment`(`payment_id`);
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`invoice_line` ADD CONSTRAINT `fk_billing_invoice_line_payment_term_id` FOREIGN KEY (`payment_term_id`) REFERENCES `vibe_manufacturing_v1`.`billing`.`payment_term`(`payment_term_id`);
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`payment` ADD CONSTRAINT `fk_billing_payment_payment_term_id` FOREIGN KEY (`payment_term_id`) REFERENCES `vibe_manufacturing_v1`.`billing`.`payment_term`(`payment_term_id`);
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`billing_account` ADD CONSTRAINT `fk_billing_billing_account_payment_term_id` FOREIGN KEY (`payment_term_id`) REFERENCES `vibe_manufacturing_v1`.`billing`.`payment_term`(`payment_term_id`);
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`dispute` ADD CONSTRAINT `fk_billing_dispute_invoice_id` FOREIGN KEY (`invoice_id`) REFERENCES `vibe_manufacturing_v1`.`billing`.`invoice`(`invoice_id`);
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`dispute` ADD CONSTRAINT `fk_billing_dispute_primary_disputed_invoice_id` FOREIGN KEY (`primary_disputed_invoice_id`) REFERENCES `vibe_manufacturing_v1`.`billing`.`invoice`(`invoice_id`);
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`collections` ADD CONSTRAINT `fk_billing_collections_billing_account_id` FOREIGN KEY (`billing_account_id`) REFERENCES `vibe_manufacturing_v1`.`billing`.`billing_account`(`billing_account_id`);
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`collections` ADD CONSTRAINT `fk_billing_collections_invoice_id` FOREIGN KEY (`invoice_id`) REFERENCES `vibe_manufacturing_v1`.`billing`.`invoice`(`invoice_id`);
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`billing_schedule` ADD CONSTRAINT `fk_billing_billing_schedule_payment_term_id` FOREIGN KEY (`payment_term_id`) REFERENCES `vibe_manufacturing_v1`.`billing`.`payment_term`(`payment_term_id`);
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`payment_term` ADD CONSTRAINT `fk_billing_payment_term_base_payment_term_id` FOREIGN KEY (`base_payment_term_id`) REFERENCES `vibe_manufacturing_v1`.`billing`.`payment_term`(`payment_term_id`);
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`payment_allocation` ADD CONSTRAINT `fk_billing_payment_allocation_invoice_id` FOREIGN KEY (`invoice_id`) REFERENCES `vibe_manufacturing_v1`.`billing`.`invoice`(`invoice_id`);
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`payment_allocation` ADD CONSTRAINT `fk_billing_payment_allocation_payment_id` FOREIGN KEY (`payment_id`) REFERENCES `vibe_manufacturing_v1`.`billing`.`payment`(`payment_id`);
 
 -- ========= TAGS =========
 ALTER SCHEMA `vibe_manufacturing_v1`.`billing` SET TAGS ('dbx_division' = 'business');
@@ -291,27 +428,36 @@ ALTER SCHEMA `vibe_manufacturing_v1`.`billing` SET TAGS ('dbx_domain' = 'billing
 ALTER TABLE `vibe_manufacturing_v1`.`billing`.`invoice` SET TAGS ('dbx_data_type' = 'transactional_data');
 ALTER TABLE `vibe_manufacturing_v1`.`billing`.`invoice` SET TAGS ('dbx_subdomain' = 'revenue_recognition');
 ALTER TABLE `vibe_manufacturing_v1`.`billing`.`invoice` ALTER COLUMN `invoice_id` SET TAGS ('dbx_business_glossary_term' = 'Invoice ID');
-ALTER TABLE `vibe_manufacturing_v1`.`billing`.`invoice` ALTER COLUMN `account_site_id` SET TAGS ('dbx_business_glossary_term' = 'Project Header Id (Foreign Key)');
-ALTER TABLE `vibe_manufacturing_v1`.`billing`.`invoice` ALTER COLUMN `asset_plant_id` SET TAGS ('dbx_business_glossary_term' = 'Asset Plant Id (Foreign Key)');
-ALTER TABLE `vibe_manufacturing_v1`.`billing`.`invoice` ALTER COLUMN `billing_account_id` SET TAGS ('dbx_business_glossary_term' = 'Billing Account Id (Foreign Key)');
-ALTER TABLE `vibe_manufacturing_v1`.`billing`.`invoice` ALTER COLUMN `address_id` SET TAGS ('dbx_business_glossary_term' = 'Billing Address Id (Foreign Key)');
-ALTER TABLE `vibe_manufacturing_v1`.`billing`.`invoice` ALTER COLUMN `address_id` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`billing`.`invoice` ALTER COLUMN `address_id` SET TAGS ('dbx_pii_address' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`billing`.`invoice` ALTER COLUMN `contact_id` SET TAGS ('dbx_business_glossary_term' = 'Customer Contact Id (Foreign Key)');
-ALTER TABLE `vibe_manufacturing_v1`.`billing`.`invoice` ALTER COLUMN `delivery_id` SET TAGS ('dbx_business_glossary_term' = 'Delivery Id (Foreign Key)');
-ALTER TABLE `vibe_manufacturing_v1`.`billing`.`invoice` ALTER COLUMN `equipment_register_id` SET TAGS ('dbx_business_glossary_term' = 'Equipment Register Id (Foreign Key)');
-ALTER TABLE `vibe_manufacturing_v1`.`billing`.`invoice` ALTER COLUMN `field_service_order_id` SET TAGS ('dbx_business_glossary_term' = 'Field Service Order Id (Foreign Key)');
-ALTER TABLE `vibe_manufacturing_v1`.`billing`.`invoice` ALTER COLUMN `header_id` SET TAGS ('dbx_business_glossary_term' = 'Sales Order Id (Foreign Key)');
-ALTER TABLE `vibe_manufacturing_v1`.`billing`.`invoice` ALTER COLUMN `order_intake_id` SET TAGS ('dbx_business_glossary_term' = 'Order Intake Id (Foreign Key)');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`invoice` ALTER COLUMN `billing_schedule_id` SET TAGS ('dbx_business_glossary_term' = 'Billing Schedule Id (Foreign Key)');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`invoice` ALTER COLUMN `customer_account_id` SET TAGS ('dbx_business_glossary_term' = 'Customer Identifier (CUST_ID)');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`invoice` ALTER COLUMN `freight_order_id` SET TAGS ('dbx_business_glossary_term' = 'Freight Order Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`billing`.`invoice` ALTER COLUMN `primary_credit_note_invoice_id` SET TAGS ('dbx_business_glossary_term' = 'Credit Note Identifier');
-ALTER TABLE `vibe_manufacturing_v1`.`billing`.`invoice` ALTER COLUMN `project_id` SET TAGS ('dbx_business_glossary_term' = 'Engineering Project Id (Foreign Key)');
-ALTER TABLE `vibe_manufacturing_v1`.`billing`.`invoice` ALTER COLUMN `rma_id` SET TAGS ('dbx_business_glossary_term' = 'Order Rma Id (Foreign Key)');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`invoice` ALTER COLUMN `purchase_order_id` SET TAGS ('dbx_business_glossary_term' = 'Purchase Order Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`billing`.`invoice` ALTER COLUMN `rep_id` SET TAGS ('dbx_business_glossary_term' = 'Sales Rep Id (Foreign Key)');
-ALTER TABLE `vibe_manufacturing_v1`.`billing`.`invoice` ALTER COLUMN `sla_agreement_id` SET TAGS ('dbx_business_glossary_term' = 'Sla Agreement Id (Foreign Key)');
-ALTER TABLE `vibe_manufacturing_v1`.`billing`.`invoice` ALTER COLUMN `warehouse_id` SET TAGS ('dbx_business_glossary_term' = 'Warehouse Id (Foreign Key)');
-ALTER TABLE `vibe_manufacturing_v1`.`billing`.`invoice` ALTER COLUMN `warranty_id` SET TAGS ('dbx_business_glossary_term' = 'Service Warranty Id (Foreign Key)');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`invoice` ALTER COLUMN `billing_address_line1` SET TAGS ('dbx_business_glossary_term' = 'Billing Address Line 1');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`invoice` ALTER COLUMN `billing_address_line1` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`invoice` ALTER COLUMN `billing_address_line1` SET TAGS ('dbx_pii_address' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`invoice` ALTER COLUMN `billing_address_line1` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`invoice` ALTER COLUMN `billing_address_line1` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`invoice` ALTER COLUMN `billing_address_line2` SET TAGS ('dbx_business_glossary_term' = 'Billing Address Line 2');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`invoice` ALTER COLUMN `billing_address_line2` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`invoice` ALTER COLUMN `billing_address_line2` SET TAGS ('dbx_pii_address' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`invoice` ALTER COLUMN `billing_address_line2` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`invoice` ALTER COLUMN `billing_address_line2` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`invoice` ALTER COLUMN `billing_city` SET TAGS ('dbx_business_glossary_term' = 'Billing City');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`invoice` ALTER COLUMN `billing_city` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`invoice` ALTER COLUMN `billing_city` SET TAGS ('dbx_pii_address' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`invoice` ALTER COLUMN `billing_country` SET TAGS ('dbx_business_glossary_term' = 'Billing Country Code (ISO 3166-1 Alpha-3)');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`invoice` ALTER COLUMN `billing_country` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`invoice` ALTER COLUMN `billing_country` SET TAGS ('dbx_pii_address' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`billing`.`invoice` ALTER COLUMN `billing_period_end` SET TAGS ('dbx_business_glossary_term' = 'Billing Period End Date (BILL_PERIOD_END)');
 ALTER TABLE `vibe_manufacturing_v1`.`billing`.`invoice` ALTER COLUMN `billing_period_start` SET TAGS ('dbx_business_glossary_term' = 'Billing Period Start Date (BILL_PERIOD_START)');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`invoice` ALTER COLUMN `billing_postal_code` SET TAGS ('dbx_business_glossary_term' = 'Billing Postal Code');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`invoice` ALTER COLUMN `billing_postal_code` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`invoice` ALTER COLUMN `billing_postal_code` SET TAGS ('dbx_pii_address' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`invoice` ALTER COLUMN `billing_state` SET TAGS ('dbx_business_glossary_term' = 'Billing State/Province');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`invoice` ALTER COLUMN `billing_state` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`invoice` ALTER COLUMN `billing_state` SET TAGS ('dbx_pii_address' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`billing`.`invoice` ALTER COLUMN `collection_status` SET TAGS ('dbx_business_glossary_term' = 'Collection Status');
 ALTER TABLE `vibe_manufacturing_v1`.`billing`.`invoice` ALTER COLUMN `collection_status` SET TAGS ('dbx_value_regex' = 'open|in_collection|closed|written_off');
 ALTER TABLE `vibe_manufacturing_v1`.`billing`.`invoice` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Creation Timestamp (CREATED_TS)');
@@ -329,9 +475,7 @@ ALTER TABLE `vibe_manufacturing_v1`.`billing`.`invoice` ALTER COLUMN `issue_time
 ALTER TABLE `vibe_manufacturing_v1`.`billing`.`invoice` ALTER COLUMN `net_amount` SET TAGS ('dbx_business_glossary_term' = 'Invoice Net Amount (NET_AMT)');
 ALTER TABLE `vibe_manufacturing_v1`.`billing`.`invoice` ALTER COLUMN `number` SET TAGS ('dbx_business_glossary_term' = 'Invoice Number (INV_NO)');
 ALTER TABLE `vibe_manufacturing_v1`.`billing`.`invoice` ALTER COLUMN `payment_method` SET TAGS ('dbx_business_glossary_term' = 'Payment Method (PAY_METHOD)');
-ALTER TABLE `vibe_manufacturing_v1`.`billing`.`invoice` ALTER COLUMN `payment_method` SET TAGS ('dbx_value_regex' = 'credit_card|bank_transfer|cash|check|wire');
 ALTER TABLE `vibe_manufacturing_v1`.`billing`.`invoice` ALTER COLUMN `payment_status` SET TAGS ('dbx_business_glossary_term' = 'Payment Status (PAY_STATUS)');
-ALTER TABLE `vibe_manufacturing_v1`.`billing`.`invoice` ALTER COLUMN `payment_status` SET TAGS ('dbx_value_regex' = 'pending|paid|failed|partial|refunded');
 ALTER TABLE `vibe_manufacturing_v1`.`billing`.`invoice` ALTER COLUMN `payment_terms_code` SET TAGS ('dbx_business_glossary_term' = 'Payment Terms Code (PAY_TERM_CD)');
 ALTER TABLE `vibe_manufacturing_v1`.`billing`.`invoice` ALTER COLUMN `po_number` SET TAGS ('dbx_business_glossary_term' = 'Purchase Order Number (PO_NO)');
 ALTER TABLE `vibe_manufacturing_v1`.`billing`.`invoice` ALTER COLUMN `tax_amount` SET TAGS ('dbx_business_glossary_term' = 'Invoice Tax Amount (TAX_AMT)');
@@ -342,27 +486,20 @@ ALTER TABLE `vibe_manufacturing_v1`.`billing`.`invoice_line` SET TAGS ('dbx_data
 ALTER TABLE `vibe_manufacturing_v1`.`billing`.`invoice_line` SET TAGS ('dbx_subdomain' = 'revenue_recognition');
 ALTER TABLE `vibe_manufacturing_v1`.`billing`.`invoice_line` ALTER COLUMN `invoice_line_id` SET TAGS ('dbx_business_glossary_term' = 'Invoice Line ID');
 ALTER TABLE `vibe_manufacturing_v1`.`billing`.`invoice_line` ALTER COLUMN `asset_work_order_id` SET TAGS ('dbx_business_glossary_term' = 'Work Order Id (Foreign Key)');
-ALTER TABLE `vibe_manufacturing_v1`.`billing`.`invoice_line` ALTER COLUMN `capa_id` SET TAGS ('dbx_business_glossary_term' = 'Capa Id (Foreign Key)');
-ALTER TABLE `vibe_manufacturing_v1`.`billing`.`invoice_line` ALTER COLUMN `catalog_entry_id` SET TAGS ('dbx_business_glossary_term' = 'Catalog Entry Id (Foreign Key)');
-ALTER TABLE `vibe_manufacturing_v1`.`billing`.`invoice_line` ALTER COLUMN `compliance_test_id` SET TAGS ('dbx_business_glossary_term' = 'Compliance Test Id (Foreign Key)');
-ALTER TABLE `vibe_manufacturing_v1`.`billing`.`invoice_line` ALTER COLUMN `delivery_item_id` SET TAGS ('dbx_business_glossary_term' = 'Delivery Item Id (Foreign Key)');
-ALTER TABLE `vibe_manufacturing_v1`.`billing`.`invoice_line` ALTER COLUMN `eco_id` SET TAGS ('dbx_business_glossary_term' = 'Eco Id (Foreign Key)');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`invoice_line` ALTER COLUMN `billing_schedule_id` SET TAGS ('dbx_business_glossary_term' = 'Billing Schedule Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`billing`.`invoice_line` ALTER COLUMN `equipment_register_id` SET TAGS ('dbx_business_glossary_term' = 'Equipment Register Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`billing`.`invoice_line` ALTER COLUMN `inspection_lot_id` SET TAGS ('dbx_business_glossary_term' = 'Inspection Lot Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`billing`.`invoice_line` ALTER COLUMN `invoice_id` SET TAGS ('dbx_business_glossary_term' = 'Invoice ID');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`invoice_line` ALTER COLUMN `line_id` SET TAGS ('dbx_business_glossary_term' = 'Order Line Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`billing`.`invoice_line` ALTER COLUMN `lot_batch_id` SET TAGS ('dbx_business_glossary_term' = 'Lot Batch Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`billing`.`invoice_line` ALTER COLUMN `material_master_id` SET TAGS ('dbx_business_glossary_term' = 'Material Master Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`billing`.`invoice_line` ALTER COLUMN `ncr_id` SET TAGS ('dbx_business_glossary_term' = 'Ncr Id (Foreign Key)');
-ALTER TABLE `vibe_manufacturing_v1`.`billing`.`invoice_line` ALTER COLUMN `order_confirmation_id` SET TAGS ('dbx_business_glossary_term' = 'Order Confirmation Id (Foreign Key)');
-ALTER TABLE `vibe_manufacturing_v1`.`billing`.`invoice_line` ALTER COLUMN `order_line_id` SET TAGS ('dbx_business_glossary_term' = 'Order Line Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`billing`.`invoice_line` ALTER COLUMN `original_invoice_line_id` SET TAGS ('dbx_business_glossary_term' = 'Original Invoice Line ID');
-ALTER TABLE `vibe_manufacturing_v1`.`billing`.`invoice_line` ALTER COLUMN `part_consumption_id` SET TAGS ('dbx_business_glossary_term' = 'Part Consumption Id (Foreign Key)');
-ALTER TABLE `vibe_manufacturing_v1`.`billing`.`invoice_line` ALTER COLUMN `pm_schedule_id` SET TAGS ('dbx_business_glossary_term' = 'Asset Pm Schedule Id (Foreign Key)');
-ALTER TABLE `vibe_manufacturing_v1`.`billing`.`invoice_line` ALTER COLUMN `price_book_entry_id` SET TAGS ('dbx_business_glossary_term' = 'Price Book Entry Id (Foreign Key)');
-ALTER TABLE `vibe_manufacturing_v1`.`billing`.`invoice_line` ALTER COLUMN `project_id` SET TAGS ('dbx_business_glossary_term' = 'Engineering Project Id (Foreign Key)');
-ALTER TABLE `vibe_manufacturing_v1`.`billing`.`invoice_line` ALTER COLUMN `quote_line_id` SET TAGS ('dbx_business_glossary_term' = 'Quote Line Id (Foreign Key)');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`invoice_line` ALTER COLUMN `payment_term_id` SET TAGS ('dbx_business_glossary_term' = 'Payment Term Id (Foreign Key)');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`invoice_line` ALTER COLUMN `po_line_item_id` SET TAGS ('dbx_business_glossary_term' = 'Po Line Item Id (Foreign Key)');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`invoice_line` ALTER COLUMN `procurement_goods_receipt_id` SET TAGS ('dbx_business_glossary_term' = 'Procurement Goods Receipt Id (Foreign Key)');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`invoice_line` ALTER COLUMN `serialized_unit_id` SET TAGS ('dbx_business_glossary_term' = 'Serialized Unit Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`billing`.`invoice_line` ALTER COLUMN `sku_master_id` SET TAGS ('dbx_business_glossary_term' = 'Sku Master Id (Foreign Key)');
-ALTER TABLE `vibe_manufacturing_v1`.`billing`.`invoice_line` ALTER COLUMN `test_result_id` SET TAGS ('dbx_business_glossary_term' = 'Test Result Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`billing`.`invoice_line` ALTER COLUMN `allocation_amount` SET TAGS ('dbx_business_glossary_term' = 'Allocation Amount');
 ALTER TABLE `vibe_manufacturing_v1`.`billing`.`invoice_line` ALTER COLUMN `allocation_percent` SET TAGS ('dbx_business_glossary_term' = 'Allocation Percentage');
 ALTER TABLE `vibe_manufacturing_v1`.`billing`.`invoice_line` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Creation Timestamp');
@@ -384,12 +521,10 @@ ALTER TABLE `vibe_manufacturing_v1`.`billing`.`invoice_line` ALTER COLUMN `line_
 ALTER TABLE `vibe_manufacturing_v1`.`billing`.`invoice_line` ALTER COLUMN `line_type` SET TAGS ('dbx_value_regex' = 'product|service|project|fee|charge');
 ALTER TABLE `vibe_manufacturing_v1`.`billing`.`invoice_line` ALTER COLUMN `net_amount` SET TAGS ('dbx_business_glossary_term' = 'Net Line Amount');
 ALTER TABLE `vibe_manufacturing_v1`.`billing`.`invoice_line` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Line Notes');
-ALTER TABLE `vibe_manufacturing_v1`.`billing`.`invoice_line` ALTER COLUMN `payment_terms_code` SET TAGS ('dbx_business_glossary_term' = 'Payment Terms Code');
 ALTER TABLE `vibe_manufacturing_v1`.`billing`.`invoice_line` ALTER COLUMN `posted_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Posting Timestamp');
 ALTER TABLE `vibe_manufacturing_v1`.`billing`.`invoice_line` ALTER COLUMN `quantity` SET TAGS ('dbx_business_glossary_term' = 'Line Quantity');
 ALTER TABLE `vibe_manufacturing_v1`.`billing`.`invoice_line` ALTER COLUMN `revenue_account` SET TAGS ('dbx_business_glossary_term' = 'Revenue Account');
 ALTER TABLE `vibe_manufacturing_v1`.`billing`.`invoice_line` ALTER COLUMN `revenue_recognition_method` SET TAGS ('dbx_business_glossary_term' = 'Revenue Recognition Method');
-ALTER TABLE `vibe_manufacturing_v1`.`billing`.`invoice_line` ALTER COLUMN `revenue_recognition_method` SET TAGS ('dbx_value_regex' = 'percentage_of_completion|completed_contract|point_in_time');
 ALTER TABLE `vibe_manufacturing_v1`.`billing`.`invoice_line` ALTER COLUMN `royalty_rate_percent` SET TAGS ('dbx_business_glossary_term' = 'Royalty Rate Percentage');
 ALTER TABLE `vibe_manufacturing_v1`.`billing`.`invoice_line` ALTER COLUMN `service_end_date` SET TAGS ('dbx_business_glossary_term' = 'Service End Date');
 ALTER TABLE `vibe_manufacturing_v1`.`billing`.`invoice_line` ALTER COLUMN `service_start_date` SET TAGS ('dbx_business_glossary_term' = 'Service Start Date');
@@ -402,14 +537,13 @@ ALTER TABLE `vibe_manufacturing_v1`.`billing`.`invoice_line` ALTER COLUMN `uom` 
 ALTER TABLE `vibe_manufacturing_v1`.`billing`.`invoice_line` ALTER COLUMN `uom` SET TAGS ('dbx_value_regex' = 'EA|KG|L|M|HRS');
 ALTER TABLE `vibe_manufacturing_v1`.`billing`.`invoice_line` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Update Timestamp');
 ALTER TABLE `vibe_manufacturing_v1`.`billing`.`payment` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_manufacturing_v1`.`billing`.`payment` SET TAGS ('dbx_subdomain' = 'cash_application');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`payment` SET TAGS ('dbx_subdomain' = 'revenue_recognition');
 ALTER TABLE `vibe_manufacturing_v1`.`billing`.`payment` ALTER COLUMN `payment_id` SET TAGS ('dbx_business_glossary_term' = 'Payment ID');
-ALTER TABLE `vibe_manufacturing_v1`.`billing`.`payment` ALTER COLUMN `account_site_id` SET TAGS ('dbx_business_glossary_term' = 'Project Header Id (Foreign Key)');
-ALTER TABLE `vibe_manufacturing_v1`.`billing`.`payment` ALTER COLUMN `billing_account_id` SET TAGS ('dbx_business_glossary_term' = 'Billing Account Id (Foreign Key)');
-ALTER TABLE `vibe_manufacturing_v1`.`billing`.`payment` ALTER COLUMN `family_id` SET TAGS ('dbx_business_glossary_term' = 'Regulatory Requirement Id (Foreign Key)');
-ALTER TABLE `vibe_manufacturing_v1`.`billing`.`payment` ALTER COLUMN `project_id` SET TAGS ('dbx_business_glossary_term' = 'Engineering Project Id (Foreign Key)');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`payment` ALTER COLUMN `customer_account_id` SET TAGS ('dbx_business_glossary_term' = 'Customer ID');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`payment` ALTER COLUMN `payment_term_id` SET TAGS ('dbx_business_glossary_term' = 'Payment Term Id (Foreign Key)');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`payment` ALTER COLUMN `purchase_order_id` SET TAGS ('dbx_business_glossary_term' = 'Purchase Order Id (Foreign Key)');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`payment` ALTER COLUMN `sales_contract_id` SET TAGS ('dbx_business_glossary_term' = 'Sales Contract Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`billing`.`payment` ALTER COLUMN `order_intake_id` SET TAGS ('dbx_business_glossary_term' = 'Sales Order Intake Id (Foreign Key)');
-ALTER TABLE `vibe_manufacturing_v1`.`billing`.`payment` ALTER COLUMN `service_contract_id` SET TAGS ('dbx_business_glossary_term' = 'Service Contract Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`billing`.`payment` ALTER COLUMN `allocated_amount` SET TAGS ('dbx_business_glossary_term' = 'Allocated Amount');
 ALTER TABLE `vibe_manufacturing_v1`.`billing`.`payment` ALTER COLUMN `allocation_date` SET TAGS ('dbx_business_glossary_term' = 'Allocation Date');
 ALTER TABLE `vibe_manufacturing_v1`.`billing`.`payment` ALTER COLUMN `allocation_status` SET TAGS ('dbx_business_glossary_term' = 'Allocation Status');
@@ -420,6 +554,8 @@ ALTER TABLE `vibe_manufacturing_v1`.`billing`.`payment` ALTER COLUMN `amount_dis
 ALTER TABLE `vibe_manufacturing_v1`.`billing`.`payment` ALTER COLUMN `amount_gross` SET TAGS ('dbx_business_glossary_term' = 'Gross Payment Amount');
 ALTER TABLE `vibe_manufacturing_v1`.`billing`.`payment` ALTER COLUMN `amount_net` SET TAGS ('dbx_business_glossary_term' = 'Net Payment Amount');
 ALTER TABLE `vibe_manufacturing_v1`.`billing`.`payment` ALTER COLUMN `bank_name` SET TAGS ('dbx_business_glossary_term' = 'Bank Name');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`payment` ALTER COLUMN `bank_name` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`payment` ALTER COLUMN `bank_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`billing`.`payment` ALTER COLUMN `bank_value_date` SET TAGS ('dbx_business_glossary_term' = 'Bank Value Date');
 ALTER TABLE `vibe_manufacturing_v1`.`billing`.`payment` ALTER COLUMN `batch_code` SET TAGS ('dbx_business_glossary_term' = 'Payment Batch ID');
 ALTER TABLE `vibe_manufacturing_v1`.`billing`.`payment` ALTER COLUMN `channel` SET TAGS ('dbx_business_glossary_term' = 'Payment Channel');
@@ -438,31 +574,27 @@ ALTER TABLE `vibe_manufacturing_v1`.`billing`.`payment` ALTER COLUMN `external_r
 ALTER TABLE `vibe_manufacturing_v1`.`billing`.`payment` ALTER COLUMN `fee_amount` SET TAGS ('dbx_business_glossary_term' = 'Fee Amount');
 ALTER TABLE `vibe_manufacturing_v1`.`billing`.`payment` ALTER COLUMN `is_reconciled` SET TAGS ('dbx_business_glossary_term' = 'Reconciliation Flag');
 ALTER TABLE `vibe_manufacturing_v1`.`billing`.`payment` ALTER COLUMN `method` SET TAGS ('dbx_business_glossary_term' = 'Payment Method');
-ALTER TABLE `vibe_manufacturing_v1`.`billing`.`payment` ALTER COLUMN `method` SET TAGS ('dbx_value_regex' = 'wire_transfer|ach|check|credit_card|letter_of_credit|cash');
 ALTER TABLE `vibe_manufacturing_v1`.`billing`.`payment` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Payment Notes');
 ALTER TABLE `vibe_manufacturing_v1`.`billing`.`payment` ALTER COLUMN `original_amount` SET TAGS ('dbx_business_glossary_term' = 'Original Payment Amount');
 ALTER TABLE `vibe_manufacturing_v1`.`billing`.`payment` ALTER COLUMN `original_currency` SET TAGS ('dbx_business_glossary_term' = 'Original Currency Code');
 ALTER TABLE `vibe_manufacturing_v1`.`billing`.`payment` ALTER COLUMN `payment_date` SET TAGS ('dbx_business_glossary_term' = 'Payment Date');
 ALTER TABLE `vibe_manufacturing_v1`.`billing`.`payment` ALTER COLUMN `payment_number` SET TAGS ('dbx_business_glossary_term' = 'Payment Number');
 ALTER TABLE `vibe_manufacturing_v1`.`billing`.`payment` ALTER COLUMN `payment_status` SET TAGS ('dbx_business_glossary_term' = 'Payment Status');
-ALTER TABLE `vibe_manufacturing_v1`.`billing`.`payment` ALTER COLUMN `payment_status` SET TAGS ('dbx_value_regex' = 'pending|processed|failed|reversed|cancelled');
 ALTER TABLE `vibe_manufacturing_v1`.`billing`.`payment` ALTER COLUMN `reconciliation_date` SET TAGS ('dbx_business_glossary_term' = 'Reconciliation Date');
 ALTER TABLE `vibe_manufacturing_v1`.`billing`.`payment` ALTER COLUMN `remittance_advice_reference` SET TAGS ('dbx_business_glossary_term' = 'Remittance Advice Reference');
 ALTER TABLE `vibe_manufacturing_v1`.`billing`.`payment` ALTER COLUMN `sequence` SET TAGS ('dbx_business_glossary_term' = 'Payment Sequence Number');
 ALTER TABLE `vibe_manufacturing_v1`.`billing`.`payment` ALTER COLUMN `status_reason` SET TAGS ('dbx_business_glossary_term' = 'Payment Status Reason');
 ALTER TABLE `vibe_manufacturing_v1`.`billing`.`payment` ALTER COLUMN `tax_amount` SET TAGS ('dbx_business_glossary_term' = 'Tax Amount');
-ALTER TABLE `vibe_manufacturing_v1`.`billing`.`payment` ALTER COLUMN `term_code` SET TAGS ('dbx_business_glossary_term' = 'Payment Term Code');
 ALTER TABLE `vibe_manufacturing_v1`.`billing`.`payment` ALTER COLUMN `transaction_type` SET TAGS ('dbx_business_glossary_term' = 'Transaction Type');
 ALTER TABLE `vibe_manufacturing_v1`.`billing`.`payment` ALTER COLUMN `transaction_type` SET TAGS ('dbx_value_regex' = 'invoice_payment|prepayment|deposit|refund');
 ALTER TABLE `vibe_manufacturing_v1`.`billing`.`payment` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Update Timestamp');
 ALTER TABLE `vibe_manufacturing_v1`.`billing`.`billing_account` SET TAGS ('dbx_data_type' = 'master_data');
 ALTER TABLE `vibe_manufacturing_v1`.`billing`.`billing_account` SET TAGS ('dbx_subdomain' = 'customer_accounts');
 ALTER TABLE `vibe_manufacturing_v1`.`billing`.`billing_account` ALTER COLUMN `billing_account_id` SET TAGS ('dbx_business_glossary_term' = 'Billing Account Identifier');
-ALTER TABLE `vibe_manufacturing_v1`.`billing`.`billing_account` ALTER COLUMN `address_id` SET TAGS ('dbx_business_glossary_term' = 'Address Id (Foreign Key)');
-ALTER TABLE `vibe_manufacturing_v1`.`billing`.`billing_account` ALTER COLUMN `address_id` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`billing`.`billing_account` ALTER COLUMN `address_id` SET TAGS ('dbx_pii_address' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`billing`.`billing_account` ALTER COLUMN `rep_id` SET TAGS ('dbx_business_glossary_term' = 'Sales Rep Id (Foreign Key)');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`billing_account` ALTER COLUMN `payment_term_id` SET TAGS ('dbx_business_glossary_term' = 'Payment Term Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`billing`.`billing_account` ALTER COLUMN `account_name` SET TAGS ('dbx_business_glossary_term' = 'Account Name');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`billing_account` ALTER COLUMN `account_name` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`billing_account` ALTER COLUMN `account_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`billing`.`billing_account` ALTER COLUMN `account_number` SET TAGS ('dbx_business_glossary_term' = 'Account Number');
 ALTER TABLE `vibe_manufacturing_v1`.`billing`.`billing_account` ALTER COLUMN `account_number` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`billing`.`billing_account` ALTER COLUMN `account_number` SET TAGS ('dbx_pii_financial' = 'true');
@@ -471,15 +603,34 @@ ALTER TABLE `vibe_manufacturing_v1`.`billing`.`billing_account` ALTER COLUMN `ac
 ALTER TABLE `vibe_manufacturing_v1`.`billing`.`billing_account` ALTER COLUMN `auto_payment_enabled` SET TAGS ('dbx_business_glossary_term' = 'Auto‑Payment Enabled');
 ALTER TABLE `vibe_manufacturing_v1`.`billing`.`billing_account` ALTER COLUMN `billing_account_status` SET TAGS ('dbx_business_glossary_term' = 'Account Status');
 ALTER TABLE `vibe_manufacturing_v1`.`billing`.`billing_account` ALTER COLUMN `billing_account_status` SET TAGS ('dbx_value_regex' = 'active|blocked|dormant|closed');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`billing_account` ALTER COLUMN `billing_address_line1` SET TAGS ('dbx_business_glossary_term' = 'Billing Address Line 1');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`billing_account` ALTER COLUMN `billing_address_line1` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`billing_account` ALTER COLUMN `billing_address_line1` SET TAGS ('dbx_pii_address' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`billing_account` ALTER COLUMN `billing_address_line1` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`billing_account` ALTER COLUMN `billing_address_line1` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`billing_account` ALTER COLUMN `billing_address_line2` SET TAGS ('dbx_business_glossary_term' = 'Billing Address Line 2');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`billing_account` ALTER COLUMN `billing_address_line2` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`billing_account` ALTER COLUMN `billing_address_line2` SET TAGS ('dbx_pii_address' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`billing_account` ALTER COLUMN `billing_address_line2` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`billing_account` ALTER COLUMN `billing_address_line2` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`billing_account` ALTER COLUMN `billing_city` SET TAGS ('dbx_business_glossary_term' = 'Billing City');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`billing_account` ALTER COLUMN `billing_city` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`billing_account` ALTER COLUMN `billing_city` SET TAGS ('dbx_pii_address' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`billing_account` ALTER COLUMN `billing_country_code` SET TAGS ('dbx_business_glossary_term' = 'Billing Country Code');
 ALTER TABLE `vibe_manufacturing_v1`.`billing`.`billing_account` ALTER COLUMN `billing_frequency` SET TAGS ('dbx_business_glossary_term' = 'Billing Frequency');
 ALTER TABLE `vibe_manufacturing_v1`.`billing`.`billing_account` ALTER COLUMN `billing_frequency` SET TAGS ('dbx_value_regex' = 'monthly|quarterly|annual|milestone|on_delivery');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`billing_account` ALTER COLUMN `billing_postal_code` SET TAGS ('dbx_business_glossary_term' = 'Billing Postal Code');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`billing_account` ALTER COLUMN `billing_postal_code` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`billing_account` ALTER COLUMN `billing_postal_code` SET TAGS ('dbx_pii_address' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`billing_account` ALTER COLUMN `billing_state` SET TAGS ('dbx_business_glossary_term' = 'Billing State/Province');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`billing_account` ALTER COLUMN `billing_state` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`billing_account` ALTER COLUMN `billing_state` SET TAGS ('dbx_pii_address' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`billing`.`billing_account` ALTER COLUMN `close_date` SET TAGS ('dbx_business_glossary_term' = 'Account Close Date');
 ALTER TABLE `vibe_manufacturing_v1`.`billing`.`billing_account` ALTER COLUMN `collection_stage` SET TAGS ('dbx_business_glossary_term' = 'Collection Stage');
 ALTER TABLE `vibe_manufacturing_v1`.`billing`.`billing_account` ALTER COLUMN `collection_stage` SET TAGS ('dbx_value_regex' = 'early|mid|late|defaulted');
 ALTER TABLE `vibe_manufacturing_v1`.`billing`.`billing_account` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Creation Timestamp');
 ALTER TABLE `vibe_manufacturing_v1`.`billing`.`billing_account` ALTER COLUMN `credit_limit_amount` SET TAGS ('dbx_business_glossary_term' = 'Credit Limit Amount');
 ALTER TABLE `vibe_manufacturing_v1`.`billing`.`billing_account` ALTER COLUMN `credit_rating` SET TAGS ('dbx_business_glossary_term' = 'Credit Rating');
-ALTER TABLE `vibe_manufacturing_v1`.`billing`.`billing_account` ALTER COLUMN `credit_rating` SET TAGS ('dbx_value_regex' = 'AAA|AA|A|BBB|BB|B');
 ALTER TABLE `vibe_manufacturing_v1`.`billing`.`billing_account` ALTER COLUMN `currency_code` SET TAGS ('dbx_business_glossary_term' = 'Billing Currency Code');
 ALTER TABLE `vibe_manufacturing_v1`.`billing`.`billing_account` ALTER COLUMN `current_ar_balance` SET TAGS ('dbx_business_glossary_term' = 'Current AR Balance');
 ALTER TABLE `vibe_manufacturing_v1`.`billing`.`billing_account` ALTER COLUMN `billing_account_description` SET TAGS ('dbx_business_glossary_term' = 'Account Description');
@@ -492,9 +643,7 @@ ALTER TABLE `vibe_manufacturing_v1`.`billing`.`billing_account` ALTER COLUMN `ne
 ALTER TABLE `vibe_manufacturing_v1`.`billing`.`billing_account` ALTER COLUMN `open_date` SET TAGS ('dbx_business_glossary_term' = 'Account Open Date');
 ALTER TABLE `vibe_manufacturing_v1`.`billing`.`billing_account` ALTER COLUMN `payment_due_day_of_month` SET TAGS ('dbx_business_glossary_term' = 'Payment Due Day of Month');
 ALTER TABLE `vibe_manufacturing_v1`.`billing`.`billing_account` ALTER COLUMN `payment_method` SET TAGS ('dbx_business_glossary_term' = 'Payment Method');
-ALTER TABLE `vibe_manufacturing_v1`.`billing`.`billing_account` ALTER COLUMN `payment_method` SET TAGS ('dbx_value_regex' = 'credit_card|bank_transfer|check|cash|direct_debit');
 ALTER TABLE `vibe_manufacturing_v1`.`billing`.`billing_account` ALTER COLUMN `preferred_payment_method` SET TAGS ('dbx_business_glossary_term' = 'Preferred Payment Method');
-ALTER TABLE `vibe_manufacturing_v1`.`billing`.`billing_account` ALTER COLUMN `preferred_payment_method` SET TAGS ('dbx_value_regex' = 'credit_card|bank_transfer|check|cash|direct_debit');
 ALTER TABLE `vibe_manufacturing_v1`.`billing`.`billing_account` ALTER COLUMN `tax_exempt_flag` SET TAGS ('dbx_business_glossary_term' = 'Tax Exempt Flag');
 ALTER TABLE `vibe_manufacturing_v1`.`billing`.`billing_account` ALTER COLUMN `tax_exempt_reason` SET TAGS ('dbx_business_glossary_term' = 'Tax Exempt Reason');
 ALTER TABLE `vibe_manufacturing_v1`.`billing`.`billing_account` ALTER COLUMN `tax_region_code` SET TAGS ('dbx_business_glossary_term' = 'Tax Region Code');
@@ -505,22 +654,80 @@ ALTER TABLE `vibe_manufacturing_v1`.`billing`.`billing_account` ALTER COLUMN `up
 ALTER TABLE `vibe_manufacturing_v1`.`billing`.`billing_account` ALTER COLUMN `vat_number` SET TAGS ('dbx_business_glossary_term' = 'VAT Identification Number');
 ALTER TABLE `vibe_manufacturing_v1`.`billing`.`billing_account` ALTER COLUMN `vat_number` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`billing`.`billing_account` ALTER COLUMN `vat_number` SET TAGS ('dbx_pii_identifier' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`dispute` SET TAGS ('dbx_data_type' = 'transactional_data');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`dispute` SET TAGS ('dbx_subdomain' = 'collections_management');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`dispute` ALTER COLUMN `dispute_id` SET TAGS ('dbx_business_glossary_term' = 'Billing Dispute Identifier');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`dispute` ALTER COLUMN `customer_account_id` SET TAGS ('dbx_business_glossary_term' = 'Disputing Party Identifier');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`dispute` ALTER COLUMN `delivery_note_id` SET TAGS ('dbx_business_glossary_term' = 'Delivery Note Id (Foreign Key)');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`dispute` ALTER COLUMN `header_id` SET TAGS ('dbx_business_glossary_term' = 'Related Order Identifier');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`dispute` ALTER COLUMN `lot_batch_id` SET TAGS ('dbx_business_glossary_term' = 'Lot Batch Id (Foreign Key)');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`dispute` ALTER COLUMN `primary_disputed_invoice_id` SET TAGS ('dbx_business_glossary_term' = 'Disputed Invoice Identifier');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`dispute` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Creation Timestamp');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`dispute` ALTER COLUMN `currency_code` SET TAGS ('dbx_business_glossary_term' = 'Currency Code (ISO 4217)');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`dispute` ALTER COLUMN `dispute_date` SET TAGS ('dbx_business_glossary_term' = 'Dispute Date');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`dispute` ALTER COLUMN `dispute_number` SET TAGS ('dbx_business_glossary_term' = 'Dispute Number');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`dispute` ALTER COLUMN `dispute_status` SET TAGS ('dbx_business_glossary_term' = 'Dispute Status');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`dispute` ALTER COLUMN `dispute_status` SET TAGS ('dbx_value_regex' = 'open|under_review|resolved|escalated|closed');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`dispute` ALTER COLUMN `disputed_amount` SET TAGS ('dbx_business_glossary_term' = 'Disputed Amount');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`dispute` ALTER COLUMN `escalation_flag` SET TAGS ('dbx_business_glossary_term' = 'Escalation Indicator');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`dispute` ALTER COLUMN `priority` SET TAGS ('dbx_business_glossary_term' = 'Dispute Priority');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`dispute` ALTER COLUMN `priority` SET TAGS ('dbx_value_regex' = 'low|medium|high|critical');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`dispute` ALTER COLUMN `reason_category` SET TAGS ('dbx_business_glossary_term' = 'Dispute Reason Category');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`dispute` ALTER COLUMN `reason_description` SET TAGS ('dbx_business_glossary_term' = 'Dispute Reason Description');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`dispute` ALTER COLUMN `resolution_date` SET TAGS ('dbx_business_glossary_term' = 'Resolution Date');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`dispute` ALTER COLUMN `resolution_notes` SET TAGS ('dbx_business_glossary_term' = 'Resolution Notes');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`dispute` ALTER COLUMN `resolution_type` SET TAGS ('dbx_business_glossary_term' = 'Dispute Resolution Type');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`dispute` ALTER COLUMN `resolution_type` SET TAGS ('dbx_value_regex' = 'credit_issued|payment_confirmed|partial_adjustment|rejected');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`dispute` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Update Timestamp');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`collections` SET TAGS ('dbx_data_type' = 'transactional_data');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`collections` SET TAGS ('dbx_subdomain' = 'collections_management');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`collections` ALTER COLUMN `collections_id` SET TAGS ('dbx_business_glossary_term' = 'Collections Identifier');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`collections` ALTER COLUMN `case_close_date` SET TAGS ('dbx_business_glossary_term' = 'Case Close Timestamp (CCT)');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`collections` ALTER COLUMN `case_description` SET TAGS ('dbx_business_glossary_term' = 'Case Description (CD)');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`collections` ALTER COLUMN `case_number` SET TAGS ('dbx_business_glossary_term' = 'Collection Case Number (CCN)');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`collections` ALTER COLUMN `case_open_date` SET TAGS ('dbx_business_glossary_term' = 'Case Open Timestamp (COT)');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`collections` ALTER COLUMN `case_status` SET TAGS ('dbx_business_glossary_term' = 'Collection Case Status (CCS)');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`collections` ALTER COLUMN `case_status` SET TAGS ('dbx_value_regex' = 'open|in_progress|escalated|resolved|closed');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`collections` ALTER COLUMN `case_strategy` SET TAGS ('dbx_business_glossary_term' = 'Collection Strategy (CS)');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`collections` ALTER COLUMN `collection_source_system` SET TAGS ('dbx_business_glossary_term' = 'Collection Source System (CSS)');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`collections` ALTER COLUMN `collection_stage` SET TAGS ('dbx_business_glossary_term' = 'Collection Stage (CSG)');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`collections` ALTER COLUMN `collection_stage` SET TAGS ('dbx_value_regex' = 'detection|reminder|escalation|legal|write_off');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`collections` ALTER COLUMN `communication_method` SET TAGS ('dbx_business_glossary_term' = 'Communication Method (CM)');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`collections` ALTER COLUMN `communication_method` SET TAGS ('dbx_value_regex' = 'email|letter|phone|legal');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`collections` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp (RCT)');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`collections` ALTER COLUMN `currency_code` SET TAGS ('dbx_business_glossary_term' = 'Currency Code (ISO 4217)');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`collections` ALTER COLUMN `currency_code` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`collections` ALTER COLUMN `customer_response_status` SET TAGS ('dbx_business_glossary_term' = 'Customer Response Status (CRS)');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`collections` ALTER COLUMN `customer_response_status` SET TAGS ('dbx_value_regex' = 'responded|no_response|partial');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`collections` ALTER COLUMN `dunning_charges` SET TAGS ('dbx_business_glossary_term' = 'Dunning Charges (DC)');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`collections` ALTER COLUMN `dunning_date` SET TAGS ('dbx_business_glossary_term' = 'Dunning Date (DD)');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`collections` ALTER COLUMN `dunning_level` SET TAGS ('dbx_business_glossary_term' = 'Dunning Level (DL)');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`collections` ALTER COLUMN `escalation_flag` SET TAGS ('dbx_business_glossary_term' = 'Escalation Flag (EF)');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`collections` ALTER COLUMN `external_reference_code` SET TAGS ('dbx_business_glossary_term' = 'External Reference Identifier (ERI)');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`collections` ALTER COLUMN `gross_exposure_amount` SET TAGS ('dbx_business_glossary_term' = 'Gross Exposure Amount (GEA)');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`collections` ALTER COLUMN `legal_action_flag` SET TAGS ('dbx_business_glossary_term' = 'Legal Action Flag (LAF)');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`collections` ALTER COLUMN `net_exposure_amount` SET TAGS ('dbx_business_glossary_term' = 'Net Exposure Amount (NEA)');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`collections` ALTER COLUMN `next_action_date` SET TAGS ('dbx_business_glossary_term' = 'Next Action Date (NAD)');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`collections` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Additional Notes (AN)');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`collections` ALTER COLUMN `payment_arrangement_flag` SET TAGS ('dbx_business_glossary_term' = 'Payment Arrangement Flag (PAF)');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`collections` ALTER COLUMN `payment_arrangement_type` SET TAGS ('dbx_business_glossary_term' = 'Payment Arrangement Type (PAT)');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`collections` ALTER COLUMN `promise_to_pay_date` SET TAGS ('dbx_business_glossary_term' = 'Promise‑to‑Pay Date (PTPD)');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`collections` ALTER COLUMN `promised_amount` SET TAGS ('dbx_business_glossary_term' = 'Promised Payment Amount (PPA)');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`collections` ALTER COLUMN `response_date` SET TAGS ('dbx_business_glossary_term' = 'Response Date (RD)');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`collections` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Updated Timestamp (RUT)');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`collections` ALTER COLUMN `write_off_candidate_flag` SET TAGS ('dbx_business_glossary_term' = 'Write‑Off Candidate Flag (WOCF)');
 ALTER TABLE `vibe_manufacturing_v1`.`billing`.`credit_limit` SET TAGS ('dbx_data_type' = 'master_data');
 ALTER TABLE `vibe_manufacturing_v1`.`billing`.`credit_limit` SET TAGS ('dbx_subdomain' = 'customer_accounts');
 ALTER TABLE `vibe_manufacturing_v1`.`billing`.`credit_limit` ALTER COLUMN `credit_limit_id` SET TAGS ('dbx_business_glossary_term' = 'Credit Limit ID');
-ALTER TABLE `vibe_manufacturing_v1`.`billing`.`credit_limit` ALTER COLUMN `billing_account_id` SET TAGS ('dbx_business_glossary_term' = 'Billing Account Id (Foreign Key)');
-ALTER TABLE `vibe_manufacturing_v1`.`billing`.`credit_limit` ALTER COLUMN `credit_profile_id` SET TAGS ('dbx_business_glossary_term' = 'Credit Profile Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`billing`.`credit_limit` ALTER COLUMN `approval_status` SET TAGS ('dbx_business_glossary_term' = 'Approval Status (AS)');
 ALTER TABLE `vibe_manufacturing_v1`.`billing`.`credit_limit` ALTER COLUMN `approval_status` SET TAGS ('dbx_value_regex' = 'approved|rejected|pending');
 ALTER TABLE `vibe_manufacturing_v1`.`billing`.`credit_limit` ALTER COLUMN `approved_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Approval Timestamp (AT)');
 ALTER TABLE `vibe_manufacturing_v1`.`billing`.`credit_limit` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Creation Timestamp (RCT)');
 ALTER TABLE `vibe_manufacturing_v1`.`billing`.`credit_limit` ALTER COLUMN `credit_block_flag` SET TAGS ('dbx_business_glossary_term' = 'Credit Block Flag (CBF)');
 ALTER TABLE `vibe_manufacturing_v1`.`billing`.`credit_limit` ALTER COLUMN `credit_check_method` SET TAGS ('dbx_business_glossary_term' = 'Credit Check Method (CCM)');
-ALTER TABLE `vibe_manufacturing_v1`.`billing`.`credit_limit` ALTER COLUMN `credit_check_method` SET TAGS ('dbx_value_regex' = 'automated|manual|external');
 ALTER TABLE `vibe_manufacturing_v1`.`billing`.`credit_limit` ALTER COLUMN `credit_horizon_days` SET TAGS ('dbx_business_glossary_term' = 'Credit Horizon (CH)');
 ALTER TABLE `vibe_manufacturing_v1`.`billing`.`credit_limit` ALTER COLUMN `credit_limit_number` SET TAGS ('dbx_business_glossary_term' = 'Credit Limit Number (CLN)');
 ALTER TABLE `vibe_manufacturing_v1`.`billing`.`credit_limit` ALTER COLUMN `credit_limit_status` SET TAGS ('dbx_business_glossary_term' = 'Credit Limit Status (CLS)');
-ALTER TABLE `vibe_manufacturing_v1`.`billing`.`credit_limit` ALTER COLUMN `credit_limit_status` SET TAGS ('dbx_value_regex' = 'active|inactive|pending|blocked');
 ALTER TABLE `vibe_manufacturing_v1`.`billing`.`credit_limit` ALTER COLUMN `currency_code` SET TAGS ('dbx_business_glossary_term' = 'Currency Code (CCY)');
 ALTER TABLE `vibe_manufacturing_v1`.`billing`.`credit_limit` ALTER COLUMN `current_exposure` SET TAGS ('dbx_business_glossary_term' = 'Current Credit Exposure (CCE)');
 ALTER TABLE `vibe_manufacturing_v1`.`billing`.`credit_limit` ALTER COLUMN `effective_from` SET TAGS ('dbx_business_glossary_term' = 'Effective From Date (EFD)');
@@ -535,52 +742,80 @@ ALTER TABLE `vibe_manufacturing_v1`.`billing`.`credit_limit` ALTER COLUMN `risk_
 ALTER TABLE `vibe_manufacturing_v1`.`billing`.`credit_limit` ALTER COLUMN `risk_category` SET TAGS ('dbx_value_regex' = 'A|B|C|D');
 ALTER TABLE `vibe_manufacturing_v1`.`billing`.`credit_limit` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Update Timestamp (RUT)');
 ALTER TABLE `vibe_manufacturing_v1`.`billing`.`credit_limit` ALTER COLUMN `utilization_percentage` SET TAGS ('dbx_business_glossary_term' = 'Credit Utilization Percentage (CUP)');
-ALTER TABLE `vibe_manufacturing_v1`.`billing`.`tax_determination` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_manufacturing_v1`.`billing`.`tax_determination` SET TAGS ('dbx_subdomain' = 'revenue_recognition');
-ALTER TABLE `vibe_manufacturing_v1`.`billing`.`tax_determination` ALTER COLUMN `tax_determination_id` SET TAGS ('dbx_business_glossary_term' = 'Tax Determination ID');
-ALTER TABLE `vibe_manufacturing_v1`.`billing`.`tax_determination` ALTER COLUMN `invoice_id` SET TAGS ('dbx_business_glossary_term' = 'Invoice ID');
-ALTER TABLE `vibe_manufacturing_v1`.`billing`.`tax_determination` ALTER COLUMN `invoice_line_id` SET TAGS ('dbx_business_glossary_term' = 'Invoice Line Id (Foreign Key)');
-ALTER TABLE `vibe_manufacturing_v1`.`billing`.`tax_determination` ALTER COLUMN `sku_master_id` SET TAGS ('dbx_business_glossary_term' = 'Product ID');
-ALTER TABLE `vibe_manufacturing_v1`.`billing`.`tax_determination` ALTER COLUMN `supply_plant_id` SET TAGS ('dbx_business_glossary_term' = 'Supply Plant Id (Foreign Key)');
-ALTER TABLE `vibe_manufacturing_v1`.`billing`.`tax_determination` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Creation Timestamp');
-ALTER TABLE `vibe_manufacturing_v1`.`billing`.`tax_determination` ALTER COLUMN `line_sequence` SET TAGS ('dbx_business_glossary_term' = 'Line Sequence Number');
-ALTER TABLE `vibe_manufacturing_v1`.`billing`.`tax_determination` ALTER COLUMN `reverse_charge_indicator` SET TAGS ('dbx_business_glossary_term' = 'Reverse Charge Indicator');
-ALTER TABLE `vibe_manufacturing_v1`.`billing`.`tax_determination` ALTER COLUMN `tax_amount` SET TAGS ('dbx_business_glossary_term' = 'Tax Amount');
-ALTER TABLE `vibe_manufacturing_v1`.`billing`.`tax_determination` ALTER COLUMN `tax_base_amount` SET TAGS ('dbx_business_glossary_term' = 'Tax Base Amount');
-ALTER TABLE `vibe_manufacturing_v1`.`billing`.`tax_determination` ALTER COLUMN `tax_calculation_method` SET TAGS ('dbx_business_glossary_term' = 'Tax Calculation Method');
-ALTER TABLE `vibe_manufacturing_v1`.`billing`.`tax_determination` ALTER COLUMN `tax_calculation_method` SET TAGS ('dbx_value_regex' = 'standard|manual|engine|rule_based');
-ALTER TABLE `vibe_manufacturing_v1`.`billing`.`tax_determination` ALTER COLUMN `tax_code` SET TAGS ('dbx_business_glossary_term' = 'Tax Code');
-ALTER TABLE `vibe_manufacturing_v1`.`billing`.`tax_determination` ALTER COLUMN `tax_currency_code` SET TAGS ('dbx_business_glossary_term' = 'Tax Currency Code (ISO 4217)');
-ALTER TABLE `vibe_manufacturing_v1`.`billing`.`tax_determination` ALTER COLUMN `tax_exempt_flag` SET TAGS ('dbx_business_glossary_term' = 'Tax Exempt Flag');
-ALTER TABLE `vibe_manufacturing_v1`.`billing`.`tax_determination` ALTER COLUMN `tax_exempt_reason` SET TAGS ('dbx_business_glossary_term' = 'Tax Exempt Reason');
-ALTER TABLE `vibe_manufacturing_v1`.`billing`.`tax_determination` ALTER COLUMN `tax_jurisdiction_country` SET TAGS ('dbx_business_glossary_term' = 'Tax Jurisdiction Country (ISO 3166‑1 Alpha‑3)');
-ALTER TABLE `vibe_manufacturing_v1`.`billing`.`tax_determination` ALTER COLUMN `tax_jurisdiction_region` SET TAGS ('dbx_business_glossary_term' = 'Tax Jurisdiction Region Code');
-ALTER TABLE `vibe_manufacturing_v1`.`billing`.`tax_determination` ALTER COLUMN `tax_line_description` SET TAGS ('dbx_business_glossary_term' = 'Tax Line Description');
-ALTER TABLE `vibe_manufacturing_v1`.`billing`.`tax_determination` ALTER COLUMN `tax_line_status` SET TAGS ('dbx_business_glossary_term' = 'Tax Line Status');
-ALTER TABLE `vibe_manufacturing_v1`.`billing`.`tax_determination` ALTER COLUMN `tax_line_status` SET TAGS ('dbx_value_regex' = 'pending|applied|rejected|adjusted');
-ALTER TABLE `vibe_manufacturing_v1`.`billing`.`tax_determination` ALTER COLUMN `tax_override_amount` SET TAGS ('dbx_business_glossary_term' = 'Tax Override Amount');
-ALTER TABLE `vibe_manufacturing_v1`.`billing`.`tax_determination` ALTER COLUMN `tax_override_flag` SET TAGS ('dbx_business_glossary_term' = 'Tax Override Flag');
-ALTER TABLE `vibe_manufacturing_v1`.`billing`.`tax_determination` ALTER COLUMN `tax_rate_percent` SET TAGS ('dbx_business_glossary_term' = 'Tax Rate Percent');
-ALTER TABLE `vibe_manufacturing_v1`.`billing`.`tax_determination` ALTER COLUMN `tax_registration_number` SET TAGS ('dbx_business_glossary_term' = 'Tax Registration Number');
-ALTER TABLE `vibe_manufacturing_v1`.`billing`.`tax_determination` ALTER COLUMN `tax_reporting_period` SET TAGS ('dbx_business_glossary_term' = 'Tax Reporting Period');
-ALTER TABLE `vibe_manufacturing_v1`.`billing`.`tax_determination` ALTER COLUMN `tax_source_system` SET TAGS ('dbx_business_glossary_term' = 'Tax Source System');
-ALTER TABLE `vibe_manufacturing_v1`.`billing`.`tax_determination` ALTER COLUMN `tax_type` SET TAGS ('dbx_business_glossary_term' = 'Tax Type');
-ALTER TABLE `vibe_manufacturing_v1`.`billing`.`tax_determination` ALTER COLUMN `tax_type` SET TAGS ('dbx_value_regex' = 'VAT|GST|sales_tax|withholding_tax|excise_duty');
-ALTER TABLE `vibe_manufacturing_v1`.`billing`.`tax_determination` ALTER COLUMN `tax_validated_flag` SET TAGS ('dbx_business_glossary_term' = 'Tax Validated Flag');
-ALTER TABLE `vibe_manufacturing_v1`.`billing`.`tax_determination` ALTER COLUMN `tax_validated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Tax Validated Timestamp');
-ALTER TABLE `vibe_manufacturing_v1`.`billing`.`tax_determination` ALTER COLUMN `taxable_quantity` SET TAGS ('dbx_business_glossary_term' = 'Taxable Quantity');
-ALTER TABLE `vibe_manufacturing_v1`.`billing`.`tax_determination` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Update Timestamp');
-ALTER TABLE `vibe_manufacturing_v1`.`billing`.`payment_application` SET TAGS ('dbx_data_type' = 'association_data');
-ALTER TABLE `vibe_manufacturing_v1`.`billing`.`payment_application` SET TAGS ('dbx_subdomain' = 'cash_application');
-ALTER TABLE `vibe_manufacturing_v1`.`billing`.`payment_application` SET TAGS ('dbx_association_edges' = 'billing.payment,billing.invoice');
-ALTER TABLE `vibe_manufacturing_v1`.`billing`.`payment_application` ALTER COLUMN `payment_application_id` SET TAGS ('dbx_business_glossary_term' = 'Payment Application ID');
-ALTER TABLE `vibe_manufacturing_v1`.`billing`.`payment_application` ALTER COLUMN `invoice_id` SET TAGS ('dbx_business_glossary_term' = 'Payment Application - Invoice Id');
-ALTER TABLE `vibe_manufacturing_v1`.`billing`.`payment_application` ALTER COLUMN `payment_id` SET TAGS ('dbx_business_glossary_term' = 'Payment Application - Payment Id');
-ALTER TABLE `vibe_manufacturing_v1`.`billing`.`payment_application` ALTER COLUMN `allocated_amount` SET TAGS ('dbx_business_glossary_term' = 'Allocated Amount');
-ALTER TABLE `vibe_manufacturing_v1`.`billing`.`payment_application` ALTER COLUMN `allocation_date` SET TAGS ('dbx_business_glossary_term' = 'Allocation Date');
-ALTER TABLE `vibe_manufacturing_v1`.`billing`.`payment_application` ALTER COLUMN `allocation_sequence` SET TAGS ('dbx_business_glossary_term' = 'Allocation Sequence');
-ALTER TABLE `vibe_manufacturing_v1`.`billing`.`payment_application` ALTER COLUMN `allocation_status` SET TAGS ('dbx_business_glossary_term' = 'Allocation Status');
-ALTER TABLE `vibe_manufacturing_v1`.`billing`.`payment_application` ALTER COLUMN `allocation_type` SET TAGS ('dbx_business_glossary_term' = 'Allocation Type');
-ALTER TABLE `vibe_manufacturing_v1`.`billing`.`payment_application` ALTER COLUMN `clearing_status` SET TAGS ('dbx_business_glossary_term' = 'Clearing Status');
-ALTER TABLE `vibe_manufacturing_v1`.`billing`.`payment_application` ALTER COLUMN `discount_taken` SET TAGS ('dbx_business_glossary_term' = 'Discount Taken');
-ALTER TABLE `vibe_manufacturing_v1`.`billing`.`payment_application` ALTER COLUMN `early_payment_discount_applied` SET TAGS ('dbx_business_glossary_term' = 'Early Payment Discount Applied');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`billing_schedule` SET TAGS ('dbx_data_type' = 'master_data');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`billing_schedule` SET TAGS ('dbx_subdomain' = 'customer_accounts');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`billing_schedule` ALTER COLUMN `billing_schedule_id` SET TAGS ('dbx_business_glossary_term' = 'Billing Schedule Identifier');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`billing_schedule` ALTER COLUMN `payment_term_id` SET TAGS ('dbx_business_glossary_term' = 'Payment Term Id (Foreign Key)');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`billing_schedule` ALTER COLUMN `actual_billed_amount` SET TAGS ('dbx_business_glossary_term' = 'Actual Billed Amount');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`billing_schedule` ALTER COLUMN `actual_billing_date` SET TAGS ('dbx_business_glossary_term' = 'Actual Billing Date');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`billing_schedule` ALTER COLUMN `billing_currency_code` SET TAGS ('dbx_business_glossary_term' = 'Billing Currency Code');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`billing_schedule` ALTER COLUMN `billing_currency_code` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`billing_schedule` ALTER COLUMN `billing_status` SET TAGS ('dbx_business_glossary_term' = 'Billing Status');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`billing_schedule` ALTER COLUMN `billing_status` SET TAGS ('dbx_value_regex' = 'planned|ready_to_bill|billed|on_hold|cancelled');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`billing_schedule` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Creation Timestamp');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`billing_schedule` ALTER COLUMN `discount_amount` SET TAGS ('dbx_business_glossary_term' = 'Discount Amount');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`billing_schedule` ALTER COLUMN `is_retention_applicable` SET TAGS ('dbx_business_glossary_term' = 'Retention Applicable Indicator');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`billing_schedule` ALTER COLUMN `line_number` SET TAGS ('dbx_business_glossary_term' = 'Schedule Line Number');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`billing_schedule` ALTER COLUMN `milestone_description` SET TAGS ('dbx_business_glossary_term' = 'Billing Milestone Description');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`billing_schedule` ALTER COLUMN `milestone_type` SET TAGS ('dbx_business_glossary_term' = 'Billing Milestone Type');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`billing_schedule` ALTER COLUMN `milestone_type` SET TAGS ('dbx_value_regex' = 'advance_payment|progress_billing|final_billing|retention_release');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`billing_schedule` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Billing Schedule Notes');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`billing_schedule` ALTER COLUMN `percentage_complete_trigger` SET TAGS ('dbx_business_glossary_term' = 'Percentage Complete Trigger');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`billing_schedule` ALTER COLUMN `planned_billing_amount` SET TAGS ('dbx_business_glossary_term' = 'Planned Billing Amount');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`billing_schedule` ALTER COLUMN `planned_billing_date` SET TAGS ('dbx_business_glossary_term' = 'Planned Billing Date');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`billing_schedule` ALTER COLUMN `retention_amount` SET TAGS ('dbx_business_glossary_term' = 'Retention Amount');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`billing_schedule` ALTER COLUMN `tax_amount` SET TAGS ('dbx_business_glossary_term' = 'Tax Amount');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`billing_schedule` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Update Timestamp');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`payment_term` SET TAGS ('dbx_data_type' = 'reference_data');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`payment_term` SET TAGS ('dbx_subdomain' = 'customer_accounts');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`payment_term` ALTER COLUMN `payment_term_id` SET TAGS ('dbx_business_glossary_term' = 'Payment Term ID');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`payment_term` ALTER COLUMN `base_payment_term_id` SET TAGS ('dbx_business_glossary_term' = 'Base Payment Term Id');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`payment_term` ALTER COLUMN `base_payment_term_id` SET TAGS ('dbx_self_ref_fk' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`payment_term` ALTER COLUMN `allowed_payment_channel` SET TAGS ('dbx_business_glossary_term' = 'Allowed Payment Channel');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`payment_term` ALTER COLUMN `allowed_payment_method` SET TAGS ('dbx_business_glossary_term' = 'Allowed Payment Method');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`payment_term` ALTER COLUMN `applicable_invoice_type` SET TAGS ('dbx_business_glossary_term' = 'Applicable Invoice Type');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`payment_term` ALTER COLUMN `applicable_invoice_type` SET TAGS ('dbx_value_regex' = 'standard|credit|debit|proforma|rebate');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`payment_term` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`payment_term` ALTER COLUMN `currency_code` SET TAGS ('dbx_business_glossary_term' = 'Currency Code (ISO 4217)');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`payment_term` ALTER COLUMN `currency_code` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`payment_term` ALTER COLUMN `early_payment_discount_days` SET TAGS ('dbx_business_glossary_term' = 'Early Payment Discount Days');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`payment_term` ALTER COLUMN `early_payment_discount_percent` SET TAGS ('dbx_business_glossary_term' = 'Early Payment Discount Percent');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`payment_term` ALTER COLUMN `effective_from` SET TAGS ('dbx_business_glossary_term' = 'Effective From Date');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`payment_term` ALTER COLUMN `effective_until` SET TAGS ('dbx_business_glossary_term' = 'Effective Until Date');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`payment_term` ALTER COLUMN `grace_period_days` SET TAGS ('dbx_business_glossary_term' = 'Grace Period Days');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`payment_term` ALTER COLUMN `grace_period_days` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`payment_term` ALTER COLUMN `grace_period_days` SET TAGS ('dbx_mask_in_nonprod' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`payment_term` ALTER COLUMN `is_default` SET TAGS ('dbx_business_glossary_term' = 'Default Payment Term Flag');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`payment_term` ALTER COLUMN `is_tax_exempt` SET TAGS ('dbx_business_glossary_term' = 'Tax Exempt Flag');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`payment_term` ALTER COLUMN `max_discount_amount` SET TAGS ('dbx_business_glossary_term' = 'Maximum Discount Amount');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`payment_term` ALTER COLUMN `min_payment_amount` SET TAGS ('dbx_business_glossary_term' = 'Minimum Payment Amount');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`payment_term` ALTER COLUMN `payment_term_name` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`payment_term` ALTER COLUMN `net_days` SET TAGS ('dbx_business_glossary_term' = 'Net Days');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`payment_term` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Payment Term Notes');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`payment_term` ALTER COLUMN `payment_term_status` SET TAGS ('dbx_business_glossary_term' = 'Payment Term Status');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`payment_term` ALTER COLUMN `penalty_rate_percent` SET TAGS ('dbx_business_glossary_term' = 'Penalty Rate Percent');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`payment_term` ALTER COLUMN `penalty_type` SET TAGS ('dbx_business_glossary_term' = 'Penalty Type');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`payment_term` ALTER COLUMN `penalty_type` SET TAGS ('dbx_value_regex' = 'percentage|flat_fee');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`payment_term` ALTER COLUMN `tax_exempt_reason` SET TAGS ('dbx_business_glossary_term' = 'Tax Exempt Reason');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`payment_term` ALTER COLUMN `term_code` SET TAGS ('dbx_business_glossary_term' = 'Payment Term Code');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`payment_term` ALTER COLUMN `term_code` SET TAGS ('dbx_value_regex' = '^[A-Z0-9_]{1,20}$');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`payment_term` ALTER COLUMN `term_type` SET TAGS ('dbx_business_glossary_term' = 'Payment Term Type');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`payment_term` ALTER COLUMN `term_type` SET TAGS ('dbx_value_regex' = 'net|discount|milestone|retention|custom');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`payment_term` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Updated Timestamp');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`payment_term` ALTER COLUMN `version_number` SET TAGS ('dbx_business_glossary_term' = 'Payment Term Version Number');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`payment_allocation` SET TAGS ('dbx_data_type' = 'association_data');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`payment_allocation` SET TAGS ('dbx_subdomain' = 'revenue_recognition');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`payment_allocation` SET TAGS ('dbx_association_edges' = 'billing.payment,billing.invoice');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`payment_allocation` ALTER COLUMN `payment_allocation_id` SET TAGS ('dbx_business_glossary_term' = 'Payment Allocation Identifier');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`payment_allocation` ALTER COLUMN `invoice_id` SET TAGS ('dbx_business_glossary_term' = 'Invoice Identifier');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`payment_allocation` ALTER COLUMN `payment_id` SET TAGS ('dbx_business_glossary_term' = 'Payment Identifier');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`payment_allocation` ALTER COLUMN `allocated_amount` SET TAGS ('dbx_business_glossary_term' = 'Allocated Amount');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`payment_allocation` ALTER COLUMN `allocation_date` SET TAGS ('dbx_business_glossary_term' = 'Allocation Date');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`payment_allocation` ALTER COLUMN `allocation_sequence` SET TAGS ('dbx_business_glossary_term' = 'Allocation Sequence');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`payment_allocation` ALTER COLUMN `allocation_status` SET TAGS ('dbx_business_glossary_term' = 'Allocation Status');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`payment_allocation` ALTER COLUMN `allocation_type` SET TAGS ('dbx_business_glossary_term' = 'Allocation Type');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`payment_allocation` ALTER COLUMN `clearing_document_number` SET TAGS ('dbx_business_glossary_term' = 'Clearing Document Number');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`payment_allocation` ALTER COLUMN `clearing_status` SET TAGS ('dbx_business_glossary_term' = 'Clearing Status');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`payment_allocation` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`payment_allocation` ALTER COLUMN `discount_taken` SET TAGS ('dbx_business_glossary_term' = 'Discount Taken');
+ALTER TABLE `vibe_manufacturing_v1`.`billing`.`payment_allocation` ALTER COLUMN `early_payment_discount_applied` SET TAGS ('dbx_business_glossary_term' = 'Early Payment Discount Applied');

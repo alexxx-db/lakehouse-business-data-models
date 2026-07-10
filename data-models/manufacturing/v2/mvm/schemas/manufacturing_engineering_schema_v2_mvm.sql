@@ -1,5 +1,5 @@
 -- Schema for Domain: engineering | Business: Manufacturing | Version: v2_mvm
--- Generated on: 2026-07-10 14:44:07
+-- Generated on: 2026-07-03 07:50:03
 
 -- ========= DATABASE =========
 CREATE DATABASE IF NOT EXISTS `vibe_manufacturing_v1`.`engineering` COMMENT 'Product design and engineering lifecycle domain covering CAD/CAM models, BOMs, ECOs, ECNs, DFM analysis, DFMEA, PFMEA, and PLM data managed in Siemens Teamcenter. Serves as the SSOT for product structure, revision history, engineering change governance, technical specifications, drawings, and prototypes for all manufactured automation systems.';
@@ -7,10 +7,7 @@ CREATE DATABASE IF NOT EXISTS `vibe_manufacturing_v1`.`engineering` COMMENT 'Pro
 -- ========= TABLES =========
 CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`engineering`.`component` (
     `component_id` BIGINT COMMENT 'Unique identifier for the component. Primary key for the component master record.',
-    `customer_account_id` BIGINT COMMENT 'Foreign key linking to customer.customer_account. Business justification: Customer-proprietary components in OEM/contract manufacturing require customer association for IP ownership, export control compliance, and customer-triggered obsolescence notifications. component has',
     `material_master_id` BIGINT COMMENT 'Foreign key linking to inventory.material_master. Business justification: Inventory Management tracks stock of each engineered component via Material Master for procurement and WIP planning.',
-    `project_id` BIGINT COMMENT 'Foreign key linking to engineering.engineering_project. Business justification: Components are designed and developed within engineering projects. The primary engineering project that originated or owns a component is a fundamental PLM relationship. Linking component to engineeri',
-    `sku_master_id` BIGINT COMMENT 'Foreign key linking to product.sku_master. Business justification: Make-or-buy components map directly to SKUs for costing, procurement, and production planning. The component-to-SKU traceability process in PLM-to-ERP integration requires this link. A manufacturing',
     `substitute_component_id` BIGINT COMMENT 'Identifier of an approved substitute component that can be used interchangeably. Supports supply chain flexibility and risk mitigation.',
     `abc_classification` STRING COMMENT 'Inventory classification by value contribution. A items are high-value requiring tight control, C items are low-value with relaxed management.. Valid values are `A|B|C`',
     `cad_model_reference` STRING COMMENT 'File path or URI reference to the authoritative CAD model in PLM. Links to 3D geometry for design, simulation, and manufacturing.',
@@ -18,7 +15,7 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`engineering`.`component` (
     `commodity_code` STRING COMMENT 'Procurement commodity classification code. Groups components by material family for sourcing strategy and supplier alignment.',
     `component_number` STRING COMMENT 'Business identifier for the component. Human-readable unique code used across engineering, procurement, and manufacturing.',
     `component_type` STRING COMMENT 'Classification of the component by procurement and manufacturing strategy. Determines BOM explosion logic and sourcing approach.. Valid values are `raw_material|purchased_part|manufactured_part|sub_assembly|assembly|phantom`',
-    `cost_currency_code` STRING COMMENT 'ISO 4217 three-letter currency code for standard cost. Enables multi-currency cost management.. Valid values are `^[A-Z]{3}$`',
+    `cost_currency_code` DECIMAL(18,2) COMMENT 'ISO 4217 three-letter currency code for standard cost. Enables multi-currency cost management.',
     `created_timestamp` TIMESTAMP COMMENT 'Date and time when the component record was first created in PLM. Audit trail for lifecycle tracking.',
     `component_description` STRING COMMENT 'Detailed technical description of the component including functional characteristics, application context, and distinguishing features.',
     `dfm_score` DECIMAL(18,2) COMMENT 'Quantitative assessment of component manufacturability. Higher scores indicate easier, lower-cost manufacturing.',
@@ -60,13 +57,11 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`engineering`.`component` (
 
 CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`engineering`.`bom` (
     `bom_id` BIGINT COMMENT 'Unique identifier for the Bill of Materials record. Primary key for the BOM master data entity.',
-    `asset_plant_id` BIGINT COMMENT 'Foreign key linking to asset.asset_plant. Business justification: BOMs are plant-specific in manufacturing — different plants may have different approved BOMs for the same product due to local tooling, supplier approvals, or regulatory requirements. bom.plant_code i',
-    `component_id` BIGINT COMMENT 'Foreign key linking to engineering.component. Business justification: A BOM is defined for a specific root component or assembly. This is the fundamental parent-child relationship: bom belongs to component. The existing plm_item_code (BIGINT) on bom is a denormalized PL',
+    `component_id` BIGINT COMMENT 'Foreign key linking to engineering.component. Business justification: A BOM master record defines the structured product hierarchy FOR a specific top-level component or assembly. This is the foundational PLM relationship — every BOM belongs to a parent component. The bo',
     `customer_account_id` BIGINT COMMENT 'Foreign key linking to customer.customer_account. Business justification: Customer‑specific BOMs are created for contract fulfillment; linking BOM to customer_account enables contract‑BOM reconciliation reports.',
-    `eco_id` BIGINT COMMENT 'Foreign key linking to engineering.eco. Business justification: A BOM revision is formally initiated and governed by an Engineering Change Order. The existing engineering_change_order_number (STRING) is a denormalized text reference to the ECO record. Replacing it',
-    `bom_header_id` BIGINT COMMENT 'Foreign key linking to product.bom_header. Business justification: The ECO-driven BOM release process transfers an engineering BOM into a production BOM header. This header-to-header link tracks which product BOM was created from which engineering BOM, enabling cha',
-    `revision_id` BIGINT COMMENT 'Foreign key linking to engineering.engineering_revision. Business justification: A BOM is associated with a specific engineering revision of its parent component/assembly. Linking bom to engineering_revision enables full traceability of which revision state the BOM represents, sup',
-    `sku_master_id` BIGINT COMMENT 'Foreign key linking to product.sku_master. Business justification: Every engineering BOM defines the structure of a specific product SKU. The BOM costing and production planning process requires knowing which SKU a BOM defines. Manufacturing engineers expect a dire',
+    `material_master_id` BIGINT COMMENT 'Foreign key linking to inventory.material_master. Business justification: BOM explosion, MRP, and cost rollup require knowing which material_master record (the parent assembly) a BOM belongs to. In ERP systems, every BOM header is registered against a parent material number',
+    `project_id` BIGINT COMMENT 'Foreign key linking to engineering.engineering_project. Business justification: A Bill of Materials is developed and released within the context of an engineering project. Linking bom to engineering_project enables project-level BOM traceability and supports program management re',
+    `warehouse_id` BIGINT COMMENT 'Foreign key linking to inventory.warehouse. Business justification: BOMs in manufacturing are plant/warehouse-specific; the same assembly may have different BOMs per plant. MRP and production planning require resolving bom.plant_code to a warehouse record. The existin',
     `alternative_bom_indicator` STRING COMMENT 'Identifier for alternative BOM variants of the same product, used to represent different manufacturing methods, material substitutions, or regional variations. Blank for primary BOM.',
     `approval_status` STRING COMMENT 'Current approval state of the BOM in the engineering change workflow. Pending indicates awaiting review, Approved means released for use, Rejected means not accepted, Conditional means approved with restrictions or prerequisites.. Valid values are `pending|approved|rejected|conditional`',
     `approved_by` STRING COMMENT 'Name or identifier of the person or role who approved this BOM revision. Supports audit trail and accountability for engineering change management.',
@@ -76,13 +71,14 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`engineering`.`bom` (
     `bom_status` STRING COMMENT 'Current lifecycle state of the BOM. Draft indicates work in progress, In Review means under engineering approval, Approved is ready for release, Active is in production use, Obsolete is no longer valid, Superseded has been replaced by a newer revision, and Frozen is locked for regulatory or contractual reasons. [ENUM-REF-CANDIDATE: draft|in_review|approved|active|obsolete|superseded|frozen — 7 candidates stripped; promote to reference product]',
     `bom_type` STRING COMMENT 'Classification of the BOM by its intended business purpose. Engineering BOM (EBOM) represents design intent, Manufacturing BOM (MBOM) reflects shop floor assembly, Service BOM supports after-sales maintenance, Sales BOM defines customer-facing configurations, Planning BOM is used for MRP, and As-Maintained BOM tracks actual installed configurations.. Valid values are `engineering|manufacturing|service|sales|planning|as_maintained`',
     `bom_category` STRING COMMENT 'High-level classification of the BOM structure. Material BOM lists physical components, Document BOM references technical drawings and specifications, Equipment BOM defines installed assets, Variant BOM supports product families, Configurable BOM enables customer-specific selections.. Valid values are `material|document|equipment|variant|configurable`',
-    `configuration_profile` STRING COMMENT 'Identifier for a variant configuration profile or product family definition. Used in configurable BOMs to define which components are included based on customer selections or feature options.',
-    `cost_estimate_currency` STRING COMMENT 'ISO 4217 three-letter currency code for the BOM cost estimate. Supports multi-currency costing for global manufacturing operations.. Valid values are `USD|EUR|GBP|CNY|JPY|INR`',
+    `configuration_profile` DECIMAL(18,2) COMMENT 'Identifier for a variant configuration profile or product family definition. Used in configurable BOMs to define which components are included based on customer selections or feature options.',
+    `cost_estimate_currency` DECIMAL(18,2) COMMENT 'ISO 4217 three-letter currency code for the BOM cost estimate. Supports multi-currency costing for global manufacturing operations.',
     `cost_estimate_total` DECIMAL(18,2) COMMENT 'Estimated total cost of the BOM including all material, labor, and overhead components. Rolled up from component costs and routing operations. Used for product costing and pricing decisions.',
     `created_timestamp` TIMESTAMP COMMENT 'Date and time when this BOM record was first created in the PLM system. Provides audit trail for data governance and compliance.',
     `bom_description` STRING COMMENT 'Free-text description of the BOM, providing additional context about the product structure, manufacturing method, or special handling requirements. Supplements the BOM number and type.',
     `effective_from_date` DATE COMMENT 'Date from which this BOM revision becomes valid and can be used for production planning, procurement, and manufacturing execution. Supports time-phased BOM management for product transitions.',
     `effective_to_date` DATE COMMENT 'Date until which this BOM revision remains valid. Nullable for open-ended BOMs. Used to manage phase-out of legacy product structures and ensure correct BOM selection in MRP and MES systems.',
+    `engineering_change_order_number` STRING COMMENT 'Reference to the ECO that created or last modified this BOM revision. Provides traceability to the engineering change management process and links to ECO approval workflows.',
     `explosion_type` STRING COMMENT 'Defines how the BOM structure should be expanded for planning and execution. Single Level shows only immediate children, Multi Level recursively expands all sub-assemblies, Summarized aggregates quantities across all levels.. Valid values are `single_level|multi_level|summarized`',
     `is_configurable` BOOLEAN COMMENT 'Flag indicating whether this BOM supports variant configuration, allowing customer-specific or order-specific component selection. True for configurable BOMs, False for fixed BOMs.',
     `is_critical_bom` BOOLEAN COMMENT 'Flag indicating whether this BOM is for a critical or high-value product requiring special handling, approval workflows, or regulatory compliance. True for critical BOMs, False for standard BOMs.',
@@ -91,6 +87,7 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`engineering`.`bom` (
     `modified_by` STRING COMMENT 'Name or identifier of the person or system that last modified this BOM record. Supports audit trail and change tracking.',
     `modified_timestamp` TIMESTAMP COMMENT 'Date and time when this BOM record was last updated. Distinct from approval and effectivity dates. Provides audit trail for data governance.',
     `notes` STRING COMMENT 'Additional notes, comments, or instructions related to this BOM. May include manufacturing guidelines, quality requirements, or special handling instructions for production planning and shop floor execution.',
+    `plm_item_code` BIGINT COMMENT 'Reference to the owning PLM item in Siemens Teamcenter that this BOM structure represents. Links the BOM to its parent product or assembly definition.',
     `production_version` STRING COMMENT 'Identifier linking this BOM to a specific production version in SAP PP, which combines a BOM with a routing to define a complete manufacturing process. Supports multiple production methods for the same product.',
     `quantity_basis` DECIMAL(18,2) COMMENT 'The base quantity for which this BOM is defined, typically 1 for single-unit BOMs or a batch size for process manufacturing. All component quantities in the BOM structure are expressed relative to this basis.',
     `revision` STRING COMMENT 'Revision level or version identifier for this BOM structure. Tracks engineering changes and ensures traceability across ECO and ECN processes. Critical for change management and configuration control.',
@@ -104,17 +101,15 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`engineering`.`bom` (
     CONSTRAINT pk_bom PRIMARY KEY(`bom_id`)
 ) COMMENT 'Bill of Materials master record defining the structured product hierarchy for a given component or finished assembly at a specific revision. Captures BOM type (engineering BOM, manufacturing BOM, service BOM), effectivity dates, quantity basis, unit of measure, and the owning PLM item. Acts as the SSOT for product structure consumed by MRP, MES, and production planning.';
 
-CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`engineering`.`engineering_bom_line` (
-    `engineering_bom_line_id` BIGINT COMMENT 'Unique identifier for the BOM line item. Primary key for the BOM line entity representing a single parent-child component relationship within a bill of materials structure.',
-    `bom_header_id` BIGINT COMMENT 'Reference to the parent BOM header that this line belongs to. Links the line item to its containing bill of materials assembly structure.',
+CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`engineering`.`bom_line` (
+    `bom_line_id` BIGINT COMMENT 'Unique identifier for the BOM line item. Primary key for the BOM line entity representing a single parent-child component relationship within a bill of materials structure.',
     `bom_id` BIGINT COMMENT 'Foreign key linking to engineering.bom. Business justification: bom_line represents a line item belonging to a BOM; adding bom_id creates the required parent-child relationship and eliminates the BOM silo.',
-    `eco_id` BIGINT COMMENT 'Foreign key linking to engineering.eco. Business justification: Individual BOM line items are added, modified, or deleted as part of Engineering Change Orders. The existing change_number (STRING) on engineering_bom_line is a denormalized text reference to the gove',
-    `material_master_id` BIGINT COMMENT 'Foreign key linking to inventory.material_master. Business justification: MRP explosion requires each BOM line to reference a material master directly for inventory requirements planning, stock reservation, and procurement triggering. Manufacturing planners use BOM line → m',
     `component_id` BIGINT COMMENT 'Reference to the parent assembly or product that contains this component. Represents the parent side of the parent-child relationship in the BOM structure.',
-    `revision_id` BIGINT COMMENT 'Foreign key linking to engineering.engineering_revision. Business justification: A BOM line item is effective for a specific revision range of the parent assembly. Linking engineering_bom_line to engineering_revision (the specific revision at which this line was introduced or is v',
+    `revision_id` BIGINT COMMENT 'Foreign key linking to engineering.engineering_revision. Business justification: Each BOM line item references a component at a specific revision level — effectivity is controlled by revision. The engineering_bom_line table currently stores revision_level as a STRING denormalized ',
     `tertiary_engineering_substitute_component_id` BIGINT COMMENT 'Reference to an approved alternate component that can be used in place of the primary component without requiring an Engineering Change Order (ECO). Enables flexible sourcing and supply chain continuity.',
     `assembly_instruction` STRING COMMENT 'Specific instructions for assembling or installing this component into the parent assembly. May reference work instructions, torque specifications, or special tooling requirements.',
     `bulk_material_flag` BOOLEAN COMMENT 'Indicates whether this component is a bulk material (e.g., paint, adhesive, lubricant) that is consumed in variable quantities and may not be tracked at individual unit level.',
+    `change_number` STRING COMMENT 'The Engineering Change Order (ECO) or Engineering Change Notice (ECN) number that introduced or last modified this BOM line. Provides traceability to engineering change governance processes.',
     `co_product_flag` BOOLEAN COMMENT 'Indicates whether this line represents a co-product or by-product that is produced alongside the main assembly. Co-products have negative quantities in the BOM and represent outputs rather than inputs.',
     `cost_rollup_flag` BOOLEAN COMMENT 'Indicates whether the cost of this component should be included in the parent assembly cost rollup calculation. Some components (e.g., reference items, tooling) may be excluded from product costing.',
     `created_timestamp` TIMESTAMP COMMENT 'The date and time when this BOM line record was first created in the system. Used for audit trail and change tracking.',
@@ -136,23 +131,20 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`engineering`.`engineering_bom_l
     `procurement_type` STRING COMMENT 'Indicates how this component is obtained: manufactured in-house (make), purchased from suppliers (buy), transferred from another plant (transfer), or subcontracted to external manufacturers.. Valid values are `make|buy|transfer|subcontract`',
     `quantity_per_assembly` DECIMAL(18,2) COMMENT 'The number of units of this component required to build one unit of the parent assembly. Used for material requirements planning (MRP) calculations and cost rollup.',
     `reference_designator` STRING COMMENT 'Alphanumeric code identifying the specific location or function of the component in the assembly (e.g., R1, C5, U3 for electronics; A-01, B-12 for mechanical). Used in assembly instructions and maintenance documentation.',
-    `revision_level` STRING COMMENT 'The revision or version of the component that is specified for use in this assembly. Ensures that the correct component revision is used for manufacturing and quality control.',
     `scrap_factor_percentage` DECIMAL(18,2) COMMENT 'Expected scrap or waste percentage for this component during assembly or manufacturing. Used to adjust material requirements planning (MRP) calculations to account for normal production losses.',
     `sort_sequence` STRING COMMENT 'Numeric value used to control the display order of BOM lines in reports, pick lists, and assembly instructions. Lower values appear first.',
     `substitute_qualification_status` STRING COMMENT 'Approval status of the substitute component for use in this assembly. Indicates whether the alternate has passed qualification testing and is approved for production use.. Valid values are `qualified|conditional|pending|not_qualified`',
     `substitute_usage_restriction` STRING COMMENT 'Conditions or limitations on when the substitute component may be used (e.g., only for specific customer orders, only when primary is unavailable, geographic restrictions). Ensures proper alternate sourcing governance.',
     `unit_of_measure` STRING COMMENT 'The unit in which the component quantity is expressed (e.g., each, kilogram, meter, liter). Must align with the component material master UOM for accurate MRP and inventory calculations. [ENUM-REF-CANDIDATE: EA|PC|KG|G|L|ML|M|CM|FT|IN|SET|PAIR|BOX|ROLL|SHEET — 15 candidates stripped; promote to reference product]',
     `created_by` STRING COMMENT 'The user or system account that created this BOM line record. Used for audit trail and change management purposes.',
-    CONSTRAINT pk_engineering_bom_line PRIMARY KEY(`engineering_bom_line_id`)
+    CONSTRAINT pk_bom_line PRIMARY KEY(`bom_line_id`)
 ) COMMENT 'Individual line item within a Bill of Materials, representing a single parent-child component relationship. Captures position number, find number, quantity per assembly, unit of measure, reference designator, substitute component references (approved alternates with qualification status and usage restrictions), phantom flag, effectivity start/end dates, and engineering notes. Enables full BOM explosion and implosion queries for MRP, supports alternate sourcing without ECO, and provides the granular structure for production routing and cost rollup.';
 
 CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`engineering`.`cad_model` (
     `cad_model_id` BIGINT COMMENT 'Unique identifier for the CAD/CAM design file record in the PLM system.',
     `component_id` BIGINT COMMENT 'Reference to the manufactured component or assembly that this CAD model represents.',
-    `customer_account_id` BIGINT COMMENT 'Foreign key linking to customer.customer_account. Business justification: Customer-proprietary CAD models require customer association for IP ownership enforcement, export control classification (ITAR/EAR), and NDA-governed confidentiality management. cad_model has intellec',
-    `drawing_id` BIGINT COMMENT 'Foreign key linking to engineering.drawing. Business justification: A CAD model is the 3D source from which the formal 2D engineering drawing is derived. The existing drawing_number (STRING) on cad_model is a denormalized text reference to the drawing record. Replacin',
-    `eco_id` BIGINT COMMENT 'Foreign key linking to engineering.eco. Business justification: A CAD model release or revision is formally governed by an Engineering Change Order. The existing eco_number (STRING) on cad_model is a denormalized text reference. Replacing it with eco_id FK provide',
-    `revision_id` BIGINT COMMENT 'Foreign key linking to engineering.engineering_revision. Business justification: A CAD model represents the design geometry for a specific engineering revision of a component. Linking cad_model to engineering_revision enables precise configuration management: which CAD dataset cor',
+    `eco_id` BIGINT COMMENT 'Foreign key linking to engineering.eco. Business justification: CAD models are revised and released under Engineering Change Orders. The cad_model table currently stores eco_number as a STRING denormalized reference. Adding a proper FK eco_id to eco normalizes thi',
+    `revision_id` BIGINT COMMENT 'Foreign key linking to engineering.engineering_revision. Business justification: A CAD model is associated with a specific revision state of a component in PLM. Linking cad_model to engineering_revision establishes the authoritative revision context for each CAD dataset, enabling ',
     `approved_by` STRING COMMENT 'Username or identifier of the engineering manager or authority who approved the CAD model for release to manufacturing.',
     `approved_timestamp` TIMESTAMP COMMENT 'Date and time when the CAD model was formally approved for release to manufacturing.',
     `authoring_tool` STRING COMMENT 'Name of the CAD software application used to create the model (e.g., Siemens NX, SolidWorks, CATIA, AutoCAD).',
@@ -169,8 +161,9 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`engineering`.`cad_model` (
     `created_timestamp` TIMESTAMP COMMENT 'Date and time when the CAD model record was first created in the PLM system.',
     `dataset_type` STRING COMMENT 'Classification of the CAD dataset indicating whether it is a 3D solid model, 2D drawing, assembly, simulation file, or CAM toolpath file.. Valid values are `3D_Solid_Model|2D_Drawing|Assembly|Simulation|CAM_Toolpath|Sheet_Metal`',
     `design_intent` STRING COMMENT 'Engineering rationale and functional requirements that guided the design of this CAD model, supporting Design for Manufacturability (DFM) analysis.',
-    `dfm_analysis_status` STRING COMMENT 'Status of the Design for Manufacturability analysis for this CAD model, indicating whether the design has been reviewed for manufacturing feasibility.. Valid values are `Not_Started|In_Progress|Completed|Issues_Found|Approved`',
+    `dfm_analysis_status` BOOLEAN COMMENT 'Status of the Design for Manufacturability analysis for this CAD model, indicating whether the design has been reviewed for manufacturing feasibility.',
     `dfm_complexity_score` DECIMAL(18,2) COMMENT 'Numerical score representing the manufacturing complexity of the design, derived from DFM analysis (higher scores indicate more complex manufacturing requirements).',
+    `drawing_number` STRING COMMENT 'Unique identifier for the associated 2D engineering drawing derived from or related to this CAD model.',
     `export_control_classification` STRING COMMENT 'Export control classification number assigned to this CAD model for international trade compliance, if applicable.',
     `file_format` STRING COMMENT 'Native file format of the CAD model (e.g., STEP for neutral exchange, JT for visualization, NX for native Siemens format, DXF for 2D drawings). [ENUM-REF-CANDIDATE: STEP|JT|NX|DXF|DWG|IGES|STL|Parasolid|CATIA|SolidWorks — 10 candidates stripped; promote to reference product]',
     `file_size_bytes` BIGINT COMMENT 'Size of the CAD model file in bytes, used for storage planning and data transfer optimization.',
@@ -198,13 +191,13 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`engineering`.`cad_model` (
 
 CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`engineering`.`drawing` (
     `drawing_id` BIGINT COMMENT 'Unique identifier for the engineering drawing record. Primary key.',
+    `cad_model_id` BIGINT COMMENT 'Foreign key linking to engineering.cad_model. Business justification: Engineering drawings are formally derived from CAD models in PLM — a 2D drawing is generated from a 3D solid model. The drawing table currently holds cad_model_reference as a STRING, which is a denorm',
     `component_id` BIGINT COMMENT 'Foreign key linking to engineering.component. Business justification: A drawing documents a component; linking drawing to component provides traceability and connects the drawing product.',
     `customer_account_id` BIGINT COMMENT 'Foreign key linking to customer.customer_account. Business justification: Drawings released for a particular customer project must reference the customer_account for release approval and traceability.',
-    `eco_id` BIGINT COMMENT 'Foreign key linking to engineering.eco. Business justification: An engineering drawing release or revision is formally governed by an Engineering Change Order. The existing eco_number (STRING) on drawing is a denormalized text reference. Replacing it with eco_id F',
-    `revision_id` BIGINT COMMENT 'Foreign key linking to engineering.engineering_revision. Business justification: An engineering drawing is issued at a specific revision level of the component it documents. Linking drawing to engineering_revision enables configuration-controlled drawing management: the correct dr',
+    `eco_id` BIGINT COMMENT 'Foreign key linking to engineering.eco. Business justification: Engineering drawings are revised and released under Engineering Change Orders. The drawing table currently stores eco_number as a STRING denormalized reference. Adding a proper FK eco_id to eco normal',
+    `revision_id` BIGINT COMMENT 'Foreign key linking to engineering.engineering_revision. Business justification: An engineering drawing is released at a specific revision level of a component. Linking drawing to engineering_revision establishes the authoritative revision context for each formal drawing, enabling',
     `approval_date` DATE COMMENT 'Date when the drawing was approved by the authorized engineering authority. Precedes the release date.',
     `assembly_level` STRING COMMENT 'Hierarchical level of the item depicted (component, subassembly, assembly, system). Indicates the complexity and position in the product structure.. Valid values are `component|subassembly|assembly|system`',
-    `cad_model_reference` STRING COMMENT 'Reference to the associated 3D CAD model file or identifier in the PLM system (e.g., Siemens Teamcenter item ID). Links the 2D drawing to its source 3D model.',
     `checked_by` STRING COMMENT 'Name or identifier of the engineer who reviewed and checked the drawing for accuracy and completeness before approval.',
     `confidentiality_level` STRING COMMENT 'Data classification level of the drawing (public, internal, confidential, restricted, proprietary). Governs access control and distribution.. Valid values are `public|internal|confidential|restricted|proprietary`',
     `created_timestamp` TIMESTAMP COMMENT 'Timestamp when the drawing record was first created in the system. Audit trail for record creation.',
@@ -224,7 +217,6 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`engineering`.`drawing` (
     `plm_item_code` STRING COMMENT 'Unique identifier of the drawing object in the Siemens Teamcenter PLM system. Enables traceability to the system of record.',
     `projection_method` STRING COMMENT 'Orthographic projection method used (first_angle per ISO, third_angle per ANSI). Determines the arrangement of views.. Valid values are `first_angle|third_angle`',
     `release_date` DATE COMMENT 'Date when the drawing was officially released for manufacturing and procurement. Marks the transition from engineering to production.',
-    `revision_level` STRING COMMENT 'Current revision level or version of the drawing (e.g., A, B, C, 01, 02). Increments with each approved engineering change.. Valid values are `^[A-Z0-9]{1,5}$`',
     `scale` STRING COMMENT 'Scale ratio of the drawing (e.g., 1:1, 1:2, 2:1, NTS for Not To Scale). Indicates the relationship between drawing dimensions and actual part dimensions.. Valid values are `^(1:[0-9]+|[0-9]+:1|NTS)$`',
     `sheet_count` STRING COMMENT 'Total number of sheets in this drawing set. Multi-sheet drawings are common for complex assemblies.',
     `sheet_size` STRING COMMENT 'Standard sheet size designation (ISO: A0, A1, A2, A3, A4; ANSI: A, B, C, D, E, F) used for this drawing. [ENUM-REF-CANDIDATE: A0|A1|A2|A3|A4|A|B|C|D|E|F — 11 candidates stripped; promote to reference product]',
@@ -241,14 +233,8 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`engineering`.`drawing` (
 
 CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`engineering`.`eco` (
     `eco_id` BIGINT COMMENT 'Unique identifier for the engineering change order record. Primary key.',
-    `contact_id` BIGINT COMMENT 'Foreign key linking to customer.customer_contact. Business justification: ECOs requiring customer approval (eco.requires_customer_approval=true) must record the specific customer contact who authorized the change for PPAP Level 3/4 documentation and regulatory audit trails.',
-    `bom_header_id` BIGINT COMMENT 'Foreign key linking to product.bom_header. Business justification: ECOs directly result in production BOM changes. The BOM change management process requires linking each ECO to the product BOM header it modifies, enabling change impact traceability, ERP BOM synchr',
-    `certification_id` BIGINT COMMENT 'Foreign key linking to product.product_certification. Business justification: ECOs that change materials, dimensions, or processes can invalidate existing product certifications (CE, UL, RoHS). The certification impact assessment step of the ECO approval process requires link',
     `customer_account_id` BIGINT COMMENT 'Foreign key linking to customer.customer_account. Business justification: Customer‑driven engineering change orders are tracked via ECO linked to the requesting customer_account for audit trails.',
-    `family_id` BIGINT COMMENT 'Foreign key linking to product.family. Business justification: Regulatory Change Management links each ECO to the specific regulatory requirement it addresses, ensuring traceability of compliance-driven changes.',
-    `material_master_id` BIGINT COMMENT 'Foreign key linking to inventory.material_master. Business justification: Engineering Change Orders directly trigger material master updates in ERP — changed specifications, procurement types, or descriptions must be synchronized. ECO-to-material-master traceability is requ',
-    `project_id` BIGINT COMMENT 'Foreign key linking to engineering.engineering_project. Business justification: Engineering Change Orders are initiated within the context of engineering projects. A project generates multiple ECOs over its lifecycle. Linking eco to engineering_project enables project-level ECO t',
-    `sku_master_id` BIGINT COMMENT 'Foreign key linking to product.sku_master. Business justification: ECOs affect specific SKUs and drive inventory disposition, customer change notifications, and ERP item master updates. The ECO impact assessment process requires SKU-level traceability. eco.family_i',
+    `project_id` BIGINT COMMENT 'Foreign key linking to engineering.engineering_project. Business justification: Engineering Change Orders are initiated within the context of an engineering project — a project may spawn multiple ECOs as design iterations occur. Adding engineering_project_id to eco establishes th',
     `acknowledgement_count` STRING COMMENT 'Number of stakeholders who have acknowledged receipt of the ECN.',
     `acknowledgement_required` BOOLEAN COMMENT 'Indicates whether recipients of the ECN are required to formally acknowledge receipt and understanding.',
     `actual_cost_impact` DECIMAL(18,2) COMMENT 'Actual financial impact realized after implementation, including all direct and indirect costs.',
@@ -260,7 +246,7 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`engineering`.`eco` (
     `change_priority` STRING COMMENT 'Business priority level for implementing the change. Critical = safety/regulatory; High = customer impact; Medium = quality improvement; Low = cost reduction.. Valid values are `critical|high|medium|low`',
     `change_type` STRING COMMENT 'Classification of the engineering change by category: design (product geometry/function), material (BOM substitution), process (manufacturing method), documentation (drawing/spec update), specification (performance criteria), or tooling (fixture/jig modification).. Valid values are `design|material|process|documentation|specification|tooling`',
     `closure_date` DATE COMMENT 'Date when the ECO was formally closed after successful implementation and verification.',
-    `cost_currency_code` STRING COMMENT 'ISO 4217 three-letter currency code for cost impact amounts (e.g., USD, EUR, CNY).. Valid values are `^[A-Z]{3}$`',
+    `cost_currency_code` DECIMAL(18,2) COMMENT 'ISO 4217 three-letter currency code for cost impact amounts (e.g., USD, EUR, CNY).',
     `created_timestamp` TIMESTAMP COMMENT 'Timestamp when this ECO record was first created in the system.',
     `customer_approval_date` DATE COMMENT 'Date when customer approval was received for the engineering change.',
     `customer_approval_received` BOOLEAN COMMENT 'Indicates whether required customer approval has been obtained.',
@@ -292,22 +278,61 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`engineering`.`eco` (
     CONSTRAINT pk_eco PRIMARY KEY(`eco_id`)
 ) COMMENT 'Engineering Change Order — the formal governance record initiating, tracking, approving, and closing a controlled change to a released product design. Captures ECO number, change type (design, material, process), priority, reason code, affected items with disposition (use-as-is, rework, scrap, retrofit), effectivity date, cost/schedule impact, initiator, approver chain, closure status, and revision transition (from/to). Includes affected item detail: item reference, type, current/proposed revision, disposition action, quantity affected, and implementation status per item. Upon approval, also serves as the Engineering Change Notice (ECN) — the formal communication record distributed to production, supply chain, quality, and supplier portals capturing notification distribution list, acknowledgement tracking, implementation date, and affected BOM/drawing revisions. SSOT for engineering change governance and change communication per ISO 9001 change control requirements.';
 
+CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`engineering`.`ecn` (
+    `ecn_id` BIGINT COMMENT 'Unique identifier for the engineering change notice record. Primary key.',
+    `eco_id` BIGINT COMMENT 'Reference to the parent engineering change order that was approved and is now being communicated via this ECN.',
+    `acknowledgement_count` STRING COMMENT 'Number of stakeholders who have formally acknowledged receipt and understanding of this ECN. Used to track distribution completion.',
+    `acknowledgement_required` BOOLEAN COMMENT 'Indicates whether recipients must formally acknowledge receipt and understanding of this ECN. True = acknowledgement tracking enabled; False = informational only.',
+    `acknowledgement_target_count` STRING COMMENT 'Total number of stakeholders required to acknowledge this ECN before it can be marked as fully distributed.',
+    `affected_drawing_count` STRING COMMENT 'Total number of engineering drawings, Computer-Aided Design (CAD) models, or technical documents affected by this ECN.',
+    `affected_part_count` STRING COMMENT 'Total number of distinct part numbers or Bill of Materials (BOM) items affected by this ECN.',
+    `affected_product_lines` STRING COMMENT 'Comma-separated list or narrative of product lines, families, or platforms impacted by this ECN. Used for scoping and impact analysis.',
+    `approval_date` DATE COMMENT 'Date when the ECN was formally approved for release by the designated approver or change control board.',
+    `bom_impact_flag` BOOLEAN COMMENT 'Indicates whether this ECN requires changes to one or more Bill of Materials (BOM) structures. True = BOM changes required; False = no BOM impact.',
+    `change_category` STRING COMMENT 'Primary category of the engineering change. Design = product design modification; Material = material substitution; Process = manufacturing process change; Documentation = drawing/spec update; Specification = requirement change; Supplier = vendor change.. Valid values are `design|material|process|documentation|specification|supplier`',
+    `change_description` STRING COMMENT 'Detailed narrative description of the engineering change being communicated, including technical modifications, affected components, and implementation instructions.',
+    `change_reason` STRING COMMENT 'Business justification and rationale for the engineering change, including root cause, customer requirements, regulatory compliance, or quality improvement drivers.',
+    `closure_date` DATE COMMENT 'Date when the ECN was closed after successful implementation and acknowledgement by all required stakeholders.',
+    `comments` STRING COMMENT 'Additional notes, instructions, or clarifications related to the ECN implementation, distribution, or acknowledgement process.',
+    `cost_impact_currency` DECIMAL(18,2) COMMENT 'Three-letter ISO 4217 currency code for the cost impact estimate (e.g., USD, EUR, CNY).',
+    `cost_impact_estimate` DECIMAL(18,2) COMMENT 'Estimated total cost impact of implementing this ECN, including material, labor, tooling, and inventory disposition costs. Positive values indicate cost increase; negative values indicate cost savings.',
+    `created_timestamp` TIMESTAMP COMMENT 'Timestamp when this ECN record was first created in the system.',
+    `customer_notification_required` BOOLEAN COMMENT 'Indicates whether customers must be notified of this ECN due to form, fit, function, or regulatory changes. True = customer notification required; False = internal only.',
+    `distribution_list` STRING COMMENT 'Comma-separated list or structured text of roles, departments, or individuals who must receive and acknowledge this ECN (e.g., Production, Quality, Supply Chain, Engineering).',
+    `ecn_number` STRING COMMENT 'Business identifier for the engineering change notice, typically formatted as ECN-NNNNNN. Used for external communication and tracking across systems.. Valid values are `^ECN-[0-9]{6,10}$`',
+    `ecn_status` STRING COMMENT 'Current lifecycle status of the ECN. Draft = being prepared; Released = approved for distribution; Distributed = sent to stakeholders; Acknowledged = recipients confirmed receipt; Closed = implementation complete; Cancelled = voided.. Valid values are `draft|released|distributed|acknowledged|closed|cancelled`',
+    `ecn_type` STRING COMMENT 'Classification of the ECN based on urgency and scope. Standard = normal process; Urgent = expedited review; Emergency = immediate action required; Field Change = affects deployed products; Design Improvement = enhancement.. Valid values are `standard|urgent|emergency|field_change|design_improvement`',
+    `effective_date` DATE COMMENT 'Date when the engineering change becomes effective and must be implemented in production, procurement, and quality systems.',
+    `erp_sync_status` STRING COMMENT 'Status of synchronization of this ECN to downstream Enterprise Resource Planning (ERP) systems (SAP S/4HANA). Pending = awaiting sync; Synced = successfully transmitted; Failed = sync error; Not Required = no ERP impact.. Valid values are `pending|synced|failed|not_required`',
+    `implementation_date` DATE COMMENT 'Actual date when the engineering change was fully implemented across all affected systems and processes.',
+    `inventory_impact_flag` BOOLEAN COMMENT 'Indicates whether this ECN affects existing inventory, requiring disposition decisions (scrap, rework, use-as-is). True = inventory action required; False = no inventory impact.',
+    `mes_sync_status` STRING COMMENT 'Status of synchronization of this ECN to Manufacturing Execution System (MES) for shop floor implementation. Pending = awaiting sync; Synced = successfully transmitted; Failed = sync error; Not Required = no MES impact.. Valid values are `pending|synced|failed|not_required`',
+    `modified_timestamp` TIMESTAMP COMMENT 'Timestamp when this ECN record was last modified or updated.',
+    `plm_system_code` STRING COMMENT 'Unique identifier for this ECN in the source Product Lifecycle Management (PLM) system (Siemens Teamcenter). Used for system integration and traceability.',
+    `priority` STRING COMMENT 'Priority level for implementation of the ECN. Critical = safety/regulatory; High = customer impact; Medium = quality improvement; Low = documentation only.. Valid values are `critical|high|medium|low`',
+    `regulatory_impact_flag` BOOLEAN COMMENT 'Indicates whether this ECN affects regulatory compliance, certifications, or safety approvals (UL, CE, ISO). True = regulatory review required; False = no regulatory impact.',
+    `release_date` DATE COMMENT 'Date when the ECN was officially released and approved for distribution to affected stakeholders.',
+    `revision_from` STRING COMMENT 'The previous revision level of the affected item(s) before this ECN takes effect. Used to track revision transitions.. Valid values are `^[A-Z0-9]{1,10}$`',
+    `revision_to` STRING COMMENT 'The new revision level of the affected item(s) after this ECN is implemented. Represents the target state.. Valid values are `^[A-Z0-9]{1,10}$`',
+    `routing_impact_flag` BOOLEAN COMMENT 'Indicates whether this ECN requires changes to manufacturing routings or process plans. True = routing changes required; False = no routing impact.',
+    `supplier_notification_required` BOOLEAN COMMENT 'Indicates whether external suppliers must be notified of this ECN due to purchased part changes or specification updates. True = supplier notification required; False = internal only.',
+    CONSTRAINT pk_ecn PRIMARY KEY(`ecn_id`)
+) COMMENT 'Engineering Change Notice — the released notification record that communicates an approved and implemented engineering change to all affected stakeholders including production, supply chain, and quality. Captures ECN number, linked ECO, effective revision transition (from/to), implementation date, affected BOM revisions, affected drawings, distribution list, and acknowledgement tracking. Downstream consumers include MES, MRP, and supplier portals.';
+
 CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`engineering`.`revision` (
     `revision_id` BIGINT COMMENT 'Unique identifier for the revision record. Primary key for the revision entity.',
     `component_id` BIGINT COMMENT 'Reference to the component or assembly that this revision applies to. Links to the master component record in the Product Lifecycle Management (PLM) system.',
-    `customer_account_id` BIGINT COMMENT 'Foreign key linking to customer.customer_account. Business justification: Customer‑specific revisions (e.g., custom part revisions) are tracked per customer_account for change management.',
+    `ecn_id` BIGINT COMMENT 'Reference to the Engineering Change Notice (ECN) that communicates this revision to stakeholders. Links the revision to the change notification process.',
     `eco_id` BIGINT COMMENT 'Reference to the Engineering Change Order (ECO) that authorized and governs this revision. Links the revision to the formal change management process.',
-    `family_id` BIGINT COMMENT 'Foreign key linking to product.family. Business justification: Component revisions are often triggered by updates to regulatory requirements; the FK records the governing regulation.',
+    `engineering_specification_id` BIGINT COMMENT 'Foreign key linking to engineering.engineering_specification. Business justification: Each engineering revision is governed by and must conform to an engineering specification — the specification defines the acceptance criteria and performance requirements that the revision must satisf',
     `primary_superseded_by_revision_engineering_revision_id` BIGINT COMMENT 'Reference to the newer revision that supersedes this revision. Establishes the revision lineage chain for traceability and configuration management. Null if this is the current active revision.',
-    `project_id` BIGINT COMMENT 'Foreign key linking to engineering.engineering_project. Business justification: Engineering revisions are created within the context of engineering projects (R&D initiatives, product development programs). Linking engineering_revision to engineering_project enables project-level ',
-    `sku_master_id` BIGINT COMMENT 'Foreign key linking to product.sku_master. Business justification: Engineering revisions drive SKU revision levels. The product revision management process requires tracing each engineering revision to the specific SKU it affects for change notification, inventory ',
     `approval_date` DATE COMMENT 'The date when this revision was formally approved by the release authority. Distinct from release date, represents the approval event in the workflow.',
     `cad_file_reference` STRING COMMENT 'Reference path or identifier to the Computer-Aided Design (CAD) model file associated with this revision in the Product Data Management (PDM) or PLM system.',
     `ce_marking_required` BOOLEAN COMMENT 'Flag indicating whether CE marking (European Conformity) is required for this revision. True indicates CE marking is mandatory for European market release.',
     `change_category` STRING COMMENT 'Classification of the reason for the revision change. Categorizes the business driver behind the Engineering Change Order (ECO). [ENUM-REF-CANDIDATE: design_improvement|cost_reduction|quality_issue|regulatory_compliance|customer_request|obsolescence|manufacturing_improvement|safety_enhancement — 8 candidates stripped; promote to reference product]',
     `change_impact_level` STRING COMMENT 'Assessment of the impact magnitude of this revision on form, fit, function, quality, cost, or schedule. Critical indicates significant impact requiring extensive validation, low indicates minimal impact.. Valid values are `critical|high|medium|low`',
     `change_justification` STRING COMMENT 'Business justification and summary description of why this revision was created. Captures the rationale for the design change, improvement, or correction.',
-    `configuration_baseline` STRING COMMENT 'The configuration baseline identifier that this revision belongs to. Used for configuration management and as-designed vs as-built reconciliation.',
+    `configuration_baseline` DECIMAL(18,2) COMMENT 'The configuration baseline identifier that this revision belongs to. Used for configuration management and as-designed vs as-built reconciliation.',
     `created_timestamp` TIMESTAMP COMMENT 'The timestamp when this revision record was first created in the PLM system. Provides audit trail for record creation event.',
     `dfm_analysis_completed` BOOLEAN COMMENT 'Flag indicating whether Design for Manufacturability (DFM) analysis has been completed for this revision. True indicates DFM review is complete and findings are incorporated.',
     `dfmea_completed` BOOLEAN COMMENT 'Flag indicating whether Design Failure Mode and Effects Analysis (DFMEA) has been completed for this revision. True indicates DFMEA is complete and risk mitigation actions are defined.',
@@ -334,7 +359,6 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`engineering`.`revision` (
     `release_date` DATE COMMENT 'The date when this revision was officially released for production use. Represents the business event timestamp when the revision transitioned to released state.',
     `revision_type` STRING COMMENT 'Classification of the revision indicating the magnitude of change. Major revisions represent significant design changes, minor revisions represent incremental improvements, patch revisions represent corrections, branch revisions represent parallel variant development, and prototype revisions represent pre-release experimental versions.. Valid values are `major|minor|patch|branch|prototype`',
     `rohs_compliant` BOOLEAN COMMENT 'Flag indicating whether this revision complies with Restriction of Hazardous Substances (RoHS) directive. True indicates the design meets RoHS material restrictions.',
-    `specification_document` STRING COMMENT 'Reference to the technical specification document that defines the requirements and characteristics for this revision.',
     `ul_certification_required` BOOLEAN COMMENT 'Flag indicating whether Underwriters Laboratories (UL) product safety certification is required for this revision. True indicates UL certification is mandatory for market release.',
     `created_by` STRING COMMENT 'Identifier of the user or engineer who created this revision record in the PLM system. Provides audit trail for record creation.',
     CONSTRAINT pk_revision PRIMARY KEY(`revision_id`)
@@ -344,11 +368,8 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`engineering`.`engineering_speci
     `engineering_specification_id` BIGINT COMMENT 'Unique identifier for the engineering specification document record. Primary key.',
     `component_id` BIGINT COMMENT 'Foreign key linking to engineering.component. Business justification: Specification applies to a component; adding component_id FK normalizes the relationship and removes the denormalized linked_component_ids list.',
     `customer_account_id` BIGINT COMMENT 'Foreign key linking to customer.customer_account. Business justification: Customer‑specific specifications are maintained for contract compliance; linking to customer_account enables specification‑customer mapping.',
-    `eco_id` BIGINT COMMENT 'Foreign key linking to engineering.eco. Business justification: Engineering specifications are created or revised as part of Engineering Change Orders. The existing eco_number (STRING) on engineering_specification is a denormalized text reference. Replacing it wit',
-    `family_id` BIGINT COMMENT 'Foreign key linking to product.family. Business justification: Specifications are authored to meet particular regulatory standards; linking ties each spec to its governing requirement.',
-    `project_id` BIGINT COMMENT 'Foreign key linking to engineering.engineering_project. Business justification: Engineering specifications are produced as deliverables of engineering projects. Linking engineering_specification to engineering_project enables project-level tracking of specification completeness, ',
-    `revision_id` BIGINT COMMENT 'Foreign key linking to engineering.engineering_revision. Business justification: An engineering specification is written for a specific revision of a component. Linking engineering_specification to engineering_revision enables configuration-controlled specification management: the',
-    `sku_master_id` BIGINT COMMENT 'Foreign key linking to product.sku_master. Business justification: Engineering specifications are written for specific product SKUs to support supplier qualification, PPAP submissions, and make-or-buy decisions. The specification-to-product traceability process req',
+    `ecn_id` BIGINT COMMENT 'Foreign key linking to engineering.ecn. Business justification: Engineering specifications are communicated and distributed via Engineering Change Notices. The engineering_specification table currently stores ecn_number as a STRING denormalized reference. Adding a',
+    `eco_id` BIGINT COMMENT 'Foreign key linking to engineering.eco. Business justification: Engineering specifications are created or revised as part of Engineering Change Orders. The engineering_specification table currently stores eco_number as a STRING denormalized reference. Adding a pro',
     `superseded_by_specification_engineering_specification_id` BIGINT COMMENT 'Reference to the specification that supersedes this specification. Null if this specification is still current. Supports specification revision history and traceability.',
     `acceptance_criteria` STRING COMMENT 'Specific criteria and test methods used to determine whether a component or assembly meets the specification requirements. Defines pass/fail thresholds for inspection, testing, and validation activities.',
     `applicable_standards` STRING COMMENT 'Comma-separated list of industry, regulatory, and international standards that this specification must comply with (e.g., IEC 61131, ISO 9001, UL 508, CE Marking, ANSI standards). Critical for design validation, supplier qualification, and regulatory compliance.',
@@ -363,7 +384,6 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`engineering`.`engineering_speci
     `dfmea_reference` STRING COMMENT 'Reference identifier or document link to the Design Failure Mode and Effects Analysis (DFMEA) associated with this specification. DFMEA identifies potential failure modes in the design and their effects on product performance and safety.',
     `document_format` STRING COMMENT 'File format of the specification document (e.g., PDF for released documents, DOCX for drafts, DWG for CAD drawings, STEP/IGES for 3D models, XML for structured data exchange).. Valid values are `PDF|DOCX|DWG|STEP|IGES|XML`',
     `document_location` STRING COMMENT 'File path, URL, or document management system reference where the full specification document is stored. Typically points to a location in Siemens Teamcenter PLM Document Management or a shared engineering repository.',
-    `ecn_number` STRING COMMENT 'Engineering Change Notice (ECN) number associated with the notification of the change to this specification. ECNs communicate approved changes to stakeholders and trigger updates to related documentation and systems.. Valid values are `^ECN-[A-Z0-9]{6,15}$`',
     `effective_date` DATE COMMENT 'Date when the specification becomes effective and mandatory for use in design, procurement, and manufacturing activities. Aligns with Product Lifecycle Management (PLM) release workflows.',
     `environmental_conditions` STRING COMMENT 'Specified environmental operating conditions and limits, including temperature range, humidity, vibration, shock, altitude, and exposure to chemicals or contaminants. Critical for environmental-type specifications.',
     `language` STRING COMMENT 'Three-letter ISO 639-2 language code indicating the primary language of the specification document (e.g., ENG for English, DEU for German, FRA for French). Supports multi-language engineering documentation in global manufacturing operations.. Valid values are `^[A-Z]{3}$`',
@@ -392,21 +412,17 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`engineering`.`engineering_speci
 
 CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`engineering`.`project` (
     `project_id` BIGINT COMMENT 'Unique identifier for the engineering project record. Primary key.',
-    `account_site_id` BIGINT COMMENT 'Foreign key linking to customer.account_site. Business justification: Required for Capital Project Integration Report linking engineering project to overall project schedule, enabling consolidated status and cost tracking across engineering and project management.',
-    `customer_account_id` BIGINT COMMENT 'Foreign key linking to customer.customer_account. Business justification: NPI and custom product development projects are initiated for specific customers. Direct customer_account link enables program management reporting, customer-specific project portfolio views, and PPAP',
-    `inventory_plant_id` BIGINT COMMENT 'Foreign key linking to inventory.inventory_plant. Business justification: New Product Introduction (NPI) engineering projects are scoped to specific manufacturing plants for inventory readiness, tooling, and capacity planning. Plant-specific NPI tracking is standard in mult',
     `family_id` BIGINT COMMENT 'Reference to the product family or platform that this engineering project is developing or enhancing.',
-    `sku_master_id` BIGINT COMMENT 'Foreign key linking to product.sku_master. Business justification: Engineering projects in NPI (New Product Introduction) create or significantly revise specific SKUs. The NPI gate review process tracks which SKU an engineering project is delivering. engineering_pr',
     `actual_launch_date` DATE COMMENT 'Actual date when the engineering project completed and the product was launched to production or market.',
     `approved_by` STRING COMMENT 'User ID or name of the person who approved the engineering project for execution.',
     `approved_timestamp` TIMESTAMP COMMENT 'Date and time when the engineering project was formally approved for execution.',
     `budget_allocated_amount` DECIMAL(18,2) COMMENT 'Total budget amount allocated to the engineering project for all development activities and resources.',
-    `budget_currency_code` STRING COMMENT 'Three-letter ISO 4217 currency code for the project budget amounts.. Valid values are `^[A-Z]{3}$`',
+    `budget_currency_code` DECIMAL(18,2) COMMENT 'Three-letter ISO 4217 currency code for the project budget amounts.',
     `budget_spent_amount` DECIMAL(18,2) COMMENT 'Cumulative amount of budget spent to date on the engineering project.',
     `business_justification` STRING COMMENT 'Strategic rationale and business case for undertaking the engineering project, including expected ROI and market drivers.',
     `capex_opex_classification` STRING COMMENT 'Financial classification of the project budget as capital expenditure, operational expenditure, or a mix of both.. Valid values are `capex|opex|mixed`',
     `project_code` STRING COMMENT 'Externally-known unique alphanumeric code assigned to the engineering project for identification and tracking across systems.. Valid values are `^[A-Z0-9]{6,20}$`',
-    `collaboration_partners` STRING COMMENT 'List of external partners, suppliers, or research institutions collaborating on the engineering project.',
+    `collaboration_partners` DECIMAL(18,2) COMMENT 'List of external partners, suppliers, or research institutions collaborating on the engineering project.',
     `complexity_score` STRING COMMENT 'Numerical score (1-10) representing the technical and organizational complexity of the engineering project.',
     `created_timestamp` TIMESTAMP COMMENT 'Date and time when the engineering project record was first created in the system.',
     `project_description` STRING COMMENT 'Detailed narrative description of the engineering project objectives, scope, and deliverables.',
@@ -439,109 +455,53 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`engineering`.`project` (
     CONSTRAINT pk_project PRIMARY KEY(`project_id`)
 ) COMMENT 'Engineering project master record representing a discrete R&D or product development initiative. Captures project code, project name, project type (new product development, product improvement, platform, cost reduction), program phase (concept, development, validation, launch), target launch date, project manager, budget allocation, priority, and linked product family. Serves as the organizing entity for all engineering deliverables, prototypes, and design reviews within a development program.';
 
-CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`engineering`.`test_result` (
-    `test_result_id` BIGINT COMMENT 'Unique identifier for the engineering test result record. Primary key for the test result entity.',
-    `capa_id` BIGINT COMMENT 'Reference to the linked PFMEA record if the test result validates or identifies a process failure mode. Connects test evidence to manufacturing risk analysis.',
-    `certification_id` BIGINT COMMENT 'Foreign key linking to product.product_certification. Business justification: Test results are the primary evidence basis for product certifications (UL, CE, RoHS). The certification submission process requires linking test results to the certification they support. Certifica',
-    `component_id` BIGINT COMMENT 'Reference to the component or product master record being tested. Links test result to the engineering item definition in PLM system.',
-    `customer_account_id` BIGINT COMMENT 'Foreign key linking to customer.customer_account. Business justification: Acceptance test results are recorded per customer; linking test_result to customer_account supports customer‑specific quality reports.',
-    `eco_id` BIGINT COMMENT 'Foreign key linking to engineering.eco. Business justification: Test results are often conducted to validate engineering changes. The existing eco_number (STRING) on test_result is a denormalized text reference to the governing ECO. Replacing it with eco_id FK pro',
-    `engineering_specification_id` BIGINT COMMENT 'Foreign key linking to engineering.engineering_specification. Business justification: Test results are conducted against engineering specifications (acceptance criteria, test methods, performance criteria are defined in the specification). Linking test_result to engineering_specificati',
-    `equipment_register_id` BIGINT COMMENT 'Identifier of the primary test equipment or instrumentation used. Links to calibrated equipment register for measurement traceability.',
-    `family_id` BIGINT COMMENT 'Foreign key linking to product.family. Business justification: Test results are captured to demonstrate conformity to a specific regulatory requirement.',
-    `lot_batch_id` BIGINT COMMENT 'Foreign key linking to inventory.lot_batch. Business justification: Quality Assurance links test results to the specific production batch for traceability and regulatory compliance.',
-    `original_test_result_id` BIGINT COMMENT 'Reference to the original test result record if this is a retest. Creates traceability chain for test iterations.',
-    `production_work_order_id` BIGINT COMMENT 'Foreign key linking to production.production_work_order. Business justification: Test execution is scheduled as a project activity; linking test results to the activity enables traceability in the Project Execution Dashboard.',
-    `revision_id` BIGINT COMMENT 'Foreign key linking to engineering.engineering_revision. Business justification: Test results validate a specific revision of a component or assembly. Linking test_result to engineering_revision enables revision-level test traceability: which revision was tested, what the outcomes',
-    `acceptance_criteria_lower_limit` DECIMAL(18,2) COMMENT 'Minimum acceptable value for the test measurement. Defines the lower boundary of the pass/fail acceptance range.',
-    `acceptance_criteria_target` DECIMAL(18,2) COMMENT 'Target or nominal value for the test measurement. Represents the ideal design specification value within the acceptance range.',
-    `acceptance_criteria_upper_limit` DECIMAL(18,2) COMMENT 'Maximum acceptable value for the test measurement. Defines the upper boundary of the pass/fail acceptance range.',
-    `build_number` STRING COMMENT 'Prototype build iteration number or production batch identifier. Tracks which manufacturing build or prototype iteration the tested unit belongs to.',
-    `certification_body` STRING COMMENT 'Name of the regulatory or certification authority for which this test evidence is required (e.g., UL, TUV, CSA, FCC). Applicable when regulatory submission flag is true.',
-    `created_timestamp` TIMESTAMP COMMENT 'Date and time when this test result record was first created in the system. Audit trail for record lifecycle tracking.',
-    `dvp_r_reference` STRING COMMENT 'Reference to the Design Verification Plan and Report document that governs this test. Links test execution to the master validation plan.',
-    `environmental_conditions` STRING COMMENT 'Description of environmental conditions during test execution (e.g., temperature, humidity, pressure). Captures test environment context for result interpretation.',
-    `failure_description` STRING COMMENT 'Detailed narrative description of any failure, defect, or non-conformance observed during the test. Captures failure mode, symptoms, and conditions. Populated only when test outcome is fail or conditional pass.',
-    `failure_mode_code` STRING COMMENT 'Standardized code or identifier for the observed failure mode. Links test failure to DFMEA or PFMEA failure mode catalog for root cause analysis.',
-    `measured_value` DECIMAL(18,2) COMMENT 'Primary quantitative measurement or test result value obtained during the test. The principal measured outcome of the test activity.',
-    `measured_value_unit` STRING COMMENT 'Unit of measure for the measured value (e.g., volts, amps, degrees Celsius, newtons, cycles). Ensures correct interpretation of test measurements.',
-    `measurement_uncertainty` DECIMAL(18,2) COMMENT 'Quantified uncertainty or tolerance associated with the measured value. Expresses the confidence interval or margin of error in the measurement.',
-    `modified_by` STRING COMMENT 'User identifier or name of the person who last modified this test result record. Audit trail for record changes.',
-    `modified_timestamp` TIMESTAMP COMMENT 'Date and time when this test result record was last modified in the system. Audit trail for record lifecycle tracking.',
-    `prototype_phase` STRING COMMENT 'Development phase or maturity stage of the tested unit. Indicates whether the unit is a concept prototype, alpha build, beta unit, pre-production sample, or production unit.. Valid values are `concept|alpha|beta|pre_production|production|field_trial`',
-    `regulatory_submission_flag` BOOLEAN COMMENT 'Indicates whether this test result is required for regulatory certification or compliance submission (e.g., UL, CE, FCC). Flags test data needed for regulatory dossiers.',
-    `retest_flag` BOOLEAN COMMENT 'Indicates whether this test is a retest of a previously failed or inconclusive test. Used to track test iteration history.',
-    `root_cause_analysis_required` BOOLEAN COMMENT 'Indicates whether a formal root cause analysis (RCA) is required for this test result. Typically true for test failures or unexpected results.',
-    `test_date` DATE COMMENT 'Date when the test was executed. Principal business event timestamp for the test activity.',
-    `test_duration_hours` DECIMAL(18,2) COMMENT 'Total elapsed time for test execution measured in hours. Captures the actual test run time for endurance and long-duration tests.',
-    `test_end_timestamp` TIMESTAMP COMMENT 'Precise date and time when the test execution completed. Used for duration calculation and detailed test timeline tracking.',
-    `test_facility` STRING COMMENT 'Name or identifier of the laboratory, test center, or facility where the test was conducted. May be internal lab or external third-party testing facility.',
-    `test_facility_location` STRING COMMENT 'Geographic location or site code of the test facility. Supports multi-site test operations and regulatory reporting.',
-    `test_notes` STRING COMMENT 'Free-form notes, observations, or comments recorded by the test engineer during test execution. Captures contextual information not covered by structured fields.',
-    `test_number` STRING COMMENT 'Business identifier for the test execution. Externally-known unique test reference number used for traceability and reporting.',
-    `test_outcome` STRING COMMENT 'Overall pass/fail result of the test execution. Indicates whether the tested unit met the acceptance criteria defined in the test specification.. Valid values are `pass|fail|conditional_pass|inconclusive|aborted`',
-    `test_purpose` STRING COMMENT 'Business objective or reason for conducting the test. Describes the validation goal, such as design verification, production qualification, regulatory compliance, or failure investigation.',
-    `test_specification_version` STRING COMMENT 'Version or revision of the test specification document used for this test execution. Ensures traceability to the correct test procedure version.',
-    `test_standard_reference` STRING COMMENT 'Industry or regulatory standard governing the test procedure. References the specific standard, specification, or protocol followed during test execution (e.g., IEC 61131-2, UL 508, ISO 16750).',
-    `test_start_timestamp` TIMESTAMP COMMENT 'Precise date and time when the test execution began. Used for duration calculation and detailed test timeline tracking.',
-    `test_status` STRING COMMENT 'Current lifecycle status of the test execution. Tracks the test through its workflow from scheduling to completion.. Valid values are `scheduled|in_progress|completed|cancelled|on_hold`',
-    `test_type` STRING COMMENT 'Classification of the test performed. Defines the category of validation activity conducted on the unit under test. [ENUM-REF-CANDIDATE: functional|environmental|emc|safety|endurance|performance|reliability|thermal|vibration|shock|humidity|salt_spray|dust|ingress_protection — 14 candidates stripped; promote to reference product]',
-    `tested_unit_identifier` STRING COMMENT 'Unique identifier of the physical unit or sample subjected to testing. May be a serial number, prototype build number, or sample lot identifier.',
-    `created_by` STRING COMMENT 'User identifier or name of the person who created this test result record in the system. Audit trail for record creation.',
-    CONSTRAINT pk_test_result PRIMARY KEY(`test_result_id`)
-) COMMENT 'Engineering test and validation result record capturing outcomes of design verification and validation (DV&V) activities performed on prototypes, pre-production units, or production samples. Captures test type (functional, environmental, EMC, safety, endurance, performance, reliability), test standard reference, tested unit identification (prototype phase, build number, component revision), test date, test facility, pass/fail outcome, measured values vs acceptance criteria, failure description, linked DFMEA failure mode, and prototype build context (phase, purpose, disposition). Supports DVP&R evidence for PPAP, regulatory certification submissions, and R&D program milestone tracking.';
-
-CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`engineering`.`eco_affected_item` (
-    `eco_affected_item_id` BIGINT COMMENT 'Unique identifier for this ECO-component affected item record. Primary key.',
-    `component_id` BIGINT COMMENT 'Foreign key linking to the component affected by this ECO',
-    `eco_id` BIGINT COMMENT 'Foreign key linking to the engineering change order that affects this component',
-    `created_timestamp` TIMESTAMP COMMENT 'Timestamp when this affected item record was added to the ECO. Audit trail for change control compliance.',
-    `disposition_action` STRING COMMENT 'Disposition action for this specific component in the context of this ECO: use_as_is, rework, scrap, or retrofit. Determines how existing inventory and WIP of this component should be handled.',
-    `effectivity_date` DATE COMMENT 'Date when the engineering change becomes effective for this specific component. May vary by component within the same ECO based on inventory levels and production schedules.',
-    `from_revision` STRING COMMENT 'Current revision level of this component before the ECO is applied. Captures the starting point of the revision transition for this component.',
-    `implementation_status` STRING COMMENT 'Implementation status for this specific component within the ECO: pending, in_progress, completed, or cancelled. Tracks per-component implementation progress.',
-    `item_type` STRING COMMENT 'Type classification of the affected item: part, assembly, drawing, or document. Determines handling procedures and approval workflows.',
-    `modified_timestamp` TIMESTAMP COMMENT 'Timestamp when this affected item record was last modified. Audit trail for change control compliance.',
-    `quantity_affected` DECIMAL(18,2) COMMENT 'Quantity of this component in inventory or WIP that is affected by this ECO and subject to the disposition action.',
-    `to_revision` STRING COMMENT 'Target revision level of this component after the ECO is implemented. Captures the ending point of the revision transition for this component.',
-    CONSTRAINT pk_eco_affected_item PRIMARY KEY(`eco_affected_item_id`)
-) COMMENT 'This association product represents the formal linkage between an Engineering Change Order and each component it affects. It captures the specific disposition, effectivity, and revision transition for each component impacted by the ECO. Each record links one ECO to one affected component with attributes that exist only in the context of this change control relationship. This is the SSOT for ECO-component impact tracking per ISO 9001 change control requirements.. Existence Justification: In manufacturing PLM operations, an ECO formally lists multiple affected components (parts, assemblies, drawings), and each component can be affected by multiple ECOs over its lifecycle. The ECO Affected Item is a recognized business entity in all major PLM systems (Siemens Teamcenter, PTC Windchill, Dassault ENOVIA) that captures disposition instructions, effectivity dates, and revision transitions specific to each ECO-component pair. This relationship is actively managed by engineering teams as part of ISO 9001 change control processes.';
+CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`engineering`.`project_component_assignment` (
+    `project_component_assignment_id` BIGINT COMMENT 'Unique identifier for the project-component assignment record. Primary key.',
+    `component_id` BIGINT COMMENT 'Foreign key linking to the component being developed, modified, or validated in the project',
+    `project_id` BIGINT COMMENT 'Foreign key linking to the engineering project that is developing or modifying the component',
+    `assigned_engineer` STRING COMMENT 'User ID or name of the engineer assigned to develop or validate this component within the project. Establishes accountability for component-level deliverables.',
+    `assignment_end_date` DATE COMMENT 'Date when the component development was completed or the component was removed from the project scope. Null if still active in the project.',
+    `assignment_start_date` DATE COMMENT 'Date when the component was formally assigned to the engineering project. Marks the beginning of development work on this component within the project scope.',
+    `created_timestamp` TIMESTAMP COMMENT 'Date and time when the project-component assignment record was first created in the system.',
+    `development_status` STRING COMMENT 'Current development status of the component within this specific project. Tracks the components progress through the project lifecycle from planning through release.',
+    `milestone_date` DATE COMMENT 'Target or actual date when the component development milestone is scheduled to be completed within the project timeline. Used for project scheduling and tracking.',
+    `modified_by` STRING COMMENT 'User ID or name of the person who last modified the project-component assignment record.',
+    `modified_timestamp` TIMESTAMP COMMENT 'Date and time when the project-component assignment record was last modified in the system.',
+    `priority_level` STRING COMMENT 'Priority ranking of this component within the project context. Indicates relative importance for resource allocation and schedule management.',
+    `role_in_project` STRING COMMENT 'The role or purpose of the component within the engineering project context. Indicates whether the component is being newly designed, redesigned, carried over from previous generation, validated, prototyped, or subject to cost reduction efforts.',
+    `target_revision` STRING COMMENT 'The target revision level of the component that this project aims to deliver. Links project deliverables to specific component revision milestones.',
+    `created_by` STRING COMMENT 'User ID or name of the person who created the project-component assignment record.',
+    CONSTRAINT pk_project_component_assignment PRIMARY KEY(`project_component_assignment_id`)
+) COMMENT 'This association product represents the assignment relationship between engineering projects and components in the product development lifecycle. It captures which components are being developed, modified, or validated as part of which engineering projects. Each record links one engineering project to one component with attributes that exist only in the context of this development assignment, including the role of the component in the project, development status, target revision, assigned engineer, and milestone dates.. Existence Justification: In manufacturing PLM operations, engineering projects develop multiple components simultaneously (a new product platform may involve hundreds of components), and components participate in multiple projects over their lifecycle (a motor component may be used in initial development, then cost-reduction projects, then validation projects for different product families). The business actively manages project-component assignments as a core PLM workflow, tracking which engineer is responsible for which component in which project, the development status, target revision, and milestone dates.';
 
 -- ========= FOREIGN KEYS =========
-ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`component` ADD CONSTRAINT `fk_engineering_component_project_id` FOREIGN KEY (`project_id`) REFERENCES `vibe_manufacturing_v1`.`engineering`.`project`(`project_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`component` ADD CONSTRAINT `fk_engineering_component_substitute_component_id` FOREIGN KEY (`substitute_component_id`) REFERENCES `vibe_manufacturing_v1`.`engineering`.`component`(`component_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`bom` ADD CONSTRAINT `fk_engineering_bom_component_id` FOREIGN KEY (`component_id`) REFERENCES `vibe_manufacturing_v1`.`engineering`.`component`(`component_id`);
-ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`bom` ADD CONSTRAINT `fk_engineering_bom_eco_id` FOREIGN KEY (`eco_id`) REFERENCES `vibe_manufacturing_v1`.`engineering`.`eco`(`eco_id`);
-ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`bom` ADD CONSTRAINT `fk_engineering_bom_revision_id` FOREIGN KEY (`revision_id`) REFERENCES `vibe_manufacturing_v1`.`engineering`.`revision`(`revision_id`);
-ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`engineering_bom_line` ADD CONSTRAINT `fk_engineering_engineering_bom_line_bom_id` FOREIGN KEY (`bom_id`) REFERENCES `vibe_manufacturing_v1`.`engineering`.`bom`(`bom_id`);
-ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`engineering_bom_line` ADD CONSTRAINT `fk_engineering_engineering_bom_line_eco_id` FOREIGN KEY (`eco_id`) REFERENCES `vibe_manufacturing_v1`.`engineering`.`eco`(`eco_id`);
-ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`engineering_bom_line` ADD CONSTRAINT `fk_engineering_engineering_bom_line_component_id` FOREIGN KEY (`component_id`) REFERENCES `vibe_manufacturing_v1`.`engineering`.`component`(`component_id`);
-ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`engineering_bom_line` ADD CONSTRAINT `fk_engineering_engineering_bom_line_revision_id` FOREIGN KEY (`revision_id`) REFERENCES `vibe_manufacturing_v1`.`engineering`.`revision`(`revision_id`);
-ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`engineering_bom_line` ADD CONSTRAINT `fk_engineering_engineering_bom_line_tertiary_engineering_substitute_component_id` FOREIGN KEY (`tertiary_engineering_substitute_component_id`) REFERENCES `vibe_manufacturing_v1`.`engineering`.`component`(`component_id`);
+ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`bom` ADD CONSTRAINT `fk_engineering_bom_project_id` FOREIGN KEY (`project_id`) REFERENCES `vibe_manufacturing_v1`.`engineering`.`project`(`project_id`);
+ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`bom_line` ADD CONSTRAINT `fk_engineering_bom_line_bom_id` FOREIGN KEY (`bom_id`) REFERENCES `vibe_manufacturing_v1`.`engineering`.`bom`(`bom_id`);
+ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`bom_line` ADD CONSTRAINT `fk_engineering_bom_line_component_id` FOREIGN KEY (`component_id`) REFERENCES `vibe_manufacturing_v1`.`engineering`.`component`(`component_id`);
+ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`bom_line` ADD CONSTRAINT `fk_engineering_bom_line_revision_id` FOREIGN KEY (`revision_id`) REFERENCES `vibe_manufacturing_v1`.`engineering`.`revision`(`revision_id`);
+ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`bom_line` ADD CONSTRAINT `fk_engineering_bom_line_tertiary_engineering_substitute_component_id` FOREIGN KEY (`tertiary_engineering_substitute_component_id`) REFERENCES `vibe_manufacturing_v1`.`engineering`.`component`(`component_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`cad_model` ADD CONSTRAINT `fk_engineering_cad_model_component_id` FOREIGN KEY (`component_id`) REFERENCES `vibe_manufacturing_v1`.`engineering`.`component`(`component_id`);
-ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`cad_model` ADD CONSTRAINT `fk_engineering_cad_model_drawing_id` FOREIGN KEY (`drawing_id`) REFERENCES `vibe_manufacturing_v1`.`engineering`.`drawing`(`drawing_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`cad_model` ADD CONSTRAINT `fk_engineering_cad_model_eco_id` FOREIGN KEY (`eco_id`) REFERENCES `vibe_manufacturing_v1`.`engineering`.`eco`(`eco_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`cad_model` ADD CONSTRAINT `fk_engineering_cad_model_revision_id` FOREIGN KEY (`revision_id`) REFERENCES `vibe_manufacturing_v1`.`engineering`.`revision`(`revision_id`);
+ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`drawing` ADD CONSTRAINT `fk_engineering_drawing_cad_model_id` FOREIGN KEY (`cad_model_id`) REFERENCES `vibe_manufacturing_v1`.`engineering`.`cad_model`(`cad_model_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`drawing` ADD CONSTRAINT `fk_engineering_drawing_component_id` FOREIGN KEY (`component_id`) REFERENCES `vibe_manufacturing_v1`.`engineering`.`component`(`component_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`drawing` ADD CONSTRAINT `fk_engineering_drawing_eco_id` FOREIGN KEY (`eco_id`) REFERENCES `vibe_manufacturing_v1`.`engineering`.`eco`(`eco_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`drawing` ADD CONSTRAINT `fk_engineering_drawing_revision_id` FOREIGN KEY (`revision_id`) REFERENCES `vibe_manufacturing_v1`.`engineering`.`revision`(`revision_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`eco` ADD CONSTRAINT `fk_engineering_eco_project_id` FOREIGN KEY (`project_id`) REFERENCES `vibe_manufacturing_v1`.`engineering`.`project`(`project_id`);
+ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`ecn` ADD CONSTRAINT `fk_engineering_ecn_eco_id` FOREIGN KEY (`eco_id`) REFERENCES `vibe_manufacturing_v1`.`engineering`.`eco`(`eco_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`revision` ADD CONSTRAINT `fk_engineering_revision_component_id` FOREIGN KEY (`component_id`) REFERENCES `vibe_manufacturing_v1`.`engineering`.`component`(`component_id`);
+ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`revision` ADD CONSTRAINT `fk_engineering_revision_ecn_id` FOREIGN KEY (`ecn_id`) REFERENCES `vibe_manufacturing_v1`.`engineering`.`ecn`(`ecn_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`revision` ADD CONSTRAINT `fk_engineering_revision_eco_id` FOREIGN KEY (`eco_id`) REFERENCES `vibe_manufacturing_v1`.`engineering`.`eco`(`eco_id`);
+ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`revision` ADD CONSTRAINT `fk_engineering_revision_engineering_specification_id` FOREIGN KEY (`engineering_specification_id`) REFERENCES `vibe_manufacturing_v1`.`engineering`.`engineering_specification`(`engineering_specification_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`revision` ADD CONSTRAINT `fk_engineering_revision_primary_superseded_by_revision_engineering_revision_id` FOREIGN KEY (`primary_superseded_by_revision_engineering_revision_id`) REFERENCES `vibe_manufacturing_v1`.`engineering`.`revision`(`revision_id`);
-ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`revision` ADD CONSTRAINT `fk_engineering_revision_project_id` FOREIGN KEY (`project_id`) REFERENCES `vibe_manufacturing_v1`.`engineering`.`project`(`project_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`engineering_specification` ADD CONSTRAINT `fk_engineering_engineering_specification_component_id` FOREIGN KEY (`component_id`) REFERENCES `vibe_manufacturing_v1`.`engineering`.`component`(`component_id`);
+ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`engineering_specification` ADD CONSTRAINT `fk_engineering_engineering_specification_ecn_id` FOREIGN KEY (`ecn_id`) REFERENCES `vibe_manufacturing_v1`.`engineering`.`ecn`(`ecn_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`engineering_specification` ADD CONSTRAINT `fk_engineering_engineering_specification_eco_id` FOREIGN KEY (`eco_id`) REFERENCES `vibe_manufacturing_v1`.`engineering`.`eco`(`eco_id`);
-ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`engineering_specification` ADD CONSTRAINT `fk_engineering_engineering_specification_project_id` FOREIGN KEY (`project_id`) REFERENCES `vibe_manufacturing_v1`.`engineering`.`project`(`project_id`);
-ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`engineering_specification` ADD CONSTRAINT `fk_engineering_engineering_specification_revision_id` FOREIGN KEY (`revision_id`) REFERENCES `vibe_manufacturing_v1`.`engineering`.`revision`(`revision_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`engineering_specification` ADD CONSTRAINT `fk_engineering_engineering_specification_superseded_by_specification_engineering_specification_id` FOREIGN KEY (`superseded_by_specification_engineering_specification_id`) REFERENCES `vibe_manufacturing_v1`.`engineering`.`engineering_specification`(`engineering_specification_id`);
-ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`test_result` ADD CONSTRAINT `fk_engineering_test_result_component_id` FOREIGN KEY (`component_id`) REFERENCES `vibe_manufacturing_v1`.`engineering`.`component`(`component_id`);
-ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`test_result` ADD CONSTRAINT `fk_engineering_test_result_eco_id` FOREIGN KEY (`eco_id`) REFERENCES `vibe_manufacturing_v1`.`engineering`.`eco`(`eco_id`);
-ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`test_result` ADD CONSTRAINT `fk_engineering_test_result_engineering_specification_id` FOREIGN KEY (`engineering_specification_id`) REFERENCES `vibe_manufacturing_v1`.`engineering`.`engineering_specification`(`engineering_specification_id`);
-ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`test_result` ADD CONSTRAINT `fk_engineering_test_result_original_test_result_id` FOREIGN KEY (`original_test_result_id`) REFERENCES `vibe_manufacturing_v1`.`engineering`.`test_result`(`test_result_id`);
-ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`test_result` ADD CONSTRAINT `fk_engineering_test_result_revision_id` FOREIGN KEY (`revision_id`) REFERENCES `vibe_manufacturing_v1`.`engineering`.`revision`(`revision_id`);
-ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`eco_affected_item` ADD CONSTRAINT `fk_engineering_eco_affected_item_component_id` FOREIGN KEY (`component_id`) REFERENCES `vibe_manufacturing_v1`.`engineering`.`component`(`component_id`);
-ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`eco_affected_item` ADD CONSTRAINT `fk_engineering_eco_affected_item_eco_id` FOREIGN KEY (`eco_id`) REFERENCES `vibe_manufacturing_v1`.`engineering`.`eco`(`eco_id`);
+ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`project_component_assignment` ADD CONSTRAINT `fk_engineering_project_component_assignment_component_id` FOREIGN KEY (`component_id`) REFERENCES `vibe_manufacturing_v1`.`engineering`.`component`(`component_id`);
+ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`project_component_assignment` ADD CONSTRAINT `fk_engineering_project_component_assignment_project_id` FOREIGN KEY (`project_id`) REFERENCES `vibe_manufacturing_v1`.`engineering`.`project`(`project_id`);
 
 -- ========= TAGS =========
 ALTER SCHEMA `vibe_manufacturing_v1`.`engineering` SET TAGS ('dbx_division' = 'operations');
@@ -549,10 +509,7 @@ ALTER SCHEMA `vibe_manufacturing_v1`.`engineering` SET TAGS ('dbx_domain' = 'eng
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`component` SET TAGS ('dbx_data_type' = 'master_data');
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`component` SET TAGS ('dbx_subdomain' = 'product_structure');
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`component` ALTER COLUMN `component_id` SET TAGS ('dbx_business_glossary_term' = 'Component ID');
-ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`component` ALTER COLUMN `customer_account_id` SET TAGS ('dbx_business_glossary_term' = 'Customer Account Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`component` ALTER COLUMN `material_master_id` SET TAGS ('dbx_business_glossary_term' = 'Material Master Id (Foreign Key)');
-ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`component` ALTER COLUMN `project_id` SET TAGS ('dbx_business_glossary_term' = 'Engineering Project Id (Foreign Key)');
-ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`component` ALTER COLUMN `sku_master_id` SET TAGS ('dbx_business_glossary_term' = 'Sku Master Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`component` ALTER COLUMN `substitute_component_id` SET TAGS ('dbx_business_glossary_term' = 'Substitute Component ID');
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`component` ALTER COLUMN `abc_classification` SET TAGS ('dbx_business_glossary_term' = 'ABC Classification');
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`component` ALTER COLUMN `abc_classification` SET TAGS ('dbx_value_regex' = 'A|B|C');
@@ -563,7 +520,6 @@ ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`component` ALTER COLUMN `comp
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`component` ALTER COLUMN `component_type` SET TAGS ('dbx_business_glossary_term' = 'Component Type');
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`component` ALTER COLUMN `component_type` SET TAGS ('dbx_value_regex' = 'raw_material|purchased_part|manufactured_part|sub_assembly|assembly|phantom');
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`component` ALTER COLUMN `cost_currency_code` SET TAGS ('dbx_business_glossary_term' = 'Cost Currency Code');
-ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`component` ALTER COLUMN `cost_currency_code` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`component` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`component` ALTER COLUMN `component_description` SET TAGS ('dbx_business_glossary_term' = 'Component Description');
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`component` ALTER COLUMN `dfm_score` SET TAGS ('dbx_business_glossary_term' = 'Design for Manufacturability (DFM) Score');
@@ -584,6 +540,8 @@ ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`component` ALTER COLUMN `mini
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`component` ALTER COLUMN `modified_by` SET TAGS ('dbx_business_glossary_term' = 'Modified By User');
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`component` ALTER COLUMN `modified_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Modified Timestamp');
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`component` ALTER COLUMN `component_name` SET TAGS ('dbx_business_glossary_term' = 'Component Name');
+ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`component` ALTER COLUMN `component_name` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`component` ALTER COLUMN `component_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`component` ALTER COLUMN `obsolescence_date` SET TAGS ('dbx_business_glossary_term' = 'Obsolescence Date');
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`component` ALTER COLUMN `pfmea_reference` SET TAGS ('dbx_business_glossary_term' = 'Process Failure Mode and Effects Analysis (PFMEA) Reference');
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`component` ALTER COLUMN `plm_item_code` SET TAGS ('dbx_business_glossary_term' = 'Product Lifecycle Management (PLM) Item ID');
@@ -606,13 +564,11 @@ ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`component` ALTER COLUMN `crea
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`bom` SET TAGS ('dbx_data_type' = 'master_data');
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`bom` SET TAGS ('dbx_subdomain' = 'product_structure');
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`bom` ALTER COLUMN `bom_id` SET TAGS ('dbx_business_glossary_term' = 'Bill of Materials (BOM) ID');
-ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`bom` ALTER COLUMN `asset_plant_id` SET TAGS ('dbx_business_glossary_term' = 'Asset Plant Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`bom` ALTER COLUMN `component_id` SET TAGS ('dbx_business_glossary_term' = 'Component Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`bom` ALTER COLUMN `customer_account_id` SET TAGS ('dbx_business_glossary_term' = 'Customer Account Id (Foreign Key)');
-ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`bom` ALTER COLUMN `eco_id` SET TAGS ('dbx_business_glossary_term' = 'Eco Id (Foreign Key)');
-ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`bom` ALTER COLUMN `bom_header_id` SET TAGS ('dbx_business_glossary_term' = 'Product Bom Header Id (Foreign Key)');
-ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`bom` ALTER COLUMN `revision_id` SET TAGS ('dbx_business_glossary_term' = 'Engineering Revision Id (Foreign Key)');
-ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`bom` ALTER COLUMN `sku_master_id` SET TAGS ('dbx_business_glossary_term' = 'Sku Master Id (Foreign Key)');
+ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`bom` ALTER COLUMN `material_master_id` SET TAGS ('dbx_business_glossary_term' = 'Material Master Id (Foreign Key)');
+ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`bom` ALTER COLUMN `project_id` SET TAGS ('dbx_business_glossary_term' = 'Engineering Project Id (Foreign Key)');
+ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`bom` ALTER COLUMN `warehouse_id` SET TAGS ('dbx_business_glossary_term' = 'Warehouse Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`bom` ALTER COLUMN `alternative_bom_indicator` SET TAGS ('dbx_business_glossary_term' = 'Alternative BOM Indicator');
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`bom` ALTER COLUMN `approval_status` SET TAGS ('dbx_business_glossary_term' = 'BOM Approval Status');
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`bom` ALTER COLUMN `approval_status` SET TAGS ('dbx_value_regex' = 'pending|approved|rejected|conditional');
@@ -627,13 +583,13 @@ ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`bom` ALTER COLUMN `bom_catego
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`bom` ALTER COLUMN `bom_category` SET TAGS ('dbx_value_regex' = 'material|document|equipment|variant|configurable');
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`bom` ALTER COLUMN `configuration_profile` SET TAGS ('dbx_business_glossary_term' = 'Configuration Profile');
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`bom` ALTER COLUMN `cost_estimate_currency` SET TAGS ('dbx_business_glossary_term' = 'Cost Estimate Currency Code');
-ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`bom` ALTER COLUMN `cost_estimate_currency` SET TAGS ('dbx_value_regex' = 'USD|EUR|GBP|CNY|JPY|INR');
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`bom` ALTER COLUMN `cost_estimate_total` SET TAGS ('dbx_business_glossary_term' = 'Total BOM Cost Estimate');
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`bom` ALTER COLUMN `cost_estimate_total` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`bom` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'BOM Creation Timestamp');
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`bom` ALTER COLUMN `bom_description` SET TAGS ('dbx_business_glossary_term' = 'BOM Description');
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`bom` ALTER COLUMN `effective_from_date` SET TAGS ('dbx_business_glossary_term' = 'BOM Effective From Date');
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`bom` ALTER COLUMN `effective_to_date` SET TAGS ('dbx_business_glossary_term' = 'BOM Effective To Date');
+ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`bom` ALTER COLUMN `engineering_change_order_number` SET TAGS ('dbx_business_glossary_term' = 'Engineering Change Order (ECO) Number');
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`bom` ALTER COLUMN `explosion_type` SET TAGS ('dbx_business_glossary_term' = 'BOM Explosion Type');
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`bom` ALTER COLUMN `explosion_type` SET TAGS ('dbx_value_regex' = 'single_level|multi_level|summarized');
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`bom` ALTER COLUMN `is_configurable` SET TAGS ('dbx_business_glossary_term' = 'Configurable BOM Indicator');
@@ -643,6 +599,7 @@ ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`bom` ALTER COLUMN `lot_size` 
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`bom` ALTER COLUMN `modified_by` SET TAGS ('dbx_business_glossary_term' = 'BOM Last Modified By');
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`bom` ALTER COLUMN `modified_timestamp` SET TAGS ('dbx_business_glossary_term' = 'BOM Last Modified Timestamp');
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`bom` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'BOM Notes');
+ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`bom` ALTER COLUMN `plm_item_code` SET TAGS ('dbx_business_glossary_term' = 'Product Lifecycle Management (PLM) Item ID');
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`bom` ALTER COLUMN `production_version` SET TAGS ('dbx_business_glossary_term' = 'Production Version');
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`bom` ALTER COLUMN `quantity_basis` SET TAGS ('dbx_business_glossary_term' = 'BOM Quantity Basis');
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`bom` ALTER COLUMN `revision` SET TAGS ('dbx_business_glossary_term' = 'BOM Revision');
@@ -655,55 +612,50 @@ ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`bom` ALTER COLUMN `weight_tot
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`bom` ALTER COLUMN `weight_unit` SET TAGS ('dbx_business_glossary_term' = 'Weight Unit of Measure');
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`bom` ALTER COLUMN `weight_unit` SET TAGS ('dbx_value_regex' = 'KG|LB|G|OZ|MT');
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`bom` ALTER COLUMN `created_by` SET TAGS ('dbx_business_glossary_term' = 'BOM Created By');
-ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`engineering_bom_line` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`engineering_bom_line` SET TAGS ('dbx_subdomain' = 'product_structure');
-ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`engineering_bom_line` ALTER COLUMN `engineering_bom_line_id` SET TAGS ('dbx_business_glossary_term' = 'Bill of Materials (BOM) Line Identifier');
-ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`engineering_bom_line` ALTER COLUMN `bom_header_id` SET TAGS ('dbx_business_glossary_term' = 'Bill of Materials (BOM) Header Identifier');
-ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`engineering_bom_line` ALTER COLUMN `bom_id` SET TAGS ('dbx_business_glossary_term' = 'Bom Id (Foreign Key)');
-ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`engineering_bom_line` ALTER COLUMN `eco_id` SET TAGS ('dbx_business_glossary_term' = 'Eco Id (Foreign Key)');
-ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`engineering_bom_line` ALTER COLUMN `material_master_id` SET TAGS ('dbx_business_glossary_term' = 'Material Master Id (Foreign Key)');
-ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`engineering_bom_line` ALTER COLUMN `component_id` SET TAGS ('dbx_business_glossary_term' = 'Parent Item Identifier');
-ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`engineering_bom_line` ALTER COLUMN `revision_id` SET TAGS ('dbx_business_glossary_term' = 'Engineering Revision Id (Foreign Key)');
-ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`engineering_bom_line` ALTER COLUMN `tertiary_engineering_substitute_component_id` SET TAGS ('dbx_business_glossary_term' = 'Substitute Component Identifier');
-ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`engineering_bom_line` ALTER COLUMN `assembly_instruction` SET TAGS ('dbx_business_glossary_term' = 'Assembly Instruction');
-ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`engineering_bom_line` ALTER COLUMN `bulk_material_flag` SET TAGS ('dbx_business_glossary_term' = 'Bulk Material Flag');
-ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`engineering_bom_line` ALTER COLUMN `co_product_flag` SET TAGS ('dbx_business_glossary_term' = 'Co-Product Flag');
-ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`engineering_bom_line` ALTER COLUMN `cost_rollup_flag` SET TAGS ('dbx_business_glossary_term' = 'Cost Rollup Flag');
-ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`engineering_bom_line` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
-ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`engineering_bom_line` ALTER COLUMN `critical_component_flag` SET TAGS ('dbx_business_glossary_term' = 'Critical Component Flag');
-ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`engineering_bom_line` ALTER COLUMN `effectivity_end_date` SET TAGS ('dbx_business_glossary_term' = 'Effectivity End Date');
-ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`engineering_bom_line` ALTER COLUMN `effectivity_serial_number_end` SET TAGS ('dbx_business_glossary_term' = 'Effectivity Serial Number End');
-ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`engineering_bom_line` ALTER COLUMN `effectivity_serial_number_start` SET TAGS ('dbx_business_glossary_term' = 'Effectivity Serial Number Start');
-ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`engineering_bom_line` ALTER COLUMN `effectivity_start_date` SET TAGS ('dbx_business_glossary_term' = 'Effectivity Start Date');
-ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`engineering_bom_line` ALTER COLUMN `engineering_bom_line_status` SET TAGS ('dbx_business_glossary_term' = 'Bill of Materials (BOM) Line Status');
-ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`engineering_bom_line` ALTER COLUMN `engineering_bom_line_status` SET TAGS ('dbx_value_regex' = 'active|inactive|pending|obsolete|prototype');
-ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`engineering_bom_line` ALTER COLUMN `engineering_notes` SET TAGS ('dbx_business_glossary_term' = 'Engineering Notes');
-ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`engineering_bom_line` ALTER COLUMN `find_number` SET TAGS ('dbx_business_glossary_term' = 'Find Number');
-ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`engineering_bom_line` ALTER COLUMN `fixed_quantity_flag` SET TAGS ('dbx_business_glossary_term' = 'Fixed Quantity Flag');
-ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`engineering_bom_line` ALTER COLUMN `installation_point` SET TAGS ('dbx_business_glossary_term' = 'Installation Point');
-ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`engineering_bom_line` ALTER COLUMN `lead_time_offset_days` SET TAGS ('dbx_business_glossary_term' = 'Lead Time Offset Days');
-ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`engineering_bom_line` ALTER COLUMN `modified_by` SET TAGS ('dbx_business_glossary_term' = 'Modified By User');
-ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`engineering_bom_line` ALTER COLUMN `modified_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Modified Timestamp');
-ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`engineering_bom_line` ALTER COLUMN `phantom_flag` SET TAGS ('dbx_business_glossary_term' = 'Phantom Flag');
-ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`engineering_bom_line` ALTER COLUMN `position_number` SET TAGS ('dbx_business_glossary_term' = 'Position Number');
-ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`engineering_bom_line` ALTER COLUMN `procurement_type` SET TAGS ('dbx_business_glossary_term' = 'Procurement Type');
-ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`engineering_bom_line` ALTER COLUMN `procurement_type` SET TAGS ('dbx_value_regex' = 'make|buy|transfer|subcontract');
-ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`engineering_bom_line` ALTER COLUMN `quantity_per_assembly` SET TAGS ('dbx_business_glossary_term' = 'Quantity Per Assembly');
-ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`engineering_bom_line` ALTER COLUMN `reference_designator` SET TAGS ('dbx_business_glossary_term' = 'Reference Designator');
-ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`engineering_bom_line` ALTER COLUMN `revision_level` SET TAGS ('dbx_business_glossary_term' = 'Revision Level');
-ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`engineering_bom_line` ALTER COLUMN `scrap_factor_percentage` SET TAGS ('dbx_business_glossary_term' = 'Scrap Factor Percentage');
-ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`engineering_bom_line` ALTER COLUMN `sort_sequence` SET TAGS ('dbx_business_glossary_term' = 'Sort Sequence');
-ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`engineering_bom_line` ALTER COLUMN `substitute_qualification_status` SET TAGS ('dbx_business_glossary_term' = 'Substitute Qualification Status');
-ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`engineering_bom_line` ALTER COLUMN `substitute_qualification_status` SET TAGS ('dbx_value_regex' = 'qualified|conditional|pending|not_qualified');
-ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`engineering_bom_line` ALTER COLUMN `substitute_usage_restriction` SET TAGS ('dbx_business_glossary_term' = 'Substitute Usage Restriction');
-ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`engineering_bom_line` ALTER COLUMN `unit_of_measure` SET TAGS ('dbx_business_glossary_term' = 'Unit of Measure (UOM)');
-ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`engineering_bom_line` ALTER COLUMN `created_by` SET TAGS ('dbx_business_glossary_term' = 'Created By User');
+ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`bom_line` SET TAGS ('dbx_data_type' = 'master_data');
+ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`bom_line` SET TAGS ('dbx_subdomain' = 'product_structure');
+ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`bom_line` ALTER COLUMN `bom_line_id` SET TAGS ('dbx_business_glossary_term' = 'Bill of Materials (BOM) Line Identifier');
+ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`bom_line` ALTER COLUMN `bom_id` SET TAGS ('dbx_business_glossary_term' = 'Bom Id (Foreign Key)');
+ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`bom_line` ALTER COLUMN `component_id` SET TAGS ('dbx_business_glossary_term' = 'Parent Item Identifier');
+ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`bom_line` ALTER COLUMN `revision_id` SET TAGS ('dbx_business_glossary_term' = 'Engineering Revision Id (Foreign Key)');
+ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`bom_line` ALTER COLUMN `tertiary_engineering_substitute_component_id` SET TAGS ('dbx_business_glossary_term' = 'Substitute Component Identifier');
+ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`bom_line` ALTER COLUMN `assembly_instruction` SET TAGS ('dbx_business_glossary_term' = 'Assembly Instruction');
+ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`bom_line` ALTER COLUMN `bulk_material_flag` SET TAGS ('dbx_business_glossary_term' = 'Bulk Material Flag');
+ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`bom_line` ALTER COLUMN `change_number` SET TAGS ('dbx_business_glossary_term' = 'Engineering Change Number');
+ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`bom_line` ALTER COLUMN `co_product_flag` SET TAGS ('dbx_business_glossary_term' = 'Co-Product Flag');
+ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`bom_line` ALTER COLUMN `cost_rollup_flag` SET TAGS ('dbx_business_glossary_term' = 'Cost Rollup Flag');
+ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`bom_line` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
+ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`bom_line` ALTER COLUMN `critical_component_flag` SET TAGS ('dbx_business_glossary_term' = 'Critical Component Flag');
+ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`bom_line` ALTER COLUMN `effectivity_end_date` SET TAGS ('dbx_business_glossary_term' = 'Effectivity End Date');
+ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`bom_line` ALTER COLUMN `effectivity_serial_number_end` SET TAGS ('dbx_business_glossary_term' = 'Effectivity Serial Number End');
+ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`bom_line` ALTER COLUMN `effectivity_serial_number_start` SET TAGS ('dbx_business_glossary_term' = 'Effectivity Serial Number Start');
+ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`bom_line` ALTER COLUMN `effectivity_start_date` SET TAGS ('dbx_business_glossary_term' = 'Effectivity Start Date');
+ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`bom_line` ALTER COLUMN `engineering_bom_line_status` SET TAGS ('dbx_business_glossary_term' = 'Bill of Materials (BOM) Line Status');
+ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`bom_line` ALTER COLUMN `engineering_bom_line_status` SET TAGS ('dbx_value_regex' = 'active|inactive|pending|obsolete|prototype');
+ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`bom_line` ALTER COLUMN `engineering_notes` SET TAGS ('dbx_business_glossary_term' = 'Engineering Notes');
+ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`bom_line` ALTER COLUMN `find_number` SET TAGS ('dbx_business_glossary_term' = 'Find Number');
+ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`bom_line` ALTER COLUMN `fixed_quantity_flag` SET TAGS ('dbx_business_glossary_term' = 'Fixed Quantity Flag');
+ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`bom_line` ALTER COLUMN `installation_point` SET TAGS ('dbx_business_glossary_term' = 'Installation Point');
+ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`bom_line` ALTER COLUMN `lead_time_offset_days` SET TAGS ('dbx_business_glossary_term' = 'Lead Time Offset Days');
+ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`bom_line` ALTER COLUMN `modified_by` SET TAGS ('dbx_business_glossary_term' = 'Modified By User');
+ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`bom_line` ALTER COLUMN `modified_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Modified Timestamp');
+ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`bom_line` ALTER COLUMN `phantom_flag` SET TAGS ('dbx_business_glossary_term' = 'Phantom Flag');
+ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`bom_line` ALTER COLUMN `position_number` SET TAGS ('dbx_business_glossary_term' = 'Position Number');
+ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`bom_line` ALTER COLUMN `procurement_type` SET TAGS ('dbx_business_glossary_term' = 'Procurement Type');
+ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`bom_line` ALTER COLUMN `procurement_type` SET TAGS ('dbx_value_regex' = 'make|buy|transfer|subcontract');
+ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`bom_line` ALTER COLUMN `quantity_per_assembly` SET TAGS ('dbx_business_glossary_term' = 'Quantity Per Assembly');
+ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`bom_line` ALTER COLUMN `reference_designator` SET TAGS ('dbx_business_glossary_term' = 'Reference Designator');
+ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`bom_line` ALTER COLUMN `scrap_factor_percentage` SET TAGS ('dbx_business_glossary_term' = 'Scrap Factor Percentage');
+ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`bom_line` ALTER COLUMN `sort_sequence` SET TAGS ('dbx_business_glossary_term' = 'Sort Sequence');
+ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`bom_line` ALTER COLUMN `substitute_qualification_status` SET TAGS ('dbx_business_glossary_term' = 'Substitute Qualification Status');
+ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`bom_line` ALTER COLUMN `substitute_qualification_status` SET TAGS ('dbx_value_regex' = 'qualified|conditional|pending|not_qualified');
+ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`bom_line` ALTER COLUMN `substitute_usage_restriction` SET TAGS ('dbx_business_glossary_term' = 'Substitute Usage Restriction');
+ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`bom_line` ALTER COLUMN `unit_of_measure` SET TAGS ('dbx_business_glossary_term' = 'Unit of Measure (UOM)');
+ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`bom_line` ALTER COLUMN `created_by` SET TAGS ('dbx_business_glossary_term' = 'Created By User');
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`cad_model` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`cad_model` SET TAGS ('dbx_subdomain' = 'product_structure');
+ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`cad_model` SET TAGS ('dbx_subdomain' = 'design_documentation');
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`cad_model` ALTER COLUMN `cad_model_id` SET TAGS ('dbx_business_glossary_term' = 'Computer-Aided Design (CAD) Model ID');
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`cad_model` ALTER COLUMN `component_id` SET TAGS ('dbx_business_glossary_term' = 'Component ID');
-ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`cad_model` ALTER COLUMN `customer_account_id` SET TAGS ('dbx_business_glossary_term' = 'Customer Account Id (Foreign Key)');
-ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`cad_model` ALTER COLUMN `drawing_id` SET TAGS ('dbx_business_glossary_term' = 'Drawing Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`cad_model` ALTER COLUMN `eco_id` SET TAGS ('dbx_business_glossary_term' = 'Eco Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`cad_model` ALTER COLUMN `revision_id` SET TAGS ('dbx_business_glossary_term' = 'Engineering Revision Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`cad_model` ALTER COLUMN `approved_by` SET TAGS ('dbx_business_glossary_term' = 'Approved By User');
@@ -724,8 +676,8 @@ ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`cad_model` ALTER COLUMN `data
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`cad_model` ALTER COLUMN `dataset_type` SET TAGS ('dbx_value_regex' = '3D_Solid_Model|2D_Drawing|Assembly|Simulation|CAM_Toolpath|Sheet_Metal');
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`cad_model` ALTER COLUMN `design_intent` SET TAGS ('dbx_business_glossary_term' = 'Design Intent');
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`cad_model` ALTER COLUMN `dfm_analysis_status` SET TAGS ('dbx_business_glossary_term' = 'Design for Manufacturability (DFM) Analysis Status');
-ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`cad_model` ALTER COLUMN `dfm_analysis_status` SET TAGS ('dbx_value_regex' = 'Not_Started|In_Progress|Completed|Issues_Found|Approved');
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`cad_model` ALTER COLUMN `dfm_complexity_score` SET TAGS ('dbx_business_glossary_term' = 'DFM Complexity Score');
+ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`cad_model` ALTER COLUMN `drawing_number` SET TAGS ('dbx_business_glossary_term' = 'Engineering Drawing Number');
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`cad_model` ALTER COLUMN `export_control_classification` SET TAGS ('dbx_business_glossary_term' = 'Export Control Classification Number (ECCN)');
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`cad_model` ALTER COLUMN `export_control_classification` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`cad_model` ALTER COLUMN `file_format` SET TAGS ('dbx_business_glossary_term' = 'CAD File Format');
@@ -738,6 +690,8 @@ ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`cad_model` ALTER COLUMN `mode
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`cad_model` ALTER COLUMN `model_maturity_state` SET TAGS ('dbx_business_glossary_term' = 'Model Maturity State');
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`cad_model` ALTER COLUMN `model_maturity_state` SET TAGS ('dbx_value_regex' = 'Draft|In_Review|Approved|Released|Obsolete|Archived');
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`cad_model` ALTER COLUMN `model_name` SET TAGS ('dbx_business_glossary_term' = 'CAD Model Name');
+ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`cad_model` ALTER COLUMN `model_name` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`cad_model` ALTER COLUMN `model_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`cad_model` ALTER COLUMN `model_number` SET TAGS ('dbx_business_glossary_term' = 'CAD Model Number');
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`cad_model` ALTER COLUMN `model_surface_area` SET TAGS ('dbx_business_glossary_term' = 'Model Surface Area');
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`cad_model` ALTER COLUMN `model_volume` SET TAGS ('dbx_business_glossary_term' = 'Model Volume');
@@ -753,8 +707,9 @@ ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`cad_model` ALTER COLUMN `vaul
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`cad_model` ALTER COLUMN `version` SET TAGS ('dbx_business_glossary_term' = 'Model Version');
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`cad_model` ALTER COLUMN `created_by` SET TAGS ('dbx_business_glossary_term' = 'Created By User');
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`drawing` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`drawing` SET TAGS ('dbx_subdomain' = 'product_structure');
+ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`drawing` SET TAGS ('dbx_subdomain' = 'design_documentation');
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`drawing` ALTER COLUMN `drawing_id` SET TAGS ('dbx_business_glossary_term' = 'Drawing ID');
+ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`drawing` ALTER COLUMN `cad_model_id` SET TAGS ('dbx_business_glossary_term' = 'Cad Model Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`drawing` ALTER COLUMN `component_id` SET TAGS ('dbx_business_glossary_term' = 'Component Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`drawing` ALTER COLUMN `customer_account_id` SET TAGS ('dbx_business_glossary_term' = 'Customer Account Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`drawing` ALTER COLUMN `eco_id` SET TAGS ('dbx_business_glossary_term' = 'Eco Id (Foreign Key)');
@@ -762,7 +717,6 @@ ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`drawing` ALTER COLUMN `revisi
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`drawing` ALTER COLUMN `approval_date` SET TAGS ('dbx_business_glossary_term' = 'Approval Date');
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`drawing` ALTER COLUMN `assembly_level` SET TAGS ('dbx_business_glossary_term' = 'Assembly Level');
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`drawing` ALTER COLUMN `assembly_level` SET TAGS ('dbx_value_regex' = 'component|subassembly|assembly|system');
-ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`drawing` ALTER COLUMN `cad_model_reference` SET TAGS ('dbx_business_glossary_term' = 'Computer-Aided Design (CAD) Model Reference');
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`drawing` ALTER COLUMN `checked_by` SET TAGS ('dbx_business_glossary_term' = 'Checked By');
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`drawing` ALTER COLUMN `confidentiality_level` SET TAGS ('dbx_business_glossary_term' = 'Confidentiality Level');
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`drawing` ALTER COLUMN `confidentiality_level` SET TAGS ('dbx_value_regex' = 'public|internal|confidential|restricted|proprietary');
@@ -788,8 +742,6 @@ ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`drawing` ALTER COLUMN `plm_it
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`drawing` ALTER COLUMN `projection_method` SET TAGS ('dbx_business_glossary_term' = 'Projection Method');
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`drawing` ALTER COLUMN `projection_method` SET TAGS ('dbx_value_regex' = 'first_angle|third_angle');
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`drawing` ALTER COLUMN `release_date` SET TAGS ('dbx_business_glossary_term' = 'Release Date');
-ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`drawing` ALTER COLUMN `revision_level` SET TAGS ('dbx_business_glossary_term' = 'Revision Level');
-ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`drawing` ALTER COLUMN `revision_level` SET TAGS ('dbx_value_regex' = '^[A-Z0-9]{1,5}$');
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`drawing` ALTER COLUMN `scale` SET TAGS ('dbx_business_glossary_term' = 'Drawing Scale');
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`drawing` ALTER COLUMN `scale` SET TAGS ('dbx_value_regex' = '^(1:[0-9]+|[0-9]+:1|NTS)$');
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`drawing` ALTER COLUMN `sheet_count` SET TAGS ('dbx_business_glossary_term' = 'Sheet Count');
@@ -808,14 +760,8 @@ ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`drawing` ALTER COLUMN `weight
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`eco` SET TAGS ('dbx_data_type' = 'transactional_data');
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`eco` SET TAGS ('dbx_subdomain' = 'change_management');
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`eco` ALTER COLUMN `eco_id` SET TAGS ('dbx_business_glossary_term' = 'Engineering Change Order (ECO) ID');
-ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`eco` ALTER COLUMN `contact_id` SET TAGS ('dbx_business_glossary_term' = 'Approving Customer Contact Id (Foreign Key)');
-ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`eco` ALTER COLUMN `bom_header_id` SET TAGS ('dbx_business_glossary_term' = 'Bom Header Id (Foreign Key)');
-ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`eco` ALTER COLUMN `certification_id` SET TAGS ('dbx_business_glossary_term' = 'Product Certification Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`eco` ALTER COLUMN `customer_account_id` SET TAGS ('dbx_business_glossary_term' = 'Customer Account Id (Foreign Key)');
-ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`eco` ALTER COLUMN `family_id` SET TAGS ('dbx_business_glossary_term' = 'Regulatory Requirement Id (Foreign Key)');
-ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`eco` ALTER COLUMN `material_master_id` SET TAGS ('dbx_business_glossary_term' = 'Material Master Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`eco` ALTER COLUMN `project_id` SET TAGS ('dbx_business_glossary_term' = 'Engineering Project Id (Foreign Key)');
-ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`eco` ALTER COLUMN `sku_master_id` SET TAGS ('dbx_business_glossary_term' = 'Sku Master Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`eco` ALTER COLUMN `acknowledgement_count` SET TAGS ('dbx_business_glossary_term' = 'Acknowledgement Count');
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`eco` ALTER COLUMN `acknowledgement_required` SET TAGS ('dbx_business_glossary_term' = 'Acknowledgement Required Flag');
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`eco` ALTER COLUMN `actual_cost_impact` SET TAGS ('dbx_business_glossary_term' = 'Actual Cost Impact');
@@ -824,6 +770,8 @@ ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`eco` ALTER COLUMN `actual_sch
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`eco` ALTER COLUMN `affected_items_count` SET TAGS ('dbx_business_glossary_term' = 'Affected Items Count');
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`eco` ALTER COLUMN `approval_date` SET TAGS ('dbx_business_glossary_term' = 'Approval Date');
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`eco` ALTER COLUMN `approved_by_name` SET TAGS ('dbx_business_glossary_term' = 'Approved By Name');
+ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`eco` ALTER COLUMN `approved_by_name` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`eco` ALTER COLUMN `approved_by_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`eco` ALTER COLUMN `approved_by_title` SET TAGS ('dbx_business_glossary_term' = 'Approved By Title');
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`eco` ALTER COLUMN `change_priority` SET TAGS ('dbx_business_glossary_term' = 'Change Priority');
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`eco` ALTER COLUMN `change_priority` SET TAGS ('dbx_value_regex' = 'critical|high|medium|low');
@@ -831,7 +779,6 @@ ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`eco` ALTER COLUMN `change_typ
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`eco` ALTER COLUMN `change_type` SET TAGS ('dbx_value_regex' = 'design|material|process|documentation|specification|tooling');
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`eco` ALTER COLUMN `closure_date` SET TAGS ('dbx_business_glossary_term' = 'Closure Date');
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`eco` ALTER COLUMN `cost_currency_code` SET TAGS ('dbx_business_glossary_term' = 'Cost Currency Code');
-ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`eco` ALTER COLUMN `cost_currency_code` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`eco` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`eco` ALTER COLUMN `customer_approval_date` SET TAGS ('dbx_business_glossary_term' = 'Customer Approval Date');
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`eco` ALTER COLUMN `customer_approval_received` SET TAGS ('dbx_business_glossary_term' = 'Customer Approval Received Flag');
@@ -855,6 +802,8 @@ ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`eco` ALTER COLUMN `initiator_
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`eco` ALTER COLUMN `initiator_email` SET TAGS ('dbx_business_glossary_term' = 'Initiator Email Address');
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`eco` ALTER COLUMN `initiator_email` SET TAGS ('dbx_value_regex' = '^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+.[a-zA-Z]{2,}$');
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`eco` ALTER COLUMN `initiator_email` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`eco` ALTER COLUMN `initiator_email` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`eco` ALTER COLUMN `initiator_email` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`eco` ALTER COLUMN `last_modified_by` SET TAGS ('dbx_business_glossary_term' = 'Last Modified By');
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`eco` ALTER COLUMN `last_modified_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Last Modified Timestamp');
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`eco` ALTER COLUMN `lifecycle_status` SET TAGS ('dbx_business_glossary_term' = 'Lifecycle Status');
@@ -867,16 +816,63 @@ ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`eco` ALTER COLUMN `requires_s
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`eco` ALTER COLUMN `submitted_date` SET TAGS ('dbx_business_glossary_term' = 'Submitted Date');
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`eco` ALTER COLUMN `title` SET TAGS ('dbx_business_glossary_term' = 'Engineering Change Order (ECO) Title');
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`eco` ALTER COLUMN `to_revision` SET TAGS ('dbx_business_glossary_term' = 'To Revision');
+ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`ecn` SET TAGS ('dbx_data_type' = 'transactional_data');
+ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`ecn` SET TAGS ('dbx_subdomain' = 'change_management');
+ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`ecn` ALTER COLUMN `ecn_id` SET TAGS ('dbx_business_glossary_term' = 'Engineering Change Notice (ECN) ID');
+ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`ecn` ALTER COLUMN `eco_id` SET TAGS ('dbx_business_glossary_term' = 'Engineering Change Order (ECO) ID');
+ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`ecn` ALTER COLUMN `acknowledgement_count` SET TAGS ('dbx_business_glossary_term' = 'Acknowledgement Count');
+ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`ecn` ALTER COLUMN `acknowledgement_required` SET TAGS ('dbx_business_glossary_term' = 'Acknowledgement Required Flag');
+ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`ecn` ALTER COLUMN `acknowledgement_target_count` SET TAGS ('dbx_business_glossary_term' = 'Acknowledgement Target Count');
+ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`ecn` ALTER COLUMN `affected_drawing_count` SET TAGS ('dbx_business_glossary_term' = 'Affected Drawing Count');
+ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`ecn` ALTER COLUMN `affected_part_count` SET TAGS ('dbx_business_glossary_term' = 'Affected Part Count');
+ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`ecn` ALTER COLUMN `affected_product_lines` SET TAGS ('dbx_business_glossary_term' = 'Affected Product Lines');
+ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`ecn` ALTER COLUMN `approval_date` SET TAGS ('dbx_business_glossary_term' = 'Engineering Change Notice (ECN) Approval Date');
+ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`ecn` ALTER COLUMN `bom_impact_flag` SET TAGS ('dbx_business_glossary_term' = 'Bill of Materials (BOM) Impact Flag');
+ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`ecn` ALTER COLUMN `change_category` SET TAGS ('dbx_business_glossary_term' = 'Engineering Change Category');
+ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`ecn` ALTER COLUMN `change_category` SET TAGS ('dbx_value_regex' = 'design|material|process|documentation|specification|supplier');
+ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`ecn` ALTER COLUMN `change_description` SET TAGS ('dbx_business_glossary_term' = 'Engineering Change Description');
+ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`ecn` ALTER COLUMN `change_reason` SET TAGS ('dbx_business_glossary_term' = 'Engineering Change Reason');
+ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`ecn` ALTER COLUMN `closure_date` SET TAGS ('dbx_business_glossary_term' = 'Engineering Change Notice (ECN) Closure Date');
+ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`ecn` ALTER COLUMN `comments` SET TAGS ('dbx_business_glossary_term' = 'Engineering Change Notice (ECN) Comments');
+ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`ecn` ALTER COLUMN `cost_impact_currency` SET TAGS ('dbx_business_glossary_term' = 'Cost Impact Currency Code');
+ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`ecn` ALTER COLUMN `cost_impact_estimate` SET TAGS ('dbx_business_glossary_term' = 'Cost Impact Estimate');
+ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`ecn` ALTER COLUMN `cost_impact_estimate` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`ecn` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
+ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`ecn` ALTER COLUMN `customer_notification_required` SET TAGS ('dbx_business_glossary_term' = 'Customer Notification Required Flag');
+ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`ecn` ALTER COLUMN `distribution_list` SET TAGS ('dbx_business_glossary_term' = 'Engineering Change Notice (ECN) Distribution List');
+ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`ecn` ALTER COLUMN `ecn_number` SET TAGS ('dbx_business_glossary_term' = 'Engineering Change Notice (ECN) Number');
+ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`ecn` ALTER COLUMN `ecn_number` SET TAGS ('dbx_value_regex' = '^ECN-[0-9]{6,10}$');
+ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`ecn` ALTER COLUMN `ecn_status` SET TAGS ('dbx_business_glossary_term' = 'Engineering Change Notice (ECN) Status');
+ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`ecn` ALTER COLUMN `ecn_status` SET TAGS ('dbx_value_regex' = 'draft|released|distributed|acknowledged|closed|cancelled');
+ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`ecn` ALTER COLUMN `ecn_type` SET TAGS ('dbx_business_glossary_term' = 'Engineering Change Notice (ECN) Type');
+ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`ecn` ALTER COLUMN `ecn_type` SET TAGS ('dbx_value_regex' = 'standard|urgent|emergency|field_change|design_improvement');
+ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`ecn` ALTER COLUMN `effective_date` SET TAGS ('dbx_business_glossary_term' = 'Engineering Change Notice (ECN) Effective Date');
+ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`ecn` ALTER COLUMN `erp_sync_status` SET TAGS ('dbx_business_glossary_term' = 'Enterprise Resource Planning (ERP) Sync Status');
+ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`ecn` ALTER COLUMN `erp_sync_status` SET TAGS ('dbx_value_regex' = 'pending|synced|failed|not_required');
+ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`ecn` ALTER COLUMN `implementation_date` SET TAGS ('dbx_business_glossary_term' = 'Engineering Change Notice (ECN) Implementation Date');
+ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`ecn` ALTER COLUMN `inventory_impact_flag` SET TAGS ('dbx_business_glossary_term' = 'Inventory Impact Flag');
+ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`ecn` ALTER COLUMN `mes_sync_status` SET TAGS ('dbx_business_glossary_term' = 'Manufacturing Execution System (MES) Sync Status');
+ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`ecn` ALTER COLUMN `mes_sync_status` SET TAGS ('dbx_value_regex' = 'pending|synced|failed|not_required');
+ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`ecn` ALTER COLUMN `modified_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Modified Timestamp');
+ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`ecn` ALTER COLUMN `plm_system_code` SET TAGS ('dbx_business_glossary_term' = 'Product Lifecycle Management (PLM) System ID');
+ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`ecn` ALTER COLUMN `priority` SET TAGS ('dbx_business_glossary_term' = 'Engineering Change Notice (ECN) Priority');
+ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`ecn` ALTER COLUMN `priority` SET TAGS ('dbx_value_regex' = 'critical|high|medium|low');
+ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`ecn` ALTER COLUMN `regulatory_impact_flag` SET TAGS ('dbx_business_glossary_term' = 'Regulatory Impact Flag');
+ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`ecn` ALTER COLUMN `release_date` SET TAGS ('dbx_business_glossary_term' = 'Engineering Change Notice (ECN) Release Date');
+ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`ecn` ALTER COLUMN `revision_from` SET TAGS ('dbx_business_glossary_term' = 'Revision From');
+ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`ecn` ALTER COLUMN `revision_from` SET TAGS ('dbx_value_regex' = '^[A-Z0-9]{1,10}$');
+ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`ecn` ALTER COLUMN `revision_to` SET TAGS ('dbx_business_glossary_term' = 'Revision To');
+ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`ecn` ALTER COLUMN `revision_to` SET TAGS ('dbx_value_regex' = '^[A-Z0-9]{1,10}$');
+ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`ecn` ALTER COLUMN `routing_impact_flag` SET TAGS ('dbx_business_glossary_term' = 'Routing Impact Flag');
+ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`ecn` ALTER COLUMN `supplier_notification_required` SET TAGS ('dbx_business_glossary_term' = 'Supplier Notification Required Flag');
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`revision` SET TAGS ('dbx_data_type' = 'master_data');
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`revision` SET TAGS ('dbx_subdomain' = 'product_structure');
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`revision` ALTER COLUMN `revision_id` SET TAGS ('dbx_business_glossary_term' = 'Revision Identifier (ID)');
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`revision` ALTER COLUMN `component_id` SET TAGS ('dbx_business_glossary_term' = 'Component Identifier (ID)');
-ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`revision` ALTER COLUMN `customer_account_id` SET TAGS ('dbx_business_glossary_term' = 'Customer Account Id (Foreign Key)');
+ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`revision` ALTER COLUMN `ecn_id` SET TAGS ('dbx_business_glossary_term' = 'Engineering Change Notice (ECN) Identifier (ID)');
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`revision` ALTER COLUMN `eco_id` SET TAGS ('dbx_business_glossary_term' = 'Engineering Change Order (ECO) Identifier (ID)');
-ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`revision` ALTER COLUMN `family_id` SET TAGS ('dbx_business_glossary_term' = 'Regulatory Requirement Id (Foreign Key)');
+ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`revision` ALTER COLUMN `engineering_specification_id` SET TAGS ('dbx_business_glossary_term' = 'Engineering Specification Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`revision` ALTER COLUMN `primary_superseded_by_revision_engineering_revision_id` SET TAGS ('dbx_business_glossary_term' = 'Superseded By Revision Identifier (ID)');
-ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`revision` ALTER COLUMN `project_id` SET TAGS ('dbx_business_glossary_term' = 'Engineering Project Id (Foreign Key)');
-ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`revision` ALTER COLUMN `sku_master_id` SET TAGS ('dbx_business_glossary_term' = 'Sku Master Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`revision` ALTER COLUMN `approval_date` SET TAGS ('dbx_business_glossary_term' = 'Approval Date');
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`revision` ALTER COLUMN `cad_file_reference` SET TAGS ('dbx_business_glossary_term' = 'Computer-Aided Design (CAD) File Reference');
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`revision` ALTER COLUMN `ce_marking_required` SET TAGS ('dbx_business_glossary_term' = 'Conformité Européenne (CE) Marking Required');
@@ -916,19 +912,15 @@ ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`revision` ALTER COLUMN `relea
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`revision` ALTER COLUMN `revision_type` SET TAGS ('dbx_business_glossary_term' = 'Revision Type');
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`revision` ALTER COLUMN `revision_type` SET TAGS ('dbx_value_regex' = 'major|minor|patch|branch|prototype');
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`revision` ALTER COLUMN `rohs_compliant` SET TAGS ('dbx_business_glossary_term' = 'Restriction of Hazardous Substances (RoHS) Compliant');
-ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`revision` ALTER COLUMN `specification_document` SET TAGS ('dbx_business_glossary_term' = 'Technical Specification Document Reference');
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`revision` ALTER COLUMN `ul_certification_required` SET TAGS ('dbx_business_glossary_term' = 'Underwriters Laboratories (UL) Certification Required');
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`revision` ALTER COLUMN `created_by` SET TAGS ('dbx_business_glossary_term' = 'Created By User');
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`engineering_specification` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`engineering_specification` SET TAGS ('dbx_subdomain' = 'product_structure');
+ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`engineering_specification` SET TAGS ('dbx_subdomain' = 'design_documentation');
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`engineering_specification` ALTER COLUMN `engineering_specification_id` SET TAGS ('dbx_business_glossary_term' = 'Specification ID');
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`engineering_specification` ALTER COLUMN `component_id` SET TAGS ('dbx_business_glossary_term' = 'Component Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`engineering_specification` ALTER COLUMN `customer_account_id` SET TAGS ('dbx_business_glossary_term' = 'Customer Account Id (Foreign Key)');
+ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`engineering_specification` ALTER COLUMN `ecn_id` SET TAGS ('dbx_business_glossary_term' = 'Ecn Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`engineering_specification` ALTER COLUMN `eco_id` SET TAGS ('dbx_business_glossary_term' = 'Eco Id (Foreign Key)');
-ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`engineering_specification` ALTER COLUMN `family_id` SET TAGS ('dbx_business_glossary_term' = 'Regulatory Requirement Id (Foreign Key)');
-ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`engineering_specification` ALTER COLUMN `project_id` SET TAGS ('dbx_business_glossary_term' = 'Engineering Project Id (Foreign Key)');
-ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`engineering_specification` ALTER COLUMN `revision_id` SET TAGS ('dbx_business_glossary_term' = 'Engineering Revision Id (Foreign Key)');
-ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`engineering_specification` ALTER COLUMN `sku_master_id` SET TAGS ('dbx_business_glossary_term' = 'Sku Master Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`engineering_specification` ALTER COLUMN `superseded_by_specification_engineering_specification_id` SET TAGS ('dbx_business_glossary_term' = 'Superseded By Specification ID');
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`engineering_specification` ALTER COLUMN `acceptance_criteria` SET TAGS ('dbx_business_glossary_term' = 'Acceptance Criteria');
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`engineering_specification` ALTER COLUMN `applicable_standards` SET TAGS ('dbx_business_glossary_term' = 'Applicable Standards');
@@ -936,6 +928,8 @@ ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`engineering_specification` AL
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`engineering_specification` ALTER COLUMN `approval_status` SET TAGS ('dbx_business_glossary_term' = 'Specification Approval Status');
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`engineering_specification` ALTER COLUMN `approval_status` SET TAGS ('dbx_value_regex' = 'draft|in_review|approved|obsolete|superseded');
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`engineering_specification` ALTER COLUMN `approver_name` SET TAGS ('dbx_business_glossary_term' = 'Approver Name');
+ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`engineering_specification` ALTER COLUMN `approver_name` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`engineering_specification` ALTER COLUMN `approver_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`engineering_specification` ALTER COLUMN `change_reason` SET TAGS ('dbx_business_glossary_term' = 'Change Reason');
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`engineering_specification` ALTER COLUMN `confidentiality_level` SET TAGS ('dbx_business_glossary_term' = 'Confidentiality Level');
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`engineering_specification` ALTER COLUMN `confidentiality_level` SET TAGS ('dbx_value_regex' = 'public|internal|confidential|restricted');
@@ -946,8 +940,6 @@ ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`engineering_specification` AL
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`engineering_specification` ALTER COLUMN `document_format` SET TAGS ('dbx_business_glossary_term' = 'Document Format');
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`engineering_specification` ALTER COLUMN `document_format` SET TAGS ('dbx_value_regex' = 'PDF|DOCX|DWG|STEP|IGES|XML');
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`engineering_specification` ALTER COLUMN `document_location` SET TAGS ('dbx_business_glossary_term' = 'Document Location');
-ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`engineering_specification` ALTER COLUMN `ecn_number` SET TAGS ('dbx_business_glossary_term' = 'Engineering Change Notice (ECN) Number');
-ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`engineering_specification` ALTER COLUMN `ecn_number` SET TAGS ('dbx_value_regex' = '^ECN-[A-Z0-9]{6,15}$');
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`engineering_specification` ALTER COLUMN `effective_date` SET TAGS ('dbx_business_glossary_term' = 'Specification Effective Date');
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`engineering_specification` ALTER COLUMN `environmental_conditions` SET TAGS ('dbx_business_glossary_term' = 'Environmental Conditions');
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`engineering_specification` ALTER COLUMN `language` SET TAGS ('dbx_business_glossary_term' = 'Document Language');
@@ -977,20 +969,15 @@ ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`engineering_specification` AL
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`engineering_specification` ALTER COLUMN `validation_status` SET TAGS ('dbx_value_regex' = 'not_started|in_progress|completed|failed');
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`engineering_specification` ALTER COLUMN `created_by` SET TAGS ('dbx_business_glossary_term' = 'Record Created By');
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`project` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`project` SET TAGS ('dbx_subdomain' = 'development_initiatives');
+ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`project` SET TAGS ('dbx_subdomain' = 'project_execution');
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`project` ALTER COLUMN `project_id` SET TAGS ('dbx_business_glossary_term' = 'Engineering Project ID');
-ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`project` ALTER COLUMN `account_site_id` SET TAGS ('dbx_business_glossary_term' = 'Project Header Id (Foreign Key)');
-ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`project` ALTER COLUMN `customer_account_id` SET TAGS ('dbx_business_glossary_term' = 'Customer Account Id (Foreign Key)');
-ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`project` ALTER COLUMN `inventory_plant_id` SET TAGS ('dbx_business_glossary_term' = 'Inventory Plant Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`project` ALTER COLUMN `family_id` SET TAGS ('dbx_business_glossary_term' = 'Product Family ID');
-ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`project` ALTER COLUMN `sku_master_id` SET TAGS ('dbx_business_glossary_term' = 'Sku Master Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`project` ALTER COLUMN `actual_launch_date` SET TAGS ('dbx_business_glossary_term' = 'Actual Launch Date');
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`project` ALTER COLUMN `approved_by` SET TAGS ('dbx_business_glossary_term' = 'Approved By');
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`project` ALTER COLUMN `approved_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Approved Timestamp');
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`project` ALTER COLUMN `budget_allocated_amount` SET TAGS ('dbx_business_glossary_term' = 'Budget Allocated Amount');
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`project` ALTER COLUMN `budget_allocated_amount` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`project` ALTER COLUMN `budget_currency_code` SET TAGS ('dbx_business_glossary_term' = 'Budget Currency Code');
-ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`project` ALTER COLUMN `budget_currency_code` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`project` ALTER COLUMN `budget_spent_amount` SET TAGS ('dbx_business_glossary_term' = 'Budget Spent Amount');
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`project` ALTER COLUMN `budget_spent_amount` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`project` ALTER COLUMN `business_justification` SET TAGS ('dbx_business_glossary_term' = 'Business Justification');
@@ -1013,6 +1000,8 @@ ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`project` ALTER COLUMN `end_da
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`project` ALTER COLUMN `modified_by` SET TAGS ('dbx_business_glossary_term' = 'Modified By');
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`project` ALTER COLUMN `modified_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Modified Timestamp');
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`project` ALTER COLUMN `project_name` SET TAGS ('dbx_business_glossary_term' = 'Project Name');
+ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`project` ALTER COLUMN `project_name` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`project` ALTER COLUMN `project_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`project` ALTER COLUMN `patent_application_count` SET TAGS ('dbx_business_glossary_term' = 'Patent Application Count');
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`project` ALTER COLUMN `pfmea_completed` SET TAGS ('dbx_business_glossary_term' = 'Process Failure Mode and Effects Analysis (PFMEA) Completed');
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`project` ALTER COLUMN `ppap_required` SET TAGS ('dbx_business_glossary_term' = 'Production Part Approval Process (PPAP) Required');
@@ -1034,71 +1023,21 @@ ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`project` ALTER COLUMN `target
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`project` ALTER COLUMN `team_size_count` SET TAGS ('dbx_business_glossary_term' = 'Team Size Count');
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`project` ALTER COLUMN `technology_platform` SET TAGS ('dbx_business_glossary_term' = 'Technology Platform');
 ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`project` ALTER COLUMN `created_by` SET TAGS ('dbx_business_glossary_term' = 'Created By');
-ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`test_result` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`test_result` SET TAGS ('dbx_subdomain' = 'development_initiatives');
-ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`test_result` ALTER COLUMN `test_result_id` SET TAGS ('dbx_business_glossary_term' = 'Test Result ID');
-ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`test_result` ALTER COLUMN `capa_id` SET TAGS ('dbx_business_glossary_term' = 'Process Failure Mode and Effects Analysis (PFMEA) ID');
-ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`test_result` ALTER COLUMN `certification_id` SET TAGS ('dbx_business_glossary_term' = 'Product Certification Id (Foreign Key)');
-ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`test_result` ALTER COLUMN `component_id` SET TAGS ('dbx_business_glossary_term' = 'Component ID');
-ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`test_result` ALTER COLUMN `customer_account_id` SET TAGS ('dbx_business_glossary_term' = 'Customer Account Id (Foreign Key)');
-ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`test_result` ALTER COLUMN `eco_id` SET TAGS ('dbx_business_glossary_term' = 'Eco Id (Foreign Key)');
-ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`test_result` ALTER COLUMN `engineering_specification_id` SET TAGS ('dbx_business_glossary_term' = 'Engineering Specification Id (Foreign Key)');
-ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`test_result` ALTER COLUMN `equipment_register_id` SET TAGS ('dbx_business_glossary_term' = 'Test Equipment ID');
-ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`test_result` ALTER COLUMN `family_id` SET TAGS ('dbx_business_glossary_term' = 'Regulatory Requirement Id (Foreign Key)');
-ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`test_result` ALTER COLUMN `lot_batch_id` SET TAGS ('dbx_business_glossary_term' = 'Lot Batch Id (Foreign Key)');
-ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`test_result` ALTER COLUMN `original_test_result_id` SET TAGS ('dbx_business_glossary_term' = 'Original Test Result ID');
-ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`test_result` ALTER COLUMN `production_work_order_id` SET TAGS ('dbx_business_glossary_term' = 'Project Activity Id (Foreign Key)');
-ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`test_result` ALTER COLUMN `revision_id` SET TAGS ('dbx_business_glossary_term' = 'Engineering Revision Id (Foreign Key)');
-ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`test_result` ALTER COLUMN `acceptance_criteria_lower_limit` SET TAGS ('dbx_business_glossary_term' = 'Acceptance Criteria Lower Limit');
-ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`test_result` ALTER COLUMN `acceptance_criteria_target` SET TAGS ('dbx_business_glossary_term' = 'Acceptance Criteria Target Value');
-ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`test_result` ALTER COLUMN `acceptance_criteria_upper_limit` SET TAGS ('dbx_business_glossary_term' = 'Acceptance Criteria Upper Limit');
-ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`test_result` ALTER COLUMN `build_number` SET TAGS ('dbx_business_glossary_term' = 'Build Number');
-ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`test_result` ALTER COLUMN `certification_body` SET TAGS ('dbx_business_glossary_term' = 'Certification Body');
-ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`test_result` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
-ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`test_result` ALTER COLUMN `dvp_r_reference` SET TAGS ('dbx_business_glossary_term' = 'Design Verification Plan and Report (DVP&R) Reference');
-ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`test_result` ALTER COLUMN `environmental_conditions` SET TAGS ('dbx_business_glossary_term' = 'Environmental Conditions');
-ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`test_result` ALTER COLUMN `failure_description` SET TAGS ('dbx_business_glossary_term' = 'Failure Description');
-ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`test_result` ALTER COLUMN `failure_mode_code` SET TAGS ('dbx_business_glossary_term' = 'Failure Mode Code');
-ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`test_result` ALTER COLUMN `measured_value` SET TAGS ('dbx_business_glossary_term' = 'Measured Value');
-ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`test_result` ALTER COLUMN `measured_value_unit` SET TAGS ('dbx_business_glossary_term' = 'Measured Value Unit of Measure (UOM)');
-ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`test_result` ALTER COLUMN `measurement_uncertainty` SET TAGS ('dbx_business_glossary_term' = 'Measurement Uncertainty');
-ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`test_result` ALTER COLUMN `modified_by` SET TAGS ('dbx_business_glossary_term' = 'Modified By User');
-ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`test_result` ALTER COLUMN `modified_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Modified Timestamp');
-ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`test_result` ALTER COLUMN `prototype_phase` SET TAGS ('dbx_business_glossary_term' = 'Prototype Phase');
-ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`test_result` ALTER COLUMN `prototype_phase` SET TAGS ('dbx_value_regex' = 'concept|alpha|beta|pre_production|production|field_trial');
-ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`test_result` ALTER COLUMN `regulatory_submission_flag` SET TAGS ('dbx_business_glossary_term' = 'Regulatory Submission Flag');
-ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`test_result` ALTER COLUMN `retest_flag` SET TAGS ('dbx_business_glossary_term' = 'Retest Flag');
-ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`test_result` ALTER COLUMN `root_cause_analysis_required` SET TAGS ('dbx_business_glossary_term' = 'Root Cause Analysis Required Flag');
-ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`test_result` ALTER COLUMN `test_date` SET TAGS ('dbx_business_glossary_term' = 'Test Date');
-ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`test_result` ALTER COLUMN `test_duration_hours` SET TAGS ('dbx_business_glossary_term' = 'Test Duration Hours');
-ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`test_result` ALTER COLUMN `test_end_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Test End Timestamp');
-ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`test_result` ALTER COLUMN `test_facility` SET TAGS ('dbx_business_glossary_term' = 'Test Facility');
-ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`test_result` ALTER COLUMN `test_facility_location` SET TAGS ('dbx_business_glossary_term' = 'Test Facility Location');
-ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`test_result` ALTER COLUMN `test_notes` SET TAGS ('dbx_business_glossary_term' = 'Test Notes');
-ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`test_result` ALTER COLUMN `test_number` SET TAGS ('dbx_business_glossary_term' = 'Test Number');
-ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`test_result` ALTER COLUMN `test_outcome` SET TAGS ('dbx_business_glossary_term' = 'Test Outcome');
-ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`test_result` ALTER COLUMN `test_outcome` SET TAGS ('dbx_value_regex' = 'pass|fail|conditional_pass|inconclusive|aborted');
-ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`test_result` ALTER COLUMN `test_purpose` SET TAGS ('dbx_business_glossary_term' = 'Test Purpose');
-ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`test_result` ALTER COLUMN `test_specification_version` SET TAGS ('dbx_business_glossary_term' = 'Test Specification Version');
-ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`test_result` ALTER COLUMN `test_standard_reference` SET TAGS ('dbx_business_glossary_term' = 'Test Standard Reference');
-ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`test_result` ALTER COLUMN `test_start_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Test Start Timestamp');
-ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`test_result` ALTER COLUMN `test_status` SET TAGS ('dbx_business_glossary_term' = 'Test Status');
-ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`test_result` ALTER COLUMN `test_status` SET TAGS ('dbx_value_regex' = 'scheduled|in_progress|completed|cancelled|on_hold');
-ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`test_result` ALTER COLUMN `test_type` SET TAGS ('dbx_business_glossary_term' = 'Test Type');
-ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`test_result` ALTER COLUMN `tested_unit_identifier` SET TAGS ('dbx_business_glossary_term' = 'Tested Unit Identifier');
-ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`test_result` ALTER COLUMN `created_by` SET TAGS ('dbx_business_glossary_term' = 'Created By User');
-ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`eco_affected_item` SET TAGS ('dbx_data_type' = 'association_data');
-ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`eco_affected_item` SET TAGS ('dbx_subdomain' = 'change_management');
-ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`eco_affected_item` SET TAGS ('dbx_association_edges' = 'engineering.eco,engineering.component');
-ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`eco_affected_item` ALTER COLUMN `eco_affected_item_id` SET TAGS ('dbx_business_glossary_term' = 'ECO Affected Item ID');
-ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`eco_affected_item` ALTER COLUMN `component_id` SET TAGS ('dbx_business_glossary_term' = 'Eco Affected Item - Component Id');
-ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`eco_affected_item` ALTER COLUMN `eco_id` SET TAGS ('dbx_business_glossary_term' = 'Eco Affected Item - Eco Id');
-ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`eco_affected_item` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
-ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`eco_affected_item` ALTER COLUMN `disposition_action` SET TAGS ('dbx_business_glossary_term' = 'Disposition Action');
-ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`eco_affected_item` ALTER COLUMN `effectivity_date` SET TAGS ('dbx_business_glossary_term' = 'Effectivity Date');
-ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`eco_affected_item` ALTER COLUMN `from_revision` SET TAGS ('dbx_business_glossary_term' = 'From Revision');
-ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`eco_affected_item` ALTER COLUMN `implementation_status` SET TAGS ('dbx_business_glossary_term' = 'Implementation Status');
-ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`eco_affected_item` ALTER COLUMN `item_type` SET TAGS ('dbx_business_glossary_term' = 'Item Type');
-ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`eco_affected_item` ALTER COLUMN `modified_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Modified Timestamp');
-ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`eco_affected_item` ALTER COLUMN `quantity_affected` SET TAGS ('dbx_business_glossary_term' = 'Quantity Affected');
-ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`eco_affected_item` ALTER COLUMN `to_revision` SET TAGS ('dbx_business_glossary_term' = 'To Revision');
+ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`project_component_assignment` SET TAGS ('dbx_data_type' = 'association_data');
+ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`project_component_assignment` SET TAGS ('dbx_subdomain' = 'project_execution');
+ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`project_component_assignment` SET TAGS ('dbx_association_edges' = 'engineering.engineering_project,engineering.component');
+ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`project_component_assignment` ALTER COLUMN `project_component_assignment_id` SET TAGS ('dbx_business_glossary_term' = 'Project Component Assignment ID');
+ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`project_component_assignment` ALTER COLUMN `component_id` SET TAGS ('dbx_business_glossary_term' = 'Project Component Assignment - Component Id');
+ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`project_component_assignment` ALTER COLUMN `project_id` SET TAGS ('dbx_business_glossary_term' = 'Project Component Assignment - Engineering Project Id');
+ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`project_component_assignment` ALTER COLUMN `assigned_engineer` SET TAGS ('dbx_business_glossary_term' = 'Assigned Engineer');
+ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`project_component_assignment` ALTER COLUMN `assignment_end_date` SET TAGS ('dbx_business_glossary_term' = 'Assignment End Date');
+ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`project_component_assignment` ALTER COLUMN `assignment_start_date` SET TAGS ('dbx_business_glossary_term' = 'Assignment Start Date');
+ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`project_component_assignment` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
+ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`project_component_assignment` ALTER COLUMN `development_status` SET TAGS ('dbx_business_glossary_term' = 'Development Status');
+ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`project_component_assignment` ALTER COLUMN `milestone_date` SET TAGS ('dbx_business_glossary_term' = 'Component Milestone Date');
+ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`project_component_assignment` ALTER COLUMN `modified_by` SET TAGS ('dbx_business_glossary_term' = 'Modified By');
+ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`project_component_assignment` ALTER COLUMN `modified_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Modified Timestamp');
+ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`project_component_assignment` ALTER COLUMN `priority_level` SET TAGS ('dbx_business_glossary_term' = 'Component Priority Level');
+ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`project_component_assignment` ALTER COLUMN `role_in_project` SET TAGS ('dbx_business_glossary_term' = 'Component Role in Project');
+ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`project_component_assignment` ALTER COLUMN `target_revision` SET TAGS ('dbx_business_glossary_term' = 'Target Component Revision');
+ALTER TABLE `vibe_manufacturing_v1`.`engineering`.`project_component_assignment` ALTER COLUMN `created_by` SET TAGS ('dbx_business_glossary_term' = 'Created By');

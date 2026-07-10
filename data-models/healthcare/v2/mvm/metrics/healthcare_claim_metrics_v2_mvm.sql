@@ -1,19 +1,19 @@
--- Metric views for domain: claim | Business: Healthcare | Version: 2 | Generated on: 2026-07-10 16:17:39
+-- Metric views for domain: claim | Business: Healthcare | Version: 2 | Generated on: 2026-07-02 09:11:47
 
 CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`claim`
 WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Core claim financial and operational performance metrics including revenue cycle, denial rates, and processing efficiency"
+  comment: "Core claim financial and operational metrics tracking claim volume, revenue cycle performance, and adjudication outcomes"
   source: "`vibe_healthcare_v1`.`claim`.`claim`"
   dimensions:
     - name: "claim_status"
       expr: claim_status
-      comment: "Current status of the claim (e.g., submitted, adjudicated, paid, denied)"
+      comment: "Current status of the claim in the adjudication lifecycle"
     - name: "claim_type"
       expr: claim_type
-      comment: "Type of claim (e.g., professional, institutional, pharmacy)"
+      comment: "Type of claim (professional, institutional, dental, pharmacy, etc.)"
     - name: "bill_type"
       expr: bill_type
       comment: "UB-04 bill type code for institutional claims"
@@ -22,92 +22,71 @@ AS $$
       comment: "CMS place of service code indicating where services were rendered"
     - name: "submission_method"
       expr: submission_method
-      comment: "Method used to submit the claim (e.g., EDI, paper, portal)"
+      comment: "Method used to submit the claim (EDI, paper, portal, etc.)"
     - name: "denial_reason_code"
       expr: denial_reason_code
-      comment: "Code indicating reason for claim denial if applicable"
-    - name: "primary_payer_flag"
-      expr: primary_payer_flag
-      comment: "Indicates whether this is the primary payer for the claim"
-    - name: "coordination_of_benefits_flag"
-      expr: coordination_of_benefits_flag
-      comment: "Indicates whether coordination of benefits applies"
+      comment: "Primary reason code for claim denial"
     - name: "appeal_filed_flag"
       expr: appeal_filed_flag
-      comment: "Indicates whether an appeal has been filed for this claim"
+      comment: "Indicator whether an appeal has been filed for this claim"
+    - name: "coordination_of_benefits_flag"
+      expr: coordination_of_benefits_flag
+      comment: "Indicator whether coordination of benefits applies"
+    - name: "primary_payer_flag"
+      expr: primary_payer_flag
+      comment: "Indicator whether this payer is the primary payer"
     - name: "rac_audit_flag"
       expr: rac_audit_flag
-      comment: "Indicates whether claim is subject to Recovery Audit Contractor audit"
-    - name: "service_year"
-      expr: YEAR(service_from_date)
-      comment: "Year when services were provided"
-    - name: "service_month"
-      expr: DATE_TRUNC('MONTH', service_from_date)
-      comment: "Month when services were provided"
+      comment: "Indicator whether claim is subject to Recovery Audit Contractor audit"
     - name: "submission_year"
       expr: YEAR(submitted_timestamp)
-      comment: "Year when claim was submitted"
+      comment: "Year the claim was submitted"
     - name: "submission_month"
       expr: DATE_TRUNC('MONTH', submitted_timestamp)
-      comment: "Month when claim was submitted"
+      comment: "Month the claim was submitted"
     - name: "adjudication_year"
       expr: YEAR(adjudication_timestamp)
-      comment: "Year when claim was adjudicated"
+      comment: "Year the claim was adjudicated"
     - name: "adjudication_month"
       expr: DATE_TRUNC('MONTH', adjudication_timestamp)
-      comment: "Month when claim was adjudicated"
+      comment: "Month the claim was adjudicated"
+    - name: "service_year"
+      expr: YEAR(service_from_date)
+      comment: "Year services were provided"
+    - name: "service_month"
+      expr: DATE_TRUNC('MONTH', service_from_date)
+      comment: "Month services were provided"
   measures:
-    - name: "total_claims"
+    - name: "total_claim_count"
       expr: COUNT(1)
-      comment: "Total number of claims submitted"
+      comment: "Total number of claims"
+    - name: "unique_claim_count"
+      expr: COUNT(DISTINCT claim_id)
+      comment: "Distinct count of claims"
     - name: "total_billed_amount"
       expr: SUM(CAST(total_billed_amount AS DOUBLE))
-      comment: "Total amount billed across all claims - key revenue cycle metric"
+      comment: "Total amount billed across all claims"
     - name: "total_allowed_amount"
       expr: SUM(CAST(total_allowed_amount AS DOUBLE))
-      comment: "Total amount allowed by payers - indicates contracted reimbursement"
+      comment: "Total amount allowed by payer after adjudication"
     - name: "total_paid_amount"
       expr: SUM(CAST(total_paid_amount AS DOUBLE))
-      comment: "Total amount actually paid by payers - realized revenue"
+      comment: "Total amount paid by payer to provider"
     - name: "total_adjustment_amount"
       expr: SUM(CAST(adjustment_amount AS DOUBLE))
-      comment: "Total adjustments applied to claims - indicates contractual write-offs"
+      comment: "Total adjustment amount (contractual and other adjustments)"
     - name: "total_patient_responsibility"
       expr: SUM(CAST(patient_responsibility_amount AS DOUBLE))
-      comment: "Total amount patients are responsible for - key A/R metric"
+      comment: "Total patient responsibility amount (copay, coinsurance, deductible)"
     - name: "avg_billed_amount_per_claim"
       expr: AVG(CAST(total_billed_amount AS DOUBLE))
-      comment: "Average amount billed per claim - indicates case mix and pricing"
+      comment: "Average amount billed per claim"
     - name: "avg_paid_amount_per_claim"
       expr: AVG(CAST(total_paid_amount AS DOUBLE))
-      comment: "Average reimbursement per claim - key profitability indicator"
-    - name: "collection_rate_numerator"
-      expr: SUM(CAST(total_paid_amount AS DOUBLE))
-      comment: "Numerator for collection rate calculation - total collected"
-    - name: "collection_rate_denominator"
-      expr: SUM(CAST(total_billed_amount AS DOUBLE))
-      comment: "Denominator for collection rate calculation - total billed"
-    - name: "contractual_adjustment_rate_numerator"
-      expr: SUM(CAST(adjustment_amount AS DOUBLE))
-      comment: "Numerator for contractual adjustment rate - total adjustments"
-    - name: "contractual_adjustment_rate_denominator"
-      expr: SUM(CAST(total_billed_amount AS DOUBLE))
-      comment: "Denominator for contractual adjustment rate - total billed"
-    - name: "distinct_patients"
-      expr: COUNT(DISTINCT patient_mpi_record_id)
-      comment: "Number of unique patients with claims - patient volume metric"
-    - name: "distinct_rendering_providers"
-      expr: COUNT(DISTINCT rendering_provider_clinician_id)
-      comment: "Number of unique providers rendering services - capacity utilization"
-    - name: "claims_with_appeals"
-      expr: SUM(CASE WHEN appeal_filed_flag = TRUE THEN 1 ELSE 0 END)
-      comment: "Number of claims with appeals filed - quality and denial management metric"
-    - name: "claims_with_denials"
-      expr: SUM(CASE WHEN denial_reason_code IS NOT NULL THEN 1 ELSE 0 END)
-      comment: "Number of claims with denials - key quality and revenue cycle metric"
-    - name: "rac_audit_claims"
-      expr: SUM(CASE WHEN rac_audit_flag = TRUE THEN 1 ELSE 0 END)
-      comment: "Number of claims subject to RAC audit - compliance risk metric"
+      comment: "Average amount paid per claim"
+    - name: "avg_patient_responsibility_per_claim"
+      expr: AVG(CAST(patient_responsibility_amount AS DOUBLE))
+      comment: "Average patient responsibility per claim"
 $$;
 
 CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`claim_denial`
@@ -115,97 +94,82 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Denial management and recovery performance metrics tracking denial rates, root causes, and appeal outcomes"
+  comment: "Denial management metrics tracking denial volume, financial impact, appeal outcomes, and root cause analysis"
   source: "`vibe_healthcare_v1`.`claim`.`denial`"
   dimensions:
     - name: "denial_type"
       expr: denial_type
-      comment: "Type of denial (e.g., technical, clinical, authorization)"
-    - name: "category"
-      expr: category
-      comment: "Denial category for grouping and analysis"
+      comment: "Type of denial (clinical, administrative, technical, etc.)"
     - name: "carc_code"
       expr: carc_code
-      comment: "Claim Adjustment Reason Code - standardized denial reason"
+      comment: "Claim Adjustment Reason Code from payer"
+    - name: "rarc_code"
+      expr: rarc_code
+      comment: "Remittance Advice Remark Code providing additional detail"
     - name: "root_cause_code"
       expr: root_cause_code
-      comment: "Root cause code for denial - used for process improvement"
+      comment: "Internal root cause code for denial prevention analysis"
     - name: "resolution_status"
       expr: resolution_status
-      comment: "Current status of denial resolution (e.g., pending, appealed, resolved)"
+      comment: "Current status of denial resolution workflow"
+    - name: "appeal_level"
+      expr: appeal_level
+      comment: "Level of appeal (first, second, third, external review)"
     - name: "appeal_outcome"
       expr: appeal_outcome
-      comment: "Outcome of appeal if filed (e.g., overturned, upheld, partial)"
+      comment: "Outcome of appeal process (overturned, upheld, partial, pending)"
     - name: "is_preventable"
       expr: is_preventable
-      comment: "Indicates whether denial was preventable - key quality metric"
+      comment: "Indicator whether denial was preventable through process improvement"
     - name: "is_rac_audit"
       expr: is_rac_audit
-      comment: "Indicates whether denial resulted from RAC audit"
+      comment: "Indicator whether denial resulted from RAC audit"
     - name: "responsible_department"
       expr: responsible_department
-      comment: "Department responsible for the denial - accountability metric"
+      comment: "Department responsible for denial resolution"
     - name: "priority_level"
       expr: priority_level
-      comment: "Priority level for denial resolution"
+      comment: "Priority level for denial work queue"
     - name: "denial_year"
       expr: YEAR(denial_date)
-      comment: "Year when denial occurred"
+      comment: "Year the denial was issued"
     - name: "denial_month"
       expr: DATE_TRUNC('MONTH', denial_date)
-      comment: "Month when denial occurred"
+      comment: "Month the denial was issued"
     - name: "appeal_outcome_year"
       expr: YEAR(appeal_outcome_date)
-      comment: "Year when appeal outcome was determined"
+      comment: "Year the appeal outcome was determined"
   measures:
-    - name: "total_denials"
+    - name: "total_denial_count"
       expr: COUNT(1)
-      comment: "Total number of denials - key volume metric for denial management"
+      comment: "Total number of denials"
+    - name: "unique_denial_count"
+      expr: COUNT(DISTINCT denial_id)
+      comment: "Distinct count of denials"
     - name: "total_denied_amount"
       expr: SUM(CAST(denied_amount AS DOUBLE))
-      comment: "Total amount denied - revenue at risk metric"
+      comment: "Total amount denied by payers"
     - name: "total_billed_amount"
       expr: SUM(CAST(billed_amount AS DOUBLE))
       comment: "Total amount originally billed for denied claims"
+    - name: "total_allowed_amount"
+      expr: SUM(CAST(allowed_amount AS DOUBLE))
+      comment: "Total amount allowed for denied claims"
     - name: "total_recovered_amount"
       expr: SUM(CAST(recovered_amount AS DOUBLE))
-      comment: "Total amount recovered through appeals - key recovery performance metric"
+      comment: "Total amount recovered through appeals and resubmissions"
     - name: "total_write_off_amount"
       expr: SUM(CAST(write_off_amount AS DOUBLE))
-      comment: "Total amount written off - unrecoverable revenue loss"
-    - name: "avg_denied_amount"
+      comment: "Total amount written off as uncollectible"
+    - name: "avg_denied_amount_per_denial"
       expr: AVG(CAST(denied_amount AS DOUBLE))
-      comment: "Average amount denied per denial - indicates denial severity"
-    - name: "recovery_rate_numerator"
-      expr: SUM(CAST(recovered_amount AS DOUBLE))
-      comment: "Numerator for recovery rate - total recovered"
-    - name: "recovery_rate_denominator"
-      expr: SUM(CAST(denied_amount AS DOUBLE))
-      comment: "Denominator for recovery rate - total denied"
-    - name: "preventable_denials"
-      expr: SUM(CASE WHEN is_preventable = TRUE THEN 1 ELSE 0 END)
-      comment: "Number of preventable denials - key quality improvement metric"
-    - name: "preventable_denied_amount"
-      expr: SUM(CASE WHEN is_preventable = TRUE THEN CAST(denied_amount AS DOUBLE) ELSE 0 END)
-      comment: "Total amount denied due to preventable causes - opportunity cost"
-    - name: "rac_audit_denials"
-      expr: SUM(CASE WHEN is_rac_audit = TRUE THEN 1 ELSE 0 END)
-      comment: "Number of denials from RAC audits - compliance metric"
-    - name: "rac_audit_denied_amount"
-      expr: SUM(CASE WHEN is_rac_audit = TRUE THEN CAST(denied_amount AS DOUBLE) ELSE 0 END)
-      comment: "Total amount denied through RAC audits - compliance risk exposure"
-    - name: "denials_with_appeals"
-      expr: SUM(CASE WHEN appeal_filed_date IS NOT NULL THEN 1 ELSE 0 END)
-      comment: "Number of denials with appeals filed - appeal activity metric"
-    - name: "successful_appeals"
-      expr: SUM(CASE WHEN appeal_outcome IN ('overturned', 'partial') THEN 1 ELSE 0 END)
-      comment: "Number of successful appeals - appeal effectiveness metric"
-    - name: "distinct_patients_denied"
-      expr: COUNT(DISTINCT mpi_record_id)
-      comment: "Number of unique patients with denials - patient impact metric"
-    - name: "distinct_providers_denied"
-      expr: COUNT(DISTINCT provider_clinician_id)
-      comment: "Number of unique providers with denials - provider performance metric"
+      comment: "Average amount denied per denial record"
+    - name: "preventable_denial_count"
+      expr: COUNT(CASE WHEN is_preventable = TRUE THEN 1 END)
+      comment: "Count of denials flagged as preventable"
+    - name: "rac_audit_denial_count"
+      expr: COUNT(CASE WHEN is_rac_audit = TRUE THEN 1 END)
+      comment: "Count of denials resulting from RAC audits"
 $$;
 
 CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`claim_prior_authorization`
@@ -213,106 +177,76 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Prior authorization performance metrics tracking approval rates, turnaround times, and utilization management effectiveness"
+  comment: "Prior authorization metrics tracking approval rates, turnaround time, utilization management, and appeal outcomes"
   source: "`vibe_healthcare_v1`.`claim`.`prior_authorization`"
   dimensions:
     - name: "authorization_status"
       expr: authorization_status
-      comment: "Current status of prior authorization (e.g., approved, denied, pending)"
+      comment: "Current status of prior authorization request"
     - name: "authorization_source"
       expr: authorization_source
-      comment: "Source of authorization (e.g., payer portal, phone, fax)"
-    - name: "payer_type"
-      expr: payer_type
-      comment: "Type of payer requiring authorization (e.g., commercial, Medicare, Medicaid)"
-    - name: "service_setting"
-      expr: service_setting
-      comment: "Setting where service will be provided (e.g., inpatient, outpatient, home health)"
-    - name: "urgency_level"
-      expr: urgency_level
-      comment: "Urgency level of authorization request (e.g., urgent, routine, emergent)"
+      comment: "Source system or channel for authorization request"
     - name: "denial_reason_code"
       expr: denial_reason_code
-      comment: "Code indicating reason for authorization denial if applicable"
+      comment: "Reason code for authorization denial"
+    - name: "urgency_level"
+      expr: urgency_level
+      comment: "Urgency level of authorization request (standard, expedited, urgent)"
+    - name: "service_setting"
+      expr: service_setting
+      comment: "Setting where authorized services will be provided"
+    - name: "payer_type"
+      expr: payer_type
+      comment: "Type of payer (commercial, Medicare, Medicaid, etc.)"
     - name: "peer_review_required_flag"
       expr: peer_review_required_flag
-      comment: "Indicates whether peer review was required"
+      comment: "Indicator whether peer review was required"
     - name: "appeal_filed_flag"
       expr: appeal_filed_flag
-      comment: "Indicates whether an appeal was filed for denied authorization"
+      comment: "Indicator whether an appeal was filed for denied authorization"
     - name: "appeal_outcome"
       expr: appeal_outcome
-      comment: "Outcome of authorization appeal if filed"
+      comment: "Outcome of authorization appeal"
     - name: "submission_year"
       expr: YEAR(submission_date)
-      comment: "Year when authorization was submitted"
+      comment: "Year the authorization was submitted"
     - name: "submission_month"
       expr: DATE_TRUNC('MONTH', submission_date)
-      comment: "Month when authorization was submitted"
+      comment: "Month the authorization was submitted"
     - name: "decision_year"
       expr: YEAR(decision_date)
-      comment: "Year when authorization decision was made"
+      comment: "Year the authorization decision was made"
     - name: "decision_month"
       expr: DATE_TRUNC('MONTH', decision_date)
-      comment: "Month when authorization decision was made"
+      comment: "Month the authorization decision was made"
   measures:
-    - name: "total_authorizations"
+    - name: "total_authorization_count"
       expr: COUNT(1)
-      comment: "Total number of prior authorization requests - volume metric"
-    - name: "approved_authorizations"
-      expr: SUM(CASE WHEN authorization_status = 'approved' THEN 1 ELSE 0 END)
-      comment: "Number of approved authorizations - approval volume"
-    - name: "denied_authorizations"
-      expr: SUM(CASE WHEN authorization_status = 'denied' THEN 1 ELSE 0 END)
-      comment: "Number of denied authorizations - denial volume"
-    - name: "pending_authorizations"
-      expr: SUM(CASE WHEN authorization_status = 'pending' THEN 1 ELSE 0 END)
-      comment: "Number of pending authorizations - backlog metric"
+      comment: "Total number of prior authorization requests"
+    - name: "unique_authorization_count"
+      expr: COUNT(DISTINCT prior_authorization_id)
+      comment: "Distinct count of prior authorization requests"
     - name: "total_requested_units"
       expr: SUM(CAST(requested_units AS DOUBLE))
       comment: "Total units requested across all authorizations"
     - name: "total_approved_units"
       expr: SUM(CAST(approved_units AS DOUBLE))
-      comment: "Total units approved - utilization management metric"
+      comment: "Total units approved across all authorizations"
     - name: "total_units_consumed"
       expr: SUM(CAST(units_consumed AS DOUBLE))
-      comment: "Total units actually consumed - utilization tracking"
+      comment: "Total units consumed from approved authorizations"
     - name: "avg_requested_units"
       expr: AVG(CAST(requested_units AS DOUBLE))
       comment: "Average units requested per authorization"
     - name: "avg_approved_units"
       expr: AVG(CAST(approved_units AS DOUBLE))
       comment: "Average units approved per authorization"
-    - name: "approval_rate_numerator"
-      expr: SUM(CASE WHEN authorization_status = 'approved' THEN 1 ELSE 0 END)
-      comment: "Numerator for approval rate - approved count"
-    - name: "approval_rate_denominator"
-      expr: COUNT(1)
-      comment: "Denominator for approval rate - total requests"
-    - name: "unit_approval_rate_numerator"
-      expr: SUM(CAST(approved_units AS DOUBLE))
-      comment: "Numerator for unit approval rate - approved units"
-    - name: "unit_approval_rate_denominator"
-      expr: SUM(CAST(requested_units AS DOUBLE))
-      comment: "Denominator for unit approval rate - requested units"
-    - name: "utilization_rate_numerator"
-      expr: SUM(CAST(units_consumed AS DOUBLE))
-      comment: "Numerator for utilization rate - consumed units"
-    - name: "utilization_rate_denominator"
-      expr: SUM(CAST(approved_units AS DOUBLE))
-      comment: "Denominator for utilization rate - approved units"
-    - name: "peer_review_required_count"
-      expr: SUM(CASE WHEN peer_review_required_flag = TRUE THEN 1 ELSE 0 END)
-      comment: "Number of authorizations requiring peer review - complexity metric"
-    - name: "appeals_filed"
-      expr: SUM(CASE WHEN appeal_filed_flag = TRUE THEN 1 ELSE 0 END)
-      comment: "Number of authorization denials appealed - appeal activity"
-    - name: "distinct_patients"
-      expr: COUNT(DISTINCT patient_mpi_record_id)
-      comment: "Number of unique patients requiring prior authorization"
-    - name: "distinct_requesting_providers"
-      expr: COUNT(DISTINCT requesting_provider_clinician_id)
-      comment: "Number of unique providers requesting authorizations"
+    - name: "peer_review_count"
+      expr: COUNT(CASE WHEN peer_review_required_flag = TRUE THEN 1 END)
+      comment: "Count of authorizations requiring peer review"
+    - name: "appeal_filed_count"
+      expr: COUNT(CASE WHEN appeal_filed_flag = TRUE THEN 1 END)
+      comment: "Count of authorizations with appeals filed"
 $$;
 
 CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`claim_remittance`
@@ -320,91 +254,67 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Remittance and payment reconciliation metrics tracking cash flow, payment timing, and payer performance"
+  comment: "Remittance and payment metrics tracking cash flow, payment reconciliation, and payer payment performance"
   source: "`vibe_healthcare_v1`.`claim`.`remittance`"
   dimensions:
-    - name: "payment_method_code"
-      expr: payment_method_code
-      comment: "Method of payment (e.g., check, EFT, ACH)"
     - name: "remittance_status"
       expr: remittance_status
       comment: "Status of remittance processing"
     - name: "reconciliation_status"
       expr: reconciliation_status
-      comment: "Status of payment reconciliation - key A/R metric"
-    - name: "payer_name"
-      expr: payee_name
-      comment: "Name of payer issuing remittance"
+      comment: "Status of payment reconciliation to claims"
+    - name: "payment_method_code"
+      expr: payment_method_code
+      comment: "Method of payment (check, EFT, ACH, etc.)"
+    - name: "currency_code"
+      expr: currency_code
+      comment: "Currency code for payment amounts"
     - name: "provider_adjustment_reason_code"
       expr: provider_adjustment_reason_code
       comment: "Reason code for provider-level adjustments"
     - name: "payment_year"
       expr: YEAR(payment_date)
-      comment: "Year when payment was made"
+      comment: "Year the payment was made"
     - name: "payment_month"
       expr: DATE_TRUNC('MONTH', payment_date)
-      comment: "Month when payment was made"
+      comment: "Month the payment was made"
     - name: "posting_year"
       expr: YEAR(posting_date)
-      comment: "Year when payment was posted to accounts"
+      comment: "Year the payment was posted to accounts"
     - name: "posting_month"
       expr: DATE_TRUNC('MONTH', posting_date)
-      comment: "Month when payment was posted to accounts"
-    - name: "received_year"
-      expr: YEAR(received_timestamp)
-      comment: "Year when remittance was received"
-    - name: "received_month"
-      expr: DATE_TRUNC('MONTH', received_timestamp)
-      comment: "Month when remittance was received"
+      comment: "Month the payment was posted to accounts"
+    - name: "coverage_period_start_year"
+      expr: YEAR(coverage_period_start_date)
+      comment: "Year of coverage period start"
   measures:
-    - name: "total_remittances"
+    - name: "total_remittance_count"
       expr: COUNT(1)
-      comment: "Total number of remittance advices received"
+      comment: "Total number of remittance advices"
+    - name: "unique_remittance_count"
+      expr: COUNT(DISTINCT remittance_id)
+      comment: "Distinct count of remittance advices"
     - name: "total_payment_amount"
       expr: SUM(CAST(payment_amount AS DOUBLE))
-      comment: "Total payment amount received - key cash flow metric"
+      comment: "Total payment amount received from payers"
     - name: "total_billed_amount"
       expr: SUM(CAST(total_billed_amount AS DOUBLE))
       comment: "Total amount billed on remitted claims"
     - name: "total_allowed_amount"
       expr: SUM(CAST(total_allowed_amount AS DOUBLE))
-      comment: "Total amount allowed by payers on remitted claims"
+      comment: "Total amount allowed on remitted claims"
     - name: "total_adjustment_amount"
       expr: SUM(CAST(total_adjustment_amount AS DOUBLE))
-      comment: "Total adjustments on remitted claims - contractual write-offs"
+      comment: "Total adjustment amount on remitted claims"
     - name: "total_patient_responsibility"
       expr: SUM(CAST(total_patient_responsibility_amount AS DOUBLE))
-      comment: "Total patient responsibility on remitted claims - A/R to collect"
+      comment: "Total patient responsibility on remitted claims"
     - name: "total_provider_adjustment"
       expr: SUM(CAST(provider_adjustment_amount AS DOUBLE))
-      comment: "Total provider-level adjustments - non-claim-specific adjustments"
+      comment: "Total provider-level adjustments"
     - name: "avg_payment_amount"
       expr: AVG(CAST(payment_amount AS DOUBLE))
       comment: "Average payment amount per remittance"
-    - name: "payment_to_billed_numerator"
-      expr: SUM(CAST(payment_amount AS DOUBLE))
-      comment: "Numerator for payment-to-billed ratio - total paid"
-    - name: "payment_to_billed_denominator"
-      expr: SUM(CAST(total_billed_amount AS DOUBLE))
-      comment: "Denominator for payment-to-billed ratio - total billed"
-    - name: "payment_to_allowed_numerator"
-      expr: SUM(CAST(payment_amount AS DOUBLE))
-      comment: "Numerator for payment-to-allowed ratio - total paid"
-    - name: "payment_to_allowed_denominator"
-      expr: SUM(CAST(total_allowed_amount AS DOUBLE))
-      comment: "Denominator for payment-to-allowed ratio - total allowed"
-    - name: "reconciled_remittances"
-      expr: SUM(CASE WHEN reconciliation_status = 'reconciled' THEN 1 ELSE 0 END)
-      comment: "Number of fully reconciled remittances - reconciliation efficiency"
-    - name: "unreconciled_remittances"
-      expr: SUM(CASE WHEN reconciliation_status != 'reconciled' THEN 1 ELSE 0 END)
-      comment: "Number of unreconciled remittances - backlog metric"
-    - name: "distinct_payers"
-      expr: COUNT(DISTINCT payee_name)
-      comment: "Number of unique payers issuing remittances"
-    - name: "distinct_providers"
-      expr: COUNT(DISTINCT org_provider_id)
-      comment: "Number of unique providers receiving payments"
 $$;
 
 CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`claim_appeal`
@@ -412,223 +322,178 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Appeal management and overturn performance metrics tracking appeal outcomes, recovery amounts, and process effectiveness"
+  comment: "Appeal management metrics tracking appeal volume, overturn rates, financial recovery, and resolution performance"
   source: "`vibe_healthcare_v1`.`claim`.`appeal`"
   dimensions:
     - name: "appeal_status"
       expr: appeal_status
-      comment: "Current status of appeal (e.g., submitted, under review, resolved)"
+      comment: "Current status of appeal in workflow"
     - name: "appeal_type"
       expr: appeal_type
-      comment: "Type of appeal (e.g., reconsideration, redetermination, ALJ hearing)"
-    - name: "level"
-      expr: level
-      comment: "Appeal level (e.g., first level, second level, external review)"
+      comment: "Type of appeal (reconsideration, redetermination, hearing, etc.)"
     - name: "outcome_code"
       expr: outcome_code
-      comment: "Code indicating appeal outcome"
-    - name: "denial_reason_code"
-      expr: denial_reason_code
-      comment: "Original denial reason code being appealed"
+      comment: "Code representing the appeal outcome"
+    - name: "service_type_code"
+      expr: service_type_code
+      comment: "Type of service being appealed"
     - name: "submission_method"
       expr: submission_method
-      comment: "Method used to submit appeal"
-    - name: "external_review_requested_flag"
-      expr: external_review_requested_flag
-      comment: "Indicates whether external review was requested"
-    - name: "peer_review_required_flag"
-      expr: peer_review_required_flag
-      comment: "Indicates whether peer review was required for appeal"
+      comment: "Method used to submit the appeal"
     - name: "priority_flag"
       expr: priority_flag
-      comment: "Indicates whether appeal was marked as priority"
-    - name: "rac_audit_related_flag"
-      expr: rac_audit_related_flag
-      comment: "Indicates whether appeal is related to RAC audit"
+      comment: "Indicator whether appeal is high priority"
+    - name: "external_review_requested_flag"
+      expr: external_review_requested_flag
+      comment: "Indicator whether external review was requested"
+    - name: "peer_review_required_flag"
+      expr: peer_review_required_flag
+      comment: "Indicator whether peer review is required"
     - name: "prior_authorization_issue_flag"
       expr: prior_authorization_issue_flag
-      comment: "Indicates whether appeal involves prior authorization issue"
+      comment: "Indicator whether appeal relates to prior authorization issue"
     - name: "coordination_of_benefits_issue_flag"
       expr: coordination_of_benefits_issue_flag
-      comment: "Indicates whether appeal involves coordination of benefits issue"
+      comment: "Indicator whether appeal relates to COB issue"
+    - name: "rac_audit_related_flag"
+      expr: rac_audit_related_flag
+      comment: "Indicator whether appeal is related to RAC audit"
     - name: "submission_year"
       expr: YEAR(submission_date)
-      comment: "Year when appeal was submitted"
+      comment: "Year the appeal was submitted"
     - name: "submission_month"
       expr: DATE_TRUNC('MONTH', submission_date)
-      comment: "Month when appeal was submitted"
+      comment: "Month the appeal was submitted"
     - name: "resolution_year"
       expr: YEAR(resolution_date)
-      comment: "Year when appeal was resolved"
+      comment: "Year the appeal was resolved"
     - name: "resolution_month"
       expr: DATE_TRUNC('MONTH', resolution_date)
-      comment: "Month when appeal was resolved"
+      comment: "Month the appeal was resolved"
   measures:
-    - name: "total_appeals"
+    - name: "total_appeal_count"
       expr: COUNT(1)
-      comment: "Total number of appeals filed - appeal volume metric"
+      comment: "Total number of appeals"
+    - name: "unique_appeal_count"
+      expr: COUNT(DISTINCT appeal_id)
+      comment: "Distinct count of appeals"
     - name: "total_denied_amount"
       expr: SUM(CAST(denied_amount AS DOUBLE))
-      comment: "Total amount originally denied - revenue at risk"
+      comment: "Total amount originally denied that is being appealed"
     - name: "total_requested_amount"
       expr: SUM(CAST(requested_amount AS DOUBLE))
-      comment: "Total amount requested through appeals"
+      comment: "Total amount requested in appeals"
     - name: "total_overturn_amount"
       expr: SUM(CAST(overturn_amount AS DOUBLE))
-      comment: "Total amount overturned through appeals - key recovery metric"
+      comment: "Total amount overturned in favor of provider through appeals"
     - name: "total_original_claim_amount"
       expr: SUM(CAST(original_claim_amount AS DOUBLE))
       comment: "Total original claim amount for appealed claims"
-    - name: "avg_denied_amount"
+    - name: "avg_denied_amount_per_appeal"
       expr: AVG(CAST(denied_amount AS DOUBLE))
-      comment: "Average amount denied per appeal"
-    - name: "avg_overturn_amount"
+      comment: "Average denied amount per appeal"
+    - name: "avg_overturn_amount_per_appeal"
       expr: AVG(CAST(overturn_amount AS DOUBLE))
-      comment: "Average amount overturned per appeal"
-    - name: "overturn_rate_numerator"
-      expr: SUM(CAST(overturn_amount AS DOUBLE))
-      comment: "Numerator for overturn rate - total overturned"
-    - name: "overturn_rate_denominator"
-      expr: SUM(CAST(denied_amount AS DOUBLE))
-      comment: "Denominator for overturn rate - total denied"
-    - name: "successful_appeals"
-      expr: SUM(CASE WHEN CAST(overturn_amount AS DOUBLE) > 0 THEN 1 ELSE 0 END)
-      comment: "Number of appeals with positive overturn - success count"
-    - name: "appeal_success_rate_numerator"
-      expr: SUM(CASE WHEN CAST(overturn_amount AS DOUBLE) > 0 THEN 1 ELSE 0 END)
-      comment: "Numerator for appeal success rate - successful appeals"
-    - name: "appeal_success_rate_denominator"
-      expr: COUNT(1)
-      comment: "Denominator for appeal success rate - total appeals"
-    - name: "external_review_appeals"
-      expr: SUM(CASE WHEN external_review_requested_flag = TRUE THEN 1 ELSE 0 END)
-      comment: "Number of appeals escalated to external review"
-    - name: "priority_appeals"
-      expr: SUM(CASE WHEN priority_flag = TRUE THEN 1 ELSE 0 END)
-      comment: "Number of priority appeals - urgent case volume"
-    - name: "rac_audit_appeals"
-      expr: SUM(CASE WHEN rac_audit_related_flag = TRUE THEN 1 ELSE 0 END)
-      comment: "Number of appeals related to RAC audits - compliance metric"
-    - name: "prior_auth_issue_appeals"
-      expr: SUM(CASE WHEN prior_authorization_issue_flag = TRUE THEN 1 ELSE 0 END)
-      comment: "Number of appeals involving prior authorization issues"
-    - name: "distinct_patients"
-      expr: COUNT(DISTINCT mpi_record_id)
-      comment: "Number of unique patients with appeals"
-    - name: "distinct_claims"
-      expr: COUNT(DISTINCT claim_id)
-      comment: "Number of unique claims with appeals"
+      comment: "Average overturn amount per appeal"
+    - name: "priority_appeal_count"
+      expr: COUNT(CASE WHEN priority_flag = TRUE THEN 1 END)
+      comment: "Count of high-priority appeals"
+    - name: "external_review_count"
+      expr: COUNT(CASE WHEN external_review_requested_flag = TRUE THEN 1 END)
+      comment: "Count of appeals with external review requested"
+    - name: "rac_audit_appeal_count"
+      expr: COUNT(CASE WHEN rac_audit_related_flag = TRUE THEN 1 END)
+      comment: "Count of appeals related to RAC audits"
 $$;
 
-CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`claim_eligibility`
+CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`claim_line`
 WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Eligibility verification performance metrics tracking verification success rates, coverage status, and payer responsiveness"
-  source: "`vibe_healthcare_v1`.`claim`.`eligibility`"
+  comment: "Claim line-level metrics tracking service-level revenue, adjustments, and payment performance by procedure and service type"
+  source: "`vibe_healthcare_v1`.`claim`.`line`"
   dimensions:
-    - name: "verification_status"
-      expr: verification_status
-      comment: "Status of eligibility verification (e.g., verified, failed, pending)"
-    - name: "coverage_status"
-      expr: coverage_status
-      comment: "Patient coverage status (e.g., active, inactive, terminated)"
-    - name: "coverage_type"
-      expr: coverage_type
-      comment: "Type of coverage (e.g., medical, dental, vision, pharmacy)"
-    - name: "coverage_level"
-      expr: coverage_level
-      comment: "Level of coverage (e.g., individual, family, employee plus spouse)"
-    - name: "network_status"
-      expr: network_status
-      comment: "Network status (e.g., in-network, out-of-network)"
-    - name: "verification_method"
-      expr: verification_method
-      comment: "Method used to verify eligibility (e.g., real-time, batch, phone)"
-    - name: "response_code"
-      expr: response_code
-      comment: "Response code from eligibility verification"
-    - name: "rejection_reason"
-      expr: rejection_reason
-      comment: "Reason for verification rejection if applicable"
-    - name: "prior_authorization_required"
-      expr: prior_authorization_required
-      comment: "Indicates whether prior authorization is required"
-    - name: "referral_required"
-      expr: referral_required
-      comment: "Indicates whether referral is required"
-    - name: "coordination_of_benefits_order"
-      expr: coordination_of_benefits_order
-      comment: "Order of benefits for coordination (e.g., primary, secondary)"
-    - name: "verification_year"
-      expr: YEAR(verification_date)
-      comment: "Year when eligibility was verified"
-    - name: "verification_month"
-      expr: DATE_TRUNC('MONTH', verification_date)
-      comment: "Month when eligibility was verified"
+    - name: "line_status"
+      expr: line_status
+      comment: "Status of claim line in adjudication"
+    - name: "procedure_code"
+      expr: procedure_code
+      comment: "CPT/HCPCS procedure code for service"
+    - name: "revenue_code"
+      expr: revenue_code
+      comment: "UB-04 revenue code for institutional claims"
+    - name: "place_of_service_code"
+      expr: place_of_service_code
+      comment: "CMS place of service code"
+    - name: "denial_reason_code"
+      expr: denial_reason_code
+      comment: "Reason code for line-level denial"
+    - name: "modifier_1"
+      expr: modifier_1
+      comment: "First procedure modifier"
+    - name: "modifier_2"
+      expr: modifier_2
+      comment: "Second procedure modifier"
+    - name: "ndc_code"
+      expr: ndc_code
+      comment: "National Drug Code for pharmacy claims"
+    - name: "drug_unit_of_measure"
+      expr: drug_unit_of_measure
+      comment: "Unit of measure for drug quantity"
+    - name: "coordination_of_benefits_indicator"
+      expr: coordination_of_benefits_indicator
+      comment: "Indicator of COB status at line level"
     - name: "service_year"
-      expr: YEAR(service_date)
-      comment: "Year of service for which eligibility was verified"
+      expr: YEAR(service_from_date)
+      comment: "Year services were provided"
+    - name: "service_month"
+      expr: DATE_TRUNC('MONTH', service_from_date)
+      comment: "Month services were provided"
+    - name: "adjudication_year"
+      expr: YEAR(adjudication_date)
+      comment: "Year the line was adjudicated"
+    - name: "paid_year"
+      expr: YEAR(paid_date)
+      comment: "Year the line was paid"
   measures:
-    - name: "total_verifications"
+    - name: "total_line_count"
       expr: COUNT(1)
-      comment: "Total number of eligibility verifications performed"
-    - name: "successful_verifications"
-      expr: SUM(CASE WHEN verification_status = 'verified' THEN 1 ELSE 0 END)
-      comment: "Number of successful verifications - verification effectiveness"
-    - name: "failed_verifications"
-      expr: SUM(CASE WHEN verification_status = 'failed' THEN 1 ELSE 0 END)
-      comment: "Number of failed verifications - process issue indicator"
-    - name: "verification_success_rate_numerator"
-      expr: SUM(CASE WHEN verification_status = 'verified' THEN 1 ELSE 0 END)
-      comment: "Numerator for verification success rate - successful count"
-    - name: "verification_success_rate_denominator"
-      expr: COUNT(1)
-      comment: "Denominator for verification success rate - total verifications"
-    - name: "active_coverage_count"
-      expr: SUM(CASE WHEN coverage_status = 'active' THEN 1 ELSE 0 END)
-      comment: "Number of verifications with active coverage"
-    - name: "inactive_coverage_count"
-      expr: SUM(CASE WHEN coverage_status IN ('inactive', 'terminated') THEN 1 ELSE 0 END)
-      comment: "Number of verifications with inactive coverage - denial risk"
-    - name: "total_deductible_amount"
-      expr: SUM(CAST(deductible_amount AS DOUBLE))
-      comment: "Total deductible amounts across verifications"
-    - name: "total_deductible_met"
-      expr: SUM(CAST(deductible_met_amount AS DOUBLE))
-      comment: "Total deductible amounts already met - patient financial status"
-    - name: "total_deductible_remaining"
-      expr: SUM(CAST(deductible_remaining_amount AS DOUBLE))
-      comment: "Total deductible amounts remaining - patient responsibility forecast"
-    - name: "total_out_of_pocket_max"
-      expr: SUM(CAST(out_of_pocket_maximum AS DOUBLE))
-      comment: "Total out-of-pocket maximums across verifications"
-    - name: "total_out_of_pocket_met"
-      expr: SUM(CAST(out_of_pocket_met_amount AS DOUBLE))
-      comment: "Total out-of-pocket amounts already met"
-    - name: "avg_copay_amount"
-      expr: AVG(CAST(copay_amount AS DOUBLE))
-      comment: "Average copay amount - patient cost sharing indicator"
-    - name: "avg_coinsurance_percentage"
-      expr: AVG(CAST(coinsurance_percentage AS DOUBLE))
-      comment: "Average coinsurance percentage - patient cost sharing indicator"
-    - name: "prior_auth_required_count"
-      expr: SUM(CASE WHEN prior_authorization_required = TRUE THEN 1 ELSE 0 END)
-      comment: "Number of verifications requiring prior authorization - workflow impact"
-    - name: "referral_required_count"
-      expr: SUM(CASE WHEN referral_required = TRUE THEN 1 ELSE 0 END)
-      comment: "Number of verifications requiring referral - workflow impact"
-    - name: "in_network_count"
-      expr: SUM(CASE WHEN network_status = 'in-network' THEN 1 ELSE 0 END)
-      comment: "Number of in-network verifications - reimbursement indicator"
-    - name: "out_of_network_count"
-      expr: SUM(CASE WHEN network_status = 'out-of-network' THEN 1 ELSE 0 END)
-      comment: "Number of out-of-network verifications - lower reimbursement risk"
-    - name: "distinct_patients"
-      expr: COUNT(DISTINCT eligibility_patient_mpi_record_id)
-      comment: "Number of unique patients with eligibility verifications"
-    - name: "distinct_coverages"
-      expr: COUNT(DISTINCT insurance_coverage_id)
-      comment: "Number of unique insurance coverages verified"
+      comment: "Total number of claim lines"
+    - name: "unique_line_count"
+      expr: COUNT(DISTINCT line_id)
+      comment: "Distinct count of claim lines"
+    - name: "total_billed_amount"
+      expr: SUM(CAST(billed_amount AS DOUBLE))
+      comment: "Total amount billed at line level"
+    - name: "total_allowed_amount"
+      expr: SUM(CAST(allowed_amount AS DOUBLE))
+      comment: "Total amount allowed at line level"
+    - name: "total_paid_amount"
+      expr: SUM(CAST(paid_amount AS DOUBLE))
+      comment: "Total amount paid at line level"
+    - name: "total_adjustment_amount"
+      expr: SUM(CAST(adjustment_amount AS DOUBLE))
+      comment: "Total adjustment amount at line level"
+    - name: "total_patient_responsibility"
+      expr: SUM(CAST(patient_responsibility_amount AS DOUBLE))
+      comment: "Total patient responsibility at line level"
+    - name: "total_outlier_payment"
+      expr: SUM(CAST(outlier_payment_amount AS DOUBLE))
+      comment: "Total outlier payment amount for high-cost cases"
+    - name: "total_units_of_service"
+      expr: SUM(CAST(units_of_service AS DOUBLE))
+      comment: "Total units of service provided"
+    - name: "total_drug_quantity"
+      expr: SUM(CAST(drug_quantity AS DOUBLE))
+      comment: "Total drug quantity dispensed"
+    - name: "avg_billed_amount_per_line"
+      expr: AVG(CAST(billed_amount AS DOUBLE))
+      comment: "Average amount billed per claim line"
+    - name: "avg_paid_amount_per_line"
+      expr: AVG(CAST(paid_amount AS DOUBLE))
+      comment: "Average amount paid per claim line"
+    - name: "avg_units_per_line"
+      expr: AVG(CAST(units_of_service AS DOUBLE))
+      comment: "Average units of service per claim line"
 $$;

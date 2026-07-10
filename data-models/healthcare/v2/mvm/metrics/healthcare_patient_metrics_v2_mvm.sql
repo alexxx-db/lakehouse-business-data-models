@@ -1,630 +1,89 @@
--- Metric views for domain: patient | Business: Healthcare | Version: 2 | Generated on: 2026-07-10 16:21:28
-
-CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`patient_address`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Address business metrics"
-  source: "`vibe_healthcare_v1`.`patient`.`address`"
-  dimensions:
-    - name: "Address Status"
-      expr: address_status
-    - name: "Address Type"
-      expr: address_type
-    - name: "Census Tract"
-      expr: census_tract
-    - name: "City"
-      expr: city
-    - name: "Country Code"
-      expr: country_code
-    - name: "County"
-      expr: county
-    - name: "County Fips Code"
-      expr: county_fips_code
-    - name: "Created Timestamp"
-      expr: created_timestamp
-    - name: "District"
-      expr: district
-    - name: "Do Not Contact Reason"
-      expr: do_not_contact_reason
-    - name: "Effective End Date"
-      expr: effective_end_date
-    - name: "Effective Start Date"
-      expr: effective_start_date
-    - name: "Geocode Precision"
-      expr: geocode_precision
-    - name: "Health Service Area"
-      expr: health_service_area
-    - name: "Housing Type"
-      expr: housing_type
-    - name: "Is Confidential"
-      expr: is_confidential
-  measures:
-    - name: "Row Count"
-      expr: COUNT(1)
-    - name: "Distinct Address"
-      expr: COUNT(DISTINCT address_id)
-    - name: "Total Area Deprivation Index"
-      expr: SUM(area_deprivation_index)
-    - name: "Average Area Deprivation Index"
-      expr: AVG(area_deprivation_index)
-    - name: "Total Latitude"
-      expr: SUM(latitude)
-    - name: "Average Latitude"
-      expr: AVG(latitude)
-    - name: "Total Longitude"
-      expr: SUM(longitude)
-    - name: "Average Longitude"
-      expr: AVG(longitude)
-$$;
-
-CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`patient_consent_reference`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Consent Reference business metrics"
-  source: "`vibe_healthcare_v1`.`patient`.`consent_reference`"
-  dimensions:
-    - name: "Audit Trail Flag"
-      expr: audit_trail_flag
-    - name: "Consent Effective Date"
-      expr: consent_effective_date
-    - name: "Consent Expiration Date"
-      expr: consent_expiration_date
-    - name: "Consent Method"
-      expr: consent_method
-    - name: "Consent Obtained Date"
-      expr: consent_obtained_date
-    - name: "Consent Revocation Date"
-      expr: consent_revocation_date
-    - name: "Consent Scope"
-      expr: consent_scope
-    - name: "Consent Status"
-      expr: consent_status
-    - name: "Consent Type"
-      expr: consent_type
-    - name: "Created Timestamp"
-      expr: created_timestamp
-    - name: "Document Reference Number"
-      expr: document_reference_number
-    - name: "Enterprise Mrn"
-      expr: enterprise_mrn
-    - name: "Guardian Name"
-      expr: guardian_name
-    - name: "Guardian Relationship"
-      expr: guardian_relationship
-    - name: "Hie Participation Flag"
-      expr: hie_participation_flag
-    - name: "Interpreter Used Flag"
-      expr: interpreter_used_flag
-  measures:
-    - name: "Row Count"
-      expr: COUNT(1)
-    - name: "Distinct Consent Reference"
-      expr: COUNT(DISTINCT consent_reference_id)
-$$;
-
-CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`patient_demographics`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Demographics business metrics"
-  source: "`vibe_healthcare_v1`.`patient`.`demographics`"
-  dimensions:
-    - name: "Advance Directive On File"
-      expr: advance_directive_on_file
-    - name: "Birth Date"
-      expr: birth_date
-    - name: "Birth Time"
-      expr: birth_time
-    - name: "Census Tract"
-      expr: census_tract
-    - name: "Created Timestamp"
-      expr: created_timestamp
-    - name: "Death Certificate Number"
-      expr: death_certificate_number
-    - name: "Death Date"
-      expr: death_date
-    - name: "Deceased Indicator"
-      expr: deceased_indicator
-    - name: "Email Address"
-      expr: email_address
-    - name: "Enterprise Mrn"
-      expr: enterprise_mrn
-    - name: "Ethnicity Code"
-      expr: ethnicity_code
-    - name: "Gender Identity"
-      expr: gender_identity
-    - name: "Home Address Line1"
-      expr: home_address_line1
-    - name: "Home Address Line2"
-      expr: home_address_line2
-    - name: "Home City"
-      expr: home_city
-    - name: "Home Country Code"
-      expr: home_country_code
-  measures:
-    - name: "Row Count"
-      expr: COUNT(1)
-    - name: "Distinct Demographics"
-      expr: COUNT(DISTINCT demographics_id)
-$$;
-
-CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`patient_eligibility_check`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Eligibility Check business metrics"
-  source: "`vibe_healthcare_v1`.`patient`.`eligibility_check`"
-  dimensions:
-    - name: "Clearinghouse Name"
-      expr: clearinghouse_name
-    - name: "Coordination Of Benefits Flag"
-      expr: coordination_of_benefits_flag
-    - name: "Coverage Type"
-      expr: coverage_type
-    - name: "Created Timestamp"
-      expr: created_timestamp
-    - name: "Group Number"
-      expr: group_number
-    - name: "Is Override"
-      expr: is_override
-    - name: "Mrn"
-      expr: mrn
-    - name: "Network Status"
-      expr: network_status
-    - name: "Override Reason"
-      expr: override_reason
-    - name: "Prior Auth Number"
-      expr: prior_auth_number
-    - name: "Prior Auth Required"
-      expr: prior_auth_required
-    - name: "Referral Required"
-      expr: referral_required
-    - name: "Rejection Reason Code"
-      expr: rejection_reason_code
-    - name: "Rejection Reason Description"
-      expr: rejection_reason_description
-    - name: "Response Timestamp"
-      expr: response_timestamp
-    - name: "Service Date"
-      expr: service_date
-  measures:
-    - name: "Row Count"
-      expr: COUNT(1)
-    - name: "Distinct Eligibility Check"
-      expr: COUNT(DISTINCT eligibility_check_id)
-    - name: "Total Coinsurance Percent"
-      expr: SUM(coinsurance_percent)
-    - name: "Average Coinsurance Percent"
-      expr: AVG(coinsurance_percent)
-    - name: "Total Copay Amount"
-      expr: SUM(copay_amount)
-    - name: "Average Copay Amount"
-      expr: AVG(copay_amount)
-    - name: "Total Family Deductible Amount"
-      expr: SUM(family_deductible_amount)
-    - name: "Average Family Deductible Amount"
-      expr: AVG(family_deductible_amount)
-    - name: "Total Individual Deductible Amount"
-      expr: SUM(individual_deductible_amount)
-    - name: "Average Individual Deductible Amount"
-      expr: AVG(individual_deductible_amount)
-    - name: "Total Individual Deductible Met Amount"
-      expr: SUM(individual_deductible_met_amount)
-    - name: "Average Individual Deductible Met Amount"
-      expr: AVG(individual_deductible_met_amount)
-    - name: "Total Individual Out Of Pocket Max"
-      expr: SUM(individual_out_of_pocket_max)
-    - name: "Average Individual Out Of Pocket Max"
-      expr: AVG(individual_out_of_pocket_max)
-    - name: "Total Individual Out Of Pocket Met"
-      expr: SUM(individual_out_of_pocket_met)
-    - name: "Average Individual Out Of Pocket Met"
-      expr: AVG(individual_out_of_pocket_met)
-$$;
-
-CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`patient_emergency_contact`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Emergency Contact business metrics"
-  source: "`vibe_healthcare_v1`.`patient`.`emergency_contact`"
-  dimensions:
-    - name: "Address Line1"
-      expr: address_line1
-    - name: "Address Line2"
-      expr: address_line2
-    - name: "City"
-      expr: city
-    - name: "Consent Date"
-      expr: consent_date
-    - name: "Consent Obtained By"
-      expr: consent_obtained_by
-    - name: "Contact Status"
-      expr: contact_status
-    - name: "Contact Type"
-      expr: contact_type
-    - name: "Country Code"
-      expr: country_code
-    - name: "Created Timestamp"
-      expr: created_timestamp
-    - name: "Effective End Date"
-      expr: effective_end_date
-    - name: "Effective Start Date"
-      expr: effective_start_date
-    - name: "Email Address"
-      expr: email_address
-    - name: "First Name"
-      expr: first_name
-    - name: "Healthcare Proxy Flag"
-      expr: healthcare_proxy_flag
-    - name: "Home Phone"
-      expr: home_phone
-    - name: "Interpreter Required"
-      expr: interpreter_required
-  measures:
-    - name: "Row Count"
-      expr: COUNT(1)
-    - name: "Distinct Emergency Contact"
-      expr: COUNT(DISTINCT emergency_contact_id)
-$$;
-
-CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`patient_guarantor`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Guarantor business metrics"
-  source: "`vibe_healthcare_v1`.`patient`.`guarantor`"
-  dimensions:
-    - name: "Account Number"
-      expr: account_number
-    - name: "Account Status"
-      expr: account_status
-    - name: "Address Line1"
-      expr: address_line1
-    - name: "Address Line2"
-      expr: address_line2
-    - name: "Bad Debt Flag"
-      expr: bad_debt_flag
-    - name: "Bankruptcy Flag"
-      expr: bankruptcy_flag
-    - name: "City"
-      expr: city
-    - name: "Collection Agency Flag"
-      expr: collection_agency_flag
-    - name: "Country Code"
-      expr: country_code
-    - name: "Created Timestamp"
-      expr: created_timestamp
-    - name: "Date Of Birth"
-      expr: date_of_birth
-    - name: "Deceased Flag"
-      expr: deceased_flag
-    - name: "Do Not Contact Flag"
-      expr: do_not_contact_flag
-    - name: "Email Address"
-      expr: email_address
-    - name: "Employer Name"
-      expr: employer_name
-    - name: "Employer Phone"
-      expr: employer_phone
-  measures:
-    - name: "Row Count"
-      expr: COUNT(1)
-    - name: "Distinct Guarantor"
-      expr: COUNT(DISTINCT guarantor_id)
-    - name: "Total Account Balance"
-      expr: SUM(account_balance)
-    - name: "Average Account Balance"
-      expr: AVG(account_balance)
-    - name: "Total Annual Income"
-      expr: SUM(annual_income)
-    - name: "Average Annual Income"
-      expr: AVG(annual_income)
-    - name: "Total Federal Poverty Level Pct"
-      expr: SUM(federal_poverty_level_pct)
-    - name: "Average Federal Poverty Level Pct"
-      expr: AVG(federal_poverty_level_pct)
-    - name: "Total Last Payment Amount"
-      expr: SUM(last_payment_amount)
-    - name: "Average Last Payment Amount"
-      expr: AVG(last_payment_amount)
-    - name: "Total Payment Plan Amount"
-      expr: SUM(payment_plan_amount)
-    - name: "Average Payment Plan Amount"
-      expr: AVG(payment_plan_amount)
-    - name: "Total Responsibility Pct"
-      expr: SUM(responsibility_pct)
-    - name: "Average Responsibility Pct"
-      expr: AVG(responsibility_pct)
-$$;
-
-CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`patient_insurance_coverage`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Insurance Coverage business metrics"
-  source: "`vibe_healthcare_v1`.`patient`.`insurance_coverage`"
-  dimensions:
-    - name: "Benefit Year End"
-      expr: benefit_year_end
-    - name: "Benefit Year Start"
-      expr: benefit_year_start
-    - name: "Cob Priority"
-      expr: cob_priority
-    - name: "Coverage Status"
-      expr: coverage_status
-    - name: "Created Timestamp"
-      expr: created_timestamp
-    - name: "Effective Date"
-      expr: effective_date
-    - name: "Eligibility Response Code"
-      expr: eligibility_response_code
-    - name: "Eligibility Transaction Number"
-      expr: eligibility_transaction_number
-    - name: "Eligibility Verification Method"
-      expr: eligibility_verification_method
-    - name: "Eligibility Verification Status"
-      expr: eligibility_verification_status
-    - name: "Eligibility Verified By"
-      expr: eligibility_verified_by
-    - name: "Eligibility Verified Timestamp"
-      expr: eligibility_verified_timestamp
-    - name: "Group Number"
-      expr: group_number
-    - name: "Insurance Card Back Url"
-      expr: insurance_card_back_url
-    - name: "Insurance Card Front Url"
-      expr: insurance_card_front_url
-    - name: "Medicaid State Code"
-      expr: medicaid_state_code
-  measures:
-    - name: "Row Count"
-      expr: COUNT(1)
-    - name: "Distinct Insurance Coverage"
-      expr: COUNT(DISTINCT insurance_coverage_id)
-    - name: "Total Coinsurance Rate"
-      expr: SUM(coinsurance_rate)
-    - name: "Average Coinsurance Rate"
-      expr: AVG(coinsurance_rate)
-    - name: "Total Copay Amount"
-      expr: SUM(copay_amount)
-    - name: "Average Copay Amount"
-      expr: AVG(copay_amount)
-    - name: "Total Deductible Amount"
-      expr: SUM(deductible_amount)
-    - name: "Average Deductible Amount"
-      expr: AVG(deductible_amount)
-    - name: "Total Deductible Met Amount"
-      expr: SUM(deductible_met_amount)
-    - name: "Average Deductible Met Amount"
-      expr: AVG(deductible_met_amount)
-    - name: "Total Out Of Pocket Max"
-      expr: SUM(out_of_pocket_max)
-    - name: "Average Out Of Pocket Max"
-      expr: AVG(out_of_pocket_max)
-    - name: "Total Out Of Pocket Met Amount"
-      expr: SUM(out_of_pocket_met_amount)
-    - name: "Average Out Of Pocket Met Amount"
-      expr: AVG(out_of_pocket_met_amount)
-$$;
+-- Metric views for domain: patient | Business: Healthcare | Version: 2 | Generated on: 2026-07-02 09:11:47
 
 CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`patient_mpi_record`
 WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Mpi Record business metrics"
+  comment: "Master Patient Index strategic metrics: identity resolution quality, duplicate management, and patient population characteristics"
   source: "`vibe_healthcare_v1`.`patient`.`mpi_record`"
   dimensions:
-    - name: "Created Timestamp"
-      expr: created_timestamp
-    - name: "Date Of Birth"
-      expr: date_of_birth
-    - name: "Date Of Death"
-      expr: date_of_death
-    - name: "Deceased Flag"
-      expr: deceased_flag
-    - name: "Enterprise Patient Number"
-      expr: enterprise_patient_number
-    - name: "Ethnicity Code"
-      expr: ethnicity_code
-    - name: "First Registration Date"
-      expr: first_registration_date
-    - name: "Gender Identity"
-      expr: gender_identity
-    - name: "Hie Patient Number"
-      expr: hie_patient_number
-    - name: "Identity Confidence Tier"
-      expr: identity_confidence_tier
-    - name: "Identity Resolution Status"
+    - name: "mpi_record_status"
+      expr: mpi_record_status
+      comment: "Current status of the MPI record (active, merged, inactive)"
+    - name: "identity_resolution_status"
       expr: identity_resolution_status
-    - name: "Interpreter Required Flag"
-      expr: interpreter_required_flag
-    - name: "Is Duplicate Flag"
+      comment: "Status of identity resolution process for data quality monitoring"
+    - name: "identity_confidence_tier"
+      expr: identity_confidence_tier
+      comment: "Confidence level tier for identity matching (high, medium, low)"
+    - name: "patient_class"
+      expr: patient_class
+      comment: "Classification of patient type (inpatient, outpatient, emergency)"
+    - name: "sex_at_birth"
+      expr: sex_at_birth
+      comment: "Biological sex at birth for demographic analysis"
+    - name: "race_code"
+      expr: race_code
+      comment: "Race code for health equity and disparity analysis"
+    - name: "ethnicity_code"
+      expr: ethnicity_code
+      comment: "Ethnicity code for health equity reporting"
+    - name: "deceased_flag"
+      expr: deceased_flag
+      comment: "Indicator whether patient is deceased"
+    - name: "is_duplicate_flag"
       expr: is_duplicate_flag
-    - name: "Is Overlay Flag"
+      comment: "Flag indicating potential duplicate record requiring resolution"
+    - name: "is_overlay_flag"
       expr: is_overlay_flag
-    - name: "Last Updated Timestamp"
-      expr: last_updated_timestamp
-    - name: "Last Verified Date"
-      expr: last_verified_date
+      comment: "Flag indicating overlay record requiring correction"
+    - name: "vip_flag"
+      expr: vip_flag
+      comment: "VIP patient indicator for special handling"
+    - name: "restricted_access_flag"
+      expr: restricted_access_flag
+      comment: "Restricted access flag for confidential patient records"
+    - name: "interpreter_required_flag"
+      expr: interpreter_required_flag
+      comment: "Flag indicating interpreter services required"
+    - name: "first_registration_year"
+      expr: YEAR(first_registration_date)
+      comment: "Year of first patient registration for cohort analysis"
+    - name: "first_registration_month"
+      expr: DATE_TRUNC('MONTH', first_registration_date)
+      comment: "Month of first patient registration for trend analysis"
   measures:
-    - name: "Row Count"
-      expr: COUNT(1)
-    - name: "Distinct Mpi Record"
+    - name: "total_patient_count"
       expr: COUNT(DISTINCT mpi_record_id)
-    - name: "Total Match Confidence Score"
-      expr: SUM(match_confidence_score)
-    - name: "Average Match Confidence Score"
-      expr: AVG(match_confidence_score)
-$$;
-
-CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`patient_patient_coverage`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Patient Coverage business metrics"
-  source: "`vibe_healthcare_v1`.`patient`.`patient_coverage`"
-  dimensions:
-    - name: "Cob Priority"
-      expr: cob_priority
-    - name: "Coverage Status"
-      expr: coverage_status
-    - name: "Coverage Tier"
-      expr: coverage_tier
-    - name: "Created Timestamp"
-      expr: created_timestamp
-    - name: "Eligibility Last Verified Date"
-      expr: eligibility_last_verified_date
-    - name: "Eligibility Verification Status"
-      expr: eligibility_verification_status
-    - name: "Enrollment Effective Date"
-      expr: enrollment_effective_date
-    - name: "Enrollment Source"
-      expr: enrollment_source
-    - name: "Enrollment Termination Date"
-      expr: enrollment_termination_date
-    - name: "Group Number"
-      expr: group_number
-    - name: "Relationship To Subscriber"
-      expr: relationship_to_subscriber
-    - name: "Source System Code"
-      expr: source_system_code
-    - name: "Updated Timestamp"
-      expr: updated_timestamp
-    - name: "Created Timestamp Month"
-      expr: DATE_TRUNC('MONTH', created_timestamp)
-    - name: "Eligibility Last Verified Date Month"
-      expr: DATE_TRUNC('MONTH', eligibility_last_verified_date)
-  measures:
-    - name: "Row Count"
-      expr: COUNT(1)
-    - name: "Distinct Patient Coverage"
-      expr: COUNT(DISTINCT patient_coverage_id)
-    - name: "Total Employer Contribution Amount"
-      expr: SUM(employer_contribution_amount)
-    - name: "Average Employer Contribution Amount"
-      expr: AVG(employer_contribution_amount)
-    - name: "Total Patient Responsibility Amount"
-      expr: SUM(patient_responsibility_amount)
-    - name: "Average Patient Responsibility Amount"
-      expr: AVG(patient_responsibility_amount)
-    - name: "Total Premium Amount"
-      expr: SUM(premium_amount)
-    - name: "Average Premium Amount"
-      expr: AVG(premium_amount)
-$$;
-
-CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`patient_pcp_attribution`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Pcp Attribution business metrics"
-  source: "`vibe_healthcare_v1`.`patient`.`pcp_attribution`"
-  dimensions:
-    - name: "Aco Contract Number"
-      expr: aco_contract_number
-    - name: "Attributed Provider Npi"
-      expr: attributed_provider_npi
-    - name: "Attribution Method"
-      expr: attribution_method
-    - name: "Attribution Override Reason"
-      expr: attribution_override_reason
-    - name: "Attribution Rank"
-      expr: attribution_rank
-    - name: "Attribution Review Date"
-      expr: attribution_review_date
-    - name: "Attribution Segment"
-      expr: attribution_segment
-    - name: "Attribution Source"
-      expr: attribution_source
-    - name: "Attribution Status"
-      expr: attribution_status
-    - name: "Care Management Enrolled"
-      expr: care_management_enrolled
-    - name: "Consent On File"
-      expr: consent_on_file
-    - name: "Created Timestamp"
-      expr: created_timestamp
-    - name: "Data Sharing Opt Out"
-      expr: data_sharing_opt_out
-    - name: "Disenrollment Reason"
-      expr: disenrollment_reason
-    - name: "Effective Date"
-      expr: effective_date
-    - name: "End Date"
-      expr: end_date
-  measures:
-    - name: "Row Count"
-      expr: COUNT(1)
-    - name: "Distinct Pcp Attribution"
-      expr: COUNT(DISTINCT pcp_attribution_id)
-    - name: "Total Attribution Confidence Score"
-      expr: SUM(attribution_confidence_score)
-    - name: "Average Attribution Confidence Score"
-      expr: AVG(attribution_confidence_score)
-    - name: "Total Hcc Risk Score"
-      expr: SUM(hcc_risk_score)
-    - name: "Average Hcc Risk Score"
-      expr: AVG(hcc_risk_score)
-$$;
-
-CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`patient_portal_account`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Portal Account business metrics"
-  source: "`vibe_healthcare_v1`.`patient`.`portal_account`"
-  dimensions:
-    - name: "Account Status"
-      expr: account_status
-    - name: "Account Type"
-      expr: account_type
-    - name: "Activation Date"
-      expr: activation_date
-    - name: "Activation Method"
-      expr: activation_method
-    - name: "App Link Date"
-      expr: app_link_date
-    - name: "Appointment Scheduling Enabled"
-      expr: appointment_scheduling_enabled
-    - name: "Created Date"
-      expr: created_date
-    - name: "Created Timestamp"
-      expr: created_timestamp
-    - name: "Deactivation Date"
-      expr: deactivation_date
-    - name: "Digital Health App Linked"
-      expr: digital_health_app_linked
-    - name: "Identity Verification Method"
-      expr: identity_verification_method
-    - name: "Identity Verified Date"
-      expr: identity_verified_date
-    - name: "Identity Verified Flag"
-      expr: identity_verified_flag
-    - name: "Last Login Date"
-      expr: last_login_date
-    - name: "Last Login Timestamp"
-      expr: last_login_timestamp
-    - name: "Login Failure Count"
-      expr: login_failure_count
-  measures:
-    - name: "Row Count"
-      expr: COUNT(1)
-    - name: "Distinct Portal Account"
-      expr: COUNT(DISTINCT portal_account_id)
+      comment: "Total unique patient count in master patient index"
+    - name: "duplicate_record_count"
+      expr: COUNT(DISTINCT CASE WHEN is_duplicate_flag = TRUE THEN mpi_record_id END)
+      comment: "Count of records flagged as potential duplicates requiring resolution"
+    - name: "overlay_record_count"
+      expr: COUNT(DISTINCT CASE WHEN is_overlay_flag = TRUE THEN mpi_record_id END)
+      comment: "Count of overlay records requiring correction"
+    - name: "duplicate_rate_pct"
+      expr: ROUND(100.0 * COUNT(DISTINCT CASE WHEN is_duplicate_flag = TRUE THEN mpi_record_id END) / NULLIF(COUNT(DISTINCT mpi_record_id), 0), 2)
+      comment: "Percentage of records flagged as duplicates - key data quality metric"
+    - name: "avg_match_confidence_score"
+      expr: AVG(CAST(match_confidence_score AS DOUBLE))
+      comment: "Average identity match confidence score for quality monitoring"
+    - name: "deceased_patient_count"
+      expr: COUNT(DISTINCT CASE WHEN deceased_flag = TRUE THEN mpi_record_id END)
+      comment: "Count of deceased patients for mortality tracking"
+    - name: "vip_patient_count"
+      expr: COUNT(DISTINCT CASE WHEN vip_flag = TRUE THEN mpi_record_id END)
+      comment: "Count of VIP patients requiring special handling protocols"
+    - name: "restricted_access_patient_count"
+      expr: COUNT(DISTINCT CASE WHEN restricted_access_flag = TRUE THEN mpi_record_id END)
+      comment: "Count of patients with restricted access for compliance monitoring"
+    - name: "interpreter_required_patient_count"
+      expr: COUNT(DISTINCT CASE WHEN interpreter_required_flag = TRUE THEN mpi_record_id END)
+      comment: "Count of patients requiring interpreter services for resource planning"
+    - name: "merge_event_count"
+      expr: COUNT(DISTINCT CASE WHEN surviving_mpi_record_id IS NOT NULL THEN mpi_record_id END)
+      comment: "Count of records that have been merged into surviving records"
 $$;
 
 CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`patient_registration_event`
@@ -632,56 +91,475 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Registration Event business metrics"
+  comment: "Patient registration and admission operational metrics: throughput, quality, and compliance"
   source: "`vibe_healthcare_v1`.`patient`.`registration_event`"
   dimensions:
-    - name: "Admission Type"
-      expr: admission_type
-    - name: "Admit Reason"
-      expr: admit_reason
-    - name: "Adt Message Type"
-      expr: adt_message_type
-    - name: "Advance Directive Flag"
-      expr: advance_directive_flag
-    - name: "Consent Obtained Flag"
-      expr: consent_obtained_flag
-    - name: "Created Timestamp"
-      expr: created_timestamp
-    - name: "Discharge Disposition"
-      expr: discharge_disposition
-    - name: "Duplicate Flag"
-      expr: duplicate_flag
-    - name: "Eligibility Verification Timestamp"
-      expr: eligibility_verification_timestamp
-    - name: "Eligibility Verified Flag"
-      expr: eligibility_verified_flag
-    - name: "Event Status"
-      expr: event_status
-    - name: "Event Timestamp"
-      expr: event_timestamp
-    - name: "Event Type"
+    - name: "event_type"
       expr: event_type
-    - name: "Financial Class"
+      comment: "Type of registration event (admission, discharge, transfer, update)"
+    - name: "event_status"
+      expr: event_status
+      comment: "Status of the registration event"
+    - name: "patient_class"
+      expr: patient_class
+      comment: "Patient class (inpatient, outpatient, emergency, observation)"
+    - name: "admission_type"
+      expr: admission_type
+      comment: "Type of admission (elective, urgent, emergency, newborn)"
+    - name: "financial_class"
       expr: financial_class
-    - name: "Hipaa Notice Delivered Flag"
-      expr: hipaa_notice_delivered_flag
-    - name: "Identity Verification Method"
-      expr: identity_verification_method
+      comment: "Financial class for revenue cycle analysis"
+    - name: "discharge_disposition"
+      expr: discharge_disposition
+      comment: "Discharge disposition for outcome tracking"
+    - name: "registration_source"
+      expr: registration_source
+      comment: "Source system or channel of registration"
+    - name: "mpi_match_status"
+      expr: mpi_match_status
+      comment: "Status of MPI matching for data quality monitoring"
+    - name: "eligibility_verified_flag"
+      expr: eligibility_verified_flag
+      comment: "Whether insurance eligibility was verified"
+    - name: "consent_obtained_flag"
+      expr: consent_obtained_flag
+      comment: "Whether patient consent was obtained"
+    - name: "advance_directive_flag"
+      expr: advance_directive_flag
+      comment: "Whether advance directive is on file"
+    - name: "vip_flag"
+      expr: vip_flag
+      comment: "VIP patient indicator"
+    - name: "duplicate_flag"
+      expr: duplicate_flag
+      comment: "Flag indicating potential duplicate registration"
+    - name: "registration_date"
+      expr: registration_date
+      comment: "Date of registration event"
+    - name: "registration_year"
+      expr: YEAR(registration_date)
+      comment: "Year of registration for trend analysis"
+    - name: "registration_month"
+      expr: DATE_TRUNC('MONTH', registration_date)
+      comment: "Month of registration for seasonal analysis"
+    - name: "registration_day_of_week"
+      expr: DAYOFWEEK(registration_date)
+      comment: "Day of week for staffing pattern analysis"
   measures:
-    - name: "Row Count"
-      expr: COUNT(1)
-    - name: "Distinct Registration Event"
+    - name: "total_registration_count"
       expr: COUNT(DISTINCT registration_event_id)
-    - name: "Total Completeness Score"
-      expr: SUM(completeness_score)
-    - name: "Average Completeness Score"
-      expr: AVG(completeness_score)
-    - name: "Total Expected Los Days"
-      expr: SUM(expected_los_days)
-    - name: "Average Expected Los Days"
-      expr: AVG(expected_los_days)
-    - name: "Total Mpi Match Score"
-      expr: SUM(mpi_match_score)
-    - name: "Average Mpi Match Score"
-      expr: AVG(mpi_match_score)
+      comment: "Total count of registration events for volume tracking"
+    - name: "eligibility_verification_rate_pct"
+      expr: ROUND(100.0 * COUNT(DISTINCT CASE WHEN eligibility_verified_flag = TRUE THEN registration_event_id END) / NULLIF(COUNT(DISTINCT registration_event_id), 0), 2)
+      comment: "Percentage of registrations with verified insurance eligibility - key revenue cycle metric"
+    - name: "consent_obtained_rate_pct"
+      expr: ROUND(100.0 * COUNT(DISTINCT CASE WHEN consent_obtained_flag = TRUE THEN registration_event_id END) / NULLIF(COUNT(DISTINCT registration_event_id), 0), 2)
+      comment: "Percentage of registrations with documented consent - compliance metric"
+    - name: "advance_directive_rate_pct"
+      expr: ROUND(100.0 * COUNT(DISTINCT CASE WHEN advance_directive_flag = TRUE THEN registration_event_id END) / NULLIF(COUNT(DISTINCT registration_event_id), 0), 2)
+      comment: "Percentage of registrations with advance directive on file - quality metric"
+    - name: "duplicate_registration_rate_pct"
+      expr: ROUND(100.0 * COUNT(DISTINCT CASE WHEN duplicate_flag = TRUE THEN registration_event_id END) / NULLIF(COUNT(DISTINCT registration_event_id), 0), 2)
+      comment: "Percentage of registrations flagged as duplicates - data quality metric"
+    - name: "avg_mpi_match_score"
+      expr: AVG(CAST(mpi_match_score AS DOUBLE))
+      comment: "Average MPI match confidence score for identity resolution quality"
+    - name: "avg_completeness_score"
+      expr: AVG(CAST(completeness_score AS DOUBLE))
+      comment: "Average registration data completeness score for quality monitoring"
+    - name: "avg_expected_los_days"
+      expr: AVG(CAST(expected_los_days AS DOUBLE))
+      comment: "Average expected length of stay in days for capacity planning"
+    - name: "emergency_admission_count"
+      expr: COUNT(DISTINCT CASE WHEN admission_type = 'Emergency' THEN registration_event_id END)
+      comment: "Count of emergency admissions for resource allocation"
+    - name: "vip_registration_count"
+      expr: COUNT(DISTINCT CASE WHEN vip_flag = TRUE THEN registration_event_id END)
+      comment: "Count of VIP patient registrations for special handling"
+$$;
+
+CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`patient_insurance_coverage`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Insurance coverage and eligibility metrics: verification rates, coverage gaps, and revenue cycle efficiency"
+  source: "`vibe_healthcare_v1`.`patient`.`insurance_coverage`"
+  dimensions:
+    - name: "coverage_status"
+      expr: coverage_status
+      comment: "Current status of insurance coverage (active, inactive, pending)"
+    - name: "network_status"
+      expr: network_status
+      comment: "Network status (in-network, out-of-network) for reimbursement analysis"
+    - name: "cob_priority"
+      expr: cob_priority
+      comment: "Coordination of benefits priority (primary, secondary, tertiary)"
+    - name: "eligibility_verification_status"
+      expr: eligibility_verification_status
+      comment: "Status of eligibility verification for revenue cycle monitoring"
+    - name: "eligibility_verification_method"
+      expr: eligibility_verification_method
+      comment: "Method used for eligibility verification (real-time, batch, manual)"
+    - name: "prior_auth_required"
+      expr: prior_auth_required
+      comment: "Whether prior authorization is required"
+    - name: "referral_required"
+      expr: referral_required
+      comment: "Whether referral is required for services"
+    - name: "medicare_part"
+      expr: medicare_part
+      comment: "Medicare part (A, B, C, D) for Medicare population analysis"
+    - name: "effective_year"
+      expr: YEAR(effective_date)
+      comment: "Year coverage became effective"
+    - name: "effective_month"
+      expr: DATE_TRUNC('MONTH', effective_date)
+      comment: "Month coverage became effective for enrollment trends"
+    - name: "benefit_year"
+      expr: YEAR(benefit_year_start)
+      comment: "Benefit year for deductible and out-of-pocket tracking"
+  measures:
+    - name: "total_coverage_count"
+      expr: COUNT(DISTINCT insurance_coverage_id)
+      comment: "Total count of insurance coverage records"
+    - name: "active_coverage_count"
+      expr: COUNT(DISTINCT CASE WHEN coverage_status = 'Active' THEN insurance_coverage_id END)
+      comment: "Count of active insurance coverages"
+    - name: "eligibility_verified_rate_pct"
+      expr: ROUND(100.0 * COUNT(DISTINCT CASE WHEN eligibility_verification_status = 'Verified' THEN insurance_coverage_id END) / NULLIF(COUNT(DISTINCT insurance_coverage_id), 0), 2)
+      comment: "Percentage of coverages with verified eligibility - critical revenue cycle metric"
+    - name: "prior_auth_required_rate_pct"
+      expr: ROUND(100.0 * COUNT(DISTINCT CASE WHEN prior_auth_required = TRUE THEN insurance_coverage_id END) / NULLIF(COUNT(DISTINCT insurance_coverage_id), 0), 2)
+      comment: "Percentage of coverages requiring prior authorization for workflow planning"
+    - name: "referral_required_rate_pct"
+      expr: ROUND(100.0 * COUNT(DISTINCT CASE WHEN referral_required = TRUE THEN insurance_coverage_id END) / NULLIF(COUNT(DISTINCT insurance_coverage_id), 0), 2)
+      comment: "Percentage of coverages requiring referrals for access management"
+    - name: "avg_deductible_amount"
+      expr: AVG(CAST(deductible_amount AS DOUBLE))
+      comment: "Average deductible amount for patient financial counseling"
+    - name: "avg_deductible_met_amount"
+      expr: AVG(CAST(deductible_met_amount AS DOUBLE))
+      comment: "Average amount of deductible already met"
+    - name: "avg_out_of_pocket_max"
+      expr: AVG(CAST(out_of_pocket_max AS DOUBLE))
+      comment: "Average out-of-pocket maximum for financial risk assessment"
+    - name: "avg_out_of_pocket_met"
+      expr: AVG(CAST(out_of_pocket_met_amount AS DOUBLE))
+      comment: "Average out-of-pocket amount already met"
+    - name: "avg_copay_amount"
+      expr: AVG(CAST(copay_amount AS DOUBLE))
+      comment: "Average copay amount for patient cost estimation"
+    - name: "avg_coinsurance_pct"
+      expr: AVG(CAST(coinsurance_rate AS DOUBLE))
+      comment: "Average coinsurance percentage for cost-sharing analysis"
+    - name: "total_deductible_amount"
+      expr: SUM(CAST(deductible_amount AS DOUBLE))
+      comment: "Total deductible amount across all coverages"
+    - name: "total_deductible_met_amount"
+      expr: SUM(CAST(deductible_met_amount AS DOUBLE))
+      comment: "Total deductible amount met across all coverages"
+    - name: "in_network_coverage_count"
+      expr: COUNT(DISTINCT CASE WHEN network_status = 'In-Network' THEN insurance_coverage_id END)
+      comment: "Count of in-network coverages for network adequacy monitoring"
+$$;
+
+CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`patient_pcp_attribution`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Primary care attribution and value-based care metrics: panel management, risk stratification, and quality program participation"
+  source: "`vibe_healthcare_v1`.`patient`.`pcp_attribution`"
+  dimensions:
+    - name: "attribution_status"
+      expr: attribution_status
+      comment: "Current status of PCP attribution (active, pending, terminated)"
+    - name: "attribution_method"
+      expr: attribution_method
+      comment: "Method used for attribution (claims-based, enrollment, visit-based)"
+    - name: "attribution_source"
+      expr: attribution_source
+      comment: "Source of attribution data (payer, internal, HIE)"
+    - name: "is_primary_attribution"
+      expr: is_primary_attribution
+      comment: "Whether this is the primary attribution relationship"
+    - name: "risk_stratification_tier"
+      expr: risk_stratification_tier
+      comment: "Risk tier (low, medium, high, very high) for care management prioritization"
+    - name: "care_management_enrolled"
+      expr: care_management_enrolled
+      comment: "Whether patient is enrolled in care management program"
+    - name: "hedis_eligible"
+      expr: hedis_eligible
+      comment: "Whether patient is eligible for HEDIS quality measures"
+    - name: "mips_eligible"
+      expr: mips_eligible
+      comment: "Whether patient is eligible for MIPS quality reporting"
+    - name: "plan_type"
+      expr: plan_type
+      comment: "Type of health plan (HMO, PPO, ACO, Medicare Advantage)"
+    - name: "geographic_region"
+      expr: geographic_region
+      comment: "Geographic region for population health analysis"
+    - name: "sdoh_flag"
+      expr: sdoh_flag
+      comment: "Social determinants of health flag for targeted interventions"
+    - name: "data_sharing_opt_out"
+      expr: data_sharing_opt_out
+      comment: "Whether patient opted out of data sharing"
+    - name: "measurement_year"
+      expr: measurement_year
+      comment: "Quality measurement year for performance tracking"
+    - name: "attribution_year"
+      expr: YEAR(effective_date)
+      comment: "Year attribution became effective"
+    - name: "attribution_month"
+      expr: DATE_TRUNC('MONTH', effective_date)
+      comment: "Month attribution became effective for panel growth tracking"
+  measures:
+    - name: "total_attributed_patient_count"
+      expr: COUNT(DISTINCT mpi_record_id)
+      comment: "Total count of attributed patients for panel size tracking"
+    - name: "active_attribution_count"
+      expr: COUNT(DISTINCT CASE WHEN attribution_status = 'Active' THEN pcp_attribution_id END)
+      comment: "Count of active attribution relationships"
+    - name: "primary_attribution_count"
+      expr: COUNT(DISTINCT CASE WHEN is_primary_attribution = TRUE THEN mpi_record_id END)
+      comment: "Count of patients with primary PCP attribution"
+    - name: "care_management_enrollment_rate_pct"
+      expr: ROUND(100.0 * COUNT(DISTINCT CASE WHEN care_management_enrolled = TRUE THEN mpi_record_id END) / NULLIF(COUNT(DISTINCT mpi_record_id), 0), 2)
+      comment: "Percentage of attributed patients enrolled in care management - key value-based care metric"
+    - name: "hedis_eligible_rate_pct"
+      expr: ROUND(100.0 * COUNT(DISTINCT CASE WHEN hedis_eligible = TRUE THEN mpi_record_id END) / NULLIF(COUNT(DISTINCT mpi_record_id), 0), 2)
+      comment: "Percentage of patients eligible for HEDIS quality measures"
+    - name: "mips_eligible_rate_pct"
+      expr: ROUND(100.0 * COUNT(DISTINCT CASE WHEN mips_eligible = TRUE THEN mpi_record_id END) / NULLIF(COUNT(DISTINCT mpi_record_id), 0), 2)
+      comment: "Percentage of patients eligible for MIPS reporting"
+    - name: "avg_hcc_risk_score"
+      expr: AVG(CAST(hcc_risk_score AS DOUBLE))
+      comment: "Average HCC risk score for population risk assessment and capitation"
+    - name: "avg_attribution_confidence_score"
+      expr: AVG(CAST(attribution_confidence_score AS DOUBLE))
+      comment: "Average attribution confidence score for data quality monitoring"
+    - name: "high_risk_patient_count"
+      expr: COUNT(DISTINCT CASE WHEN risk_stratification_tier IN ('High', 'Very High') THEN mpi_record_id END)
+      comment: "Count of high-risk patients requiring intensive care management"
+    - name: "sdoh_flagged_patient_count"
+      expr: COUNT(DISTINCT CASE WHEN sdoh_flag = TRUE THEN mpi_record_id END)
+      comment: "Count of patients with social determinants of health needs"
+    - name: "data_sharing_opt_out_rate_pct"
+      expr: ROUND(100.0 * COUNT(DISTINCT CASE WHEN data_sharing_opt_out = TRUE THEN mpi_record_id END) / NULLIF(COUNT(DISTINCT mpi_record_id), 0), 2)
+      comment: "Percentage of patients who opted out of data sharing - privacy compliance metric"
+    - name: "avg_visit_count_lookback"
+      expr: AVG(CAST(visit_count_lookback AS DOUBLE))
+      comment: "Average visit count in lookback period for engagement assessment"
+    - name: "total_hcc_risk_score"
+      expr: SUM(CAST(hcc_risk_score AS DOUBLE))
+      comment: "Total HCC risk score across attributed population for capitation calculation"
+    - name: "unique_pcp_count"
+      expr: COUNT(DISTINCT clinician_id)
+      comment: "Count of unique PCPs with attributed patients for provider network analysis"
+$$;
+
+CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`patient_eligibility_check`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Real-time eligibility verification metrics: verification success rates, rejection analysis, and revenue cycle efficiency"
+  source: "`vibe_healthcare_v1`.`patient`.`eligibility_check`"
+  dimensions:
+    - name: "verification_status"
+      expr: verification_status
+      comment: "Status of eligibility verification (verified, rejected, pending, error)"
+    - name: "verification_type"
+      expr: verification_type
+      comment: "Type of verification (real-time, batch, manual)"
+    - name: "verification_method"
+      expr: verification_method
+      comment: "Method used for verification (270/271, portal, phone)"
+    - name: "coverage_type"
+      expr: coverage_type
+      comment: "Type of insurance coverage being verified"
+    - name: "network_status"
+      expr: network_status
+      comment: "Network status result (in-network, out-of-network, unknown)"
+    - name: "prior_auth_required"
+      expr: prior_auth_required
+      comment: "Whether prior authorization is required"
+    - name: "referral_required"
+      expr: referral_required
+      comment: "Whether referral is required"
+    - name: "coordination_of_benefits_flag"
+      expr: coordination_of_benefits_flag
+      comment: "Whether coordination of benefits applies"
+    - name: "is_override"
+      expr: is_override
+      comment: "Whether verification was manually overridden"
+    - name: "rejection_reason_code"
+      expr: rejection_reason_code
+      comment: "Code for rejection reason for root cause analysis"
+    - name: "clearinghouse_name"
+      expr: clearinghouse_name
+      comment: "Clearinghouse used for verification for vendor performance tracking"
+    - name: "service_date"
+      expr: service_date
+      comment: "Date of service for which eligibility was checked"
+    - name: "verification_year"
+      expr: YEAR(verification_timestamp)
+      comment: "Year of verification for trend analysis"
+    - name: "verification_month"
+      expr: DATE_TRUNC('MONTH', verification_timestamp)
+      comment: "Month of verification for volume tracking"
+  measures:
+    - name: "total_eligibility_check_count"
+      expr: COUNT(DISTINCT eligibility_check_id)
+      comment: "Total count of eligibility verification attempts"
+    - name: "unique_patient_verified_count"
+      expr: COUNT(DISTINCT mpi_record_id)
+      comment: "Count of unique patients with eligibility checks"
+    - name: "verification_success_rate_pct"
+      expr: ROUND(100.0 * COUNT(DISTINCT CASE WHEN verification_status = 'Verified' THEN eligibility_check_id END) / NULLIF(COUNT(DISTINCT eligibility_check_id), 0), 2)
+      comment: "Percentage of successful eligibility verifications - critical revenue cycle KPI"
+    - name: "rejection_rate_pct"
+      expr: ROUND(100.0 * COUNT(DISTINCT CASE WHEN verification_status = 'Rejected' THEN eligibility_check_id END) / NULLIF(COUNT(DISTINCT eligibility_check_id), 0), 2)
+      comment: "Percentage of rejected eligibility checks for process improvement"
+    - name: "override_rate_pct"
+      expr: ROUND(100.0 * COUNT(DISTINCT CASE WHEN is_override = TRUE THEN eligibility_check_id END) / NULLIF(COUNT(DISTINCT eligibility_check_id), 0), 2)
+      comment: "Percentage of verifications requiring manual override - workflow efficiency metric"
+    - name: "prior_auth_required_rate_pct"
+      expr: ROUND(100.0 * COUNT(DISTINCT CASE WHEN prior_auth_required = TRUE THEN eligibility_check_id END) / NULLIF(COUNT(DISTINCT eligibility_check_id), 0), 2)
+      comment: "Percentage of checks requiring prior authorization for workflow planning"
+    - name: "referral_required_rate_pct"
+      expr: ROUND(100.0 * COUNT(DISTINCT CASE WHEN referral_required = TRUE THEN eligibility_check_id END) / NULLIF(COUNT(DISTINCT eligibility_check_id), 0), 2)
+      comment: "Percentage of checks requiring referral for access management"
+    - name: "avg_copay_amount"
+      expr: AVG(CAST(copay_amount AS DOUBLE))
+      comment: "Average copay amount for patient cost estimation"
+    - name: "avg_coinsurance_pct"
+      expr: AVG(CAST(coinsurance_percent AS DOUBLE))
+      comment: "Average coinsurance percentage for patient financial counseling"
+    - name: "avg_individual_deductible"
+      expr: AVG(CAST(individual_deductible_amount AS DOUBLE))
+      comment: "Average individual deductible amount"
+    - name: "avg_deductible_met"
+      expr: AVG(CAST(individual_deductible_met_amount AS DOUBLE))
+      comment: "Average deductible amount already met"
+    - name: "avg_out_of_pocket_max"
+      expr: AVG(CAST(individual_out_of_pocket_max AS DOUBLE))
+      comment: "Average out-of-pocket maximum for financial risk assessment"
+    - name: "avg_out_of_pocket_met"
+      expr: AVG(CAST(individual_out_of_pocket_met AS DOUBLE))
+      comment: "Average out-of-pocket amount already met"
+    - name: "real_time_verification_count"
+      expr: COUNT(DISTINCT CASE WHEN verification_type = 'Real-Time' THEN eligibility_check_id END)
+      comment: "Count of real-time verifications for automation tracking"
+    - name: "in_network_verification_count"
+      expr: COUNT(DISTINCT CASE WHEN network_status = 'In-Network' THEN eligibility_check_id END)
+      comment: "Count of in-network verifications for network adequacy"
+$$;
+
+CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`patient_guarantor`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Financial guarantor and patient account metrics: collections performance, payment plan effectiveness, and bad debt management"
+  source: "`vibe_healthcare_v1`.`patient`.`guarantor`"
+  dimensions:
+    - name: "account_status"
+      expr: account_status
+      comment: "Current status of guarantor account (active, closed, collections)"
+    - name: "guarantor_type"
+      expr: guarantor_type
+      comment: "Type of guarantor (self, spouse, parent, other)"
+    - name: "relationship_to_patient"
+      expr: relationship_to_patient
+      comment: "Relationship of guarantor to patient"
+    - name: "employment_status"
+      expr: employment_status
+      comment: "Employment status for financial assessment"
+    - name: "financial_assistance_status"
+      expr: financial_assistance_status
+      comment: "Status of financial assistance application"
+    - name: "financial_assistance_type"
+      expr: financial_assistance_type
+      comment: "Type of financial assistance (charity care, discount, payment plan)"
+    - name: "payment_plan_flag"
+      expr: payment_plan_flag
+      comment: "Whether guarantor is on a payment plan"
+    - name: "bad_debt_flag"
+      expr: bad_debt_flag
+      comment: "Whether account is flagged as bad debt"
+    - name: "collection_agency_flag"
+      expr: collection_agency_flag
+      comment: "Whether account has been sent to collections"
+    - name: "bankruptcy_flag"
+      expr: bankruptcy_flag
+      comment: "Whether guarantor has declared bankruptcy"
+    - name: "do_not_contact_flag"
+      expr: do_not_contact_flag
+      comment: "Whether guarantor requested no contact"
+    - name: "estatement_consent_flag"
+      expr: estatement_consent_flag
+      comment: "Whether guarantor consented to electronic statements"
+    - name: "sms_consent_flag"
+      expr: sms_consent_flag
+      comment: "Whether guarantor consented to SMS communications"
+    - name: "deceased_flag"
+      expr: deceased_flag
+      comment: "Whether guarantor is deceased"
+    - name: "since_year"
+      expr: YEAR(since_date)
+      comment: "Year guarantor relationship began"
+  measures:
+    - name: "total_guarantor_count"
+      expr: COUNT(DISTINCT guarantor_id)
+      comment: "Total count of guarantor accounts"
+    - name: "unique_patient_with_guarantor_count"
+      expr: COUNT(DISTINCT mpi_record_id)
+      comment: "Count of unique patients with guarantor records"
+    - name: "total_account_balance"
+      expr: SUM(CAST(account_balance AS DOUBLE))
+      comment: "Total outstanding account balance across all guarantors - key AR metric"
+    - name: "avg_account_balance"
+      expr: AVG(CAST(account_balance AS DOUBLE))
+      comment: "Average account balance per guarantor"
+    - name: "total_annual_income"
+      expr: SUM(CAST(annual_income AS DOUBLE))
+      comment: "Total annual income across guarantor population"
+    - name: "avg_annual_income"
+      expr: AVG(CAST(annual_income AS DOUBLE))
+      comment: "Average annual income for financial assistance eligibility assessment"
+    - name: "avg_federal_poverty_level_pct"
+      expr: AVG(CAST(federal_poverty_level_pct AS DOUBLE))
+      comment: "Average federal poverty level percentage for charity care qualification"
+    - name: "avg_responsibility_pct"
+      expr: AVG(CAST(responsibility_pct AS DOUBLE))
+      comment: "Average percentage of financial responsibility"
+    - name: "payment_plan_rate_pct"
+      expr: ROUND(100.0 * COUNT(DISTINCT CASE WHEN payment_plan_flag = TRUE THEN guarantor_id END) / NULLIF(COUNT(DISTINCT guarantor_id), 0), 2)
+      comment: "Percentage of guarantors on payment plans - collections strategy metric"
+    - name: "bad_debt_rate_pct"
+      expr: ROUND(100.0 * COUNT(DISTINCT CASE WHEN bad_debt_flag = TRUE THEN guarantor_id END) / NULLIF(COUNT(DISTINCT guarantor_id), 0), 2)
+      comment: "Percentage of accounts flagged as bad debt - financial risk metric"
+    - name: "collection_agency_rate_pct"
+      expr: ROUND(100.0 * COUNT(DISTINCT CASE WHEN collection_agency_flag = TRUE THEN guarantor_id END) / NULLIF(COUNT(DISTINCT guarantor_id), 0), 2)
+      comment: "Percentage of accounts sent to collections - revenue cycle performance metric"
+    - name: "bankruptcy_rate_pct"
+      expr: ROUND(100.0 * COUNT(DISTINCT CASE WHEN bankruptcy_flag = TRUE THEN guarantor_id END) / NULLIF(COUNT(DISTINCT guarantor_id), 0), 2)
+      comment: "Percentage of guarantors with bankruptcy - write-off risk metric"
+    - name: "total_last_payment_amount"
+      expr: SUM(CAST(last_payment_amount AS DOUBLE))
+      comment: "Total amount of last payments received"
+    - name: "avg_last_payment_amount"
+      expr: AVG(CAST(last_payment_amount AS DOUBLE))
+      comment: "Average last payment amount for payment behavior analysis"
+    - name: "avg_payment_plan_amount"
+      expr: AVG(CAST(payment_plan_amount AS DOUBLE))
+      comment: "Average payment plan installment amount"
+    - name: "estatement_adoption_rate_pct"
+      expr: ROUND(100.0 * COUNT(DISTINCT CASE WHEN estatement_consent_flag = TRUE THEN guarantor_id END) / NULLIF(COUNT(DISTINCT guarantor_id), 0), 2)
+      comment: "Percentage of guarantors using electronic statements - cost reduction metric"
 $$;

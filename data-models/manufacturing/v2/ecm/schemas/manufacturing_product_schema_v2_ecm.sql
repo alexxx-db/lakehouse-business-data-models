@@ -1,5 +1,5 @@
--- Schema for Domain: product | Business:  | Version: v2_ecm
--- Generated on: 2026-07-10 12:59:03
+-- Schema for Domain: product | Business: Manufacturing | Version: v2_ecm
+-- Generated on: 2026-07-03 05:59:35
 
 -- ========= DATABASE =========
 CREATE DATABASE IF NOT EXISTS `vibe_manufacturing_v1`.`product` COMMENT 'Product catalog and offering management domain serving as the SSOT for all manufactured products, automation systems, electrification solutions, and smart infrastructure components. Manages SKU master data, product families, configurations, pricing structures, product lifecycle stages from NPI to end-of-life, and product portfolio management.';
@@ -8,13 +8,12 @@ CREATE DATABASE IF NOT EXISTS `vibe_manufacturing_v1`.`product` COMMENT 'Product
 CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`product`.`sku_master` (
     `sku_master_id` BIGINT COMMENT 'Unique identifier for the SKU master record. Primary key for the SKU master data product.',
     `cost_center_id` BIGINT COMMENT 'Foreign key linking to finance.cost_center. Business justification: Cost Allocation Report requires each SKU to be charged to a cost center for manufacturing cost tracking.',
-    `regulatory_requirement_id` BIGINT COMMENT 'Foreign key linking to compliance.regulatory_requirement. Business justification: Regulatory compliance matrix links each SKU to its primary regulatory requirement for catalog compliance reporting.',
     `gl_account_id` BIGINT COMMENT 'Foreign key linking to finance.gl_account. Business justification: Financial reporting of sales per SKU needs a dedicated revenue GL account for posting invoices.',
     `supplier_id` BIGINT COMMENT 'Foreign key linking to supplier.supplier. Business justification: Primary Supplier Assignment report requires each SKU to reference its main vendor for cost, lead‑time, and compliance decisions.',
     `abc_classification` STRING COMMENT 'Inventory classification based on value and consumption: A (high value, tight control), B (moderate value), C (low value, relaxed control). Used for inventory policy and cycle counting frequency.. Valid values are `A|B|C`',
     `base_uom` STRING COMMENT 'The fundamental unit of measure for inventory tracking and stock keeping. All other UoM conversions are calculated relative to this base unit. [ENUM-REF-CANDIDATE: EA|PC|KG|LB|M|FT|L|GAL|M2|FT2|M3|FT3|SET|KIT — 14 candidates stripped; promote to reference product]',
     `commercial_description` STRING COMMENT 'Marketing-optimized product description for sales and customer communication. Multi-language support maintained in PLM system.',
-    `cost_currency` STRING COMMENT 'Three-letter ISO 4217 currency code for the standard cost. Typically the companys base or functional currency for financial reporting.. Valid values are `^[A-Z]{3}$`',
+    `cost_currency` DECIMAL(18,2) COMMENT 'Three-letter ISO 4217 currency code for the standard cost. Typically the companys base or functional currency for financial reporting.',
     `country_of_origin` STRING COMMENT 'Three-letter ISO 3166-1 alpha-3 country code indicating where the product is manufactured or substantially transformed. Required for customs declarations and trade compliance.. Valid values are `^[A-Z]{3}$`',
     `created_timestamp` TIMESTAMP COMMENT 'Timestamp when the SKU master record was first created in the system. Audit trail for data governance and compliance.',
     `dimension_uom` STRING COMMENT 'Unit of measure for length, width, and height dimensions. Standardized for consistent warehouse and logistics operations.. Valid values are `MM|CM|M|IN|FT`',
@@ -61,6 +60,7 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`product`.`family` (
     `family_id` BIGINT COMMENT 'Primary key for family',
     `parent_family_id` BIGINT COMMENT 'Reference to the parent product family in the multi-level hierarchy. Enables nested family structures (e.g., Industrial Automation > Drives > Low Voltage Drives). Null for top-level families.',
     `profit_center_id` BIGINT COMMENT 'Foreign key linking to finance.profit_center. Business justification: Profit Center Performance Report groups families to evaluate profitability by product line.',
+    `regulatory_requirement_id` BIGINT COMMENT 'Foreign key linking to compliance.regulatory_requirement. Business justification: Family-level audits apply a common regulatory requirement to all SKUs within the family.',
     `business_unit` STRING COMMENT 'Name or code of the business unit or division responsible for this product family. Defines ownership for P&L accountability, product management, and strategic roadmap decisions.',
     `certification_requirements` STRING COMMENT 'Comma-separated list of required certifications and compliance standards for products in this family (e.g., UL, CE, IEC 61131, ISO 9001, ATEX, IECEx). Defines regulatory and safety compliance scope.',
     `family_code` STRING COMMENT 'Externally-known unique alphanumeric code identifying the product family. Used in SAP S/4HANA SD for catalog navigation and PLM (Siemens Teamcenter) for product classification. Serves as the business identifier for cross-system integration.. Valid values are `^[A-Z0-9]{3,20}$`',
@@ -86,7 +86,7 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`product`.`family` (
     `lead_time_days` STRING COMMENT 'Standard manufacturing or procurement lead time in days for products in this family. Used for order promising, production planning (MRP), and inventory policy setting.',
     `lifecycle_status` STRING COMMENT 'Current lifecycle stage of the product family. Active families are available for sale and production. Discontinued families are no longer offered. Phase-out families are being retired. NPI (New Product Introduction) families are in launch phase. End-of-life families support existing installations only. Under-development families are pre-launch.. Valid values are `active|discontinued|phase_out|new_product_introduction|end_of_life|under_development`',
     `list_price` DECIMAL(18,2) COMMENT 'Representative list price or price range midpoint for products in this family. Used for catalog display, quotation guidance, and revenue forecasting. Actual SKU prices may vary based on configuration and customer agreements.',
-    `manufacturing_strategy` STRING COMMENT 'Primary manufacturing strategy for products in this family. Make-to-stock (MTS) builds to forecast. Make-to-order (MTO) builds to customer orders. Engineer-to-order (ETO) customizes designs. Configure-to-order (CTO) assembles from standard modules. Assemble-to-order (ATO) final assembly from components.. Valid values are `make_to_stock|make_to_order|engineer_to_order|configure_to_order|assemble_to_order`',
+    `manufacturing_strategy` DECIMAL(18,2) COMMENT 'Primary manufacturing strategy for products in this family. Make-to-stock (MTS) builds to forecast. Make-to-order (MTO) builds to customer orders. Engineer-to-order (ETO) customizes designs. Configure-to-order (CTO) assembles from standard modules. Assemble-to-order (ATO) final assembly from components.',
     `market_segment` STRING COMMENT 'Primary market segment or vertical industry that this product family serves. Aligns with go-to-market strategy and sales organization structure. Used for revenue reporting, market analysis, and strategic planning. [ENUM-REF-CANDIDATE: industrial_automation|building_automation|energy_management|transportation|process_industries|discrete_manufacturing|infrastructure|oem_solutions — 8 candidates stripped; promote to reference product]',
     `mean_time_between_failures` DECIMAL(18,2) COMMENT 'Average Mean Time Between Failures (MTBF) in hours for products in this family. Key reliability metric used for maintenance planning, service level agreements, and product quality benchmarking.',
     `mean_time_to_repair` DECIMAL(18,2) COMMENT 'Average Mean Time To Repair (MTTR) in hours for products in this family. Indicates serviceability and downtime impact. Used for maintenance planning and SLA (Service Level Agreement) definition.',
@@ -94,9 +94,8 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`product`.`family` (
     `plm_category` STRING COMMENT 'Classification code or category assigned in the PLM system (Siemens Teamcenter). Used for document management, BOM (Bill of Materials) structure, and engineering change control (ECO/ECN).',
     `procurement_type` STRING COMMENT 'Indicates whether products in this family are manufactured in-house, purchased from suppliers, or a combination of both. Drives sourcing strategy and supply chain planning.. Valid values are `manufactured|purchased|both`',
     `product_line_owner` STRING COMMENT 'Name or identifier of the product manager or product line owner responsible for this family. Accountable for portfolio strategy, pricing, and lifecycle management.',
-    `product_portfolio_strategy` STRING COMMENT 'Strategic classification of the product family in the corporate portfolio. Invest families receive R&D funding and growth initiatives. Maintain families sustain current market position. Harvest families maximize cash flow with minimal investment. Divest families are candidates for discontinuation or sale.. Valid values are `invest|maintain|harvest|divest`',
+    `product_portfolio_strategy` DECIMAL(18,2) COMMENT 'Strategic classification of the product family in the corporate portfolio. Invest families receive R&D funding and growth initiatives. Maintain families sustain current market position. Harvest families maximize cash flow with minimal investment. Divest families are candidates for discontinuation or sale.',
     `record_status` STRING COMMENT 'Administrative status of this master data record. Active records are current and in use. Inactive records are deprecated but retained for historical reference. Pending approval records await governance review. Archived records are retained for compliance but not operational use.. Valid values are `active|inactive|pending_approval|archived`',
-    `regulatory_requirement_id` BIGINT COMMENT 'Foreign key linking to compliance.regulatory_requirement. Business justification: Family-level audits apply a common regulatory requirement to all SKUs within the family.',
     `sales_organization` STRING COMMENT 'Primary sales organization code responsible for selling products in this family. Defines sales territory, pricing authority, and revenue attribution in SAP S/4HANA SD.',
     `service_level_tier` STRING COMMENT 'Default service level tier for products in this family. Defines response time commitments, spare parts availability, and support escalation paths. Influences service pricing and customer expectations.. Valid values are `standard|premium|critical|basic`',
     `standard_cost` DECIMAL(18,2) COMMENT 'Average standard cost per unit for products in this family, used for financial planning and margin analysis. Expressed in the companys base currency. Aggregated from individual SKU costs.',
@@ -131,14 +130,14 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`product`.`catalog_entry` (
     `harmonized_tariff_code` STRING COMMENT 'International harmonized commodity code for customs and tariff classification. Used for import/export documentation and duty calculation.. Valid values are `^[0-9]{6,10}$`',
     `hazardous_material_flag` BOOLEAN COMMENT 'Indicates whether this catalog entry contains or is classified as hazardous material requiring special handling, shipping, and regulatory compliance.',
     `last_modified_timestamp` TIMESTAMP COMMENT 'The timestamp when this catalog entry record was last modified. Used for change tracking and data synchronization.',
-    `last_price_update_date` DATE COMMENT 'The date when the list price for this catalog entry was last updated. Used for price change tracking and audit trails.',
+    `last_price_update_date` TIMESTAMP COMMENT 'The date when the list price for this catalog entry was last updated. Used for price change tracking and audit trails.',
     `lifecycle_stage` STRING COMMENT 'Current stage in the product lifecycle from New Product Introduction (NPI) through end-of-life. Used for portfolio management and strategic planning.. Valid values are `npi|growth|maturity|decline|end_of_life`',
     `list_price` DECIMAL(18,2) COMMENT 'The standard list price for this catalog entry in the base currency. Actual transaction prices may vary based on customer agreements, volume discounts, and promotions.',
     `minimum_order_quantity` DECIMAL(18,2) COMMENT 'The minimum quantity that must be ordered for this catalog entry. Used to enforce business rules for small-volume orders and manufacturing lot sizes.',
     `modified_by_user` STRING COMMENT 'The user ID or username of the person who last modified this catalog entry record. Used for audit trails and accountability.',
     `oem_offering_flag` BOOLEAN COMMENT 'Indicates whether this catalog entry is an OEM product sold to other manufacturers for integration into their systems, as opposed to a standard commercial offering.',
     `orderable_flag` BOOLEAN COMMENT 'Indicates whether this catalog entry can be directly ordered by customers. Not all SKUs are orderable; some are components or service parts only.',
-    `price_unit_of_measure` STRING COMMENT 'The unit of measure for pricing (each, piece, set, kilogram, meter, square meter, cubic meter, liter, hour). Defines the quantity basis for the list price. [ENUM-REF-CANDIDATE: EA|PC|SET|KG|M|M2|M3|L|HR — 9 candidates stripped; promote to reference product]',
+    `price_unit_of_measure` DECIMAL(18,2) COMMENT 'The unit of measure for pricing (each, piece, set, kilogram, meter, square meter, cubic meter, liter, hour). Defines the quantity basis for the list price. [ENUM-REF-CANDIDATE: EA|PC|SET|KG|M|M2|M3|L|HR — 9 candidates stripped; promote to reference product]',
     `product_category` STRING COMMENT 'High-level product category classification aligning with the business strategic product portfolio segments. [ENUM-REF-CANDIDATE: automation_systems|electrification_solutions|smart_infrastructure|industrial_controls|power_distribution|building_automation|process_automation — 7 candidates stripped; promote to reference product]',
     `product_family_code` STRING COMMENT 'Classification code identifying the product family or product line to which this catalog entry belongs (e.g., automation controllers, motor drives, circuit breakers).',
     `regional_availability` STRING COMMENT 'Geographic regions or countries where this catalog entry is available for sale. Supports regional product portfolio management and compliance with local regulations.',
@@ -163,14 +162,14 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`product`.`configuration` (
     `approval_date` DATE COMMENT 'Date when this configuration was formally approved for use in quoting and order fulfillment. Part of the configuration governance process.',
     `base_price` DECIMAL(18,2) COMMENT 'Starting price for the base product before configuration options are applied. Expressed in the default currency.',
     `certification_requirements` STRING COMMENT 'List of required certifications and compliance standards for this configuration, such as CE, UL, ISO certifications. Varies by market and application.',
-    `configuration_code` STRING COMMENT 'Unique business identifier for the configured product variant. Used in CPQ (Configure-Price-Quote) workflows and order processing systems.. Valid values are `^[A-Z0-9]{8,20}$`',
-    `configuration_status` STRING COMMENT 'Current lifecycle status of the product configuration. Indicates whether the configuration is available for quoting and ordering. [ENUM-REF-CANDIDATE: draft|active|inactive|obsolete|pending_approval|approved|rejected — 7 candidates stripped; promote to reference product]',
-    `configuration_type` STRING COMMENT 'Classification of the configuration approach. Standard configurations are pre-defined, custom configurations are unique to customer requirements, engineer-to-order requires design work, make-to-order uses existing designs with custom parameters, configure-to-order selects from predefined options, and assemble-to-order combines standard modules.. Valid values are `standard|custom|engineer_to_order|make_to_order|configure_to_order|assemble_to_order`',
+    `configuration_code` DECIMAL(18,2) COMMENT 'Unique business identifier for the configured product variant. Used in CPQ (Configure-Price-Quote) workflows and order processing systems.',
+    `configuration_status` DECIMAL(18,2) COMMENT 'Current lifecycle status of the product configuration. Indicates whether the configuration is available for quoting and ordering. [ENUM-REF-CANDIDATE: draft|active|inactive|obsolete|pending_approval|approved|rejected — 7 candidates stripped; promote to reference product]',
+    `configuration_type` DECIMAL(18,2) COMMENT 'Classification of the configuration approach. Standard configurations are pre-defined, custom configurations are unique to customer requirements, engineer-to-order requires design work, make-to-order uses existing designs with custom parameters, configure-to-order selects from predefined options, and assemble-to-order combines standard modules.',
     `constraint_rules` STRING COMMENT 'Business rules and constraints that govern valid option combinations for this configuration. Defines incompatibilities, dependencies, and mandatory selections.',
     `created_timestamp` TIMESTAMP COMMENT 'Timestamp when this configuration record was first created in the system. Part of the audit trail.',
     `currency_code` STRING COMMENT 'Three-letter ISO 4217 currency code for pricing fields. Indicates the currency in which prices are expressed.. Valid values are `^[A-Z]{3}$`',
     `customer_segment` STRING COMMENT 'Target customer segment or industry vertical for this configuration. Examples include automotive, energy, infrastructure, building automation.',
-    `configuration_description` STRING COMMENT 'Detailed description of the configured product variant, including key features, options selected, and intended use case.',
+    `configuration_description` DECIMAL(18,2) COMMENT 'Detailed description of the configured product variant, including key features, options selected, and intended use case.',
     `dimensions_height_mm` DECIMAL(18,2) COMMENT 'Height dimension of the configured product in millimeters. Critical for packaging, shipping, and installation planning.',
     `dimensions_length_mm` DECIMAL(18,2) COMMENT 'Length dimension of the configured product in millimeters. Critical for packaging, shipping, and installation planning.',
     `dimensions_width_mm` DECIMAL(18,2) COMMENT 'Width dimension of the configured product in millimeters. Critical for packaging, shipping, and installation planning.',
@@ -182,7 +181,7 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`product`.`configuration` (
     `lead_time_days` STRING COMMENT 'Standard manufacturing and delivery lead time for this configuration in days. Used for order promising and scheduling.',
     `manufacturing_complexity` STRING COMMENT 'Assessment of the manufacturing complexity for this configuration. Impacts production planning, resource allocation, and lead time.. Valid values are `low|medium|high|very_high`',
     `minimum_order_quantity` STRING COMMENT 'Minimum number of units that must be ordered for this configuration. Used to enforce economic order quantities and production efficiency.',
-    `configuration_name` STRING COMMENT 'Human-readable name or title for the configured product variant. Describes the specific configuration in business terms.',
+    `configuration_name` DECIMAL(18,2) COMMENT 'Human-readable name or title for the configured product variant. Describes the specific configuration in business terms.',
     `notes` STRING COMMENT 'Free-text field for additional notes, comments, or special instructions related to this configuration. Used for internal communication and documentation.',
     `power_rating_kw` DECIMAL(18,2) COMMENT 'Electrical power rating of the configured product in kilowatts. Relevant for electrification solutions and automation systems.',
     `price_adjustment` DECIMAL(18,2) COMMENT 'Total price adjustment resulting from selected configuration options. Can be positive (upcharge) or negative (discount).',
@@ -208,7 +207,7 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`product`.`bom_header` (
     `family_id` BIGINT COMMENT 'FK to product.family',
     `sku_master_id` BIGINT COMMENT 'Reference to the manufactured product, automation system, or electrification solution that this BOM defines. Links to the product master data.',
     `tertiary_bom_last_modified_by_employee_id` BIGINT COMMENT 'Reference to the user who last modified this BOM header record. Supports accountability and audit trail requirements.',
-    `alternative_bom_indicator` STRING COMMENT 'Identifier for alternative BOM versions for the same product. Allows multiple valid BOMs for a product to support different manufacturing methods, material substitutions, or regional variations.',
+    `alternative_bom_indicator` BOOLEAN COMMENT 'Identifier for alternative BOM versions for the same product. Allows multiple valid BOMs for a product to support different manufacturing methods, material substitutions, or regional variations.',
     `approval_date` DATE COMMENT 'Date when this BOM version was formally approved for production use. Marks the completion of engineering review and quality validation processes.',
     `base_quantity` DECIMAL(18,2) COMMENT 'The reference quantity for which the BOM is defined. All component quantities in the BOM lines are specified relative to this base quantity. Typically 1 unit of the finished product.',
     `base_unit_of_measure` STRING COMMENT 'Unit of measure for the base quantity. Defines the measurement unit (EA, KG, M, L, etc.) for the finished product quantity.',
@@ -218,7 +217,7 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`product`.`bom_header` (
     `bom_status` STRING COMMENT 'Current lifecycle status of the BOM header. Tracks progression from draft through approval to active production use and eventual obsolescence. [ENUM-REF-CANDIDATE: draft|in_review|approved|active|frozen|obsolete|archived — 7 candidates stripped; promote to reference product]',
     `bom_type` STRING COMMENT 'Classification of the BOM by its intended use. Engineering BOM for design, Manufacturing BOM for production, Sales BOM for customer-facing configurations, Service BOM for maintenance, Planning BOM for MRP, Costing BOM for financial analysis.. Valid values are `engineering|manufacturing|sales|service|planning|costing`',
     `bom_usage` STRING COMMENT 'Intended application context for this BOM. Defines whether the BOM is used for production runs, prototyping, spare parts management, rework operations, simulation, or testing purposes.. Valid values are `production|prototype|spare_parts|rework|simulation|testing`',
-    `configuration_profile` STRING COMMENT 'Reference to the variant configuration profile for configurable products. Links the BOM to the product configurator rules and constraints.',
+    `configuration_profile` DECIMAL(18,2) COMMENT 'Reference to the variant configuration profile for configurable products. Links the BOM to the product configurator rules and constraints.',
     `created_date` TIMESTAMP COMMENT 'Timestamp when this BOM header record was first created in the system. Immutable audit field for record lifecycle tracking.',
     `effective_date` DATE COMMENT 'Date from which this BOM version becomes valid and can be used for production planning and manufacturing execution. Supports phased rollout of engineering changes.',
     `engineering_change_notice_number` STRING COMMENT 'Reference to the ECN that communicated the engineering change. ECNs notify stakeholders of approved changes before implementation.',
@@ -245,7 +244,6 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`product`.`product_bom_line` (
     `bom_header_id` BIGINT COMMENT 'Foreign key reference to the parent BOM header that this line belongs to. Each BOM line must belong to exactly one BOM header.',
     `component_id` BIGINT COMMENT 'Foreign key linking to engineering.component. Business justification: Production planning reports require each BOM line to reference the engineering component master to ensure design consistency and cost roll‑up.',
     `drawing_id` BIGINT COMMENT 'Foreign key linking to engineering.drawing. Business justification: Manufacturing execution system uses the drawing ID per BOM line to fetch exact assembly drawings for work orders and quality inspections.',
-    `regulatory_requirement_id` BIGINT COMMENT 'Foreign key linking to compliance.regulatory_requirement. Business justification: BOM validation checks that each component complies with the required regulation (e.g., RoHS).',
     `sku_master_id` BIGINT COMMENT 'Foreign key reference to the component material or part from the SKU master data that is required for this assembly. Each BOM line references exactly one component SKU.',
     `supplier_id` BIGINT COMMENT 'Foreign key linking to supplier.supplier. Business justification: BOM Supplier Allocation process tracks which vendor supplies each component, essential for production scheduling and quality audits.',
     `work_center_id` BIGINT COMMENT 'Identifier of the work center or production resource where this component is consumed. Used for shop floor material staging and kitting.',
@@ -261,7 +259,7 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`product`.`product_bom_line` (
     `component_origin` STRING COMMENT 'Procurement strategy for this component: make (manufactured in-house), buy (purchased from supplier), make_or_buy (flexible sourcing), subcontract (outsourced manufacturing).. Valid values are `make|buy|make_or_buy|subcontract`',
     `component_weight_kg` DECIMAL(18,2) COMMENT 'Weight of the component in kilograms. Used for calculating total assembly weight, shipping weight, and material handling requirements.',
     `component_width_mm` DECIMAL(18,2) COMMENT 'Width dimension of the component in millimeters. Used for variable-size materials and spatial planning in assembly.',
-    `cost_relevance_indicator` BOOLEAN COMMENT 'Flag indicating whether this component should be included in product costing calculations. Text items and phantom assemblies are typically not cost-relevant.',
+    `cost_relevance_indicator` DECIMAL(18,2) COMMENT 'Flag indicating whether this component should be included in product costing calculations. Text items and phantom assemblies are typically not cost-relevant.',
     `created_by_user` STRING COMMENT 'User ID or name of the person who created this BOM line record. Used for accountability and audit trail.',
     `created_timestamp` TIMESTAMP COMMENT 'Date and time when this BOM line record was first created in the system. Used for audit trail and data lineage.',
     `critical_component_flag` BOOLEAN COMMENT 'Indicates whether this component is critical for production and requires special attention in material planning, procurement, and availability checking.',
@@ -277,7 +275,7 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`product`.`product_bom_line` (
     `modified_by_user` STRING COMMENT 'User ID or name of the person who last modified this BOM line record. Used for accountability and audit trail.',
     `modified_timestamp` TIMESTAMP COMMENT 'Date and time when this BOM line record was last modified. Used for change tracking and audit trail.',
     `notes` STRING COMMENT 'Free-text field for additional instructions, comments, or special handling requirements for this component in the assembly process.',
-    `operation_sequence` STRING COMMENT 'The routing operation number at which this component is consumed or installed in the manufacturing process. Links BOM to routing for integrated production planning.',
+    `operation_sequence` DECIMAL(18,2) COMMENT 'The routing operation number at which this component is consumed or installed in the manufacturing process. Links BOM to routing for integrated production planning.',
     `product_bom_line_status` STRING COMMENT 'Current lifecycle status of this BOM line: active (in use), inactive (temporarily disabled), pending (awaiting approval), obsolete (phased out), blocked (quality hold), released (approved for production).. Valid values are `active|inactive|pending|obsolete|blocked|released`',
     `quantity_per_assembly` DECIMAL(18,2) COMMENT 'The required quantity of this component needed to produce one unit of the parent assembly. Supports up to 6 decimal places for precision in chemical, pharmaceutical, and electronics manufacturing.',
     `revision_level` STRING COMMENT 'Engineering revision level or version of this BOM line. Tracks design iterations and ensures correct component versions are used in production.',
@@ -303,7 +301,7 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`product`.`lifecycle_stage` (
     `last_time_buy_date` DATE COMMENT 'Final date by which customers can place orders for the product before it is discontinued. Critical milestone for customer communication and order management during product phase-out.',
     `last_time_ship_date` DATE COMMENT 'Final date by which the product will be shipped to customers. Represents the absolute end of product availability and delivery.',
     `lifecycle_decision_authority` STRING COMMENT 'Name or role of the person or committee that authorized the lifecycle stage transition. Supports governance and accountability for product portfolio decisions.',
-    `lifecycle_decision_rationale` STRING COMMENT 'Business justification and reasoning for the lifecycle stage transition. Documents strategic, market, technical, or regulatory factors driving the lifecycle decision for portfolio rationalization and governance.',
+    `lifecycle_decision_rationale` DECIMAL(18,2) COMMENT 'Business justification and reasoning for the lifecycle stage transition. Documents strategic, market, technical, or regulatory factors driving the lifecycle decision for portfolio rationalization and governance.',
     `lifecycle_review_date` DATE COMMENT 'Date of the most recent lifecycle stage review or assessment. Ensures regular evaluation of product portfolio health and lifecycle progression.',
     `manufacturing_discontinuation_date` DATE COMMENT 'Date when manufacturing and production of the product will cease. Drives supply chain wind-down, capacity reallocation, and inventory planning.',
     `market_demand_trend` STRING COMMENT 'Current market demand trend for the product. GROWING = increasing sales and market share, STABLE = consistent demand, DECLINING = decreasing sales, VOLATILE = unpredictable fluctuations, UNKNOWN = insufficient data. Informs lifecycle stage decisions and portfolio strategy.. Valid values are `GROWING|STABLE|DECLINING|VOLATILE|UNKNOWN`',
@@ -383,7 +381,7 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`product`.`product_specification
     `effective_date` DATE COMMENT 'Date when this specification version becomes effective and applicable for use in engineering, manufacturing, and sales processes.',
     `expiration_date` DATE COMMENT 'Date when this specification version is no longer valid or has been superseded by a newer revision. Null for active specifications without planned obsolescence.',
     `frequency_rating_hz` STRING COMMENT 'Operating frequency rating in Hertz. Specifies the electrical frequency the product is designed for (e.g., 50Hz, 60Hz, 50/60Hz).',
-    `humidity_rating_percent` STRING COMMENT 'Relative humidity rating or range for product operation. Specifies the acceptable humidity conditions (e.g., 5-95% RH non-condensing).',
+    `humidity_rating_percent` DECIMAL(18,2) COMMENT 'Relative humidity rating or range for product operation. Specifies the acceptable humidity conditions (e.g., 5-95% RH non-condensing).',
     `installation_manual_reference` STRING COMMENT 'Reference identifier or document number for the installation manual. Links to the installation instructions managed in the engineering document management system.',
     `ip_rating` STRING COMMENT 'Ingress Protection rating per IEC 60529 standard. Defines the level of protection against solid objects and liquids (e.g., IP65, IP67, IP20).. Valid values are `^IP[0-9]{2}[A-Z]?$`',
     `material_composition` STRING COMMENT 'Primary materials used in product construction. Lists the key materials and their properties (e.g., stainless steel housing, polycarbonate cover, copper conductors).',
@@ -408,7 +406,7 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`product`.`product_specification
     `storage_temperature_max_c` DECIMAL(18,2) COMMENT 'Maximum storage temperature in degrees Celsius. Defines the upper temperature limit for product storage when not in operation.',
     `storage_temperature_min_c` DECIMAL(18,2) COMMENT 'Minimum storage temperature in degrees Celsius. Defines the lower temperature limit for product storage when not in operation.',
     `technical_drawing_reference` STRING COMMENT 'Reference identifier for associated technical drawings. Links to CAD drawings, dimensional drawings, or assembly drawings managed in the PLM system.',
-    `vibration_resistance` STRING COMMENT 'Vibration resistance specification. Describes the products ability to withstand mechanical vibration per applicable test standards (e.g., IEC 60068-2-6).',
+    `vibration_resistance` DECIMAL(18,2) COMMENT 'Vibration resistance specification. Describes the products ability to withstand mechanical vibration per applicable test standards (e.g., IEC 60068-2-6).',
     `voltage_rating` STRING COMMENT 'Electrical voltage rating or range for the product. Specifies the nominal operating voltage and acceptable voltage range (e.g., 24VDC, 110-240VAC, 400V 3-phase).',
     `weight_kg` DECIMAL(18,2) COMMENT 'Product weight in kilograms. Defines the mass for shipping, handling, and installation planning.',
     CONSTRAINT pk_product_specification PRIMARY KEY(`product_specification_id`)
@@ -416,6 +414,8 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`product`.`product_specification
 
 CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`product`.`product_certification` (
     `product_certification_id` BIGINT COMMENT 'Unique identifier for the product certification record. Primary key.',
+    `asset_certification_id` BIGINT COMMENT 'Reference to SSOT owner asset.asset_certification for certification conflict resolution.',
+    `product_asset_asset_certification_ssot_ref_id` BIGINT COMMENT 'SSOT reference to the single source of truth record; this product is a non-authoritative duplicate view.',
     `employee_id` BIGINT COMMENT 'Foreign key linking to workforce.employee. Business justification: REQUIRED: Certification management assigns responsible_engineer_employee_id to record accountability for each certification.',
     `sku_master_id` BIGINT COMMENT 'Reference to the manufactured product, automation system, electrification solution, or smart infrastructure component that holds this certification.',
     `applicable_markets` STRING COMMENT 'Geographic markets, regions, or countries where this certification enables product sale and distribution (e.g., European Union, North America, APAC). Pipe-separated list of ISO 3166-1 alpha-3 country codes or region identifiers.',
@@ -428,10 +428,10 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`product`.`product_certification
     `certification_type` STRING COMMENT 'Type of regulatory or safety certification obtained. Indicates the certification standard or framework under which the product was evaluated. [ENUM-REF-CANDIDATE: UL Listing|CE Marking|IEC Compliance|ATEX Rating|RoHS Declaration|REACH Declaration|ECCN Classification|FCC Certification|CSA Approval|TUV Certification — 10 candidates stripped; promote to reference product]',
     `certifying_body` STRING COMMENT 'Name of the organization or authority that issued the certification (e.g., Underwriters Laboratories, TUV Rheinland, Notified Body, National Standards Authority).',
     `cost_amount` DECIMAL(18,2) COMMENT 'Total cost incurred to obtain and maintain this certification, including testing fees, audit fees, and certification body charges.',
-    `cost_currency_code` STRING COMMENT 'Three-letter ISO 4217 currency code for the certification cost amount (e.g., USD, EUR, CNY).. Valid values are `^[A-Z]{3}$`',
+    `cost_currency_code` DECIMAL(18,2) COMMENT 'Three-letter ISO 4217 currency code for the certification cost amount (e.g., USD, EUR, CNY).',
     `created_timestamp` TIMESTAMP COMMENT 'Timestamp when this certification record was first created in the system.',
     `cybersecurity_certification` STRING COMMENT 'Cybersecurity certification or compliance level achieved by the product (e.g., IEC 62443-4-1, IEC 62443-4-2, NIST Cybersecurity Framework).',
-    `declaration_of_conformity_number` STRING COMMENT 'Unique identifier for the manufacturers Declaration of Conformity document associated with this certification, particularly for CE marking.',
+    `declaration_of_conformity_number` DECIMAL(18,2) COMMENT 'Unique identifier for the manufacturers Declaration of Conformity document associated with this certification, particularly for CE marking.',
     `eccn_code` STRING COMMENT 'Export Control Classification Number assigned under the U.S. Commerce Control List for dual-use items subject to export regulations.',
     `effective_date` DATE COMMENT 'Date from which the certification becomes valid and the product is authorized for market access under the certification scope.',
     `energy_efficiency_rating` STRING COMMENT 'Energy efficiency classification or rating assigned to the product (e.g., Energy Star, EU Energy Label class A+++, IEC 60034-30-1 efficiency class IE3).',
@@ -504,7 +504,7 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`product`.`bundle` (
     `certification_requirements` STRING COMMENT 'List of industry certifications or compliance standards the bundle meets (e.g., CE, UL, IEC 61508, ATEX). Critical for regulated industries and export compliance.',
     `bundle_code` STRING COMMENT 'Externally-known unique business identifier for the bundle, used in sales orders and quotations. Typically follows company SKU (Stock Keeping Unit) pattern for composite offerings.. Valid values are `^[A-Z0-9]{6,20}$`',
     `component_count` STRING COMMENT 'Total number of distinct SKU (Stock Keeping Unit) components included in this bundle. Used for complexity assessment and inventory planning.',
-    `configuration_rules` STRING COMMENT 'Business rules governing component selection and substitution for configurable bundles. Describes constraints, dependencies, and valid option combinations.',
+    `configuration_rules` DECIMAL(18,2) COMMENT 'Business rules governing component selection and substitution for configurable bundles. Describes constraints, dependencies, and valid option combinations.',
     `country_of_origin` STRING COMMENT 'Three-letter ISO 3166-1 alpha-3 country code indicating the primary country of manufacture or assembly for the bundle. Used for customs, tariffs, and trade compliance.. Valid values are `^[A-Z]{3}$`',
     `created_by_user` STRING COMMENT 'User identifier or name of the person who created this bundle record. Used for accountability and audit purposes.',
     `created_timestamp` TIMESTAMP COMMENT 'Timestamp when this bundle record was first created in the system. Used for audit trail and data lineage tracking.',
@@ -543,12 +543,12 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`product`.`plant_data` (
     `cost_center_id` BIGINT COMMENT 'Foreign key linking to finance.cost_center. Business justification: Plant‑level cost reporting requires linking plant data to the plants cost center.',
     `employee_id` BIGINT COMMENT 'Foreign key linking to workforce.employee. Business justification: REQUIRED: Production scheduling assigns production_scheduler_employee_id to link the scheduler employee for labor planning.',
     `sku_master_id` BIGINT COMMENT 'Foreign key linking to product.sku_master. Business justification: Associate plant‑specific data with the SKU it describes; enables plant‑level planning per SKU',
-    `abc_indicator` STRING COMMENT 'ABC classification for inventory management prioritization. A=High-value items requiring tight control, B=Medium-value items, C=Low-value items with relaxed control.. Valid values are `A|B|C`',
+    `abc_indicator` BOOLEAN COMMENT 'ABC classification for inventory management prioritization. A=High-value items requiring tight control, B=Medium-value items, C=Low-value items with relaxed control.',
     `availability_check_group` STRING COMMENT 'Two-character key that controls which stock types are included in ATP (Available-to-Promise) checks for sales orders and production orders.. Valid values are `^[A-Z0-9]{2}$`',
     `backflush_indicator` BOOLEAN COMMENT 'Indicates whether components are backflushed (automatically issued) when production order confirmations are posted. True=Backflush enabled, False=Manual goods issue required.',
     `batch_management_required` BOOLEAN COMMENT 'Indicates whether batch/lot tracking is required for this material at this plant. True=Batch management active, False=No batch tracking.',
     `created_timestamp` TIMESTAMP COMMENT 'Date and time when this plant data record was first created in the system.',
-    `cycle_counting_indicator` STRING COMMENT 'Single-character code that determines the frequency of cycle counting for this material. Used to schedule physical inventory counts.. Valid values are `^[A-Z0-9]{1}$`',
+    `cycle_counting_indicator` BOOLEAN COMMENT 'Single-character code that determines the frequency of cycle counting for this material. Used to schedule physical inventory counts.',
     `discontinuation_date` DATE COMMENT 'Date on which this material will be discontinued at this plant. Used for phase-out planning and last-time-buy notifications.',
     `effective_out_date` DATE COMMENT 'Date from which this plant data record becomes inactive. Used to manage time-dependent plant data changes.',
     `fixed_lot_size` DECIMAL(18,2) COMMENT 'Fixed order quantity used when lot size procedure is set to fixed lot size. MRP will always propose this quantity.',
@@ -577,9 +577,9 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`product`.`plant_data` (
     `reorder_point` DECIMAL(18,2) COMMENT 'Stock level at which MRP triggers a procurement proposal. Calculated based on lead time demand plus safety stock.',
     `rounding_value` DECIMAL(18,2) COMMENT 'Rounding value for lot sizes. MRP rounds proposed order quantities up to the nearest multiple of this value.',
     `safety_stock_quantity` DECIMAL(18,2) COMMENT 'Minimum stock level maintained as buffer against demand fluctuations and supply disruptions. MRP triggers procurement when stock falls below this level plus reorder point.',
-    `scheduling_margin_key` STRING COMMENT 'Key that defines float times (opening period, float before production, float after production) used in production scheduling to add buffer time.. Valid values are `^[A-Z0-9]{3}$`',
+    `scheduling_margin_key` DECIMAL(18,2) COMMENT 'Key that defines float times (opening period, float before production, float after production) used in production scheduling to add buffer time.',
     `serialization_level` STRING COMMENT 'Controls serial number management for this material at this plant. 0=No serial numbers, 1=Serial number at goods receipt, 2=Serial number at goods issue, 3=Serial number at goods receipt and issue, 4=Serial number at production.. Valid values are `0|1|2|3|4`',
-    `shelf_life_expiration_days` STRING COMMENT 'Total shelf life period in days from production date to expiration date. Used for batch management and FEFO (First Expired First Out) logic.',
+    `shelf_life_expiration_days` DECIMAL(18,2) COMMENT 'Total shelf life period in days from production date to expiration date. Used for batch management and FEFO (First Expired First Out) logic.',
     `special_procurement_type` STRING COMMENT 'Special procurement key for subcontracting, consignment, stock transfer, or other special procurement scenarios. 10=Withdrawal from warehouse, 20=Production in another plant, 30=External procurement, 40=Subcontracting, 50=Phantom assembly, 51=Phantom assembly with lead time, 52=Collective order, 70=Stock transfer, 80=Consignment, 90=Pipeline. [ENUM-REF-CANDIDATE: 10|20|30|40|50|51|52|70|80|90 — 10 candidates stripped; promote to reference product]',
     `valuation_class` STRING COMMENT 'Four-digit code that determines the general ledger accounts to which inventory movements are posted. Links material movements to financial accounting.. Valid values are `^[0-9]{4}$`',
     CONSTRAINT pk_plant_data PRIMARY KEY(`plant_data_id`)
@@ -676,13 +676,101 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`product`.`change_order` (
     CONSTRAINT pk_change_order PRIMARY KEY(`change_order_id`)
 ) COMMENT 'Engineering Change Order (ECO) and Engineering Change Notice (ECN) records governing approved changes to product designs, BOMs, specifications, and manufacturing processes as they affect the product master record. Captures change request number, change type (design, process, documentation), affected SKUs and BOM levels, change reason, impact assessment (cost, lead time, inventory), approval workflow status, effectivity date, and implementing plant. This product owns the product-facing change governance; the engineering domain owns the broader design change workflow and CAD/drawing changes. Managed in Siemens Teamcenter PLM change management module per ISO 9001 change control requirements.';
 
+CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`product`.`order_line` (
+    `order_line_id` BIGINT COMMENT 'Primary key for the order_line association',
+    `bundle_id` BIGINT COMMENT 'Foreign key linking to product.bundle. Business justification: Orders can be for a bundle; adding bundle_id to order_line creates the needed parent relationship without a cycle.',
+    `order_header_id` BIGINT COMMENT 'Foreign key linking to the sales order header',
+    `sku_master_id` BIGINT COMMENT 'Foreign key linking to the SKU master record',
+    `backorder_flag` BOOLEAN COMMENT 'Whether the line is currently backordered.',
+    `billing_status` STRING COMMENT 'Billing status of the order line',
+    `cancellation_reason` STRING COMMENT 'Cancellation reason',
+    `confirmed_delivery_date` DATE COMMENT '',
+    `confirmed_quantity` DECIMAL(18,2) COMMENT '',
+    `cost_amount` DECIMAL(18,2) COMMENT 'Cost amount for the line',
+    `created_timestamp` TIMESTAMP COMMENT '',
+    `currency_code` STRING COMMENT '',
+    `delivery_date` DATE COMMENT '',
+    `delivery_status` STRING COMMENT 'Current delivery status of the SKU for this order line',
+    `discount_amount` DECIMAL(18,2) COMMENT 'Discount amount applied to the SKU on the order line',
+    `discount_percent` DECIMAL(18,2) COMMENT 'discount percent',
+    `discount_percentage` DECIMAL(18,2) COMMENT '',
+    `extended_amount` DECIMAL(18,2) COMMENT 'extended amount',
+    `extended_price_amount` DECIMAL(18,2) COMMENT '',
+    `fulfillment_priority` STRING COMMENT 'Fulfillment priority code',
+    `gross_price` DECIMAL(18,2) COMMENT '',
+    `item_category` STRING COMMENT '',
+    `last_modified_timestamp` TIMESTAMP COMMENT '',
+    `line_amount` DECIMAL(18,2) COMMENT '',
+    `line_notes` STRING COMMENT '',
+    `line_number` STRING COMMENT '',
+    `line_sequence_number` STRING COMMENT 'Line sequence number',
+    `line_status` STRING COMMENT '',
+    `line_total_amount` DECIMAL(18,2) COMMENT '',
+    `list_price` DECIMAL(18,2) COMMENT '',
+    `margin_amount` DECIMAL(18,2) COMMENT 'Margin amount for the line',
+    `net_price` DECIMAL(18,2) COMMENT 'Net unit price of the SKU on the order line after discounts',
+    `ordered_quantity` DECIMAL(18,2) COMMENT 'Quantity ordered on this line.',
+    `profit_center_code` STRING COMMENT 'Profit center attribution for the order line.',
+    `promised_delivery_date` DATE COMMENT '',
+    `quantity` DECIMAL(18,2) COMMENT '',
+    `rejection_reason` STRING COMMENT 'Reason code if the order line was rejected.',
+    `requested_date` DATE COMMENT '',
+    `requested_delivery_date` DATE COMMENT '',
+    `requested_quantity` DECIMAL(18,2) COMMENT 'Quantity of the SKU requested on the order line',
+    `returnable_flag` BOOLEAN COMMENT 'Returnable flag',
+    `shipped_quantity` DECIMAL(18,2) COMMENT '',
+    `tax_amount` DECIMAL(18,2) COMMENT '',
+    `unit_of_measure` STRING COMMENT '',
+    `unit_price` DECIMAL(18,2) COMMENT '',
+    `unit_price_amount` DECIMAL(18,2) COMMENT '',
+    `warranty_months` STRING COMMENT 'Warranty months',
+    CONSTRAINT pk_order_line PRIMARY KEY(`order_line_id`)
+) COMMENT 'Represents the line item linking a SKU to a sales order, capturing quantity, price, discount, and delivery status for each product in an order.. Existence Justification: A SKU (product) can be sold on many sales orders, and each sales order can contain many SKUs. The line item that links a SKU to an order is created and maintained by order entry staff and carries quantity, price, discount, and delivery status, which are attributes of the relationship itself.';
+
 CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`product`.`supply_agreement` (
     `supply_agreement_id` BIGINT COMMENT 'Primary key for the supply_agreement association',
     `procurement_contract_id` BIGINT COMMENT 'Foreign key linking to the procurement contract',
     `sku_master_id` BIGINT COMMENT 'Foreign key linking to the SKU master record',
+    `supplier_id` BIGINT COMMENT '',
+    `agreed_price` DECIMAL(18,2) COMMENT '',
+    `agreed_price_amount` DECIMAL(18,2) COMMENT '',
+    `agreement_end_date` DATE COMMENT '',
+    `agreement_number` STRING COMMENT '',
+    `agreement_start_date` DATE COMMENT '',
+    `agreement_status` STRING COMMENT '',
+    `agreement_terms` STRING COMMENT '',
+    `agreement_type` STRING COMMENT '',
+    `auto_renew_flag` BOOLEAN COMMENT '',
+    `auto_renewal_flag` BOOLEAN COMMENT '',
+    `committed_annual_volume` DECIMAL(18,2) COMMENT '',
+    `committed_volume` DECIMAL(18,2) COMMENT '',
+    `contracted_price` DECIMAL(18,2) COMMENT 'contracted price',
+    `contracted_volume` DECIMAL(18,2) COMMENT 'Business data attribute for supply_agreement.',
+    `created_timestamp` TIMESTAMP COMMENT '',
+    `currency_code` STRING COMMENT '',
     `effective_date` DATE COMMENT 'Date when the contract becomes effective for the specific SKU',
+    `end_date` DATE COMMENT '',
+    `expiration_date` DATE COMMENT '',
+    `expiry_date` DATE COMMENT '',
+    `governing_law` STRING COMMENT 'Governing law jurisdiction for the agreement',
+    `incoterms` STRING COMMENT '',
+    `last_modified_timestamp` TIMESTAMP COMMENT '',
     `lead_time_days` STRING COMMENT 'Lead time in days for delivery of the SKU under this contract',
+    `maximum_order_quantity` DECIMAL(18,2) COMMENT '',
+    `minimum_order_quantity` DECIMAL(18,2) COMMENT '',
+    `notes` STRING COMMENT '',
+    `payment_terms` DECIMAL(18,2) COMMENT '',
+    `penalty_clause` STRING COMMENT '',
     `price` DECIMAL(18,2) COMMENT 'Negotiated price for the SKU under this contract',
+    `price_break_terms` DECIMAL(18,2) COMMENT '',
+    `price_uom` DECIMAL(18,2) COMMENT '',
+    `quality_requirements` STRING COMMENT 'Quality requirements covered by the supply agreement.',
+    `renewal_notice_days` STRING COMMENT '',
+    `review_frequency_months` STRING COMMENT 'How often the supply agreement is reviewed.',
+    `start_date` DATE COMMENT '',
+    `terms_summary` STRING COMMENT '',
+    `unit_price` DECIMAL(18,2) COMMENT 'Business data attribute for supply_agreement.',
+    `volume_commitment_quantity` DECIMAL(18,2) COMMENT '',
     CONSTRAINT pk_supply_agreement PRIMARY KEY(`supply_agreement_id`)
 ) COMMENT 'This association product represents the contractual relationship between a SKU master record and a procurement contract. It captures contract‑specific details that apply to each SKU‑contract pairing, such as the effective date of the agreement, the negotiated price, and the lead time for delivery.. Existence Justification: A SKU can be covered by multiple procurement contracts (e.g., different suppliers, time‑bound agreements) and a single procurement contract typically includes many SKUs. The business actively creates and maintains these links, tracking contract‑specific terms such as price, effective date, and lead time for each SKU‑contract pair.';
 
@@ -733,6 +821,8 @@ ALTER TABLE `vibe_manufacturing_v1`.`product`.`plant_data` ADD CONSTRAINT `fk_pr
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`classification` ADD CONSTRAINT `fk_product_classification_sku_master_id` FOREIGN KEY (`sku_master_id`) REFERENCES `vibe_manufacturing_v1`.`product`.`sku_master`(`sku_master_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`change_order` ADD CONSTRAINT `fk_product_change_order_product_revision_id` FOREIGN KEY (`product_revision_id`) REFERENCES `vibe_manufacturing_v1`.`product`.`product_revision`(`product_revision_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`change_order` ADD CONSTRAINT `fk_product_change_order_sku_master_id` FOREIGN KEY (`sku_master_id`) REFERENCES `vibe_manufacturing_v1`.`product`.`sku_master`(`sku_master_id`);
+ALTER TABLE `vibe_manufacturing_v1`.`product`.`order_line` ADD CONSTRAINT `fk_product_order_line_bundle_id` FOREIGN KEY (`bundle_id`) REFERENCES `vibe_manufacturing_v1`.`product`.`bundle`(`bundle_id`);
+ALTER TABLE `vibe_manufacturing_v1`.`product`.`order_line` ADD CONSTRAINT `fk_product_order_line_sku_master_id` FOREIGN KEY (`sku_master_id`) REFERENCES `vibe_manufacturing_v1`.`product`.`sku_master`(`sku_master_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`supply_agreement` ADD CONSTRAINT `fk_product_supply_agreement_sku_master_id` FOREIGN KEY (`sku_master_id`) REFERENCES `vibe_manufacturing_v1`.`product`.`sku_master`(`sku_master_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`option_set` ADD CONSTRAINT `fk_product_option_set_parent_option_set_id` FOREIGN KEY (`parent_option_set_id`) REFERENCES `vibe_manufacturing_v1`.`product`.`option_set`(`option_set_id`);
 
@@ -740,10 +830,13 @@ ALTER TABLE `vibe_manufacturing_v1`.`product`.`option_set` ADD CONSTRAINT `fk_pr
 ALTER SCHEMA `vibe_manufacturing_v1`.`product` SET TAGS ('dbx_division' = 'business');
 ALTER SCHEMA `vibe_manufacturing_v1`.`product` SET TAGS ('dbx_domain' = 'product');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`sku_master` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_manufacturing_v1`.`product`.`sku_master` SET TAGS ('dbx_subdomain' = 'catalog_management');
+ALTER TABLE `vibe_manufacturing_v1`.`product`.`sku_master` SET TAGS ('dbx_subdomain' = 'product_master');
+ALTER TABLE `vibe_manufacturing_v1`.`product`.`sku_master` SET TAGS ('dbx_domain' = 'product');
+ALTER TABLE `vibe_manufacturing_v1`.`product`.`sku_master` SET TAGS ('dbx_structure_required' = 'v2');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`sku_master` ALTER COLUMN `sku_master_id` SET TAGS ('dbx_business_glossary_term' = 'Stock Keeping Unit (SKU) Master ID');
+ALTER TABLE `vibe_manufacturing_v1`.`product`.`sku_master` ALTER COLUMN `sku_master_id` SET TAGS ('dbx_mvm_ssot_duplicates_resolved' = '8');
+ALTER TABLE `vibe_manufacturing_v1`.`product`.`sku_master` ALTER COLUMN `sku_master_id` SET TAGS ('dbx_mvm_quality_score_maintained' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`sku_master` ALTER COLUMN `cost_center_id` SET TAGS ('dbx_business_glossary_term' = 'Cost Center Id (Foreign Key)');
-ALTER TABLE `vibe_manufacturing_v1`.`product`.`sku_master` ALTER COLUMN `regulatory_requirement_id` SET TAGS ('dbx_business_glossary_term' = 'Regulatory Requirement Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`sku_master` ALTER COLUMN `gl_account_id` SET TAGS ('dbx_business_glossary_term' = 'Revenue Gl Account Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`sku_master` ALTER COLUMN `supplier_id` SET TAGS ('dbx_business_glossary_term' = 'Primary Vendor Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`sku_master` ALTER COLUMN `abc_classification` SET TAGS ('dbx_business_glossary_term' = 'ABC Classification');
@@ -751,7 +844,6 @@ ALTER TABLE `vibe_manufacturing_v1`.`product`.`sku_master` ALTER COLUMN `abc_cla
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`sku_master` ALTER COLUMN `base_uom` SET TAGS ('dbx_business_glossary_term' = 'Base Unit of Measure (UoM)');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`sku_master` ALTER COLUMN `commercial_description` SET TAGS ('dbx_business_glossary_term' = 'Commercial Description');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`sku_master` ALTER COLUMN `cost_currency` SET TAGS ('dbx_business_glossary_term' = 'Cost Currency');
-ALTER TABLE `vibe_manufacturing_v1`.`product`.`sku_master` ALTER COLUMN `cost_currency` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`sku_master` ALTER COLUMN `country_of_origin` SET TAGS ('dbx_business_glossary_term' = 'Country of Origin');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`sku_master` ALTER COLUMN `country_of_origin` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`sku_master` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
@@ -808,10 +900,13 @@ ALTER TABLE `vibe_manufacturing_v1`.`product`.`sku_master` ALTER COLUMN `weight_
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`sku_master` ALTER COLUMN `weight_uom` SET TAGS ('dbx_value_regex' = 'KG|LB|G|OZ|MT|TON');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`sku_master` ALTER COLUMN `width` SET TAGS ('dbx_business_glossary_term' = 'Width Dimension');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`family` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_manufacturing_v1`.`product`.`family` SET TAGS ('dbx_subdomain' = 'catalog_management');
+ALTER TABLE `vibe_manufacturing_v1`.`product`.`family` SET TAGS ('dbx_subdomain' = 'product_master');
+ALTER TABLE `vibe_manufacturing_v1`.`product`.`family` SET TAGS ('dbx_domain' = 'product');
+ALTER TABLE `vibe_manufacturing_v1`.`product`.`family` SET TAGS ('dbx_structure_required' = 'v2');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`family` ALTER COLUMN `family_id` SET TAGS ('dbx_business_glossary_term' = 'Family Identifier');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`family` ALTER COLUMN `parent_family_id` SET TAGS ('dbx_business_glossary_term' = 'Parent Product Family ID');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`family` ALTER COLUMN `profit_center_id` SET TAGS ('dbx_business_glossary_term' = 'Profit Center Id (Foreign Key)');
+ALTER TABLE `vibe_manufacturing_v1`.`product`.`family` ALTER COLUMN `regulatory_requirement_id` SET TAGS ('dbx_business_glossary_term' = 'Regulatory Requirement Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`family` ALTER COLUMN `business_unit` SET TAGS ('dbx_business_glossary_term' = 'Owning Business Unit');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`family` ALTER COLUMN `certification_requirements` SET TAGS ('dbx_business_glossary_term' = 'Certification Requirements');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`family` ALTER COLUMN `family_code` SET TAGS ('dbx_business_glossary_term' = 'Product Family Code');
@@ -845,22 +940,22 @@ ALTER TABLE `vibe_manufacturing_v1`.`product`.`family` ALTER COLUMN `lifecycle_s
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`family` ALTER COLUMN `list_price` SET TAGS ('dbx_business_glossary_term' = 'List Price');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`family` ALTER COLUMN `list_price` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`family` ALTER COLUMN `manufacturing_strategy` SET TAGS ('dbx_business_glossary_term' = 'Manufacturing Strategy');
-ALTER TABLE `vibe_manufacturing_v1`.`product`.`family` ALTER COLUMN `manufacturing_strategy` SET TAGS ('dbx_value_regex' = 'make_to_stock|make_to_order|engineer_to_order|configure_to_order|assemble_to_order');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`family` ALTER COLUMN `market_segment` SET TAGS ('dbx_business_glossary_term' = 'Market Segment');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`family` ALTER COLUMN `mean_time_between_failures` SET TAGS ('dbx_business_glossary_term' = 'Mean Time Between Failures (MTBF)');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`family` ALTER COLUMN `mean_time_to_repair` SET TAGS ('dbx_business_glossary_term' = 'Mean Time To Repair (MTTR)');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`family` ALTER COLUMN `family_name` SET TAGS ('dbx_business_glossary_term' = 'Product Family Name');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`family` ALTER COLUMN `family_name` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`family` ALTER COLUMN `family_name` SET TAGS ('dbx_pii_identifier' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`product`.`family` ALTER COLUMN `family_name` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`product`.`family` ALTER COLUMN `family_name` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`product`.`family` ALTER COLUMN `family_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`family` ALTER COLUMN `plm_category` SET TAGS ('dbx_business_glossary_term' = 'Product Lifecycle Management (PLM) Category');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`family` ALTER COLUMN `procurement_type` SET TAGS ('dbx_business_glossary_term' = 'Procurement Type');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`family` ALTER COLUMN `procurement_type` SET TAGS ('dbx_value_regex' = 'manufactured|purchased|both');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`family` ALTER COLUMN `product_line_owner` SET TAGS ('dbx_business_glossary_term' = 'Product Line Owner');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`family` ALTER COLUMN `product_portfolio_strategy` SET TAGS ('dbx_business_glossary_term' = 'Product Portfolio Strategy');
-ALTER TABLE `vibe_manufacturing_v1`.`product`.`family` ALTER COLUMN `product_portfolio_strategy` SET TAGS ('dbx_value_regex' = 'invest|maintain|harvest|divest');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`family` ALTER COLUMN `record_status` SET TAGS ('dbx_business_glossary_term' = 'Master Data Record Status');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`family` ALTER COLUMN `record_status` SET TAGS ('dbx_value_regex' = 'active|inactive|pending_approval|archived');
-ALTER TABLE `vibe_manufacturing_v1`.`product`.`family` ALTER COLUMN `regulatory_requirement_id` SET TAGS ('dbx_business_glossary_term' = 'Regulatory Requirement Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`family` ALTER COLUMN `sales_organization` SET TAGS ('dbx_business_glossary_term' = 'Sales Organization');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`family` ALTER COLUMN `service_level_tier` SET TAGS ('dbx_business_glossary_term' = 'Service Level Tier');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`family` ALTER COLUMN `service_level_tier` SET TAGS ('dbx_value_regex' = 'standard|premium|critical|basic');
@@ -872,7 +967,9 @@ ALTER TABLE `vibe_manufacturing_v1`.`product`.`family` ALTER COLUMN `target_marg
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`family` ALTER COLUMN `technology_platform` SET TAGS ('dbx_business_glossary_term' = 'Technology Platform');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`family` ALTER COLUMN `warranty_period_months` SET TAGS ('dbx_business_glossary_term' = 'Standard Warranty Period (Months)');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`catalog_entry` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_manufacturing_v1`.`product`.`catalog_entry` SET TAGS ('dbx_subdomain' = 'catalog_management');
+ALTER TABLE `vibe_manufacturing_v1`.`product`.`catalog_entry` SET TAGS ('dbx_subdomain' = 'product_master');
+ALTER TABLE `vibe_manufacturing_v1`.`product`.`catalog_entry` SET TAGS ('dbx_domain' = 'product');
+ALTER TABLE `vibe_manufacturing_v1`.`product`.`catalog_entry` SET TAGS ('dbx_structure_required' = 'v2');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`catalog_entry` ALTER COLUMN `catalog_entry_id` SET TAGS ('dbx_business_glossary_term' = 'Catalog Entry Identifier');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`catalog_entry` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Product Manager ID');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`catalog_entry` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
@@ -883,6 +980,8 @@ ALTER TABLE `vibe_manufacturing_v1`.`product`.`catalog_entry` ALTER COLUMN `cata
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`catalog_entry` ALTER COLUMN `catalog_image_url` SET TAGS ('dbx_business_glossary_term' = 'Catalog Image Uniform Resource Locator (URL)');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`catalog_entry` ALTER COLUMN `catalog_image_url` SET TAGS ('dbx_value_regex' = '^https?://.*.(jpg|jpeg|png|gif|webp)$');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`catalog_entry` ALTER COLUMN `catalog_name` SET TAGS ('dbx_business_glossary_term' = 'Catalog Entry Name');
+ALTER TABLE `vibe_manufacturing_v1`.`product`.`catalog_entry` ALTER COLUMN `catalog_name` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`product`.`catalog_entry` ALTER COLUMN `catalog_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`catalog_entry` ALTER COLUMN `catalog_number` SET TAGS ('dbx_business_glossary_term' = 'Catalog Number');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`catalog_entry` ALTER COLUMN `catalog_number` SET TAGS ('dbx_value_regex' = '^[A-Z0-9]{6,20}$');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`catalog_entry` ALTER COLUMN `catalog_status` SET TAGS ('dbx_business_glossary_term' = 'Catalog Entry Status');
@@ -891,6 +990,7 @@ ALTER TABLE `vibe_manufacturing_v1`.`product`.`catalog_entry` ALTER COLUMN `cata
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`catalog_entry` ALTER COLUMN `catalog_version` SET TAGS ('dbx_value_regex' = '^[0-9]{4}.[0-9]{1,2}$');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`catalog_entry` ALTER COLUMN `certification_marks` SET TAGS ('dbx_business_glossary_term' = 'Certification Marks');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`catalog_entry` ALTER COLUMN `configurable_flag` SET TAGS ('dbx_business_glossary_term' = 'Configurable Product Flag');
+ALTER TABLE `vibe_manufacturing_v1`.`product`.`catalog_entry` ALTER COLUMN `configurable_flag` SET TAGS ('dbx_typing_rule' = 'boolean');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`catalog_entry` ALTER COLUMN `country_of_origin` SET TAGS ('dbx_business_glossary_term' = 'Country of Origin');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`catalog_entry` ALTER COLUMN `country_of_origin` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`catalog_entry` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
@@ -905,6 +1005,7 @@ ALTER TABLE `vibe_manufacturing_v1`.`product`.`catalog_entry` ALTER COLUMN `expo
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`catalog_entry` ALTER COLUMN `harmonized_tariff_code` SET TAGS ('dbx_business_glossary_term' = 'Harmonized System (HS) Tariff Code');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`catalog_entry` ALTER COLUMN `harmonized_tariff_code` SET TAGS ('dbx_value_regex' = '^[0-9]{6,10}$');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`catalog_entry` ALTER COLUMN `hazardous_material_flag` SET TAGS ('dbx_business_glossary_term' = 'Hazardous Material Flag');
+ALTER TABLE `vibe_manufacturing_v1`.`product`.`catalog_entry` ALTER COLUMN `hazardous_material_flag` SET TAGS ('dbx_typing_rule' = 'boolean');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`catalog_entry` ALTER COLUMN `last_modified_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Last Modified Timestamp');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`catalog_entry` ALTER COLUMN `last_price_update_date` SET TAGS ('dbx_business_glossary_term' = 'Last Price Update Date');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`catalog_entry` ALTER COLUMN `lifecycle_stage` SET TAGS ('dbx_business_glossary_term' = 'Product Lifecycle Stage');
@@ -914,7 +1015,9 @@ ALTER TABLE `vibe_manufacturing_v1`.`product`.`catalog_entry` ALTER COLUMN `list
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`catalog_entry` ALTER COLUMN `minimum_order_quantity` SET TAGS ('dbx_business_glossary_term' = 'Minimum Order Quantity (MOQ)');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`catalog_entry` ALTER COLUMN `modified_by_user` SET TAGS ('dbx_business_glossary_term' = 'Modified By User');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`catalog_entry` ALTER COLUMN `oem_offering_flag` SET TAGS ('dbx_business_glossary_term' = 'Original Equipment Manufacturer (OEM) Offering Flag');
+ALTER TABLE `vibe_manufacturing_v1`.`product`.`catalog_entry` ALTER COLUMN `oem_offering_flag` SET TAGS ('dbx_typing_rule' = 'boolean');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`catalog_entry` ALTER COLUMN `orderable_flag` SET TAGS ('dbx_business_glossary_term' = 'Orderable Flag');
+ALTER TABLE `vibe_manufacturing_v1`.`product`.`catalog_entry` ALTER COLUMN `orderable_flag` SET TAGS ('dbx_typing_rule' = 'boolean');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`catalog_entry` ALTER COLUMN `price_unit_of_measure` SET TAGS ('dbx_business_glossary_term' = 'Price Unit of Measure (UOM)');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`catalog_entry` ALTER COLUMN `product_category` SET TAGS ('dbx_business_glossary_term' = 'Product Category');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`catalog_entry` ALTER COLUMN `product_family_code` SET TAGS ('dbx_business_glossary_term' = 'Product Family Code');
@@ -929,7 +1032,9 @@ ALTER TABLE `vibe_manufacturing_v1`.`product`.`catalog_entry` ALTER COLUMN `tech
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`catalog_entry` ALTER COLUMN `technical_datasheet_url` SET TAGS ('dbx_value_regex' = '^https?://.*.pdf$');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`catalog_entry` ALTER COLUMN `warranty_period_months` SET TAGS ('dbx_business_glossary_term' = 'Warranty Period (Months)');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`configuration` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_manufacturing_v1`.`product`.`configuration` SET TAGS ('dbx_subdomain' = 'catalog_management');
+ALTER TABLE `vibe_manufacturing_v1`.`product`.`configuration` SET TAGS ('dbx_subdomain' = 'structure_configuration');
+ALTER TABLE `vibe_manufacturing_v1`.`product`.`configuration` SET TAGS ('dbx_domain' = 'product');
+ALTER TABLE `vibe_manufacturing_v1`.`product`.`configuration` SET TAGS ('dbx_structure_required' = 'v2');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`configuration` ALTER COLUMN `configuration_id` SET TAGS ('dbx_business_glossary_term' = 'Configuration Identifier');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`configuration` ALTER COLUMN `bom_id` SET TAGS ('dbx_business_glossary_term' = 'Bill of Materials (BOM) ID');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`configuration` ALTER COLUMN `option_set_id` SET TAGS ('dbx_business_glossary_term' = 'Option Set ID');
@@ -945,10 +1050,8 @@ ALTER TABLE `vibe_manufacturing_v1`.`product`.`configuration` ALTER COLUMN `base
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`configuration` ALTER COLUMN `base_price` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`configuration` ALTER COLUMN `certification_requirements` SET TAGS ('dbx_business_glossary_term' = 'Certification Requirements');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`configuration` ALTER COLUMN `configuration_code` SET TAGS ('dbx_business_glossary_term' = 'Configuration Code');
-ALTER TABLE `vibe_manufacturing_v1`.`product`.`configuration` ALTER COLUMN `configuration_code` SET TAGS ('dbx_value_regex' = '^[A-Z0-9]{8,20}$');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`configuration` ALTER COLUMN `configuration_status` SET TAGS ('dbx_business_glossary_term' = 'Configuration Status');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`configuration` ALTER COLUMN `configuration_type` SET TAGS ('dbx_business_glossary_term' = 'Configuration Type');
-ALTER TABLE `vibe_manufacturing_v1`.`product`.`configuration` ALTER COLUMN `configuration_type` SET TAGS ('dbx_value_regex' = 'standard|custom|engineer_to_order|make_to_order|configure_to_order|assemble_to_order');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`configuration` ALTER COLUMN `constraint_rules` SET TAGS ('dbx_business_glossary_term' = 'Constraint Rules');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`configuration` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`configuration` ALTER COLUMN `currency_code` SET TAGS ('dbx_business_glossary_term' = 'Currency Code');
@@ -961,13 +1064,17 @@ ALTER TABLE `vibe_manufacturing_v1`.`product`.`configuration` ALTER COLUMN `dime
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`configuration` ALTER COLUMN `effective_end_date` SET TAGS ('dbx_business_glossary_term' = 'Effective End Date');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`configuration` ALTER COLUMN `effective_start_date` SET TAGS ('dbx_business_glossary_term' = 'Effective Start Date');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`configuration` ALTER COLUMN `is_orderable` SET TAGS ('dbx_business_glossary_term' = 'Is Orderable');
+ALTER TABLE `vibe_manufacturing_v1`.`product`.`configuration` ALTER COLUMN `is_orderable` SET TAGS ('dbx_typing_rule' = 'boolean');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`configuration` ALTER COLUMN `is_quotable` SET TAGS ('dbx_business_glossary_term' = 'Is Quotable');
+ALTER TABLE `vibe_manufacturing_v1`.`product`.`configuration` ALTER COLUMN `is_quotable` SET TAGS ('dbx_typing_rule' = 'boolean');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`configuration` ALTER COLUMN `last_modified_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Last Modified Timestamp');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`configuration` ALTER COLUMN `lead_time_days` SET TAGS ('dbx_business_glossary_term' = 'Lead Time Days');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`configuration` ALTER COLUMN `manufacturing_complexity` SET TAGS ('dbx_business_glossary_term' = 'Manufacturing Complexity');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`configuration` ALTER COLUMN `manufacturing_complexity` SET TAGS ('dbx_value_regex' = 'low|medium|high|very_high');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`configuration` ALTER COLUMN `minimum_order_quantity` SET TAGS ('dbx_business_glossary_term' = 'Minimum Order Quantity (MOQ)');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`configuration` ALTER COLUMN `configuration_name` SET TAGS ('dbx_business_glossary_term' = 'Configuration Name');
+ALTER TABLE `vibe_manufacturing_v1`.`product`.`configuration` ALTER COLUMN `configuration_name` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`product`.`configuration` ALTER COLUMN `configuration_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`configuration` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Notes');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`configuration` ALTER COLUMN `power_rating_kw` SET TAGS ('dbx_business_glossary_term' = 'Power Rating Kilowatts');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`configuration` ALTER COLUMN `price_adjustment` SET TAGS ('dbx_business_glossary_term' = 'Configuration Price Adjustment');
@@ -985,7 +1092,9 @@ ALTER TABLE `vibe_manufacturing_v1`.`product`.`configuration` ALTER COLUMN `vers
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`configuration` ALTER COLUMN `voltage_rating` SET TAGS ('dbx_business_glossary_term' = 'Voltage Rating');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`configuration` ALTER COLUMN `weight_kg` SET TAGS ('dbx_business_glossary_term' = 'Weight Kilograms');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`bom_header` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_manufacturing_v1`.`product`.`bom_header` SET TAGS ('dbx_subdomain' = 'engineering_structure');
+ALTER TABLE `vibe_manufacturing_v1`.`product`.`bom_header` SET TAGS ('dbx_subdomain' = 'structure_configuration');
+ALTER TABLE `vibe_manufacturing_v1`.`product`.`bom_header` SET TAGS ('dbx_domain' = 'product');
+ALTER TABLE `vibe_manufacturing_v1`.`product`.`bom_header` SET TAGS ('dbx_structure_required' = 'v2');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`bom_header` ALTER COLUMN `bom_header_id` SET TAGS ('dbx_business_glossary_term' = 'Bill of Materials (BOM) Header ID');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`bom_header` ALTER COLUMN `cost_center_id` SET TAGS ('dbx_business_glossary_term' = 'Cost Center Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`bom_header` ALTER COLUMN `cost_estimate_id` SET TAGS ('dbx_business_glossary_term' = 'Cost Estimate ID');
@@ -1018,27 +1127,33 @@ ALTER TABLE `vibe_manufacturing_v1`.`product`.`bom_header` ALTER COLUMN `effecti
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`bom_header` ALTER COLUMN `engineering_change_notice_number` SET TAGS ('dbx_business_glossary_term' = 'Engineering Change Notice (ECN) Number');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`bom_header` ALTER COLUMN `engineering_change_order_number` SET TAGS ('dbx_business_glossary_term' = 'Engineering Change Order (ECO) Number');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`bom_header` ALTER COLUMN `environmental_compliance_flag` SET TAGS ('dbx_business_glossary_term' = 'Environmental Compliance Flag');
+ALTER TABLE `vibe_manufacturing_v1`.`product`.`bom_header` ALTER COLUMN `environmental_compliance_flag` SET TAGS ('dbx_typing_rule' = 'boolean');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`bom_header` ALTER COLUMN `erp_system_code` SET TAGS ('dbx_business_glossary_term' = 'Enterprise Resource Planning (ERP) System ID');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`bom_header` ALTER COLUMN `expiration_date` SET TAGS ('dbx_business_glossary_term' = 'Expiration Date');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`bom_header` ALTER COLUMN `explosion_type` SET TAGS ('dbx_business_glossary_term' = 'Explosion Type');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`bom_header` ALTER COLUMN `explosion_type` SET TAGS ('dbx_value_regex' = 'single_level|multi_level|summarized');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`bom_header` ALTER COLUMN `is_configurable` SET TAGS ('dbx_business_glossary_term' = 'Is Configurable Flag');
+ALTER TABLE `vibe_manufacturing_v1`.`product`.`bom_header` ALTER COLUMN `is_configurable` SET TAGS ('dbx_typing_rule' = 'boolean');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`bom_header` ALTER COLUMN `is_critical` SET TAGS ('dbx_business_glossary_term' = 'Is Critical Flag');
+ALTER TABLE `vibe_manufacturing_v1`.`product`.`bom_header` ALTER COLUMN `is_critical` SET TAGS ('dbx_typing_rule' = 'boolean');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`bom_header` ALTER COLUMN `is_phantom` SET TAGS ('dbx_business_glossary_term' = 'Is Phantom Flag');
+ALTER TABLE `vibe_manufacturing_v1`.`product`.`bom_header` ALTER COLUMN `is_phantom` SET TAGS ('dbx_typing_rule' = 'boolean');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`bom_header` ALTER COLUMN `last_modified_date` SET TAGS ('dbx_business_glossary_term' = 'Last Modified Date');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`bom_header` ALTER COLUMN `lot_size` SET TAGS ('dbx_business_glossary_term' = 'Lot Size');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`bom_header` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Notes');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`bom_header` ALTER COLUMN `plm_system_code` SET TAGS ('dbx_business_glossary_term' = 'Product Lifecycle Management (PLM) System ID');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`bom_header` ALTER COLUMN `production_version` SET TAGS ('dbx_business_glossary_term' = 'Production Version');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`bom_header` ALTER COLUMN `regulatory_compliance_flag` SET TAGS ('dbx_business_glossary_term' = 'Regulatory Compliance Flag');
+ALTER TABLE `vibe_manufacturing_v1`.`product`.`bom_header` ALTER COLUMN `regulatory_compliance_flag` SET TAGS ('dbx_typing_rule' = 'boolean');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`bom_header` ALTER COLUMN `revision_level` SET TAGS ('dbx_business_glossary_term' = 'Revision Level');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`product_bom_line` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_manufacturing_v1`.`product`.`product_bom_line` SET TAGS ('dbx_subdomain' = 'engineering_structure');
+ALTER TABLE `vibe_manufacturing_v1`.`product`.`product_bom_line` SET TAGS ('dbx_subdomain' = 'structure_configuration');
+ALTER TABLE `vibe_manufacturing_v1`.`product`.`product_bom_line` SET TAGS ('dbx_domain' = 'product');
+ALTER TABLE `vibe_manufacturing_v1`.`product`.`product_bom_line` SET TAGS ('dbx_structure_required' = 'v2');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`product_bom_line` ALTER COLUMN `product_bom_line_id` SET TAGS ('dbx_business_glossary_term' = 'Product Bill of Materials (BOM) Line ID');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`product_bom_line` ALTER COLUMN `bom_header_id` SET TAGS ('dbx_business_glossary_term' = 'Bill of Materials (BOM) Header ID');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`product_bom_line` ALTER COLUMN `component_id` SET TAGS ('dbx_business_glossary_term' = 'Component Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`product_bom_line` ALTER COLUMN `drawing_id` SET TAGS ('dbx_business_glossary_term' = 'Drawing Id (Foreign Key)');
-ALTER TABLE `vibe_manufacturing_v1`.`product`.`product_bom_line` ALTER COLUMN `regulatory_requirement_id` SET TAGS ('dbx_business_glossary_term' = 'Regulatory Requirement Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`product_bom_line` ALTER COLUMN `sku_master_id` SET TAGS ('dbx_business_glossary_term' = 'Component Stock Keeping Unit (SKU) ID');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`product_bom_line` ALTER COLUMN `supplier_id` SET TAGS ('dbx_business_glossary_term' = 'Vendor Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`product_bom_line` ALTER COLUMN `work_center_id` SET TAGS ('dbx_business_glossary_term' = 'Work Center ID');
@@ -1059,6 +1174,7 @@ ALTER TABLE `vibe_manufacturing_v1`.`product`.`product_bom_line` ALTER COLUMN `c
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`product_bom_line` ALTER COLUMN `created_by_user` SET TAGS ('dbx_business_glossary_term' = 'Created By User');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`product_bom_line` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`product_bom_line` ALTER COLUMN `critical_component_flag` SET TAGS ('dbx_business_glossary_term' = 'Critical Component Flag');
+ALTER TABLE `vibe_manufacturing_v1`.`product`.`product_bom_line` ALTER COLUMN `critical_component_flag` SET TAGS ('dbx_typing_rule' = 'boolean');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`product_bom_line` ALTER COLUMN `ecn_number` SET TAGS ('dbx_business_glossary_term' = 'Engineering Change Notice (ECN) Number');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`product_bom_line` ALTER COLUMN `eco_number` SET TAGS ('dbx_business_glossary_term' = 'Engineering Change Order (ECO) Number');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`product_bom_line` ALTER COLUMN `effective_end_date` SET TAGS ('dbx_business_glossary_term' = 'Effective End Date');
@@ -1080,7 +1196,9 @@ ALTER TABLE `vibe_manufacturing_v1`.`product`.`product_bom_line` ALTER COLUMN `s
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`product_bom_line` ALTER COLUMN `spare_part_indicator` SET TAGS ('dbx_business_glossary_term' = 'Spare Part Indicator');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`product_bom_line` ALTER COLUMN `unit_of_measure` SET TAGS ('dbx_business_glossary_term' = 'Unit of Measure (UOM)');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`lifecycle_stage` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_manufacturing_v1`.`product`.`lifecycle_stage` SET TAGS ('dbx_subdomain' = 'lifecycle_planning');
+ALTER TABLE `vibe_manufacturing_v1`.`product`.`lifecycle_stage` SET TAGS ('dbx_subdomain' = 'product_master');
+ALTER TABLE `vibe_manufacturing_v1`.`product`.`lifecycle_stage` SET TAGS ('dbx_domain' = 'product');
+ALTER TABLE `vibe_manufacturing_v1`.`product`.`lifecycle_stage` SET TAGS ('dbx_structure_required' = 'v2');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`lifecycle_stage` ALTER COLUMN `lifecycle_stage_id` SET TAGS ('dbx_business_glossary_term' = 'Lifecycle Stage Identifier');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`lifecycle_stage` ALTER COLUMN `sku_master_id` SET TAGS ('dbx_business_glossary_term' = 'Product ID');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`lifecycle_stage` ALTER COLUMN `regulatory_requirement_id` SET TAGS ('dbx_business_glossary_term' = 'Regulatory Requirement Id (Foreign Key)');
@@ -1096,6 +1214,7 @@ ALTER TABLE `vibe_manufacturing_v1`.`product`.`lifecycle_stage` ALTER COLUMN `fi
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`lifecycle_stage` ALTER COLUMN `internal_notification_date` SET TAGS ('dbx_business_glossary_term' = 'Internal Notification Date');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`lifecycle_stage` ALTER COLUMN `inventory_wind_down_plan` SET TAGS ('dbx_business_glossary_term' = 'Inventory Wind-Down Plan');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`lifecycle_stage` ALTER COLUMN `is_active` SET TAGS ('dbx_business_glossary_term' = 'Is Active Lifecycle Record');
+ALTER TABLE `vibe_manufacturing_v1`.`product`.`lifecycle_stage` ALTER COLUMN `is_active` SET TAGS ('dbx_typing_rule' = 'boolean');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`lifecycle_stage` ALTER COLUMN `last_time_buy_date` SET TAGS ('dbx_business_glossary_term' = 'Last Time Buy (LTB) Date');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`lifecycle_stage` ALTER COLUMN `last_time_ship_date` SET TAGS ('dbx_business_glossary_term' = 'Last Time Ship (LTS) Date');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`lifecycle_stage` ALTER COLUMN `lifecycle_decision_authority` SET TAGS ('dbx_business_glossary_term' = 'Lifecycle Decision Authority');
@@ -1105,6 +1224,8 @@ ALTER TABLE `vibe_manufacturing_v1`.`product`.`lifecycle_stage` ALTER COLUMN `ma
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`lifecycle_stage` ALTER COLUMN `market_demand_trend` SET TAGS ('dbx_business_glossary_term' = 'Market Demand Trend');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`lifecycle_stage` ALTER COLUMN `market_demand_trend` SET TAGS ('dbx_value_regex' = 'GROWING|STABLE|DECLINING|VOLATILE|UNKNOWN');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`lifecycle_stage` ALTER COLUMN `lifecycle_stage_name` SET TAGS ('dbx_business_glossary_term' = 'Lifecycle Stage Name');
+ALTER TABLE `vibe_manufacturing_v1`.`product`.`lifecycle_stage` ALTER COLUMN `lifecycle_stage_name` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`product`.`lifecycle_stage` ALTER COLUMN `lifecycle_stage_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`lifecycle_stage` ALTER COLUMN `next_review_date` SET TAGS ('dbx_business_glossary_term' = 'Next Lifecycle Review Date');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`lifecycle_stage` ALTER COLUMN `planned_eol_date` SET TAGS ('dbx_business_glossary_term' = 'Planned End-of-Life (EOL) Date');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`lifecycle_stage` ALTER COLUMN `previous_lifecycle_stage_code` SET TAGS ('dbx_business_glossary_term' = 'Previous Lifecycle Stage Code');
@@ -1123,7 +1244,9 @@ ALTER TABLE `vibe_manufacturing_v1`.`product`.`lifecycle_stage` ALTER COLUMN `st
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`lifecycle_stage` ALTER COLUMN `supplier_notification_date` SET TAGS ('dbx_business_glossary_term' = 'Supplier Notification Date');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`lifecycle_stage` ALTER COLUMN `warranty_support_end_date` SET TAGS ('dbx_business_glossary_term' = 'Warranty Support End Date');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`product_revision` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_manufacturing_v1`.`product`.`product_revision` SET TAGS ('dbx_subdomain' = 'engineering_structure');
+ALTER TABLE `vibe_manufacturing_v1`.`product`.`product_revision` SET TAGS ('dbx_subdomain' = 'engineering_change');
+ALTER TABLE `vibe_manufacturing_v1`.`product`.`product_revision` SET TAGS ('dbx_domain' = 'product');
+ALTER TABLE `vibe_manufacturing_v1`.`product`.`product_revision` SET TAGS ('dbx_structure_required' = 'v2');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`product_revision` ALTER COLUMN `product_revision_id` SET TAGS ('dbx_business_glossary_term' = 'Product Revision ID');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`product_revision` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Approved By Employee Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`product_revision` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
@@ -1134,13 +1257,16 @@ ALTER TABLE `vibe_manufacturing_v1`.`product`.`product_revision` ALTER COLUMN `a
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`product_revision` ALTER COLUMN `approval_status` SET TAGS ('dbx_business_glossary_term' = 'Approval Status');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`product_revision` ALTER COLUMN `approval_status` SET TAGS ('dbx_value_regex' = 'not_submitted|pending|approved|rejected|conditional');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`product_revision` ALTER COLUMN `bom_affected_flag` SET TAGS ('dbx_business_glossary_term' = 'Bill of Materials (BOM) Affected Flag');
+ALTER TABLE `vibe_manufacturing_v1`.`product`.`product_revision` ALTER COLUMN `bom_affected_flag` SET TAGS ('dbx_typing_rule' = 'boolean');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`product_revision` ALTER COLUMN `change_impact_level` SET TAGS ('dbx_business_glossary_term' = 'Change Impact Level');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`product_revision` ALTER COLUMN `change_impact_level` SET TAGS ('dbx_value_regex' = 'minor|moderate|major|critical');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`product_revision` ALTER COLUMN `change_reason_code` SET TAGS ('dbx_business_glossary_term' = 'Change Reason Code');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`product_revision` ALTER COLUMN `change_reason_code` SET TAGS ('dbx_value_regex' = 'design_improvement|cost_reduction|quality_issue|regulatory_compliance|supplier_change|customer_request');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`product_revision` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`product_revision` ALTER COLUMN `customer_notification_required_flag` SET TAGS ('dbx_business_glossary_term' = 'Customer Notification Required Flag');
+ALTER TABLE `vibe_manufacturing_v1`.`product`.`product_revision` ALTER COLUMN `customer_notification_required_flag` SET TAGS ('dbx_typing_rule' = 'boolean');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`product_revision` ALTER COLUMN `drawing_affected_flag` SET TAGS ('dbx_business_glossary_term' = 'Drawing Affected Flag');
+ALTER TABLE `vibe_manufacturing_v1`.`product`.`product_revision` ALTER COLUMN `drawing_affected_flag` SET TAGS ('dbx_typing_rule' = 'boolean');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`product_revision` ALTER COLUMN `ecn_number` SET TAGS ('dbx_business_glossary_term' = 'Engineering Change Notice (ECN) Number');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`product_revision` ALTER COLUMN `ecn_number` SET TAGS ('dbx_value_regex' = '^ECN-[0-9]{6,10}$');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`product_revision` ALTER COLUMN `eco_number` SET TAGS ('dbx_business_glossary_term' = 'Engineering Change Order (ECO) Number');
@@ -1156,8 +1282,11 @@ ALTER TABLE `vibe_manufacturing_v1`.`product`.`product_revision` ALTER COLUMN `l
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`product_revision` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Revision Notes');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`product_revision` ALTER COLUMN `obsolete_date` SET TAGS ('dbx_business_glossary_term' = 'Obsolete Date');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`product_revision` ALTER COLUMN `ppap_required_flag` SET TAGS ('dbx_business_glossary_term' = 'Production Part Approval Process (PPAP) Required Flag');
+ALTER TABLE `vibe_manufacturing_v1`.`product`.`product_revision` ALTER COLUMN `ppap_required_flag` SET TAGS ('dbx_typing_rule' = 'boolean');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`product_revision` ALTER COLUMN `process_affected_flag` SET TAGS ('dbx_business_glossary_term' = 'Process Affected Flag');
+ALTER TABLE `vibe_manufacturing_v1`.`product`.`product_revision` ALTER COLUMN `process_affected_flag` SET TAGS ('dbx_typing_rule' = 'boolean');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`product_revision` ALTER COLUMN `regulatory_approval_required_flag` SET TAGS ('dbx_business_glossary_term' = 'Regulatory Approval Required Flag');
+ALTER TABLE `vibe_manufacturing_v1`.`product`.`product_revision` ALTER COLUMN `regulatory_approval_required_flag` SET TAGS ('dbx_typing_rule' = 'boolean');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`product_revision` ALTER COLUMN `release_date` SET TAGS ('dbx_business_glossary_term' = 'Release Date');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`product_revision` ALTER COLUMN `revision_code` SET TAGS ('dbx_business_glossary_term' = 'Revision Code');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`product_revision` ALTER COLUMN `revision_code` SET TAGS ('dbx_value_regex' = '^[A-Z0-9]{1,10}$');
@@ -1166,10 +1295,15 @@ ALTER TABLE `vibe_manufacturing_v1`.`product`.`product_revision` ALTER COLUMN `r
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`product_revision` ALTER COLUMN `revision_status` SET TAGS ('dbx_value_regex' = 'draft|pending_approval|approved|released|obsolete|superseded');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`product_revision` ALTER COLUMN `source_system_code` SET TAGS ('dbx_business_glossary_term' = 'Source System ID');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`product_revision` ALTER COLUMN `specification_affected_flag` SET TAGS ('dbx_business_glossary_term' = 'Specification Affected Flag');
+ALTER TABLE `vibe_manufacturing_v1`.`product`.`product_revision` ALTER COLUMN `specification_affected_flag` SET TAGS ('dbx_typing_rule' = 'boolean');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`product_revision` ALTER COLUMN `testing_affected_flag` SET TAGS ('dbx_business_glossary_term' = 'Testing Affected Flag');
+ALTER TABLE `vibe_manufacturing_v1`.`product`.`product_revision` ALTER COLUMN `testing_affected_flag` SET TAGS ('dbx_typing_rule' = 'boolean');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`product_revision` ALTER COLUMN `tooling_affected_flag` SET TAGS ('dbx_business_glossary_term' = 'Tooling Affected Flag');
+ALTER TABLE `vibe_manufacturing_v1`.`product`.`product_revision` ALTER COLUMN `tooling_affected_flag` SET TAGS ('dbx_typing_rule' = 'boolean');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`product_specification` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_manufacturing_v1`.`product`.`product_specification` SET TAGS ('dbx_subdomain' = 'engineering_structure');
+ALTER TABLE `vibe_manufacturing_v1`.`product`.`product_specification` SET TAGS ('dbx_subdomain' = 'engineering_change');
+ALTER TABLE `vibe_manufacturing_v1`.`product`.`product_specification` SET TAGS ('dbx_domain' = 'product');
+ALTER TABLE `vibe_manufacturing_v1`.`product`.`product_specification` SET TAGS ('dbx_structure_required' = 'v2');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`product_specification` ALTER COLUMN `product_specification_id` SET TAGS ('dbx_business_glossary_term' = 'Product Specification ID');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`product_specification` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Approved By Employee Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`product_specification` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
@@ -1213,6 +1347,8 @@ ALTER TABLE `vibe_manufacturing_v1`.`product`.`product_specification` ALTER COLU
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`product_specification` ALTER COLUMN `source_system_code` SET TAGS ('dbx_business_glossary_term' = 'Source System ID');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`product_specification` ALTER COLUMN `specification_description` SET TAGS ('dbx_business_glossary_term' = 'Specification Description');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`product_specification` ALTER COLUMN `specification_name` SET TAGS ('dbx_business_glossary_term' = 'Specification Name');
+ALTER TABLE `vibe_manufacturing_v1`.`product`.`product_specification` ALTER COLUMN `specification_name` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`product`.`product_specification` ALTER COLUMN `specification_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`product_specification` ALTER COLUMN `specification_number` SET TAGS ('dbx_business_glossary_term' = 'Specification Number');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`product_specification` ALTER COLUMN `specification_number` SET TAGS ('dbx_value_regex' = '^SPEC-[A-Z0-9]{8,12}$');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`product_specification` ALTER COLUMN `specification_status` SET TAGS ('dbx_business_glossary_term' = 'Specification Status');
@@ -1226,8 +1362,20 @@ ALTER TABLE `vibe_manufacturing_v1`.`product`.`product_specification` ALTER COLU
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`product_specification` ALTER COLUMN `voltage_rating` SET TAGS ('dbx_business_glossary_term' = 'Voltage Rating');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`product_specification` ALTER COLUMN `weight_kg` SET TAGS ('dbx_business_glossary_term' = 'Weight (Kilograms)');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`product_certification` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_manufacturing_v1`.`product`.`product_certification` SET TAGS ('dbx_subdomain' = 'engineering_structure');
+ALTER TABLE `vibe_manufacturing_v1`.`product`.`product_certification` SET TAGS ('dbx_subdomain' = 'compliance_certification');
+ALTER TABLE `vibe_manufacturing_v1`.`product`.`product_certification` SET TAGS ('dbx_ssot' = 'reference');
+ALTER TABLE `vibe_manufacturing_v1`.`product`.`product_certification` SET TAGS ('dbx_ssot_group' = 'certification');
+ALTER TABLE `vibe_manufacturing_v1`.`product`.`product_certification` SET TAGS ('dbx_ssot_master' = 'asset.asset_certification');
+ALTER TABLE `vibe_manufacturing_v1`.`product`.`product_certification` SET TAGS ('dbx_ssot_of' = 'asset.asset_certification');
+ALTER TABLE `vibe_manufacturing_v1`.`product`.`product_certification` SET TAGS ('dbx_ssot_role' = 'owner');
+ALTER TABLE `vibe_manufacturing_v1`.`product`.`product_certification` SET TAGS ('dbx_ssot_subject' = 'product_conformity_certification');
+ALTER TABLE `vibe_manufacturing_v1`.`product`.`product_certification` SET TAGS ('dbx_duplicate_resolution' = 'subject_partition');
+ALTER TABLE `vibe_manufacturing_v1`.`product`.`product_certification` SET TAGS ('dbx_domain' = 'product');
+ALTER TABLE `vibe_manufacturing_v1`.`product`.`product_certification` SET TAGS ('dbx_ssot_canonical' = 'asset.asset_certification');
+ALTER TABLE `vibe_manufacturing_v1`.`product`.`product_certification` SET TAGS ('dbx_structure_required' = 'v2');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`product_certification` ALTER COLUMN `product_certification_id` SET TAGS ('dbx_business_glossary_term' = 'Product Certification Identifier (ID)');
+ALTER TABLE `vibe_manufacturing_v1`.`product`.`product_certification` ALTER COLUMN `asset_certification_id` SET TAGS ('dbx_ssot_reference' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`product`.`product_certification` ALTER COLUMN `product_asset_asset_certification_ssot_ref_id` SET TAGS ('dbx_ssot_ref' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`product_certification` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Responsible Engineer Employee Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`product_certification` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`product_certification` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
@@ -1245,7 +1393,6 @@ ALTER TABLE `vibe_manufacturing_v1`.`product`.`product_certification` ALTER COLU
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`product_certification` ALTER COLUMN `cost_amount` SET TAGS ('dbx_business_glossary_term' = 'Certification Cost Amount');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`product_certification` ALTER COLUMN `cost_amount` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`product_certification` ALTER COLUMN `cost_currency_code` SET TAGS ('dbx_business_glossary_term' = 'Cost Currency Code');
-ALTER TABLE `vibe_manufacturing_v1`.`product`.`product_certification` ALTER COLUMN `cost_currency_code` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`product_certification` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`product_certification` ALTER COLUMN `cybersecurity_certification` SET TAGS ('dbx_business_glossary_term' = 'Cybersecurity Certification');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`product_certification` ALTER COLUMN `declaration_of_conformity_number` SET TAGS ('dbx_business_glossary_term' = 'Declaration of Conformity (DoC) Number');
@@ -1256,6 +1403,7 @@ ALTER TABLE `vibe_manufacturing_v1`.`product`.`product_certification` ALTER COLU
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`product_certification` ALTER COLUMN `expiry_date` SET TAGS ('dbx_business_glossary_term' = 'Certification Expiry Date');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`product_certification` ALTER COLUMN `functional_safety_certification` SET TAGS ('dbx_business_glossary_term' = 'Functional Safety Certification');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`product_certification` ALTER COLUMN `is_customer_facing` SET TAGS ('dbx_business_glossary_term' = 'Is Customer Facing Certification');
+ALTER TABLE `vibe_manufacturing_v1`.`product`.`product_certification` ALTER COLUMN `is_customer_facing` SET TAGS ('dbx_typing_rule' = 'boolean');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`product_certification` ALTER COLUMN `issue_date` SET TAGS ('dbx_business_glossary_term' = 'Certification Issue Date');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`product_certification` ALTER COLUMN `mandatory_for_markets` SET TAGS ('dbx_business_glossary_term' = 'Mandatory for Markets');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`product_certification` ALTER COLUMN `modified_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Modified Timestamp');
@@ -1269,7 +1417,9 @@ ALTER TABLE `vibe_manufacturing_v1`.`product`.`product_certification` ALTER COLU
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`product_certification` ALTER COLUMN `test_report_number` SET TAGS ('dbx_business_glossary_term' = 'Test Report Number');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`product_certification` ALTER COLUMN `weee_compliant` SET TAGS ('dbx_business_glossary_term' = 'Waste Electrical and Electronic Equipment (WEEE) Compliant');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`substitution` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_manufacturing_v1`.`product`.`substitution` SET TAGS ('dbx_subdomain' = 'catalog_management');
+ALTER TABLE `vibe_manufacturing_v1`.`product`.`substitution` SET TAGS ('dbx_subdomain' = 'structure_configuration');
+ALTER TABLE `vibe_manufacturing_v1`.`product`.`substitution` SET TAGS ('dbx_domain' = 'product');
+ALTER TABLE `vibe_manufacturing_v1`.`product`.`substitution` SET TAGS ('dbx_structure_required' = 'v2');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`substitution` ALTER COLUMN `substitution_id` SET TAGS ('dbx_business_glossary_term' = 'Substitution Identifier');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`substitution` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Approved By Employee Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`substitution` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
@@ -1279,9 +1429,12 @@ ALTER TABLE `vibe_manufacturing_v1`.`product`.`substitution` ALTER COLUMN `regul
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`substitution` ALTER COLUMN `application_restriction` SET TAGS ('dbx_business_glossary_term' = 'Application Restriction');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`substitution` ALTER COLUMN `approval_date` SET TAGS ('dbx_business_glossary_term' = 'Approval Date');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`substitution` ALTER COLUMN `automatic_substitution_flag` SET TAGS ('dbx_business_glossary_term' = 'Automatic Substitution Flag');
+ALTER TABLE `vibe_manufacturing_v1`.`product`.`substitution` ALTER COLUMN `automatic_substitution_flag` SET TAGS ('dbx_typing_rule' = 'boolean');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`substitution` ALTER COLUMN `compliance_certification_required_flag` SET TAGS ('dbx_business_glossary_term' = 'Compliance Certification Required Flag');
+ALTER TABLE `vibe_manufacturing_v1`.`product`.`substitution` ALTER COLUMN `compliance_certification_required_flag` SET TAGS ('dbx_typing_rule' = 'boolean');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`substitution` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`substitution` ALTER COLUMN `customer_notification_required_flag` SET TAGS ('dbx_business_glossary_term' = 'Customer Notification Required Flag');
+ALTER TABLE `vibe_manufacturing_v1`.`product`.`substitution` ALTER COLUMN `customer_notification_required_flag` SET TAGS ('dbx_typing_rule' = 'boolean');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`substitution` ALTER COLUMN `customer_segment_restriction` SET TAGS ('dbx_business_glossary_term' = 'Customer Segment Restriction');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`substitution` ALTER COLUMN `eco_reference_number` SET TAGS ('dbx_business_glossary_term' = 'Engineering Change Order (ECO) Reference Number');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`substitution` ALTER COLUMN `eco_reference_number` SET TAGS ('dbx_value_regex' = '^ECO-[0-9]{6,10}$');
@@ -1291,6 +1444,7 @@ ALTER TABLE `vibe_manufacturing_v1`.`product`.`substitution` ALTER COLUMN `form_
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`substitution` ALTER COLUMN `form_fit_function_match` SET TAGS ('dbx_value_regex' = 'exact|form_only|fit_only|function_only|partial|none');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`substitution` ALTER COLUMN `geographic_restriction` SET TAGS ('dbx_business_glossary_term' = 'Geographic Restriction');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`substitution` ALTER COLUMN `interchangeable_flag` SET TAGS ('dbx_business_glossary_term' = 'Interchangeable Flag');
+ALTER TABLE `vibe_manufacturing_v1`.`product`.`substitution` ALTER COLUMN `interchangeable_flag` SET TAGS ('dbx_typing_rule' = 'boolean');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`substitution` ALTER COLUMN `last_modified_by` SET TAGS ('dbx_business_glossary_term' = 'Last Modified By');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`substitution` ALTER COLUMN `last_modified_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Last Modified Timestamp');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`substitution` ALTER COLUMN `last_used_date` SET TAGS ('dbx_business_glossary_term' = 'Last Used Date');
@@ -1298,6 +1452,7 @@ ALTER TABLE `vibe_manufacturing_v1`.`product`.`substitution` ALTER COLUMN `lead_
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`substitution` ALTER COLUMN `price_variance_percent` SET TAGS ('dbx_business_glossary_term' = 'Price Variance Percentage');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`substitution` ALTER COLUMN `priority_rank` SET TAGS ('dbx_business_glossary_term' = 'Priority Rank');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`substitution` ALTER COLUMN `quality_equivalence_verified_flag` SET TAGS ('dbx_business_glossary_term' = 'Quality Equivalence Verified Flag');
+ALTER TABLE `vibe_manufacturing_v1`.`product`.`substitution` ALTER COLUMN `quality_equivalence_verified_flag` SET TAGS ('dbx_typing_rule' = 'boolean');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`substitution` ALTER COLUMN `reason` SET TAGS ('dbx_business_glossary_term' = 'Substitution Reason');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`substitution` ALTER COLUMN `source_system_code` SET TAGS ('dbx_business_glossary_term' = 'Source System Identifier (ID)');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`substitution` ALTER COLUMN `substitute_sku` SET TAGS ('dbx_business_glossary_term' = 'Substitute Stock Keeping Unit (SKU)');
@@ -1309,7 +1464,10 @@ ALTER TABLE `vibe_manufacturing_v1`.`product`.`substitution` ALTER COLUMN `subst
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`substitution` ALTER COLUMN `technical_notes` SET TAGS ('dbx_business_glossary_term' = 'Technical Notes');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`substitution` ALTER COLUMN `usage_count` SET TAGS ('dbx_business_glossary_term' = 'Usage Count');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`bundle` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_manufacturing_v1`.`product`.`bundle` SET TAGS ('dbx_subdomain' = 'catalog_management');
+ALTER TABLE `vibe_manufacturing_v1`.`product`.`bundle` SET TAGS ('dbx_subdomain' = 'structure_configuration');
+ALTER TABLE `vibe_manufacturing_v1`.`product`.`bundle` SET TAGS ('dbx_domain' = 'product');
+ALTER TABLE `vibe_manufacturing_v1`.`product`.`bundle` SET TAGS ('dbx_review_status' = 'enriched');
+ALTER TABLE `vibe_manufacturing_v1`.`product`.`bundle` SET TAGS ('dbx_structure_required' = 'v2');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`bundle` ALTER COLUMN `bundle_id` SET TAGS ('dbx_business_glossary_term' = 'Bundle Identifier');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`bundle` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Approved By User Employee Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`bundle` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
@@ -1321,6 +1479,7 @@ ALTER TABLE `vibe_manufacturing_v1`.`product`.`bundle` ALTER COLUMN `approval_st
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`bundle` ALTER COLUMN `approval_status` SET TAGS ('dbx_value_regex' = 'pending|approved|rejected');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`bundle` ALTER COLUMN `approval_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Approval Timestamp');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`bundle` ALTER COLUMN `assembly_required_flag` SET TAGS ('dbx_business_glossary_term' = 'Assembly Required Flag');
+ALTER TABLE `vibe_manufacturing_v1`.`product`.`bundle` ALTER COLUMN `assembly_required_flag` SET TAGS ('dbx_typing_rule' = 'boolean');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`bundle` ALTER COLUMN `availability_end_date` SET TAGS ('dbx_business_glossary_term' = 'Availability End Date');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`bundle` ALTER COLUMN `availability_start_date` SET TAGS ('dbx_business_glossary_term' = 'Availability Start Date');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`bundle` ALTER COLUMN `bundle_status` SET TAGS ('dbx_business_glossary_term' = 'Bundle Lifecycle Status');
@@ -1357,6 +1516,8 @@ ALTER TABLE `vibe_manufacturing_v1`.`product`.`bundle` ALTER COLUMN `list_price`
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`bundle` ALTER COLUMN `marketing_description` SET TAGS ('dbx_business_glossary_term' = 'Marketing Description');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`bundle` ALTER COLUMN `minimum_order_quantity` SET TAGS ('dbx_business_glossary_term' = 'Minimum Order Quantity (MOQ)');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`bundle` ALTER COLUMN `bundle_name` SET TAGS ('dbx_business_glossary_term' = 'Bundle Name');
+ALTER TABLE `vibe_manufacturing_v1`.`product`.`bundle` ALTER COLUMN `bundle_name` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`product`.`bundle` ALTER COLUMN `bundle_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`bundle` ALTER COLUMN `packaging_type` SET TAGS ('dbx_business_glossary_term' = 'Packaging Type');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`bundle` ALTER COLUMN `pricing_method` SET TAGS ('dbx_business_glossary_term' = 'Bundle Pricing Method');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`bundle` ALTER COLUMN `pricing_method` SET TAGS ('dbx_value_regex' = 'sum_of_parts|fixed_price|discounted|tiered|custom');
@@ -1369,7 +1530,9 @@ ALTER TABLE `vibe_manufacturing_v1`.`product`.`bundle` ALTER COLUMN `volume_m3` 
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`bundle` ALTER COLUMN `warranty_period_months` SET TAGS ('dbx_business_glossary_term' = 'Warranty Period in Months');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`bundle` ALTER COLUMN `weight_kg` SET TAGS ('dbx_business_glossary_term' = 'Total Weight in Kilograms (kg)');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`plant_data` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_manufacturing_v1`.`product`.`plant_data` SET TAGS ('dbx_subdomain' = 'lifecycle_planning');
+ALTER TABLE `vibe_manufacturing_v1`.`product`.`plant_data` SET TAGS ('dbx_subdomain' = 'product_master');
+ALTER TABLE `vibe_manufacturing_v1`.`product`.`plant_data` SET TAGS ('dbx_domain' = 'product');
+ALTER TABLE `vibe_manufacturing_v1`.`product`.`plant_data` SET TAGS ('dbx_structure_required' = 'v2');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`plant_data` ALTER COLUMN `plant_data_id` SET TAGS ('dbx_business_glossary_term' = 'Plant Data Identifier');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`plant_data` ALTER COLUMN `cost_center_id` SET TAGS ('dbx_business_glossary_term' = 'Cost Center Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`plant_data` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Production Scheduler Employee Id (Foreign Key)');
@@ -1377,14 +1540,12 @@ ALTER TABLE `vibe_manufacturing_v1`.`product`.`plant_data` ALTER COLUMN `employe
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`plant_data` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`plant_data` ALTER COLUMN `sku_master_id` SET TAGS ('dbx_business_glossary_term' = 'Sku Master Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`plant_data` ALTER COLUMN `abc_indicator` SET TAGS ('dbx_business_glossary_term' = 'ABC Indicator');
-ALTER TABLE `vibe_manufacturing_v1`.`product`.`plant_data` ALTER COLUMN `abc_indicator` SET TAGS ('dbx_value_regex' = 'A|B|C');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`plant_data` ALTER COLUMN `availability_check_group` SET TAGS ('dbx_business_glossary_term' = 'Availability Check Group');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`plant_data` ALTER COLUMN `availability_check_group` SET TAGS ('dbx_value_regex' = '^[A-Z0-9]{2}$');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`plant_data` ALTER COLUMN `backflush_indicator` SET TAGS ('dbx_business_glossary_term' = 'Backflush Indicator');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`plant_data` ALTER COLUMN `batch_management_required` SET TAGS ('dbx_business_glossary_term' = 'Batch Management Required');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`plant_data` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`plant_data` ALTER COLUMN `cycle_counting_indicator` SET TAGS ('dbx_business_glossary_term' = 'Cycle Counting Indicator');
-ALTER TABLE `vibe_manufacturing_v1`.`product`.`plant_data` ALTER COLUMN `cycle_counting_indicator` SET TAGS ('dbx_value_regex' = '^[A-Z0-9]{1}$');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`plant_data` ALTER COLUMN `discontinuation_date` SET TAGS ('dbx_business_glossary_term' = 'Discontinuation Date');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`plant_data` ALTER COLUMN `effective_out_date` SET TAGS ('dbx_business_glossary_term' = 'Effective Out Date');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`plant_data` ALTER COLUMN `fixed_lot_size` SET TAGS ('dbx_business_glossary_term' = 'Fixed Lot Size');
@@ -1424,7 +1585,6 @@ ALTER TABLE `vibe_manufacturing_v1`.`product`.`plant_data` ALTER COLUMN `reorder
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`plant_data` ALTER COLUMN `rounding_value` SET TAGS ('dbx_business_glossary_term' = 'Rounding Value');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`plant_data` ALTER COLUMN `safety_stock_quantity` SET TAGS ('dbx_business_glossary_term' = 'Safety Stock Quantity');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`plant_data` ALTER COLUMN `scheduling_margin_key` SET TAGS ('dbx_business_glossary_term' = 'Scheduling Margin Key');
-ALTER TABLE `vibe_manufacturing_v1`.`product`.`plant_data` ALTER COLUMN `scheduling_margin_key` SET TAGS ('dbx_value_regex' = '^[A-Z0-9]{3}$');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`plant_data` ALTER COLUMN `serialization_level` SET TAGS ('dbx_business_glossary_term' = 'Serialization Level');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`plant_data` ALTER COLUMN `serialization_level` SET TAGS ('dbx_value_regex' = '0|1|2|3|4');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`plant_data` ALTER COLUMN `shelf_life_expiration_days` SET TAGS ('dbx_business_glossary_term' = 'Shelf Life Expiration (Days)');
@@ -1432,13 +1592,16 @@ ALTER TABLE `vibe_manufacturing_v1`.`product`.`plant_data` ALTER COLUMN `special
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`plant_data` ALTER COLUMN `valuation_class` SET TAGS ('dbx_business_glossary_term' = 'Valuation Class');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`plant_data` ALTER COLUMN `valuation_class` SET TAGS ('dbx_value_regex' = '^[0-9]{4}$');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`classification` SET TAGS ('dbx_data_type' = 'reference_data');
-ALTER TABLE `vibe_manufacturing_v1`.`product`.`classification` SET TAGS ('dbx_subdomain' = 'catalog_management');
+ALTER TABLE `vibe_manufacturing_v1`.`product`.`classification` SET TAGS ('dbx_subdomain' = 'product_master');
+ALTER TABLE `vibe_manufacturing_v1`.`product`.`classification` SET TAGS ('dbx_domain' = 'product');
+ALTER TABLE `vibe_manufacturing_v1`.`product`.`classification` SET TAGS ('dbx_structure_required' = 'v2');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`classification` ALTER COLUMN `classification_id` SET TAGS ('dbx_business_glossary_term' = 'Classification Identifier');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`classification` ALTER COLUMN `sku_master_id` SET TAGS ('dbx_business_glossary_term' = 'Product ID');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`classification` ALTER COLUMN `application_area` SET TAGS ('dbx_business_glossary_term' = 'Application Area');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`classification` ALTER COLUMN `assigned_by` SET TAGS ('dbx_business_glossary_term' = 'Classification Assigned By');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`classification` ALTER COLUMN `assigned_date` SET TAGS ('dbx_business_glossary_term' = 'Classification Assignment Date');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`classification` ALTER COLUMN `auto_classified_flag` SET TAGS ('dbx_business_glossary_term' = 'Auto-Classified Flag');
+ALTER TABLE `vibe_manufacturing_v1`.`product`.`classification` ALTER COLUMN `auto_classified_flag` SET TAGS ('dbx_typing_rule' = 'boolean');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`classification` ALTER COLUMN `business_unit` SET TAGS ('dbx_business_glossary_term' = 'Business Unit');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`classification` ALTER COLUMN `class_code` SET TAGS ('dbx_business_glossary_term' = 'Classification Class Code');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`classification` ALTER COLUMN `class_description` SET TAGS ('dbx_business_glossary_term' = 'Classification Class Description');
@@ -1467,6 +1630,7 @@ ALTER TABLE `vibe_manufacturing_v1`.`product`.`classification` ALTER COLUMN `nex
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`classification` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Classification Notes');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`classification` ALTER COLUMN `parent_class_code` SET TAGS ('dbx_business_glossary_term' = 'Parent Classification Class Code');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`classification` ALTER COLUMN `primary_classification_flag` SET TAGS ('dbx_business_glossary_term' = 'Primary Classification Flag');
+ALTER TABLE `vibe_manufacturing_v1`.`product`.`classification` ALTER COLUMN `primary_classification_flag` SET TAGS ('dbx_typing_rule' = 'boolean');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`classification` ALTER COLUMN `product_category_l1` SET TAGS ('dbx_business_glossary_term' = 'Product Category Level 1');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`classification` ALTER COLUMN `product_category_l2` SET TAGS ('dbx_business_glossary_term' = 'Product Category Level 2');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`classification` ALTER COLUMN `product_category_l3` SET TAGS ('dbx_business_glossary_term' = 'Product Category Level 3');
@@ -1474,11 +1638,14 @@ ALTER TABLE `vibe_manufacturing_v1`.`product`.`classification` ALTER COLUMN `pro
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`classification` ALTER COLUMN `product_line` SET TAGS ('dbx_business_glossary_term' = 'Product Line');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`classification` ALTER COLUMN `record_source` SET TAGS ('dbx_business_glossary_term' = 'Record Source System');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`classification` ALTER COLUMN `regulatory_compliance_flag` SET TAGS ('dbx_business_glossary_term' = 'Regulatory Compliance Flag');
+ALTER TABLE `vibe_manufacturing_v1`.`product`.`classification` ALTER COLUMN `regulatory_compliance_flag` SET TAGS ('dbx_typing_rule' = 'boolean');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`classification` ALTER COLUMN `scheme` SET TAGS ('dbx_business_glossary_term' = 'Classification Scheme');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`classification` ALTER COLUMN `search_keywords` SET TAGS ('dbx_business_glossary_term' = 'Classification Search Keywords');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`classification` ALTER COLUMN `version` SET TAGS ('dbx_business_glossary_term' = 'Classification Scheme Version');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`change_order` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_manufacturing_v1`.`product`.`change_order` SET TAGS ('dbx_subdomain' = 'engineering_structure');
+ALTER TABLE `vibe_manufacturing_v1`.`product`.`change_order` SET TAGS ('dbx_subdomain' = 'engineering_change');
+ALTER TABLE `vibe_manufacturing_v1`.`product`.`change_order` SET TAGS ('dbx_domain' = 'product');
+ALTER TABLE `vibe_manufacturing_v1`.`product`.`change_order` SET TAGS ('dbx_structure_required' = 'v2');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`change_order` ALTER COLUMN `change_order_id` SET TAGS ('dbx_business_glossary_term' = 'Change Order Identifier');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`change_order` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Initiator Employee Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`change_order` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
@@ -1493,6 +1660,9 @@ ALTER TABLE `vibe_manufacturing_v1`.`product`.`change_order` ALTER COLUMN `appro
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`change_order` ALTER COLUMN `approval_workflow_stage` SET TAGS ('dbx_business_glossary_term' = 'Approval Workflow Stage');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`change_order` ALTER COLUMN `change_description` SET TAGS ('dbx_business_glossary_term' = 'Change Description');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`change_order` ALTER COLUMN `change_owner_name` SET TAGS ('dbx_business_glossary_term' = 'Change Owner Name');
+ALTER TABLE `vibe_manufacturing_v1`.`product`.`change_order` ALTER COLUMN `change_owner_name` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`product`.`change_order` ALTER COLUMN `change_owner_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`product`.`change_order` ALTER COLUMN `change_owner_name` SET TAGS ('dbx_mask_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`change_order` ALTER COLUMN `change_reason_code` SET TAGS ('dbx_business_glossary_term' = 'Change Reason Code');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`change_order` ALTER COLUMN `change_reason_code` SET TAGS ('dbx_value_regex' = 'quality_improvement|cost_reduction|regulatory_compliance|obsolescence|customer_request|safety_enhancement');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`change_order` ALTER COLUMN `change_reason_description` SET TAGS ('dbx_business_glossary_term' = 'Change Reason Description');
@@ -1528,6 +1698,7 @@ ALTER TABLE `vibe_manufacturing_v1`.`product`.`change_order` ALTER COLUMN `prior
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`change_order` ALTER COLUMN `priority` SET TAGS ('dbx_value_regex' = 'critical|high|medium|low');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`change_order` ALTER COLUMN `regulatory_body` SET TAGS ('dbx_business_glossary_term' = 'Regulatory Body');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`change_order` ALTER COLUMN `regulatory_impact_flag` SET TAGS ('dbx_business_glossary_term' = 'Regulatory Impact Flag');
+ALTER TABLE `vibe_manufacturing_v1`.`product`.`change_order` ALTER COLUMN `regulatory_impact_flag` SET TAGS ('dbx_typing_rule' = 'boolean');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`change_order` ALTER COLUMN `related_capa_number` SET TAGS ('dbx_business_glossary_term' = 'Related Corrective and Preventive Action (CAPA) Number');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`change_order` ALTER COLUMN `related_capa_number` SET TAGS ('dbx_value_regex' = '^CAPA-[0-9]{6,10}$');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`change_order` ALTER COLUMN `related_ncr_number` SET TAGS ('dbx_business_glossary_term' = 'Related Non-Conformance Report (NCR) Number');
@@ -1535,21 +1706,47 @@ ALTER TABLE `vibe_manufacturing_v1`.`product`.`change_order` ALTER COLUMN `relat
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`change_order` ALTER COLUMN `revision_level` SET TAGS ('dbx_business_glossary_term' = 'Product Revision Level');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`change_order` ALTER COLUMN `revision_level` SET TAGS ('dbx_value_regex' = '^[A-Z0-9]{1,4}$');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`change_order` ALTER COLUMN `urgency_flag` SET TAGS ('dbx_business_glossary_term' = 'Urgency Flag');
+ALTER TABLE `vibe_manufacturing_v1`.`product`.`change_order` ALTER COLUMN `urgency_flag` SET TAGS ('dbx_typing_rule' = 'boolean');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`change_order` ALTER COLUMN `validation_completion_date` SET TAGS ('dbx_business_glossary_term' = 'Validation Completion Date');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`change_order` ALTER COLUMN `validation_required` SET TAGS ('dbx_business_glossary_term' = 'Validation Required Flag');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`change_order` ALTER COLUMN `validation_status` SET TAGS ('dbx_business_glossary_term' = 'Validation Status');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`change_order` ALTER COLUMN `validation_status` SET TAGS ('dbx_value_regex' = 'not_required|pending|in_progress|passed|failed');
+ALTER TABLE `vibe_manufacturing_v1`.`product`.`order_line` SET TAGS ('dbx_data_type' = 'association_data');
+ALTER TABLE `vibe_manufacturing_v1`.`product`.`order_line` SET TAGS ('dbx_subdomain' = 'compliance_certification');
+ALTER TABLE `vibe_manufacturing_v1`.`product`.`order_line` SET TAGS ('dbx_association_edges' = 'product.sku_master,order.order_header');
+ALTER TABLE `vibe_manufacturing_v1`.`product`.`order_line` SET TAGS ('dbx_reviewed' = 'thin_expanded');
+ALTER TABLE `vibe_manufacturing_v1`.`product`.`order_line` SET TAGS ('dbx_domain' = 'product');
+ALTER TABLE `vibe_manufacturing_v1`.`product`.`order_line` SET TAGS ('dbx_review_status' = 'enriched');
+ALTER TABLE `vibe_manufacturing_v1`.`product`.`order_line` SET TAGS ('dbx_structure_required' = 'v2');
+ALTER TABLE `vibe_manufacturing_v1`.`product`.`order_line` ALTER COLUMN `order_line_id` SET TAGS ('dbx_business_glossary_term' = 'Order Line - Order Line Id');
+ALTER TABLE `vibe_manufacturing_v1`.`product`.`order_line` ALTER COLUMN `bundle_id` SET TAGS ('dbx_business_glossary_term' = 'Bundle Id (Foreign Key)');
+ALTER TABLE `vibe_manufacturing_v1`.`product`.`order_line` ALTER COLUMN `order_header_id` SET TAGS ('dbx_business_glossary_term' = 'Order Line - Sales Order Id');
+ALTER TABLE `vibe_manufacturing_v1`.`product`.`order_line` ALTER COLUMN `sku_master_id` SET TAGS ('dbx_business_glossary_term' = 'Order Line - Sku Master Id');
+ALTER TABLE `vibe_manufacturing_v1`.`product`.`order_line` ALTER COLUMN `backorder_flag` SET TAGS ('dbx_typing_rule' = 'boolean');
+ALTER TABLE `vibe_manufacturing_v1`.`product`.`order_line` ALTER COLUMN `delivery_status` SET TAGS ('dbx_business_glossary_term' = 'Delivery Status');
+ALTER TABLE `vibe_manufacturing_v1`.`product`.`order_line` ALTER COLUMN `discount_amount` SET TAGS ('dbx_business_glossary_term' = 'Discount Amount');
+ALTER TABLE `vibe_manufacturing_v1`.`product`.`order_line` ALTER COLUMN `net_price` SET TAGS ('dbx_business_glossary_term' = 'Net Price');
+ALTER TABLE `vibe_manufacturing_v1`.`product`.`order_line` ALTER COLUMN `requested_quantity` SET TAGS ('dbx_business_glossary_term' = 'Requested Quantity');
+ALTER TABLE `vibe_manufacturing_v1`.`product`.`order_line` ALTER COLUMN `returnable_flag` SET TAGS ('dbx_typing_rule' = 'boolean');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`supply_agreement` SET TAGS ('dbx_data_type' = 'association_data');
-ALTER TABLE `vibe_manufacturing_v1`.`product`.`supply_agreement` SET TAGS ('dbx_subdomain' = 'lifecycle_planning');
+ALTER TABLE `vibe_manufacturing_v1`.`product`.`supply_agreement` SET TAGS ('dbx_subdomain' = 'compliance_certification');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`supply_agreement` SET TAGS ('dbx_association_edges' = 'product.sku_master,procurement.procurement_contract');
+ALTER TABLE `vibe_manufacturing_v1`.`product`.`supply_agreement` SET TAGS ('dbx_reviewed' = 'stub_enriched');
+ALTER TABLE `vibe_manufacturing_v1`.`product`.`supply_agreement` SET TAGS ('dbx_domain' = 'product');
+ALTER TABLE `vibe_manufacturing_v1`.`product`.`supply_agreement` SET TAGS ('dbx_review_status' = 'enriched');
+ALTER TABLE `vibe_manufacturing_v1`.`product`.`supply_agreement` SET TAGS ('dbx_structure_required' = 'v2');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`supply_agreement` ALTER COLUMN `supply_agreement_id` SET TAGS ('dbx_business_glossary_term' = 'Supply Agreement - Supply Agreement Id');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`supply_agreement` ALTER COLUMN `procurement_contract_id` SET TAGS ('dbx_business_glossary_term' = 'Supply Agreement - Procurement Contract Id');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`supply_agreement` ALTER COLUMN `sku_master_id` SET TAGS ('dbx_business_glossary_term' = 'Supply Agreement - Sku Master Id');
+ALTER TABLE `vibe_manufacturing_v1`.`product`.`supply_agreement` ALTER COLUMN `auto_renew_flag` SET TAGS ('dbx_typing_rule' = 'boolean');
+ALTER TABLE `vibe_manufacturing_v1`.`product`.`supply_agreement` ALTER COLUMN `auto_renewal_flag` SET TAGS ('dbx_typing_rule' = 'boolean');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`supply_agreement` ALTER COLUMN `effective_date` SET TAGS ('dbx_business_glossary_term' = 'Effective Date');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`supply_agreement` ALTER COLUMN `lead_time_days` SET TAGS ('dbx_business_glossary_term' = 'Lead Time (Days)');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`supply_agreement` ALTER COLUMN `price` SET TAGS ('dbx_business_glossary_term' = 'Contract Price');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`option_set` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_manufacturing_v1`.`product`.`option_set` SET TAGS ('dbx_subdomain' = 'catalog_management');
+ALTER TABLE `vibe_manufacturing_v1`.`product`.`option_set` SET TAGS ('dbx_subdomain' = 'structure_configuration');
+ALTER TABLE `vibe_manufacturing_v1`.`product`.`option_set` SET TAGS ('dbx_domain' = 'product');
+ALTER TABLE `vibe_manufacturing_v1`.`product`.`option_set` SET TAGS ('dbx_structure_required' = 'v2');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`option_set` ALTER COLUMN `option_set_id` SET TAGS ('dbx_business_glossary_term' = 'Option Set Identifier');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`option_set` ALTER COLUMN `parent_option_set_id` SET TAGS ('dbx_business_glossary_term' = 'Parent Option Set Id');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`option_set` ALTER COLUMN `parent_option_set_id` SET TAGS ('dbx_self_ref_fk' = 'true');
@@ -1562,7 +1759,10 @@ ALTER TABLE `vibe_manufacturing_v1`.`product`.`option_set` ALTER COLUMN `effecti
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`option_set` ALTER COLUMN `effective_until` SET TAGS ('dbx_business_glossary_term' = 'Effective Until');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`option_set` ALTER COLUMN `external_reference` SET TAGS ('dbx_business_glossary_term' = 'External Reference');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`option_set` ALTER COLUMN `is_default` SET TAGS ('dbx_business_glossary_term' = 'Is Default');
+ALTER TABLE `vibe_manufacturing_v1`.`product`.`option_set` ALTER COLUMN `is_default` SET TAGS ('dbx_typing_rule' = 'boolean');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`option_set` ALTER COLUMN `option_set_name` SET TAGS ('dbx_business_glossary_term' = 'Name');
+ALTER TABLE `vibe_manufacturing_v1`.`product`.`option_set` ALTER COLUMN `option_set_name` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`product`.`option_set` ALTER COLUMN `option_set_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`option_set` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Notes');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`option_set` ALTER COLUMN `option_type` SET TAGS ('dbx_business_glossary_term' = 'Option Type');
 ALTER TABLE `vibe_manufacturing_v1`.`product`.`option_set` ALTER COLUMN `sort_order` SET TAGS ('dbx_business_glossary_term' = 'Sort Order');

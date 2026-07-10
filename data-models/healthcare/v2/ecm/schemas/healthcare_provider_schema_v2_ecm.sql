@@ -1,1393 +1,1086 @@
 -- Schema for Domain: provider | Business:  | Version: v2_ecm
--- Generated on: 2026-07-10 14:11:18
+-- Generated on: 2026-07-02 06:46:13
 
 -- ========= DATABASE =========
 CREATE DATABASE IF NOT EXISTS `vibe_healthcare_v1`.`provider` COMMENT 'Authoritative repository for all healthcare professionals and organizational providers. Includes physicians, nurses, allied health professionals, NPI (National Provider Identifier), DEA numbers, credentials, specialties, licensure, hospital privileges, credentialing status, payer enrollment, and provider network affiliations. SSOT for provider identity and authorization.';
 
 -- ========= TABLES =========
 CREATE OR REPLACE TABLE `vibe_healthcare_v1`.`provider`.`clinician` (
-    `clinician_id` BIGINT COMMENT 'Unique surrogate identifier for each clinician record in the healthcare enterprise master. Primary key for the clinician data product within the provider domain.',
-    `care_site_id` BIGINT COMMENT 'Identifier of the primary facility or practice location where the clinician primarily delivers care. Used for scheduling, network adequacy reporting, and provider directory. Links to the facility master in the provider domain.',
-    `specialty_id` BIGINT COMMENT 'Foreign key linking to provider.specialty. Business justification: Clinicians primary specialty should reference specialty table. Multiple FKs to same target (primary and secondary) require distinct labels. Removes primary_specialty STRING attribute.',
-    `npi_registry_id` BIGINT COMMENT 'Foreign key linking to reference.npi_registry. Business justification: Clinicians must validate against national NPI registry for CMS enrollment, payer credentialing, and primary source verification. Healthcare operations perform monthly NPI validation checks, deactivati',
-    `taxonomy_id` BIGINT COMMENT 'Foreign key linking to provider.provider_taxonomy. Business justification: Clinicians taxonomy code should reference provider_taxonomy table as authoritative source. Removes provider_taxonomy_code STRING.',
-    `board_certification_expiration_date` DATE COMMENT 'Expiration date of the clinicians primary ABMS board certification. Nullable for clinicians with lifetime certification or non-physician providers. Used to trigger recertification reminders in Symplr.',
-    `board_certified` BOOLEAN COMMENT 'Indicates whether the clinician holds active board certification from an ABMS-recognized specialty board in their primary specialty. True = currently board certified; False = not board certified or certification lapsed. Used in credentialing, network adequacy, and quality reporting.',
-    `caqh_provider_number` STRING COMMENT 'Unique 8-digit identifier assigned to the clinician in the CAQH ProView universal credentialing database. Used to streamline payer credentialing and enrollment by providing a single repository of provider credentials. Sourced from Symplr and CAQH ProView.. Valid values are `^[0-9]{8}$`',
-    `created_timestamp` TIMESTAMP COMMENT 'Timestamp when the clinician record was first created in the enterprise data platform. Represents the record audit creation time in ISO 8601 format with timezone offset. Used for data lineage, audit trails, and HIPAA audit log requirements.',
-    `credentialing_expiration_date` DATE COMMENT 'Date on which the clinicians current credentialing approval expires and re-credentialing must be completed. Typically a 2-year cycle per Joint Commission standards. Used to trigger re-credentialing workflows in Symplr.',
-    `credentialing_status` STRING COMMENT 'Current status of the clinicians credentialing and privileging review within the organization. Credentialed indicates approved to practice; pending indicates initial or re-credentialing in progress; expired indicates lapsed credentials requiring renewal. Sourced from Symplr credentialing system.. Valid values are `credentialed|pending|expired|suspended|denied`',
-    `date_of_birth` DATE COMMENT 'Clinicians date of birth. Used for identity verification during credentialing, primary source verification, and DEA registration. PHI/PII — access restricted per HIPAA.',
-    `dea_number` STRING COMMENT 'DEA registration number authorizing the clinician to prescribe controlled substances. Format is two letters followed by seven digits. Required for prescribing Schedule II–V medications. Sourced from Symplr credentialing and Epic Willow pharmacy module.. Valid values are `^[A-Z]{2}[0-9]{7}$`',
-    `employment_status` STRING COMMENT 'Current employment lifecycle status of the clinician within the organization. Active indicates currently practicing; on_leave includes FMLA and medical leave; suspended indicates temporary practice restriction; terminated indicates separation. Sourced from Workday HCM.. Valid values are `active|inactive|on_leave|terminated|suspended`',
-    `employment_type` STRING COMMENT 'Classification of the clinicians employment relationship with the healthcare organization. Drives payroll processing, malpractice coverage determination, and credentialing workflows. Sourced from Workday HCM Core HR.. Valid values are `employed|independent_contractor|locum_tenens|volunteer|resident|fellow`',
-    `fellowship_completion_date` DATE COMMENT 'Date on which the clinician completed their fellowship training program. Nullable for clinicians without fellowship training. Used for subspecialty credentialing and privileging decisions. Sourced from Symplr.',
-    `fellowship_program_name` STRING COMMENT 'Name of the fellowship training program completed by the clinician (e.g., Interventional Cardiology Fellowship at Cleveland Clinic). Part of the embedded postgraduate training history per the clinician product SSOT definition. Nullable for clinicians without fellowship training. Sourced from Symplr.',
-    `first_name` STRING COMMENT 'Legal first (given) name of the clinician as recorded in the provider master. Used for identity verification, credentialing, and provider directory display. Sourced from Epic EHR provider master and Symplr.',
-    `gender` STRING COMMENT 'Clinicians self-reported gender identity. Used for workforce diversity reporting, EEOC compliance, and provider directory display where applicable. Restricted per HIPAA and applicable employment privacy regulations.. Valid values are `male|female|non_binary|unknown|prefer_not_to_say`',
-    `hire_date` DATE COMMENT 'Date on which the clinician was officially hired or onboarded by the healthcare organization. Used for tenure calculations, benefits eligibility, and workforce analytics. Sourced from Workday HCM Core HR.',
-    `internship_completion_date` DATE COMMENT 'Date on which the clinician completed their internship or PGY-1 training. Nullable where internship is embedded within residency program. Sourced from Symplr primary source verification.',
-    `internship_program_name` STRING COMMENT 'Name of the internship or postgraduate year 1 (PGY-1) program completed by the clinician. Part of the embedded postgraduate training history per the clinician product SSOT definition. Nullable for clinicians where internship is embedded within residency. Sourced from Symplr.',
-    `last_name` STRING COMMENT 'Legal last (family) name of the clinician as recorded in the provider master. Used for identity verification, credentialing, provider directory, and billing. Sourced from Epic EHR provider master and Symplr.',
-    `license_expiration_date` DATE COMMENT 'Expiration date of the clinicians primary state medical or professional license. Used by credentialing teams to trigger renewal workflows and ensure continuous practice authorization. Sourced from Symplr credentialing.',
-    `license_state` STRING COMMENT 'Two-letter US state abbreviation for the jurisdiction that issued the primary state medical or professional license. Used for practice authorization validation and regulatory reporting.. Valid values are `^[A-Z]{2}$`',
-    `malpractice_expiration_date` DATE COMMENT 'Expiration date of the clinicians professional liability (malpractice) insurance policy. Used to ensure continuous coverage and trigger renewal alerts in Symplr credentialing workflows.',
-    `malpractice_policy_number` STRING COMMENT 'Policy number of the clinicians professional liability (malpractice) insurance coverage. Required for credentialing and hospital privileging. Sourced from Symplr credentialing. Confidential business data.',
-    `medicaid_enrolled` BOOLEAN COMMENT 'Indicates whether the clinician is actively enrolled as a Medicaid provider in their primary state. True = enrolled and active; False = not enrolled. Critical for revenue cycle management and claims submission for Medicaid patients.',
-    `medical_degree` STRING COMMENT 'Highest professional degree awarded to the clinician upon completion of medical or professional school (e.g., MD, DO, MBBS, PharmD, DNP). Used in credentialing, provider directory, and billing. Sourced from Symplr primary source verification. [ENUM-REF-CANDIDATE: MD|DO|MBBS|PharmD|PhD|DNP|MSN|PA|NP|DDS|DPM — 11 candidates stripped; promote to reference product]',
-    `medical_school_graduation_date` DATE COMMENT 'Date on which the clinician graduated from medical or professional school and received their degree. Used for credentialing, primary source verification, and training history completeness. Sourced from Symplr.',
-    `medical_school_name` STRING COMMENT 'Name of the institution from which the clinician received their medical or professional degree (e.g., Johns Hopkins School of Medicine). Part of the embedded education history per the clinician product SSOT definition. Sourced from Symplr credentialing primary source verification.',
-    `medicare_enrolled` BOOLEAN COMMENT 'Indicates whether the clinician is actively enrolled as a Medicare provider with CMS. True = enrolled and active; False = not enrolled or opted out. Critical for revenue cycle management and claims submission. Sourced from CMS PECOS (Provider Enrollment, Chain, and Ownership System).',
-    `middle_name` STRING COMMENT 'Legal middle name or initial of the clinician. Used for identity disambiguation when first and last names are not unique. Sourced from Epic EHR provider master.',
-    `name_suffix` STRING COMMENT 'Generational or professional suffix appended to the clinicians name (e.g., Jr., Sr., II, III). Distinct from professional credentials/degrees which are stored separately.. Valid values are `Jr.|Sr.|II|III|IV|MD`',
-    `oig_exclusion_check_date` DATE COMMENT 'Most recent date on which the clinician was screened against the OIG List of Excluded Individuals and Entities (LEIE). CMS requires monthly screening for all providers billing federal healthcare programs.',
-    `oig_exclusion_checked` BOOLEAN COMMENT 'Indicates whether the clinician has been screened against the OIG List of Excluded Individuals and Entities (LEIE). Required monthly per CMS guidance to prevent billing for services rendered by excluded providers. True = checked and clear; False = not yet checked or excluded.',
-    `payer_enrollment_status` STRING COMMENT 'Aggregate enrollment status of the clinician with payers for billing purposes. Enrolled indicates the clinician is credentialed and enrolled with at least one active payer; pending indicates enrollment applications in progress. Detailed per-payer enrollment is tracked in the provider_payer_enrollment product. Sourced from Symplr provider enrollment module.. Valid values are `enrolled|pending|not_enrolled|terminated|suspended`',
-    `primary_source_verified` BOOLEAN COMMENT 'Indicates whether the clinicians credentials (education, training, licensure) have been verified directly with the issuing source (primary source verification) as required by The Joint Commission and NCQA credentialing standards. True = verified; False = not yet verified or verification pending.',
-    `professional_designation` STRING COMMENT 'Highest or primary professional credential/degree designation displayed after the clinicians name (e.g., MD, DO, NP, PA-C, RN, PharmD, PhD). Used in provider directories, clinical documentation headers, and credentialing. [ENUM-REF-CANDIDATE: MD|DO|NP|PA-C|RN|PharmD|PhD|DDS|DPM|OD|CRNA|CNM|LCSW|PT|OT — promote to reference product]',
-    `residency_acgme_accredited` BOOLEAN COMMENT 'Indicates whether the clinicians residency program was accredited by the Accreditation Council for Graduate Medical Education (ACGME) at the time of completion. True = ACGME accredited; False = not accredited or international program. Required for privileging decisions.',
-    `residency_completion_date` DATE COMMENT 'Date on which the clinician completed their postgraduate residency training program. Used for credentialing and training history verification. Nullable for clinicians who did not complete a residency (e.g., some allied health professionals). Sourced from Symplr.',
-    `residency_program_name` STRING COMMENT 'Name of the ACGME-accredited residency program completed by the clinician (e.g., Internal Medicine Residency at Massachusetts General Hospital). Part of the embedded postgraduate training history per the clinician product SSOT definition. Sourced from Symplr.',
-    `secondary_specialty` STRING COMMENT 'The clinicians secondary or subspecialty designation (e.g., Interventional Cardiology, Pediatric Neurology). Nullable when the clinician has only one specialty. Used for advanced referral routing and network adequacy analysis.',
-    `state_license_number` STRING COMMENT 'Primary state medical or professional license number issued by the applicable state licensing board. Represents the clinicians authorization to practice in their primary state of licensure. Additional multi-state licenses are tracked in the clinician_license product.',
-    `termination_date` DATE COMMENT 'Date on which the clinicians employment or engagement with the organization ended. Nullable for active clinicians. Used to deactivate system access, revoke privileges, and trigger payer disenrollment workflows. Sourced from Workday HCM.',
-    `clinician_type` STRING COMMENT 'Broad classification of the clinicians professional category. Drives role-based access, workflow routing, and analytics segmentation. Physician includes MD/DO; advanced_practice includes NP/PA; nursing includes RN/LPN; allied_health includes PT/OT/RT; pharmacy includes PharmD/RPh; behavioral_health includes LCSW/psychologist.. Valid values are `physician|advanced_practice|nursing|allied_health|pharmacy|behavioral_health`',
-    `updated_timestamp` TIMESTAMP COMMENT 'Timestamp when the clinician record was most recently modified in the enterprise data platform. Used for change data capture, incremental ETL processing, and audit trail compliance. Updated on every write operation.',
-    `work_email` STRING COMMENT 'Clinicians primary organizational work email address. Used for secure communications, system access provisioning, credentialing notifications, and provider directory. Sourced from Workday HCM and Epic provider master.. Valid values are `^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+.[a-zA-Z]{2,}$`',
-    `work_phone` STRING COMMENT 'Clinicians primary work phone number including direct line or pager number. Used for clinical communications, on-call scheduling, and credentialing contact. Sourced from Epic provider master and Workday HCM.. Valid values are `^+?[0-9-s().]{7,20}$`',
+    `clinician_id` BIGINT COMMENT 'Primary key',
+    `care_site_id` BIGINT COMMENT 'Primary practice location',
+    `specialty_id` BIGINT COMMENT 'Primary clinical specialty',
+    `npi_registry_id` BIGINT COMMENT 'NPI registry reference',
+    `taxonomy_id` BIGINT COMMENT 'NUCC taxonomy code',
+    `board_certification_expiration_date` DATE COMMENT 'Board certification expiry',
+    `board_certified` BOOLEAN COMMENT 'Board certification status',
+    `caqh_provider_number` STRING COMMENT 'CAQH provider identifier',
+    `clinician_status` STRING COMMENT 'The clinician status value classifying the provider clinician record.',
+    `clinician_type` STRING COMMENT 'MD, DO, NP, PA, etc.',
+    `created_timestamp` TIMESTAMP COMMENT 'Record creation timestamp',
+    `credentialing_expiration_date` DATE COMMENT 'Credentialing expiry date',
+    `credentialing_status` STRING COMMENT 'Active, Pending, Expired',
+    `date_of_birth` DATE COMMENT 'Provider date of birth',
+    `dea_number` STRING COMMENT 'DEA registration number',
+    `email_address` STRING COMMENT 'The email address of the provider clinician record.',
+    `employment_status` STRING COMMENT 'Active, Terminated, On Leave',
+    `employment_type` STRING COMMENT 'Employed, Contracted, Locum',
+    `fellowship_completion_date` DATE COMMENT 'Timestamp capturing the fellowship completion date associated with the provider clinician record.',
+    `fellowship_program_name` STRING COMMENT 'The fellowship program name of the provider clinician record.',
+    `first_name` STRING COMMENT 'Provider first name',
+    `gender` STRING COMMENT 'Provider gender',
+    `hire_date` DATE COMMENT 'Employment start date',
+    `internship_completion_date` DATE COMMENT 'Timestamp capturing the internship completion date associated with the provider clinician record.',
+    `internship_program_name` STRING COMMENT 'The internship program name of the provider clinician record.',
+    `last_name` STRING COMMENT 'Provider last name',
+    `license_expiration_date` DATE COMMENT 'State license expiry',
+    `license_state` STRING COMMENT 'State of licensure',
+    `malpractice_expiration_date` DATE COMMENT 'Malpractice insurance expiry',
+    `malpractice_policy_number` STRING COMMENT 'The malpractice policy number of the provider clinician record.',
+    `medicaid_enrolled` BOOLEAN COMMENT 'Medicaid enrollment status',
+    `medical_degree` STRING COMMENT 'MD, DO, MBBS, etc.',
+    `medical_school_graduation_date` DATE COMMENT 'Timestamp capturing the medical school graduation date associated with the provider clinician record.',
+    `medical_school_name` STRING COMMENT 'The medical school name of the provider clinician record.',
+    `medicare_enrolled` BOOLEAN COMMENT 'Medicare enrollment status',
+    `middle_name` STRING COMMENT 'Provider middle name',
+    `name_suffix` STRING COMMENT 'Jr, Sr, III, etc.',
+    `npi` STRING COMMENT 'The npi of the provider clinician record.',
+    `oig_exclusion_check_date` DATE COMMENT 'Timestamp capturing the oig exclusion check date associated with the provider clinician record.',
+    `oig_exclusion_checked` BOOLEAN COMMENT 'OIG exclusion check performed',
+    `payer_enrollment_status` STRING COMMENT 'The payer enrollment status value classifying the provider clinician record.',
+    `phone` STRING COMMENT 'The phone of the provider clinician record.',
+    `primary_source_verified` BOOLEAN COMMENT 'Primary source verification completed',
+    `professional_designation` STRING COMMENT 'FACP, FACS, etc.',
+    `residency_acgme_accredited` BOOLEAN COMMENT 'ACGME accreditation status',
+    `residency_completion_date` DATE COMMENT 'Timestamp capturing the residency completion date associated with the provider clinician record.',
+    `residency_program_name` STRING COMMENT 'The residency program name of the provider clinician record.',
+    `secondary_specialty` STRING COMMENT 'The secondary specialty of the provider clinician record.',
+    `state_license_number` STRING COMMENT 'The state license number of the provider clinician record.',
+    `termination_date` DATE COMMENT 'Employment termination date',
+    `updated_timestamp` TIMESTAMP COMMENT 'Record update timestamp',
+    `vibe_provider_domain_ensured` STRING COMMENT 'The vibe provider domain ensured of the provider clinician record.',
+    `vibe_structure_marker` STRING COMMENT 'The vibe structure marker of the provider clinician record.',
+    `work_email` STRING COMMENT 'Work email address',
+    `work_phone` STRING COMMENT 'Work phone number',
     CONSTRAINT pk_clinician PRIMARY KEY(`clinician_id`)
-) COMMENT 'Master record for all individual healthcare professionals including physicians, nurses, allied health professionals, and advanced practice providers. Serves as the SSOT for provider identity, NPI (National Provider Identifier), DEA number, professional demographics, primary specialty, and employment type. Includes complete educational background and postgraduate training history as embedded detail records: medical school, residency programs, fellowship training, and internships with institution name, program type, degree or certificate awarded, graduation/completion date, ACGME accreditation status, and primary source verification status. No other product in this domain stores education or training history. Sourced from Epic EHR provider master and Symplr credentialing system.';
+) COMMENT 'Individual healthcare providers (physicians, NPs, PAs, etc.) with clinical credentials';
 
 CREATE OR REPLACE TABLE `vibe_healthcare_v1`.`provider`.`org_provider` (
-    `org_provider_id` BIGINT COMMENT 'Unique surrogate identifier for the organizational provider record in the lakehouse silver layer. Primary key for the org_provider data product.',
-    `accreditation_status_id` BIGINT COMMENT 'Foreign key linking to compliance.accreditation_status. Business justification: Healthcare organizations hold accreditations (TJC, DNV, AAAHC). Compliance teams track accreditation status by facility for deemed status determination, public reporting (CMS Hospital Compare), and su',
-    `business_associate_agreement_id` BIGINT COMMENT 'Foreign key linking to compliance.business_associate_agreement. Business justification: Healthcare organizations execute BAAs with business associates (billing vendors, EHR vendors, transcription services). HIPAA compliance requires tracking BAA coverage for all PHI-sharing relationships',
-    `cost_center_id` BIGINT COMMENT 'Foreign key linking to finance.cost_center. Business justification: Organizational providers operate as financial entities with dedicated cost centers for revenue and expense tracking, budget management, and financial statement preparation. Core to multi-entity health',
-    `npi_registry_id` BIGINT COMMENT 'Foreign key linking to reference.npi_registry. Business justification: Organizations validate against NPI registry for CMS certification, PECOS enrollment, and organizational credentialing. Healthcare operations require this for Type 2 NPI validation, authorized official',
-    `taxonomy_id` BIGINT COMMENT 'Foreign key linking to provider.provider_taxonomy. Business justification: Organizational providers taxonomy code should reference provider_taxonomy table. Removes taxonomy_code STRING.',
-    `accreditation_body` STRING COMMENT 'The accrediting organization that granted the current accreditation status (e.g., The Joint Commission (TJC), DNV GL Healthcare, Healthcare Facilities Accreditation Program (HFAP), Accreditation Association for Ambulatory Health Care (AAAHC)). [ENUM-REF-CANDIDATE: TJC|DNV_GL|HFAP|AAAHC|ACHC|CARF|URAC|none — 8 candidates stripped; promote to reference product]',
-    `accreditation_expiration_date` DATE COMMENT 'The date on which the current accreditation certificate expires. Used to trigger renewal workflows and monitor compliance with accreditation maintenance requirements.',
-    `accreditation_status` STRING COMMENT 'Current accreditation status of the organizational provider as granted by a recognized accrediting body (e.g., The Joint Commission, DNV GL, HFAP, AAAHC). Accreditation is required for Medicare deemed status and quality program participation.. Valid values are `accredited|provisional|not_accredited|under_review|revoked`',
-    `address_line1` STRING COMMENT 'The primary street address of the organizational providers physical service location. Used for claims billing, provider directory, and regulatory correspondence.',
-    `address_line2` STRING COMMENT 'Secondary address information (suite, floor, building) for the organizational providers physical service location.',
-    `bed_count` STRING COMMENT 'The total number of licensed inpatient beds at the facility as reported to the state Department of Health and CMS. Used for capacity planning, DRG-based reimbursement analysis, and regulatory reporting. Applicable to inpatient facilities; null for outpatient-only organizations.',
-    `city` STRING COMMENT 'City of the organizational providers primary service location. Used for geographic network analysis, provider directory, and regulatory reporting.',
-    `cms_certification_number` STRING COMMENT 'The 6-digit CMS Certification Number (formerly Medicare Provider Number) assigned to certified healthcare facilities by CMS. Required for Medicare and Medicaid participation and cost reporting.. Valid values are `^[0-9]{6}$`',
-    `county` STRING COMMENT 'County of the organizational providers primary service location. Used for population health management, HRSA Health Professional Shortage Area (HPSA) designation, and rural health program eligibility.',
-    `created_timestamp` TIMESTAMP COMMENT 'The timestamp when the organizational provider record was first created in the system of record. Supports audit trail, data lineage, and HIPAA audit log requirements.',
-    `credentialing_expiration_date` DATE COMMENT 'The date on which the organizational providers current credentialing cycle expires. Triggers re-credentialing workflows in Symplr to maintain uninterrupted network participation and claims payment eligibility.',
-    `credentialing_status` STRING COMMENT 'Current credentialing status of the organizational provider as maintained in the credentialing system (Symplr). Tracks whether the organization has completed payer and network credentialing requirements for participation.. Valid values are `credentialed|pending|expired|revoked|not_applicable`',
-    `critical_access_hospital_flag` BOOLEAN COMMENT 'Indicates whether the facility holds Critical Access Hospital (CAH) designation from CMS, qualifying it for cost-based Medicare reimbursement. CAH designation requires rural location, 25 or fewer acute care beds, and 24/7 emergency services.',
-    `disproportionate_share_flag` BOOLEAN COMMENT 'Indicates whether the facility qualifies for CMS Disproportionate Share Hospital (DSH) payment adjustments, which compensate hospitals serving a high proportion of low-income and Medicaid patients.',
-    `doing_business_as_name` STRING COMMENT 'The trade or operating name under which the organization conducts business if different from the legal name. Commonly used in patient-facing communications and signage.',
-    `effective_date` DATE COMMENT 'The date on which the organizational provider record became effective and the organization was authorized to participate in applicable programs and networks. Used for enrollment tracking and retroactive claims adjudication.',
-    `ehr_system` STRING COMMENT 'The primary Electronic Health Record (EHR) or Electronic Medical Record (EMR) system deployed at the organizational provider. Used for HIE connectivity planning, HL7/FHIR interface configuration, and interoperability assessments. [ENUM-REF-CANDIDATE: epic|cerner|meditech|allscripts|athenahealth|other|none — 7 candidates stripped; promote to reference product]',
-    `enrollment_status` STRING COMMENT 'Current CMS enrollment status of the organizational provider in Medicare and/or Medicaid programs. Distinct from general provider_status; specifically tracks payer program participation eligibility.. Valid values are `enrolled|not_enrolled|pending|revoked|opt_out`',
-    `facility_type` STRING COMMENT 'Classification of the organizational provider by facility type (e.g., acute care hospital, critical access hospital, ambulatory surgery center, federally qualified health center, skilled nursing facility, outpatient clinic, group practice). Drives billing rules, regulatory requirements, and reimbursement methodology. [ENUM-REF-CANDIDATE: acute_care_hospital|critical_access_hospital|ambulatory_surgery_center|federally_qualified_health_center|skilled_nursing_facility|outpatient_clinic|group_practice|long_term_care|behavioral_health|home_health|hospice|urgent_care — promote to reference product]',
-    `fax` STRING COMMENT 'Primary fax number for the organizational provider. Used for clinical document transmission, referral communications, and payer correspondence in compliance with HIPAA secure transmission requirements.. Valid values are `^+?[0-9-()s]{7,20}$`',
-    `fhir_endpoint_url` STRING COMMENT 'The base URL of the organizational providers HL7 FHIR R4 API endpoint for electronic health information exchange. Required under the CMS Interoperability and Patient Access Rule for payer-to-provider data exchange.',
-    `legal_name` STRING COMMENT 'The full legal name of the organizational provider as registered with state licensing authorities, CMS, and the IRS. Used for billing, contracting, and regulatory submissions.',
-    `license_state` STRING COMMENT 'The two-letter US state code where the facility operating license was issued. Determines applicable state regulatory requirements and Medicaid program participation rules.. Valid values are `^[A-Z]{2}$`',
-    `medicaid_provider_number` STRING COMMENT 'State-assigned Medicaid provider identification number for the organizational provider. Required for Medicaid claims submission and program participation. Format varies by state Medicaid Management Information System (MMIS).',
-    `medicare_participation_flag` BOOLEAN COMMENT 'Indicates whether the organizational provider has an active Medicare participation agreement with CMS, authorizing it to bill Medicare for covered services at the Medicare-approved rate.',
-    `network_participation_status` STRING COMMENT 'Current status of the organizational providers participation in contracted payer networks. Drives claims adjudication, patient cost-sharing calculations, and network adequacy reporting to state and federal regulators.. Valid values are `in_network|out_of_network|pending|terminated`',
-    `oig_exclusion_flag` BOOLEAN COMMENT 'Indicates whether the organizational provider is currently listed on the OIG List of Excluded Individuals/Entities (LEIE). Excluded providers are prohibited from participating in federal healthcare programs. Must be checked prior to contracting and claims payment.',
-    `organization_type` STRING COMMENT 'High-level classification of the organizational providers structural type (e.g., hospital, clinic, group practice, Accountable Care Organization (ACO), Integrated Delivery Organization (IDO), health system, outpatient center). Distinct from facility_type which captures the CMS/regulatory classification. [ENUM-REF-CANDIDATE: hospital|clinic|group_practice|aco|ido|health_system|outpatient_center — 7 candidates stripped; promote to reference product]',
-    `ownership_type` STRING COMMENT 'The ownership classification of the organizational provider indicating whether it is non-profit, for-profit, government-owned, tribal, or faith-based. Affects tax status, CMS cost reporting requirements, and regulatory obligations.. Valid values are `non_profit|for_profit|government|tribal|faith_based`',
-    `phone` STRING COMMENT 'Primary telephone number for the organizational providers main administrative or clinical contact line. Used for referral coordination, payer communications, and provider directory.. Valid values are `^+?[0-9-()s]{7,20}$`',
-    `primary_specialty` STRING COMMENT 'The primary clinical specialty or service line of the organizational provider as designated in NPPES and CMS enrollment records (e.g., General Acute Care Hospital, Multispecialty Group Practice, Radiology Center). Used for network directory, referral routing, and quality reporting.',
-    `provider_status` STRING COMMENT 'Current lifecycle status of the organizational provider record. Drives eligibility for claims submission, referral routing, and network directory inclusion. Active indicates the organization is currently enrolled and operational; pending indicates enrollment or credentialing in progress.. Valid values are `active|inactive|pending|suspended|terminated`',
-    `sam_exclusion_flag` BOOLEAN COMMENT 'Indicates whether the organizational provider is listed in the federal SAM.gov exclusions database, which prohibits participation in federal contracts and assistance programs including CMS programs.',
-    `state` STRING COMMENT 'Two-letter US state code of the organizational providers primary service location. Determines applicable state regulations, Medicaid program rules, and network adequacy requirements.. Valid values are `^[A-Z]{2}$`',
-    `state_license_expiration_date` DATE COMMENT 'The expiration date of the state-issued facility operating license. Triggers license renewal workflows and compliance monitoring to prevent lapse in operating authority.',
-    `state_license_number` STRING COMMENT 'The facility license number issued by the state Department of Health authorizing the organization to operate as a healthcare facility. Required for state regulatory compliance and CMS certification.',
-    `tax_identification_number` STRING COMMENT 'The federal Employer Identification Number (EIN) or Tax Identification Number (TIN) assigned by the IRS to the organizational provider. Required for claims billing, 1099 reporting, and payer contracting.. Valid values are `^[0-9]{2}-[0-9]{7}$`',
-    `teaching_status` STRING COMMENT 'Designation of the facilitys teaching status as recognized by CMS for Indirect Medical Education (IME) and Direct Graduate Medical Education (DGME) payment adjustments. Major teaching hospitals have a resident-to-bed ratio above CMS thresholds.. Valid values are `major_teaching|minor_teaching|non_teaching`',
-    `termination_date` DATE COMMENT 'The date on which the organizational providers participation or enrollment was terminated. Null for active providers. Used for claims adjudication, network directory management, and regulatory reporting.',
-    `trauma_level` STRING COMMENT 'The American College of Surgeons (ACS) or state-designated trauma center level (I through V) indicating the facilitys trauma care capability. Level I provides the highest level of comprehensive trauma care. Used for ED routing, transfer protocols, and quality reporting.. Valid values are `I|II|III|IV|V|not_designated`',
-    `updated_timestamp` TIMESTAMP COMMENT 'The timestamp when the organizational provider record was most recently modified. Used for change data capture (CDC), ETL incremental loads, and audit trail compliance.',
-    `website_url` STRING COMMENT 'The public-facing website URL of the organizational provider. Used in provider directory, patient portal, and Salesforce Health Cloud patient relationship management.',
-    `zip_code` STRING COMMENT 'US ZIP or ZIP+4 postal code of the organizational providers primary service location. Used for geographic network analysis, population health mapping, and claims processing.. Valid values are `^[0-9]{5}(-[0-9]{4})?$`',
+    `org_provider_id` BIGINT COMMENT 'Primary key',
+    `accreditation_status_id` BIGINT COMMENT 'Accreditation status reference',
+    `business_associate_agreement_id` BIGINT COMMENT 'BAA reference',
+    `care_site_id` BIGINT COMMENT 'Unique identifier for the care site within the provider org provider record.',
+    `clinician_id` BIGINT COMMENT 'Unique identifier for the clinician within the provider org provider record.',
+    `cost_center_id` BIGINT COMMENT 'Cost center',
+    `npi_registry_id` BIGINT COMMENT 'NPI registry reference',
+    `taxonomy_id` BIGINT COMMENT 'NUCC taxonomy code',
+    `accreditation_body` STRING COMMENT 'Accrediting organization',
+    `accreditation_expiration_date` DATE COMMENT 'Accreditation expiry',
+    `accreditation_status` STRING COMMENT 'The accreditation status value classifying the provider org provider record.',
+    `address_line1` STRING COMMENT 'The address line1 of the provider org provider record.',
+    `address_line2` STRING COMMENT 'The address line2 of the provider org provider record.',
+    `bed_count` STRING COMMENT 'Licensed bed count',
+    `city` STRING COMMENT 'The city of the provider org provider record.',
+    `cms_certification_number` STRING COMMENT 'The cms certification number of the provider org provider record.',
+    `county` STRING COMMENT 'The county of the provider org provider record.',
+    `created_timestamp` TIMESTAMP COMMENT 'Record creation timestamp',
+    `credentialing_expiration_date` DATE COMMENT 'Credentialing expiry',
+    `credentialing_status` STRING COMMENT 'The credentialing status value classifying the provider org provider record.',
+    `critical_access_hospital_flag` BOOLEAN COMMENT 'CAH designation',
+    `disproportionate_share_flag` BOOLEAN COMMENT 'DSH designation',
+    `doing_business_as_name` STRING COMMENT 'The doing business as name of the provider org provider record.',
+    `effective_date` DATE COMMENT 'Timestamp capturing the effective date associated with the provider org provider record.',
+    `ehr_system` STRING COMMENT 'EHR system name',
+    `enrollment_status` STRING COMMENT 'The enrollment status value classifying the provider org provider record.',
+    `facility_type` STRING COMMENT 'Hospital, Clinic, Lab, etc.',
+    `fax` STRING COMMENT 'Fax number',
+    `fhir_endpoint_url` STRING COMMENT 'The fhir endpoint url of the provider org provider record.',
+    `legal_name` STRING COMMENT 'Legal entity name',
+    `license_state` STRING COMMENT 'State of licensure',
+    `medicaid_provider_number` STRING COMMENT 'The medicaid provider number of the provider org provider record.',
+    `medicare_participation_flag` BOOLEAN COMMENT 'Medicare participation',
+    `network_participation_status` STRING COMMENT 'The network participation status value classifying the provider org provider record.',
+    `oig_exclusion_flag` BOOLEAN COMMENT 'The oig exclusion flag of the provider org provider record.',
+    `organization_type` STRING COMMENT 'The organization type value classifying the provider org provider record.',
+    `organizational_npi` STRING COMMENT 'The organizational npi of the provider org provider record.',
+    `ownership_type` STRING COMMENT 'For-profit, Non-profit, Government',
+    `phone` STRING COMMENT 'Phone number',
+    `primary_specialty` STRING COMMENT 'The primary specialty of the provider org provider record.',
+    `provider_status` STRING COMMENT 'Active, Inactive, Terminated',
+    `sam_exclusion_flag` BOOLEAN COMMENT 'The sam exclusion flag of the provider org provider record.',
+    `state` STRING COMMENT 'The state of the provider org provider record.',
+    `state_license_expiration_date` DATE COMMENT 'State license expiry',
+    `state_license_number` STRING COMMENT 'The state license number of the provider org provider record.',
+    `org_provider_status` STRING COMMENT 'The org provider status value classifying the provider org provider record.',
+    `tax_identification_number` STRING COMMENT 'The tax identification number of the provider org provider record.',
+    `teaching_status` STRING COMMENT 'Teaching hospital status',
+    `termination_date` DATE COMMENT 'Timestamp capturing the termination date associated with the provider org provider record.',
+    `trauma_level` STRING COMMENT 'Trauma center level',
+    `updated_timestamp` TIMESTAMP COMMENT 'Record update timestamp',
+    `vibe_structure_marker` STRING COMMENT 'The vibe structure marker of the provider org provider record.',
+    `website_url` STRING COMMENT 'The website url of the provider org provider record.',
+    `zip_code` STRING COMMENT 'The zip code value classifying the provider org provider record.',
     CONSTRAINT pk_org_provider PRIMARY KEY(`org_provider_id`)
-) COMMENT 'Master record for organizational providers including hospitals, clinics, group practices, outpatient facilities, and integrated delivery networks. Captures organizational NPI (Type 2), tax identification number, CMS certification number, facility type, accreditation status, and organizational hierarchy. Distinct from individual clinician records.';
+) COMMENT 'Organizational providers (hospitals, clinics, labs, DME suppliers)';
 
 CREATE OR REPLACE TABLE `vibe_healthcare_v1`.`provider`.`specialty` (
-    `specialty_id` BIGINT COMMENT 'Unique surrogate identifier for each specialty record in the provider specialty reference catalog. Primary key for the specialty data product. [REFERENCE_LOOKUP role — canonical_skip_reason: This entity is a reference/lookup catalog of recognized medical specialties and NUCC taxonomy classifications; per-role minimums for REFERENCE_LOOKUP are exempt.]',
-    `cpt_code_id` BIGINT COMMENT 'Foreign key linking to reference.cpt_code. Business justification: Specialties define authorized procedure sets for privileging decisions, prior authorization rules, and payer contracting. Real healthcare operations require this link for automated privilege delineati',
-    `icd_code_id` BIGINT COMMENT 'Foreign key linking to reference.icd_code. Business justification: Specialties have primary diagnosis domains for referral routing, utilization management, and network adequacy calculations. Healthcare operations use this for automated referral validation, specialty-',
-    `snomed_concept_id` BIGINT COMMENT 'The SNOMED CT concept identifier corresponding to this specialty for clinical terminology interoperability and HL7 FHIR resource alignment. Supports HIE data exchange and FHIR PractitionerRole resource population.',
-    `abms_board_name` STRING COMMENT 'The specific American Board of Medical Specialties (ABMS) member board responsible for certifying physicians in this specialty (e.g., American Board of Internal Medicine, American Board of Pediatrics). Used in credentialing verification and Symplr primary source verification workflows.',
-    `acgme_program_code` STRING COMMENT 'The ACGME program specialty code used to identify accredited residency and fellowship training programs in this specialty. Used for graduate medical education (GME) tracking, resident credentialing, and workforce planning in Workday HCM.. Valid values are `^[0-9]{3}-[0-9]{2}$`',
-    `additional_credentialing_required` BOOLEAN COMMENT 'Indicates whether this specialty requires additional credentialing steps beyond standard privileging (e.g., DEA registration for controlled substance prescribing, specific procedural competency assessments, or state-mandated specialty certifications). Drives credentialing workflow routing in Symplr.',
-    `board_certification_body` STRING COMMENT 'Name of the recognized medical board or certifying organization that issues board certification for this specialty (e.g., American Board of Internal Medicine (ABIM), American Board of Surgery (ABS), American Board of Psychiatry and Neurology (ABPN)). Used in credentialing workflows and provider directory publishing.',
-    `board_certification_required` BOOLEAN COMMENT 'Indicates whether board certification is required for a provider to be credentialed and privileged in this specialty at the organization. When true, credentialing workflows in Symplr enforce board certification verification before granting privileges.',
-    `specialty_category` STRING COMMENT 'High-level grouping category for the specialty used for network management, referral routing, and provider directory segmentation. Classifies specialties into broad functional areas for operational and analytical purposes. [ENUM-REF-CANDIDATE: medical|surgical|behavioral_health|allied_health|nursing|dental|pharmacy|ancillary|administrative|other — promote to reference product if additional values are needed]',
-    `cms_enrollment_specialty_type` STRING COMMENT 'The CMS-defined specialty type label used on provider enrollment applications (CMS-855 series forms) for Medicare and Medicaid enrollment. Distinct from the two-digit CMS specialty code; represents the descriptive label used in enrollment workflows.',
-    `cms_specialty_code` STRING COMMENT 'The two-digit CMS specialty code used in Medicare and Medicaid claims processing and provider enrollment. Derived from the CMS crosswalk to NUCC taxonomy codes. Required for CMS-1500 and UB-04 claim form submission and CMS provider enrollment taxonomy reporting.. Valid values are `^[0-9]{2}$`',
-    `specialty_code` STRING COMMENT 'Internally assigned alphanumeric code uniquely identifying the specialty within the enterprise provider directory and credentialing systems. Used as the business key for specialty lookups across Epic, Cerner, and Symplr integrations.. Valid values are `^[A-Z0-9_]{2,20}$`',
-    `created_timestamp` TIMESTAMP COMMENT 'The timestamp when this specialty record was first created in the enterprise reference catalog. Used for data lineage, audit trail, and Silver layer ingestion tracking.',
-    `dea_registration_required` BOOLEAN COMMENT 'Indicates whether providers in this specialty are required to hold an active DEA registration number for controlled substance prescribing authority. Relevant for specialties such as pain management, psychiatry, and anesthesiology. Used in payer enrollment and credentialing validation.',
-    `specialty_description` STRING COMMENT 'Detailed narrative description of the specialty including scope of practice, patient population served, and types of conditions or procedures managed. Used in provider directory publishing, patient-facing portals, and referral routing guidance.',
-    `display_order` STRING COMMENT 'Numeric sequence controlling the display order of specialties in provider directory user interfaces, credentialing dropdown menus, and referral routing selection screens. Lower values appear first in sorted lists.',
-    `effective_date` DATE COMMENT 'The date on which this specialty code and its associated NUCC taxonomy classification became effective and valid for use in provider credentialing, enrollment, and claims submission. Supports temporal validity tracking for regulatory compliance.',
-    `end_date` DATE COMMENT 'The date on which this specialty code and taxonomy classification was retired, superseded, or became invalid. Null indicates the specialty is currently active. Used to enforce temporal validity in claims submission and provider enrollment workflows.',
-    `fhir_practitioner_role_code` STRING COMMENT 'The HL7 FHIR R4 PractitionerRole.code value corresponding to this specialty for FHIR-compliant API responses and HIE data exchange. Enables alignment with FHIR-based provider directory publishing and ONC interoperability requirements.',
-    `hedis_measure_set` STRING COMMENT 'Identifies the applicable HEDIS measure set(s) associated with this specialty for quality measurement and NCQA reporting purposes (e.g., Preventive Care, Chronic Conditions, Behavioral Health). Used in Epic Healthy Planet and population health analytics.',
-    `hospital_privileges_applicable` BOOLEAN COMMENT 'Indicates whether providers in this specialty are subject to hospital privileging and credentialing requirements for inpatient or procedural care delivery. Drives privileging workflow routing in Symplr and The Joint Commission compliance tracking.',
-    `mips_eligible` BOOLEAN COMMENT 'Indicates whether providers in this specialty are subject to Merit-based Incentive Payment System (MIPS) reporting requirements under MACRA. Used for quality reporting program enrollment and CMS value-based payment calculations.',
-    `specialty_name` STRING COMMENT 'Full human-readable name of the medical or clinical specialty (e.g., Internal Medicine, Orthopedic Surgery, Pediatric Cardiology). Used in provider directories, credentialing workflows, and payer enrollment forms.',
-    `network_adequacy_category` STRING COMMENT 'Classification of the specialty for CMS and state network adequacy standards, determining minimum provider-to-enrollee ratios and geographic access requirements. Used in network management, payer contracting, and CMS network adequacy reporting.. Valid values are `essential|non_essential|specialty_care|behavioral_health|primary_care`',
-    `npi_taxonomy_eligible` BOOLEAN COMMENT 'Indicates whether this specialty/taxonomy code is eligible to be declared as a taxonomy code on an NPI application or update with the National Plan and Provider Enumeration System (NPPES). Ensures only valid NUCC taxonomy codes are submitted during NPI registry alignment.',
-    `nucc_classification` STRING COMMENT 'The second level of the NUCC taxonomy hierarchy representing the provider classification within the provider type (e.g., Family Medicine, Internal Medicine, Psychiatry & Neurology). Used for payer enrollment specialty validation and network management.',
-    `nucc_provider_type` STRING COMMENT 'The broadest level of the NUCC taxonomy hierarchy representing the provider type category (e.g., Allopathic & Osteopathic Physicians, Nursing Service Providers, Behavioral Health & Social Service Providers). First level of the three-level NUCC classification hierarchy.',
-    `nucc_specialization` STRING COMMENT 'The third and most granular level of the NUCC taxonomy hierarchy representing the specific area of specialization within the classification (e.g., Adolescent Medicine, Geriatric Medicine, Sports Medicine). May be null for specialties without a defined subspecialization.',
-    `nucc_taxonomy_code` STRING COMMENT 'The 10-character alphanumeric NUCC Health Care Provider Taxonomy code that uniquely classifies the provider type, classification, and specialization. Required for NPI registry alignment, claims submission, and CMS provider enrollment taxonomy reporting. This product is the SSOT for all NUCC taxonomy codes in the provider domain.. Valid values are `^[0-9]{10}X$`',
-    `payer_enrollment_eligible` BOOLEAN COMMENT 'Indicates whether this specialty is eligible for payer enrollment and credentialing with commercial and government payers. Specialties marked false may be internal classifications not recognized by external payers for enrollment purposes.',
-    `pecos_specialty_code` STRING COMMENT 'The specialty code used within the CMS Provider Enrollment Chain and Ownership System (PECOS) for Medicare provider enrollment and revalidation. Required for CMS enrollment submissions and RAC audit compliance.. Valid values are `^[A-Z0-9]{2,10}$`',
-    `prescribing_authority` BOOLEAN COMMENT 'Indicates whether providers in this specialty hold prescribing authority for medications under applicable state and federal law. Used in Epic Willow pharmacy integration, MAR workflows, and CPOE order routing to validate prescriber eligibility.',
-    `primary_care_designation` BOOLEAN COMMENT 'Indicates whether this specialty qualifies for Primary Care Physician (PCP) designation in managed care networks including HMO, ACO, and PCMH models. Drives PCP assignment logic in Salesforce Health Cloud and Epic Healthy Planet population health workflows.',
-    `prior_authorization_required` BOOLEAN COMMENT 'Indicates whether services rendered by providers in this specialty typically require prior authorization from payers before service delivery. Used in Epic order management (CPOE) and revenue cycle pre-authorization workflows.',
-    `referral_required` BOOLEAN COMMENT 'Indicates whether a formal referral is required to access providers in this specialty under standard managed care plan rules (HMO, POS). Drives referral authorization workflows in Epic Cadence and Salesforce Health Cloud referral management.',
-    `rvu_work_component` DECIMAL(18,2) COMMENT 'The standard physician work Relative Value Unit (RVU) component associated with the specialty, used as a baseline for productivity benchmarking and compensation modeling. Sourced from CMS Physician Fee Schedule. Used in Workday HCM compensation planning and RCM analytics.',
-    `short_description` STRING COMMENT 'Abbreviated description of the specialty suitable for display in constrained UI contexts such as mobile provider directories, claim form dropdowns, and scheduling system specialty selectors. Maximum 100 characters.',
-    `specialty_status` STRING COMMENT 'Current lifecycle status of the specialty record in the enterprise reference catalog. Active records are available for provider credentialing, enrollment, and claims submission. Deprecated records are retained for historical reference only.. Valid values are `active|inactive|deprecated|pending_review`',
-    `surgical_specialty` BOOLEAN COMMENT 'Indicates whether this specialty is classified as a surgical specialty, requiring operating room (OR) scheduling, surgical credentialing, and OpTime/SurgiNet integration for case scheduling and documentation.',
-    `telehealth_eligible` BOOLEAN COMMENT 'Indicates whether providers in this specialty are eligible to deliver services via telehealth modalities under applicable CMS and state regulations. Used for network directory publishing, referral routing, and telehealth program management.',
-    `specialty_type` STRING COMMENT 'Classification of the specialty as primary care, specialist, subspecialist, hospitalist, advanced practice, or ancillary. Used for referral routing logic, network adequacy analysis, and PCP designation in HMO and ACO network management.. Valid values are `primary_care|specialist|subspecialist|hospitalist|advanced_practice|ancillary`',
-    `updated_timestamp` TIMESTAMP COMMENT 'The timestamp when this specialty record was last modified in the enterprise reference catalog. Used for incremental ETL processing, change data capture, and audit trail maintenance in the Databricks Silver layer.',
-    `version_number` STRING COMMENT 'The NUCC Health Care Provider Taxonomy Code Set version number in which this specialty code was introduced or last updated (e.g., 23.1, 22.0). Enables version-specific taxonomy lookups for historical claims reprocessing and audit purposes.. Valid values are `^[0-9]{2}.[0-9]{1,2}$`',
+    `specialty_id` BIGINT COMMENT 'Primary key',
+    `cpt_code_id` BIGINT COMMENT 'Primary CPT code',
+    `icd_code_id` BIGINT COMMENT 'Primary ICD code',
+    `snomed_concept_id` BIGINT COMMENT 'SNOMED concept',
+    `clinician_id` BIGINT COMMENT 'Unique identifier for the clinician within the provider specialty record.',
+    `abms_board_name` STRING COMMENT 'The abms board name of the provider specialty record.',
+    `acgme_program_code` STRING COMMENT 'The acgme program code value classifying the provider specialty record.',
+    `additional_credentialing_required` BOOLEAN COMMENT 'The additional credentialing required of the provider specialty record.',
+    `board_certification_body` STRING COMMENT 'The board certification body of the provider specialty record.',
+    `board_certification_required` BOOLEAN COMMENT 'The board certification required of the provider specialty record.',
+    `board_name` STRING COMMENT 'The board name of the provider specialty record.',
+    `specialty_category` STRING COMMENT 'The specialty category of the provider specialty record.',
+    `cms_enrollment_specialty_type` STRING COMMENT 'The cms enrollment specialty type value classifying the provider specialty record.',
+    `cms_specialty_code` STRING COMMENT 'The cms specialty code value classifying the provider specialty record.',
+    `specialty_code` STRING COMMENT 'The specialty code value classifying the provider specialty record.',
+    `created_timestamp` TIMESTAMP COMMENT 'Record creation timestamp',
+    `dea_registration_required` BOOLEAN COMMENT 'The dea registration required of the provider specialty record.',
+    `specialty_description` STRING COMMENT 'The specialty description of the provider specialty record.',
+    `display_order` STRING COMMENT 'The display order of the provider specialty record.',
+    `effective_date` DATE COMMENT 'Timestamp capturing the effective date associated with the provider specialty record.',
+    `end_date` DATE COMMENT 'Timestamp capturing the end date associated with the provider specialty record.',
+    `fhir_practitioner_role_code` STRING COMMENT 'The fhir practitioner role code value classifying the provider specialty record.',
+    `hedis_measure_set` STRING COMMENT 'The hedis measure set of the provider specialty record.',
+    `hospital_privileges_applicable` BOOLEAN COMMENT 'The hospital privileges applicable of the provider specialty record.',
+    `mips_eligible` BOOLEAN COMMENT 'The mips eligible of the provider specialty record.',
+    `specialty_name` STRING COMMENT 'The specialty name of the provider specialty record.',
+    `network_adequacy_category` STRING COMMENT 'The network adequacy category of the provider specialty record.',
+    `npi_taxonomy_eligible` BOOLEAN COMMENT 'The npi taxonomy eligible of the provider specialty record.',
+    `nucc_classification` STRING COMMENT 'The nucc classification of the provider specialty record.',
+    `nucc_provider_type` STRING COMMENT 'The nucc provider type value classifying the provider specialty record.',
+    `nucc_specialization` STRING COMMENT 'The nucc specialization of the provider specialty record.',
+    `nucc_taxonomy_code` STRING COMMENT 'The nucc taxonomy code value classifying the provider specialty record.',
+    `payer_enrollment_eligible` BOOLEAN COMMENT 'The payer enrollment eligible of the provider specialty record.',
+    `pecos_specialty_code` STRING COMMENT 'The pecos specialty code value classifying the provider specialty record.',
+    `prescribing_authority` BOOLEAN COMMENT 'The prescribing authority of the provider specialty record.',
+    `primary_care_designation` BOOLEAN COMMENT 'The primary care designation of the provider specialty record.',
+    `prior_authorization_required` BOOLEAN COMMENT 'The prior authorization required of the provider specialty record.',
+    `referral_required` BOOLEAN COMMENT 'The referral required of the provider specialty record.',
+    `rvu_work_component` DECIMAL(18,2) COMMENT 'The rvu work component of the provider specialty record.',
+    `short_description` STRING COMMENT 'The short description of the provider specialty record.',
+    `specialty_status` STRING COMMENT 'The specialty status value classifying the provider specialty record.',
+    `specialty_type` STRING COMMENT 'The specialty type value classifying the provider specialty record.',
+    `surgical_specialty` BOOLEAN COMMENT 'The surgical specialty of the provider specialty record.',
+    `taxonomy_code` STRING COMMENT 'The taxonomy code value classifying the provider specialty record.',
+    `telehealth_eligible` BOOLEAN COMMENT 'The telehealth eligible of the provider specialty record.',
+    `updated_timestamp` TIMESTAMP COMMENT 'Record update timestamp',
+    `version_number` STRING COMMENT 'The version number of the provider specialty record.',
+    `vibe_structure_marker` STRING COMMENT 'The vibe structure marker of the provider specialty record.',
     CONSTRAINT pk_specialty PRIMARY KEY(`specialty_id`)
-) COMMENT 'Unified reference catalog of recognized medical and clinical specialties, subspecialties, and NUCC (National Uniform Claim Committee) Health Care Provider Taxonomy classifications. Includes specialty code, NUCC taxonomy code, provider type, classification, specialization, board certification body, specialty category, CMS crosswalk to specialty codes, effective date, and whether the specialty requires additional credentialing. Serves as the single consolidated SSOT for all provider classification, taxonomy, and specialization data — no other product in this domain stores NUCC taxonomy codes, provider taxonomy classifications, or specialty definitions. Used for provider directory publishing, network management, referral routing, NPI registry alignment, claims submission specialty coding, payer enrollment specialty validation, and CMS provider enrollment taxonomy reporting.';
+) COMMENT 'Clinical specialties and subspecialties with credentialing and enrollment rules';
+
+CREATE OR REPLACE TABLE `vibe_healthcare_v1`.`provider`.`credential` (
+    `credential_id` BIGINT COMMENT 'Primary key',
+    `cpt_code_id` BIGINT COMMENT 'Authorized CPT code',
+    `clinician_id` BIGINT COMMENT 'Clinician reference',
+    `employee_id` BIGINT COMMENT 'Employee reference',
+    `material_master_id` BIGINT COMMENT 'Material master',
+    `specialty_id` BIGINT COMMENT 'Specialty reference',
+    `training_id` BIGINT COMMENT 'Training reference',
+    `board_action_date` DATE COMMENT 'Timestamp capturing the board action date associated with the provider credential record.',
+    `board_action_flag` BOOLEAN COMMENT 'The board action flag of the provider credential record.',
+    `caqh_submitted` BOOLEAN COMMENT 'The caqh submitted of the provider credential record.',
+    `certifying_board_name` STRING COMMENT 'The certifying board name of the provider credential record.',
+    `cme_accrediting_organization` STRING COMMENT 'The cme accrediting organization of the provider credential record.',
+    `cme_activity_title` STRING COMMENT 'The cme activity title of the provider credential record.',
+    `cme_activity_type` STRING COMMENT 'The cme activity type value classifying the provider credential record.',
+    `cme_category` STRING COMMENT 'The cme category of the provider credential record.',
+    `cme_credit_hours` DECIMAL(18,2) COMMENT 'The cme credit hours of the provider credential record.',
+    `created_timestamp` TIMESTAMP COMMENT 'Record creation timestamp',
+    `credential_number` STRING COMMENT 'The credential number of the provider credential record.',
+    `credential_status` STRING COMMENT 'The credential status value classifying the provider credential record.',
+    `credential_type` STRING COMMENT 'License, Certification, DEA, etc.',
+    `days_to_expiration` STRING COMMENT 'The days to expiration of the provider credential record.',
+    `dea_business_activity_type` STRING COMMENT 'The dea business activity type value classifying the provider credential record.',
+    `dea_schedule_authorizations` STRING COMMENT 'The dea schedule authorizations of the provider credential record.',
+    `effective_from` DATE COMMENT 'Effective from date',
+    `effective_until` DATE COMMENT 'Effective until date',
+    `expiration_date` DATE COMMENT 'Timestamp capturing the expiration date associated with the provider credential record.',
+    `issue_date` DATE COMMENT 'Timestamp capturing the issue date associated with the provider credential record.',
+    `issuing_authority` STRING COMMENT 'The issuing authority of the provider credential record.',
+    `issuing_authority_name` STRING COMMENT 'The issuing authority name of the provider credential record.',
+    `issuing_state` STRING COMMENT 'The issuing state of the provider credential record.',
+    `moc_status` STRING COMMENT 'The moc status value classifying the provider credential record.',
+    `notes` STRING COMMENT 'The notes of the provider credential record.',
+    `npdb_queried` BOOLEAN COMMENT 'The npdb queried of the provider credential record.',
+    `npdb_query_date` DATE COMMENT 'Timestamp capturing the npdb query date associated with the provider credential record.',
+    `oig_exclusion_check_date` DATE COMMENT 'Timestamp capturing the oig exclusion check date associated with the provider credential record.',
+    `oig_exclusion_checked` BOOLEAN COMMENT 'The oig exclusion checked of the provider credential record.',
+    `payer_enrollment_relevant` BOOLEAN COMMENT 'The payer enrollment relevant of the provider credential record.',
+    `primary_source_verified` BOOLEAN COMMENT 'The primary source verified of the provider credential record.',
+    `privileging_relevant` BOOLEAN COMMENT 'The privileging relevant of the provider credential record.',
+    `psv_date` DATE COMMENT 'Timestamp capturing the psv date associated with the provider credential record.',
+    `psv_method` STRING COMMENT 'The psv method of the provider credential record.',
+    `recredentialing_due_date` DATE COMMENT 'Timestamp capturing the recredentialing due date associated with the provider credential record.',
+    `renewal_date` DATE COMMENT 'Timestamp capturing the renewal date associated with the provider credential record.',
+    `restriction_description` STRING COMMENT 'The restriction description of the provider credential record.',
+    `sam_exclusion_checked` BOOLEAN COMMENT 'The sam exclusion checked of the provider credential record.',
+    `source_system_record_reference` STRING COMMENT 'The source system record reference of the provider credential record.',
+    `subtype` STRING COMMENT 'The subtype of the provider credential record.',
+    `updated_timestamp` TIMESTAMP COMMENT 'Record update timestamp',
+    `verification_source` STRING COMMENT 'The verification source of the provider credential record.',
+    `vibe_structure_marker` STRING COMMENT 'The vibe structure marker of the provider credential record.',
+    CONSTRAINT pk_credential PRIMARY KEY(`credential_id`)
+) COMMENT 'Individual credentials (licenses, certifications, DEA, board certs) with expiration tracking';
 
 CREATE OR REPLACE TABLE `vibe_healthcare_v1`.`provider`.`privileging` (
-    `privileging_id` BIGINT COMMENT 'Unique surrogate identifier for each clinical privileging record granted to a clinician at a specific facility. Primary key for this data product.',
-    `provider_committee_id` BIGINT COMMENT 'Reference to the medical staff committee (e.g., Credentials Committee, Medical Executive Committee) that reviewed and approved the privilege grant. Required for Joint Commission accreditation documentation.',
-    `audit_id` BIGINT COMMENT 'Foreign key linking to compliance.audit. Business justification: Clinical privileges are audited for compliance with credentialing standards (TJC MS.06.01.05, CMS 482.12). Compliance teams audit privilege files for documentation of training, case volume, FPPE/OPPE,',
-    `care_site_id` BIGINT COMMENT 'Reference to the specific hospital, clinic, or healthcare facility at which the clinical privileges are granted and exercised. Privileges are facility-specific per Joint Commission standards.',
-    `org_unit_id` BIGINT COMMENT 'Reference to the clinical department or service line (e.g., Surgery, Cardiology, Emergency Medicine) under whose scope the privileges are administered and reviewed.',
-    `clinician_id` BIGINT COMMENT 'Reference to the licensed clinician or healthcare professional to whom clinical privileges are granted. Links to the provider master record.',
-    `privileging_proctor_provider_clinician_id` BIGINT COMMENT 'Reference to the supervising or proctoring physician assigned to observe and evaluate the clinician during the provisional privilege period. Required when is_provisional is True.',
-    `specialty_id` BIGINT COMMENT 'Foreign key linking to provider.specialty. Business justification: Clinical privileges are granted for specific specialties. privileging.specialty_code and specialty_name should reference specialty table as authoritative source.',
-    `approval_date` DATE COMMENT 'Calendar date on which the approving medical staff committee formally voted to grant or renew the clinical privileges. Distinct from the effective date, which may be retroactive or future-dated.',
-    `board_certification_required` BOOLEAN COMMENT 'Indicates whether board certification in the relevant specialty is a prerequisite for granting this privilege per the facilitys medical staff bylaws. True when board certification is required.',
-    `completed_case_volume` STRING COMMENT 'Actual number of cases or procedures performed by the clinician under this privilege during the current privilege period. Used for ongoing competency assessment and reappointment decisions.',
-    `cpt_code` STRING COMMENT 'American Medical Association (AMA) Current Procedural Terminology (CPT) code associated with the primary procedure covered by this privilege. Used to align privileging with billing authorization and quality measurement.. Valid values are `^[0-9]{5}[A-Z0-9]?$`',
-    `created_timestamp` TIMESTAMP COMMENT 'Timestamp when this privileging record was first created in the data platform. Supports audit trail, data lineage, and compliance with HIPAA Security Rule audit control requirements.',
-    `delineation_form_version` STRING COMMENT 'Version identifier of the privilege delineation form used to define the scope of this privilege grant. Tracks which version of the approved privilege form was in effect at the time of granting, supporting audit and accreditation review.',
-    `effective_date` DATE COMMENT 'Calendar date on which the clinical privilege grant becomes active and the clinician is authorized to perform the privileged procedures at the facility. Binding start date per medical staff bylaws.',
-    `emtala_covered` BOOLEAN COMMENT 'Indicates whether this privilege covers emergency on-call obligations under EMTALA (Emergency Medical Treatment and Labor Act). True when the clinician is authorized and obligated to respond to emergency department on-call requests under this privilege.',
-    `expiration_date` DATE COMMENT 'Calendar date on which the clinical privilege grant expires and must be renewed through the reappointment process. Typically aligned with the medical staff reappointment cycle (commonly every 2 years per TJC standards).',
-    `fppe_completion_date` DATE COMMENT 'Calendar date on which the Focused Professional Practice Evaluation (FPPE) was completed and findings were submitted to the medical staff committee. Null when FPPE is not required or not yet completed.',
-    `fppe_required` BOOLEAN COMMENT 'Indicates whether a Focused Professional Practice Evaluation (FPPE) is required for this privilege grant. FPPE is mandatory for all new privileges and triggered by performance concerns per TJC standards. True when FPPE is required.',
-    `icd10_procedure_code` STRING COMMENT 'ICD-10-PCS procedure code corresponding to the privileged procedure, used for inpatient procedure coding alignment and quality reporting. Applicable primarily for surgical and procedural privileges.. Valid values are `^[0-9A-Z]{7}$`',
-    `is_provisional` BOOLEAN COMMENT 'Indicates whether the privilege is granted on a provisional basis, requiring supervision or proctoring during an initial evaluation period before full privileges are confirmed. True when provisional; False when full privileges are granted.',
-    `malpractice_verified` BOOLEAN COMMENT 'Indicates whether the clinicians malpractice/professional liability insurance coverage has been verified as current and meeting the facilitys minimum coverage requirements at the time of privilege grant. True when verified.',
-    `npdb_report_date` DATE COMMENT 'Calendar date on which the adverse action was reported to the National Practitioner Data Bank (NPDB). Must occur within 15 days of the adverse action per HCQIA requirements. Null when no NPDB report is required.',
-    `npdb_report_required` BOOLEAN COMMENT 'Indicates whether an adverse action report to the National Practitioner Data Bank (NPDB) is required for this privilege action (e.g., suspension >30 days, revocation). True triggers mandatory NPDB reporting workflow.',
-    `oppe_last_review_date` DATE COMMENT 'Calendar date of the most recent Ongoing Professional Practice Evaluation (OPPE) review for this privilege. OPPE must occur at regular intervals (at least every 12 months) per TJC standards to support reappointment.',
-    `peer_review_score` DECIMAL(18,2) COMMENT 'Numeric score or rating assigned during the most recent peer review or focused professional practice evaluation (FPPE) or ongoing professional practice evaluation (OPPE) for this privilege. Used to support reappointment decisions. Sensitive business-confidential data.',
-    `privilege_category` STRING COMMENT 'Broad classification of the privilege type granted. Clinical covers general patient care; surgical covers operative procedures; procedural covers invasive non-surgical acts; diagnostic covers imaging/interpretation; prescriptive covers medication authority; administrative covers leadership roles.. Valid values are `clinical|surgical|procedural|diagnostic|prescriptive|administrative`',
-    `privilege_description` STRING COMMENT 'Detailed narrative description of the scope and limitations of the clinical privilege, including any conditions, supervision requirements, or volume thresholds specified by the medical staff committee.',
-    `privilege_name` STRING COMMENT 'Human-readable name or title of the clinical privilege granted (e.g., Laparoscopic Cholecystectomy, Cardiac Catheterization, Endotracheal Intubation). Sourced from the facilitys approved privilege delineation form.',
-    `privilege_number` STRING COMMENT 'Externally-known alphanumeric identifier assigned by the medical staff office to uniquely reference this privileging grant. Used in correspondence, audit trails, and credentialing system lookups (e.g., Symplr privilege record number).',
-    `privilege_status` STRING COMMENT 'Current lifecycle state of the clinical privilege grant. Active indicates full authorization; provisional indicates supervised practice during initial period; suspended indicates temporary removal pending investigation; revoked indicates permanent removal; expired indicates lapsed without renewal; pending indicates awaiting committee approval.. Valid values are `active|provisional|suspended|revoked|expired|pending`',
-    `privilege_type` STRING COMMENT 'Specific classification of the privilege grant. Core privileges are standard for the specialty; special privileges require additional training; temporary privileges are time-limited; telemedicine covers remote care delivery; locum tenens covers temporary coverage providers; disaster privileges are emergency-activated. [ENUM-REF-CANDIDATE: core|special|temporary|telemedicine|locum_tenens|disaster|provisional — promote to reference product]. Valid values are `core|special|temporary|telemedicine|locum_tenens|disaster`',
-    `provisional_end_date` DATE COMMENT 'Calendar date on which the provisional privilege period ends and the clinician transitions to full privileges, contingent on satisfactory proctoring evaluation. Null when privilege is not provisional.',
-    `reappointment_cycle_years` STRING COMMENT 'Number of years in the medical staff reappointment cycle for this privilege (typically 2 years per TJC standards). Determines the frequency of privilege renewal and competency review.',
-    `request_date` DATE COMMENT 'Calendar date on which the clinician submitted the privilege request or reappointment application to the medical staff office. Used to track processing turnaround time and compliance with credentialing timelines.',
-    `required_case_volume` STRING COMMENT 'Minimum number of cases or procedures the clinician must perform within the privilege period to demonstrate competency and maintain the privilege. Set by the medical staff committee based on specialty standards.',
-    `revocation_date` DATE COMMENT 'Calendar date on which the clinical privilege was permanently revoked, if applicable. Null when privilege has not been revoked. Triggers mandatory NPDB adverse action report within 15 days.',
-    `revocation_reason` STRING COMMENT 'Narrative description of the reason for permanent privilege revocation, such as gross negligence, criminal conviction, license revocation, or sustained peer review findings. Sensitive business-confidential information required for NPDB adverse action reporting.',
-    `source_record_reference` STRING COMMENT 'Native identifier of this privileging record in the originating operational system (e.g., Symplr privilege record ID, Epic credentialing record ID). Supports data lineage, reconciliation, and ETL traceability.',
-    `source_system_code` STRING COMMENT 'Code identifying the operational system of record from which this privileging record originated (e.g., SYMPLR for Symplr Credentialing, EPIC for Epic OpTime/Cadence, CERNER for Cerner Millennium, MEDITECH for MEDITECH Expanse, MANUAL for paper-based entry).. Valid values are `SYMPLR|EPIC|CERNER|MEDITECH|MANUAL`',
-    `suspension_date` DATE COMMENT 'Calendar date on which the clinical privilege was suspended, if applicable. Null when privilege has never been suspended. Required for adverse action reporting to the National Practitioner Data Bank (NPDB).',
-    `suspension_reason` STRING COMMENT 'Narrative description of the reason for privilege suspension, such as patient safety concern, peer review finding, license lapse, or investigation pending. Sensitive business-confidential information used for adverse action documentation and NPDB reporting.',
-    `telemedicine_authorized` BOOLEAN COMMENT 'Indicates whether this privilege extends to telemedicine or telehealth delivery of the authorized services. True when the clinician is authorized to perform the privileged activity via remote/virtual care modalities.',
-    `training_requirement_met` BOOLEAN COMMENT 'Indicates whether the clinician has satisfied all required training, education, or competency documentation prerequisites for this privilege as defined on the privilege delineation form. True when all training requirements are verified.',
-    `updated_timestamp` TIMESTAMP COMMENT 'Timestamp when this privileging record was most recently modified in the data platform. Supports change tracking, audit trail, and incremental ETL processing for the Silver Layer lakehouse.',
+    `privileging_id` BIGINT COMMENT 'Primary key',
+    `committee_id` BIGINT COMMENT 'Approving committee',
+    `audit_id` BIGINT COMMENT 'Audit reference',
+    `care_site_id` BIGINT COMMENT 'Unique identifier for the care site within the provider privileging record.',
+    `org_unit_id` BIGINT COMMENT 'Unique identifier for the org unit within the provider privileging record.',
+    `clinician_id` BIGINT COMMENT 'Unique identifier for the primary privileging clinician within the provider privileging record.',
+    `privileging_clinician_id` BIGINT COMMENT 'Unique identifier for the privileging clinician within the provider privileging record.',
+    `specialty_id` BIGINT COMMENT 'Unique identifier for the specialty within the provider privileging record.',
+    `approval_date` DATE COMMENT 'Timestamp capturing the approval date associated with the provider privileging record.',
+    `board_certification_required` BOOLEAN COMMENT 'The board certification required of the provider privileging record.',
+    `completed_case_volume` STRING COMMENT 'The completed case volume of the provider privileging record.',
+    `cpt_code` STRING COMMENT 'The cpt code value classifying the provider privileging record.',
+    `created_timestamp` TIMESTAMP COMMENT 'Record creation timestamp',
+    `delineation_form_version` STRING COMMENT 'The delineation form version of the provider privileging record.',
+    `effective_date` DATE COMMENT 'Timestamp capturing the effective date associated with the provider privileging record.',
+    `emtala_covered` BOOLEAN COMMENT 'The emtala covered of the provider privileging record.',
+    `expiration_date` DATE COMMENT 'Timestamp capturing the expiration date associated with the provider privileging record.',
+    `fppe_completion_date` DATE COMMENT 'Timestamp capturing the fppe completion date associated with the provider privileging record.',
+    `fppe_required` BOOLEAN COMMENT 'The fppe required of the provider privileging record.',
+    `granted_date` DATE COMMENT 'Timestamp capturing the granted date associated with the provider privileging record.',
+    `icd10_procedure_code` STRING COMMENT 'The icd10 procedure code value classifying the provider privileging record.',
+    `is_provisional` BOOLEAN COMMENT 'Boolean flag indicating the is provisional status of the provider privileging record.',
+    `malpractice_verified` BOOLEAN COMMENT 'The malpractice verified of the provider privileging record.',
+    `npdb_report_date` DATE COMMENT 'Timestamp capturing the npdb report date associated with the provider privileging record.',
+    `npdb_report_required` BOOLEAN COMMENT 'The npdb report required of the provider privileging record.',
+    `oppe_last_review_date` DATE COMMENT 'Timestamp capturing the oppe last review date associated with the provider privileging record.',
+    `peer_review_score` DECIMAL(18,2) COMMENT 'The peer review score of the provider privileging record.',
+    `privilege_category` STRING COMMENT 'The privilege category of the provider privileging record.',
+    `privilege_description` STRING COMMENT 'The privilege description of the provider privileging record.',
+    `privilege_name` STRING COMMENT 'The privilege name of the provider privileging record.',
+    `privilege_number` STRING COMMENT 'The privilege number of the provider privileging record.',
+    `privilege_status` STRING COMMENT 'The privilege status value classifying the provider privileging record.',
+    `privilege_type` STRING COMMENT 'The privilege type value classifying the provider privileging record.',
+    `provisional_end_date` DATE COMMENT 'Timestamp capturing the provisional end date associated with the provider privileging record.',
+    `reappointment_cycle_years` STRING COMMENT 'The reappointment cycle years of the provider privileging record.',
+    `request_date` DATE COMMENT 'Timestamp capturing the request date associated with the provider privileging record.',
+    `required_case_volume` STRING COMMENT 'The required case volume of the provider privileging record.',
+    `revocation_date` DATE COMMENT 'Timestamp capturing the revocation date associated with the provider privileging record.',
+    `revocation_reason` STRING COMMENT 'The revocation reason of the provider privileging record.',
+    `source_record_reference` STRING COMMENT 'The source record reference of the provider privileging record.',
+    `source_system_code` STRING COMMENT 'The source system code value classifying the provider privileging record.',
+    `privileging_status` STRING COMMENT 'The privileging status value classifying the provider privileging record.',
+    `suspension_date` DATE COMMENT 'Timestamp capturing the suspension date associated with the provider privileging record.',
+    `suspension_reason` STRING COMMENT 'The suspension reason of the provider privileging record.',
+    `telemedicine_authorized` BOOLEAN COMMENT 'The telemedicine authorized of the provider privileging record.',
+    `training_requirement_met` BOOLEAN COMMENT 'The training requirement met of the provider privileging record.',
+    `updated_timestamp` TIMESTAMP COMMENT 'Record update timestamp',
+    `vibe_structure_marker` STRING COMMENT 'The vibe structure marker of the provider privileging record.',
     CONSTRAINT pk_privileging PRIMARY KEY(`privileging_id`)
-) COMMENT 'Tracks clinical privileges granted to individual clinicians at specific facilities, authorizing them to perform defined procedures and services. Captures privilege category, procedure list, granting facility, privilege status (active, provisional, suspended, revoked), effective and expiration dates, and approving medical staff committee. Core to EMTALA compliance and Joint Commission accreditation.';
+) COMMENT 'Clinical privileges granted to providers at specific facilities';
 
 CREATE OR REPLACE TABLE `vibe_healthcare_v1`.`provider`.`credentialing_application` (
-    `credentialing_application_id` BIGINT COMMENT 'Unique surrogate identifier for each credentialing application record in the system. Primary key for the credentialing_application data product.',
-    `provider_committee_id` BIGINT COMMENT 'Foreign key linking to provider.committee. Business justification: Credentialing applications are reviewed and approved by a medical staff committee (typically credentials committee or medical executive committee). The application already has committee_review_date an',
-    `audit_id` BIGINT COMMENT 'Foreign key linking to compliance.audit. Business justification: Credentialing applications are audited for completeness and compliance with NCQA, TJC, and CMS standards. Credentials committees audit application files for primary source verification, NPDB queries, ',
-    `care_site_id` BIGINT COMMENT 'Reference to the hospital, clinic, or healthcare facility at which the provider is seeking medical staff membership and clinical privileges.',
-    `clinician_id` BIGINT COMMENT 'Reference to the clinician or organizational provider submitting this credentialing application. Links to the authoritative provider master record.',
-    `compliance_program_id` BIGINT COMMENT 'Foreign key linking to compliance.compliance_program. Business justification: Credentialing applications are governed by specific compliance programs (medical staff bylaws, CMS enrollment). Compliance officers report credentialing metrics by program for regulatory oversight and',
-    `cost_center_id` BIGINT COMMENT 'Foreign key linking to finance.cost_center. Business justification: Credentialing application processing costs are allocated to medical staff office cost centers for budget tracking, workload-based cost allocation, and operational efficiency analysis.',
-    `employee_id` BIGINT COMMENT 'Foreign key linking to workforce.employee. Business justification: Applications submitted by workforce employees seeking clinical privileges (internal promotions, role changes). Real business need: tracking career progression, internal mobility, privilege requests fr',
-    `health_plan_id` BIGINT COMMENT 'Foreign key linking to insurance.health_plan. Business justification: Applications target specific health plans within a payer for plan-specific credentialing (e.g., Medicare Advantage plan, Medicaid managed care plan). Critical for plan-level enrollment and network dir',
-    `payer_id` BIGINT COMMENT 'Foreign key linking to insurance.payer. Business justification: Credentialing applications submitted to specific payers for network enrollment and claims submission eligibility. Essential for payer credentialing workflows, application tracking, and enrollment stat',
-    `specialty_id` BIGINT COMMENT 'Foreign key linking to provider.specialty. Business justification: Credentialing applications specify primary specialty. Multiple FKs to specialty require distinct labels. Removes primary_specialty STRING.',
-    `application_number` STRING COMMENT 'Externally visible, human-readable reference number assigned to the credentialing application at submission. Used in correspondence with the applicant, medical staff office, and payer enrollment workflows. Format: CRED-YYYY-NNNNNN.. Valid values are `^CRED-[0-9]{4}-[0-9]{6}$`',
-    `application_status` STRING COMMENT 'Current lifecycle state of the credentialing application workflow. Tracks progression from initial submission through primary source verification, committee review, and final decision. [ENUM-REF-CANDIDATE: draft|submitted|under_review|pending_verification|committee_review|approved|denied|withdrawn|deferred — promote to reference product]',
-    `application_type` STRING COMMENT 'Classifies the nature of the credentialing application: initial credentialing for new medical staff membership, biennial reappointment, expansion of existing clinical privileges, reinstatement after lapse, or locum tenens temporary privileges.. Valid values are `initial|reappointment|privilege_expansion|reinstatement|locum_tenens`',
-    `board_certification_status` STRING COMMENT 'Current status of the providers board certification in their primary specialty as verified through primary source verification with the American Board of Medical Specialties (ABMS) or equivalent certifying body.. Valid values are `certified|eligible|not_certified|expired`',
-    `caqh_provider_number` STRING COMMENT 'The unique 8-digit identifier assigned to the provider in the CAQH ProView universal credentialing database. Used to retrieve standardized credentialing data and attestations, reducing redundant data collection across payers and facilities.. Valid values are `^[0-9]{8}$`',
-    `cme_compliance_status` STRING COMMENT 'Status of the providers compliance with Continuing Medical Education (CME) requirements during the reappointment review period. Evaluated against state licensure CME requirements and facility-specific CME policies.. Valid values are `compliant|non_compliant|pending|not_applicable`',
-    `committee_review_date` DATE COMMENT 'The date on which the credentials committee or medical executive committee formally reviewed the completed application and supporting verification documentation.',
-    `complete_date` DATE COMMENT 'The date on which the credentialing application was deemed complete — all required documents, attestations, and supporting materials received. Triggers the start of the formal credentialing review clock per NCQA and Joint Commission standards.',
-    `created_timestamp` TIMESTAMP COMMENT 'The timestamp when the credentialing application record was first created in the system. Sourced from Symplr credentialing workflow. Used for audit trail and data lineage tracking.',
-    `dea_number` STRING COMMENT 'The DEA registration number authorizing the provider to prescribe controlled substances. Verified as part of primary source verification. Required for providers with prescribing privileges. Format: two letters followed by seven digits.. Valid values are `^[A-Z]{2}[0-9]{7}$`',
-    `decision_date` DATE COMMENT 'The date on which the medical executive committee or credentialing committee rendered the final approval or denial decision on the application.',
-    `decision_type` STRING COMMENT 'The final disposition rendered by the credentialing committee: approved for full privileges, denied, deferred pending additional information, withdrawn by the applicant, or provisional privileges granted pending full review.. Valid values are `approved|denied|deferred|withdrawn|provisional`',
-    `denial_reason` STRING COMMENT 'Narrative explanation of the reason for denial or deferral of the credentialing application. Populated only when decision_type is denied or deferred. Confidential per medical staff bylaws and peer review protection statutes.',
-    `effective_date` DATE COMMENT 'The date on which approved clinical privileges and medical staff membership become effective, authorizing the provider to practice at the facility. Used for payer enrollment and billing authorization alignment.',
-    `expiration_date` DATE COMMENT 'The date on which the granted clinical privileges and medical staff membership expire, typically 24 months from the effective date per biennial reappointment cycles. Triggers reappointment workflow initiation.',
-    `malpractice_aggregate_limit` DECIMAL(18,2) COMMENT 'The maximum total dollar amount the malpractice insurance policy will pay for all covered claims during the policy period. Expressed in USD. Facilities typically require minimum aggregate limits (e.g., $3,000,000 aggregate).',
-    `malpractice_coverage_type` STRING COMMENT 'Type of professional liability insurance policy: occurrence-based coverage (covers incidents occurring during the policy period regardless of when the claim is filed) or claims-made coverage (covers claims filed while the policy is active, requiring tail coverage upon expiration).. Valid values are `occurrence|claims_made`',
-    `malpractice_insurer_name` STRING COMMENT 'Name of the professional liability (malpractice) insurance carrier providing coverage for the applicant. Verified as part of the credentialing process to confirm active coverage.',
-    `malpractice_per_occurrence_limit` DECIMAL(18,2) COMMENT 'The maximum dollar amount the malpractice insurance policy will pay for a single covered claim or occurrence. Expressed in USD. Facilities typically require minimum limits (e.g., $1,000,000 per occurrence).',
-    `malpractice_policy_effective_date` DATE COMMENT 'The date on which the providers current professional liability insurance policy became effective. Used to confirm continuous coverage and identify any gaps.',
-    `malpractice_policy_expiration_date` DATE COMMENT 'The date on which the providers current professional liability insurance policy expires. Triggers re-verification and alerts when approaching expiration to ensure continuous coverage.',
-    `malpractice_policy_number` STRING COMMENT 'The policy number of the professional liability insurance policy covering the applicant. Used for verification with the insurer and for audit documentation.',
-    `medical_staff_category` STRING COMMENT 'The category of medical staff membership being applied for, defining the providers rights, responsibilities, and voting privileges within the medical staff organization. [ENUM-REF-CANDIDATE: active|associate|courtesy|consulting|honorary|provisional|affiliate — promote to reference product]',
-    `npdb_adverse_action_flag` BOOLEAN COMMENT 'Indicates whether the NPDB response contains one or more adverse action reports (e.g., clinical privilege revocation, suspension, or restriction by a healthcare entity). True triggers mandatory committee review and may affect credentialing decision.',
-    `npdb_malpractice_flag` BOOLEAN COMMENT 'Indicates whether the NPDB response contains one or more medical malpractice payment reports. True triggers mandatory committee review and documentation of the committees assessment of the payment history.',
-    `npdb_query_date` DATE COMMENT 'The date on which the NPDB query was submitted for this credentialing application. Must be within 180 days of the credentialing decision per NCQA standards.',
-    `npdb_query_type` STRING COMMENT 'Type of NPDB query submitted: initial query at first credentialing, reappointment query at biennial renewal, or enrollment in the continuous query program for ongoing monitoring of adverse actions and malpractice payments.. Valid values are `initial|reappointment|continuous_query`',
-    `npdb_reference_number` STRING COMMENT 'The unique reference number assigned by the NPDB to the submitted query. Used for audit trail, regulatory reporting, and reconciliation with NPDB records.',
-    `npdb_response_date` DATE COMMENT 'The date on which the NPDB response was received for the submitted query. Used to confirm timely receipt and to calculate query-to-response turnaround.',
-    `npdb_response_status` STRING COMMENT 'Outcome of the NPDB query: no_report indicates a clean response with no adverse action or malpractice payment reports; report_found indicates one or more reports exist requiring committee review.. Valid values are `no_report|report_found|pending`',
-    `npi` STRING COMMENT 'The 10-digit National Provider Identifier assigned to the clinician by CMS. Required on all credentialing applications and used for payer enrollment, claims processing, and provider directory maintenance.. Valid values are `^[0-9]{10}$`',
-    `oig_exclusion_check_status` STRING COMMENT 'Result of the OIG List of Excluded Individuals and Entities (LEIE) screening to confirm the provider is not excluded from participation in federal healthcare programs (Medicare, Medicaid). Must be checked at initial credentialing and at least monthly thereafter.. Valid values are `clear|excluded|pending`',
-    `peer_reference_count` STRING COMMENT 'The number of peer reference evaluations collected for this credentialing application. NCQA and Joint Commission standards typically require a minimum of three peer references from physicians familiar with the applicants clinical competency.',
-    `peer_references_complete_flag` BOOLEAN COMMENT 'Indicates whether the required minimum number of peer reference evaluations have been received and reviewed for this application. True when all required references are on file and meet quality standards.',
-    `peer_review_summary_status` STRING COMMENT 'Status of the formal peer review summary evaluation completed for the reappointment cycle, assessing clinical performance, professional conduct, and adherence to evidence-based practice standards. Protected under state peer review statutes.. Valid values are `reviewed|pending|not_applicable`',
-    `provisional_privileges_expiration_date` DATE COMMENT 'The date on which any granted provisional clinical privileges expire. Provisional privileges must be converted to full privileges or terminated upon completion of the credentialing review.',
-    `provisional_privileges_flag` BOOLEAN COMMENT 'Indicates whether provisional (temporary) clinical privileges have been granted to the provider pending completion of the full credentialing review. Provisional privileges are time-limited and require a supervising physician attestation.',
-    `psv_education_status` STRING COMMENT 'Status of primary source verification of the providers medical education (medical school graduation) and graduate medical education (residency/fellowship) directly with the issuing institutions or through ECFMG for international graduates.. Valid values are `verified|pending|failed|not_required`',
-    `psv_license_status` STRING COMMENT 'Status of primary source verification of the providers state medical license directly with the issuing state medical board. A core PSV element required by NCQA and Joint Commission credentialing standards.. Valid values are `verified|pending|failed|not_required`',
-    `psv_work_history_status` STRING COMMENT 'Status of verification of the providers five-year work history, including gaps in employment or training exceeding six months, as required by NCQA credentialing standards.. Valid values are `verified|pending|failed|not_required`',
-    `quality_indicator_review_status` STRING COMMENT 'Status of the review of clinical quality indicators (e.g., outcomes data, complication rates, mortality rates, HEDIS measures) for the reappointment period. Populated for reappointment and privilege expansion applications.. Valid values are `reviewed|pending|not_applicable`',
-    `reappointment_review_period_end` DATE COMMENT 'The end date of the clinical performance review period evaluated during a reappointment credentialing cycle. Marks the close of the 24-month interval used to assess quality indicators and peer review summaries.',
-    `reappointment_review_period_start` DATE COMMENT 'The start date of the clinical performance review period evaluated during a reappointment credentialing cycle. Captures the beginning of the 24-month interval of quality indicators, peer review summaries, and CME compliance assessed for reappointment.',
-    `received_date` DATE COMMENT 'The date the medical staff office officially received and logged the credentialing application. May differ from submission_date when applications are mailed or submitted through intermediaries such as CAQH ProView.',
-    `sam_exclusion_check_status` STRING COMMENT 'Result of the SAM.gov federal exclusion database screening confirming the provider is not debarred or suspended from federal programs. Required in addition to OIG LEIE screening for comprehensive exclusion verification.. Valid values are `clear|excluded|pending`',
-    `secondary_specialty` STRING COMMENT 'The providers secondary or subspecialty clinical area for which additional privileges may be requested (e.g., Interventional Cardiology as a subspecialty of Cardiology). Nullable when no secondary specialty applies.',
-    `submission_date` DATE COMMENT 'The date on which the clinician formally submitted the completed credentialing application to the medical staff office. Serves as the principal business event date for the credentialing lifecycle and is used to calculate processing turnaround time.',
-    `tail_coverage_indicator` BOOLEAN COMMENT 'Indicates whether the provider has obtained tail coverage (extended reporting endorsement) for a prior claims-made policy. Required when a provider transitions between employers or facilities to ensure coverage for claims arising from prior practice.',
-    `telemedicine_privileges_requested` BOOLEAN COMMENT 'Indicates whether the provider is requesting telemedicine or telehealth clinical privileges as part of this credentialing application. Telemedicine credentialing may follow an expedited pathway per CMS and Joint Commission standards.',
-    `updated_timestamp` TIMESTAMP COMMENT 'The timestamp when the credentialing application record was most recently modified in the system. Used for change tracking, ETL delta processing, and audit trail compliance.',
+    `credentialing_application_id` BIGINT COMMENT 'Primary key',
+    `committee_id` BIGINT COMMENT 'Approving committee',
+    `audit_id` BIGINT COMMENT 'Audit reference',
+    `care_site_id` BIGINT COMMENT 'Unique identifier for the care site within the provider credentialing application record.',
+    `clinician_id` BIGINT COMMENT 'Unique identifier for the clinician within the provider credentialing application record.',
+    `compliance_program_id` BIGINT COMMENT 'Compliance program',
+    `cost_center_id` BIGINT COMMENT 'Cost center',
+    `employee_id` BIGINT COMMENT 'Unique identifier for the employee within the provider credentialing application record.',
+    `specialty_id` BIGINT COMMENT 'Primary specialty',
+    `application_number` STRING COMMENT 'The application number of the provider credentialing application record.',
+    `application_status` STRING COMMENT 'The application status value classifying the provider credentialing application record.',
+    `application_type` STRING COMMENT 'Initial, Reappointment, etc.',
+    `board_certification_status` STRING COMMENT 'The board certification status value classifying the provider credentialing application record.',
+    `caqh_provider_number` STRING COMMENT 'The caqh provider number of the provider credentialing application record.',
+    `cme_compliance_status` STRING COMMENT 'The cme compliance status value classifying the provider credentialing application record.',
+    `committee_review_date` DATE COMMENT 'Timestamp capturing the committee review date associated with the provider credentialing application record.',
+    `complete_date` DATE COMMENT 'Timestamp capturing the complete date associated with the provider credentialing application record.',
+    `created_timestamp` TIMESTAMP COMMENT 'Record creation timestamp',
+    `dea_number` STRING COMMENT 'The dea number of the provider credentialing application record.',
+    `decision_date` DATE COMMENT 'Timestamp capturing the decision date associated with the provider credentialing application record.',
+    `decision_type` STRING COMMENT 'Approved, Denied, etc.',
+    `denial_reason` STRING COMMENT 'The denial reason of the provider credentialing application record.',
+    `effective_date` DATE COMMENT 'Timestamp capturing the effective date associated with the provider credentialing application record.',
+    `expiration_date` DATE COMMENT 'Timestamp capturing the expiration date associated with the provider credentialing application record.',
+    `malpractice_aggregate_limit` DECIMAL(18,2) COMMENT 'The malpractice aggregate limit of the provider credentialing application record.',
+    `malpractice_coverage_type` STRING COMMENT 'The malpractice coverage type value classifying the provider credentialing application record.',
+    `malpractice_insurer_name` STRING COMMENT 'The malpractice insurer name of the provider credentialing application record.',
+    `malpractice_per_occurrence_limit` DECIMAL(18,2) COMMENT 'The malpractice per occurrence limit of the provider credentialing application record.',
+    `malpractice_policy_effective_date` DATE COMMENT 'Timestamp capturing the malpractice policy effective date associated with the provider credentialing application record.',
+    `malpractice_policy_expiration_date` DATE COMMENT 'Timestamp capturing the malpractice policy expiration date associated with the provider credentialing application record.',
+    `malpractice_policy_number` STRING COMMENT 'The malpractice policy number of the provider credentialing application record.',
+    `medical_staff_category` STRING COMMENT 'The medical staff category of the provider credentialing application record.',
+    `npdb_adverse_action_flag` BOOLEAN COMMENT 'The npdb adverse action flag of the provider credentialing application record.',
+    `npdb_malpractice_flag` BOOLEAN COMMENT 'The npdb malpractice flag of the provider credentialing application record.',
+    `npdb_query_date` DATE COMMENT 'Timestamp capturing the npdb query date associated with the provider credentialing application record.',
+    `npdb_query_type` STRING COMMENT 'The npdb query type value classifying the provider credentialing application record.',
+    `npdb_reference_number` STRING COMMENT 'The npdb reference number of the provider credentialing application record.',
+    `npdb_response_date` DATE COMMENT 'Timestamp capturing the npdb response date associated with the provider credentialing application record.',
+    `npdb_response_status` STRING COMMENT 'The npdb response status value classifying the provider credentialing application record.',
+    `npi` STRING COMMENT 'The npi of the provider credentialing application record.',
+    `oig_exclusion_check_status` STRING COMMENT 'The oig exclusion check status value classifying the provider credentialing application record.',
+    `peer_reference_count` STRING COMMENT 'The peer reference count of the provider credentialing application record.',
+    `peer_references_complete_flag` BOOLEAN COMMENT 'The peer references complete flag of the provider credentialing application record.',
+    `peer_review_summary_status` STRING COMMENT 'The peer review summary status value classifying the provider credentialing application record.',
+    `provisional_privileges_expiration_date` DATE COMMENT 'Timestamp capturing the provisional privileges expiration date associated with the provider credentialing application record.',
+    `provisional_privileges_flag` BOOLEAN COMMENT 'The provisional privileges flag of the provider credentialing application record.',
+    `psv_education_status` STRING COMMENT 'The psv education status value classifying the provider credentialing application record.',
+    `psv_license_status` STRING COMMENT 'The psv license status value classifying the provider credentialing application record.',
+    `psv_work_history_status` STRING COMMENT 'The psv work history status value classifying the provider credentialing application record.',
+    `quality_indicator_review_status` STRING COMMENT 'The quality indicator review status value classifying the provider credentialing application record.',
+    `reappointment_review_period_end` DATE COMMENT 'The reappointment review period end of the provider credentialing application record.',
+    `reappointment_review_period_start` DATE COMMENT 'The reappointment review period start of the provider credentialing application record.',
+    `received_date` DATE COMMENT 'Timestamp capturing the received date associated with the provider credentialing application record.',
+    `sam_exclusion_check_status` STRING COMMENT 'The sam exclusion check status value classifying the provider credentialing application record.',
+    `secondary_specialty` STRING COMMENT 'The secondary specialty of the provider credentialing application record.',
+    `credentialing_application_status` STRING COMMENT 'The credentialing application status value classifying the provider credentialing application record.',
+    `submission_date` DATE COMMENT 'Timestamp capturing the submission date associated with the provider credentialing application record.',
+    `tail_coverage_indicator` BOOLEAN COMMENT 'The tail coverage indicator of the provider credentialing application record.',
+    `telemedicine_privileges_requested` BOOLEAN COMMENT 'The telemedicine privileges requested of the provider credentialing application record.',
+    `updated_timestamp` TIMESTAMP COMMENT 'Record update timestamp',
+    `vibe_structure_marker` STRING COMMENT 'The vibe structure marker of the provider credentialing application record.',
     CONSTRAINT pk_credentialing_application PRIMARY KEY(`credentialing_application_id`)
-) COMMENT 'Transactional record of a clinicians formal application for medical staff membership and clinical privileges at a facility, covering the complete credentialing lifecycle: initial credentialing, biennial reappointment, and privilege expansion workflows. Tracks application type, submission date, status, and all verification stages including: (1) Primary source verification of licenses, education, and training; (2) Peer reference evaluations with referee identity, NPI, relationship to applicant, competency ratings, professional conduct assessment, recommendation type, and confidentiality flag; (3) NPDB (National Practitioner Data Bank) queries with query type (initial, reappointment, continuous query enrollment), query/response dates, response status, adverse action flags, malpractice payment flags, and query reference number; (4) Malpractice insurance verification with insurer name, policy number, coverage type (occurrence vs. claims-made), per-occurrence and aggregate limits, effective/expiration dates, tail coverage indicator, and coverage status; (5) Reappointment cycle management with review period tracking, peer review summaries, quality indicator results, CME compliance status, renewal decisions, and reappointment effective dates. Records committee review dates, final approval/denial decision, and effective dates. Serves as the consolidated SSOT for the entire credentialing lifecycle workflow — no other product in this domain stores peer references, NPDB queries, malpractice verification, or reappointment cycle data. Compliant with NCQA, Joint Commission, CAQH, and CMS credentialing standards. Sourced from Symplr credentialing workflow.';
-
-CREATE OR REPLACE TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` (
-    `provider_payer_enrollment_id` BIGINT COMMENT 'Unique surrogate identifier for each payer enrollment record in the silver layer lakehouse. Primary key for this data product.',
-    `ar_account_id` BIGINT COMMENT 'Foreign key linking to finance.ar_account. Business justification: Payer enrollments enable revenue collection; AR accounts track receivables by payer. Links enrollment status to AR aging for collectability analysis, payer performance tracking, and revenue cycle opti',
-    `clinician_id` BIGINT COMMENT 'Reference to the individual clinician or organizational provider associated with this payer enrollment record. Links to the provider master entity.',
-    `cost_center_id` BIGINT COMMENT 'Foreign key linking to finance.cost_center. Business justification: Payer enrollment activities incur costs (application fees, credentialing services, staff time) tracked by cost center for revenue cycle budgeting and enrollment cost-per-payer analysis.',
-    `employee_id` BIGINT COMMENT 'Foreign key linking to workforce.employee. Business justification: Payer enrollment for employed providers billing under organizational NPIs. Real business need: revenue cycle - ensuring employed clinicians can bill, tracking enrollment status for compensation/produc',
-    `org_provider_id` BIGINT COMMENT 'Foreign key linking to provider.org_provider. Business justification: Organizational providers enroll with payers separately from individual clinicians. FK will be NULL for clinician-only enrollments. No redundant columns to remove.',
-    `payer_contract_id` BIGINT COMMENT 'The identifier of the payer contract or fee schedule agreement associated with this enrollment. Links the enrollment to the specific contractual terms governing reimbursement rates and billing rules. Sourced from Symplr or the payer contracting system.',
-    `payer_id` BIGINT COMMENT 'Reference to the insurance payer (Medicare, Medicaid, commercial payer) with whom the provider is enrolled. Links to the payer master entity.',
-    `provider_location_id` BIGINT COMMENT 'Reference to the specific practice location or facility address associated with this payer enrollment. A provider may have multiple enrollments at different locations with the same payer. Links to the facility or location master entity.',
-    `npi_registry_id` BIGINT COMMENT 'Foreign key linking to reference.npi_registry. Business justification: Payer enrollment validation requires NPI registry verification for active status, taxonomy code accuracy, and practice location matching. Healthcare operations perform monthly NPI validation during re',
-    `specialty_id` BIGINT COMMENT 'Foreign key linking to provider.specialty. Business justification: Payer enrollment is specialty-specific. payer_enrollment.specialty_code should reference specialty table as authoritative source.',
-    `taxonomy_id` BIGINT COMMENT 'Foreign key linking to provider.provider_taxonomy. Business justification: Payer enrollments taxonomy code should reference provider_taxonomy table. Removes taxonomy_code STRING.',
-    `application_submitted_date` DATE COMMENT 'The date on which the provider enrollment application was formally submitted to the payer. Used to track application processing timelines, SLA compliance, and identify delayed enrollments impacting revenue.',
-    `approval_date` DATE COMMENT 'The date on which the payer formally approved the providers enrollment application. May differ from the effective date if retroactive enrollment is granted. Used for lifecycle tracking and RCM gap analysis.',
-    `billing_npi` STRING COMMENT 'The NPI used specifically for billing purposes under this enrollment, which may be the group/organizational NPI rather than the rendering providers individual NPI. Determines the pay-to entity on claims.. Valid values are `^[0-9]{10}$`',
-    `created_timestamp` TIMESTAMP COMMENT 'The timestamp when this payer enrollment record was first created in the source system (Symplr). Represents the audit trail creation event. Formatted as yyyy-MM-ddTHH:mm:ss.SSSXXX per platform convention.',
-    `credentialing_expiration_date` DATE COMMENT 'The date on which the providers credentialing with this payer expires and must be renewed. Payer credentialing typically requires renewal every 2-3 years. Expiration without renewal may result in claims denial.',
-    `credentialing_status` STRING COMMENT 'The credentialing verification status of the provider with this payer, distinct from enrollment status. Credentialing validates the providers qualifications, licensure, and background. Provisional allows temporary billing while full credentialing is completed. Sourced from Symplr credentialing module.. Valid values are `credentialed|provisional|pending|expired|denied`',
-    `credentialing_tier` STRING COMMENT 'Payer-assigned credentialing tier that may affect reimbursement rates, network designation, or quality incentive eligibility. Tier classifications vary by payer but generally reflect quality metrics, board certification, and practice standards. Sourced from Symplr credentialing module.. Valid values are `tier_1|tier_2|tier_3|provisional`',
-    `dea_number` STRING COMMENT 'DEA registration number of the provider, required for enrollment with payers that cover controlled substance prescribing. Format: two letters followed by seven digits. Sensitive identifier subject to DEA regulatory oversight.. Valid values are `^[A-Z]{2}[0-9]{7}$`',
-    `edi_submitter_code` STRING COMMENT 'The EDI submitter identifier assigned by the payer for electronic claims submission (HIPAA 837 transactions) under this enrollment. Required for electronic billing setup and clearinghouse routing.',
-    `effective_date` DATE COMMENT 'The date on which the providers enrollment with the payer becomes effective and the provider is authorized to submit claims. Critical for Revenue Cycle Management (RCM) to determine billable service dates.',
-    `eft_enrolled` BOOLEAN COMMENT 'Indicates whether the provider has enrolled in Electronic Funds Transfer (EFT) with this payer for direct deposit of claim payments. EFT enrollment is required by CMS for Medicare providers under the ACA. True = EFT active; False = paper check.',
-    `enrollment_number` STRING COMMENT 'Externally-known unique enrollment reference number assigned by the payer or enrollment system (e.g., Symplr enrollment tracking number). Used for cross-system reconciliation and payer correspondence.',
-    `enrollment_source` STRING COMMENT 'The system or channel through which the enrollment application was submitted. Symplr indicates submission via the Symplr provider enrollment module. PECOS indicates direct submission via CMS Provider Enrollment, Chain, and Ownership System. Used for data lineage and process analytics.. Valid values are `symplr|pecos|state_portal|paper|edi_enrollment|other`',
-    `enrollment_status` STRING COMMENT 'Current lifecycle state of the providers enrollment with the payer. Active indicates the provider is credentialed and authorized to bill. Pending indicates the application is under review. Terminated indicates the enrollment has ended. Suspended indicates temporary hold. Rejected indicates the application was denied. Revalidation_required indicates CMS-mandated periodic revalidation is due.. Valid values are `active|pending|terminated|suspended|rejected|revalidation_required`',
-    `enrollment_type` STRING COMMENT 'Indicates the nature of the providers participation agreement with the payer. Participating providers accept payer-negotiated rates as payment in full. Non-participating providers may balance-bill patients. Opt-out applies to Medicare providers who have formally opted out. Reassignment indicates benefits are reassigned to a group or facility.. Valid values are `participating|non_participating|opt_out|reassignment`',
-    `group_npi` STRING COMMENT 'The 10-digit NPI of the group practice or organizational entity under which the individual provider is enrolled with this payer. Relevant for reassignment of benefits and group billing scenarios. Distinct from the individual providers NPI.. Valid values are `^[0-9]{10}$`',
-    `license_state` STRING COMMENT 'Two-letter US state abbreviation for the state in which the provider holds the license submitted for this enrollment. Used to validate licensure jurisdiction against the payers service area.. Valid values are `^[A-Z]{2}$`',
-    `medicaid_provider_number` STRING COMMENT 'State-assigned Medicaid provider identification number issued upon successful Medicaid enrollment. Required for Medicaid claims submission. Varies by state Medicaid program. Null for non-Medicaid enrollments.',
-    `network_status` STRING COMMENT 'Indicates whether the provider is currently in-network or out-of-network with this payer. In-network status means the provider has a contracted rate agreement. Critical for patient cost-sharing calculations, referral management, and network adequacy reporting.. Valid values are `in_network|out_of_network|pending_network`',
-    `notes` STRING COMMENT 'Free-text field for enrollment coordinators to capture supplemental information, payer-specific instructions, follow-up actions, or exceptions related to this enrollment record. Not used for structured data. Sourced from Symplr enrollment notes field.',
-    `oig_exclusion_check_date` DATE COMMENT 'The most recent date on which the provider was screened against the OIG List of Excluded Individuals and Entities (LEIE). CMS mandates monthly screening for all enrolled providers. Used for compliance audit documentation.',
-    `oig_exclusion_checked` BOOLEAN COMMENT 'Indicates whether the provider has been verified against the OIG List of Excluded Individuals and Entities (LEIE) as part of the enrollment process. CMS requires monthly OIG exclusion screening. True = checked and cleared; False = not yet checked.',
-    `pay_to_address_line1` STRING COMMENT 'Primary street address to which the payer remits payments (Electronic Remittance Advice / ERA and paper checks) for claims submitted under this enrollment. May differ from the service address.',
-    `payer_plan_name` STRING COMMENT 'Name of the specific insurance plan or product line within the payer organization for which the provider is enrolled (e.g., Medicare Part B, Medicaid Managed Care, PPO Gold Plan). A single payer may have multiple plans requiring separate enrollments.',
-    `payer_type` STRING COMMENT 'Classification of the payer by program type. Drives billing rules, fee schedules, and regulatory requirements. [ENUM-REF-CANDIDATE: Medicare|Medicaid|Commercial|Tricare|Marketplace|Workers_Compensation|Other — promote to reference product]',
-    `provider_type` STRING COMMENT 'Indicates whether the enrollment is for an individual clinician (physician, NP, PA), a group practice, a facility (hospital, clinic), or an ancillary service provider (lab, imaging center). Determines the applicable enrollment form (CMS-855I, CMS-855B, CMS-855A) and billing rules.. Valid values are `individual|group|facility|ancillary`',
-    `ptan` STRING COMMENT 'Provider Transaction Access Number assigned by Medicare Administrative Contractors (MACs) upon successful Medicare enrollment. Required for Medicare claims submission and adjudication. Unique per provider-MAC jurisdiction combination.. Valid values are `^[A-Z0-9]{6,15}$`',
-    `revalidation_due_date` DATE COMMENT 'The date by which the provider must complete CMS-mandated revalidation of their Medicare or Medicaid enrollment to maintain active billing privileges. Failure to revalidate results in deactivation. Sourced from CMS revalidation lookup and Symplr tracking.',
-    `sam_exclusion_checked` BOOLEAN COMMENT 'Indicates whether the provider has been verified against the federal SAM.gov exclusions database (formerly EPLS) as part of enrollment compliance screening. Required for providers participating in federally-funded programs. True = checked and cleared; False = not yet checked.',
-    `service_address_line1` STRING COMMENT 'Primary street address of the practice location where services are rendered under this enrollment. Submitted to the payer for network directory listings and claims adjudication. Required for CMS enrollment forms.',
-    `service_city` STRING COMMENT 'City of the practice location where services are rendered under this enrollment. Used for network directory, geographic network adequacy analysis, and payer service area validation.',
-    `service_state` STRING COMMENT 'Two-letter US state abbreviation for the state where services are rendered under this enrollment. Used for state-specific billing rules, Medicaid jurisdiction, and network adequacy reporting.. Valid values are `^[A-Z]{2}$`',
-    `service_zip_code` STRING COMMENT 'ZIP code of the practice location where services are rendered under this enrollment. Used for geographic network adequacy analysis, payer locality-based fee schedule assignment, and CMS Geographic Practice Cost Index (GPCI) determination.. Valid values are `^[0-9]{5}(-[0-9]{4})?$`',
-    `state_license_number` STRING COMMENT 'The state-issued medical or professional license number of the provider as submitted in the enrollment application. Payers verify active licensure as part of credentialing. May differ from the license number in the provider master if enrollment is in a different state.',
-    `tax_identification_number` STRING COMMENT 'Federal Tax Identification Number (TIN) or Employer Identification Number (EIN) associated with the enrolling provider or group practice. Used for payer remittance, 1099 reporting, and claims adjudication. Sensitive financial identifier.. Valid values are `^[0-9]{9}$`',
-    `termination_date` DATE COMMENT 'The date on which the providers enrollment with the payer ends or is terminated. Null for active, open-ended enrollments. Used to prevent claims submission after enrollment lapse and to manage provider network status.',
-    `termination_reason` STRING COMMENT 'The reason code for enrollment termination. Voluntary_withdrawal indicates provider-initiated termination. Payer_initiated indicates the payer terminated the enrollment. Sanction indicates OIG or CMS exclusion. Required for compliance reporting and audit trails. Null for active enrollments. [ENUM-REF-CANDIDATE: voluntary_withdrawal|payer_initiated|non_renewal|sanction|death|retirement|other — promote to reference product]',
-    `updated_timestamp` TIMESTAMP COMMENT 'The timestamp when this payer enrollment record was most recently modified in the source system (Symplr). Used for change detection, incremental ETL processing, and audit trail maintenance. Formatted as yyyy-MM-ddTHH:mm:ss.SSSXXX per platform convention.',
-    CONSTRAINT pk_provider_payer_enrollment PRIMARY KEY(`provider_payer_enrollment_id`)
-) COMMENT 'Tracks the enrollment status of individual clinicians and organizational providers with insurance payers (Medicare, Medicaid, commercial payers). Captures payer name, payer ID, enrollment type (participating, non-participating), effective date, termination date, enrollment status, PTAN (Provider Transaction Access Number), and credentialing tier. Critical for RCM and claims adjudication. Sourced from Symplr provider enrollment module.';
+) COMMENT 'Initial and reappointment credentialing applications with committee review workflow';
 
 CREATE OR REPLACE TABLE `vibe_healthcare_v1`.`provider`.`network_affiliation` (
-    `network_affiliation_id` BIGINT COMMENT 'Unique surrogate identifier for each provider network affiliation record in the Silver Layer lakehouse. Primary key for this entity.',
-    `care_site_id` BIGINT COMMENT 'Reference to the specific facility or practice location at which the provider participates in this network. A provider may have multiple network affiliations at different facility locations.',
-    `clinician_id` BIGINT COMMENT 'Reference to the individual clinician or organizational provider associated with this network affiliation record. Links to the provider master entity.',
-    `compliance_regulatory_submission_id` BIGINT COMMENT 'Foreign key linking to compliance.regulatory_submission. Business justification: Network participation changes require regulatory notification (state Medicaid network adequacy reporting, quarterly network roster submissions). Compliance teams track submission status and acknowledg',
-    `group_id` BIGINT COMMENT 'Reference to the medical group or group practice through which the individual provider participates in this network. Many payer contracts are held at the group level, with individual providers enrolled under the group.',
-    `org_provider_id` BIGINT COMMENT 'Foreign key linking to provider.org_provider. Business justification: Organizational providers have network affiliations in addition to individual clinicians. FK will be NULL for clinician-only affiliations. No redundant columns to remove.',
-    `payer_contract_id` BIGINT COMMENT 'Identifier of the provider contract or participation agreement governing the terms of this network affiliation, including reimbursement rates and obligations. Links to the contract management system.',
-    `payer_id` BIGINT COMMENT 'Reference to the health insurance payer or managed care organization that owns or administers the network to which the provider is affiliated.',
-    `provider_network_id` BIGINT COMMENT 'Reference to the specific payer network or care network (ACO, HMO, PPO, POS) to which the provider is affiliated.',
-    `provider_payer_enrollment_id` BIGINT COMMENT 'The payer-assigned enrollment or provider identification number issued upon successful enrollment in the network. Used for claims submission and remittance matching. Distinct from NPI.',
-    `specialty_id` BIGINT COMMENT 'Foreign key linking to provider.specialty. Business justification: Network participation is specialty-specific. network_affiliation.specialty_code and specialty_description should reference specialty table.',
-    `accepts_new_patients` BOOLEAN COMMENT 'Indicates whether the provider is currently accepting new patients within this network. Distinct from panel_status in that it reflects the providers current operational availability rather than the formal panel designation.',
-    `aco_participant_flag` BOOLEAN COMMENT 'Indicates whether the provider is a participating member of an Accountable Care Organization (ACO) under this network affiliation. ACO participation drives shared savings calculations and quality reporting under CMS MSSP and Next Gen ACO programs.',
-    `affiliation_status` STRING COMMENT 'Current lifecycle status of the providers network affiliation. active indicates the provider is currently participating and eligible to see network patients. pending indicates enrollment is in process. suspended indicates temporary hold pending investigation or credentialing review.. Valid values are `active|inactive|pending|suspended|terminated`',
-    `age_range_max` STRING COMMENT 'Maximum patient age (in years) that the provider accepts within this network affiliation. Null indicates no upper age limit. Used for provider directory filtering and patient-to-provider matching.',
-    `age_range_min` STRING COMMENT 'Minimum patient age (in years) that the provider accepts within this network affiliation. Used for provider directory filtering and patient-to-provider matching in managed care systems.',
-    `credentialing_expiration_date` DATE COMMENT 'Date on which the providers credentialing with this network expires and re-credentialing must be completed. Typically occurs every two years per NCQA standards. Used to trigger re-credentialing workflows.',
-    `credentialing_status` STRING COMMENT 'Current credentialing status of the provider with the payer or network organization. Credentialing must be completed before a provider can be listed as in-network. Tracked via Symplr or CAQH ProView.. Valid values are `credentialed|pending|expired|denied|re_credentialing`',
-    `directory_published_flag` BOOLEAN COMMENT 'Indicates whether this provider network affiliation record has been published in the payers public-facing provider directory. CMS requires accurate and up-to-date provider directories for all Medicare Advantage and Marketplace plans.',
-    `effective_date` DATE COMMENT 'The date on which the providers participation in the network becomes effective and the provider is eligible to see in-network patients. Used for claims adjudication and provider directory accuracy.',
-    `gender_served` STRING COMMENT 'Indicates the patient gender population served by the provider within this network (e.g., all genders, male only, female only, pediatric). Used for provider directory accuracy and patient matching.. Valid values are `all|male|female|pediatric`',
-    `geographic_service_area` STRING COMMENT 'Description of the geographic region or service area covered by this network affiliation (e.g., state name, county, metropolitan statistical area, or CMS-defined service area). Used for network adequacy geographic analysis and CMS service area filings.',
-    `handicap_accessible` BOOLEAN COMMENT 'Indicates whether the providers practice location associated with this network affiliation is handicap accessible per ADA requirements. Required for CMS provider directory accuracy and ADA compliance reporting.',
-    `hospital_affiliation_flag` BOOLEAN COMMENT 'Indicates whether this network affiliation record pertains to a hospital or facility provider (as opposed to an individual clinician). Used to distinguish facility-level from practitioner-level network participation in directory and adequacy reporting.',
-    `languages_spoken` STRING COMMENT 'Comma-separated list of languages spoken by the provider at this network location, using ISO 639-1 language codes. Required for provider directory accuracy and CMS language access compliance under Section 1557 of the ACA.',
-    `last_verified_date` DATE COMMENT 'Date on which the network affiliation information was last verified against the payers provider directory or credentialing source. CMS requires provider directories to be updated at least every 90 days.',
-    `mips_eligible` BOOLEAN COMMENT 'Indicates whether the provider is eligible for Merit-based Incentive Payment System (MIPS) reporting under this network affiliation. MIPS eligibility affects payment adjustments under MACRA and is tracked at the provider-payer level.',
-    `network_adequacy_category` STRING COMMENT 'Provider category used for CMS and state network adequacy analysis. Classifies the providers role in meeting time-and-distance and appointment availability standards required for network certification. [ENUM-REF-CANDIDATE: primary_care|specialist|behavioral_health|hospital|ancillary|pharmacy — promote to reference product if additional categories are needed]. Valid values are `primary_care|specialist|behavioral_health|hospital|ancillary|pharmacy`',
-    `network_tier` STRING COMMENT 'Tiered network designation indicating the providers cost and quality tier within the payers network structure. Tier 1 typically represents highest-value providers with lowest patient cost-sharing; higher tiers carry greater patient out-of-pocket costs.. Valid values are `tier_1|tier_2|tier_3|tier_4`',
-    `notes` STRING COMMENT 'Free-text field for operational notes or comments related to this network affiliation record, such as special contract terms, exceptions, or credentialing remarks entered by network management staff.',
-    `npi` STRING COMMENT 'The 10-digit National Provider Identifier assigned by CMS to uniquely identify the provider participating in this network affiliation. Used for claims routing and provider directory publication.. Valid values are `^[0-9]{10}$`',
-    `panel_capacity` STRING COMMENT 'Maximum number of patients the provider is willing to accept within this network. Used for network adequacy analysis and patient assignment in managed care models such as HMO and ACO.',
-    `panel_current_count` STRING COMMENT 'Current number of attributed or assigned patients on the providers panel within this network. Used alongside panel_capacity to determine panel availability and support network adequacy reporting.',
-    `panel_status` STRING COMMENT 'Indicates whether the providers patient panel is open to new patients, closed, or accepting only limited new patients within this network. Critical for network adequacy reporting and patient access compliance required by CMS.. Valid values are `open|closed|limited`',
-    `participation_type` STRING COMMENT 'Defines the providers participation classification within the network. Determines patient cost-sharing levels and reimbursement rates. preferred indicates a higher-tier in-network designation with lower patient cost-sharing.. Valid values are `in_network|out_of_network|preferred|non_preferred|tiered`',
-    `primary_care_designation` BOOLEAN COMMENT 'Indicates whether the provider is designated as a Primary Care Physician (PCP) within this network. PCPs serve as care coordinators in HMO and ACO models and are required for patient attribution and referral management.',
-    `record_created_timestamp` TIMESTAMP COMMENT 'Timestamp when this network affiliation record was first created in the data platform. Used for audit trail, data lineage, and compliance with HIPAA record retention requirements.',
-    `record_updated_timestamp` TIMESTAMP COMMENT 'Timestamp when this network affiliation record was last modified in the data platform. Used for change tracking, incremental ETL processing, and audit compliance.',
-    `reimbursement_model` STRING COMMENT 'The payment model under which the provider is reimbursed for services rendered to patients in this network. Drives financial analytics and value-based care program tracking. [ENUM-REF-CANDIDATE: fee_for_service|capitation|bundled_payment|value_based|salary|per_diem — promote to reference product if additional models are needed]. Valid values are `fee_for_service|capitation|bundled_payment|value_based|salary|per_diem`',
-    `service_area_state` STRING COMMENT 'Two-letter US state code for the primary state in which the provider participates in this network. Used for state-level network adequacy reporting and licensure validation.. Valid values are `^[A-Z]{2}$`',
-    `service_area_zip_code` STRING COMMENT 'Primary ZIP code of the providers practice location within this network affiliation. Used for geographic network adequacy analysis, time-and-distance standards compliance, and provider directory accuracy.. Valid values are `^[0-9]{5}(-[0-9]{4})?$`',
-    `source_record_reference` STRING COMMENT 'The unique identifier of this affiliation record in the originating source system (e.g., Symplr affiliation ID, CAQH provider ID). Used for data lineage, reconciliation, and ETL traceability.',
-    `telehealth_eligible` BOOLEAN COMMENT 'Indicates whether the provider is authorized to deliver telehealth services to patients within this network affiliation. Relevant for network adequacy reporting and patient access under CMS telehealth expansion policies.',
-    `termination_date` DATE COMMENT 'The date on which the providers participation in the network ends. Null indicates an open-ended, currently active affiliation. Used for claims adjudication to validate in-network eligibility at date of service.',
-    `termination_reason` STRING COMMENT 'Reason code for the termination of the providers network affiliation. Used for network management analytics, OIG compliance monitoring, and understanding provider attrition patterns.. Valid values are `voluntary|involuntary|contract_expiration|credentialing_failure|retirement|other`',
+    `network_affiliation_id` BIGINT COMMENT 'Primary key',
+    `care_site_id` BIGINT COMMENT 'Unique identifier for the care site within the provider network affiliation record.',
+    `clinician_id` BIGINT COMMENT 'Unique identifier for the clinician within the provider network affiliation record.',
+    `group_id` BIGINT COMMENT 'Unique identifier for the group within the provider network affiliation record.',
+    `org_provider_id` BIGINT COMMENT 'Org provider',
+    `payer_contract_id` BIGINT COMMENT 'Payer contract',
+    `payer_id` BIGINT COMMENT 'Unique identifier for the payer within the provider network affiliation record.',
+    `provider_network_id` BIGINT COMMENT 'Provider network',
+    `provider_payer_enrollment_id` BIGINT COMMENT 'Provider payer enrollment',
+    `specialty_id` BIGINT COMMENT 'Unique identifier for the specialty within the provider network affiliation record.',
+    `accepts_new_patients` BOOLEAN COMMENT 'The accepts new patients of the provider network affiliation record.',
+    `aco_participant_flag` BOOLEAN COMMENT 'The aco participant flag of the provider network affiliation record.',
+    `affiliation_status` STRING COMMENT 'The affiliation status value classifying the provider network affiliation record.',
+    `age_range_max` STRING COMMENT 'The age range max of the provider network affiliation record.',
+    `age_range_min` STRING COMMENT 'The age range min of the provider network affiliation record.',
+    `created_timestamp` TIMESTAMP COMMENT 'The created timestamp of the provider network affiliation record.',
+    `credentialing_expiration_date` DATE COMMENT 'Timestamp capturing the credentialing expiration date associated with the provider network affiliation record.',
+    `credentialing_status` STRING COMMENT 'The credentialing status value classifying the provider network affiliation record.',
+    `directory_published_flag` BOOLEAN COMMENT 'The directory published flag of the provider network affiliation record.',
+    `effective_date` DATE COMMENT 'Timestamp capturing the effective date associated with the provider network affiliation record.',
+    `gender_served` STRING COMMENT 'The gender served of the provider network affiliation record.',
+    `geographic_service_area` STRING COMMENT 'The geographic service area of the provider network affiliation record.',
+    `handicap_accessible` BOOLEAN COMMENT 'The handicap accessible of the provider network affiliation record.',
+    `hospital_affiliation_flag` BOOLEAN COMMENT 'The hospital affiliation flag of the provider network affiliation record.',
+    `languages_spoken` STRING COMMENT 'The languages spoken of the provider network affiliation record.',
+    `last_verified_date` DATE COMMENT 'Timestamp capturing the last verified date associated with the provider network affiliation record.',
+    `mips_eligible` BOOLEAN COMMENT 'The mips eligible of the provider network affiliation record.',
+    `network_adequacy_category` STRING COMMENT 'The network adequacy category of the provider network affiliation record.',
+    `network_tier` STRING COMMENT 'The network tier of the provider network affiliation record.',
+    `notes` STRING COMMENT 'The notes of the provider network affiliation record.',
+    `npi` STRING COMMENT 'The npi of the provider network affiliation record.',
+    `panel_capacity` STRING COMMENT 'The panel capacity of the provider network affiliation record.',
+    `panel_current_count` STRING COMMENT 'The panel current count of the provider network affiliation record.',
+    `panel_status` STRING COMMENT 'The panel status value classifying the provider network affiliation record.',
+    `participation_type` STRING COMMENT 'The participation type value classifying the provider network affiliation record.',
+    `primary_care_designation` BOOLEAN COMMENT 'The primary care designation of the provider network affiliation record.',
+    `record_created_timestamp` TIMESTAMP COMMENT 'The record created timestamp of the provider network affiliation record.',
+    `record_updated_timestamp` TIMESTAMP COMMENT 'The record updated timestamp of the provider network affiliation record.',
+    `reimbursement_model` STRING COMMENT 'The reimbursement model of the provider network affiliation record.',
+    `service_area_state` STRING COMMENT 'The service area state of the provider network affiliation record.',
+    `service_area_zip_code` STRING COMMENT 'The service area zip code value classifying the provider network affiliation record.',
+    `source_record_reference` STRING COMMENT 'The source record reference of the provider network affiliation record.',
+    `network_affiliation_status` STRING COMMENT 'The network affiliation status value classifying the provider network affiliation record.',
+    `telehealth_eligible` BOOLEAN COMMENT 'The telehealth eligible of the provider network affiliation record.',
+    `termination_date` DATE COMMENT 'Timestamp capturing the termination date associated with the provider network affiliation record.',
+    `termination_reason` STRING COMMENT 'The termination reason of the provider network affiliation record.',
+    `updated_timestamp` TIMESTAMP COMMENT 'The updated timestamp of the provider network affiliation record.',
+    `vibe_structure_marker` STRING COMMENT 'The vibe structure marker of the provider network affiliation record.',
     CONSTRAINT pk_network_affiliation PRIMARY KEY(`network_affiliation_id`)
-) COMMENT 'Association record linking clinicians and organizational providers to payer networks, ACOs, HMOs, PPOs, and integrated care networks. Captures network name, network tier, participation type, effective and termination dates, panel status (open/closed), and geographic service area. Supports provider directory accuracy and network adequacy reporting required by CMS.';
+) COMMENT 'Provider participation in payer networks with tier and panel status';
 
 CREATE OR REPLACE TABLE `vibe_healthcare_v1`.`provider`.`group` (
-    `group_id` BIGINT COMMENT 'Unique surrogate identifier for the provider group record in the lakehouse Silver layer. Serves as the primary key for all downstream joins and lineage tracking.',
-    `business_associate_agreement_id` BIGINT COMMENT 'Foreign key linking to compliance.business_associate_agreement. Business justification: Provider groups (medical practices) execute BAAs when sharing PHI with vendors. Group practices must maintain BAA inventory for HIPAA compliance, tracking execution dates, expiration dates, and subcon',
-    `cost_center_id` BIGINT COMMENT 'Foreign key linking to finance.cost_center. Business justification: Provider groups function as financial units with dedicated cost centers for group-level P&L tracking, shared service cost allocation, and MIPS. Required for physician practice financia',
-    `specialty_id` BIGINT COMMENT 'Foreign key linking to provider.specialty. Business justification: Provider groups have primary specialties. provider_group.specialty_primary should reference specialty table.',
-    `taxonomy_id` BIGINT COMMENT 'Foreign key linking to provider.provider_taxonomy. Business justification: Provider groups taxonomy code should reference provider_taxonomy table. Removes taxonomy_code STRING.',
-    `accepts_new_patients` BOOLEAN COMMENT 'Indicates whether the provider group is currently accepting new patients. Used in patient-facing provider directories, referral management workflows in Salesforce Health Cloud, and network access reporting.',
-    `aco_participant` BOOLEAN COMMENT 'Indicates whether the provider group is a participating entity in a CMS Accountable Care Organization (ACO) program such as the Medicare Shared Savings Program (MSSP). Drives value-based care reporting and shared savings calculations.',
-    `admin_contact_email` STRING COMMENT 'Primary administrative email address for the provider group used for credentialing correspondence, payer enrollment notifications, and contract communications. Not a patient-facing address.. Valid values are `^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+.[a-zA-Z]{2,}$`',
-    `billing_entity_name` STRING COMMENT 'The legal name of the billing entity through which the provider group submits professional claims (CMS-1500 / 837P). May differ from the group name when a management services organization (MSO) or billing company handles claims on behalf of the group.',
-    `billing_npi` STRING COMMENT 'The 10-digit NPI of the billing entity used on professional claims (CMS-1500 / 837P) when the billing entity differs from the group NPI. Supports accurate remittance reconciliation and ERA (Electronic Remittance Advice) matching.. Valid values are `^[0-9]{10}$`',
-    `contract_effective_date` DATE COMMENT 'Date on which the provider groups primary payer or health system contract became effective. Used for billing eligibility validation, retroactive claim adjudication, and contract lifecycle management.',
-    `contract_termination_date` DATE COMMENT 'Date on which the provider groups primary contract was or is scheduled to be terminated. Null if the contract is open-ended or currently active. Used for claims eligibility cutoff and network directory updates.',
-    `created_timestamp` TIMESTAMP COMMENT 'Timestamp when the provider group record was first created in the lakehouse Silver layer. Used for audit trails, data lineage, and SCD Type 2 history management. Format: yyyy-MM-ddTHH:mm:ss.SSSXXX.',
-    `credentialing_expiration_date` DATE COMMENT 'Date on which the provider groups current credentialing cycle expires and recredentialing must be completed. NCQA requires recredentialing at least every three years. Used to trigger recredentialing workflows in Symplr.',
-    `credentialing_status` STRING COMMENT 'Current credentialing status of the provider group as maintained by the health systems medical staff office or delegated credentialing entity. Drives authorization to treat patients and submit claims. Aligned with NCQA credentialing standards and Symplr credentialing workflows.. Valid values are `credentialed|pending_initial|pending_recredentialing|expired|denied|suspended`',
-    `doing_business_as_name` STRING COMMENT 'The trade name or doing-business-as (DBA) name under which the provider group operates publicly, if different from the legal name. Used in patient-facing directories and marketing materials.',
-    `effective_date` DATE COMMENT 'Date on which the provider group record became operationally effective within the health systems provider master. Used for temporal validity tracking and SCD (Slowly Changing Dimension) management in the lakehouse.',
-    `fqhc_designation` BOOLEAN COMMENT 'Indicates whether the provider group holds an active FQHC (Federally Qualified Health Center) designation from HRSA. FQHC status triggers specific CMS cost-based reimbursement rates and grant eligibility under Section 330 of the Public Health Service Act.',
-    `hl7_fhir_organization_reference` STRING COMMENT 'The FHIR (Fast Healthcare Interoperability Resources) Organization resource ID for this provider group, used in HL7 FHIR R4 API exchanges with payers, HIEs (Health Information Exchanges), and external systems. Supports interoperability under the CMS Interoperability and Patient Access Rule.',
-    `hospital_affiliation` STRING COMMENT 'Name of the primary hospital or health system with which the provider group is affiliated for admitting privileges and care coordination. Used for referral routing, care transitions, and network directory accuracy.',
-    `languages_supported` STRING COMMENT 'Comma-delimited list of languages (ISO 639-1 codes) spoken by clinical staff within the provider group. Used for patient-provider matching, CLAS (Culturally and Linguistically Appropriate Services) compliance, and SDOH-informed care access reporting.',
-    `last_credentialing_date` DATE COMMENT 'Date on which the most recent credentialing or recredentialing review was completed and approved for the provider group. Used for audit trails and NCQA compliance reporting.',
-    `medicaid_enrollment_status` STRING COMMENT 'Enrollment status of the provider group with the state Medicaid program. Determines eligibility to bill Medicaid for covered services. Managed at the state level through state Medicaid Management Information Systems (MMIS).. Valid values are `enrolled|not_enrolled|pending|terminated`',
-    `medicare_enrollment_status` STRING COMMENT 'Enrollment status of the provider group with the Medicare program as reported in PECOS (Provider Enrollment, Chain, and Ownership System). Determines eligibility to bill Medicare Part B for professional services.. Valid values are `enrolled|opt_out|not_enrolled|pending|terminated`',
-    `mips_eligible` BOOLEAN COMMENT 'Indicates whether the provider group meets CMS eligibility thresholds for participation in MIPS (Merit-based Incentive Payment System) under MACRA. Drives quality reporting obligations and payment adjustment calculations.',
-    `mips_group_reporting` BOOLEAN COMMENT 'Indicates whether the provider group has elected to report MIPS quality measures at the group level (using the group NPI/TIN) rather than at the individual clinician level. Affects CMS payment adjustment calculations.',
-    `group_name` STRING COMMENT 'The official legal name of the medical group practice or physician organization as registered with state authorities and CMS NPPES. Used on contracts, claims, and payer directories.',
-    `network_participation_status` STRING COMMENT 'Current network participation status of the provider group within the health systems contracted payer networks. Drives patient cost-sharing calculations, referral eligibility, and network adequacy reporting.. Valid values are `in_network|out_of_network|pending|terminated`',
-    `npi` STRING COMMENT 'The 10-digit National Provider Identifier (NPI) assigned to the medical group practice as an organizational entity by CMS. Used for claims submission, payer enrollment, and provider directory listings. Distinct from individual clinician NPIs.. Valid values are `^[0-9]{10}$`',
-    `payer_enrollment_status` STRING COMMENT 'Aggregate enrollment status of the provider group with payers. Indicates whether the group is actively enrolled to submit claims with its contracted payers. Detailed per-payer enrollment is tracked in the provider_payer_enrollment product.. Valid values are `enrolled|pending|not_enrolled|terminated`',
-    `primary_fax` STRING COMMENT 'Primary fax number for the provider group used for clinical communications, referral transmissions, and credentialing document exchange. Fax remains a HIPAA-compliant PHI transmission method in healthcare.. Valid values are `^+?[0-9-() ]{7,20}$`',
-    `primary_phone` STRING COMMENT 'Primary telephone number for the provider groups main administrative office. Used for credentialing verification, payer directory listings, and referral coordination.. Valid values are `^+?[0-9-() ]{7,20}$`',
-    `primary_service_address_line1` STRING COMMENT 'Street address line 1 of the provider groups primary service location. Used for payer directory listings, credentialing applications, and patient-facing location data.',
-    `primary_service_city` STRING COMMENT 'City of the provider groups primary service location. Used for geographic network analysis, payer directory accuracy, and regulatory reporting.',
-    `primary_service_state` STRING COMMENT 'Two-letter US state code of the provider groups primary service location. Drives state licensure validation, Medicaid enrollment, and network adequacy reporting by state.. Valid values are `^[A-Z]{2}$`',
-    `primary_service_zip` STRING COMMENT 'US ZIP or ZIP+4 postal code of the provider groups primary service location. Used for geographic network adequacy analysis, HEDIS reporting, and SDOH (Social Determinants of Health) stratification.. Valid values are `^[0-9]{5}(-[0-9]{4})?$`',
-    `rhc_designation` BOOLEAN COMMENT 'Indicates whether the provider group holds an active RHC (Rural Health Clinic) designation from CMS. RHC status triggers specific cost-based reimbursement rates and rural access requirements under 42 CFR § 491.',
-    `size` STRING COMMENT 'Total number of active clinicians (physicians, APPs, and allied health professionals) affiliated with the provider group. Used for network adequacy assessments, contracting tiers, and population health capacity planning.',
-    `source_system_group_reference` STRING COMMENT 'The native identifier for this provider group in the originating source system (e.g., Epic provider group ID, Cerner organization ID, Symplr group record ID). Used for ETL cross-reference, reconciliation, and bi-directional system integration.',
-    `group_status` STRING COMMENT 'Current lifecycle status of the provider group record. Active indicates the group is operational and credentialed; pending indicates enrollment or credentialing in progress; suspended indicates temporary hold; terminated indicates the group is no longer operational or contracted.. Valid values are `active|inactive|pending|suspended|terminated`',
-    `tax_identification_number` STRING COMMENT 'The federal Employer Identification Number (EIN) or Tax Identification Number (TIN) assigned to the provider group by the IRS. Used for 1099 reporting, claims billing, and payer contracting. Format: XX-XXXXXXX.. Valid values are `^[0-9]{2}-[0-9]{7}$`',
-    `telehealth_capable` BOOLEAN COMMENT 'Indicates whether the provider group offers telehealth or virtual care services. Used for network directory accuracy, patient access reporting, and CMS telehealth billing eligibility under 42 CFR § 410.78.',
-    `termination_date` DATE COMMENT 'Date on which the provider group record was terminated or deactivated in the provider master. Null for active records. Used for SCD management, audit trails, and historical reporting.',
-    `group_type` STRING COMMENT 'Categorical classification of the provider groups organizational model. Single-specialty groups focus on one clinical discipline; multi-specialty groups span multiple disciplines; FQHC (Federally Qualified Health Center) and RHC (Rural Health Clinic) designations carry specific CMS reimbursement implications; IPA (Independent Practice Association) and ACO (Accountable Care Organization) reflect value-based care structures. [ENUM-REF-CANDIDATE: single_specialty|multi_specialty|fqhc|rhc|independent_practice_association|accountable_care_organization|other — promote to reference product]',
-    `updated_timestamp` TIMESTAMP COMMENT 'Timestamp when the provider group record was most recently modified in the lakehouse Silver layer. Used for change detection, incremental ETL processing, and audit compliance. Format: yyyy-MM-ddTHH:mm:ss.SSSXXX.',
-    `website_url` STRING COMMENT 'Public website URL for the provider group. Used in patient-facing provider directories, Salesforce Health Cloud referral management, and payer directory submissions.. Valid values are `^https?://[^s/$.?#].[^s]*$`',
+    `group_id` BIGINT COMMENT 'Primary key',
+    `business_associate_agreement_id` BIGINT COMMENT 'Unique identifier for the business associate agreement within the provider group record.',
+    `clinician_id` BIGINT COMMENT 'Unique identifier for the clinician within the provider group record.',
+    `cost_center_id` BIGINT COMMENT 'Cost center',
+    `specialty_id` BIGINT COMMENT 'Primary specialty',
+    `taxonomy_id` BIGINT COMMENT 'Unique identifier for the taxonomy within the provider group record.',
+    `accepts_new_patients` BOOLEAN COMMENT 'The accepts new patients of the provider group record.',
+    `aco_participant` BOOLEAN COMMENT 'The aco participant of the provider group record.',
+    `admin_contact_email` STRING COMMENT 'The admin contact email of the provider group record.',
+    `billing_entity_name` STRING COMMENT 'The billing entity name of the provider group record.',
+    `billing_npi` STRING COMMENT 'The billing npi of the provider group record.',
+    `contract_effective_date` DATE COMMENT 'Timestamp capturing the contract effective date associated with the provider group record.',
+    `contract_termination_date` DATE COMMENT 'Timestamp capturing the contract termination date associated with the provider group record.',
+    `created_timestamp` TIMESTAMP COMMENT 'Record creation timestamp',
+    `credentialing_expiration_date` DATE COMMENT 'Timestamp capturing the credentialing expiration date associated with the provider group record.',
+    `credentialing_status` STRING COMMENT 'The credentialing status value classifying the provider group record.',
+    `doing_business_as_name` STRING COMMENT 'The doing business as name of the provider group record.',
+    `effective_date` DATE COMMENT 'Timestamp capturing the effective date associated with the provider group record.',
+    `fqhc_designation` BOOLEAN COMMENT 'The fqhc designation of the provider group record.',
+    `group_npi` STRING COMMENT 'The group npi of the provider group record.',
+    `group_status` STRING COMMENT 'The group status value classifying the provider group record.',
+    `group_type` STRING COMMENT 'The group type value classifying the provider group record.',
+    `hl7_fhir_organization_reference` STRING COMMENT 'The hl7 fhir organization reference of the provider group record.',
+    `hospital_affiliation` STRING COMMENT 'The hospital affiliation of the provider group record.',
+    `languages_supported` STRING COMMENT 'The languages supported of the provider group record.',
+    `last_credentialing_date` DATE COMMENT 'Timestamp capturing the last credentialing date associated with the provider group record.',
+    `medicaid_enrollment_status` STRING COMMENT 'The medicaid enrollment status value classifying the provider group record.',
+    `medicare_enrollment_status` STRING COMMENT 'The medicare enrollment status value classifying the provider group record.',
+    `mips_eligible` BOOLEAN COMMENT 'The mips eligible of the provider group record.',
+    `mips_group_reporting` BOOLEAN COMMENT 'The mips group reporting of the provider group record.',
+    `group_name` STRING COMMENT 'The group name of the provider group record.',
+    `network_participation_status` STRING COMMENT 'The network participation status value classifying the provider group record.',
+    `npi` STRING COMMENT 'The npi of the provider group record.',
+    `payer_enrollment_status` STRING COMMENT 'The payer enrollment status value classifying the provider group record.',
+    `primary_fax` STRING COMMENT 'The primary fax of the provider group record.',
+    `primary_phone` STRING COMMENT 'The primary phone of the provider group record.',
+    `primary_service_address_line1` STRING COMMENT 'The primary service address line1 of the provider group record.',
+    `primary_service_city` STRING COMMENT 'The primary service city of the provider group record.',
+    `primary_service_state` STRING COMMENT 'The primary service state of the provider group record.',
+    `primary_service_zip` STRING COMMENT 'The primary service zip of the provider group record.',
+    `rhc_designation` BOOLEAN COMMENT 'The rhc designation of the provider group record.',
+    `size` STRING COMMENT 'The size of the provider group record.',
+    `source_system_group_reference` STRING COMMENT 'The source system group reference of the provider group record.',
+    `tax_identification_number` STRING COMMENT 'The tax identification number of the provider group record.',
+    `telehealth_capable` BOOLEAN COMMENT 'The telehealth capable of the provider group record.',
+    `termination_date` DATE COMMENT 'Timestamp capturing the termination date associated with the provider group record.',
+    `updated_timestamp` TIMESTAMP COMMENT 'Record update timestamp',
+    `vibe_structure_marker` STRING COMMENT 'The vibe structure marker of the provider group record.',
+    `website_url` STRING COMMENT 'The website url of the provider group record.',
     CONSTRAINT pk_group PRIMARY KEY(`group_id`)
-) COMMENT 'Master record for medical group practices, physician organizations, and care delivery groups that aggregate individual clinicians under a shared organizational identity. Captures group NPI, group name, group type (single-specialty, multi-specialty, FQHC), tax ID, billing entity, primary service location, and group size. Supports group-level contracting, billing, and network management.';
+) COMMENT 'Provider groups (medical groups, IPAs, ACOs) with group NPI and TIN';
 
 CREATE OR REPLACE TABLE `vibe_healthcare_v1`.`provider`.`group_membership` (
-    `group_membership_id` BIGINT COMMENT 'Unique surrogate identifier for each clinician-to-organization affiliation or employment record. Primary key for the group_membership data product.',
-    `care_site_id` BIGINT COMMENT 'Reference to the primary physical practice location where the provider renders services within this organizational affiliation. Used for billing attribution, credentialing site verification, and workforce planning.',
-    `group_id` BIGINT COMMENT 'Foreign key linking to provider.provider_group. Business justification: group_membership currently has multiple org_provider_id FKs but no provider_group_id. Business semantics: membership in a provider_group entity. Removes group_npi STRING.',
-    `clinician_id` BIGINT COMMENT 'Reference to the individual clinician or healthcare professional whose organizational affiliation or employment relationship is being recorded. Links to the provider master record.',
-    `org_provider_id` BIGINT COMMENT 'Reference to the organizational entity (group practice, hospital, health system, academic medical center, FQHC, etc.) with which the provider is affiliated or employed.',
-    `academic_appointment_rank` STRING COMMENT 'The academic faculty rank held by the provider within an affiliated academic medical center or teaching institution. Applicable only for academic affiliations. Null for non-academic organizations.. Valid values are `instructor|assistant_professor|associate_professor|professor|clinical_professor|adjunct`',
-    `aco_participation` BOOLEAN COMMENT 'Indicates whether the provider participates in an Accountable Care Organization (ACO) arrangement under this organizational affiliation. Relevant for value-based care attribution, MIPS reporting, and CMS Shared Savings Program compliance.',
-    `contract_end_date` DATE COMMENT 'The end date of the formal employment or affiliation contract. Null for open-ended contracts. Used for contract renewal tracking, workforce planning, and credentialing continuity management.',
-    `contract_number` STRING COMMENT 'The reference number of the employment or affiliation contract governing this provider-organization relationship. Links to the contract management system for terms, compensation, and obligations.',
-    `contract_start_date` DATE COMMENT 'The start date of the formal employment or affiliation contract governing this provider-organization relationship. May differ from the effective_date if there is a gap between contract execution and service commencement.',
-    `cost_center_code` STRING COMMENT 'The financial cost center code associated with this providers organizational affiliation. Used for financial attribution, RVU-based compensation modeling, and departmental budget reporting in SAP S/4HANA.',
-    `credentialing_expiration_date` DATE COMMENT 'The date on which the providers credentialing approval expires within this organizational affiliation. Triggers recredentialing workflows. NCQA and Joint Commission require recredentialing at least every three years.',
-    `credentialing_status` STRING COMMENT 'Current credentialing verification status for this provider within this organizational affiliation. Tracks whether the provider has completed the organizations credentialing and privileging process as required by NCQA and The Joint Commission.. Valid values are `credentialed|pending|expired|suspended|revoked|not_applicable`',
-    `department` STRING COMMENT 'The clinical or administrative department within the organization to which the provider is assigned under this affiliation (e.g., Department of Medicine, Department of Surgery, Emergency Department). Used for workforce planning and operational reporting.',
-    `departure_reason` STRING COMMENT 'Coded reason for the providers departure or separation from the organizational affiliation. Required for NPDB adverse action reporting context, workforce analytics, and credentialing work history verification. [ENUM-REF-CANDIDATE: resignation|retirement|termination|contract_end|relocation|deceased|other — 7 candidates stripped; promote to reference product]',
-    `effective_date` DATE COMMENT 'The date on which the providers affiliation or employment relationship with the organization became effective. Required for credentialing primary source verification and work history validation per NCQA and Joint Commission standards.',
-    `employment_type` STRING COMMENT 'Classification of the providers employment or engagement arrangement with the organization. Determines benefits eligibility, malpractice coverage, tax reporting obligations, and credentialing pathway requirements.. Valid values are `employed|independent_contractor|locum_tenens|per_diem|volunteer|academic_appointment`',
-    `end_date` DATE COMMENT 'The date on which the providers affiliation or employment relationship with the organization ended or is scheduled to end. Null for currently active affiliations. Required for complete work history verification per NCQA and Joint Commission credentialing standards.',
-    `fte_allocation` DECIMAL(18,2) COMMENT 'The proportion of the providers full-time equivalent effort allocated to this organizational affiliation, expressed as a decimal (e.g., 1.0 = full-time, 0.5 = half-time). Used for workforce planning, productivity analysis, and RVU attribution.',
-    `is_accepting_patients` BOOLEAN COMMENT 'Indicates whether the provider is currently accepting new patients under this organizational affiliation. Used for patient access management, referral routing, and provider directory accuracy per CMS and NCQA requirements.',
-    `is_primary_affiliation` BOOLEAN COMMENT 'Indicates whether this organizational affiliation is the providers primary or principal employment relationship (True) versus a secondary or concurrent affiliation (False). Used for billing attribution, PCP panel assignment, and workforce reporting.',
-    `is_voluntary_separation` BOOLEAN COMMENT 'Indicates whether the providers separation from the organization was voluntary (True) or involuntary (False). Critical for NPDB adverse action reporting — involuntary separations related to clinical competence or conduct must be reported to the NPDB.',
-    `medical_staff_category` STRING COMMENT 'The medical staff membership category assigned to the provider by the hospital or health systems medical staff office. Governs clinical privileges, voting rights, and committee eligibility per medical staff bylaws. [ENUM-REF-CANDIDATE: active|associate|courtesy|consulting|honorary|provisional|affiliate — 7 candidates stripped; promote to reference product]',
-    `membership_role` STRING COMMENT 'The providers functional role or relationship type within the organization. Determines billing attribution rules, malpractice coverage applicability, and credentialing pathway. [ENUM-REF-CANDIDATE: owner|partner|employee|contractor|attending|consulting|locum_tenens|volunteer — promote to reference product]',
-    `membership_status` STRING COMMENT 'Current lifecycle state of the providers affiliation or employment relationship with the organization. Drives access control, billing eligibility, and credentialing verification workflows.. Valid values are `active|inactive|pending|suspended|terminated|on_leave`',
-    `mips_eligible` BOOLEAN COMMENT 'Indicates whether the provider is eligible for Merit-based Incentive Payment System (MIPS) reporting under this organizational affiliation. Drives quality reporting workflows and CMS payment adjustment calculations under MACRA.',
-    `network_participation_status` STRING COMMENT 'The providers payer network participation status under this organizational affiliation. Determines patient cost-sharing obligations and claim adjudication rules. Critical for No Surprises Act compliance and provider directory accuracy.. Valid values are `in_network|out_of_network|pending|terminated`',
-    `notes` STRING COMMENT 'Free-text field for capturing additional context, exceptions, or remarks related to this provider-organization affiliation record. Used by credentialing staff for documentation of special circumstances, waivers, or follow-up actions.',
-    `npdb_report_date` DATE COMMENT 'The date on which the adverse action or separation event was reported to the National Practitioner Data Bank (NPDB). Required for compliance tracking and audit purposes under HCQIA.',
-    `npdb_report_required` BOOLEAN COMMENT 'Indicates whether this separation or adverse action event requires a mandatory report to the National Practitioner Data Bank (NPDB). Triggered by involuntary terminations related to clinical competence, conduct, or privilege revocation.',
-    `npi` STRING COMMENT 'The 10-digit National Provider Identifier assigned to the individual clinician by CMS. Captured at the affiliation level to support billing attribution and payer enrollment verification for this specific organizational context.. Valid values are `^[0-9]{10}$`',
-    `payer_enrollment_status` STRING COMMENT 'Status of the providers enrollment with payers under this organizational affiliation (group billing). Determines whether claims can be submitted under the organizations group NPI for this provider. Managed via Symplr Provider Enrollment.. Valid values are `enrolled|pending|not_enrolled|terminated|excluded`',
-    `primary_specialty` STRING COMMENT 'The providers primary clinical specialty within this organizational affiliation (e.g., Internal Medicine, Cardiology, General Surgery). Captured at the affiliation level as specialty may differ across organizations. Aligns with CMS specialty taxonomy.',
-    `privileging_status` STRING COMMENT 'Current clinical privileging status for this provider at the affiliated organization. Clinical privileges define the specific procedures and services the provider is authorized to perform. Distinct from credentialing status.. Valid values are `granted|pending|provisional|suspended|revoked|not_applicable`',
-    `record_created_timestamp` TIMESTAMP COMMENT 'The timestamp when this group membership record was first created in the system. Supports audit trail, data lineage, and compliance with HIPAA record retention requirements.',
-    `record_updated_timestamp` TIMESTAMP COMMENT 'The timestamp when this group membership record was last modified. Supports change tracking, audit trail, and incremental ETL processing in the Databricks Lakehouse silver layer.',
-    `secondary_specialty` STRING COMMENT 'The providers secondary or subspecialty clinical designation within this organizational affiliation. Supports multi-specialty credentialing, panel management, and referral routing.',
-    `source_system_record_reference` STRING COMMENT 'The native identifier of this affiliation record in the originating operational system (e.g., Symplr provider affiliation ID, Epic provider record ID). Enables bidirectional traceability between the lakehouse silver layer and the system of record.',
-    `supervision_level` STRING COMMENT 'The level of supervision required for the provider under this organizational affiliation. Relevant for advanced practice providers (NPs, PAs) whose scope of practice may require physician oversight per state law and organizational policy.. Valid values are `independent|supervised|collaborative|delegated`',
-    `tax_identification_number` STRING COMMENT 'The federal Tax Identification Number (Employer Identification Number or Social Security Number) used for billing and tax reporting under this organizational affiliation. Required for claims submission and IRS 1099 reporting.. Valid values are `^[0-9]{9}$`',
-    `verified_by` STRING COMMENT 'Name or identifier of the credentialing staff member or system that performed the primary source verification of this affiliation record. Required for credentialing audit trail per NCQA and Joint Commission standards.',
-    `verified_date` DATE COMMENT 'The date on which the affiliation or employment information was last verified through primary source verification as required by NCQA and The Joint Commission credentialing standards. Tracks compliance with mandatory verification timelines.',
+    `group_membership_id` BIGINT COMMENT 'Primary key',
+    `care_site_id` BIGINT COMMENT 'Unique identifier for the care site within the provider group membership record.',
+    `clinician_id` BIGINT COMMENT 'Unique identifier for the group clinician within the provider group membership record.',
+    `group_id` BIGINT COMMENT 'Unique identifier for the group within the provider group membership record.',
+    `primary_group_clinician_id` BIGINT COMMENT 'Primary group clinician',
+    `org_provider_id` BIGINT COMMENT 'Primary group org provider',
+    `academic_appointment_rank` STRING COMMENT 'The academic appointment rank of the provider group membership record.',
+    `aco_participation` BOOLEAN COMMENT 'The aco participation of the provider group membership record.',
+    `contract_end_date` DATE COMMENT 'Timestamp capturing the contract end date associated with the provider group membership record.',
+    `contract_number` STRING COMMENT 'The contract number of the provider group membership record.',
+    `contract_start_date` DATE COMMENT 'Timestamp capturing the contract start date associated with the provider group membership record.',
+    `cost_center_code` STRING COMMENT 'The cost center code value classifying the provider group membership record.',
+    `created_timestamp` TIMESTAMP COMMENT 'The created timestamp of the provider group membership record.',
+    `credentialing_expiration_date` DATE COMMENT 'Timestamp capturing the credentialing expiration date associated with the provider group membership record.',
+    `credentialing_status` STRING COMMENT 'The credentialing status value classifying the provider group membership record.',
+    `department` STRING COMMENT 'The department of the provider group membership record.',
+    `departure_reason` STRING COMMENT 'The departure reason of the provider group membership record.',
+    `effective_date` DATE COMMENT 'Timestamp capturing the effective date associated with the provider group membership record.',
+    `employment_type` STRING COMMENT 'The employment type value classifying the provider group membership record.',
+    `end_date` DATE COMMENT 'Timestamp capturing the end date associated with the provider group membership record.',
+    `fte_allocation` DECIMAL(18,2) COMMENT 'The fte allocation of the provider group membership record.',
+    `is_accepting_patients` BOOLEAN COMMENT 'Boolean flag indicating the is accepting patients status of the provider group membership record.',
+    `is_primary_affiliation` BOOLEAN COMMENT 'Boolean flag indicating the is primary affiliation status of the provider group membership record.',
+    `is_voluntary_separation` BOOLEAN COMMENT 'Boolean flag indicating the is voluntary separation status of the provider group membership record.',
+    `medical_staff_category` STRING COMMENT 'The medical staff category of the provider group membership record.',
+    `membership_role` STRING COMMENT 'The membership role of the provider group membership record.',
+    `membership_status` STRING COMMENT 'The membership status value classifying the provider group membership record.',
+    `mips_eligible` BOOLEAN COMMENT 'The mips eligible of the provider group membership record.',
+    `network_participation_status` STRING COMMENT 'The network participation status value classifying the provider group membership record.',
+    `notes` STRING COMMENT 'The notes of the provider group membership record.',
+    `npdb_report_date` DATE COMMENT 'Timestamp capturing the npdb report date associated with the provider group membership record.',
+    `npdb_report_required` BOOLEAN COMMENT 'The npdb report required of the provider group membership record.',
+    `npi` STRING COMMENT 'The npi of the provider group membership record.',
+    `payer_enrollment_status` STRING COMMENT 'The payer enrollment status value classifying the provider group membership record.',
+    `primary_specialty` STRING COMMENT 'The primary specialty of the provider group membership record.',
+    `privileging_status` STRING COMMENT 'The privileging status value classifying the provider group membership record.',
+    `record_created_timestamp` TIMESTAMP COMMENT 'The record created timestamp of the provider group membership record.',
+    `record_updated_timestamp` TIMESTAMP COMMENT 'The record updated timestamp of the provider group membership record.',
+    `secondary_specialty` STRING COMMENT 'The secondary specialty of the provider group membership record.',
+    `source_system_record_reference` STRING COMMENT 'The source system record reference of the provider group membership record.',
+    `start_date` DATE COMMENT 'Timestamp capturing the start date associated with the provider group membership record.',
+    `group_membership_status` STRING COMMENT 'The group membership status value classifying the provider group membership record.',
+    `supervision_level` STRING COMMENT 'The supervision level of the provider group membership record.',
+    `tax_identification_number` STRING COMMENT 'The tax identification number of the provider group membership record.',
+    `updated_timestamp` TIMESTAMP COMMENT 'The updated timestamp of the provider group membership record.',
+    `verified_by` STRING COMMENT 'The verified by of the provider group membership record.',
+    `verified_date` DATE COMMENT 'Timestamp capturing the verified date associated with the provider group membership record.',
+    `vibe_structure_marker` STRING COMMENT 'The vibe structure marker of the provider group membership record.',
     CONSTRAINT pk_group_membership PRIMARY KEY(`group_membership_id`)
-) COMMENT 'Association record capturing the complete current and historical membership, affiliations, and employment relationships of individual clinicians within provider groups, hospitals, health systems, academic medical centers, and other organizational entities. Includes organization name, organization type (group practice, hospital, health system, academic medical center, FQHC), role within the organization (owner, partner, employee, contractor, attending, consulting), effective and end dates, FTE allocation, primary practice location, departure reason, and voluntary/involuntary separation indicator. Provides complete affiliation history for credentialing primary source verification (work history verification is mandatory per NCQA and Joint Commission), NPDB adverse action reporting context, billing attribution, and workforce planning. Serves as the consolidated SSOT for all clinician-to-organization affiliation and employment history records — no other product in this domain stores affiliation history or organizational membership data.';
+) COMMENT 'Provider membership in groups with FTE allocation and role';
 
 CREATE OR REPLACE TABLE `vibe_healthcare_v1`.`provider`.`malpractice_coverage` (
-    `malpractice_coverage_id` BIGINT COMMENT 'Unique surrogate identifier for each malpractice (professional liability) insurance coverage record in the system. Primary key for this entity.',
-    `ap_invoice_id` BIGINT COMMENT 'Foreign key linking to finance.ap_invoice. Business justification: Malpractice insurance premiums are paid via AP invoices. Links coverage records to payment transactions for premium tracking, accrual verification, and insurance expense reconciliation. Required for f',
-    `audit_id` BIGINT COMMENT 'Foreign key linking to compliance.audit. Business justification: Malpractice insurance verification is audited as part of credentialing compliance. Annual audits verify all providers maintain required coverage limits ($1M/$3M typical) and tail coverage for departin',
-    `care_site_id` BIGINT COMMENT 'Reference to the healthcare facility or organization at which this malpractice coverage is required for privileging purposes. A provider may have separate coverage records for different facilities within a health system.',
-    `clinician_id` BIGINT COMMENT 'Reference to the licensed healthcare professional (physician, nurse practitioner, PA, etc.) for whom this malpractice coverage is maintained. Links to the provider master record.',
-    `credentialing_application_id` BIGINT COMMENT 'Foreign key linking to provider.credentialing_application. Business justification: Malpractice coverage is submitted as part of credentialing applications. FK will be NULL until associated with an application. No redundant columns to remove.',
-    `credentialing_file_id` BIGINT COMMENT 'Reference to the providers credentialing file or application record with which this malpractice coverage is associated. Links coverage records to the broader credentialing and privileging workflow.',
-    `employee_id` BIGINT COMMENT 'Foreign key linking to workforce.employee. Business justification: Malpractice coverage for employed clinical staff. Real business need: risk management requires tracking coverage for all clinical employees, policy compliance verification, claims management, employme',
-    `aggregate_limit` DECIMAL(18,2) COMMENT 'The maximum total dollar amount the insurer will pay for all malpractice claims during the policy period. Expressed in USD. Typically expressed as the second number in a coverage limit pair (e.g., $1M/$3M means $1M per occurrence, $3M aggregate).',
-    `certificate_of_insurance_url` STRING COMMENT 'URL or document management system path to the scanned or electronic Certificate of Insurance (COI) issued by the insurer. Stored as evidence of coverage for credentialing file documentation requirements.',
-    `claims_history_indicator` BOOLEAN COMMENT 'Indicates whether the provider has any reported malpractice claims or settlements associated with this policy period. Triggers additional review by the medical staff office and credentialing committee.',
-    `coverage_lapse_indicator` BOOLEAN COMMENT 'Indicates whether there was a gap or lapse in malpractice coverage for this provider. A coverage lapse may affect hospital privileges, payer enrollment, and credentialing status and must be documented and explained.',
-    `coverage_specialty` STRING COMMENT 'The clinical specialty or scope of practice for which this malpractice coverage is underwritten (e.g., General Surgery, Obstetrics, Emergency Medicine). Some policies are specialty-specific and may not cover procedures outside the stated specialty.',
-    `coverage_state` STRING COMMENT 'The U.S. state(s) in which this malpractice policy provides coverage, expressed as a two-letter USPS state abbreviation. Malpractice coverage is often state-specific; providers practicing in multiple states may require separate policies.. Valid values are `^[A-Z]{2}$`',
-    `coverage_status` STRING COMMENT 'Current lifecycle state of the malpractice insurance coverage record. Active indicates the policy is in force and valid for credentialing purposes. Used by credentialing staff to determine whether a providers coverage is current and compliant.. Valid values are `active|expired|cancelled|pending|suspended`',
-    `coverage_type` STRING COMMENT 'Indicates the type of professional liability policy structure. Occurrence covers incidents that occur during the policy period regardless of when the claim is filed. Claims-made covers claims filed while the policy is active. Claims-made with tail includes extended reporting endorsement. Nose coverage (prior acts) covers incidents before the current policy start. Hybrid combines elements of both.. Valid values are `occurrence|claims_made|claims_made_with_tail|nose_coverage|hybrid`',
-    `created_timestamp` TIMESTAMP COMMENT 'The timestamp when this malpractice coverage record was first created in the system. Used for audit trail, data lineage, and compliance reporting purposes.',
-    `currency_code` STRING COMMENT 'ISO 4217 three-letter currency code for the monetary limits expressed in this coverage record (e.g., USD). Required for multi-entity health systems operating across international jurisdictions.. Valid values are `^[A-Z]{3}$`',
-    `effective_date` DATE COMMENT 'The date on which the malpractice insurance policy becomes effective and coverage begins. Used to determine whether a provider was covered during a specific period for credentialing and claims adjudication purposes.',
-    `expiration_date` DATE COMMENT 'The date on which the malpractice insurance policy expires and coverage ends. Credentialing teams use this date to trigger renewal workflows and ensure continuous coverage compliance per Joint Commission standards.',
-    `group_policy_indicator` BOOLEAN COMMENT 'Indicates whether this coverage is provided under a group or organizational malpractice policy (e.g., hospital-sponsored coverage) rather than an individual policy purchased by the provider. Affects credentialing verification workflows.',
-    `insurer_contact_name` STRING COMMENT 'Name of the primary contact person at the insurance carrier for verification and claims inquiries related to this policy. Used by credentialing staff during primary source verification (PSV).',
-    `insurer_contact_phone` STRING COMMENT 'Phone number for the insurance carriers verification or credentialing department. Used by credentialing staff to conduct primary source verification (PSV) of coverage details.. Valid values are `^+?[0-9-s().]{7,20}$`',
-    `insurer_naic_code` STRING COMMENT 'Five-digit National Association of Insurance Commissioners (NAIC) company code uniquely identifying the insurance carrier. Used for regulatory verification and insurer financial stability assessment.. Valid values are `^[0-9]{5}$`',
-    `lapse_explanation` STRING COMMENT 'Free-text explanation documenting the reason for any gap or lapse in malpractice coverage. Required by credentialing committees when coverage_lapse_indicator is True. Applicable only when coverage_lapse_indicator is True.',
-    `nose_coverage_indicator` BOOLEAN COMMENT 'Indicates whether the policy includes prior acts (nose) coverage, which extends protection to incidents that occurred before the current policys effective date. Relevant when a provider transitions between employers or insurers.',
-    `notes` STRING COMMENT 'Free-text field for credentialing staff to capture additional context, exceptions, or special conditions related to this malpractice coverage record that are not captured in structured fields (e.g., coverage exclusions, special endorsements, committee decisions).',
-    `open_claims_count` STRING COMMENT 'The number of currently open or pending malpractice claims against the provider under this policy. Used by credentialing committees to assess provider risk profile during initial credentialing and re-credentialing.',
-    `per_occurrence_limit` DECIMAL(18,2) COMMENT 'The maximum dollar amount the insurer will pay for a single malpractice claim or incident. Expressed in USD. Credentialing bodies and hospital medical staff offices verify this meets minimum thresholds (e.g., $1,000,000 per occurrence).',
-    `policy_holder_name` STRING COMMENT 'The legal name of the named insured on the malpractice policy. This may be the individual provider, a group practice, or a healthcare organization. Used to confirm the provider is the named insured or an additional insured.',
-    `policy_number` STRING COMMENT 'The externally-assigned unique identifier issued by the malpractice insurer for this professional liability policy. Used for verification during credentialing and payer enrollment processes.',
-    `prior_acts_date` DATE COMMENT 'The retroactive date from which prior acts (nose) coverage applies. Incidents occurring on or after this date are covered under the current policy even if they predate the policy effective date. Applicable only when nose_coverage_indicator is True.',
-    `renewal_reminder_date` DATE COMMENT 'The date on which the credentialing team should initiate the policy renewal workflow to ensure continuous coverage without lapse. Typically set a configurable number of days before the expiration date.',
-    `self_insured_indicator` BOOLEAN COMMENT 'Indicates whether the provider or their employing organization is self-insured for professional liability rather than carrying a commercial malpractice policy. Self-insured entities must demonstrate adequate reserves to meet credentialing requirements.',
-    `source_record_reference` STRING COMMENT 'The native identifier of this malpractice coverage record in the originating operational system (e.g., Symplr record ID). Used for data lineage, deduplication, and reconciliation between the lakehouse Silver layer and source systems.',
-    `tail_coverage_effective_date` DATE COMMENT 'The date on which the extended reporting period (tail coverage) endorsement becomes effective, typically coinciding with the expiration of the underlying claims-made policy. Applicable only when tail_coverage_indicator is True.',
-    `tail_coverage_expiration_date` DATE COMMENT 'The date on which the extended reporting period (tail coverage) endorsement expires. After this date, no new claims can be reported under the tail endorsement. Applicable only when tail_coverage_indicator is True.',
-    `tail_coverage_indicator` BOOLEAN COMMENT 'Indicates whether an extended reporting period (tail coverage) endorsement is in place for this claims-made policy. Tail coverage protects against claims filed after the policy expires for incidents that occurred during the policy period. Critical for credentialing continuity when a provider changes employers or retires.',
-    `updated_timestamp` TIMESTAMP COMMENT 'The timestamp when this malpractice coverage record was last modified. Used for change tracking, audit trail, and incremental data pipeline processing in the Databricks Silver layer.',
-    `verification_date` DATE COMMENT 'The date on which the malpractice coverage was last verified through primary source verification (PSV) with the insurer. Required by The Joint Commission and NCQA for credentialing compliance.',
-    `verification_method` STRING COMMENT 'The method used to perform primary source verification (PSV) of this malpractice coverage. Credentialing standards require documentation of how verification was obtained.. Valid values are `phone|fax|online_portal|written_confirmation|automated_feed`',
-    `verification_status` STRING COMMENT 'Indicates the primary source verification (PSV) status of this malpractice coverage record. Verified means the coverage has been confirmed directly with the insurer. Pending means verification is in progress. Failed means verification could not be completed. Waived means verification was waived per credentialing policy.. Valid values are `verified|pending|failed|waived`',
-    `verified_by` STRING COMMENT 'Name or identifier of the credentialing staff member or automated system that performed the primary source verification (PSV) of this malpractice coverage record.',
+    `malpractice_coverage_id` BIGINT COMMENT 'Primary key',
+    `ap_invoice_id` BIGINT COMMENT 'AP invoice',
+    `care_site_id` BIGINT COMMENT 'Unique identifier for the care site within the provider malpractice coverage record.',
+    `clinician_id` BIGINT COMMENT 'Unique identifier for the clinician within the provider malpractice coverage record.',
+    `credentialing_application_id` BIGINT COMMENT 'Credentialing application',
+    `credentialing_file_id` BIGINT COMMENT 'Credentialing file',
+    `employee_id` BIGINT COMMENT 'Unique identifier for the employee within the provider malpractice coverage record.',
+    `aggregate_limit` DECIMAL(18,2) COMMENT 'The aggregate limit of the provider malpractice coverage record.',
+    `carrier_name` STRING COMMENT 'The carrier name of the provider malpractice coverage record.',
+    `certificate_of_insurance_url` STRING COMMENT 'The certificate of insurance url of the provider malpractice coverage record.',
+    `claims_history_indicator` BOOLEAN COMMENT 'The claims history indicator of the provider malpractice coverage record.',
+    `coverage_amount` DECIMAL(18,2) COMMENT 'The coverage amount of the provider malpractice coverage record.',
+    `coverage_lapse_indicator` BOOLEAN COMMENT 'The coverage lapse indicator of the provider malpractice coverage record.',
+    `coverage_specialty` STRING COMMENT 'The coverage specialty of the provider malpractice coverage record.',
+    `coverage_state` STRING COMMENT 'The coverage state of the provider malpractice coverage record.',
+    `coverage_status` STRING COMMENT 'The coverage status value classifying the provider malpractice coverage record.',
+    `coverage_type` STRING COMMENT 'The coverage type value classifying the provider malpractice coverage record.',
+    `created_timestamp` TIMESTAMP COMMENT 'Record creation timestamp',
+    `currency_code` STRING COMMENT 'The currency code value classifying the provider malpractice coverage record.',
+    `effective_date` DATE COMMENT 'Timestamp capturing the effective date associated with the provider malpractice coverage record.',
+    `expiration_date` DATE COMMENT 'Timestamp capturing the expiration date associated with the provider malpractice coverage record.',
+    `group_policy_indicator` BOOLEAN COMMENT 'The group policy indicator of the provider malpractice coverage record.',
+    `insurer_contact_name` STRING COMMENT 'The insurer contact name of the provider malpractice coverage record.',
+    `insurer_contact_phone` STRING COMMENT 'The insurer contact phone of the provider malpractice coverage record.',
+    `insurer_naic_code` STRING COMMENT 'The insurer naic code value classifying the provider malpractice coverage record.',
+    `lapse_explanation` STRING COMMENT 'The lapse explanation of the provider malpractice coverage record.',
+    `nose_coverage_indicator` BOOLEAN COMMENT 'The nose coverage indicator of the provider malpractice coverage record.',
+    `notes` STRING COMMENT 'The notes of the provider malpractice coverage record.',
+    `open_claims_count` STRING COMMENT 'The open claims count of the provider malpractice coverage record.',
+    `per_occurrence_limit` DECIMAL(18,2) COMMENT 'The per occurrence limit of the provider malpractice coverage record.',
+    `policy_holder_name` STRING COMMENT 'The policy holder name of the provider malpractice coverage record.',
+    `policy_number` STRING COMMENT 'The policy number of the provider malpractice coverage record.',
+    `prior_acts_date` DATE COMMENT 'Timestamp capturing the prior acts date associated with the provider malpractice coverage record.',
+    `renewal_reminder_date` DATE COMMENT 'Timestamp capturing the renewal reminder date associated with the provider malpractice coverage record.',
+    `self_insured_indicator` BOOLEAN COMMENT 'The self insured indicator of the provider malpractice coverage record.',
+    `source_record_reference` STRING COMMENT 'The source record reference of the provider malpractice coverage record.',
+    `malpractice_coverage_status` STRING COMMENT 'The malpractice coverage status value classifying the provider malpractice coverage record.',
+    `tail_coverage_effective_date` DATE COMMENT 'Timestamp capturing the tail coverage effective date associated with the provider malpractice coverage record.',
+    `tail_coverage_expiration_date` DATE COMMENT 'Timestamp capturing the tail coverage expiration date associated with the provider malpractice coverage record.',
+    `tail_coverage_indicator` BOOLEAN COMMENT 'The tail coverage indicator of the provider malpractice coverage record.',
+    `updated_timestamp` TIMESTAMP COMMENT 'Record update timestamp',
+    `verification_date` DATE COMMENT 'Timestamp capturing the verification date associated with the provider malpractice coverage record.',
+    `verification_method` STRING COMMENT 'The verification method of the provider malpractice coverage record.',
+    `verification_status` STRING COMMENT 'The verification status value classifying the provider malpractice coverage record.',
+    `verified_by` STRING COMMENT 'The verified by of the provider malpractice coverage record.',
+    `vibe_structure_marker` STRING COMMENT 'The vibe structure marker of the provider malpractice coverage record.',
     CONSTRAINT pk_malpractice_coverage PRIMARY KEY(`malpractice_coverage_id`)
-) COMMENT 'Tracks professional liability (malpractice) insurance coverage for individual clinicians. Captures insurer name, policy number, coverage type (occurrence vs. claims-made), per-occurrence limit, aggregate limit, effective and expiration dates, tail coverage indicator, and coverage status. Required for credentialing verification and Joint Commission compliance.';
+) COMMENT 'Malpractice insurance coverage with limits and tail coverage tracking';
 
 CREATE OR REPLACE TABLE `vibe_healthcare_v1`.`provider`.`npdb_query` (
-    `npdb_query_id` BIGINT COMMENT 'Unique surrogate identifier for each National Practitioner Data Bank (NPDB) query record in the system. Primary key for this entity.',
-    `care_site_id` BIGINT COMMENT 'Reference to the specific facility or hospital campus on behalf of which the NPDB query was submitted. Supports multi-facility health systems where queries may be initiated by different campuses.',
-    `clinician_id` BIGINT COMMENT 'Reference to the healthcare provider (clinician, practitioner) who is the subject of this NPDB query. Links to the provider master record.',
-    `compliance_regulatory_submission_id` BIGINT COMMENT 'Foreign key linking to compliance.regulatory_submission. Business justification: NPDB queries for credentialing are regulatory submissions to NPDB. Credentialing teams track query reference numbers, response dates, and turnaround times to ensure timely completion of credentialing ',
-    `credentialing_application_id` BIGINT COMMENT 'Reference to the credentialing or reappointment application that triggered this NPDB query. Links to the credentialing application record.',
-    `original_query_npdb_query_id` BIGINT COMMENT 'Reference to the original NPDB query record if this record is a resubmission. Null if resubmission_flag is False. Enables lineage tracking across query attempts for the same credentialing event.',
-    `reappointment_id` BIGINT COMMENT 'Foreign key linking to provider.reappointment. Business justification: NPDB queries are performed during both credentialing and reappointment. Adding reappointment_id FK (credentialing_application_id already exists). FK will be NULL for credentialing-only queries.',
-    `adverse_action_flag` BOOLEAN COMMENT 'Indicates whether the NPDB response contains one or more adverse action reports against the practitioner, such as clinical privilege revocations, license surrenders, or exclusions. True if adverse action reports are present; False otherwise.',
-    `adverse_action_report_count` STRING COMMENT 'Number of adverse action reports specifically returned within the NPDB response. Subset of total report_count. Used for credentialing risk stratification.',
-    `cms_participating_facility_flag` BOOLEAN COMMENT 'Indicates whether this NPDB query was conducted as part of mandatory CMS participation requirements. CMS-participating hospitals are required to query the NPDB for all medical staff applicants and reappointments. True if query is CMS-mandated; False otherwise.',
-    `continuous_query_disenrollment_date` DATE COMMENT 'Date on which the practitioner was disenrolled from the NPDB continuous query (CQ) program, typically upon termination of employment, expiration of privileges, or voluntary withdrawal. Null if still actively enrolled.',
-    `continuous_query_enrollment_date` DATE COMMENT 'Date on which the practitioner was enrolled in the NPDB continuous query (CQ) program. Null if continuous_query_enrollment_flag is False. Used to track the start of ongoing monitoring coverage.',
-    `continuous_query_enrollment_flag` BOOLEAN COMMENT 'Indicates whether this query initiated or is associated with a continuous query (CQ) enrollment, which provides ongoing NPDB monitoring and automatic notification of new reports filed against the practitioner. True if enrolled in continuous query; False for one-time queries.',
-    `created_timestamp` TIMESTAMP COMMENT 'Timestamp when this NPDB query record was first created in the system. Supports audit trail and data lineage requirements.',
-    `credentialing_purpose` STRING COMMENT 'Specific credentialing purpose for which the NPDB query was initiated: initial_appointment (new medical staff), reappointment (periodic renewal), privilege_expansion (adding new clinical privileges), locum_tenens (temporary coverage), telemedicine (virtual care credentialing), or research (IRB-related credentialing). [ENUM-REF-CANDIDATE: initial_appointment|reappointment|privilege_expansion|locum_tenens|telemedicine|research — promote to reference product if additional purposes emerge]. Valid values are `initial_appointment|reappointment|privilege_expansion|locum_tenens|telemedicine|research`',
-    `error_code` STRING COMMENT 'Error code returned by the NPDB system when a query submission or processing failure occurs. Null if no error. Used for troubleshooting and resubmission workflows.',
-    `error_description` STRING COMMENT 'Human-readable description of the error returned by the NPDB system when a query fails. Null if no error. Supports credentialing staff in resolving submission issues.',
-    `malpractice_payment_flag` BOOLEAN COMMENT 'Indicates whether the NPDB response contains one or more malpractice payment reports for the practitioner. True if malpractice payment records are present; False otherwise.',
-    `malpractice_payment_report_count` STRING COMMENT 'Number of malpractice payment reports specifically returned within the NPDB response. Subset of total report_count. Used for credentialing risk assessment and peer review.',
-    `notes` STRING COMMENT 'Free-text notes entered by credentialing staff regarding the NPDB query, response interpretation, committee deliberations, or follow-up actions required. Supports credentialing file documentation.',
-    `practitioner_type` STRING COMMENT 'Classification of the practitioner type as submitted in the NPDB query. Determines the applicable NPDB reporting categories and adverse action types relevant to the query response.. Valid values are `physician|dentist|nurse_practitioner|physician_assistant|podiatrist|other`',
-    `queried_date_of_birth` DATE COMMENT 'Date of birth of the practitioner as submitted in the NPDB query for identity verification and matching. Captured at query time as part of the NPDB required subject identification fields.',
-    `queried_dea_number` STRING COMMENT 'The DEA registration number of the practitioner as submitted in the NPDB query, if applicable. Used when querying for controlled substance-related adverse actions. Captured at query time.. Valid values are `^[A-Z]{2}[0-9]{7}$`',
-    `queried_license_state` STRING COMMENT 'Two-letter US state abbreviation corresponding to the state license number submitted in the NPDB query. Identifies the licensing jurisdiction for the practitioner at the time of query.. Valid values are `^[A-Z]{2}$`',
-    `queried_npi` STRING COMMENT 'The 10-digit National Provider Identifier (NPI) of the practitioner as submitted in the NPDB query. Captured at query time to preserve the exact identifier used, independent of any subsequent NPI updates on the provider master record.. Valid values are `^[0-9]{10}$`',
-    `queried_practitioner_name` STRING COMMENT 'Full legal name of the practitioner as submitted in the NPDB query. Captured at query time to preserve the exact name used for matching, independent of any subsequent name changes on the provider master record.',
-    `queried_ssn_last4` STRING COMMENT 'Last four digits of the practitioners Social Security Number as submitted in the NPDB query for identity matching purposes. Only the last four digits are stored to minimize PHI exposure while supporting reconciliation.. Valid values are `^[0-9]{4}$`',
-    `queried_state_license_number` STRING COMMENT 'The state medical or professional license number of the practitioner as submitted in the NPDB query. Captured at query time to preserve the exact license identifier used for the query.',
-    `query_date` DATE COMMENT 'Calendar date on which the NPDB query was submitted to the National Practitioner Data Bank. This is the principal business event date for the transaction.',
-    `query_expiration_date` DATE COMMENT 'Date on which the NPDB query response expires for credentialing purposes. Per TJC and CMS standards, NPDB responses are typically valid for a defined period (commonly 180 days) for credentialing decisions. After this date, a new query must be submitted.',
-    `query_reference_number` STRING COMMENT 'Externally assigned unique reference number issued by the NPDB system upon submission of the query. Used for tracking and reconciliation with NPDB responses.',
-    `query_status` STRING COMMENT 'Current lifecycle status of the NPDB query: submitted (sent to NPDB), pending (awaiting response), completed (response received and processed), error (submission or processing failure), or cancelled (query withdrawn before completion).. Valid values are `submitted|pending|completed|error|cancelled`',
-    `query_type` STRING COMMENT 'Classification of the NPDB query indicating the purpose: initial credentialing (first-time privilege application), reappointment (periodic renewal), continuous query enrollment (ongoing monitoring subscription), one-time self-query (practitioner self-check), or one-time entity query (facility-initiated). [ENUM-REF-CANDIDATE: initial_credentialing|reappointment|continuous_query|one_time_self|one_time_entity — promote to reference product if additional types emerge]. Valid values are `initial_credentialing|reappointment|continuous_query|one_time_self|one_time_entity`',
-    `querying_organization_name` STRING COMMENT 'Name of the healthcare organization (hospital, clinic, health system) that submitted the NPDB query. Required by NPDB to identify the authorized querying entity.',
-    `querying_organization_npdb_number` STRING COMMENT 'NPDB-assigned registration identifier for the querying organization. Required for authorized entity queries and used for NPDB audit trail reconciliation.',
-    `report_count` STRING COMMENT 'Total number of individual reports returned by the NPDB in response to this query. Zero indicates a clear response; values greater than zero require credentialing committee review.',
-    `response_date` DATE COMMENT 'Calendar date on which the NPDB returned a response to the submitted query. Null if the response has not yet been received.',
-    `response_document_reference` STRING COMMENT 'Document management system reference or storage path for the official NPDB response document received from the NPDB. Supports retrieval of the original response for credentialing file documentation and audit purposes.',
-    `response_status` STRING COMMENT 'Outcome status returned by the NPDB: no_report (no adverse actions or malpractice payments on file), report_found (one or more reports exist), subject_not_found (practitioner not identified in NPDB), error (NPDB processing error), or pending (response not yet received).. Valid values are `no_report|report_found|subject_not_found|error|pending`',
-    `response_turnaround_days` STRING COMMENT 'Number of calendar days elapsed between the query submission date and the response date. Used for credentialing process performance monitoring and compliance with facility-defined SLA targets for credentialing turnaround.',
-    `resubmission_flag` BOOLEAN COMMENT 'Indicates whether this NPDB query record represents a resubmission of a previously failed or errored query. True if this is a resubmission; False if this is an original submission.',
-    `review_completed_date` DATE COMMENT 'Date on which the credentialing committee or medical executive committee completed its review of the NPDB query response. Null if review has not yet been completed or was not required.',
-    `review_outcome` STRING COMMENT 'Outcome of the credentialing committee review of the NPDB query response: approved (privileges granted), approved_with_conditions (privileges granted with restrictions), deferred (decision postponed pending additional information), denied (privileges not granted), or pending (review in progress).. Valid values are `approved|approved_with_conditions|deferred|denied|pending`',
-    `review_required_flag` BOOLEAN COMMENT 'Indicates whether the NPDB query response requires escalation to the credentialing committee or medical executive committee for review, typically triggered when report_count is greater than zero or adverse_action_flag is True.',
-    `submission_method` STRING COMMENT 'Method by which the NPDB query was submitted: electronic (via NPDB web portal), manual (paper-based or phone submission), or api (system-to-system integration). Supports audit and process improvement analysis.. Valid values are `electronic|manual|api`',
-    `submitted_by_user` STRING COMMENT 'Username or employee identifier of the credentialing staff member who submitted the NPDB query on behalf of the organization. Supports audit trail and accountability for credentialing operations.',
-    `updated_timestamp` TIMESTAMP COMMENT 'Timestamp when this NPDB query record was most recently modified in the system. Supports change tracking, audit trail, and incremental data pipeline processing.',
+    `npdb_query_id` BIGINT COMMENT 'Primary key',
+    `care_site_id` BIGINT COMMENT 'Unique identifier for the care site within the provider npdb query record.',
+    `clinician_id` BIGINT COMMENT 'Unique identifier for the clinician within the provider npdb query record.',
+    `credentialing_application_id` BIGINT COMMENT 'Credentialing application',
+    `original_query_npdb_query_id` BIGINT COMMENT 'Original query',
+    `reappointment_id` BIGINT COMMENT 'Reappointment',
+    `adverse_action_flag` BOOLEAN COMMENT 'The adverse action flag of the provider npdb query record.',
+    `adverse_action_report_count` STRING COMMENT 'The adverse action report count of the provider npdb query record.',
+    `cms_participating_facility_flag` BOOLEAN COMMENT 'The cms participating facility flag of the provider npdb query record.',
+    `continuous_query_disenrollment_date` DATE COMMENT 'Timestamp capturing the continuous query disenrollment date associated with the provider npdb query record.',
+    `continuous_query_enrollment_date` DATE COMMENT 'Timestamp capturing the continuous query enrollment date associated with the provider npdb query record.',
+    `continuous_query_enrollment_flag` BOOLEAN COMMENT 'The continuous query enrollment flag of the provider npdb query record.',
+    `created_timestamp` TIMESTAMP COMMENT 'Record creation timestamp',
+    `credentialing_purpose` STRING COMMENT 'The credentialing purpose of the provider npdb query record.',
+    `error_code` STRING COMMENT 'The error code value classifying the provider npdb query record.',
+    `error_description` STRING COMMENT 'The error description of the provider npdb query record.',
+    `malpractice_payment_flag` BOOLEAN COMMENT 'The malpractice payment flag of the provider npdb query record.',
+    `malpractice_payment_report_count` STRING COMMENT 'The malpractice payment report count of the provider npdb query record.',
+    `notes` STRING COMMENT 'The notes of the provider npdb query record.',
+    `practitioner_type` STRING COMMENT 'The practitioner type value classifying the provider npdb query record.',
+    `queried_date_of_birth` DATE COMMENT 'The queried date of birth of the provider npdb query record.',
+    `queried_dea_number` STRING COMMENT 'The queried dea number of the provider npdb query record.',
+    `queried_license_state` STRING COMMENT 'The queried license state of the provider npdb query record.',
+    `queried_npi` STRING COMMENT 'The queried npi of the provider npdb query record.',
+    `queried_practitioner_name` STRING COMMENT 'The queried practitioner name of the provider npdb query record.',
+    `queried_ssn_last4` STRING COMMENT 'The queried ssn last4 of the provider npdb query record.',
+    `queried_state_license_number` STRING COMMENT 'The queried state license number of the provider npdb query record.',
+    `query_date` DATE COMMENT 'Timestamp capturing the query date associated with the provider npdb query record.',
+    `query_expiration_date` DATE COMMENT 'Timestamp capturing the query expiration date associated with the provider npdb query record.',
+    `query_reference_number` STRING COMMENT 'The query reference number of the provider npdb query record.',
+    `query_status` STRING COMMENT 'The query status value classifying the provider npdb query record.',
+    `query_type` STRING COMMENT 'The query type value classifying the provider npdb query record.',
+    `querying_organization_name` STRING COMMENT 'The querying organization name of the provider npdb query record.',
+    `querying_organization_npdb_number` STRING COMMENT 'The querying organization npdb number of the provider npdb query record.',
+    `report_count` STRING COMMENT 'The report count of the provider npdb query record.',
+    `report_received_flag` BOOLEAN COMMENT 'The report received flag of the provider npdb query record.',
+    `response_date` DATE COMMENT 'Timestamp capturing the response date associated with the provider npdb query record.',
+    `response_document_reference` STRING COMMENT 'The response document reference of the provider npdb query record.',
+    `response_status` STRING COMMENT 'The response status value classifying the provider npdb query record.',
+    `response_turnaround_days` STRING COMMENT 'The response turnaround days of the provider npdb query record.',
+    `resubmission_flag` BOOLEAN COMMENT 'The resubmission flag of the provider npdb query record.',
+    `review_completed_date` DATE COMMENT 'Timestamp capturing the review completed date associated with the provider npdb query record.',
+    `review_outcome` STRING COMMENT 'The review outcome of the provider npdb query record.',
+    `review_required_flag` BOOLEAN COMMENT 'The review required flag of the provider npdb query record.',
+    `npdb_query_status` STRING COMMENT 'The npdb query status value classifying the provider npdb query record.',
+    `submission_method` STRING COMMENT 'The submission method of the provider npdb query record.',
+    `submitted_by_user` STRING COMMENT 'The submitted by user of the provider npdb query record.',
+    `updated_timestamp` TIMESTAMP COMMENT 'Record update timestamp',
+    `vibe_structure_marker` STRING COMMENT 'The vibe structure marker of the provider npdb query record.',
     CONSTRAINT pk_npdb_query PRIMARY KEY(`npdb_query_id`)
-) COMMENT 'Transactional record of National Practitioner Data Bank (NPDB) queries submitted for clinicians during credentialing and reappointment processes. Captures query type (initial, reappointment, continuous query enrollment), query date, response date, response status, adverse action flag, malpractice payment flag, and query reference number. Mandatory for CMS-participating facilities.';
+) COMMENT 'National Practitioner Data Bank queries and responses';
+
+CREATE OR REPLACE TABLE `vibe_healthcare_v1`.`provider`.`sanction` (
+    `sanction_id` BIGINT COMMENT 'Primary key',
+    `clinician_id` BIGINT COMMENT 'Unique identifier for the clinician within the provider sanction record.',
+    `investigation_id` BIGINT COMMENT 'Investigation',
+    `org_provider_id` BIGINT COMMENT 'Org provider',
+    `patient_safety_event_id` BIGINT COMMENT 'Patient safety event',
+    `payer_id` BIGINT COMMENT 'Unique identifier for the payer within the provider sanction record.',
+    `quality_peer_review_id` BIGINT COMMENT 'Quality peer review',
+    `specialty_id` BIGINT COMMENT 'Unique identifier for the specialty within the provider sanction record.',
+    `appeal_date` DATE COMMENT 'Timestamp capturing the appeal date associated with the provider sanction record.',
+    `appeal_filed` BOOLEAN COMMENT 'The appeal filed of the provider sanction record.',
+    `appeal_outcome` STRING COMMENT 'The appeal outcome of the provider sanction record.',
+    `case_reference_number` STRING COMMENT 'The case reference number of the provider sanction record.',
+    `cia_reference_number` STRING COMMENT 'The cia reference number of the provider sanction record.',
+    `civil_monetary_penalty_amount` DECIMAL(18,2) COMMENT 'The civil monetary penalty amount of the provider sanction record.',
+    `corporate_integrity_agreement` BOOLEAN COMMENT 'The corporate integrity agreement of the provider sanction record.',
+    `created_timestamp` TIMESTAMP COMMENT 'Record creation timestamp',
+    `credentialing_hold` BOOLEAN COMMENT 'The credentialing hold of the provider sanction record.',
+    `dea_registration_number` STRING COMMENT 'The dea registration number of the provider sanction record.',
+    `exclusion_type_code` STRING COMMENT 'The exclusion type code value classifying the provider sanction record.',
+    `expiration_date` DATE COMMENT 'Timestamp capturing the expiration date associated with the provider sanction record.',
+    `federal_program_exclusion` BOOLEAN COMMENT 'The federal program exclusion of the provider sanction record.',
+    `internal_review_date` DATE COMMENT 'Timestamp capturing the internal review date associated with the provider sanction record.',
+    `internal_review_status` STRING COMMENT 'The internal review status value classifying the provider sanction record.',
+    `issuing_authority` STRING COMMENT 'The issuing authority of the provider sanction record.',
+    `issuing_authority_type` STRING COMMENT 'The issuing authority type value classifying the provider sanction record.',
+    `license_number` STRING COMMENT 'The license number of the provider sanction record.',
+    `license_state` STRING COMMENT 'The license state of the provider sanction record.',
+    `medicaid_exclusion` BOOLEAN COMMENT 'The medicaid exclusion of the provider sanction record.',
+    `medicare_exclusion` BOOLEAN COMMENT 'The medicare exclusion of the provider sanction record.',
+    `notes` STRING COMMENT 'The notes of the provider sanction record.',
+    `notification_date` DATE COMMENT 'Timestamp capturing the notification date associated with the provider sanction record.',
+    `notification_sent` BOOLEAN COMMENT 'The notification sent of the provider sanction record.',
+    `npdb_report_date` DATE COMMENT 'Timestamp capturing the npdb report date associated with the provider sanction record.',
+    `npdb_report_number` STRING COMMENT 'The npdb report number of the provider sanction record.',
+    `npi` STRING COMMENT 'The npi of the provider sanction record.',
+    `payer_enrollment_impact` BOOLEAN COMMENT 'The payer enrollment impact of the provider sanction record.',
+    `privilege_suspension` BOOLEAN COMMENT 'The privilege suspension of the provider sanction record.',
+    `provider_type` STRING COMMENT 'The provider type value classifying the provider sanction record.',
+    `reason` STRING COMMENT 'The reason of the provider sanction record.',
+    `reason_code` STRING COMMENT 'The reason code value classifying the provider sanction record.',
+    `reinstatement_date` DATE COMMENT 'Timestamp capturing the reinstatement date associated with the provider sanction record.',
+    `reported_to_npdb` BOOLEAN COMMENT 'The reported to npdb of the provider sanction record.',
+    `resolution_date` DATE COMMENT 'Timestamp capturing the resolution date associated with the provider sanction record.',
+    `sanction_date` DATE COMMENT 'Timestamp capturing the sanction date associated with the provider sanction record.',
+    `sanction_status` STRING COMMENT 'The sanction status value classifying the provider sanction record.',
+    `sanction_type` STRING COMMENT 'The sanction type value classifying the provider sanction record.',
+    `sanctioning_authority` STRING COMMENT 'The sanctioning authority of the provider sanction record.',
+    `screening_date` DATE COMMENT 'Timestamp capturing the screening date associated with the provider sanction record.',
+    `screening_frequency` STRING COMMENT 'The screening frequency of the provider sanction record.',
+    `screening_source` STRING COMMENT 'The screening source of the provider sanction record.',
+    `settlement_amount` DECIMAL(18,2) COMMENT 'The settlement amount of the provider sanction record.',
+    `source_document_reference` STRING COMMENT 'The source document reference of the provider sanction record.',
+    `updated_timestamp` TIMESTAMP COMMENT 'Record update timestamp',
+    `vibe_structure_marker` STRING COMMENT 'The vibe structure marker of the provider sanction record.',
+    CONSTRAINT pk_sanction PRIMARY KEY(`sanction_id`)
+) COMMENT 'Provider sanctions, exclusions, and adverse actions (OIG, SAM, state boards)';
 
 CREATE OR REPLACE TABLE `vibe_healthcare_v1`.`provider`.`dea_registration` (
-    `dea_registration_id` BIGINT COMMENT 'Unique surrogate identifier for each DEA controlled substance registration record in the enterprise data platform. Primary key for the dea_registration data product.',
-    `care_site_id` BIGINT COMMENT 'Reference to the primary healthcare facility or practice location associated with this DEA registration. DEA registrations are location-specific; this links the registration to the enterprise facility master record for network and compliance reporting.',
-    `clinician_id` BIGINT COMMENT 'Reference to the licensed healthcare professional or organizational provider who holds this DEA registration. Links to the authoritative provider master record.',
-    `compliance_regulatory_submission_id` BIGINT COMMENT 'Foreign key linking to compliance.regulatory_submission. Business justification: DEA registration renewals and modifications are regulatory submissions to DEA. Credentialing teams track submission dates, DEA confirmation numbers, payment receipts, and approval status to maintain u',
-    `credentialing_application_id` BIGINT COMMENT 'Reference to the providers credentialing record in the credentialing management system (e.g., Symplr). Links the DEA registration to the broader credentialing and privileging workflow for the provider.',
-    `business_activity_type` STRING COMMENT 'The DEA-defined category of business activity for which the registration is issued. Determines the type of controlled substance activities the registrant is authorized to perform. Practitioner covers physicians, dentists, and veterinarians; mid-level practitioner covers nurse practitioners and physician assistants; hospital and pharmacy cover institutional registrants. [ENUM-REF-CANDIDATE: practitioner|mid-level_practitioner|hospital|pharmacy|researcher|manufacturer|distributor|importer|exporter|reverse_distributor|narcotic_treatment_program — promote to reference product]',
-    `days_until_expiration` STRING COMMENT 'The number of calendar days remaining until the DEA registration expires, calculated as of the most recent data refresh date. Supports proactive credentialing management and pharmacy compliance dashboards. Note: This is a point-in-time snapshot value loaded during ETL; it is not a real-time computed field.',
-    `dea_number` STRING COMMENT 'The official DEA registration number assigned by the Drug Enforcement Administration to authorize the registrant to handle controlled substances. Format: two-letter prefix followed by seven digits. Used for pharmacy order validation and controlled substance prescribing verification.. Valid values are `^[A-Z]{2}[0-9]{7}$`',
-    `expiration_alert_date` DATE COMMENT 'The date on which the expiration alert notification was sent to the provider and/or credentialing staff. Null if no alert has been sent. Used for credentialing workflow audit trails.',
-    `expiration_alert_sent` BOOLEAN COMMENT 'Indicates whether an expiration alert notification has been sent to the provider and/or credentialing staff regarding the upcoming expiration of this DEA registration. Supports proactive renewal workflow management.',
-    `expiration_date` DATE COMMENT 'The calendar date on which the DEA registration expires and the provider is no longer authorized to prescribe or handle controlled substances under this registration. DEA registrations are typically issued for a three-year term. Critical for pharmacy order validation and compliance monitoring.',
-    `fee_amount` DECIMAL(18,2) COMMENT 'The registration fee paid to the DEA for the current registration period, in U.S. dollars. DEA registration fees vary by registrant type and are set by federal regulation. Used for credentialing cost tracking and budget reconciliation.',
-    `fee_exempt` BOOLEAN COMMENT 'Indicates whether the registrant is exempt from DEA registration fees. Fee exemptions apply to federal, state, and local government practitioners, as well as certain public health service providers. Relevant for registration cost tracking and compliance.',
-    `notes` STRING COMMENT 'Free-text field for credentialing staff to document additional context, exceptions, or administrative notes related to the DEA registration. Examples include documentation of DEA correspondence, special conditions, or manual verification notes.',
-    `npi_number` STRING COMMENT 'The 10-digit National Provider Identifier (NPI) associated with the provider holding this DEA registration. Used to cross-reference the DEA registration with the providers NPI record for pharmacy claims validation, payer enrollment verification, and PDMP (Prescription Drug Monitoring Program) reporting.. Valid values are `^[0-9]{10}$`',
-    `payment_date` DATE COMMENT 'The date on which the DEA registration fee was paid for the current registration period. Used for financial reconciliation and credentialing audit trails.',
-    `pdmp_reporting_required` BOOLEAN COMMENT 'Indicates whether the provider holding this DEA registration is subject to mandatory Prescription Drug Monitoring Program (PDMP) reporting requirements in the registered state. PDMP reporting obligations vary by state and practitioner type.',
-    `practitioner_type_code` STRING COMMENT 'DEA-assigned code identifying the specific practitioner type category (e.g., MD, DO, DDS, DVM, NP, PA, CRNA). Determines prescribing authority scope and schedule authorization eligibility. Sourced from DEA registration application form. [ENUM-REF-CANDIDATE: MD|DO|DDS|DMD|DVM|NP|PA|CRNA|CNM|PharmD|RPh|ND|OD|DPM|PhD — promote to reference product]',
-    `record_created_timestamp` TIMESTAMP COMMENT 'The timestamp when this DEA registration record was first created in the enterprise data platform. Supports data lineage, audit trail, and compliance reporting requirements.',
-    `record_updated_timestamp` TIMESTAMP COMMENT 'The timestamp when this DEA registration record was most recently updated in the enterprise data platform. Used for change tracking, incremental ETL processing, and audit compliance.',
-    `registered_address_line1` STRING COMMENT 'Primary street address line of the practice location registered with the DEA. The DEA registration is location-specific; a provider with multiple practice sites may require separate registrations per location.',
-    `registered_address_line2` STRING COMMENT 'Secondary address line (suite, floor, unit number) of the practice location registered with the DEA. Supplements the primary address line for precise location identification.',
-    `registered_city` STRING COMMENT 'City of the practice location registered with the DEA for this controlled substance registration.',
-    `registered_name` STRING COMMENT 'The full legal name of the individual practitioner or organization as it appears on the DEA registration certificate. May differ from the providers operational display name. Used for verification against DEA public registry and pharmacy dispensing records.',
-    `registered_zip_code` STRING COMMENT 'U.S. ZIP or ZIP+4 postal code of the practice location registered with the DEA. Used for geographic analysis of controlled substance prescribing patterns and regulatory reporting.. Valid values are `^[0-9]{5}(-[0-9]{4})?$`',
-    `registration_date` DATE COMMENT 'The calendar date on which the DEA registration was originally issued or most recently renewed by the Drug Enforcement Administration. Represents the effective start of the current registration period.',
-    `registration_state` STRING COMMENT 'The U.S. state or territory in which the DEA registration is valid and the provider is authorized to prescribe controlled substances. DEA registrations are state-specific; a provider practicing in multiple states requires a separate DEA registration for each state. Represented as a two-letter USPS state abbreviation.. Valid values are `^[A-Z]{2}$`',
-    `registration_status` STRING COMMENT 'Current lifecycle status of the DEA registration. Active indicates the registration is valid and the provider may prescribe controlled substances. Expired indicates the registration has lapsed and must be renewed before prescribing. Suspended or revoked indicates regulatory action has been taken.. Valid values are `active|expired|suspended|revoked|pending|surrendered`',
-    `registration_type` STRING COMMENT 'Indicates whether the DEA registration is held by an individual practitioner or by an institutional entity (e.g., hospital, clinic, pharmacy). Institutional registrations cover all authorized practitioners operating under the institutions DEA number.. Valid values are `individual|institutional`',
-    `renewal_application_date` DATE COMMENT 'The date on which the provider submitted a renewal application to the DEA for continuation of the controlled substance registration. DEA regulations require renewal applications to be submitted at least 45 days before expiration. Used for credentialing workflow tracking in Symplr.',
-    `renewal_confirmation_number` STRING COMMENT 'The confirmation or tracking number issued by the DEA upon receipt of a renewal application. Used to track the status of pending renewals and follow up with the DEA Diversion Control Division.',
-    `revocation_date` DATE COMMENT 'The date on which the DEA registration was formally revoked by the Drug Enforcement Administration. Revocation is a permanent action distinct from suspension. Null when the registration has not been revoked.',
-    `schedule_ii_authorized` BOOLEAN COMMENT 'Indicates whether the DEA registration authorizes the provider to prescribe Schedule II controlled substances (e.g., opioids such as oxycodone, stimulants such as amphetamine). Schedule II substances have high abuse potential with severe psychological or physical dependence. Required for CPOE validation in Epic Willow and Cerner PharmNet.',
-    `schedule_iii_authorized` BOOLEAN COMMENT 'Indicates whether the DEA registration authorizes the provider to prescribe Schedule III controlled substances (e.g., anabolic steroids, buprenorphine combinations). Schedule III substances have moderate to low physical dependence potential.',
-    `schedule_iin_authorized` BOOLEAN COMMENT 'Indicates whether the DEA registration authorizes the provider to prescribe Schedule IIN non-narcotic controlled substances (e.g., stimulants such as methylphenidate, Adderall). Distinct from Schedule IIN narcotic authorizations for pharmacy dispensing and order validation purposes.',
-    `schedule_iv_authorized` BOOLEAN COMMENT 'Indicates whether the DEA registration authorizes the provider to prescribe Schedule IV controlled substances (e.g., benzodiazepines, tramadol). Schedule IV substances have lower abuse potential relative to Schedule III.',
-    `schedule_v_authorized` BOOLEAN COMMENT 'Indicates whether the DEA registration authorizes the provider to prescribe Schedule V controlled substances (e.g., cough preparations with less than 200mg of codeine per 100mL). Schedule V substances have the lowest abuse potential among controlled substances.',
-    `source_system_code` STRING COMMENT 'Identifies the operational system of record from which this DEA registration record was sourced or last updated. Supports data lineage tracking and ETL reconciliation across credentialing platforms.. Valid values are `SYMPLR|EPIC|CERNER|MEDITECH|DEA_PORTAL|MANUAL`',
-    `source_system_record_reference` STRING COMMENT 'The native record identifier for this DEA registration in the originating operational system (e.g., Symplr provider ID, Epic provider record number). Used for ETL reconciliation and cross-system traceability.',
-    `surrender_date` DATE COMMENT 'The date on which the provider voluntarily surrendered the DEA registration to the Drug Enforcement Administration. Voluntary surrender may occur upon retirement, change of practice, or in lieu of revocation proceedings.',
-    `suspension_date` DATE COMMENT 'The date on which the DEA registration was suspended by the Drug Enforcement Administration or voluntarily surrendered by the provider. Null when the registration has not been suspended. Triggers immediate pharmacy order blocking in CPOE systems.',
-    `suspension_reason` STRING COMMENT 'Narrative description of the reason for suspension or revocation of the DEA registration, as documented by the DEA or the providers credentialing department. Includes regulatory action codes, voluntary surrender reasons, or administrative hold explanations.',
-    `verification_date` DATE COMMENT 'The most recent date on which the DEA registration was verified against the DEA Diversion Control Division public registry or through a primary source verification process. Required for Joint Commission and NCQA credentialing compliance.',
-    `verification_method` STRING COMMENT 'The method used to verify the DEA registration during the credentialing or re-credentialing process. DEA portal indicates direct query to the DEA Diversion Control Division online registry; primary source indicates direct contact with the DEA; third party indicates use of a credentialing verification organization (CVO).. Valid values are `dea_portal|primary_source|third_party|manual`',
-    `x_waiver_authorized` BOOLEAN COMMENT 'Indicates whether the provider holds a DATA 2000 waiver (formerly X-waiver) authorizing the prescribing of buprenorphine for opioid use disorder treatment in an office-based setting. As of the SUPPORT Act (2023), the X-waiver requirement was eliminated, but this flag tracks historical and current waiver status for compliance and analytics.',
-    `x_waiver_patient_limit` STRING COMMENT 'The maximum number of patients the provider is authorized to treat with buprenorphine for opioid use disorder under the DATA 2000 waiver. Common limits are 30, 100, or 275 patients depending on provider type and waiver tier. Null if x_waiver_authorized is false or not applicable.',
+    `dea_registration_id` BIGINT COMMENT 'Primary key',
+    `clinician_id` BIGINT COMMENT 'Unique identifier for the clinician within the provider dea registration record.',
+    `created_timestamp` TIMESTAMP COMMENT 'The created timestamp of the provider dea registration record.',
+    `dea_number` STRING COMMENT 'The dea number of the provider dea registration record.',
+    `dea_schedule` STRING COMMENT 'The dea schedule of the provider dea registration record.',
+    `expiration_date` DATE COMMENT 'Timestamp capturing the expiration date associated with the provider dea registration record.',
+    `issue_date` DATE COMMENT 'Timestamp capturing the issue date associated with the provider dea registration record.',
+    `registration_status` STRING COMMENT 'The registration status value classifying the provider dea registration record.',
+    `dea_registration_status` STRING COMMENT 'The dea registration status value classifying the provider dea registration record.',
+    `updated_timestamp` TIMESTAMP COMMENT 'The updated timestamp of the provider dea registration record.',
+    `vibe_structure_marker` STRING COMMENT 'The vibe structure marker of the provider dea registration record.',
     CONSTRAINT pk_dea_registration PRIMARY KEY(`dea_registration_id`)
-) COMMENT 'Master record of DEA (Drug Enforcement Administration) controlled substance registrations for clinicians authorized to prescribe Schedule II-V medications. Captures DEA number, registration date, expiration date, DEA schedule authorizations, state of registration, registration status, and business activity type. Required for pharmacy order validation and controlled substance compliance.';
+) COMMENT 'DEA registration tracking';
 
 CREATE OR REPLACE TABLE `vibe_healthcare_v1`.`provider`.`board_certification` (
-    `board_certification_id` BIGINT COMMENT 'Unique surrogate identifier for each board certification record in the system. Primary key for the board_certification data product within the provider domain.',
-    `clinician_id` BIGINT COMMENT 'Reference to the licensed healthcare professional (physician, nurse practitioner, or allied health professional) who holds this board certification. Links to the provider master record.',
-    `credentialing_application_id` BIGINT COMMENT 'Foreign key linking to provider.credentialing_application. Business justification: Board certifications are submitted during credentialing applications. FK will be NULL for certifications not tied to a specific application. No redundant columns to remove.',
-    `credentialing_file_id` BIGINT COMMENT 'Reference to the providers credentialing file or application record in the credentialing management system (e.g., Symplr). Links this board certification to the broader credentialing and privileging workflow for the provider.',
-    `employee_id` BIGINT COMMENT 'Foreign key linking to workforce.employee. Business justification: Board certifications held by employed physicians. Real business need: competency verification, privileging decisions, compensation tier determination, quality reporting, medical staff reappointment fo',
-    `specialty_id` BIGINT COMMENT 'FK to provider.specialty',
-    `caqh_provider_number` STRING COMMENT 'The CAQH ProView universal provider identifier associated with the provider for this certification record. CAQH ProView is the industry-standard credentialing data repository used by payers and health plans for provider enrollment and re-credentialing. Enables direct linkage to the providers CAQH profile.',
-    `certification_number` STRING COMMENT 'The unique alphanumeric certificate number issued by the certifying board to the provider upon successful completion of board examination and certification requirements. Used as the externally-known business identifier for this certification record in credentialing and payer enrollment workflows.',
-    `certification_status` STRING COMMENT 'Current lifecycle status of the board certification. Active = valid and in good standing; Expired = past expiration date without renewal; Revoked = rescinded by certifying board due to disciplinary action or fraud; Suspended = temporarily inactive; Pending = examination passed but certificate not yet issued; Lapsed = MOC requirements not met within required window.. Valid values are `Active|Expired|Revoked|Suspended|Pending|Lapsed`',
-    `certification_type` STRING COMMENT 'Indicates whether this certification record represents an initial board certification, a recertification cycle, an added qualification (subspecialty), or a Maintenance of Certification (MOC) milestone. Drives credentialing workflow routing and expiration tracking logic.. Valid values are `Initial|Recertification|Added Qualification|Maintenance of Certification`',
-    `certifying_board_code` STRING COMMENT 'Standardized short code or abbreviation identifying the certifying board (e.g., ABIM for American Board of Internal Medicine, ABS for American Board of Surgery). Used in downstream credentialing systems and payer enrollment data exchanges.',
-    `certifying_board_name` STRING COMMENT 'Full name of the recognized specialty certifying board that issued this certification (e.g., American Board of Internal Medicine, American Board of Surgery). Must be an ABMS member board or AOA-recognized certifying board for credentialing acceptance.',
-    `certifying_organization_type` STRING COMMENT 'Classification of the umbrella organization under which the certifying board operates. ABMS = American Board of Medical Specialties (allopathic physicians), AOA = American Osteopathic Association (osteopathic physicians), ANCC = American Nurses Credentialing Center, AANP = American Association of Nurse Practitioners, AAPA = American Academy of Physician Associates.. Valid values are `ABMS|AOA|ANCC|AANP|AAPA|Other`',
-    `created_timestamp` TIMESTAMP COMMENT 'The date and time when this board certification record was first created in the system. Provides the audit trail creation anchor for data governance, lineage tracking, and compliance reporting.',
-    `effective_date` DATE COMMENT 'The date on which the current certification cycle or recertification became effective. For initial certifications this may equal initial_certification_date; for recertifications this reflects the start of the renewed certification period.',
-    `exam_attempt_number` STRING COMMENT 'The sequential attempt number on which the provider passed the board certification examination. A value of 1 indicates first-attempt pass. Used in quality and credentialing analytics to assess examination performance.',
-    `exam_pass_date` DATE COMMENT 'The date on which the provider successfully passed the board certification examination administered by the certifying board. Distinct from initial_certification_date, which reflects when the certificate was formally issued.',
-    `expiration_date` DATE COMMENT 'The date on which the current board certification expires and must be renewed through recertification or Maintenance of Certification (MOC). Null for lifetime certifications issued prior to time-limited certification policies. Critical for credentialing expiration alerts and payer enrollment compliance.',
-    `initial_certification_date` DATE COMMENT 'The calendar date on which the provider first achieved board certification in this specialty from this certifying board. Represents the effective start of the agreement/credential. Used to calculate years of board certification and tenure in credentialing analytics.',
-    `is_active_privileges_required` BOOLEAN COMMENT 'Indicates whether active hospital privileges in this specialty are required to be maintained in conjunction with this board certification per the organizations medical staff bylaws or credentialing policies.',
-    `is_lifetime_certification` BOOLEAN COMMENT 'Indicates whether this board certification was issued as a lifetime (non-time-limited) certificate, typically granted to physicians who achieved certification prior to the introduction of time-limited recertification requirements by ABMS member boards. When True, expiration_date is expected to be null.',
-    `is_primary_specialty` BOOLEAN COMMENT 'Indicates whether this board certification represents the providers primary specialty designation. A provider may hold multiple board certifications; this flag identifies the principal specialty used for provider directory listings, referral routing, and quality reporting.',
-    `moc_due_date` DATE COMMENT 'The deadline by which the provider must complete all required Maintenance of Certification (MOC) activities to maintain certification in good standing. Used for proactive credentialing alerts and compliance tracking.',
-    `moc_enrollment_date` DATE COMMENT 'The date on which the provider enrolled in the Maintenance of Certification (MOC) program associated with this board certification. Used to track MOC program participation timelines and compliance windows.',
-    `moc_program_name` STRING COMMENT 'Name of the specific Maintenance of Certification (MOC) program the provider is enrolled in for this certification (e.g., ABIM MOC, ABS Continuous Certification). Different boards operate distinct MOC programs with varying requirements.',
-    `moc_status` STRING COMMENT 'Current status of the providers participation in the Maintenance of Certification (MOC) program as required by the certifying board. MOC programs require ongoing professional development, self-assessment, and practice improvement activities to maintain board certification in good standing.. Valid values are `Compliant|Non-Compliant|Exempt|Not Applicable|In Progress`',
-    `notes` STRING COMMENT 'Free-text field for credentialing staff to capture supplementary information about this board certification record, such as special conditions, board correspondence details, or exceptions noted during primary source verification.',
-    `npi` STRING COMMENT 'The 10-digit National Provider Identifier (NPI) of the provider holding this board certification, as assigned by CMS. Included here to support direct payer enrollment data submissions and provider directory feeds where the NPI must accompany certification data without requiring a join.. Valid values are `^[0-9]{10}$`',
-    `payer_enrollment_required` BOOLEAN COMMENT 'Indicates whether this board certification is required as a condition of the providers enrollment with one or more payers (e.g., Medicare, Medicaid, commercial insurers). Drives payer enrollment workflow triggers when certification status changes.',
-    `recertification_cycle_years` STRING COMMENT 'The number of years in the recertification cycle for this board certification as defined by the certifying board (e.g., 10 years for ABIM, 6 years for ABS). Used to project next recertification due dates and plan credentialing renewal workflows.',
-    `recertification_date` DATE COMMENT 'The date on which the provider most recently completed recertification for this specialty board certification. Null for initial certifications that have not yet undergone a recertification cycle.',
-    `revocation_date` DATE COMMENT 'The date on which the certifying board formally revoked this board certification, if applicable. Null for certifications in good standing. Revocation may result from disciplinary action, fraud, or failure to meet MOC requirements. Triggers immediate credentialing review per OIG and TJC requirements.',
-    `revocation_reason` STRING COMMENT 'Narrative description of the reason for revocation of this board certification by the certifying board, if applicable. Null for active certifications. Used in credentialing review, compliance reporting, and OIG exclusion monitoring.',
-    `source_system_record_reference` STRING COMMENT 'The unique identifier of this board certification record in the originating operational system of record (e.g., Symplr record ID, CAQH credential ID). Enables traceability and reconciliation between the lakehouse silver layer and the source system.',
-    `subspecialty_code` STRING COMMENT 'Standardized code for the subspecialty or added qualification certification, aligned with NUCC taxonomy or ABMS subspecialty codes. Null if no subspecialty applies to this certification record.',
-    `subspecialty_name` STRING COMMENT 'Full name of the subspecialty or added qualification for which the provider holds certification, if applicable (e.g., Interventional Cardiology within Cardiology, Pediatric Critical Care within Pediatrics). Null if no subspecialty certification exists for this record.',
-    `updated_timestamp` TIMESTAMP COMMENT 'The date and time when this board certification record was most recently modified. Used for change detection, incremental ETL processing, and audit trail maintenance in the Databricks Lakehouse silver layer.',
-    `verification_date` DATE COMMENT 'The date on which primary source verification (PSV) of this board certification was most recently completed by contacting the certifying board directly or through an approved verification service (e.g., ABMS Certification Matters, CAQH). Required for TJC and NCQA credentialing compliance.',
-    `verification_source` STRING COMMENT 'The primary source or service used to verify this board certification (e.g., ABMS Certification Matters website, AOA Physician Finder, CAQH ProView, direct board contact). Documents the audit trail for credentialing compliance.',
-    `verification_status` STRING COMMENT 'Status of the primary source verification (PSV) of this board certification as required by The Joint Commission and NCQA credentialing standards. Verified = confirmed directly with the certifying board; Pending Verification = PSV request submitted but not yet confirmed; Unable to Verify = certifying board could not confirm; Expired Verification = PSV is older than the required re-verification window.. Valid values are `Verified|Pending Verification|Unable to Verify|Expired Verification`',
+    `board_certification_id` BIGINT COMMENT 'Primary key',
+    `clinician_id` BIGINT COMMENT 'Unique identifier for the clinician within the provider board certification record.',
+    `specialty_id` BIGINT COMMENT 'Unique identifier for the specialty within the provider board certification record.',
+    `board_name` STRING COMMENT 'The board name of the provider board certification record.',
+    `certification_date` DATE COMMENT 'Timestamp capturing the certification date associated with the provider board certification record.',
+    `certification_status` STRING COMMENT 'The certification status value classifying the provider board certification record.',
+    `created_timestamp` TIMESTAMP COMMENT 'The created timestamp of the provider board certification record.',
+    `expiration_date` DATE COMMENT 'Timestamp capturing the expiration date associated with the provider board certification record.',
+    `board_certification_status` STRING COMMENT 'The board certification status value classifying the provider board certification record.',
+    `updated_timestamp` TIMESTAMP COMMENT 'The updated timestamp of the provider board certification record.',
+    `vibe_structure_marker` STRING COMMENT 'The vibe structure marker of the provider board certification record.',
     CONSTRAINT pk_board_certification PRIMARY KEY(`board_certification_id`)
-) COMMENT 'Tracks specialty board certifications earned by clinicians from recognized certifying bodies (ABMS, AOA). Captures certifying board name, specialty certified, certification number, initial certification date, expiration date, maintenance of certification (MOC) status, and recertification history. Used in credentialing, provider directory, and quality reporting.';
+) COMMENT 'Board certifications';
 
 CREATE OR REPLACE TABLE `vibe_healthcare_v1`.`provider`.`education_training` (
-    `education_training_id` BIGINT COMMENT 'Unique surrogate identifier for each education and training record associated with a healthcare provider. Serves as the primary key for this entity in the Silver Layer lakehouse.',
-    `clinician_id` BIGINT COMMENT 'Reference to the healthcare provider (physician, nurse, allied health professional) whose educational and training history this record documents. Links to the authoritative provider master record.',
-    `employee_id` BIGINT COMMENT 'Foreign key linking to workforce.employee. Business justification: Training records for workforce employees pursuing or maintaining clinical roles. Real business need: competency verification, promotion eligibility, continuing education compliance, career development',
-    `accreditation_status` STRING COMMENT 'Current accreditation standing of the educational institution or training program at the time of the providers enrollment or completion. Probationary or withdrawn accreditation may affect credentialing eligibility.. Valid values are `accredited|probationary|withdrawn|not_accredited|pending`',
-    `accrediting_body` STRING COMMENT 'Name or code of the accrediting organization that has certified the educational institution or training program (e.g., ACGME for residency/fellowship, LCME for allopathic medical schools, COCA for osteopathic medical schools, CCNE for nursing programs). [ENUM-REF-CANDIDATE: ACGME|LCME|COCA|CCNE|ACEN|AOA|AAMC|ECFMG|CODA|ACPE|other — promote to reference product]',
-    `acgme_accredited` BOOLEAN COMMENT 'Indicates whether the residency or fellowship training program is accredited by the Accreditation Council for Graduate Medical Education (ACGME). ACGME accreditation is a key credentialing requirement for hospital privileges and payer enrollment.',
-    `completion_date` DATE COMMENT 'Date on which the provider successfully completed or graduated from the educational program, residency, fellowship, or training. Nullable if the program is currently in progress. Required for primary source verification.',
-    `credential_type` STRING COMMENT 'Type of credential document issued upon completion of the educational or training program. Distinguishes between formal degrees, certificates of completion, and program-specific credentials for credentialing file management.. Valid values are `degree|certificate|diploma|completion_letter|residency_certificate|fellowship_certificate`',
-    `degree_awarded` STRING COMMENT 'Degree, diploma, or certificate conferred upon successful completion of the educational program (e.g., MD, DO, PhD, DNP, RN, BSN). Required for credentialing primary source verification. [ENUM-REF-CANDIDATE: MD|DO|PhD|DNP|NP|PA|RN|BSN|MSN|DDS|DMD|PharmD|DPM|DC|OD|MPH|MBA|Certificate — promote to reference product]',
-    `discrepancy_description` STRING COMMENT 'Description of the discrepancy identified between the providers self-reported educational information and the primary source verification result. Populated only when discrepancy_flag is true. Required for credentialing committee review documentation.',
-    `discrepancy_flag` BOOLEAN COMMENT 'Indicates whether a discrepancy was identified between the information provided by the provider on their credentialing application and the information confirmed through primary source verification. Triggers a credentialing review workflow.',
-    `document_on_file` BOOLEAN COMMENT 'Indicates whether a copy of the degree certificate, diploma, or completion letter has been received and stored in the providers credentialing file. Required for credentialing file completeness audits.',
-    `document_received_date` DATE COMMENT 'Date on which the credential document (diploma, certificate, completion letter) was received and added to the providers credentialing file. Supports credentialing file completeness tracking.',
-    `ecfmg_certificate_number` STRING COMMENT 'Unique certificate number issued by the Educational Commission for Foreign Medical Graduates (ECFMG) to international medical graduates. Used for primary source verification of foreign medical education credentials.',
-    `ecfmg_certified` BOOLEAN COMMENT 'Indicates whether the provider holds ECFMG certification, applicable to international medical graduates (IMGs) who completed medical school outside the United States or Canada. ECFMG certification is required for IMGs to enter ACGME-accredited residency programs.',
-    `graduation_year` STRING COMMENT 'Four-digit calendar year in which the provider graduated or completed the program. Used for quick filtering and reporting in credentialing dashboards when exact completion date is not available.',
-    `honors_distinctions` STRING COMMENT 'Academic honors, distinctions, or awards received upon completion of the educational program (e.g., Alpha Omega Alpha Honor Medical Society, summa cum laude, chief resident designation). Captured for provider profile completeness.',
-    `img_flag` BOOLEAN COMMENT 'Indicates whether the provider is an international medical graduate (IMG), meaning they completed their basic medical degree outside the United States or Canada. Drives ECFMG verification requirements and specific credentialing pathways.',
-    `institution_city` STRING COMMENT 'City where the educational institution or training program is located. Used for primary source verification and geographic reporting.',
-    `institution_country` STRING COMMENT 'Three-letter ISO 3166-1 alpha-3 country code for the country where the educational institution or training program is located. Required for international medical graduate (IMG) identification and ECFMG verification workflows.. Valid values are `^[A-Z]{3}$`',
-    `institution_name` STRING COMMENT 'Full legal name of the educational institution, medical school, residency program host hospital, fellowship program, or training organization where the provider completed their education or training (e.g., Johns Hopkins University School of Medicine, Mayo Clinic Residency Program).',
-    `institution_state` STRING COMMENT 'Two-letter US state abbreviation (or equivalent province/territory code) where the educational institution or training program is located. Used for licensure cross-referencing and credentialing workflows.. Valid values are `^[A-Z]{2}$`',
-    `is_current` BOOLEAN COMMENT 'Indicates whether this is the current active version of the education and training record for the provider. Supports slowly changing dimension (SCD) management in the Silver Layer, where historical versions may be retained for audit purposes.',
-    `notes` STRING COMMENT 'Free-text field for credentialing staff to capture additional context, discrepancies, explanations, or follow-up actions related to this educational or training record (e.g., name change at time of graduation, program merged with another institution).',
-    `npi` STRING COMMENT 'The 10-digit National Provider Identifier (NPI) of the provider associated with this training record. Included to support cross-referencing with CMS enrollment and payer credentialing systems during the training verification process.. Valid values are `^[0-9]{10}$`',
-    `primary_source_verified` BOOLEAN COMMENT 'Indicates whether the educational or training record has been verified directly with the issuing institution (primary source verification). PSV is a mandatory credentialing requirement under NCQA, The Joint Commission, and CMS Conditions of Participation.',
-    `program_director_email` STRING COMMENT 'Email address for the program director or registrars office at the educational institution or training program. Used to facilitate primary source verification contact.. Valid values are `^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+.[a-zA-Z]{2,}$`',
-    `program_director_name` STRING COMMENT 'Full name of the program director or dean of the educational institution or training program at the time of the providers participation. Used as a contact reference for primary source verification.',
-    `program_director_phone` STRING COMMENT 'Phone number for the program director or registrars office at the educational institution or training program. Used to facilitate primary source verification contact.. Valid values are `^+?[0-9s-().]{7,20}$`',
-    `program_duration_months` STRING COMMENT 'Total duration of the educational or training program expressed in months. Used to validate that residency and fellowship programs meet minimum ACGME-required training lengths for board eligibility and credentialing.',
-    `program_type` STRING COMMENT 'Classification of the educational or postgraduate training program. Drives credentialing workflows and primary source verification requirements. [ENUM-REF-CANDIDATE: medical_school|residency|fellowship|internship|nursing_school|allied_health|doctoral|masters|bachelors|continuing_medical_education|certificate|postdoctoral — promote to reference product]',
-    `psv_date` DATE COMMENT 'Date on which primary source verification of this educational or training record was completed. Required for credentialing file documentation and re-credentialing cycle tracking.',
-    `psv_method` STRING COMMENT 'Method used to perform primary source verification of the educational or training record (e.g., direct contact with institution, online verification database, ECFMG for international medical graduates, AMA Physician Masterfile). Documents the verification pathway for audit purposes.. Valid values are `direct_contact|online_database|written_correspondence|third_party_service|ecfmg|ama_masterfile`',
-    `psv_source` STRING COMMENT 'Name of the specific primary source or verification service used to confirm the educational record (e.g., National Student Clearinghouse, ECFMG, AMA Physician Masterfile, direct institution contact). Provides audit trail for credentialing compliance.',
-    `psv_verified_by` STRING COMMENT 'Name or identifier of the credentialing staff member or third-party service that performed and documented the primary source verification for this educational record.',
-    `record_created_timestamp` TIMESTAMP COMMENT 'Timestamp indicating when this education and training record was first created in the data platform. Supports audit trail requirements and data lineage tracking in the Silver Layer lakehouse.',
-    `record_updated_timestamp` TIMESTAMP COMMENT 'Timestamp indicating when this education and training record was most recently modified in the data platform. Supports change tracking, re-credentialing cycle management, and audit trail requirements.',
-    `source_system_record_reference` STRING COMMENT 'The unique identifier of this education and training record in the originating operational system of record (e.g., Symplr record ID, Epic training record ID). Enables traceability from the Silver Layer back to the source system.',
-    `specialty` STRING COMMENT 'Medical or clinical specialty associated with the residency, fellowship, or training program (e.g., Internal Medicine, General Surgery, Pediatrics, Radiology). Aligns with ABMS board specialty taxonomy and ACGME specialty classifications.',
-    `start_date` DATE COMMENT 'Date on which the provider began the educational program, residency, fellowship, or training. Used to calculate program duration and verify training timelines during credentialing.',
-    `subspecialty` STRING COMMENT 'Subspecialty or concentration within the primary specialty for fellowship or advanced training programs (e.g., Interventional Cardiology within Cardiology, Pediatric Oncology within Pediatrics). Nullable for programs without a subspecialty designation.',
-    `training_status` STRING COMMENT 'Current lifecycle status of the providers participation in the educational or training program. Drives credentialing eligibility determinations and primary source verification workflows.. Valid values are `completed|in_progress|withdrawn|terminated|deferred`',
+    `education_training_id` BIGINT COMMENT 'Primary key',
+    `clinician_id` BIGINT COMMENT 'Unique identifier for the clinician within the provider education training record.',
+    `completion_date` DATE COMMENT 'Timestamp capturing the completion date associated with the provider education training record.',
+    `created_timestamp` TIMESTAMP COMMENT 'The created timestamp of the provider education training record.',
+    `degree` STRING COMMENT 'The degree of the provider education training record.',
+    `institution_name` STRING COMMENT 'The institution name of the provider education training record.',
+    `program_type` STRING COMMENT 'The program type value classifying the provider education training record.',
+    `start_date` DATE COMMENT 'Timestamp capturing the start date associated with the provider education training record.',
+    `education_training_status` STRING COMMENT 'The education training status value classifying the provider education training record.',
+    `updated_timestamp` TIMESTAMP COMMENT 'The updated timestamp of the provider education training record.',
+    `vibe_structure_marker` STRING COMMENT 'The vibe structure marker of the provider education training record.',
     CONSTRAINT pk_education_training PRIMARY KEY(`education_training_id`)
-) COMMENT 'Records the educational background and postgraduate training history of clinicians including medical school, residency programs, fellowship training, and internships. Captures institution name, program type, degree or certificate awarded, graduation or completion date, ACGME accreditation status, and primary source verification status. Required for credentialing primary source verification.';
-
-CREATE OR REPLACE TABLE `vibe_healthcare_v1`.`provider`.`provider_location` (
-    `provider_location_id` BIGINT COMMENT 'Unique surrogate identifier for each provider practice location record in the master provider location registry. Primary key for this entity.',
-    `care_site_id` BIGINT COMMENT 'Reference to the parent facility or health system entity where this provider location operates. Links to the facility master record for hospital-based or health-system-affiliated locations.',
-    `clinician_id` BIGINT COMMENT 'Reference to the individual clinician or organizational provider associated with this practice location. Links to the provider master record.',
-    `geographic_region_id` BIGINT COMMENT 'Foreign key linking to reference.geographic_region. Business justification: Provider locations map to geographic regions for network adequacy reporting, access-to-care analysis, and regulatory compliance. Healthcare operations use this for state insurance department network a',
-    `group_id` BIGINT COMMENT 'Foreign key linking to provider.provider_group. Business justification: Locations are associated with provider groups for billing. provider_location.billing_group_name should be FK to provider_group. Removes billing_group_name STRING.',
-    `org_provider_id` BIGINT COMMENT 'Foreign key linking to provider.org_provider. Business justification: Locations can be associated with organizational providers. provider_location.organization_npi should be FK to org_provider. Removes organization_npi STRING.',
-    `accepting_new_patients_updated_date` DATE COMMENT 'Date on which the accepting new patients status was last verified or updated. CMS requires this field to be refreshed at least every 90 days for network adequacy compliance and provider directory accuracy.',
-    `address_line1` STRING COMMENT 'Primary street address of the practice location including street number and street name. Used for provider directory publishing, CMS enrollment validation, and patient navigation.',
-    `address_line2` STRING COMMENT 'Secondary address detail such as suite number, floor, building name, or unit number for the practice location.',
-    `after_hours_phone` STRING COMMENT 'Telephone number for reaching the practice location or on-call provider outside of regular business hours. Required for continuity of care and NCQA medical home standards.. Valid values are `^+?[0-9-() ]{7,20}$`',
-    `appointment_scheduling_url` STRING COMMENT 'Direct URL for online patient appointment scheduling at this location. Published in provider directories and patient portals to support patient self-scheduling and access.',
-    `city` STRING COMMENT 'City or municipality where the practice location is physically situated. Used for geographic network adequacy analysis and provider directory search.',
-    `cms_enrollment_number` STRING COMMENT 'CMS-assigned enrollment identifier (PTAN — Provider Transaction Access Number) for this practice location. Required for Medicare claims submission and CMS enrollment validation.',
-    `cms_place_of_service_code` STRING COMMENT 'Two-digit CMS Place of Service code identifying the setting where healthcare services are rendered (e.g., 11=Office, 21=Inpatient Hospital, 02=Telehealth). Required on CMS-1500 professional claims and drives reimbursement rate determination.. Valid values are `^[0-9]{2}$`',
-    `country_code` STRING COMMENT 'ISO 3166-1 alpha-3 three-letter country code for the practice location (e.g., USA). Supports international provider networks and cross-border care coordination.. Valid values are `^[A-Z]{3}$`',
-    `created_timestamp` TIMESTAMP COMMENT 'Timestamp when this provider location record was first created in the data platform. Supports audit trail, data lineage, and regulatory record retention requirements.',
-    `credentialing_status` STRING COMMENT 'Current credentialing status of the provider at this location as tracked by the credentialing and privileging system (e.g., Symplr). Determines eligibility to render services and bill payers from this location.. Valid values are `credentialed|pending|expired|suspended|denied`',
-    `directory_last_verified_date` DATE COMMENT 'Date on which the provider location information was last verified for accuracy in the provider directory. Supports CMS and NCQA provider directory accuracy requirements and audit trails.',
-    `effective_date` DATE COMMENT 'Date on which the provider location record became or becomes operationally active. Used for CMS enrollment effective date validation, payer contract start alignment, and provider directory publication timing.',
-    `email` STRING COMMENT 'General contact email address for the practice location. Used for administrative communications, referral coordination, and provider directory publishing.. Valid values are `^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+.[a-zA-Z]{2,}$`',
-    `fax` STRING COMMENT 'Fax number for the practice location used for clinical communications, referral transmissions, and medical record exchange. Commonly required for HL7 ADT and referral workflows.. Valid values are `^+?[0-9-() ]{7,20}$`',
-    `hours_of_operation` STRING COMMENT 'Structured or free-text representation of the practice locations regular operating hours by day of week (e.g., Mon-Fri 08:00-17:00, Sat 09:00-13:00). Used in provider directories and patient access reporting.',
-    `is_accepting_new_patients` BOOLEAN COMMENT 'Indicates whether the provider at this location is currently accepting new patients. Critical field for provider directory accuracy, CMS network adequacy compliance, and patient access reporting. CMS requires this to be updated at least every 90 days.',
-    `is_ada_accessible` BOOLEAN COMMENT 'Indicates whether the practice location is physically accessible and compliant with Americans with Disabilities Act (ADA) requirements, including wheelchair access, accessible parking, and accessible restrooms.',
-    `is_primary_location` BOOLEAN COMMENT 'Indicates whether this is the providers primary practice location. Used to determine the principal address for CMS enrollment, claims adjudication, and provider directory primary listing.',
-    `is_telehealth_enabled` BOOLEAN COMMENT 'Indicates whether the provider at this location offers telehealth or virtual care services. Drives provider directory telehealth filtering and CMS Place of Service code 02 eligibility.',
-    `language_codes` STRING COMMENT 'Pipe-delimited list of ISO 639-1 two-letter language codes representing languages spoken at this practice location (e.g., en|es|zh). Supports patient language matching, CMS language access requirements, and CLAS Standards compliance.',
-    `latitude` DECIMAL(18,2) COMMENT 'Geographic latitude coordinate of the practice location in decimal degrees (WGS 84). Enables geospatial network adequacy analysis, drive-time calculations, and patient access mapping.',
-    `location_name` STRING COMMENT 'Human-readable name of the practice location (e.g., Downtown Medical Center – Cardiology Clinic, Northside Telehealth Hub). Used in provider directories and patient-facing communications.',
-    `location_status` STRING COMMENT 'Current operational lifecycle status of the provider location. Determines whether the location is published in provider directories, eligible for patient scheduling, and included in network adequacy calculations.. Valid values are `active|inactive|pending|suspended|closed`',
-    `location_type` STRING COMMENT 'Categorical classification of the practice location describing the care delivery setting. Drives provider directory filtering, network adequacy analysis, and CMS Place of Service mapping. [ENUM-REF-CANDIDATE: primary_office|satellite_clinic|hospital|telehealth_only|mobile_unit|urgent_care|ambulatory_surgery_center|long_term_care|home_health|retail_clinic — promote to reference product]. Valid values are `primary_office|satellite_clinic|hospital|telehealth_only|mobile_unit|urgent_care`',
-    `longitude` DECIMAL(18,2) COMMENT 'Geographic longitude coordinate of the practice location in decimal degrees (WGS 84). Enables geospatial network adequacy analysis, drive-time calculations, and patient access mapping.',
-    `medicaid_provider_number` STRING COMMENT 'State Medicaid program-assigned provider number for this location. Required for Medicaid claims submission and state Medicaid enrollment validation. Format varies by state.',
-    `network_participation_status` STRING COMMENT 'Current payer network participation status for this location. Indicates whether the location is contracted as in-network, out-of-network, pending credentialing, or terminated. Drives claims adjudication and patient cost-sharing calculations.. Valid values are `in_network|out_of_network|pending|terminated`',
-    `npi` STRING COMMENT 'The 10-digit National Provider Identifier assigned by CMS to the provider or organization at this location. Used for claims submission, payer enrollment, and provider directory publishing. May be the individual NPI (Type 1) or organizational NPI (Type 2) depending on the location context.. Valid values are `^[0-9]{10}$`',
-    `parking_instructions` STRING COMMENT 'Free-text description of parking availability and instructions for patients visiting this location. Supports patient experience and navigation in provider directories.',
-    `phone` STRING COMMENT 'Primary telephone number for the practice location used for patient scheduling, referrals, and provider directory publishing.. Valid values are `^+?[0-9-() ]{7,20}$`',
-    `postal_code` STRING COMMENT 'ZIP or ZIP+4 postal code for the practice location. Used for geographic proximity searches, network adequacy distance calculations, and CMS enrollment validation.. Valid values are `^[0-9]{5}(-[0-9]{4})?$`',
-    `public_transit_access` BOOLEAN COMMENT 'Indicates whether the practice location is accessible via public transportation. Supports Social Determinants of Health (SDOH) analysis and patient access equity reporting.',
-    `source_system_record_reference` STRING COMMENT 'The native identifier of this location record in the originating operational system (e.g., Epic department ID, Symplr location ID). Enables bidirectional traceability between the lakehouse silver layer and the system of record.',
-    `specialty_codes` STRING COMMENT 'Pipe-delimited list of NUCC Health Care Provider Taxonomy codes representing the clinical specialties offered at this location. Used for provider directory specialty filtering and network adequacy specialty gap analysis.',
-    `state_code` STRING COMMENT 'Two-letter USPS state abbreviation for the practice location. Drives state licensure validation, Medicaid enrollment eligibility, and state-level regulatory reporting.. Valid values are `^[A-Z]{2}$`',
-    `taxonomy_code` STRING COMMENT 'Primary NUCC Health Care Provider Taxonomy code for this location, representing the provider type and classification at this site. Used in NPPES NPI registry, claims submission, and provider directory classification.. Valid values are `^[A-Z0-9]{10}$`',
-    `termination_date` DATE COMMENT 'Date on which the provider location record was or will be deactivated. Null for currently active locations. Used for CMS disenrollment processing, payer contract termination, and provider directory removal.',
-    `updated_timestamp` TIMESTAMP COMMENT 'Timestamp when this provider location record was last modified in the data platform. Supports change detection, incremental ETL processing, and audit trail requirements.',
-    `website_url` STRING COMMENT 'Public-facing website URL for the practice location. Published in provider directories to support patient self-service and appointment scheduling.',
-    CONSTRAINT pk_provider_location PRIMARY KEY(`provider_location_id`)
-) COMMENT 'Master record of physical and virtual practice locations where clinicians and organizational providers deliver care. Captures address, location type (primary office, satellite clinic, hospital, telehealth-only, mobile unit), phone, fax, hours of operation, ADA accessibility indicator, accepting new patients flag, geolocation coordinates, CMS Place of Service code, and language capabilities. Supports provider directory publishing, network adequacy analysis, patient access reporting, and CMS provider enrollment location validation.';
+) COMMENT 'Education and training history';
 
 CREATE OR REPLACE TABLE `vibe_healthcare_v1`.`provider`.`reappointment` (
-    `reappointment_id` BIGINT COMMENT 'Unique system-generated identifier for each medical staff reappointment record. Primary key for the reappointment data product.',
-    `provider_committee_id` BIGINT COMMENT 'Foreign key linking to provider.committee. Business justification: Reappointment reviews are conducted by medical staff committees (credentials committee). The reappointment table has credentials_committee_review_date and credentials_committee_recommendation attribut',
-    `audit_id` BIGINT COMMENT 'Foreign key linking to compliance.audit. Business justification: Reappointment processes are audited for compliance with medical staff bylaws and TJC MS standards. Credentials committees require documented audit trails of reappointment file reviews, OPPE/FPPE compl',
-    `care_site_id` BIGINT COMMENT 'Reference to the healthcare facility (hospital, clinic, or care site) at which the provider is being reappointed to the medical staff.',
-    `clinician_id` BIGINT COMMENT 'Reference to the healthcare provider (clinician) undergoing the reappointment process. Links to the provider master record.',
-    `org_unit_id` BIGINT COMMENT 'Reference to the clinical department or service line within the facility to which the provider is being reappointed (e.g., Surgery, Internal Medicine, Emergency Medicine).',
-    `quality_peer_review_id` BIGINT COMMENT 'Foreign key linking to quality.peer_review. Business justification: Reappointment decisions directly reference specific peer review cases from the review period as evidence of clinical competency. Medical staff bylaws require documented peer review outcomes for reappo',
-    `specialty_id` BIGINT COMMENT 'Foreign key linking to provider.specialty. Business justification: Reappointment reviews are specialty-specific. reappointment.specialty_code and specialty_name should reference specialty table.',
-    `application_deadline_date` DATE COMMENT 'Deadline by which the provider must submit a completed reappointment application to avoid lapse of appointment. Typically set 90–120 days before current appointment expiration.',
-    `application_received_date` DATE COMMENT 'Date on which the completed reappointment application was received from the provider. Triggers the formal credentialing review timeline and regulatory clock.',
-    `appointment_term_years` STRING COMMENT 'Duration in years of the renewed appointment granted upon successful reappointment. Standard term is two years per Joint Commission requirements; may be shorter for provisional or conditional appointments.',
-    `case_volume` STRING COMMENT 'Total number of clinical cases, procedures, or patient encounters attributed to the provider during the reappointment review period. Used to assess clinical activity sufficiency for privilege maintenance.',
-    `cme_compliance_status` STRING COMMENT 'Status indicating whether the provider has satisfied the CME credit hour requirements for reappointment eligibility. Non-compliant status may result in conditional approval or deferral.. Valid values are `compliant|non_compliant|pending_verification|waived`',
-    `cme_hours_completed` DECIMAL(18,2) COMMENT 'Actual number of CME credit hours completed by the provider during the review period as documented in the credentialing file. Compared against cme_hours_required to determine CME compliance status.',
-    `cme_hours_required` DECIMAL(18,2) COMMENT 'Number of Continuing Medical Education (CME) credit hours required for this provider to satisfy reappointment eligibility during the review period, per facility bylaws and state licensure requirements.',
-    `conditions_of_reappointment` STRING COMMENT 'Narrative description of any conditions, restrictions, or requirements attached to a conditional reappointment approval (e.g., mandatory proctoring, case volume minimums, additional CME in specific areas, mandatory consultation requirements).',
-    `created_timestamp` TIMESTAMP COMMENT 'Timestamp when this reappointment record was first created in the data platform. Supports audit trail, data lineage, and regulatory record retention requirements.',
-    `credentials_committee_recommendation` STRING COMMENT 'Formal recommendation of the credentials committee submitted to the medical executive committee regarding the providers reappointment application.. Valid values are `recommend_approval|recommend_denial|recommend_deferral|recommend_conditions`',
-    `credentials_committee_review_date` DATE COMMENT 'Date on which the credentials committee formally reviewed the providers reappointment application and supporting documentation, and forwarded a recommendation to the medical executive committee.',
-    `current_appointment_expiration_date` DATE COMMENT 'Expiration date of the providers existing medical staff appointment that this reappointment process is renewing. Defines the urgency and timeline of the reappointment cycle.',
-    `cycle_number` STRING COMMENT 'Sequential count of how many times this provider has been reappointed at this facility (e.g., 1 = first reappointment, 2 = second reappointment). Supports longitudinal credentialing history analysis.',
-    `dea_verified` BOOLEAN COMMENT 'Indicates whether the providers DEA registration (if applicable) has been verified as current and active through primary source verification during this reappointment cycle.',
-    `decision` STRING COMMENT 'Final outcome of the reappointment review process as determined by the medical executive committee and/or governing board. Drives downstream privileging, payer enrollment, and NPDB reporting actions.. Valid values are `approved|approved_with_conditions|denied|deferred|voluntary_resignation`',
-    `decision_date` DATE COMMENT 'Date on which the medical executive committee or governing board rendered the final reappointment decision (approved, denied, or deferred).',
-    `denial_reason` STRING COMMENT 'Documented reason for denial or deferral of the reappointment application. Required for due process notifications and National Practitioner Data Bank (NPDB) reporting obligations.',
-    `due_process_initiated` BOOLEAN COMMENT 'Indicates whether the provider invoked their right to a fair hearing or appeal following an adverse reappointment decision (denial or significant restriction). Triggers the formal hearing process per medical staff bylaws and HCQIA.',
-    `effective_date` DATE COMMENT 'Date on which the renewed medical staff appointment becomes effective following a successful reappointment decision. Marks the start of the new appointment term.',
-    `health_status_attestation` BOOLEAN COMMENT 'Indicates whether the provider has completed the required health status attestation confirming physical and mental fitness to perform the clinical privileges requested during this reappointment cycle.',
-    `license_verified` BOOLEAN COMMENT 'Indicates whether the providers state medical license has been verified as current and in good standing through primary source verification (PSV) during this reappointment cycle.',
-    `malpractice_coverage_amount` DECIMAL(18,2) COMMENT 'Dollar amount of professional liability (malpractice) insurance coverage per occurrence as verified during this reappointment cycle. Compared against facility-required minimums.',
-    `malpractice_insurance_verified` BOOLEAN COMMENT 'Indicates whether the providers professional liability (malpractice) insurance coverage has been verified as meeting facility minimum requirements during this reappointment cycle.',
-    `medical_staff_category` STRING COMMENT 'Category of medical staff membership being reappointed (e.g., Active, Associate, Courtesy, Consulting). Determines voting rights, call obligations, and scope of privileges. [ENUM-REF-CANDIDATE: active|associate|courtesy|consulting|honorary|affiliate — promote to reference product]. Valid values are `active|associate|courtesy|consulting|honorary|affiliate`',
-    `new_appointment_expiration_date` DATE COMMENT 'Expiration date of the newly granted appointment term resulting from this reappointment. Typically two years from the effective date per Joint Commission standards.',
-    `npdb_adverse_finding` BOOLEAN COMMENT 'Indicates whether the NPDB query returned any adverse action reports, malpractice payment history, or licensure actions for this provider. Triggers mandatory committee review and potential conditions on reappointment.',
-    `npdb_queried` BOOLEAN COMMENT 'Indicates whether the National Practitioner Data Bank (NPDB) was queried for adverse action reports, malpractice payment reports, and licensure actions during this reappointment cycle. Mandatory query per HCQIA for all reappointments.',
-    `npdb_query_date` DATE COMMENT 'Date on which the NPDB was queried for this provider during the reappointment cycle. Must be within the credentialing review window to satisfy regulatory requirements.',
-    `npdb_report_date` DATE COMMENT 'Date on which the adverse action report was submitted to the NPDB following a denial or adverse reappointment decision. Must be submitted within 30 days of the final decision per HCQIA requirements.',
-    `npdb_report_required` BOOLEAN COMMENT 'Indicates whether an adverse action report must be submitted to the NPDB as a result of this reappointment decision (e.g., denial, voluntary surrender of privileges during investigation). Mandatory reporting obligation under HCQIA.',
-    `number` STRING COMMENT 'Externally visible, human-readable business identifier for the reappointment cycle record, used in correspondence, committee agendas, and credentialing file references (e.g., REAPPT-2024-000123).. Valid values are `^REAPPT-[0-9]{4}-[0-9]{6}$`',
-    `oppe_performance_rating` STRING COMMENT 'Overall performance rating assigned during the most recent OPPE review cycle. Summarizes clinical quality, patient safety, and professional conduct indicators evaluated during the review period.. Valid values are `meets_expectations|below_expectations|above_expectations|requires_action`',
-    `oppe_review_date` DATE COMMENT 'Date of the most recent Ongoing Professional Practice Evaluation (OPPE) completed for this provider prior to the reappointment decision. OPPE data is a required input to the reappointment process per Joint Commission standards.',
-    `peer_review_summary` STRING COMMENT 'Narrative summary of the peer review findings conducted during the reappointment review period. Synthesizes Ongoing Professional Practice Evaluation (OPPE) and Focused Professional Practice Evaluation (FPPE) results. Protected under state peer review privilege statutes.',
-    `quality_indicator_met` BOOLEAN COMMENT 'Indicates whether the provider met all required quality performance indicators (e.g., core measures, HEDIS metrics, VBP benchmarks) during the review period. A value of False may trigger additional review or conditions on reappointment.',
-    `review_period_end_date` DATE COMMENT 'End date of the clinical performance review period evaluated during this reappointment cycle. Marks the close of the data collection window for quality indicators and peer review.',
-    `review_period_start_date` DATE COMMENT 'Start date of the clinical performance review period evaluated during this reappointment cycle. Typically covers the prior two years of practice activity at the facility.',
-    `sanctions_check_completed` BOOLEAN COMMENT 'Indicates whether OIG exclusion list, SAM.gov, and state Medicaid exclusion database checks were completed for this provider during the reappointment cycle. Mandatory for participation in federal healthcare programs.',
-    `sanctions_check_date` DATE COMMENT 'Date on which the OIG exclusion list and related sanctions database checks were completed for this provider during the reappointment cycle.',
-    `sanctions_finding` BOOLEAN COMMENT 'Indicates whether any active OIG exclusion, SAM.gov debarment, or state Medicaid exclusion was identified during the sanctions check. A True value mandates immediate escalation and precludes reappointment.',
-    `source_record_reference` STRING COMMENT 'Native record identifier from the originating operational system (e.g., Symplr reappointment record ID). Enables traceability and reconciliation between the lakehouse silver layer and the source system of record.',
-    `reappointment_status` STRING COMMENT 'Current lifecycle state of the reappointment application. Tracks progression from initiation through committee review to final decision. [ENUM-REF-CANDIDATE: pending|in_review|approved|denied|deferred|withdrawn — promote to reference product if additional statuses are needed]. Valid values are `pending|in_review|approved|denied|deferred|withdrawn`',
-    `updated_timestamp` TIMESTAMP COMMENT 'Timestamp when this reappointment record was last modified in the data platform. Used for change detection, incremental ETL processing, and audit trail maintenance.',
+    `reappointment_id` BIGINT COMMENT 'Primary key',
+    `care_site_id` BIGINT COMMENT 'Unique identifier for the care site within the provider reappointment record.',
+    `clinician_id` BIGINT COMMENT 'Unique identifier for the clinician within the provider reappointment record.',
+    `created_timestamp` TIMESTAMP COMMENT 'The created timestamp of the provider reappointment record.',
+    `cycle` STRING COMMENT 'The cycle of the provider reappointment record.',
+    `decision_date` DATE COMMENT 'Timestamp capturing the decision date associated with the provider reappointment record.',
+    `due_date` DATE COMMENT 'Timestamp capturing the due date associated with the provider reappointment record.',
+    `reappointment_status` STRING COMMENT 'The reappointment status value classifying the provider reappointment record.',
+    `updated_timestamp` TIMESTAMP COMMENT 'The updated timestamp of the provider reappointment record.',
+    `vibe_structure_marker` STRING COMMENT 'The vibe structure marker of the provider reappointment record.',
     CONSTRAINT pk_reappointment PRIMARY KEY(`reappointment_id`)
-) COMMENT 'Transactional record of the periodic medical staff reappointment process for clinicians at a facility, typically conducted every two years per Joint Commission standards. Captures reappointment cycle, review period, peer review summary, quality indicator results, CME compliance status, reappointment decision, and effective date of renewed appointment. Drives ongoing credentialing lifecycle management.';
+) COMMENT 'Reappointment cycles';
 
 CREATE OR REPLACE TABLE `vibe_healthcare_v1`.`provider`.`peer_reference` (
-    `peer_reference_id` BIGINT COMMENT 'Unique system-generated identifier for the peer reference evaluation record. Primary key for the peer_reference data product.',
-    `care_site_id` BIGINT COMMENT 'Identifier of the healthcare facility or organization at which this peer reference evaluation is being processed, typically the credentialing entity.',
-    `credentialing_application_id` BIGINT COMMENT 'Reference to the credentialing or reappointment application for which this peer reference was solicited. Links the evaluation to the specific credentialing cycle.',
-    `investigation_id` BIGINT COMMENT 'Foreign key linking to compliance.investigation. Business justification: Negative peer references trigger compliance investigations into provider competency per medical staff bylaws. Adverse peer feedback (low ratings, adverse action knowledge) requires formal investigatio',
-    `clinician_id` BIGINT COMMENT 'Identifier of the clinician (applicant) who is the subject of this peer reference evaluation. Used to associate the reference with the provider undergoing credentialing or reappointment.',
-    `reappointment_id` BIGINT COMMENT 'Foreign key linking to provider.reappointment. Business justification: Peer references are collected during both credentialing and reappointment. Adding reappointment_id FK (credentialing_application_id already exists). FK will be NULL for credentialing-only references.',
-    `employee_id` BIGINT COMMENT 'Foreign key linking to workforce.employee. Business justification: References provided by internal employees during credentialing. Real business need: tracking when current employees serve as peer references, conflict-of-interest management, reference quality assessm',
-    `adverse_action_description` STRING COMMENT 'Free-text description of any adverse actions, disciplinary events, or concerns known to the referee regarding the applicant. Populated only when adverse_action_knowledge is True. Treated as confidential credentialing information.',
-    `adverse_action_knowledge` BOOLEAN COMMENT 'Indicates whether the referee has knowledge of any adverse actions, disciplinary proceedings, malpractice claims, or sanctions against the applicant. A True value triggers mandatory follow-up by the credentialing committee.',
-    `clinical_competency_rating` STRING COMMENT 'Overall rating of the applicants clinical competency as assessed by the referee. Reflects the referees judgment of the applicants medical knowledge, clinical skills, and patient care quality.. Valid values are `exceptional|above_average|average|below_average|unsatisfactory|unable_to_assess`',
-    `committee_review_date` DATE COMMENT 'Date on which the credentialing committee formally reviewed this peer reference as part of the credentialing or reappointment decision.',
-    `created_timestamp` TIMESTAMP COMMENT 'Timestamp when this peer reference record was first created in the system. Supports audit trail, data lineage, and compliance reporting.',
-    `evaluation_date` DATE COMMENT 'Date on which the referee completed and submitted the peer reference evaluation form. This is the principal real-world event date for the evaluation.',
-    `follow_up_notes` STRING COMMENT 'Free-text notes documenting the nature of required follow-up actions, outcomes of follow-up conversations, or committee decisions related to concerns raised in this peer reference.',
-    `follow_up_required` BOOLEAN COMMENT 'Indicates whether the credentialing committee has determined that additional follow-up is required based on the content of this peer reference (e.g., due to concerns raised or adverse action knowledge).',
-    `form_version` STRING COMMENT 'Version identifier of the peer reference evaluation form used for this submission. Ensures that ratings and questions are interpreted in the context of the correct form version, supporting audit and compliance reviews.',
-    `interpersonal_communication_rating` STRING COMMENT 'Referees rating of the applicants ability to communicate effectively with patients, families, and the healthcare team. Covers listening, verbal, and written communication skills.. Valid values are `exceptional|above_average|average|below_average|unsatisfactory|unable_to_assess`',
-    `is_confidential` BOOLEAN COMMENT 'Indicates whether the referee has requested that their identity and evaluation content be kept confidential from the applicant. When True, the reference is protected from disclosure per credentialing confidentiality policies.',
-    `is_verbal_reference` BOOLEAN COMMENT 'Indicates whether this peer reference was obtained verbally (e.g., by phone) rather than via a written form. Verbal references require documentation of the conversation by the credentialing staff member who conducted the call.',
-    `last_reminder_date` DATE COMMENT 'Date of the most recent reminder communication sent to the referee. Used to manage follow-up cadence and determine when to escalate or seek an alternative referee.',
-    `medical_knowledge_rating` STRING COMMENT 'Referees rating of the applicants medical knowledge, including understanding of biomedical, clinical, and social sciences relevant to their specialty.. Valid values are `exceptional|above_average|average|below_average|unsatisfactory|unable_to_assess`',
-    `patient_care_rating` STRING COMMENT 'Referees rating of the applicants patient care competency, including compassionate and appropriate care, clinical judgment, and patient safety practices.. Valid values are `exceptional|above_average|average|below_average|unsatisfactory|unable_to_assess`',
-    `professional_conduct_assessment` STRING COMMENT 'Referees overall assessment of the applicants professional conduct, including any behavioral, ethical, or disciplinary concerns observed during the period of professional acquaintance.. Valid values are `no_concerns|minor_concerns|significant_concerns|disqualifying_concerns`',
-    `professionalism_rating` STRING COMMENT 'Referees rating of the applicants professionalism, including ethical behavior, accountability, respect for patients and colleagues, and adherence to professional standards.. Valid values are `exceptional|above_average|average|below_average|unsatisfactory|unable_to_assess`',
-    `recommendation_type` STRING COMMENT 'The referees overall recommendation regarding the applicants fitness for credentialing, reappointment, or privilege grant. This is the primary decision-support field reviewed by the credentialing committee.. Valid values are `strongly_recommend|recommend|recommend_with_reservations|unable_to_recommend|not_recommended`',
-    `referee_comments` STRING COMMENT 'Free-text narrative comments provided by the referee to support their ratings and recommendation. May include specific examples of clinical performance, strengths, or areas of concern. Treated as confidential credentialing information.',
-    `referee_license_number` STRING COMMENT 'State medical or professional license number of the referee. Verified to confirm the referee holds an active, unrestricted license at the time of evaluation.',
-    `referee_license_state` STRING COMMENT 'Two-letter US state code where the referee holds their primary professional license. Used for license verification and jurisdictional compliance.. Valid values are `^[A-Z]{2}$`',
-    `referee_npi` STRING COMMENT 'The 10-digit National Provider Identifier (NPI) of the referee. Used to verify the referees identity, licensure, and standing as a qualified peer evaluator per CMS and credentialing standards.. Valid values are `^[0-9]{10}$`',
-    `referee_specialty` STRING COMMENT 'Primary clinical specialty of the referee. Used to assess whether the referee is a qualified peer (same or related specialty) as required by credentialing standards.',
-    `reference_number` STRING COMMENT 'Externally visible, human-readable unique identifier assigned to this peer reference request. Used for tracking and correspondence with the referee and credentialing committee.. Valid values are `^PR-[0-9]{4}-[0-9]{6}$`',
-    `reference_status` STRING COMMENT 'Current lifecycle status of the peer reference request. Tracks whether the reference has been requested, sent to the referee, received back, completed and reviewed, expired without response, or withdrawn.. Valid values are `requested|sent|received|completed|expired|withdrawn`',
-    `reference_type` STRING COMMENT 'Classification of the credentialing activity for which this peer reference is being collected. Distinguishes between initial credentialing, periodic reappointment, specific privilege requests, or focused professional practice evaluation (FPPE).. Valid values are `initial_credentialing|reappointment|privilege_request|focused_review`',
-    `relationship_to_applicant` STRING COMMENT 'Nature of the professional relationship between the referee and the applicant. Required by credentialing standards to confirm the referee has direct knowledge of the applicants clinical performance. [ENUM-REF-CANDIDATE: colleague|supervisor|department_chief|program_director|co_practitioner|other — promote to reference product if additional values needed]. Valid values are `colleague|supervisor|department_chief|program_director|co_practitioner|other`',
-    `reminder_sent_count` STRING COMMENT 'Number of reminder communications sent to the referee requesting completion of the peer reference form. Used to track follow-up efforts and escalation thresholds.',
-    `request_sent_date` DATE COMMENT 'Date on which the peer reference request form was sent to the referee. Used to track response timeliness and manage credentialing workflow deadlines.',
-    `response_due_date` DATE COMMENT 'Deadline by which the referee must return the completed peer reference form. Used to manage credentialing timelines and trigger follow-up reminders.',
-    `reviewed_by_committee` BOOLEAN COMMENT 'Indicates whether this peer reference has been formally reviewed by the medical staff credentialing committee as part of the credentialing or reappointment decision process.',
-    `source_system_code` STRING COMMENT 'Code identifying the operational system of record from which this peer reference record originated (e.g., Symplr Credentialing, Epic, Cerner, or manual entry). Supports data lineage and ETL traceability.. Valid values are `SYMPLR|EPIC|CERNER|MEDITECH|MANUAL`',
-    `source_system_record_reference` STRING COMMENT 'The native record identifier from the originating operational system (e.g., Symplr reference ID). Enables reconciliation between the lakehouse silver layer and the source system.',
-    `submission_method` STRING COMMENT 'Method by which the completed peer reference was submitted by the referee. Used for audit trail and to determine documentation requirements.. Valid values are `online_portal|email|fax|mail|verbal`',
-    `systems_based_practice_rating` STRING COMMENT 'Referees rating of the applicants ability to work effectively within healthcare systems, including resource utilization, care coordination, and quality improvement participation.. Valid values are `exceptional|above_average|average|below_average|unsatisfactory|unable_to_assess`',
-    `updated_timestamp` TIMESTAMP COMMENT 'Timestamp of the most recent update to this peer reference record. Used for change tracking, audit compliance, and incremental data pipeline processing.',
-    `verbal_reference_obtained_by` STRING COMMENT 'Name or identifier of the credentialing staff member who conducted and documented the verbal peer reference call. Required when is_verbal_reference is True.',
-    `years_known` STRING COMMENT 'Number of years the referee has known the applicant in a professional capacity. Provides context for the depth and reliability of the evaluation.',
+    `peer_reference_id` BIGINT COMMENT 'Primary key',
+    `clinician_id` BIGINT COMMENT 'Unique identifier for the clinician within the provider peer reference record.',
+    `created_timestamp` TIMESTAMP COMMENT 'The created timestamp of the provider peer reference record.',
+    `received_date` DATE COMMENT 'Timestamp capturing the received date associated with the provider peer reference record.',
+    `referee_email` STRING COMMENT 'The referee email of the provider peer reference record.',
+    `referee_name` STRING COMMENT 'The referee name of the provider peer reference record.',
+    `reference_status` STRING COMMENT 'The reference status value classifying the provider peer reference record.',
+    `request_date` DATE COMMENT 'Timestamp capturing the request date associated with the provider peer reference record.',
+    `peer_reference_status` STRING COMMENT 'The peer reference status value classifying the provider peer reference record.',
+    `updated_timestamp` TIMESTAMP COMMENT 'The updated timestamp of the provider peer reference record.',
+    `vibe_structure_marker` STRING COMMENT 'The vibe structure marker of the provider peer reference record.',
     CONSTRAINT pk_peer_reference PRIMARY KEY(`peer_reference_id`)
-) COMMENT 'Records peer reference evaluations submitted on behalf of a clinician during credentialing or reappointment. Captures referee name, referee NPI, relationship to applicant, evaluation date, clinical competency ratings, professional conduct assessment, recommendation type, and confidentiality flag. Required by NCQA and Joint Commission credentialing standards.';
+) COMMENT 'Peer references';
 
 CREATE OR REPLACE TABLE `vibe_healthcare_v1`.`provider`.`cme_activity` (
-    `cme_activity_id` BIGINT COMMENT 'Unique surrogate identifier for each Continuing Medical Education (CME) activity record in the system. Primary key for the cme_activity data product.',
-    `ap_invoice_id` BIGINT COMMENT 'Foreign key linking to finance.ap_invoice. Business justification: CME activity registration fees are paid via AP invoices. Links CME records to payment transactions for continuing education budget tracking, compliance cost analysis, and reimbursement processing.',
-    `board_certification_id` BIGINT COMMENT 'Foreign key linking to provider.board_certification. Business justification: CME activities can be linked to specific board certifications for MOC (Maintenance of Certification) tracking. FK will be NULL for non-MOC activities. No redundant columns to remove.',
-    `care_site_id` BIGINT COMMENT 'Reference to the healthcare facility or organization for which this CME activity is being tracked for reappointment or privileging compliance purposes. Supports multi-facility provider credentialing workflows.',
-    `clinician_id` BIGINT COMMENT 'Reference to the licensed healthcare professional (physician, nurse, allied health professional) who completed this CME activity. Links to the authoritative provider master record.',
-    `employee_id` BIGINT COMMENT 'Foreign key linking to workforce.employee. Business justification: CME tracking for employed clinical staff. Real business need: license renewal compliance, competency maintenance, reappointment eligibility, performance review integration, continuing education budget',
-    `reappointment_id` BIGINT COMMENT 'Foreign key linking to provider.reappointment. Business justification: CME activities are tracked for reappointment cycles. FK will be NULL for activities not tied to a specific reappointment. No redundant columns to remove.',
-    `specialty_id` BIGINT COMMENT 'Foreign key linking to provider.specialty. Business justification: CME activities are specialty-specific. cme_activity.specialty_relevance_code and specialty_relevance_name should reference specialty table.',
-    `training_id` BIGINT COMMENT 'Foreign key linking to compliance.training. Business justification: CME activities satisfy compliance training requirements (HIPAA, infection control, cultural competency). Compliance systems track which mandatory training requirements are fulfilled by specific CME co',
-    `accreditation_standard` STRING COMMENT 'The accreditation framework under which CME credit is awarded. AMA PRA (Physicians Recognition Award) is the most common for physicians; ANCC for nurses; ACPE for pharmacists; AOA for osteopathic physicians. [ENUM-REF-CANDIDATE: ama_pra|accme|aoa|ancc|acpe|aapa|state_medical_society — promote to reference product]',
-    `accrediting_organization_code` STRING COMMENT 'Unique identifier code assigned by ACCME or the relevant accrediting body to the organization that provided CME accreditation for this activity. Used for verification and reporting.',
-    `accrediting_organization_name` STRING COMMENT 'Full legal name of the organization accredited by ACCME or a state medical society to provide CME credit for this activity (e.g., American College of Cardiology, Mayo Clinic School of Continuous Professional Development).',
-    `activity_code` STRING COMMENT 'Unique alphanumeric code assigned by the accrediting organization to identify this specific CME activity. Used for verification and transcript reconciliation.',
-    `activity_end_date` DATE COMMENT 'Date on which the CME activity concluded. For multi-day live events, this is the final day. For enduring materials, this is the date the provider submitted the post-test or evaluation.',
-    `activity_location` STRING COMMENT 'Physical location or online platform where the CME activity was conducted (e.g., Chicago, IL, Virtual — Zoom Webinar, Mayo Clinic — Rochester, MN). Used for audit and verification purposes.',
-    `activity_start_date` DATE COMMENT 'Date on which the CME activity began. For live events, this is the first day of the conference or course. For enduring materials, this is the date the provider began the activity.',
-    `activity_state` STRING COMMENT 'U.S. state where the CME activity was conducted or where the online activity was registered. Relevant for state-specific CME requirements (e.g., mandatory opioid prescribing CME, implicit bias training).',
-    `activity_status` STRING COMMENT 'Current lifecycle status of the CME activity record. Completed indicates the provider finished the activity; pending_verification indicates awaiting credential verification; verified indicates confirmed by the accrediting body; rejected indicates the credit was not accepted.. Valid values are `completed|in_progress|pending_verification|verified|rejected|expired`',
-    `activity_title` STRING COMMENT 'Full descriptive title of the Continuing Medical Education activity as provided by the accrediting organization or sponsoring institution (e.g., Advanced Cardiac Life Support Update 2024).',
-    `activity_type` STRING COMMENT 'Classification of the CME activity format as defined by ACCME. Live activities include conferences and workshops; enduring materials are self-study formats; performance improvement activities are practice-based. [ENUM-REF-CANDIDATE: live|enduring_material|performance_improvement|internet_searching|journal_based|test_item_writing|manuscript_review — promote to reference product]',
-    `board_certification_applicable` BOOLEAN COMMENT 'Indicates whether the CME credits from this activity are applicable toward the providers Maintenance of Certification (MOC) requirements with their specialty board. True when the activity meets the boards CME criteria.',
-    `certificate_issue_date` DATE COMMENT 'Date on which the accrediting organization issued the CME completion certificate or transcript entry to the provider. May differ from completion date for activities with delayed certificate processing.',
-    `certificate_number` STRING COMMENT 'Unique certificate or transcript number issued by the accrediting organization upon completion of the CME activity. Used as the primary verification reference for licensure renewal and reappointment.',
-    `cme_category` STRING COMMENT 'AMA Physicians Recognition Award (PRA) credit category designation. Category 1 credits are awarded for accredited educational activities; Category 2 credits are self-designated for non-accredited learning activities.. Valid values are `category_1|category_2`',
-    `commercial_support_flag` BOOLEAN COMMENT 'Indicates whether this CME activity received commercial support (financial or in-kind) from a pharmaceutical, device, or other commercial entity. Required disclosure per ACCME Standards for Commercial Support and OIG guidelines.',
-    `completion_date` DATE COMMENT 'Date on which the provider completed the CME activity and earned the associated credit hours. Used for licensure renewal cycle calculations and reappointment compliance verification.',
-    `created_timestamp` TIMESTAMP COMMENT 'Timestamp indicating when this CME activity record was first created in the system. Supports audit trail requirements and data lineage tracking per HIPAA and HITRUST standards.',
-    `credit_hours` DECIMAL(18,2) COMMENT 'Number of CME credit hours awarded upon completion of this activity, expressed as a decimal to support fractional credits (e.g., 0.5, 1.0, 2.5). Used for licensure renewal and board certification tracking.',
-    `delivery_method` STRING COMMENT 'Mode of delivery for the CME activity. In-person includes conferences and workshops; online includes webinars and e-learning modules; simulation includes procedural skills labs; journal-based includes reading and post-test activities.. Valid values are `in_person|online|hybrid|simulation|journal|podcast`',
-    `evaluation_completed_flag` BOOLEAN COMMENT 'Indicates whether the provider completed the required post-activity evaluation or satisfaction survey. Many accredited CME activities require evaluation completion as a condition of credit award.',
-    `license_state` STRING COMMENT 'U.S. state for which this CME activity is being applied toward licensure renewal. A provider may hold licenses in multiple states with different CME requirements; this field identifies the applicable state.',
-    `licensure_cycle_applicable` BOOLEAN COMMENT 'Indicates whether the CME credits from this activity are applicable toward the providers current state medical licensure renewal cycle. True when the activity falls within the active licensure renewal period.',
-    `licensure_renewal_cycle_end_date` DATE COMMENT 'End date of the state medical licensure renewal cycle to which this CME activity is being applied. Used to ensure CME credits are counted within the correct renewal period for compliance tracking.',
-    `mandatory_topic_flag` BOOLEAN COMMENT 'Indicates whether this CME activity covers a state-mandated or federally-mandated topic (e.g., opioid prescribing, implicit bias, infection control, child abuse recognition). Mandatory topic CME is tracked separately for compliance reporting.',
-    `mandatory_topic_type` STRING COMMENT 'Specific type of state or federally mandated CME topic covered by this activity. Populated only when mandatory_topic_flag is True. Used for compliance gap analysis and regulatory reporting. [ENUM-REF-CANDIDATE: opioid_prescribing|implicit_bias|infection_control|child_abuse|domestic_violence|end_of_life_care|other — promote to reference product]',
-    `moc_points_earned` DECIMAL(18,2) COMMENT 'Number of Maintenance of Certification (MOC) points earned through this CME activity, as recognized by the relevant specialty board. MOC points may differ from CME credit hours depending on the boards conversion formula.',
-    `notes` STRING COMMENT 'Free-text field for credentialing staff or the provider to capture additional context about the CME activity, such as exceptions, special circumstances, or supplemental documentation references.',
-    `npi` STRING COMMENT 'The 10-digit National Provider Identifier (NPI) of the provider who completed this CME activity. Used for cross-referencing with payer enrollment records and CMS reporting. NPI is a HIPAA-mandated standard identifier.. Valid values are `^[0-9]{10}$`',
-    `passing_score_threshold` DECIMAL(18,2) COMMENT 'Minimum percentage score required on the post-activity assessment to earn CME credit for this activity. Typically set by the accrediting organization (commonly 70% or 80%).',
-    `post_test_score` DECIMAL(18,2) COMMENT 'Percentage score achieved by the provider on the post-activity assessment or post-test, where applicable. Required for some enduring material and journal-based CME activities to earn credit.',
-    `reappointment_cycle_applicable` BOOLEAN COMMENT 'Indicates whether this CME activity counts toward the providers hospital reappointment CME requirements. True when the activity falls within the current reappointment cycle period and meets facility-specific CME criteria.',
-    `source_system_code` STRING COMMENT 'Code identifying the operational system of record from which this CME activity record was sourced (e.g., Symplr Credentialing, Epic, manual entry). Supports data lineage and ETL reconciliation. [ENUM-REF-CANDIDATE: symplr|epic|cerner|meditech|manual|cme_tracker|external — 7 candidates stripped; promote to reference product]',
-    `source_system_record_reference` STRING COMMENT 'The unique identifier of this CME activity record in the originating source system (e.g., Symplr activity ID, Epic CME record ID). Used for data lineage, deduplication, and back-referencing to the system of record.',
-    `sponsoring_organization` STRING COMMENT 'Name of the commercial or non-commercial organization that sponsored or funded the CME activity. Required for ACCME commercial support disclosure and OIG compliance. Distinct from the accrediting organization.',
-    `topic_area` STRING COMMENT 'Clinical or professional topic area covered by the CME activity (e.g., Patient Safety, Opioid Prescribing, Infection Control, Diabetes Management). Used for population health and quality improvement reporting.',
-    `updated_timestamp` TIMESTAMP COMMENT 'Timestamp indicating when this CME activity record was last modified in the system. Used for change tracking, audit compliance, and incremental data pipeline processing.',
-    `verification_date` DATE COMMENT 'Date on which the CME activity record was verified against the accrediting organizations records or the providers official CME transcript. Populated when verification_status transitions to verified.',
-    `verification_source` STRING COMMENT 'Source used to verify the CME activity record. Primary source verification (direct contact with accrediting organization) is the gold standard. Provider attestation is acceptable for Category 2 credits.. Valid values are `provider_attestation|accrediting_org|pme_transcript|cme_tracker|primary_source`',
-    `verification_status` STRING COMMENT 'Status of the credential verification process for this CME activity. Verified indicates the certificate and credit hours have been confirmed with the accrediting organization. Used by credentialing staff during reappointment review.. Valid values are `unverified|verified|failed_verification|pending`',
+    `cme_activity_id` BIGINT COMMENT 'Primary key',
+    `clinician_id` BIGINT COMMENT 'Unique identifier for the clinician within the provider cme activity record.',
+    `activity_date` DATE COMMENT 'Timestamp capturing the activity date associated with the provider cme activity record.',
+    `activity_name` STRING COMMENT 'The activity name of the provider cme activity record.',
+    `created_timestamp` TIMESTAMP COMMENT 'The created timestamp of the provider cme activity record.',
+    `credit_hours` DECIMAL(18,2) COMMENT 'The credit hours of the provider cme activity record.',
+    `provider_organization` STRING COMMENT 'The provider organization of the provider cme activity record.',
+    `cme_activity_status` STRING COMMENT 'The cme activity status value classifying the provider cme activity record.',
+    `updated_timestamp` TIMESTAMP COMMENT 'The updated timestamp of the provider cme activity record.',
+    `vibe_structure_marker` STRING COMMENT 'The vibe structure marker of the provider cme activity record.',
     CONSTRAINT pk_cme_activity PRIMARY KEY(`cme_activity_id`)
-) COMMENT 'Tracks Continuing Medical Education (CME) activities completed by clinicians to maintain licensure and board certification. Captures activity title, accrediting organization (AMA PRA, ACCME), activity type (live, enduring, performance improvement), credit hours, completion date, specialty relevance, and CME category (Category 1, Category 2). Supports licensure renewal and reappointment compliance.';
+) COMMENT 'CME activities';
 
 CREATE OR REPLACE TABLE `vibe_healthcare_v1`.`provider`.`telehealth_authorization` (
-    `telehealth_authorization_id` BIGINT COMMENT 'Unique surrogate identifier for each telehealth authorization record. Primary key for the telehealth_authorization data product in the provider domain.',
-    `care_site_id` BIGINT COMMENT 'Reference to the healthcare facility (distant site) from which the clinician delivers telehealth services under this authorization. Links to the provider.org_provider or facility master record.',
-    `clinician_id` BIGINT COMMENT 'Reference to the licensed clinician for whom this telehealth authorization is issued. Links to the provider.clinician master record.',
-    `compliance_regulatory_submission_id` BIGINT COMMENT 'Foreign key linking to compliance.regulatory_submission. Business justification: Interstate telehealth licenses and compact enrollments are regulatory submissions to state medical boards and compact commissions. Compliance teams track application status, approval dates, and renewa',
-    `credentialing_application_id` BIGINT COMMENT 'Foreign key linking to provider.credentialing_application. Business justification: Telehealth authorizations may be part of credentialing process. FK will be NULL for authorizations obtained independently. No redundant columns to remove.',
-    `credentialing_file_id` BIGINT COMMENT 'Reference to the credentialing file or record in the credentialing management system (e.g., Symplr) that contains supporting documentation for this telehealth authorization, including primary source verification artifacts.',
-    `specialty_id` BIGINT COMMENT 'FK to provider.specialty',
-    `application_date` DATE COMMENT 'The date on which the clinician or their credentialing team submitted the application for this telehealth authorization to the relevant state board or compact administrator.',
-    `approval_date` DATE COMMENT 'The date on which the issuing authority (state licensing board, compact administrator, or federal agency) formally approved this telehealth authorization.',
-    `audio_only_authorized` BOOLEAN COMMENT 'Indicates whether this authorization permits audio-only (telephone) telehealth encounters in addition to or instead of video-based encounters. CMS and many states have specific rules governing audio-only telehealth reimbursement.',
-    `authorization_number` STRING COMMENT 'Externally assigned or internally generated unique reference number for this telehealth authorization, used for tracking and correspondence with state licensing boards, payers, and interstate compact administrators.',
-    `authorization_status` STRING COMMENT 'Current lifecycle state of the telehealth authorization. Active indicates the clinician is currently authorized to deliver telehealth in the distant state. Pending indicates application submitted but not yet approved. Expired, suspended, and revoked indicate the authorization is no longer valid.. Valid values are `active|pending|expired|suspended|revoked|pending_renewal`',
-    `authorization_type` STRING COMMENT 'Classification of the legal basis under which the clinician is authorized to deliver telehealth services across state lines. Values include state_license (full state license in distant state), interstate_compact (IMLC or PSYPACT membership), federal_waiver (CMS or DEA waiver), reciprocity_agreement (bilateral state agreement), or emergency_waiver (public health emergency authorization).. Valid values are `state_license|interstate_compact|federal_waiver|reciprocity_agreement|emergency_waiver`',
-    `cms_telehealth_eligible` BOOLEAN COMMENT 'Indicates whether the clinician is eligible to bill Medicare and Medicaid for telehealth services under this authorization per CMS telehealth coverage rules (42 CFR §410.78). True = CMS-eligible telehealth provider; False = not eligible for CMS telehealth reimbursement under this authorization.',
-    `compact_membership_number` STRING COMMENT 'Unique membership or registration identifier assigned by the interstate compact administrator (e.g., IMLC, PSYPACT, NLC) when the clinician is authorized under a compact rather than a full state license. Null if authorization_type is not interstate_compact.',
-    `compact_type` STRING COMMENT 'Identifies the specific interstate compact program under which this authorization is granted. IMLC = Interstate Medical Licensure Compact (physicians), PSYPACT = Psychology Interjurisdictional Compact, NLC = Nurse Licensure Compact, ASLP-IC = Audiology and Speech-Language Pathology Interstate Compact, PT_Compact = Physical Therapy Compact, OT_Compact = Occupational Therapy Compact. Null or none if not compact-based. [ENUM-REF-CANDIDATE: IMLC|PSYPACT|NLC|ASLP-IC|PT_Compact|OT_Compact|none — 7 candidates stripped; promote to reference product]',
-    `controlled_substance_prescribing_allowed` BOOLEAN COMMENT 'Indicates whether the clinician is authorized to prescribe controlled substances via telehealth under this authorization. Governed by the Ryan Haight Act, DEA telemedicine rules, and applicable state law. Critical for pharmacy compliance and MAR (Medication Administration Record) workflows.',
-    `created_timestamp` TIMESTAMP COMMENT 'The timestamp when this telehealth authorization record was first created in the data platform. Used for audit trail, data lineage, and compliance reporting.',
-    `cross_border_country` STRING COMMENT 'Three-letter ISO 3166-1 alpha-3 country code for international telehealth authorizations where the clinician or patient is located outside the United States. Null for domestic (US-only) authorizations.. Valid values are `^[A-Z]{3}$`',
-    `distant_state` STRING COMMENT 'Two-letter US state code representing the state where the clinician (distant site) is physically located and licensed when delivering telehealth services. The clinician must hold valid authorization to practice in this state.. Valid values are `^[A-Z]{2}$`',
-    `effective_date` DATE COMMENT 'The date on which this telehealth authorization becomes legally effective and the clinician is permitted to deliver virtual care services under its terms.',
-    `expiration_alert_sent` BOOLEAN COMMENT 'Indicates whether an automated expiration alert notification has been sent to the clinician and credentialing team for this telehealth authorization. Used to track renewal workflow initiation.',
-    `expiration_date` DATE COMMENT 'The date on which this telehealth authorization expires and the clinician is no longer authorized to deliver telehealth services under this authorization. Null for open-ended or indefinite authorizations.',
-    `issuing_authority` STRING COMMENT 'Name of the regulatory body, state licensing board, or compact administrator that issued this telehealth authorization (e.g., California Medical Board, Interstate Medical Licensure Compact Commission, CMS, DEA).',
-    `medicaid_telehealth_eligible` BOOLEAN COMMENT 'Indicates whether the clinician is eligible to bill Medicaid in the distant state for telehealth services under this authorization. Medicaid telehealth policies vary by state and are distinct from Medicare eligibility.',
-    `network_participation_status` STRING COMMENT 'Indicates whether the clinician is participating in-network for telehealth services in the distant state under this authorization. Relevant for payer contracting, patient cost-sharing, and ACO/HMO/PPO network management.. Valid values are `in_network|out_of_network|pending|not_applicable`',
-    `notes` STRING COMMENT 'Free-text field for credentialing staff to capture additional context, conditions, or remarks associated with this telehealth authorization that are not captured in structured fields (e.g., special conditions imposed by the issuing authority, internal compliance notes).',
-    `npi` STRING COMMENT 'The 10-digit National Provider Identifier (NPI) of the clinician as assigned by CMS. Required for telehealth billing and payer enrollment verification. Stored here for authorization record completeness and cross-referencing with payer systems.. Valid values are `^[0-9]{10}$`',
-    `originating_state` STRING COMMENT 'Two-letter US state code representing the state where the patient (originating site) is physically located at the time of the telehealth encounter. Per CMS telehealth rules, the originating state determines applicable licensure and coverage requirements.. Valid values are `^[A-Z]{2}$`',
-    `payer_enrollment_date` DATE COMMENT 'The date on which the clinician was successfully enrolled with payers for telehealth billing in the distant state under this authorization.',
-    `payer_enrollment_status` STRING COMMENT 'Indicates the clinicians enrollment status with payers for telehealth billing in the distant state. Enrolled = active payer enrollment for telehealth services; Pending = enrollment application submitted; Not_enrolled = not yet enrolled; Terminated = enrollment ended.. Valid values are `enrolled|pending|not_enrolled|terminated`',
-    `platform_restriction` STRING COMMENT 'Specifies any restrictions on the telehealth delivery platform permitted under this authorization (e.g., HIPAA-compliant video only, audio-only prohibited, Epic MyChart only, no consumer-grade platforms). Null if no platform restrictions apply. [ENUM-REF-CANDIDATE: promote to reference product if standardized platform list is maintained]',
-    `renewal_cycle_months` STRING COMMENT 'The standard renewal cycle in months for this telehealth authorization as defined by the issuing authority (e.g., 12, 24, 36 months). Used to calculate the next renewal_date and schedule credentialing workflow triggers.',
-    `renewal_date` DATE COMMENT 'The date on which the clinician must submit a renewal application to maintain continuity of this telehealth authorization. Used to trigger credentialing workflow alerts.',
-    `revocation_date` DATE COMMENT 'The date on which this telehealth authorization was permanently revoked by the issuing authority. Null if the authorization has not been revoked.',
-    `revocation_reason` STRING COMMENT 'Free-text description of the reason this telehealth authorization was revoked, as documented by the issuing authority or the organizations credentialing team.',
-    `service_type_restriction` STRING COMMENT 'Describes any restrictions on the types of clinical services permitted under this telehealth authorization (e.g., behavioral health only, chronic disease management only, no controlled substance prescribing, no new patient encounters). Null if no service restrictions apply.',
-    `source_system_code` STRING COMMENT 'Identifies the operational system of record from which this telehealth authorization record was sourced (e.g., Symplr Credentialing, Epic, Cerner, MEDITECH, or manual entry). Used for ETL lineage and data reconciliation.. Valid values are `symplr|epic|cerner|meditech|manual`',
-    `source_system_record_reference` STRING COMMENT 'The native record identifier from the source operational system (e.g., Symplr authorization record ID, Epic provider record ID) for this telehealth authorization. Enables traceability and reconciliation back to the system of record.',
-    `state_license_number` STRING COMMENT 'The clinicians license number issued by the distant state licensing board that underpins this telehealth authorization. Applicable when authorization_type is state_license or reciprocity_agreement.',
-    `suspension_date` DATE COMMENT 'The date on which this telehealth authorization was suspended by the issuing authority or internally by the organization. Null if the authorization has never been suspended.',
-    `suspension_reason` STRING COMMENT 'Free-text description of the reason this telehealth authorization was suspended, as documented by the issuing authority or the organizations credentialing team.',
-    `updated_timestamp` TIMESTAMP COMMENT 'The timestamp when this telehealth authorization record was last modified in the data platform. Used for change tracking, incremental ETL processing, and audit compliance.',
-    `verification_date` DATE COMMENT 'The date on which primary source verification of this telehealth authorization was last completed by the credentialing team.',
-    `verification_method` STRING COMMENT 'Method used to perform primary source verification of this telehealth authorization. Online_portal = state board website; Phone = direct call to issuing authority; Written_confirmation = letter or fax; Third_party_service = CAQH ProView or similar; CAQH = Council for Affordable Quality Healthcare attestation.. Valid values are `online_portal|phone|written_confirmation|third_party_service|caqh`',
-    `verification_status` STRING COMMENT 'Status of primary source verification for this telehealth authorization. Verified = confirmed directly with issuing authority; Pending = verification in progress; Failed = could not be verified; Not_required = exempt from PSV per policy.. Valid values are `verified|pending|failed|not_required`',
+    `telehealth_authorization_id` BIGINT COMMENT 'Primary key',
+    `clinician_id` BIGINT COMMENT 'Unique identifier for the clinician within the provider telehealth authorization record.',
+    `authorization_status` STRING COMMENT 'The authorization status value classifying the provider telehealth authorization record.',
+    `created_timestamp` TIMESTAMP COMMENT 'The created timestamp of the provider telehealth authorization record.',
+    `effective_date` DATE COMMENT 'Timestamp capturing the effective date associated with the provider telehealth authorization record.',
+    `expiration_date` DATE COMMENT 'Timestamp capturing the expiration date associated with the provider telehealth authorization record.',
+    `state_code` STRING COMMENT 'The state code value classifying the provider telehealth authorization record.',
+    `telehealth_authorization_status` STRING COMMENT 'The telehealth authorization status value classifying the provider telehealth authorization record.',
+    `updated_timestamp` TIMESTAMP COMMENT 'The updated timestamp of the provider telehealth authorization record.',
+    `vibe_structure_marker` STRING COMMENT 'The vibe structure marker of the provider telehealth authorization record.',
     CONSTRAINT pk_telehealth_authorization PRIMARY KEY(`telehealth_authorization_id`)
-) COMMENT 'Tracks state-specific telehealth practice authorizations and interstate compact memberships for clinicians delivering virtual care across state lines. Captures originating state, distant state, authorization type (state license, interstate compact, federal waiver), effective date, expiration date, platform restrictions, and CMS telehealth eligibility indicator. Critical for multi-state telehealth compliance.';
+) COMMENT 'Telehealth authorizations';
 
 CREATE OR REPLACE TABLE `vibe_healthcare_v1`.`provider`.`taxonomy` (
-    `taxonomy_id` BIGINT COMMENT 'Unique surrogate identifier for each provider taxonomy code record in the NUCC Health Care Provider Taxonomy reference catalog. Primary key for this table. [_canonical_skip_reason: REFERENCE_LOOKUP — this entity is a NUCC taxonomy code reference table; per-role minimums for REFERENCE_LOOKUP/OTHER are exempt.]',
-    `cpt_code_id` BIGINT COMMENT 'Foreign key linking to reference.cpt_code. Business justification: Taxonomy codes define authorized procedure scopes for credentialing, privileging, and payer enrollment. Links taxonomy to specific CPT codes for scope-of-practice validation, prior authorization rules',
-    `icd_code_id` BIGINT COMMENT 'Foreign key linking to reference.icd_code. Business justification: Taxonomy codes map to primary diagnosis chapters for network adequacy reporting, specialty-specific condition tracking, and CMS quality measure assignment. Healthcare operations require this for provi',
-    `snomed_concept_id` BIGINT COMMENT 'The SNOMED CT concept identifier that semantically maps to this provider taxonomy code, enabling interoperability with clinical terminology systems and FHIR-based health information exchanges.',
-    `abms_board_name` STRING COMMENT 'The name of the American Board of Medical Specialties (ABMS) member board associated with this taxonomy code (e.g., American Board of Internal Medicine, American Board of Surgery). Used in board certification verification during credentialing.',
-    `acgme_program_code` STRING COMMENT 'The ACGME program specialty code associated with the residency or fellowship training program that corresponds to this taxonomy classification. Used to validate training pathway alignment during provider credentialing.',
-    `board_certification_required` BOOLEAN COMMENT 'Indicates whether board certification is a standard credentialing requirement for providers holding this taxonomy code. Used in credentialing completeness validation and payer enrollment eligibility checks.',
-    `classification` STRING COMMENT 'The second level of the NUCC taxonomy hierarchy representing the providers primary discipline or specialty grouping within the provider type (e.g., Family Medicine, Internal Medicine, Pediatrics). Used in payer enrollment and claims adjudication to route claims to appropriate fee schedules.',
-    `cms_specialty_code` STRING COMMENT 'The two-digit CMS specialty code that maps to this NUCC taxonomy code, used in Medicare and Medicaid claims processing, fee schedule assignment, and PECOS enrollment. Enables crosswalk between NUCC taxonomy and CMS specialty classification for reimbursement purposes.. Valid values are `^[0-9]{2}$`',
-    `cms_specialty_description` STRING COMMENT 'The descriptive label associated with the CMS specialty code crosswalk for this taxonomy entry (e.g., General Practice, Cardiology, Pathology). Supports reporting and validation in Medicare claims adjudication workflows.',
-    `taxonomy_code` STRING COMMENT 'The 10-character alphanumeric code assigned by the National Uniform Claim Committee (NUCC) that uniquely identifies a provider type, classification, and specialization. Used on CMS-1500 and UB-04 claim forms, NPI registry enrollment, and payer credentialing. Example: 207Q00000X for Family Medicine.. Valid values are `^[0-9]{6}[A-Z0-9]{3}X$`',
-    `created_timestamp` TIMESTAMP COMMENT 'The timestamp when this taxonomy code record was first loaded into the enterprise data platform. Used for data lineage, audit trail, and ETL monitoring.',
-    `dea_registration_applicable` BOOLEAN COMMENT 'Indicates whether providers with this taxonomy code are typically required or eligible to obtain a DEA registration number for prescribing controlled substances. Supports credentialing completeness checks and compliance monitoring.',
-    `definition` STRING COMMENT 'The official NUCC narrative definition describing the scope of practice, training requirements, and clinical activities associated with this taxonomy code. Used by credentialing staff and payer enrollment teams to validate appropriate taxonomy selection.',
-    `display_name` STRING COMMENT 'The full human-readable display name for the taxonomy code as published by NUCC, combining provider type, classification, and specialization into a single descriptive label used in UI dropdowns, reports, and provider directories.',
-    `effective_date` DATE COMMENT 'The date on which this taxonomy code became effective and valid for use in NPI registry enrollment, claims submission, and payer credentialing. Aligns with the NUCC code set release date.',
-    `end_date` DATE COMMENT 'The date on which this taxonomy code was retired or deactivated by NUCC. Null for currently active codes. Used to prevent use of retired codes in new NPI enrollments and claims submissions.',
-    `fhir_practitioner_role_code` STRING COMMENT 'The HL7 FHIR PractitionerRole code that corresponds to this NUCC taxonomy code, used in FHIR-based API integrations, HIE data exchange, and interoperability with external EHR systems.',
-    `hospital_privileges_applicable` BOOLEAN COMMENT 'Indicates whether providers with this taxonomy code are subject to hospital privileging and credentialing requirements. Drives privileging workflow initiation in credentialing systems such as Symplr.',
-    `individual_or_organization` STRING COMMENT 'Indicates whether this taxonomy code applies to an individual healthcare professional (Type 1 NPI) or an organizational/group provider (Type 2 NPI). Drives NPI enumeration type selection and payer enrollment form routing.. Valid values are `Individual|Organization`',
-    `medicaid_enrollment_eligible` BOOLEAN COMMENT 'Indicates whether providers with this taxonomy code are eligible to enroll as Medicaid providers. Supports state Medicaid agency enrollment workflows and payer credentialing validation.',
-    `mips_eligible` BOOLEAN COMMENT 'Indicates whether providers with this taxonomy code are eligible to participate in the Merit-based Incentive Payment System (MIPS) under MACRA. Used in quality reporting program enrollment and value-based care analytics.',
-    `network_adequacy_category` STRING COMMENT 'The network adequacy classification assigned to this taxonomy code by CMS or state regulators, indicating the minimum provider-to-enrollee ratios and geographic access standards required for health plan network compliance (e.g., Primary Care, Specialist, Behavioral Health, Ancillary).',
-    `notes` STRING COMMENT 'Supplemental notes published by NUCC clarifying usage, scope limitations, or cross-references to related taxonomy codes. Assists credentialing and billing staff in selecting the most appropriate taxonomy code for a provider.',
-    `npi_type` STRING COMMENT 'The NPI enumeration type associated with this taxonomy code: Type 1 for individual healthcare providers and Type 2 for organizational providers. Determines the NPI application process and NPPES registry classification.. Valid values are `Type 1|Type 2`',
-    `nucc_grouping` STRING COMMENT 'The broad grouping category assigned by NUCC above the provider type level, used to segment taxonomy codes into major provider categories such as Individual, Non-Individual, or specific functional groupings (e.g., Behavioral Health & Social Service Providers, Dental Providers). Supports high-level analytics and network adequacy reporting.',
-    `pecos_enrollment_eligible` BOOLEAN COMMENT 'Indicates whether providers with this taxonomy code are eligible to enroll in Medicare through the PECOS system. Used by revenue cycle and credentialing teams to determine Medicare participation eligibility during provider onboarding.',
-    `prescribing_authority` BOOLEAN COMMENT 'Indicates whether providers classified under this taxonomy code typically hold prescribing authority for medications. Used in pharmacy benefit management, DEA registration workflows, and Computerized Physician Order Entry (CPOE) access control configuration.',
-    `primary_care_designation` BOOLEAN COMMENT 'Indicates whether this taxonomy code is recognized as a primary care designation by CMS and payers. Used in network adequacy analysis, HMO/PPO panel assignments, ACO attribution, and HEDIS measure reporting.',
-    `prior_authorization_required` BOOLEAN COMMENT 'Indicates whether services rendered by providers with this taxonomy code typically require prior authorization from payers. Used in utilization management configuration and claims pre-authorization workflow routing.',
-    `provider_type` STRING COMMENT 'The highest-level grouping in the NUCC taxonomy hierarchy that broadly categorizes the provider (e.g., Allopathic & Osteopathic Physicians, Nursing Service Providers, Hospitals, Laboratories). Corresponds to the Type level of the NUCC three-level hierarchy.',
-    `referral_required` BOOLEAN COMMENT 'Indicates whether a referral from a primary care provider is typically required before a patient can access services from a provider with this taxonomy code. Relevant for HMO and POS plan configurations.',
-    `replacement_taxonomy_code` STRING COMMENT 'The NUCC taxonomy code that replaces this code when it has been retired or deprecated. Enables automated migration of provider taxonomy assignments during NUCC code set updates and supports backward compatibility in claims processing.. Valid values are `^[0-9]{6}[A-Z0-9]{3}X$`',
-    `rvu_work_component` DECIMAL(18,2) COMMENT 'The typical physician work Relative Value Unit (RVU) component associated with services delivered under this taxonomy code, used as a benchmark for productivity measurement, compensation modeling, and value-based payment analytics.',
-    `source_system_record_reference` STRING COMMENT 'The unique identifier of this taxonomy record in the originating source system (e.g., NUCC internal code ID, NPPES taxonomy reference ID). Used for ETL reconciliation and cross-system data lineage.',
-    `specialization` STRING COMMENT 'The third and most granular level of the NUCC taxonomy hierarchy representing a specific area of practice within the classification (e.g., Adolescent Medicine, Geriatric Medicine, Sports Medicine). May be null for taxonomy codes that do not have a defined specialization.',
-    `taxonomy_status` STRING COMMENT 'The current lifecycle status of this taxonomy code as maintained by NUCC: Active (valid for current use), Retired (no longer valid for new enrollments), or Deprecated (superseded by a replacement code). Drives validation rules in NPI enrollment and claims editing systems.. Valid values are `Active|Retired|Deprecated`',
-    `surgical_specialty` BOOLEAN COMMENT 'Indicates whether this taxonomy code represents a surgical specialty. Used in OR scheduling, surgical credentialing workflows, and operative case volume reporting.',
-    `telehealth_eligible` BOOLEAN COMMENT 'Indicates whether providers with this taxonomy code are eligible to deliver and bill for telehealth services under CMS and payer policies. Supports telehealth program configuration and claims validation.',
-    `updated_timestamp` TIMESTAMP COMMENT 'The timestamp when this taxonomy code record was last modified in the enterprise data platform, reflecting updates from NUCC code set releases or CMS crosswalk revisions.',
-    `version` STRING COMMENT 'The version number of the NUCC Health Care Provider Taxonomy Code Set from which this taxonomy code was sourced (e.g., 23.1, 24.0). NUCC releases updates twice per year; version tracking ensures claims and enrollment systems use the correct code set.. Valid values are `^[0-9]{2}.[0-9]$`',
+    `taxonomy_id` BIGINT COMMENT 'Primary key',
+    `clinician_id` BIGINT COMMENT 'Unique identifier for the clinician within the provider taxonomy record.',
+    `taxonomy_code` STRING COMMENT 'The taxonomy code value classifying the provider taxonomy record.',
+    `created_timestamp` TIMESTAMP COMMENT 'The created timestamp of the provider taxonomy record.',
+    `taxonomy_description` STRING COMMENT 'The taxonomy description of the provider taxonomy record.',
+    `is_primary` BOOLEAN COMMENT 'Boolean flag indicating the is primary status of the provider taxonomy record.',
+    `taxonomy_status` STRING COMMENT 'The taxonomy status value classifying the provider taxonomy record.',
+    `updated_timestamp` TIMESTAMP COMMENT 'The updated timestamp of the provider taxonomy record.',
+    `vibe_structure_marker` STRING COMMENT 'The vibe structure marker of the provider taxonomy record.',
     CONSTRAINT pk_taxonomy PRIMARY KEY(`taxonomy_id`)
-) COMMENT 'Reference catalog of NUCC (National Uniform Claim Committee) Health Care Provider Taxonomy codes used to classify provider type, classification, and specialization on claims and enrollment forms. Captures taxonomy code, provider type, classification, specialization, effective date, and CMS crosswalk to specialty codes. Used in NPI registry, claims submission, and payer enrollment.';
+) COMMENT 'NUCC taxonomy codes';
 
 CREATE OR REPLACE TABLE `vibe_healthcare_v1`.`provider`.`affiliation_history` (
-    `affiliation_history_id` BIGINT COMMENT 'Unique surrogate identifier for each affiliation history record. Primary key for the affiliation_history data product in the provider domain.',
-    `clinician_id` BIGINT COMMENT 'Reference to the clinician whose affiliation history is being recorded. Links to the provider.clinician master record.',
-    `credentialing_application_id` BIGINT COMMENT 'Reference to the credentialing application for which this affiliation history record was collected and verified. Links to the provider.credentialing_application record.',
-    `org_provider_id` BIGINT COMMENT 'Reference to the affiliated organizational provider (hospital, clinic, health system, or group practice). Links to the provider.org_provider master record.',
-    `adverse_action_flag` BOOLEAN COMMENT 'Indicates whether the clinicians departure or separation from this affiliated organization involved an adverse action (e.g., revocation of privileges, termination for cause, or resignation while under investigation). Triggers NPDB reporting obligations when True.',
-    `affiliated_org_address_line1` STRING COMMENT 'Primary street address of the affiliated organization at the time of affiliation. Captured for primary source verification contact purposes and historical record accuracy.',
-    `affiliated_org_city` STRING COMMENT 'City of the affiliated organizations primary address at the time of affiliation. Used for geographic analysis of provider work history and credentialing verification.',
-    `affiliated_org_country` STRING COMMENT 'Three-letter ISO 3166-1 alpha-3 country code of the affiliated organization. Supports international affiliation tracking for clinicians with foreign training or work history.. Valid values are `^[A-Z]{3}$`',
-    `affiliated_org_name` STRING COMMENT 'Legal or operating name of the affiliated organization at the time of affiliation. Captured as a denormalized field to preserve historical accuracy even if the organization name changes over time. Required for credentialing primary source verification.',
-    `affiliated_org_npi` STRING COMMENT 'National Provider Identifier (NPI) of the affiliated organization as registered with CMS at the time of affiliation. Used for primary source verification and payer enrollment cross-referencing.. Valid values are `^[0-9]{10}$`',
-    `affiliated_org_phone` STRING COMMENT 'Primary contact phone number for the affiliated organization. Used for primary source verification outreach during credentialing.. Valid values are `^+?[0-9-s().]{7,20}$`',
-    `affiliated_org_state` STRING COMMENT 'Two-letter US state code of the affiliated organizations primary address at the time of affiliation. Used for state licensure cross-referencing and network adequacy analysis.. Valid values are `^[A-Z]{2}$`',
-    `affiliated_org_type` STRING COMMENT 'Classification of the affiliated organization by facility or entity type. Used to categorize the nature of the affiliation for credentialing, reporting, and analytics. [ENUM-REF-CANDIDATE: hospital|health_system|physician_group|clinic|ambulatory_surgery_center|federally_qualified_health_center|academic_medical_center|long_term_care|other — promote to reference product]',
-    `affiliated_org_zip_code` STRING COMMENT 'ZIP code of the affiliated organizations primary address at the time of affiliation. Supports geographic analysis and network adequacy reporting.. Valid values are `^[0-9]{5}(-[0-9]{4})?$`',
-    `affiliation_status` STRING COMMENT 'Current lifecycle status of this affiliation record. Indicates whether the clinicians relationship with the affiliated organization is ongoing or has concluded, and the nature of the conclusion.. Valid values are `active|inactive|terminated|resigned|suspended|on_leave`',
-    `affiliation_type` STRING COMMENT 'Classification of the nature of the clinicians relationship with the affiliated organization. Distinguishes employment from medical staff appointments, independent contractor arrangements, training positions, and other relationship types. [ENUM-REF-CANDIDATE: employment|medical_staff_appointment|independent_contractor|locum_tenens|volunteer|research|fellowship|residency|preceptorship — promote to reference product]',
-    `caqh_provider_number` STRING COMMENT 'CAQH ProView provider identifier associated with this affiliation record. CAQH is the primary source for credentialing data exchange; this ID links the affiliation to the clinicians CAQH profile for verification.. Valid values are `^[0-9]{8}$`',
-    `created_timestamp` TIMESTAMP COMMENT 'Timestamp when this affiliation history record was first created in the data platform. Supports audit trail and data lineage requirements.',
-    `department_name` STRING COMMENT 'Name of the clinical department or service line within the affiliated organization where the clinician primarily practiced or was employed. Used for credentialing work history detail and specialty alignment verification.',
-    `departure_reason` STRING COMMENT 'Reason for the clinicians departure from the affiliated organization. Required for credentialing primary source verification and NPDB adverse action reporting context. Null if the affiliation is still active. [ENUM-REF-CANDIDATE: resignation|retirement|contract_end|termination_for_cause|termination_without_cause|relocation|personal_reasons|deceased|license_revocation|other — promote to reference product]',
-    `employment_basis` STRING COMMENT 'The employment or engagement basis for this affiliation, indicating whether the clinician was full-time, part-time, per diem, locum tenens, or contract during this period.. Valid values are `full_time|part_time|per_diem|locum_tenens|contract`',
-    `end_date` DATE COMMENT 'The date on which the clinicians affiliation with the organization ended. Null if the affiliation is currently active. Used for credentialing gap analysis and NPDB adverse action reporting context.',
-    `fte_percentage` DECIMAL(18,2) COMMENT 'The percentage of full-time equivalent (FTE) effort the clinician dedicated to this affiliated organization during the affiliation period. Used for workforce analytics and credentialing work history completeness validation.',
-    `gap_explanation` STRING COMMENT 'Free-text explanation provided by the clinician or credentialing staff for any gap in employment or affiliation history. Required by NCQA and The Joint Commission when gaps of 30 days or more exist in the clinicians work history.',
-    `is_current` BOOLEAN COMMENT 'Indicates whether this affiliation record represents the clinicians current active relationship with the organization. True if the affiliation is ongoing; False if it has ended. Supports efficient filtering for active affiliation queries.',
-    `is_primary_affiliation` BOOLEAN COMMENT 'Indicates whether this affiliation represents the clinicians primary organizational relationship during the affiliation period. A clinician may have multiple concurrent affiliations; this flag identifies the principal one for credentialing and reporting purposes.',
-    `is_voluntary_separation` BOOLEAN COMMENT 'Indicates whether the clinicians departure from the affiliated organization was voluntary (True) or involuntary (False). Critical for NPDB adverse action reporting context and credentialing primary source verification. Null if the affiliation is still active.',
-    `medical_staff_category` STRING COMMENT 'Medical staff membership category assigned to the clinician at the affiliated organization, if applicable. Relevant for hospital-based affiliations where medical staff bylaws define membership tiers. Null for non-medical-staff affiliations. [ENUM-REF-CANDIDATE: active|associate|courtesy|consulting|honorary|provisional|affiliate — 7 candidates stripped; promote to reference product]',
-    `notes` STRING COMMENT 'Free-text notes or comments entered by credentialing staff regarding this affiliation record. May include context about verification challenges, discrepancies, or special circumstances.',
-    `npdb_report_date` DATE COMMENT 'Date on which the adverse action associated with this affiliation was reported to the National Practitioner Data Bank (NPDB). Null if no NPDB report was required or submitted.',
-    `npdb_report_reference_number` STRING COMMENT 'Reference number assigned by the NPDB upon submission of an adverse action report associated with this affiliation. Used for tracking and reconciliation of NPDB submissions.',
-    `npdb_report_required` BOOLEAN COMMENT 'Indicates whether this affiliations adverse action or separation event requires a report to the National Practitioner Data Bank (NPDB). Derived from adverse_action_flag and departure_reason but stored explicitly for compliance tracking.',
-    `privilege_restriction_at_departure` BOOLEAN COMMENT 'Indicates whether the clinician had any clinical privileges restricted, suspended, or revoked at this affiliated organization at the time of departure. Relevant for NPDB adverse action reporting and credentialing due diligence.',
-    `psv_date` DATE COMMENT 'Date on which primary source verification (PSV) of this affiliation was completed. Required for credentialing file documentation and regulatory compliance.',
-    `psv_method` STRING COMMENT 'Method used to perform primary source verification (PSV) of this affiliation. Documents the verification approach for credentialing file compliance.. Valid values are `direct_contact|written_confirmation|online_verification|caqh|third_party_service|unable_to_verify`',
-    `psv_status` STRING COMMENT 'Status of the primary source verification (PSV) process for this affiliation record. PSV is required by NCQA and The Joint Commission to confirm the accuracy of the clinicians work history directly with the affiliated organization.. Valid values are `pending|in_progress|verified|unable_to_verify|not_required`',
-    `psv_verified_by` STRING COMMENT 'Name or identifier of the credentialing staff member or third-party service that completed the primary source verification for this affiliation record.',
-    `resignation_under_investigation` BOOLEAN COMMENT 'Indicates whether the clinician resigned from this affiliated organization while under investigation for quality of care, conduct, or other disciplinary matters. Triggers mandatory NPDB reporting obligations.',
-    `role_title` STRING COMMENT 'The clinicians job title, role, or position held at the affiliated organization during this affiliation period (e.g., Attending Physician, Chief of Surgery, Staff Nurse Practitioner, Hospitalist). Captured as free text to accommodate the wide variety of titles across organizations.',
-    `source_system_record_reference` STRING COMMENT 'The unique identifier of this affiliation record in the originating source system (e.g., Symplr work history record ID, CAQH affiliation ID). Supports ETL reconciliation and data lineage.',
-    `start_date` DATE COMMENT 'The date on which the clinicians affiliation with the organization commenced. Used as the effective-from date for primary source verification of work history and credentialing gap analysis.',
-    `updated_timestamp` TIMESTAMP COMMENT 'Timestamp when this affiliation history record was last modified in the data platform. Supports audit trail, change tracking, and incremental ETL processing.',
+    `affiliation_history_id` BIGINT COMMENT 'Primary key',
+    `care_site_id` BIGINT COMMENT 'Unique identifier for the care site within the provider affiliation history record.',
+    `clinician_id` BIGINT COMMENT 'Unique identifier for the clinician within the provider affiliation history record.',
+    `affiliation_type` STRING COMMENT 'The affiliation type value classifying the provider affiliation history record.',
+    `created_timestamp` TIMESTAMP COMMENT 'The created timestamp of the provider affiliation history record.',
+    `end_date` DATE COMMENT 'Timestamp capturing the end date associated with the provider affiliation history record.',
+    `start_date` DATE COMMENT 'Timestamp capturing the start date associated with the provider affiliation history record.',
+    `affiliation_history_status` STRING COMMENT 'The affiliation history status value classifying the provider affiliation history record.',
+    `updated_timestamp` TIMESTAMP COMMENT 'The updated timestamp of the provider affiliation history record.',
+    `vibe_structure_marker` STRING COMMENT 'The vibe structure marker of the provider affiliation history record.',
     CONSTRAINT pk_affiliation_history PRIMARY KEY(`affiliation_history_id`)
-) COMMENT 'Historical record of a clinicians past and present hospital affiliations, employment history, and organizational memberships. Captures affiliated organization name, organization type, role or title, start date, end date, departure reason, and voluntary/involuntary separation indicator. Required for credentialing primary source verification and NPDB adverse action reporting context.';
+) COMMENT 'Provider affiliation history';
 
 CREATE OR REPLACE TABLE `vibe_healthcare_v1`.`provider`.`study_team_member` (
-    `study_team_member_id` BIGINT COMMENT 'Primary key for the study_team_member association',
-    `clinician_id` BIGINT COMMENT 'Foreign key linking to the clinician serving as a member of the research study team. References the provider domain master record for the healthcare professional.',
-    `research_study_id` BIGINT COMMENT 'Foreign key linking to the research study for which the clinician is a team member. References the research domain master record for the study.',
-    `assignment_status` STRING COMMENT 'Current lifecycle status of this study team member assignment. Active indicates the clinician is currently performing study duties. Inactive or Terminated indicates the assignment has ended. Pending Approval indicates the assignment is awaiting IRB or institutional approval. Used for operational reporting, access control, and regulatory compliance.',
-    `coi_disclosure_date` DATE COMMENT 'The date on which the clinician submitted their conflict of interest disclosure for this study. Used to track timeliness of disclosure (must be before study involvement begins) and to determine when annual updates are due.',
-    `conflict_of_interest_disclosed_flag` BOOLEAN COMMENT 'Indicates whether the clinician has completed conflict of interest disclosure for this specific study assignment. Required for federally-funded research and industry-sponsored trials. Tracks compliance with institutional COI policy and PHS/NIH financial conflict of interest regulations.',
-    `coordinator_flag` BOOLEAN COMMENT 'Indicates whether this clinician is serving in a study coordination role (research coordinator, research nurse, clinical research associate). Coordinators manage day-to-day study operations, subject recruitment, data collection, and regulatory documentation. Used for workload balancing, training requirements, and operational reporting.',
-    `delegation_log_signed_date` DATE COMMENT 'The date on which the clinician signed the study delegation of authority log, acknowledging their assigned responsibilities and confirming they have the training, education, and experience to perform delegated tasks. Required for GCP compliance and regulatory inspections. Nullable if role does not require delegation log signature.',
-    `effort_percentage` DECIMAL(18,2) COMMENT 'The percentage of the clinicians professional time allocated to this specific research study. Required for NIH effort reporting, institutional cost accounting, and conflict of commitment assessment. Sum of effort_percentage across all concurrent studies for a clinician should not exceed 100%. Used in grant budget justification and progress reports.',
-    `end_date` DATE COMMENT 'The date on which the clinician ceased serving in this role on the research study team. Nullable for currently active team members. Used for regulatory compliance, effort reporting closeout, and historical accountability. Triggers Form 1572 updates and IRB amendment notifications when key personnel depart.',
-    `form_1572_signed_date` DATE COMMENT 'The date on which the clinician signed FDA Form 1572 (Statement of Investigator) for this study. Required for Principal Investigators and sub-investigators on IND studies. Documents commitment to conduct the study per protocol, comply with FDA regulations, and report adverse events. Critical for regulatory compliance and inspection readiness.',
-    `gcp_training_completion_date` DATE COMMENT 'The date on which the clinician completed Good Clinical Practice (GCP) training that is current and valid for this study assignment. GCP training is required for all research personnel involved in clinical trials. Must be completed before study responsibilities begin and renewed per institutional policy (typically every 2-3 years).',
-    `primary_investigator_flag` BOOLEAN COMMENT 'Indicates whether this clinician is the Principal Investigator (PI) for this study. Only one team member per study should have this flag set to true. The PI has ultimate responsibility for study conduct, regulatory compliance, and scientific integrity. Used for signature routing, regulatory submissions, and accountability reporting.',
-    `protocol_training_completion_date` DATE COMMENT 'The date on which the clinician completed training specific to this research study protocol, including study objectives, procedures, inclusion/exclusion criteria, and safety monitoring. Required before performing any study procedures. Documented for regulatory compliance and inspection readiness.',
-    `role_type` STRING COMMENT 'The specific role or function the clinician performs on the research study team. Critical for regulatory compliance (FDA Form 1572 requires listing of investigators and sub-investigators), delegation of authority logs, and role-based access control in research systems. Drives workflow routing, signature authority, and audit trail requirements.',
-    `start_date` DATE COMMENT 'The date on which the clinician officially began serving in this role on the research study team. Used for regulatory compliance (Form 1572 effective dates), effort reporting period determination, and conflict of interest disclosure timing. Must align with IRB approval of personnel changes and completion of required training.',
-    `sub_investigator_flag` BOOLEAN COMMENT 'Indicates whether this clinician is designated as a sub-investigator with delegated study responsibilities. Sub-investigators must be listed on FDA Form 1572 and have documented delegation of specific protocol procedures. Used for regulatory compliance, delegation log management, and signature authority determination.',
+    `study_team_member_id` BIGINT COMMENT 'Primary key',
+    `clinician_id` BIGINT COMMENT 'Unique identifier for the clinician within the provider study team member record.',
+    `research_study_id` BIGINT COMMENT 'Unique identifier for the research study within the provider study team member record.',
+    `created_timestamp` TIMESTAMP COMMENT 'The created timestamp of the provider study team member record.',
+    `end_date` DATE COMMENT 'Timestamp capturing the end date associated with the provider study team member record.',
+    `role` STRING COMMENT 'The role of the provider study team member record.',
+    `start_date` DATE COMMENT 'Timestamp capturing the start date associated with the provider study team member record.',
+    `study_team_member_status` STRING COMMENT 'The study team member status value classifying the provider study team member record.',
+    `updated_timestamp` TIMESTAMP COMMENT 'The updated timestamp of the provider study team member record.',
+    `vibe_structure_marker` STRING COMMENT 'The vibe structure marker of the provider study team member record.',
     CONSTRAINT pk_study_team_member PRIMARY KEY(`study_team_member_id`)
-) COMMENT 'This association product represents the Assignment between clinician and research_study. It captures the formal research personnel assignment that is required for regulatory compliance (FDA Form 1572), effort reporting, conflict of interest management, and IRB documentation. Each record links one clinician to one research study with role, time period, and effort allocation that exist only in the context of this research assignment. This is the operational SSOT for study team composition, investigator roles, and research personnel accountability across all active and historical studies.. Existence Justification: Healthcare research operations require tracking multiple clinicians per study (Principal Investigator, sub-investigators, coordinators, research nurses) and clinicians routinely participate in multiple concurrent research studies. The business actively manages study team composition as a formal operational process requiring regulatory documentation (FDA Form 1572), IRB amendments for personnel changes, delegation logs, effort reporting, conflict of interest disclosures, and training verification. This is not a derived correlation but an operational entity that research coordinators and regulatory specialists create, update, and audit continuously.';
+) COMMENT 'Research study team members';
+
+CREATE OR REPLACE TABLE `vibe_healthcare_v1`.`provider`.`assignment` (
+    `assignment_id` BIGINT COMMENT 'Primary key',
+    `employee_id` BIGINT COMMENT 'Unique identifier for the assignment assigned by employee within the provider assignment record.',
+    `assignment_backup_clinician_id` BIGINT COMMENT 'Added to expand thin product with domain-appropriate detail.',
+    `assignment_clinician_id` BIGINT COMMENT 'Unique identifier for the assignment clinician within the provider assignment record.',
+    `assignment_employee_id` BIGINT COMMENT 'Unique identifier for the assignment employee within the provider assignment record.',
+    `assignment_supervising_clinician_id` BIGINT COMMENT 'Unique identifier for the assignment supervising clinician within the provider assignment record.',
+    `care_site_id` BIGINT COMMENT 'Unique identifier for the care site within the provider assignment record.',
+    `clinician_id` BIGINT COMMENT 'Added to expand thin product provider.assignment',
+    `group_id` BIGINT COMMENT 'Unique identifier for the group within the provider assignment record.',
+    `org_provider_id` BIGINT COMMENT 'Unique identifier for the org provider within the provider assignment record.',
+    `assignment_notes` STRING COMMENT 'The assignment notes of the provider assignment record.',
+    `assignment_role` STRING COMMENT 'The assignment role of the provider assignment record.',
+    `assignment_type` STRING COMMENT 'The assignment type value classifying the provider assignment record.',
+    `call_schedule_flag` BOOLEAN COMMENT 'The call schedule flag of the provider assignment record.',
+    `coverage_end_at` TIMESTAMP COMMENT 'Added to expand thin product with domain-appropriate detail.',
+    `coverage_percentage` DECIMAL(18,2) COMMENT 'The coverage percentage of the provider assignment record.',
+    `coverage_scope` STRING COMMENT 'Added to expand thin product provider.assignment',
+    `coverage_start_at` TIMESTAMP COMMENT 'Added to expand thin product with domain-appropriate detail.',
+    `coverage_type` STRING COMMENT 'The coverage type value classifying the provider assignment record.',
+    `created_timestamp` TIMESTAMP COMMENT 'The created timestamp of the provider assignment record.',
+    `department` STRING COMMENT 'The department of the provider assignment record.',
+    `effective_date` DATE COMMENT 'Timestamp capturing the effective date associated with the provider assignment record.',
+    `effort_percentage` DECIMAL(18,2) COMMENT 'The effort percentage of the provider assignment record.',
+    `end_date` DATE COMMENT 'Timestamp capturing the end date associated with the provider assignment record.',
+    `fte_allocation` DECIMAL(18,2) COMMENT 'The fte allocation of the provider assignment record.',
+    `fte_percent` DECIMAL(18,2) COMMENT 'Added to expand thin product provider.assignment',
+    `fte_percentage` DECIMAL(18,2) COMMENT 'The fte percentage of the provider assignment record.',
+    `is_primary_flag` BOOLEAN COMMENT 'Boolean flag indicating the is primary flag status of the provider assignment record.',
+    `notes` STRING COMMENT 'Added to expand thin product provider.assignment',
+    `on_call_flag` BOOLEAN COMMENT 'The on call flag of the provider assignment record.',
+    `panel_size` STRING COMMENT 'The panel size of the provider assignment record.',
+    `primary_assignment_flag` BOOLEAN COMMENT 'The primary assignment flag of the provider assignment record.',
+    `primary_flag` BOOLEAN COMMENT 'Added to expand thin product provider.assignment',
+    `priority_rank` STRING COMMENT 'The priority rank of the provider assignment record.',
+    `reason` STRING COMMENT 'The reason of the provider assignment record.',
+    `role` STRING COMMENT 'The role of the provider assignment record.',
+    `scope_notes` STRING COMMENT 'Added to expand thin product with domain-appropriate detail.',
+    `service_line` STRING COMMENT 'Added to expand thin product provider.assignment',
+    `shift_pattern` STRING COMMENT 'The shift pattern of the provider assignment record.',
+    `shift_type` STRING COMMENT 'The shift type value classifying the provider assignment record.',
+    `specialty_code` STRING COMMENT 'The specialty code value classifying the provider assignment record.',
+    `start_date` DATE COMMENT 'Timestamp capturing the start date associated with the provider assignment record.',
+    `assignment_status` STRING COMMENT 'Added to expand thin product provider.assignment',
+    `termination_date` DATE COMMENT 'Timestamp capturing the termination date associated with the provider assignment record.',
+    `termination_reason` STRING COMMENT 'The termination reason of the provider assignment record.',
+    `updated_timestamp` TIMESTAMP COMMENT 'The updated timestamp of the provider assignment record.',
+    `vibe_expanded_flag` BOOLEAN COMMENT 'The vibe expanded flag of the provider assignment record.',
+    `vibe_mutation_applied` STRING COMMENT 'The vibe mutation applied of the provider assignment record.',
+    `vibe_structure_marker` STRING COMMENT 'The vibe structure marker of the provider assignment record.',
+    `weight` DECIMAL(18,2) COMMENT 'Added to expand thin product with domain-appropriate detail.',
+    CONSTRAINT pk_assignment PRIMARY KEY(`assignment_id`)
+) COMMENT 'Provider assignments';
 
 CREATE OR REPLACE TABLE `vibe_healthcare_v1`.`provider`.`affiliation` (
-    `affiliation_id` BIGINT COMMENT 'Unique surrogate identifier for each clinician-org unit affiliation record',
-    `clinician_id` BIGINT COMMENT 'Foreign key linking to the clinician who holds this department affiliation',
-    `org_unit_id` BIGINT COMMENT 'Foreign key linking to the organizational unit (department, division, service line) with which the clinician is affiliated',
-    `created_timestamp` TIMESTAMP COMMENT 'System timestamp when this affiliation record was created in the data platform',
-    `effective_date` DATE COMMENT 'Date on which this clinician-org unit affiliation became active. Used for temporal tracking of affiliation history and determining active affiliations at any point in time.',
-    `end_date` DATE COMMENT 'Date on which this clinician-org unit affiliation ended or will end. Null indicates an active, ongoing affiliation. Used for temporal tracking and historical reporting.',
-    `fte_percentage` DECIMAL(18,2) COMMENT 'Percentage of the clinicians full-time equivalent (FTE) allocated to this specific organizational unit. Used for workforce planning, cost allocation, and capacity management. Sum of all fte_percentage values across a clinicians active affiliations should equal 100% for full-time clinicians.',
-    `medical_staff_category` STRING COMMENT 'Medical staff membership category for this clinician within this specific organizational unit, as defined by medical staff bylaws. Category determines clinical privileges, committee eligibility, and meeting attendance requirements. A clinician may hold different medical staff categories in different departments (e.g., Active in Cardiology, Courtesy in ICU).',
-    `primary_affiliation_flag` BOOLEAN COMMENT 'Indicates whether this is the clinicians primary organizational unit affiliation. Each clinician should have exactly one primary affiliation at any time. Used for reporting hierarchy, default scheduling location, and primary cost center assignment.',
-    `affiliation_type` STRING COMMENT 'Classification of the clinicians relationship with this organizational unit. Primary indicates the clinicians main department assignment; Courtesy indicates privileges to practice in the department without primary assignment; Consulting indicates external consultant relationship; Affiliate indicates academic or research affiliation; Honorary indicates emeritus or honorary appointment. Drives privileging, scheduling access, and reporting hierarchy.',
-    `updated_timestamp` TIMESTAMP COMMENT 'System timestamp when this affiliation record was last updated in the data platform',
+    `affiliation_id` BIGINT COMMENT 'Primary key',
+    `clinician_id` BIGINT COMMENT 'Unique identifier for the clinician within the provider affiliation record.',
+    `group_id` BIGINT COMMENT 'Unique identifier for the group within the provider affiliation record.',
+    `affiliation_status` STRING COMMENT 'The affiliation status value classifying the provider affiliation record.',
+    `affiliation_type` STRING COMMENT 'The affiliation type value classifying the provider affiliation record.',
+    `created_timestamp` TIMESTAMP COMMENT 'The created timestamp of the provider affiliation record.',
+    `effective_date` DATE COMMENT 'Timestamp capturing the effective date associated with the provider affiliation record.',
+    `updated_timestamp` TIMESTAMP COMMENT 'The updated timestamp of the provider affiliation record.',
+    `vibe_structure_marker` STRING COMMENT 'The vibe structure marker of the provider affiliation record.',
     CONSTRAINT pk_affiliation PRIMARY KEY(`affiliation_id`)
-) COMMENT 'This association product represents the affiliation relationship between clinicians and organizational units within the healthcare workforce structure. It captures the many-to-many relationship where clinicians can hold appointments across multiple departments, divisions, or service lines, and each organizational unit has multiple affiliated clinicians. Each record links one clinician to one org unit with attributes that exist only in the context of this specific affiliation: FTE allocation percentage, affiliation type (primary, courtesy, consulting), medical staff category, and temporal validity dates. This is the operational system of record for clinician-department affiliations as managed jointly between Epic EHR provider master and Workday HCM organizational assignments.. Existence Justification: In healthcare operations, clinicians routinely hold appointments across multiple organizational units simultaneously. A cardiologist may have a primary affiliation with the Cardiology department (80% FTE), a courtesy affiliation with the ICU (15% FTE), and a consulting affiliation with the Cardiac Catheterization Lab (5% FTE). Each affiliation carries distinct attributes: FTE allocation percentage, affiliation type (primary/courtesy/consulting), medical staff category per department, and temporal validity dates. This is the Department Affiliation business concept actively managed by medical staff offices and credentialing teams.';
-
-CREATE OR REPLACE TABLE `vibe_healthcare_v1`.`provider`.`provider_network_participation` (
-    `provider_network_participation_id` BIGINT COMMENT 'Primary key for provider_network_participation',
-    `insurance_network_participation_id` BIGINT COMMENT 'Unique surrogate identifier for this provider-payer network participation record',
-    `org_provider_id` BIGINT COMMENT 'Foreign key linking to the organizational provider participating in the payer network',
-    `payer_id` BIGINT COMMENT 'Foreign key linking to the insurance payer whose network the provider is enrolled in',
-    `provider_insurance_network_participation_id` BIGINT COMMENT 'FK to SSOT owner insurance.insurance_network_participation for the network_participation entity.',
-    `accepting_new_patients_flag` BOOLEAN COMMENT 'Indicates whether this provider is currently accepting new patients covered by this payer. Used in provider directory and referral management.',
-    `contract_reference_number` STRING COMMENT 'The contract or agreement number governing this provider-payer network participation relationship.',
-    `created_date` TIMESTAMP COMMENT 'Timestamp when this network participation record was created in the system.',
-    `credentialing_effective_date` DATE COMMENT 'Date on which the providers credentialing with this payer became effective.',
-    `credentialing_expiration_date` DATE COMMENT 'Date on which the providers credentialing with this payer expires. Triggers re-credentialing workflows.',
-    `credentialing_status` STRING COMMENT 'Current credentialing status of the provider with this specific payer. Credentialing is payer-specific and must be maintained separately for each payer relationship.',
-    `effective_date` DATE COMMENT 'Date on which this provider-payer network participation became or will become effective. Claims for services on or after this date may be submitted under this network relationship.',
-    `enrollment_status` STRING COMMENT 'Current enrollment status of the organizational provider in this payers network. Drives billing eligibility and claim submission rules.',
-    `network_participation_status` STRING COMMENT 'Indicates whether the provider is currently in-network or out-of-network for this payer. Determines patient cost-sharing and reimbursement rates.',
-    `network_tier` STRING COMMENT 'The network tier classification assigned to this provider by this payer. Affects patient out-of-pocket costs and reimbursement rates.',
-    `reimbursement_method` STRING COMMENT 'The primary reimbursement methodology used by this payer for this provider under this network participation.',
-    `termination_date` DATE COMMENT 'Date on which this provider-payer network participation ended or will end. Null for active ongoing relationships. Claims for services after this date cannot be submitted under this network relationship.',
-    `updated_date` TIMESTAMP COMMENT 'Timestamp when this network participation record was last updated.',
-    CONSTRAINT pk_provider_network_participation PRIMARY KEY(`provider_network_participation_id`)
-) COMMENT 'This association product represents the contractual network participation relationship between organizational providers and insurance payers. It captures the enrollment, credentialing, and network status of each provider-payer pairing. Each record links one organizational provider to one payer with attributes that exist only in the context of this participation relationship, including enrollment status, credentialing status, network tier, effective dates, and termination dates.. Existence Justification: In healthcare operations, organizational providers (hospitals, clinics, group practices) must enroll and maintain credentialing with multiple insurance payers to bill for services, and each payer contracts with hundreds or thousands of provider organizations across their network. This is a true operational many-to-many relationship: a single hospital participates in Medicare, Medicaid, Blue Cross, Aetna, UnitedHealthcare, and dozens of other payer networks simultaneously, while each payer maintains network relationships with thousands of facilities. The business actively manages these relationships through credentialing workflows, enrollment processes, network status updates, and contract renewals.';
+) COMMENT 'Provider affiliations';
 
 CREATE OR REPLACE TABLE `vibe_healthcare_v1`.`provider`.`preference_card` (
-    `preference_card_id` BIGINT COMMENT 'Unique surrogate identifier for each physician preference item record',
-    `clinician_id` BIGINT COMMENT 'Foreign key linking to the clinician who has expressed this supply preference',
-    `material_master_id` BIGINT COMMENT 'Foreign key linking to the specific supply item in the preference card',
-    `approval_date` DATE COMMENT 'Date on which this preference card entry received formal approval from the value analysis committee or supply chain leadership.',
-    `approved_by` STRING COMMENT 'Name or identifier of the value analysis committee member or supply chain manager who approved this preference, particularly for non-formulary items.',
-    `clinical_justification` STRING COMMENT 'Free-text clinical rationale provided by the clinician for preferring this specific supply item, particularly for non-formulary or high-cost items. Required for formulary exception approval. Sourced from detection phase relationship data.',
-    `effective_date` DATE COMMENT 'Date on which this preference card entry became active and available for use in surgical case planning and supply requisitioning.',
-    `end_date` DATE COMMENT 'Date on which this preference card entry was inactivated or superseded. Nullable for currently active preferences.',
-    `formulary_exception_flag` BOOLEAN COMMENT 'Indicates whether this preference item is a non-formulary item requiring clinical justification and value analysis committee approval. Sourced from detection phase relationship data.',
-    `last_used_date` DATE COMMENT 'Most recent date on which this supply item was documented as used by this clinician in a procedure. Used for preference card maintenance and obsolete item cleanup. Sourced from detection phase relationship data.',
-    `preference_rank` BIGINT COMMENT 'Ordinal ranking of this supply item within the clinicians preference hierarchy for a given procedure type (1=first choice, 2=alternative). Sourced from detection phase relationship data.',
-    `preference_status` STRING COMMENT 'Current lifecycle status of this preference card entry indicating whether it is actively used in case cart assembly or has been deprecated.',
-    `procedure_type` STRING COMMENT 'The specific surgical or procedural context in which this clinician prefers this supply item (e.g., Total Knee Arthroplasty, Laparoscopic Cholecystectomy). A clinician may have different preference cards for different procedure types.',
-    `usage_frequency` STRING COMMENT 'Categorical indicator of how often the clinician uses this supply item in applicable procedures. Sourced from detection phase relationship data.',
+    `preference_card_id` BIGINT COMMENT 'Primary key',
+    `clinician_id` BIGINT COMMENT 'Unique identifier for the clinician within the provider preference card record.',
+    `card_status` STRING COMMENT 'The card status value classifying the provider preference card record.',
+    `created_timestamp` TIMESTAMP COMMENT 'The created timestamp of the provider preference card record.',
+    `last_reviewed_date` DATE COMMENT 'Timestamp capturing the last reviewed date associated with the provider preference card record.',
+    `procedure_name` STRING COMMENT 'The procedure name of the provider preference card record.',
+    `preference_card_status` STRING COMMENT 'The preference card status value classifying the provider preference card record.',
+    `updated_timestamp` TIMESTAMP COMMENT 'The updated timestamp of the provider preference card record.',
+    `vibe_structure_marker` STRING COMMENT 'The vibe structure marker of the provider preference card record.',
     CONSTRAINT pk_preference_card PRIMARY KEY(`preference_card_id`)
-) COMMENT 'This association product represents the physician preference item relationship between clinician and material_master. It captures clinician-specific preferences for medical supplies, devices, and implants used during procedures. Each record links one clinician to one material_master with attributes that exist only in the context of this preference relationship. This is the operational SSOT for surgical preference cards and physician preference items (PPI) managed by supply chain and perioperative services.. Existence Justification: In healthcare operations, clinicians (particularly surgeons and proceduralists) maintain preference cards specifying their preferred supplies, devices, and implants for specific procedure types. A single clinician has preferences for multiple materials (sutures, implants, instruments), and each material can be preferred by multiple clinicians. Perioperative services and supply chain actively manage these preference cards as operational business entities, tracking preference rank, usage frequency, clinical justification for non-formulary items, and formulary exception approvals.';
+) COMMENT 'Surgeon preference cards';
 
 CREATE OR REPLACE TABLE `vibe_healthcare_v1`.`provider`.`survey_participation` (
-    `survey_participation_id` BIGINT COMMENT 'Unique system-generated identifier for each clinician participation record in an accreditation survey',
-    `accreditation_survey_id` BIGINT COMMENT 'Foreign key linking to the accreditation survey event in which the clinician participated',
-    `clinician_id` BIGINT COMMENT 'Foreign key linking to the clinician who participated in the accreditation survey',
-    `findings_count` STRING COMMENT 'Number of survey findings or observations attributed to this clinicians area of responsibility, interview responses, or care delivery during tracer review. Used for targeted education and performance improvement.',
-    `interview_conducted` BOOLEAN COMMENT 'Indicates whether the clinician was formally interviewed by surveyors during this survey event. Used to track interview preparation effectiveness and staff readiness.',
-    `interview_duration_minutes` STRING COMMENT 'Total duration in minutes of formal surveyor interviews with this clinician during the survey event. Used for survey burden analysis and staff time allocation.',
-    `notes` STRING COMMENT 'Free-text notes capturing specific observations, surveyor feedback, areas of strength, or improvement opportunities identified during this clinicians survey participation. Used for debriefing and continuous improvement.',
-    `participation_date` DATE COMMENT 'The specific date on which this clinician participated in survey activities. For multi-day surveys, this captures the day(s) the clinician was involved. Multiple records may exist for the same clinician-survey pair if they participated on different days or in different roles.',
-    `performance_rating` STRING COMMENT 'Internal quality team assessment of the clinicians performance during survey participation, including interview responses, documentation quality, and adherence to standards. Used for recognition and targeted coaching.',
-    `preparation_completed` BOOLEAN COMMENT 'Indicates whether the clinician completed required survey readiness training and preparation activities prior to the survey event. Used to correlate preparation with survey performance.',
-    `survey_role` STRING COMMENT 'The specific role or capacity in which the clinician participated in the accreditation survey. Examples include interviewed staff member, department head representing a service line, tracer participant whose patient care was reviewed, or subject matter expert consulted during standards review.',
-    `tracer_participation` BOOLEAN COMMENT 'Indicates whether the clinician participated in a tracer methodology session where surveyors followed a patient through their care journey and interviewed care team members. Critical for tracer preparation and performance analysis.',
+    `survey_participation_id` BIGINT COMMENT 'Primary key',
+    `clinician_id` BIGINT COMMENT 'Unique identifier for the clinician within the provider survey participation record.',
+    `created_timestamp` TIMESTAMP COMMENT 'The created timestamp of the provider survey participation record.',
+    `participation_status` STRING COMMENT 'The participation status value classifying the provider survey participation record.',
+    `response_date` DATE COMMENT 'Timestamp capturing the response date associated with the provider survey participation record.',
+    `survey_participation_status` STRING COMMENT 'The survey participation status value classifying the provider survey participation record.',
+    `survey_name` STRING COMMENT 'The survey name of the provider survey participation record.',
+    `updated_timestamp` TIMESTAMP COMMENT 'The updated timestamp of the provider survey participation record.',
+    `vibe_structure_marker` STRING COMMENT 'The vibe structure marker of the provider survey participation record.',
     CONSTRAINT pk_survey_participation PRIMARY KEY(`survey_participation_id`)
-) COMMENT 'This association product represents the participation of clinicians in accreditation surveys and readiness assessments. It captures the specific role each clinician played during a survey event, including interview participation, tracer methodology involvement, department representation, and findings attributed to their area of responsibility. Each record links one clinician to one accreditation survey with attributes that exist only in the context of this participation relationship.. Existence Justification: In healthcare accreditation operations, surveys involve multiple clinicians participating in various capacities (interviewees, department heads, tracer participants, subject matter experts), and each clinician participates in multiple surveys over their career (triennial surveys, mock surveys, unannounced visits, readiness assessments). The Quality department actively manages survey participation by tracking which clinicians were interviewed, their performance, findings attributed to them, and preparation effectiveness to improve future survey readiness.';
+) COMMENT 'Provider survey participation';
 
 CREATE OR REPLACE TABLE `vibe_healthcare_v1`.`provider`.`credentialing_file` (
-    `credentialing_file_id` BIGINT COMMENT 'Primary key for credentialing_file',
-    `care_site_id` BIGINT COMMENT 'Reference to the hospital, clinic, or healthcare facility where the provider is seeking privileges or credentialing.',
-    `provider_committee_id` BIGINT COMMENT 'Reference to the credentialing committee or review body responsible for evaluating this application.',
-    `employee_id` BIGINT COMMENT 'Reference to the staff member or committee member assigned as the primary reviewer for this credentialing file.',
-    `payer_id` BIGINT COMMENT 'Reference to the insurance payer or health plan for which the provider is seeking network enrollment, if applicable.',
-    `prior_credentialing_file_id` BIGINT COMMENT 'Self-referencing FK on credentialing_file (prior_credentialing_file_id)',
-    `clinician_id` BIGINT COMMENT 'Foreign key linking to provider.clinician. Business justification: Credentialing files are maintained for individual clinicians (the provider being credentialed). The credentialing_file table has a generic provider_id which should be normalized to provider_clinician_',
-    `appeal_date` DATE COMMENT 'Date when the provider filed a formal appeal of the credentialing decision.',
-    `appeal_filed` BOOLEAN COMMENT 'Indicates whether the provider has filed a formal appeal of the credentialing decision.',
-    `appeal_outcome` STRING COMMENT 'Result of the providers appeal of the credentialing decision.',
-    `application_date` DATE COMMENT 'Date when the credentialing application was formally submitted for review. Represents the principal business event timestamp for this credentialing file.',
-    `background_check_completed` BOOLEAN COMMENT 'Indicates whether a comprehensive background check, including criminal history and sanctions screening, has been completed for the provider.',
-    `background_check_date` DATE COMMENT 'Date when the background check was completed.',
-    `board_certification_verified` BOOLEAN COMMENT 'Indicates whether the providers board certification status has been verified with the relevant specialty board.',
-    `caqh_attestation_date` DATE COMMENT 'Date when the provider last attested to the accuracy of their CAQH ProView profile, if applicable.',
-    `caqh_provider_number` STRING COMMENT 'Unique identifier assigned to the provider in the CAQH ProView system for centralized credentialing data management.',
-    `conditions_or_restrictions` STRING COMMENT 'Any conditions, limitations, or restrictions placed on the providers credentialing approval or clinical privileges.',
-    `created_timestamp` TIMESTAMP COMMENT 'Timestamp when this credentialing file record was first created in the system.',
-    `dea_verified` BOOLEAN COMMENT 'Indicates whether the providers DEA registration number has been verified with the Drug Enforcement Administration for controlled substance prescribing authority.',
-    `decision` STRING COMMENT 'Final determination made by the credentialing committee or review body regarding the providers application.',
-    `decision_rationale` STRING COMMENT 'Detailed explanation and justification for the credentialing decision, including any conditions, restrictions, or reasons for denial.',
-    `education_verified` BOOLEAN COMMENT 'Indicates whether the providers medical education, training, and residency credentials have been verified with the issuing institutions.',
-    `effective_date` DATE COMMENT 'Date when the credentialing approval becomes active and the provider is authorized to practice or participate in networks.',
-    `expiration_date` DATE COMMENT 'Date when the credentialing approval expires and requires renewal or reappointment.',
-    `file_number` STRING COMMENT 'Externally-known unique business identifier for the credentialing file, used for tracking and reference across systems and communications.',
-    `file_type` STRING COMMENT 'Classification of the credentialing file indicating the purpose and scope of the credentialing activity.',
-    `hospital_privileges_verified` BOOLEAN COMMENT 'Indicates whether the providers current and past hospital privileges have been verified with other healthcare facilities.',
-    `license_verified` BOOLEAN COMMENT 'Indicates whether the providers professional license has been verified with the appropriate state licensing board.',
-    `malpractice_coverage_amount` DECIMAL(18,2) COMMENT 'Total dollar amount of professional liability insurance coverage maintained by the provider.',
-    `malpractice_insurance_verified` BOOLEAN COMMENT 'Indicates whether the providers professional liability (malpractice) insurance coverage has been verified and meets minimum requirements.',
-    `notes` STRING COMMENT 'Additional notes, comments, or observations related to the credentialing file and review process.',
-    `npi_verified` BOOLEAN COMMENT 'Indicates whether the providers National Provider Identifier has been verified against the National Plan and Provider Enumeration System (NPPES).',
-    `peer_references_verified` BOOLEAN COMMENT 'Indicates whether peer references from other healthcare professionals have been contacted and verified.',
-    `privileges_requested` STRING COMMENT 'Detailed list or description of specific clinical privileges, procedures, or practice authorities the provider is requesting.',
-    `recredentialing_cycle_months` STRING COMMENT 'Number of months between credentialing cycles for this provider, typically 24 or 36 months per regulatory requirements.',
-    `review_completion_date` DATE COMMENT 'Date when the credentialing review process was completed and a decision was rendered.',
-    `review_start_date` DATE COMMENT 'Date when the credentialing committee or review body began formal evaluation of the application.',
-    `sanctions_screening_completed` BOOLEAN COMMENT 'Indicates whether screening against federal and state exclusion lists (OIG, SAM, state Medicaid exclusions) has been completed.',
-    `sanctions_screening_date` DATE COMMENT 'Date when sanctions screening was completed.',
-    `specialty_requested` STRING COMMENT 'Primary medical specialty or clinical area for which the provider is seeking credentialing or privileges.',
-    `credentialing_file_status` STRING COMMENT 'Current lifecycle status of the credentialing file indicating its position in the credentialing workflow.',
-    `updated_by` STRING COMMENT 'Username or identifier of the system user who last modified this credentialing file record.',
-    `updated_timestamp` TIMESTAMP COMMENT 'Timestamp when this credentialing file record was last modified in the system.',
-    `created_by` STRING COMMENT 'Username or identifier of the system user who created this credentialing file record.',
+    `credentialing_file_id` BIGINT COMMENT 'Primary key',
+    `clinician_id` BIGINT COMMENT 'Unique identifier for the clinician within the provider credentialing file record.',
+    `credentialing_application_id` BIGINT COMMENT 'Unique identifier for the credentialing application within the provider credentialing file record.',
+    `created_timestamp` TIMESTAMP COMMENT 'The created timestamp of the provider credentialing file record.',
+    `document_type` STRING COMMENT 'The document type value classifying the provider credentialing file record.',
+    `file_status` STRING COMMENT 'The file status value classifying the provider credentialing file record.',
+    `received_date` DATE COMMENT 'Timestamp capturing the received date associated with the provider credentialing file record.',
+    `credentialing_file_status` STRING COMMENT 'The credentialing file status value classifying the provider credentialing file record.',
+    `updated_timestamp` TIMESTAMP COMMENT 'The updated timestamp of the provider credentialing file record.',
+    `vibe_structure_marker` STRING COMMENT 'The vibe structure marker of the provider credentialing file record.',
     CONSTRAINT pk_credentialing_file PRIMARY KEY(`credentialing_file_id`)
-) COMMENT 'Master reference table for credentialing_file. Referenced by credentialing_file_id.';
+) COMMENT 'Credentialing file documents';
 
-CREATE OR REPLACE TABLE `vibe_healthcare_v1`.`provider`.`provider_assignment` (
-    `provider_assignment_id` BIGINT COMMENT 'Unique surrogate identifier for each clinician-position assignment record',
-    `clinician_id` BIGINT COMMENT 'Foreign key linking to the clinician being assigned to this position',
-    `position_id` BIGINT COMMENT 'Foreign key linking to the organizational position being filled by this clinician',
-    `assignment_status` STRING COMMENT 'Current lifecycle status of this assignment. Active: currently in effect; Pending: approved but not yet started; Ended: assignment has concluded; Suspended: temporarily inactive.',
-    `cost_center_code` STRING COMMENT 'Financial cost center code to which this specific assignments compensation expense is charged. May differ from the positions default cost center in matrix organizations or shared service arrangements.',
-    `effective_date` DATE COMMENT 'Date on which this clinician-position assignment became active and the clinician began working in this position',
-    `end_date` DATE COMMENT 'Date on which this clinician-position assignment ended or is scheduled to end. Null indicates an active ongoing assignment.',
-    `fte_allocation` DECIMAL(18,2) COMMENT 'Full-Time Equivalent allocation for this specific assignment, representing the portion of the clinicians time dedicated to this position. Supports scenarios where a clinician splits time across multiple positions.',
-    `primary_assignment_flag` BOOLEAN COMMENT 'Indicates whether this is the clinicians primary position assignment. Used to distinguish the main assignment from secondary or concurrent assignments when a clinician holds multiple positions.',
-    CONSTRAINT pk_provider_assignment PRIMARY KEY(`provider_assignment_id`)
-) COMMENT 'This association product represents the Assignment between clinician and position. It captures the operational relationship where healthcare professionals are assigned to authorized organizational positions, including concurrent assignments, job-sharing arrangements, and historical assignment tracking. Each record links one clinician to one position with attributes that exist only in the context of this specific assignment relationship, including FTE split, effective dates, cost center allocation, and primary vs secondary assignment designation.. Existence Justification: In healthcare operations, clinicians routinely hold multiple concurrent position assignments (e.g., an attending physician may simultaneously serve as Medical Director 0.2 FTE, Department Chair 0.1 FTE, and Clinical Attending 0.7 FTE). Conversely, positions can be filled by multiple clinicians through job-sharing arrangements, coverage rotations, or sequential assignments over time. The business actively manages these assignments with specific effective dates, FTE splits, cost center allocations, and primary/secondary designations.';
+CREATE OR REPLACE TABLE `vibe_healthcare_v1`.`provider`.`committee` (
+    `committee_id` BIGINT COMMENT 'Primary key',
+    `care_site_id` BIGINT COMMENT 'Unique identifier for the care site within the provider committee record.',
+    `clinician_id` BIGINT COMMENT 'Unique identifier for the committee chair clinician within the provider committee record.',
+    `committee_clinician_id` BIGINT COMMENT 'Unique identifier for the committee clinician within the provider committee record.',
+    `committee_type` STRING COMMENT 'The committee type value classifying the provider committee record.',
+    `created_timestamp` TIMESTAMP COMMENT 'The created timestamp of the provider committee record.',
+    `committee_name` STRING COMMENT 'The committee name of the provider committee record.',
+    `scope` STRING COMMENT 'The scope of the provider committee record.',
+    `committee_status` STRING COMMENT 'The committee status value classifying the provider committee record.',
+    `updated_timestamp` TIMESTAMP COMMENT 'The updated timestamp of the provider committee record.',
+    `vibe_structure_marker` STRING COMMENT 'The vibe structure marker of the provider committee record.',
+    CONSTRAINT pk_committee PRIMARY KEY(`committee_id`)
+) COMMENT 'SSOT resolved: defer to quality.committee as the single source of truth for this concept. This table is a domain-specific extension/reference.';
 
-CREATE OR REPLACE TABLE `vibe_healthcare_v1`.`provider`.`provider_committee` (
-    `provider_committee_id` BIGINT COMMENT 'Primary key for committee',
-    `employee_id` BIGINT COMMENT 'Identifier of the staff member or department providing administrative support to the committee.',
-    `org_provider_id` BIGINT COMMENT 'Identifier of the healthcare organization or facility to which this committee belongs.',
-    `org_unit_id` BIGINT COMMENT 'Identifier of the specific department or service line that this committee is associated with, if applicable.',
-    `parent_committee_id` BIGINT COMMENT 'Identifier of the parent committee if this committee is a subcommittee or reports to another committee. Null for top-level committees.',
-    `clinician_id` BIGINT COMMENT 'Identifier of the healthcare provider or staff member who serves as the secretary of the committee.',
-    `provider_chair_clinician_id` BIGINT COMMENT 'Foreign key linking to provider.clinician. Business justification: Every committee has a chair (leadership role). The committee table currently has chair_provider_id (generic name) which should be normalized to chair_clinician_id linking to the clinician table. This ',
-    `provider_clinician_id` BIGINT COMMENT 'Identifier of the healthcare provider who serves as the vice chairperson of the committee.',
-    `provider_reporting_committee_id` BIGINT COMMENT 'Identifier of the committee to which this committee reports its findings, recommendations, or decisions.',
-    `accreditation_requirement_flag` BOOLEAN COMMENT 'Indicates whether this committee is required by accreditation standards (e.g., The Joint Commission, DNV, HFAP).',
-    `approval_authority_flag` BOOLEAN COMMENT 'Indicates whether this committee has the authority to approve credentialing, privileging, or other provider-related decisions.',
-    `authority_level` STRING COMMENT 'Level of decision-making authority granted to the committee (advisory recommendations only, binding decisions, governing authority, or regulatory oversight).',
-    `bylaws_reference` STRING COMMENT 'Reference to the section of the medical staff bylaws or organizational bylaws that governs this committee.',
-    `charter_document_reference` STRING COMMENT 'Reference identifier or location of the formal charter document that defines the committees authority, scope, and operating procedures.',
-    `provider_committee_code` STRING COMMENT 'Short alphanumeric code used to identify the committee in operational systems and reports.',
-    `confidentiality_level` STRING COMMENT 'Level of confidentiality protection applied to committee proceedings and records, including peer review protection status.',
-    `contact_email` STRING COMMENT 'Primary email address for committee correspondence and inquiries.',
-    `contact_phone` STRING COMMENT 'Primary phone number for committee administrative contact.',
-    `created_timestamp` TIMESTAMP COMMENT 'Timestamp when this committee record was first created in the system.',
-    `provider_committee_description` STRING COMMENT 'Detailed description of the committees purpose, scope, and responsibilities within the healthcare organization.',
-    `effective_end_date` DATE COMMENT 'Date on which the committees charter expires or the committee is scheduled to be dissolved. Null for ongoing committees.',
-    `effective_start_date` DATE COMMENT 'Date from which the committees current charter or configuration became effective.',
-    `established_date` DATE COMMENT 'Date on which the committee was officially established or chartered.',
-    `last_review_date` DATE COMMENT 'Date of the most recent formal review of the committees charter, composition, and effectiveness.',
-    `meeting_frequency` STRING COMMENT 'Standard frequency at which the committee holds regular meetings.',
-    `meeting_location` STRING COMMENT 'Standard physical or virtual location where committee meetings are held.',
-    `member_count` STRING COMMENT 'Current total number of active members serving on the committee.',
-    `provider_committee_name` STRING COMMENT 'Official name of the committee (e.g., Credentials Committee, Peer Review Committee, Medical Executive Committee).',
-    `next_review_date` DATE COMMENT 'Scheduled date for the next formal review of the committees charter, composition, and effectiveness.',
-    `notes` STRING COMMENT 'Additional notes, comments, or special instructions related to the committees operations or configuration.',
-    `peer_review_protected_flag` BOOLEAN COMMENT 'Indicates whether the committees activities and records are protected under state and federal peer review protection statutes.',
-    `quorum_requirement` STRING COMMENT 'Minimum number of committee members required to be present for the committee to conduct official business and make binding decisions.',
-    `regulatory_requirement_flag` BOOLEAN COMMENT 'Indicates whether this committee is required by federal or state regulatory requirements (e.g., CMS Conditions of Participation).',
-    `provider_committee_status` STRING COMMENT 'Current operational status of the committee indicating whether it is actively functioning.',
-    `term_length_months` STRING COMMENT 'Standard length of a committee members term of service, expressed in months.',
-    `term_limit_count` STRING COMMENT 'Maximum number of consecutive terms a member may serve on the committee. Null if no term limits apply.',
-    `provider_committee_type` STRING COMMENT 'Classification of the committee based on its primary function within the healthcare organization.',
-    `updated_timestamp` TIMESTAMP COMMENT 'Timestamp when this committee record was last updated in the system.',
-    `voting_member_count` STRING COMMENT 'Number of committee members who have voting privileges on committee decisions.',
-    CONSTRAINT pk_provider_committee PRIMARY KEY(`provider_committee_id`)
-) COMMENT 'Master reference table for committee. Referenced by approving_committee_id.';
+CREATE OR REPLACE TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` (
+    `provider_payer_enrollment_id` BIGINT COMMENT 'Primary key',
+    `clinician_id` BIGINT COMMENT 'Unique identifier for the clinician within the provider provider payer enrollment record.',
+    `cost_center_id` BIGINT COMMENT 'Cost center',
+    `employee_id` BIGINT COMMENT 'Unique identifier for the employee within the provider provider payer enrollment record.',
+    `insurance_payer_enrollment_id` BIGINT COMMENT 'SSOT cross-reference to canonical insurance.insurance_payer_enrollment',
+    `org_provider_id` BIGINT COMMENT 'Org provider',
+    `payer_contract_id` BIGINT COMMENT 'Payer contract',
+    `payer_id` BIGINT COMMENT 'Unique identifier for the payer within the provider provider payer enrollment record.',
+    `provider_location_id` BIGINT COMMENT 'Provider location',
+    `npi_registry_id` BIGINT COMMENT 'NPI registry',
+    `specialty_id` BIGINT COMMENT 'Unique identifier for the specialty within the provider provider payer enrollment record.',
+    `taxonomy_id` BIGINT COMMENT 'Unique identifier for the taxonomy within the provider provider payer enrollment record.',
+    `application_submitted_date` DATE COMMENT 'Timestamp capturing the application submitted date associated with the provider provider payer enrollment record.',
+    `approval_date` DATE COMMENT 'Timestamp capturing the approval date associated with the provider provider payer enrollment record.',
+    `billing_npi` STRING COMMENT 'The billing npi of the provider provider payer enrollment record.',
+    `created_timestamp` TIMESTAMP COMMENT 'Record creation timestamp',
+    `credentialing_expiration_date` DATE COMMENT 'Timestamp capturing the credentialing expiration date associated with the provider provider payer enrollment record.',
+    `credentialing_status` STRING COMMENT 'The credentialing status value classifying the provider provider payer enrollment record.',
+    `credentialing_tier` STRING COMMENT 'The credentialing tier of the provider provider payer enrollment record.',
+    `dea_number` STRING COMMENT 'The dea number of the provider provider payer enrollment record.',
+    `edi_submitter_code` STRING COMMENT 'The edi submitter code value classifying the provider provider payer enrollment record.',
+    `effective_date` DATE COMMENT 'Timestamp capturing the effective date associated with the provider provider payer enrollment record.',
+    `eft_enrolled` BOOLEAN COMMENT 'The eft enrolled of the provider provider payer enrollment record.',
+    `enrollment_number` STRING COMMENT 'The enrollment number of the provider provider payer enrollment record.',
+    `enrollment_scope` STRING COMMENT 'The enrollment scope of the provider provider payer enrollment record.',
+    `enrollment_source` STRING COMMENT 'The enrollment source of the provider provider payer enrollment record.',
+    `enrollment_status` STRING COMMENT 'The enrollment status value classifying the provider provider payer enrollment record.',
+    `enrollment_type` STRING COMMENT 'The enrollment type value classifying the provider provider payer enrollment record.',
+    `group_npi` STRING COMMENT 'The group npi of the provider provider payer enrollment record.',
+    `license_state` STRING COMMENT 'The license state of the provider provider payer enrollment record.',
+    `medicaid_provider_number` STRING COMMENT 'The medicaid provider number of the provider provider payer enrollment record.',
+    `network_status` STRING COMMENT 'The network status value classifying the provider provider payer enrollment record.',
+    `notes` STRING COMMENT 'The notes of the provider provider payer enrollment record.',
+    `oig_exclusion_check_date` DATE COMMENT 'Timestamp capturing the oig exclusion check date associated with the provider provider payer enrollment record.',
+    `oig_exclusion_checked` BOOLEAN COMMENT 'The oig exclusion checked of the provider provider payer enrollment record.',
+    `pay_to_address_line1` STRING COMMENT 'The pay to address line1 of the provider provider payer enrollment record.',
+    `payer_plan_name` STRING COMMENT 'The payer plan name of the provider provider payer enrollment record.',
+    `payer_type` STRING COMMENT 'The payer type value classifying the provider provider payer enrollment record.',
+    `provider_number` STRING COMMENT 'The provider number of the provider provider payer enrollment record.',
+    `provider_type` STRING COMMENT 'The provider type value classifying the provider provider payer enrollment record.',
+    `ptan` STRING COMMENT 'The ptan of the provider provider payer enrollment record.',
+    `revalidation_due_date` DATE COMMENT 'Timestamp capturing the revalidation due date associated with the provider provider payer enrollment record.',
+    `sam_exclusion_checked` BOOLEAN COMMENT 'The sam exclusion checked of the provider provider payer enrollment record.',
+    `service_address_line1` STRING COMMENT 'The service address line1 of the provider provider payer enrollment record.',
+    `service_city` STRING COMMENT 'The service city of the provider provider payer enrollment record.',
+    `service_state` STRING COMMENT 'The service state of the provider provider payer enrollment record.',
+    `service_zip_code` STRING COMMENT 'The service zip code value classifying the provider provider payer enrollment record.',
+    `ssot_canonical_reference` STRING COMMENT 'SSOT canonical: insurance.insurance_payer_enrollment (duplicate reconciled to canonical)',
+    `state_license_number` STRING COMMENT 'The state license number of the provider provider payer enrollment record.',
+    `provider_payer_enrollment_status` STRING COMMENT 'The provider payer enrollment status value classifying the provider provider payer enrollment record.',
+    `tax_identification_number` STRING COMMENT 'The tax identification number of the provider provider payer enrollment record.',
+    `termination_date` DATE COMMENT 'Timestamp capturing the termination date associated with the provider provider payer enrollment record.',
+    `termination_reason` STRING COMMENT 'The termination reason of the provider provider payer enrollment record.',
+    `updated_timestamp` TIMESTAMP COMMENT 'Record update timestamp',
+    `vibe_structure_marker` STRING COMMENT 'The vibe structure marker of the provider provider payer enrollment record.',
+    CONSTRAINT pk_provider_payer_enrollment PRIMARY KEY(`provider_payer_enrollment_id`)
+) COMMENT 'Provider enrollment with payers (Medicare, Medicaid, commercial plans)';
 
-CREATE OR REPLACE TABLE `vibe_healthcare_v1`.`provider`.`provider_credential` (
-    `provider_credential_id` BIGINT COMMENT 'Unique surrogate identifier for each credential record in the provider credentialing master. Primary key for the credential data product.',
-    `cpt_code_id` BIGINT COMMENT 'Foreign key linking to reference.cpt_code. Business justification: Procedure-specific credentials (surgical certifications, interventional licenses) authorize performance of specific CPT codes. Healthcare operations use this for privilege delineation, peer review cas',
-    `clinician_id` BIGINT COMMENT 'Reference to the individual clinician or healthcare professional who holds this credential. Links to the provider master record.',
-    `cost_center_id` BIGINT COMMENT 'Foreign key linking to finance.cost_center. Business justification: Credentialing costs (license fees, verification services, NPDB queries) are tracked by cost center for medical staff office budgeting, cost-per-credential analysis, and departmental expense allocation',
-    `employee_id` BIGINT COMMENT 'Foreign key linking to workforce.employee. Business justification: Credentials tracked for non-physician clinical staff (RNs, RTs, pharmacists). Real business need: competency verification, license expiration tracking, regulatory compliance for all clinical employees',
-    `material_master_id` BIGINT COMMENT 'Foreign key linking to supply.material_master. Business justification: DEA credentials authorize controlled substance prescribing by schedule (II-V). Material_master tracks controlled substances with dea_schedule. Link enables regulatory compliance verification that clin',
-    `specialty_id` BIGINT COMMENT 'Foreign key linking to provider.specialty. Business justification: Credentials are specialty-specific (e.g., board certifications, specialty licenses). credential.specialty_name should be normalized to specialty table. FK will be populated at credential creation.',
-    `training_id` BIGINT COMMENT 'Foreign key linking to compliance.training. Business justification: Credentials like DEA X-waiver require documented training completion. Credentialing systems verify training prerequisites before credential issuance/renewal per regulatory requirements (e.g., 8-hour b',
-    `board_action_date` DATE COMMENT 'The date on which the most recent disciplinary action or adverse action was taken by the issuing authority against this credential. Null if no board action exists. Used in conjunction with board_action_flag for credentialing compliance reporting.',
-    `board_action_flag` BOOLEAN COMMENT 'Indicates whether a disciplinary action, sanction, reprimand, or adverse action has been taken by the issuing authority against this credential. True = board action exists; False = no board action. Triggers mandatory review in credentialing and privileging workflows.',
-    `caqh_submitted` BOOLEAN COMMENT 'Indicates whether this credential has been submitted to the CAQH ProView universal credentialing database. CAQH ProView is the industry-standard repository used by most commercial payers for provider credentialing and enrollment verification.',
-    `certifying_board_name` STRING COMMENT 'Full name of the specialty board that issued the board certification (e.g., American Board of Internal Medicine, American Board of Surgery, American Osteopathic Board of Internal Medicine). Applicable only to board certification credential types.',
-    `cme_accrediting_organization` STRING COMMENT 'The organization that accredited the CME activity (e.g., AMA PRA, ACCME, ANCC, ACPE). Determines whether the CME credits are recognized for state licensure renewal and board recertification purposes.',
-    `cme_activity_title` STRING COMMENT 'The official title of the CME (Continuing Medical Education) activity as designated by the accrediting organization. Applicable only to CME activity credential types. Used for CME compliance tracking and licensure renewal documentation.',
-    `cme_activity_type` STRING COMMENT 'The format or delivery modality of the CME activity as classified by the accrediting organization (e.g., live conference, enduring material, performance improvement activity). Applicable only to CME activity credential types.. Valid values are `live|enduring|performance_improvement|internet_searching|journal_based|other`',
-    `cme_category` STRING COMMENT 'The AMA PRA CME category designation for this activity. Category 1 credits are formally accredited and required for most state licensure renewals; Category 2 credits are self-designated and have more limited acceptance.. Valid values are `category_1|category_2`',
-    `cme_credit_hours` DECIMAL(18,2) COMMENT 'The number of CME credit hours awarded upon completion of this CME activity. Used to track cumulative CME hours for state licensure renewal requirements and board recertification MOC compliance.',
-    `created_timestamp` TIMESTAMP COMMENT 'The timestamp when this credential record was first created in the system of record. Supports audit trail requirements under HIPAA, HITRUST, and ISO 27001 for credentialing data governance.',
-    `credential_number` STRING COMMENT 'The externally-issued identifier for this credential as assigned by the issuing authority (e.g., state license number, DEA registration number, board certification number, CME activity ID). This is the official reference number used in regulatory and payer verification workflows.',
-    `credential_status` STRING COMMENT 'Current lifecycle state of the credential as reported by the issuing authority or verified through primary source verification. Active credentials authorize clinical practice; expired or revoked credentials trigger immediate workflow alerts in credentialing and pharmacy order validation systems.. Valid values are `active|expired|suspended|revoked|pending|inactive`',
-    `credential_type` STRING COMMENT 'High-level classification of the credential record. Distinguishes among state medical/nursing licenses, DEA controlled substance registrations, specialty board certifications, and CME (Continuing Medical Education) activity completions. Drives downstream workflow routing in credentialing and privileging systems such as Symplr.. Valid values are `state_license|dea_registration|board_certification|cme_activity|other`',
-    `days_to_expiration` STRING COMMENT 'The number of days remaining until this credential expires, calculated from the current date to the expiration_date. Used for proactive renewal alerting and credentialing dashboard KPIs. Negative values indicate the credential is already expired.',
-    `dea_business_activity_type` STRING COMMENT 'The DEA-designated business activity type associated with the DEA registration. Defines the authorized scope of controlled substance handling (e.g., practitioner prescribing vs. hospital dispensing vs. research). Applicable only to DEA registration credential types.. Valid values are `practitioner|hospital|retail_pharmacy|teaching_institution|researcher|other`',
-    `dea_schedule_authorizations` STRING COMMENT 'Comma-separated list of controlled substance schedule authorizations granted under this DEA registration (e.g., II,III,IV,V). Applicable only to DEA registration credential types. Used by pharmacy order validation systems (Epic Willow, Cerner PharmNet) to authorize controlled substance prescribing.',
-    `effective_from` DATE COMMENT 'The date from which this credential record is considered effective and authorizes clinical practice or activity. For state licenses and DEA registrations, this aligns with the issue_date. For board certifications, this is the initial certification effective date. Supports temporal validity queries.',
-    `effective_until` DATE COMMENT 'The date until which this credential record is considered effective. Aligns with expiration_date for most credential types. Null for open-ended or lifetime credentials. Supports SCD (Slowly Changing Dimension) and temporal validity queries in the lakehouse.',
-    `expiration_date` DATE COMMENT 'The date on which the credential expires and must be renewed or recertified to remain valid. Null for credentials with no expiration (e.g., certain lifetime board certifications). Drives automated renewal alerts in Symplr and Epic credentialing workflows.',
-    `issue_date` DATE COMMENT 'The date on which the credential was originally issued or first conferred by the issuing authority. For board certifications, this is the initial certification date. For CME activities, this is the activity completion date.',
-    `issuing_authority_name` STRING COMMENT 'Full name of the organization or governmental body that issued or confers this credential (e.g., Texas Medical Board, U.S. Drug Enforcement Administration, American Board of Internal Medicine, American Medical Association — PRA). Used for primary source verification routing.',
-    `issuing_state` STRING COMMENT 'Two-letter US state or territory abbreviation where the credential was issued. Applicable to state medical licenses and DEA state-specific registrations. Null for federal DEA registrations, board certifications, and CME activities that are not state-specific.. Valid values are `^[A-Z]{2}$`',
-    `moc_status` STRING COMMENT 'Current status of the providers compliance with the Maintenance of Certification (MOC) program requirements for this board certification. MOC compliance is required by many hospitals for privileging and by payers for network participation. Applicable only to board certification credential types.. Valid values are `compliant|non_compliant|exempt|not_applicable|pending`',
-    `notes` STRING COMMENT 'Free-text field for credentialing staff to document relevant context, exceptions, or special circumstances associated with this credential record (e.g., pending renewal documentation, board action history, conditional license restrictions). Not used for structured data.',
-    `npdb_queried` BOOLEAN COMMENT 'Indicates whether the National Practitioner Data Bank (NPDB) was queried as part of the credentialing verification process for this provider. NPDB queries are required by CMS and The Joint Commission for initial credentialing and re-credentialing.',
-    `npdb_query_date` DATE COMMENT 'The date on which the NPDB was queried for this providers credentialing record. Required documentation for CMS and Joint Commission credentialing compliance audits.',
-    `oig_exclusion_check_date` DATE COMMENT 'The most recent date on which the OIG LEIE (List of Excluded Individuals/Entities) was checked for this provider. CMS recommends monthly screening; documents compliance for RAC audits and OIG investigations.',
-    `oig_exclusion_checked` BOOLEAN COMMENT 'Indicates whether the OIG (Office of Inspector General) List of Excluded Individuals/Entities (LEIE) was checked for this provider as part of credentialing. OIG exclusion screening is required by CMS; employing an excluded provider can result in significant civil monetary penalties.',
-    `payer_enrollment_relevant` BOOLEAN COMMENT 'Indicates whether this credential is required for or submitted as part of payer enrollment and network participation applications. True = credential is submitted to payers (e.g., state license, DEA, board certification); False = not required for payer enrollment.',
-    `primary_source_verified` BOOLEAN COMMENT 'Indicates whether this credential has been verified directly with the issuing authority (primary source verification). True = verified with issuing authority; False = not yet primary source verified. Required for NCQA and Joint Commission credentialing accreditation.',
-    `privileging_relevant` BOOLEAN COMMENT 'Indicates whether this credential is directly relevant to the providers hospital privileging determination. True = this credential is required or considered in the privileging decision; False = informational only (e.g., a CME activity not tied to a specific privilege).',
-    `psv_date` DATE COMMENT 'The date on which primary source verification was completed for this credential. NCQA and The Joint Commission require re-verification at defined intervals (typically every 3 years). Drives re-verification scheduling in Symplr.',
-    `psv_method` STRING COMMENT 'The method used to conduct primary source verification of this credential (e.g., online query to state medical board database, written confirmation from issuing authority, electronic query via NPDB or OIG). Documents the verification audit trail for accreditation surveys.. Valid values are `online_database|written_confirmation|telephone_confirmation|electronic_query|other`',
-    `recredentialing_due_date` DATE COMMENT 'The date by which the provider must complete recredentialing for this credential to maintain active status. NCQA and The Joint Commission require recredentialing at least every 3 years. Drives workflow queues in Symplr and credentialing management systems.',
-    `renewal_date` DATE COMMENT 'The date on which the credential was most recently renewed or recertified by the issuing authority. Tracks the renewal history cycle for compliance reporting and credentialing re-verification workflows.',
-    `restriction_description` STRING COMMENT 'Description of any restrictions, conditions, or limitations placed on this credential by the issuing authority (e.g., Supervised practice only, No DEA Schedule II prescribing, Probationary license). Null if no restrictions apply.',
-    `sam_exclusion_checked` BOOLEAN COMMENT 'Indicates whether the SAM.gov federal exclusions database was checked for this provider. SAM exclusion screening is required for providers participating in federal healthcare programs (Medicare, Medicaid, CHIP).',
-    `source_system_record_reference` STRING COMMENT 'The native identifier of this credential record in the originating operational system of record (e.g., Symplr credential record ID, Epic provider record ID). Enables traceability from the lakehouse silver layer back to the source system for reconciliation and audit.',
-    `subtype` STRING COMMENT 'Granular classification within the credential type. For state licenses: MD, DO, RN, NP, PA, CRNA, PharmD, etc. For DEA registrations: Schedule II, III, IV, V authorization. For board certifications: ABMS, AOA, ABNS, or other recognized board specialty. For CME: Category 1 or Category 2. [ENUM-REF-CANDIDATE: MD|DO|RN|NP|PA|CRNA|PharmD|Schedule_II|Schedule_III|Schedule_IV|Schedule_V|ABMS|AOA|ABNS|CME_Cat1|CME_Cat2 — promote to reference product]',
-    `updated_timestamp` TIMESTAMP COMMENT 'The timestamp when this credential record was most recently modified. Supports change data capture (CDC) in the Databricks lakehouse silver layer ETL pipeline and audit trail requirements under HIPAA and HITRUST.',
-    `verification_source` STRING COMMENT 'Indicates the source used to verify this credential. Primary source verification (PSV) is required by NCQA, The Joint Commission, and CMS for credentialing. Secondary source verification uses intermediary databases. Self-reported credentials have not been independently verified.. Valid values are `primary_source|secondary_source|self_reported|not_verified`',
-    CONSTRAINT pk_provider_credential PRIMARY KEY(`provider_credential_id`)
-) COMMENT 'Master record of all professional credentials, licenses, certifications, registrations, and continuing education held by individual clinicians. Encompasses: (1) State medical licenses (MD, DO, RN, NP, PA) with license number, issuing state board, issue/expiration dates, status, and renewal history; (2) DEA controlled substance registrations with DEA number, schedule authorizations (II-V), state of registration, registration status, business activity type, and expiration date; (3) Specialty board certifications (ABMS, AOA, ABNS, and other recognized boards) with certifying board, specialty certified, certification number, initial certification date, expiration date, MOC (Maintenance of Certification) status, and recertification history; (4) CME (Continuing Medical Education) activity tracking with activity title, accrediting organization (AMA PRA, ACCME), activity type (live, enduring, performance improvement), credit hours, completion date, specialty relevance, and CME category (Category 1, Category 2). Tracks credential type, issuing authority, verification source, and primary source verification status for all credential types. Serves as the consolidated SSOT for all provider credentialing artifacts — no other product in this domain stores license, certification, DEA registration, board certification, or CME data. Supports HIPAA-compliant credentialing workflows, state licensure verification, board certification verification, DEA compliance, CME compliance for licensure renewal, and pharmacy order validation for controlled substances.';
+CREATE OR REPLACE TABLE `vibe_healthcare_v1`.`provider`.`provider_network_participation` (
+    `provider_network_participation_id` BIGINT COMMENT 'Primary key',
+    `clinician_id` BIGINT COMMENT 'Unique identifier for the clinician within the provider provider network participation record.',
+    `insurance_network_participation2_id` BIGINT COMMENT 'Unique identifier for the network participation within the provider provider network participation record.',
+    `org_provider_id` BIGINT COMMENT 'Unique identifier for the org provider within the provider provider network participation record.',
+    `provider_network_id` BIGINT COMMENT 'Unique identifier for the provider network within the provider provider network participation record.',
+    `consolidated_target` STRING COMMENT 'The consolidated target of the provider provider network participation record.',
+    `created_timestamp` TIMESTAMP COMMENT 'The created timestamp of the provider provider network participation record.',
+    `effective_date` DATE COMMENT 'Timestamp capturing the effective date associated with the provider provider network participation record.',
+    `participant_type` STRING COMMENT 'participant_type=provider',
+    `participation_status` STRING COMMENT 'The participation status value classifying the provider provider network participation record.',
+    `ssot_canonical_reference` STRING COMMENT 'SSOT canonical: insurance.network_participation (consolidated network_participation participant_type=provider)',
+    `ssot_consolidation_note` STRING COMMENT 'The ssot consolidation note of the provider provider network participation record.',
+    `provider_network_participation_status` STRING COMMENT 'The provider network participation status value classifying the provider provider network participation record.',
+    `termination_date` DATE COMMENT 'Timestamp capturing the termination date associated with the provider provider network participation record.',
+    `updated_timestamp` TIMESTAMP COMMENT 'The updated timestamp of the provider provider network participation record.',
+    `vibe_structure_marker` STRING COMMENT 'The vibe structure marker of the provider provider network participation record.',
+    CONSTRAINT pk_provider_network_participation PRIMARY KEY(`provider_network_participation_id`)
+) COMMENT 'DEPRECATED - consolidate into insurance.network_participation (participant_type=provider). Retained for backward compatibility. Consolidated into insurance.network_participation (participant_type=provider).';
 
-CREATE OR REPLACE TABLE `vibe_healthcare_v1`.`provider`.`provider_sanction` (
-    `provider_sanction_id` BIGINT COMMENT 'Unique system-generated identifier for each sanction, exclusion, or adverse action record in the provider sanction repository. Serves as the primary key for all downstream joins and audit references.',
-    `clinician_id` BIGINT COMMENT 'Reference to the sanctioned healthcare professional or organizational provider in the master provider registry. Links the adverse action to the specific clinician, group, or entity subject to the sanction.',
-    `compliance_regulatory_submission_id` BIGINT COMMENT 'Foreign key linking to compliance.regulatory_submission. Business justification: Sanctions must be reported to NPDB within 30 days, state licensing boards per statute, and potentially CMS. Compliance teams track mandatory reporting submissions, confirmation numbers, and deadlines ',
-    `investigation_id` BIGINT COMMENT 'Foreign key linking to compliance.investigation. Business justification: Every sanction against a provider triggers formal compliance investigation per medical staff bylaws and regulatory requirements. Investigation records document root cause analysis, corrective actions,',
-    `org_provider_id` BIGINT COMMENT 'Foreign key linking to provider.org_provider. Business justification: Sanctions can apply to organizational providers in addition to individual clinicians. FK will be NULL for clinician-only sanctions. No redundant columns to remove.',
-    `patient_safety_event_id` BIGINT COMMENT 'Foreign key linking to quality.patient_safety_event. Business justification: Sanctions may result from serious safety events (sentinel events, never events) requiring regulatory reporting to state boards and NPDB. Linking sanction to originating safety event supports root caus',
-    `payer_id` BIGINT COMMENT 'Foreign key linking to insurance.payer. Business justification: Payer-imposed sanctions (network termination, payment holds, credentialing suspension) must be tracked for compliance and enrollment status. Essential for sanction screening, network participation man',
-    `quality_peer_review_id` BIGINT COMMENT 'Foreign key linking to quality.peer_review. Business justification: Sanctions (privilege suspension, license restriction) often originate from peer review findings of substandard care. NPDB reporting requires linking sanction actions to the underlying peer review case',
-    `specialty_id` BIGINT COMMENT 'Foreign key linking to provider.specialty. Business justification: Sanctions are often specialty-specific. sanction.provider_specialty should reference specialty table for consistency.',
-    `appeal_date` DATE COMMENT 'The date on which the provider formally filed an appeal or administrative challenge against the sanction. Null if no appeal has been filed. Used to track appeal timelines and statutory deadlines.',
-    `appeal_filed` BOOLEAN COMMENT 'Indicates whether the sanctioned provider has filed a formal appeal or administrative challenge against the adverse action. A True value triggers additional workflow steps including legal review, credentialing committee notification, and potential temporary reinstatement consideration.',
-    `appeal_outcome` STRING COMMENT 'The result of the providers formal appeal of the sanction. Upheld means the original sanction stands; overturned means the sanction was rescinded; modified means the terms were changed; withdrawn means the provider withdrew the appeal. Null if no appeal was filed or outcome is not yet determined.. Valid values are `pending|upheld|overturned|modified|withdrawn`',
-    `case_reference_number` STRING COMMENT 'Externally assigned case or docket number issued by the sanctioning authority (e.g., OIG case number, state medical board docket, DEA order number). Used for cross-referencing with the issuing regulatory body and NPDB reports.',
-    `cia_reference_number` STRING COMMENT 'The OIG-assigned reference number for the Corporate Integrity Agreement associated with this sanction record. Null if no CIA was executed. Used for cross-referencing OIG CIA monitoring reports and compliance tracking.',
-    `civil_monetary_penalty_amount` DECIMAL(18,2) COMMENT 'The dollar amount of any civil monetary penalty assessed against the provider as part of or in conjunction with the sanction. Applicable when the OIG or CMS imposes financial penalties under the Civil Monetary Penalties Law. Zero or null if no monetary penalty was assessed.',
-    `corporate_integrity_agreement` BOOLEAN COMMENT 'Indicates whether a Corporate Integrity Agreement was executed between the provider or organization and the OIG as a condition of reinstatement or settlement. A True value requires ongoing compliance monitoring, annual reporting, and independent review organization (IRO) oversight.',
-    `created_timestamp` TIMESTAMP COMMENT 'The date and time when the sanction record was first created in the system. Serves as the audit trail anchor for record provenance, compliance documentation, and data lineage tracking in the Databricks Silver Layer.',
-    `credentialing_hold` BOOLEAN COMMENT 'Indicates whether a credentialing hold has been placed on the provider as a result of this sanction, preventing the granting or renewal of hospital privileges, payer enrollment, or network participation. True triggers automated workflow in the credentialing system (Symplr) to suspend privilege processing.',
-    `dea_registration_number` STRING COMMENT 'The DEA registration number of the provider at the time of the sanction, captured when the adverse action involves controlled substance violations or DEA revocation/suspension. Stored on the sanction record to preserve the identifier as of the action date.. Valid values are `^[A-Z]{2}[0-9]{7}$`',
-    `exclusion_type_code` STRING COMMENT 'OIG-specific exclusion classification code indicating whether the exclusion is mandatory (e.g., 1128(a)) or permissive (e.g., 1128(b)) under the Social Security Act. Mandatory exclusions require immediate termination from all federal healthcare programs; permissive exclusions are discretionary. Critical for CMS Conditions of Participation compliance.',
-    `expiration_date` DATE COMMENT 'The scheduled end date of a time-limited sanction or probationary period as defined in the issuing authoritys order. Distinct from reinstatement_date, which reflects actual restoration. Null for indefinite or permanent exclusions.',
-    `federal_program_exclusion` BOOLEAN COMMENT 'Indicates whether the sanction constitutes an exclusion from participation in federal healthcare programs including Medicare, Medicaid, CHIP, and other CMS-administered programs. True triggers mandatory termination of billing privileges and employment restrictions under CMS Conditions of Participation.',
-    `internal_review_date` DATE COMMENT 'The date on which the organizations credentialing committee, medical staff office, or compliance department completed its internal review of the sanction. Used to demonstrate timely response to adverse actions per TJC and CMS standards.',
-    `internal_review_status` STRING COMMENT 'Current status of the organizations internal credentialing committee or compliance review of the sanction. Pending indicates review not yet initiated; in_review indicates active committee review; completed indicates review concluded; escalated indicates referral to senior leadership or legal counsel.. Valid values are `pending|in_review|completed|escalated`',
-    `issuing_authority` STRING COMMENT 'Name of the regulatory body, government agency, or licensing board that imposed the sanction (e.g., Office of Inspector General, Drug Enforcement Administration, State Medical Board of California, CMS, NPDB). Critical for determining the scope and legal basis of the adverse action.',
-    `issuing_authority_type` STRING COMMENT 'Categorical classification of the sanctioning authority level. Distinguishes federal exclusions (OIG, CMS, DEA) from state-level actions (state medical boards, state health departments) and accreditation bodies (The Joint Commission). Determines mandatory reporting and screening frequency requirements.. Valid values are `federal|state|local|accreditation_body|licensing_board`',
-    `license_number` STRING COMMENT 'The state professional license number of the provider subject to the sanction at the time of the adverse action. Captured to preserve the license identifier as of the sanction date, particularly for state medical board revocations and suspensions.',
-    `license_state` STRING COMMENT 'Two-letter US state abbreviation of the jurisdiction that issued the professional license affected by the sanction. Used to identify the applicable state medical board or licensing authority and to scope the geographic impact of the adverse action.. Valid values are `^[A-Z]{2}$`',
-    `medicaid_exclusion` BOOLEAN COMMENT 'Indicates whether the provider is specifically excluded from the Medicaid program. A True value requires notification to the state Medicaid agency and termination of Medicaid billing privileges. State-level exclusions may apply even when federal OIG exclusion is not in effect.',
-    `medicare_exclusion` BOOLEAN COMMENT 'Indicates whether the provider is specifically excluded from the Medicare program. A True value requires immediate termination of Medicare billing privileges and prohibits the organization from employing or contracting with the excluded individual in any capacity paid by Medicare.',
-    `notes` STRING COMMENT 'Free-text field for additional context, compliance officer observations, legal counsel notes, or supplementary information related to the sanction that is not captured in structured fields. Used by credentialing and compliance staff for case management.',
-    `notification_date` DATE COMMENT 'The date on which notifications regarding the sanction were dispatched to required internal and external parties. Used for compliance audit trails demonstrating timely adverse action response.',
-    `notification_sent` BOOLEAN COMMENT 'Indicates whether the required notifications have been sent to relevant internal stakeholders (medical staff office, department chief, compliance officer, revenue cycle) and external parties (payers, state licensing boards) following identification of the sanction.',
-    `npdb_report_date` DATE COMMENT 'The date on which the adverse action was reported to the National Practitioner Data Bank. Must occur within 30 days of the action per HCQIA requirements. Null if not yet reported or reporting is not required for this sanction type.',
-    `npdb_report_number` STRING COMMENT 'The unique report identifier assigned by the National Practitioner Data Bank when the adverse action was reported. Required for NPDB query and response matching, credentialing verification, and mandatory adverse action reporting compliance under HCQIA.',
-    `npi` STRING COMMENT 'The 10-digit National Provider Identifier assigned by CMS to the sanctioned provider. Required for OIG exclusion screening, NPDB adverse action reporting, and payer enrollment verification. Stored directly on the sanction record to preserve the identifier at the time of the adverse action.. Valid values are `^[0-9]{10}$`',
-    `payer_enrollment_impact` BOOLEAN COMMENT 'Indicates whether the sanction has triggered or is expected to trigger termination or suspension of the providers payer enrollment with one or more health plans or government programs. True initiates payer notification workflows and revenue cycle impact assessment.',
-    `privilege_suspension` BOOLEAN COMMENT 'Indicates whether the providers clinical privileges at the organizations facilities have been suspended as a direct result of this sanction. Distinct from credentialing_hold, which applies to new or renewal applications. True requires immediate notification to department chiefs and medical staff office.',
-    `provider_type` STRING COMMENT 'Indicates whether the sanctioned entity is an individual clinician (physician, nurse, allied health professional) or an organizational provider (hospital, group practice, DME supplier). Determines applicable screening rules, reporting obligations, and credentialing workflows.. Valid values are `individual|organization`',
-    `reason` STRING COMMENT 'Narrative description of the basis or grounds for the adverse action as stated by the issuing authority. May include fraud, abuse, patient harm, controlled substance violations, billing irregularities, or professional misconduct. Used for credentialing review, CDI, and fraud and abuse prevention analysis.',
-    `reason_code` STRING COMMENT 'Standardized code representing the category of misconduct or violation that led to the sanction, as defined by the issuing authority or NPDB classification scheme (e.g., OIG exclusion basis codes: 1128a, 1128b). Enables structured analytics and regulatory reporting across sanction types.',
-    `reinstatement_date` DATE COMMENT 'The date on which the provider was formally reinstated or restored to good standing by the issuing authority following completion of the sanction period or successful appeal. Null if the sanction is still active or has not been lifted.',
-    `reported_to_npdb` BOOLEAN COMMENT 'Indicates whether the adverse action has been reported to the National Practitioner Data Bank as required under the Health Care Quality Improvement Act. Mandatory reporting is required for clinical privilege actions, professional society membership actions, and certain licensure actions.',
-    `sanction_date` DATE COMMENT 'The official effective date on which the sanction, exclusion, or adverse action was imposed by the issuing authority. This is the principal business event date used for OIG exclusion screening compliance, credentialing holds, and False Claims Act liability calculations.',
-    `sanction_status` STRING COMMENT 'Current lifecycle state of the sanction record. Active indicates the adverse action is in force; reinstated indicates the provider has been restored; expired indicates the sanction period has lapsed; appealed indicates a formal challenge is pending; withdrawn indicates the issuing authority rescinded the action.. Valid values are `active|reinstated|expired|appealed|withdrawn`',
-    `sanction_type` STRING COMMENT 'Classification of the adverse action imposed on the provider. Drives downstream workflow routing, credentialing holds, and regulatory reporting obligations. [ENUM-REF-CANDIDATE: exclusion|suspension|revocation|probation|reprimand|civil_monetary_penalty|debarment|restriction|surrender — promote to reference product]. Valid values are `exclusion|suspension|revocation|probation|reprimand|civil_monetary_penalty`',
-    `screening_date` DATE COMMENT 'The date on which the organization performed the exclusion screening check that identified or confirmed this sanction record. Mandatory for demonstrating monthly OIG exclusion screening compliance as required by CMS Conditions of Participation. Distinct from sanction_date.',
-    `screening_frequency` STRING COMMENT 'The frequency at which the organization screens this provider against exclusion lists. Monthly screening is the OIG-recommended standard for all CMS-participating organizations. Quarterly or annual may apply to certain vendor categories. Supports compliance monitoring and audit documentation.. Valid values are `monthly|quarterly|annually|ad_hoc`',
-    `screening_source` STRING COMMENT 'The authoritative data source from which the sanction record was identified or verified. OIG_LEIE refers to the OIG List of Excluded Individuals and Entities; SAM refers to the System for Award Management federal debarment list; NPDB is the National Practitioner Data Bank. Drives audit trail for monthly OIG screening compliance. [ENUM-REF-CANDIDATE: OIG_LEIE|SAM|NPDB|state_board|DEA|CMS|other — 7 candidates stripped; promote to reference product]',
-    `settlement_amount` DECIMAL(18,2) COMMENT 'The dollar amount of any financial settlement reached between the provider and the sanctioning authority in connection with the adverse action. Relevant for False Claims Act settlements, corporate integrity agreements, and OIG settlement agreements. Null if no settlement was reached.',
-    `source_document_reference` STRING COMMENT 'Reference identifier or URL to the official sanction order, exclusion notice, or adverse action document issued by the sanctioning authority. Supports audit documentation, legal review, and credentialing file maintenance.',
-    `updated_timestamp` TIMESTAMP COMMENT 'The date and time when the sanction record was most recently modified. Tracks changes to sanction status, appeal outcomes, reinstatement dates, and compliance flags. Essential for change data capture (CDC) in the lakehouse ETL pipeline.',
-    CONSTRAINT pk_provider_sanction PRIMARY KEY(`provider_sanction_id`)
-) COMMENT 'Records adverse actions, sanctions, exclusions, and disciplinary events against clinicians and organizational providers from regulatory bodies including OIG exclusion list, state medical boards, DEA, CMS, and other federal/state authorities. Captures sanction type, issuing authority, sanction date, reinstatement date, sanction reason, case reference number, and current status. Critical for monthly OIG exclusion screening (mandatory for all CMS-participating organizations), credentialing verification, fraud and abuse prevention under the False Claims Act, and CMS Conditions of Participation compliance. Supports automated exclusion screening workflows and adverse action reporting to NPDB.';
+CREATE OR REPLACE TABLE `vibe_healthcare_v1`.`provider`.`provider_location` (
+    `provider_location_id` BIGINT COMMENT 'Primary key',
+    `care_site_id` BIGINT COMMENT 'Unique identifier for the care site within the provider provider location record.',
+    `clinician_id` BIGINT COMMENT 'Unique identifier for the clinician within the provider provider location record.',
+    `pharmacy_location_id` BIGINT COMMENT 'SSOT cross-reference to canonical pharmacy.pharmacy_location',
+    `specialty_id` BIGINT COMMENT 'Unique identifier for the provider location specialty within the provider provider location record.',
+    `provider_specialty_id` BIGINT COMMENT 'Unique identifier for the provider specialty within the provider provider location record.',
+    `absorbed_location_specialty_flag` BOOLEAN COMMENT 'The absorbed location specialty flag of the provider provider location record.',
+    `accepts_new_patients` BOOLEAN COMMENT 'The accepts new patients of the provider provider location record.',
+    `address_line1` STRING COMMENT 'The address line1 of the provider provider location record.',
+    `city` STRING COMMENT 'The city of the provider provider location record.',
+    `created_timestamp` TIMESTAMP COMMENT 'The created timestamp of the provider provider location record.',
+    `effective_date` DATE COMMENT 'Timestamp capturing the effective date associated with the provider provider location record.',
+    `end_date` DATE COMMENT 'Timestamp capturing the end date associated with the provider provider location record.',
+    `is_primary` BOOLEAN COMMENT 'Boolean flag indicating the is primary status of the provider provider location record.',
+    `is_primary_specialty` BOOLEAN COMMENT 'Boolean flag indicating the is primary specialty status of the provider provider location record.',
+    `location_name` STRING COMMENT 'The location name of the provider provider location record.',
+    `location_phone` STRING COMMENT 'The location phone of the provider provider location record.',
+    `location_scope` STRING COMMENT 'The location scope of the provider provider location record.',
+    `location_specialty_description` STRING COMMENT 'The location specialty description of the provider provider location record.',
+    `location_status` STRING COMMENT 'The location status value classifying the provider provider location record.',
+    `location_type` STRING COMMENT 'The location type value classifying the provider provider location record.',
+    `mvm_ecm_reconciled_flag` BOOLEAN COMMENT 'The mvm ecm reconciled flag of the provider provider location record.',
+    `mvm_source_names` STRING COMMENT 'provider.location and provider.location_specialty mapped to provider.provider_location',
+    `phone` STRING COMMENT 'The phone of the provider provider location record.',
+    `ssot_canonical_reference` STRING COMMENT 'SSOT canonical: pharmacy.pharmacy_location (duplicate reconciled to canonical)',
+    `state` STRING COMMENT 'The state of the provider provider location record.',
+    `provider_location_status` STRING COMMENT 'The provider location status value classifying the provider provider location record.',
+    `updated_timestamp` TIMESTAMP COMMENT 'The updated timestamp of the provider provider location record.',
+    `vibe_structure_marker` STRING COMMENT 'The vibe structure marker of the provider provider location record.',
+    `zip_code` STRING COMMENT 'The zip code value classifying the provider provider location record.',
+    CONSTRAINT pk_provider_location PRIMARY KEY(`provider_location_id`)
+) COMMENT 'Provider practice locations';
+
+CREATE OR REPLACE TABLE `vibe_healthcare_v1`.`provider`.`location_specialty` (
+    `location_specialty_id` BIGINT COMMENT 'Unique identifier for the location specialty within the provider location specialty record.',
+    `care_site_id` BIGINT COMMENT 'Unique identifier for the care site within the provider location specialty record.',
+    `clinician_id` BIGINT COMMENT 'Unique identifier for the clinician within the provider location specialty record.',
+    `provider_location_id` BIGINT COMMENT 'Unique identifier for the provider location within the provider location specialty record.',
+    `specialty_id` BIGINT COMMENT 'Unique identifier for the specialty within the provider location specialty record.',
+    `created_timestamp` TIMESTAMP COMMENT 'The created timestamp of the provider location specialty record.',
+    `effective_date` DATE COMMENT 'Timestamp capturing the effective date associated with the provider location specialty record.',
+    `end_date` DATE COMMENT 'Timestamp capturing the end date associated with the provider location specialty record.',
+    `is_primary_specialty` BOOLEAN COMMENT 'Boolean flag indicating the is primary specialty status of the provider location specialty record.',
+    `updated_timestamp` TIMESTAMP COMMENT 'The updated timestamp of the provider location specialty record.',
+    CONSTRAINT pk_location_specialty PRIMARY KEY(`location_specialty_id`)
+) COMMENT 'Represents location specialty records in the provider domain.';
 
 -- ========= FOREIGN KEYS =========
 ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ADD CONSTRAINT `fk_provider_clinician_specialty_id` FOREIGN KEY (`specialty_id`) REFERENCES `vibe_healthcare_v1`.`provider`.`specialty`(`specialty_id`);
 ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ADD CONSTRAINT `fk_provider_clinician_taxonomy_id` FOREIGN KEY (`taxonomy_id`) REFERENCES `vibe_healthcare_v1`.`provider`.`taxonomy`(`taxonomy_id`);
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ADD CONSTRAINT `fk_provider_org_provider_clinician_id` FOREIGN KEY (`clinician_id`) REFERENCES `vibe_healthcare_v1`.`provider`.`clinician`(`clinician_id`);
 ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ADD CONSTRAINT `fk_provider_org_provider_taxonomy_id` FOREIGN KEY (`taxonomy_id`) REFERENCES `vibe_healthcare_v1`.`provider`.`taxonomy`(`taxonomy_id`);
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`privileging` ADD CONSTRAINT `fk_provider_privileging_provider_committee_id` FOREIGN KEY (`provider_committee_id`) REFERENCES `vibe_healthcare_v1`.`provider`.`provider_committee`(`provider_committee_id`);
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`specialty` ADD CONSTRAINT `fk_provider_specialty_clinician_id` FOREIGN KEY (`clinician_id`) REFERENCES `vibe_healthcare_v1`.`provider`.`clinician`(`clinician_id`);
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`credential` ADD CONSTRAINT `fk_provider_credential_clinician_id` FOREIGN KEY (`clinician_id`) REFERENCES `vibe_healthcare_v1`.`provider`.`clinician`(`clinician_id`);
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`credential` ADD CONSTRAINT `fk_provider_credential_specialty_id` FOREIGN KEY (`specialty_id`) REFERENCES `vibe_healthcare_v1`.`provider`.`specialty`(`specialty_id`);
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`privileging` ADD CONSTRAINT `fk_provider_privileging_committee_id` FOREIGN KEY (`committee_id`) REFERENCES `vibe_healthcare_v1`.`provider`.`committee`(`committee_id`);
 ALTER TABLE `vibe_healthcare_v1`.`provider`.`privileging` ADD CONSTRAINT `fk_provider_privileging_clinician_id` FOREIGN KEY (`clinician_id`) REFERENCES `vibe_healthcare_v1`.`provider`.`clinician`(`clinician_id`);
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`privileging` ADD CONSTRAINT `fk_provider_privileging_privileging_proctor_provider_clinician_id` FOREIGN KEY (`privileging_proctor_provider_clinician_id`) REFERENCES `vibe_healthcare_v1`.`provider`.`clinician`(`clinician_id`);
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`privileging` ADD CONSTRAINT `fk_provider_privileging_privileging_clinician_id` FOREIGN KEY (`privileging_clinician_id`) REFERENCES `vibe_healthcare_v1`.`provider`.`clinician`(`clinician_id`);
 ALTER TABLE `vibe_healthcare_v1`.`provider`.`privileging` ADD CONSTRAINT `fk_provider_privileging_specialty_id` FOREIGN KEY (`specialty_id`) REFERENCES `vibe_healthcare_v1`.`provider`.`specialty`(`specialty_id`);
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_application` ADD CONSTRAINT `fk_provider_credentialing_application_provider_committee_id` FOREIGN KEY (`provider_committee_id`) REFERENCES `vibe_healthcare_v1`.`provider`.`provider_committee`(`provider_committee_id`);
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_application` ADD CONSTRAINT `fk_provider_credentialing_application_committee_id` FOREIGN KEY (`committee_id`) REFERENCES `vibe_healthcare_v1`.`provider`.`committee`(`committee_id`);
 ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_application` ADD CONSTRAINT `fk_provider_credentialing_application_clinician_id` FOREIGN KEY (`clinician_id`) REFERENCES `vibe_healthcare_v1`.`provider`.`clinician`(`clinician_id`);
 ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_application` ADD CONSTRAINT `fk_provider_credentialing_application_specialty_id` FOREIGN KEY (`specialty_id`) REFERENCES `vibe_healthcare_v1`.`provider`.`specialty`(`specialty_id`);
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` ADD CONSTRAINT `fk_provider_provider_payer_enrollment_clinician_id` FOREIGN KEY (`clinician_id`) REFERENCES `vibe_healthcare_v1`.`provider`.`clinician`(`clinician_id`);
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` ADD CONSTRAINT `fk_provider_provider_payer_enrollment_org_provider_id` FOREIGN KEY (`org_provider_id`) REFERENCES `vibe_healthcare_v1`.`provider`.`org_provider`(`org_provider_id`);
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` ADD CONSTRAINT `fk_provider_provider_payer_enrollment_provider_location_id` FOREIGN KEY (`provider_location_id`) REFERENCES `vibe_healthcare_v1`.`provider`.`provider_location`(`provider_location_id`);
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` ADD CONSTRAINT `fk_provider_provider_payer_enrollment_specialty_id` FOREIGN KEY (`specialty_id`) REFERENCES `vibe_healthcare_v1`.`provider`.`specialty`(`specialty_id`);
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` ADD CONSTRAINT `fk_provider_provider_payer_enrollment_taxonomy_id` FOREIGN KEY (`taxonomy_id`) REFERENCES `vibe_healthcare_v1`.`provider`.`taxonomy`(`taxonomy_id`);
 ALTER TABLE `vibe_healthcare_v1`.`provider`.`network_affiliation` ADD CONSTRAINT `fk_provider_network_affiliation_clinician_id` FOREIGN KEY (`clinician_id`) REFERENCES `vibe_healthcare_v1`.`provider`.`clinician`(`clinician_id`);
 ALTER TABLE `vibe_healthcare_v1`.`provider`.`network_affiliation` ADD CONSTRAINT `fk_provider_network_affiliation_group_id` FOREIGN KEY (`group_id`) REFERENCES `vibe_healthcare_v1`.`provider`.`group`(`group_id`);
 ALTER TABLE `vibe_healthcare_v1`.`provider`.`network_affiliation` ADD CONSTRAINT `fk_provider_network_affiliation_org_provider_id` FOREIGN KEY (`org_provider_id`) REFERENCES `vibe_healthcare_v1`.`provider`.`org_provider`(`org_provider_id`);
 ALTER TABLE `vibe_healthcare_v1`.`provider`.`network_affiliation` ADD CONSTRAINT `fk_provider_network_affiliation_provider_payer_enrollment_id` FOREIGN KEY (`provider_payer_enrollment_id`) REFERENCES `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment`(`provider_payer_enrollment_id`);
 ALTER TABLE `vibe_healthcare_v1`.`provider`.`network_affiliation` ADD CONSTRAINT `fk_provider_network_affiliation_specialty_id` FOREIGN KEY (`specialty_id`) REFERENCES `vibe_healthcare_v1`.`provider`.`specialty`(`specialty_id`);
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ADD CONSTRAINT `fk_provider_group_clinician_id` FOREIGN KEY (`clinician_id`) REFERENCES `vibe_healthcare_v1`.`provider`.`clinician`(`clinician_id`);
 ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ADD CONSTRAINT `fk_provider_group_specialty_id` FOREIGN KEY (`specialty_id`) REFERENCES `vibe_healthcare_v1`.`provider`.`specialty`(`specialty_id`);
 ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ADD CONSTRAINT `fk_provider_group_taxonomy_id` FOREIGN KEY (`taxonomy_id`) REFERENCES `vibe_healthcare_v1`.`provider`.`taxonomy`(`taxonomy_id`);
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`group_membership` ADD CONSTRAINT `fk_provider_group_membership_group_id` FOREIGN KEY (`group_id`) REFERENCES `vibe_healthcare_v1`.`provider`.`group`(`group_id`);
 ALTER TABLE `vibe_healthcare_v1`.`provider`.`group_membership` ADD CONSTRAINT `fk_provider_group_membership_clinician_id` FOREIGN KEY (`clinician_id`) REFERENCES `vibe_healthcare_v1`.`provider`.`clinician`(`clinician_id`);
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`group_membership` ADD CONSTRAINT `fk_provider_group_membership_group_id` FOREIGN KEY (`group_id`) REFERENCES `vibe_healthcare_v1`.`provider`.`group`(`group_id`);
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`group_membership` ADD CONSTRAINT `fk_provider_group_membership_primary_group_clinician_id` FOREIGN KEY (`primary_group_clinician_id`) REFERENCES `vibe_healthcare_v1`.`provider`.`clinician`(`clinician_id`);
 ALTER TABLE `vibe_healthcare_v1`.`provider`.`group_membership` ADD CONSTRAINT `fk_provider_group_membership_org_provider_id` FOREIGN KEY (`org_provider_id`) REFERENCES `vibe_healthcare_v1`.`provider`.`org_provider`(`org_provider_id`);
 ALTER TABLE `vibe_healthcare_v1`.`provider`.`malpractice_coverage` ADD CONSTRAINT `fk_provider_malpractice_coverage_clinician_id` FOREIGN KEY (`clinician_id`) REFERENCES `vibe_healthcare_v1`.`provider`.`clinician`(`clinician_id`);
 ALTER TABLE `vibe_healthcare_v1`.`provider`.`malpractice_coverage` ADD CONSTRAINT `fk_provider_malpractice_coverage_credentialing_application_id` FOREIGN KEY (`credentialing_application_id`) REFERENCES `vibe_healthcare_v1`.`provider`.`credentialing_application`(`credentialing_application_id`);
@@ -1396,1919 +1089,1213 @@ ALTER TABLE `vibe_healthcare_v1`.`provider`.`npdb_query` ADD CONSTRAINT `fk_prov
 ALTER TABLE `vibe_healthcare_v1`.`provider`.`npdb_query` ADD CONSTRAINT `fk_provider_npdb_query_credentialing_application_id` FOREIGN KEY (`credentialing_application_id`) REFERENCES `vibe_healthcare_v1`.`provider`.`credentialing_application`(`credentialing_application_id`);
 ALTER TABLE `vibe_healthcare_v1`.`provider`.`npdb_query` ADD CONSTRAINT `fk_provider_npdb_query_original_query_npdb_query_id` FOREIGN KEY (`original_query_npdb_query_id`) REFERENCES `vibe_healthcare_v1`.`provider`.`npdb_query`(`npdb_query_id`);
 ALTER TABLE `vibe_healthcare_v1`.`provider`.`npdb_query` ADD CONSTRAINT `fk_provider_npdb_query_reappointment_id` FOREIGN KEY (`reappointment_id`) REFERENCES `vibe_healthcare_v1`.`provider`.`reappointment`(`reappointment_id`);
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`sanction` ADD CONSTRAINT `fk_provider_sanction_clinician_id` FOREIGN KEY (`clinician_id`) REFERENCES `vibe_healthcare_v1`.`provider`.`clinician`(`clinician_id`);
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`sanction` ADD CONSTRAINT `fk_provider_sanction_org_provider_id` FOREIGN KEY (`org_provider_id`) REFERENCES `vibe_healthcare_v1`.`provider`.`org_provider`(`org_provider_id`);
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`sanction` ADD CONSTRAINT `fk_provider_sanction_specialty_id` FOREIGN KEY (`specialty_id`) REFERENCES `vibe_healthcare_v1`.`provider`.`specialty`(`specialty_id`);
 ALTER TABLE `vibe_healthcare_v1`.`provider`.`dea_registration` ADD CONSTRAINT `fk_provider_dea_registration_clinician_id` FOREIGN KEY (`clinician_id`) REFERENCES `vibe_healthcare_v1`.`provider`.`clinician`(`clinician_id`);
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`dea_registration` ADD CONSTRAINT `fk_provider_dea_registration_credentialing_application_id` FOREIGN KEY (`credentialing_application_id`) REFERENCES `vibe_healthcare_v1`.`provider`.`credentialing_application`(`credentialing_application_id`);
 ALTER TABLE `vibe_healthcare_v1`.`provider`.`board_certification` ADD CONSTRAINT `fk_provider_board_certification_clinician_id` FOREIGN KEY (`clinician_id`) REFERENCES `vibe_healthcare_v1`.`provider`.`clinician`(`clinician_id`);
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`board_certification` ADD CONSTRAINT `fk_provider_board_certification_credentialing_application_id` FOREIGN KEY (`credentialing_application_id`) REFERENCES `vibe_healthcare_v1`.`provider`.`credentialing_application`(`credentialing_application_id`);
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`board_certification` ADD CONSTRAINT `fk_provider_board_certification_credentialing_file_id` FOREIGN KEY (`credentialing_file_id`) REFERENCES `vibe_healthcare_v1`.`provider`.`credentialing_file`(`credentialing_file_id`);
 ALTER TABLE `vibe_healthcare_v1`.`provider`.`board_certification` ADD CONSTRAINT `fk_provider_board_certification_specialty_id` FOREIGN KEY (`specialty_id`) REFERENCES `vibe_healthcare_v1`.`provider`.`specialty`(`specialty_id`);
 ALTER TABLE `vibe_healthcare_v1`.`provider`.`education_training` ADD CONSTRAINT `fk_provider_education_training_clinician_id` FOREIGN KEY (`clinician_id`) REFERENCES `vibe_healthcare_v1`.`provider`.`clinician`(`clinician_id`);
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_location` ADD CONSTRAINT `fk_provider_provider_location_clinician_id` FOREIGN KEY (`clinician_id`) REFERENCES `vibe_healthcare_v1`.`provider`.`clinician`(`clinician_id`);
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_location` ADD CONSTRAINT `fk_provider_provider_location_group_id` FOREIGN KEY (`group_id`) REFERENCES `vibe_healthcare_v1`.`provider`.`group`(`group_id`);
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_location` ADD CONSTRAINT `fk_provider_provider_location_org_provider_id` FOREIGN KEY (`org_provider_id`) REFERENCES `vibe_healthcare_v1`.`provider`.`org_provider`(`org_provider_id`);
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`reappointment` ADD CONSTRAINT `fk_provider_reappointment_provider_committee_id` FOREIGN KEY (`provider_committee_id`) REFERENCES `vibe_healthcare_v1`.`provider`.`provider_committee`(`provider_committee_id`);
 ALTER TABLE `vibe_healthcare_v1`.`provider`.`reappointment` ADD CONSTRAINT `fk_provider_reappointment_clinician_id` FOREIGN KEY (`clinician_id`) REFERENCES `vibe_healthcare_v1`.`provider`.`clinician`(`clinician_id`);
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`reappointment` ADD CONSTRAINT `fk_provider_reappointment_specialty_id` FOREIGN KEY (`specialty_id`) REFERENCES `vibe_healthcare_v1`.`provider`.`specialty`(`specialty_id`);
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`peer_reference` ADD CONSTRAINT `fk_provider_peer_reference_credentialing_application_id` FOREIGN KEY (`credentialing_application_id`) REFERENCES `vibe_healthcare_v1`.`provider`.`credentialing_application`(`credentialing_application_id`);
 ALTER TABLE `vibe_healthcare_v1`.`provider`.`peer_reference` ADD CONSTRAINT `fk_provider_peer_reference_clinician_id` FOREIGN KEY (`clinician_id`) REFERENCES `vibe_healthcare_v1`.`provider`.`clinician`(`clinician_id`);
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`peer_reference` ADD CONSTRAINT `fk_provider_peer_reference_reappointment_id` FOREIGN KEY (`reappointment_id`) REFERENCES `vibe_healthcare_v1`.`provider`.`reappointment`(`reappointment_id`);
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`cme_activity` ADD CONSTRAINT `fk_provider_cme_activity_board_certification_id` FOREIGN KEY (`board_certification_id`) REFERENCES `vibe_healthcare_v1`.`provider`.`board_certification`(`board_certification_id`);
 ALTER TABLE `vibe_healthcare_v1`.`provider`.`cme_activity` ADD CONSTRAINT `fk_provider_cme_activity_clinician_id` FOREIGN KEY (`clinician_id`) REFERENCES `vibe_healthcare_v1`.`provider`.`clinician`(`clinician_id`);
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`cme_activity` ADD CONSTRAINT `fk_provider_cme_activity_reappointment_id` FOREIGN KEY (`reappointment_id`) REFERENCES `vibe_healthcare_v1`.`provider`.`reappointment`(`reappointment_id`);
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`cme_activity` ADD CONSTRAINT `fk_provider_cme_activity_specialty_id` FOREIGN KEY (`specialty_id`) REFERENCES `vibe_healthcare_v1`.`provider`.`specialty`(`specialty_id`);
 ALTER TABLE `vibe_healthcare_v1`.`provider`.`telehealth_authorization` ADD CONSTRAINT `fk_provider_telehealth_authorization_clinician_id` FOREIGN KEY (`clinician_id`) REFERENCES `vibe_healthcare_v1`.`provider`.`clinician`(`clinician_id`);
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`telehealth_authorization` ADD CONSTRAINT `fk_provider_telehealth_authorization_credentialing_application_id` FOREIGN KEY (`credentialing_application_id`) REFERENCES `vibe_healthcare_v1`.`provider`.`credentialing_application`(`credentialing_application_id`);
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`telehealth_authorization` ADD CONSTRAINT `fk_provider_telehealth_authorization_credentialing_file_id` FOREIGN KEY (`credentialing_file_id`) REFERENCES `vibe_healthcare_v1`.`provider`.`credentialing_file`(`credentialing_file_id`);
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`telehealth_authorization` ADD CONSTRAINT `fk_provider_telehealth_authorization_specialty_id` FOREIGN KEY (`specialty_id`) REFERENCES `vibe_healthcare_v1`.`provider`.`specialty`(`specialty_id`);
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`taxonomy` ADD CONSTRAINT `fk_provider_taxonomy_clinician_id` FOREIGN KEY (`clinician_id`) REFERENCES `vibe_healthcare_v1`.`provider`.`clinician`(`clinician_id`);
 ALTER TABLE `vibe_healthcare_v1`.`provider`.`affiliation_history` ADD CONSTRAINT `fk_provider_affiliation_history_clinician_id` FOREIGN KEY (`clinician_id`) REFERENCES `vibe_healthcare_v1`.`provider`.`clinician`(`clinician_id`);
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`affiliation_history` ADD CONSTRAINT `fk_provider_affiliation_history_credentialing_application_id` FOREIGN KEY (`credentialing_application_id`) REFERENCES `vibe_healthcare_v1`.`provider`.`credentialing_application`(`credentialing_application_id`);
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`affiliation_history` ADD CONSTRAINT `fk_provider_affiliation_history_org_provider_id` FOREIGN KEY (`org_provider_id`) REFERENCES `vibe_healthcare_v1`.`provider`.`org_provider`(`org_provider_id`);
 ALTER TABLE `vibe_healthcare_v1`.`provider`.`study_team_member` ADD CONSTRAINT `fk_provider_study_team_member_clinician_id` FOREIGN KEY (`clinician_id`) REFERENCES `vibe_healthcare_v1`.`provider`.`clinician`(`clinician_id`);
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`assignment` ADD CONSTRAINT `fk_provider_assignment_assignment_backup_clinician_id` FOREIGN KEY (`assignment_backup_clinician_id`) REFERENCES `vibe_healthcare_v1`.`provider`.`clinician`(`clinician_id`);
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`assignment` ADD CONSTRAINT `fk_provider_assignment_assignment_clinician_id` FOREIGN KEY (`assignment_clinician_id`) REFERENCES `vibe_healthcare_v1`.`provider`.`clinician`(`clinician_id`);
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`assignment` ADD CONSTRAINT `fk_provider_assignment_assignment_supervising_clinician_id` FOREIGN KEY (`assignment_supervising_clinician_id`) REFERENCES `vibe_healthcare_v1`.`provider`.`clinician`(`clinician_id`);
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`assignment` ADD CONSTRAINT `fk_provider_assignment_clinician_id` FOREIGN KEY (`clinician_id`) REFERENCES `vibe_healthcare_v1`.`provider`.`clinician`(`clinician_id`);
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`assignment` ADD CONSTRAINT `fk_provider_assignment_group_id` FOREIGN KEY (`group_id`) REFERENCES `vibe_healthcare_v1`.`provider`.`group`(`group_id`);
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`assignment` ADD CONSTRAINT `fk_provider_assignment_org_provider_id` FOREIGN KEY (`org_provider_id`) REFERENCES `vibe_healthcare_v1`.`provider`.`org_provider`(`org_provider_id`);
 ALTER TABLE `vibe_healthcare_v1`.`provider`.`affiliation` ADD CONSTRAINT `fk_provider_affiliation_clinician_id` FOREIGN KEY (`clinician_id`) REFERENCES `vibe_healthcare_v1`.`provider`.`clinician`(`clinician_id`);
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_network_participation` ADD CONSTRAINT `fk_provider_provider_network_participation_org_provider_id` FOREIGN KEY (`org_provider_id`) REFERENCES `vibe_healthcare_v1`.`provider`.`org_provider`(`org_provider_id`);
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`affiliation` ADD CONSTRAINT `fk_provider_affiliation_group_id` FOREIGN KEY (`group_id`) REFERENCES `vibe_healthcare_v1`.`provider`.`group`(`group_id`);
 ALTER TABLE `vibe_healthcare_v1`.`provider`.`preference_card` ADD CONSTRAINT `fk_provider_preference_card_clinician_id` FOREIGN KEY (`clinician_id`) REFERENCES `vibe_healthcare_v1`.`provider`.`clinician`(`clinician_id`);
 ALTER TABLE `vibe_healthcare_v1`.`provider`.`survey_participation` ADD CONSTRAINT `fk_provider_survey_participation_clinician_id` FOREIGN KEY (`clinician_id`) REFERENCES `vibe_healthcare_v1`.`provider`.`clinician`(`clinician_id`);
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_file` ADD CONSTRAINT `fk_provider_credentialing_file_provider_committee_id` FOREIGN KEY (`provider_committee_id`) REFERENCES `vibe_healthcare_v1`.`provider`.`provider_committee`(`provider_committee_id`);
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_file` ADD CONSTRAINT `fk_provider_credentialing_file_prior_credentialing_file_id` FOREIGN KEY (`prior_credentialing_file_id`) REFERENCES `vibe_healthcare_v1`.`provider`.`credentialing_file`(`credentialing_file_id`);
 ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_file` ADD CONSTRAINT `fk_provider_credentialing_file_clinician_id` FOREIGN KEY (`clinician_id`) REFERENCES `vibe_healthcare_v1`.`provider`.`clinician`(`clinician_id`);
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_assignment` ADD CONSTRAINT `fk_provider_provider_assignment_clinician_id` FOREIGN KEY (`clinician_id`) REFERENCES `vibe_healthcare_v1`.`provider`.`clinician`(`clinician_id`);
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_committee` ADD CONSTRAINT `fk_provider_provider_committee_org_provider_id` FOREIGN KEY (`org_provider_id`) REFERENCES `vibe_healthcare_v1`.`provider`.`org_provider`(`org_provider_id`);
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_committee` ADD CONSTRAINT `fk_provider_provider_committee_parent_committee_id` FOREIGN KEY (`parent_committee_id`) REFERENCES `vibe_healthcare_v1`.`provider`.`provider_committee`(`provider_committee_id`);
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_committee` ADD CONSTRAINT `fk_provider_provider_committee_clinician_id` FOREIGN KEY (`clinician_id`) REFERENCES `vibe_healthcare_v1`.`provider`.`clinician`(`clinician_id`);
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_committee` ADD CONSTRAINT `fk_provider_provider_committee_provider_chair_clinician_id` FOREIGN KEY (`provider_chair_clinician_id`) REFERENCES `vibe_healthcare_v1`.`provider`.`clinician`(`clinician_id`);
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_committee` ADD CONSTRAINT `fk_provider_provider_committee_provider_clinician_id` FOREIGN KEY (`provider_clinician_id`) REFERENCES `vibe_healthcare_v1`.`provider`.`clinician`(`clinician_id`);
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_committee` ADD CONSTRAINT `fk_provider_provider_committee_provider_reporting_committee_id` FOREIGN KEY (`provider_reporting_committee_id`) REFERENCES `vibe_healthcare_v1`.`provider`.`provider_committee`(`provider_committee_id`);
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_credential` ADD CONSTRAINT `fk_provider_provider_credential_clinician_id` FOREIGN KEY (`clinician_id`) REFERENCES `vibe_healthcare_v1`.`provider`.`clinician`(`clinician_id`);
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_credential` ADD CONSTRAINT `fk_provider_provider_credential_specialty_id` FOREIGN KEY (`specialty_id`) REFERENCES `vibe_healthcare_v1`.`provider`.`specialty`(`specialty_id`);
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_sanction` ADD CONSTRAINT `fk_provider_provider_sanction_clinician_id` FOREIGN KEY (`clinician_id`) REFERENCES `vibe_healthcare_v1`.`provider`.`clinician`(`clinician_id`);
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_sanction` ADD CONSTRAINT `fk_provider_provider_sanction_org_provider_id` FOREIGN KEY (`org_provider_id`) REFERENCES `vibe_healthcare_v1`.`provider`.`org_provider`(`org_provider_id`);
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_sanction` ADD CONSTRAINT `fk_provider_provider_sanction_specialty_id` FOREIGN KEY (`specialty_id`) REFERENCES `vibe_healthcare_v1`.`provider`.`specialty`(`specialty_id`);
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_file` ADD CONSTRAINT `fk_provider_credentialing_file_credentialing_application_id` FOREIGN KEY (`credentialing_application_id`) REFERENCES `vibe_healthcare_v1`.`provider`.`credentialing_application`(`credentialing_application_id`);
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`committee` ADD CONSTRAINT `fk_provider_committee_clinician_id` FOREIGN KEY (`clinician_id`) REFERENCES `vibe_healthcare_v1`.`provider`.`clinician`(`clinician_id`);
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`committee` ADD CONSTRAINT `fk_provider_committee_committee_clinician_id` FOREIGN KEY (`committee_clinician_id`) REFERENCES `vibe_healthcare_v1`.`provider`.`clinician`(`clinician_id`);
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` ADD CONSTRAINT `fk_provider_provider_payer_enrollment_clinician_id` FOREIGN KEY (`clinician_id`) REFERENCES `vibe_healthcare_v1`.`provider`.`clinician`(`clinician_id`);
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` ADD CONSTRAINT `fk_provider_provider_payer_enrollment_org_provider_id` FOREIGN KEY (`org_provider_id`) REFERENCES `vibe_healthcare_v1`.`provider`.`org_provider`(`org_provider_id`);
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` ADD CONSTRAINT `fk_provider_provider_payer_enrollment_provider_location_id` FOREIGN KEY (`provider_location_id`) REFERENCES `vibe_healthcare_v1`.`provider`.`provider_location`(`provider_location_id`);
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` ADD CONSTRAINT `fk_provider_provider_payer_enrollment_specialty_id` FOREIGN KEY (`specialty_id`) REFERENCES `vibe_healthcare_v1`.`provider`.`specialty`(`specialty_id`);
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` ADD CONSTRAINT `fk_provider_provider_payer_enrollment_taxonomy_id` FOREIGN KEY (`taxonomy_id`) REFERENCES `vibe_healthcare_v1`.`provider`.`taxonomy`(`taxonomy_id`);
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_network_participation` ADD CONSTRAINT `fk_provider_provider_network_participation_clinician_id` FOREIGN KEY (`clinician_id`) REFERENCES `vibe_healthcare_v1`.`provider`.`clinician`(`clinician_id`);
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_network_participation` ADD CONSTRAINT `fk_provider_provider_network_participation_org_provider_id` FOREIGN KEY (`org_provider_id`) REFERENCES `vibe_healthcare_v1`.`provider`.`org_provider`(`org_provider_id`);
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_location` ADD CONSTRAINT `fk_provider_provider_location_clinician_id` FOREIGN KEY (`clinician_id`) REFERENCES `vibe_healthcare_v1`.`provider`.`clinician`(`clinician_id`);
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_location` ADD CONSTRAINT `fk_provider_provider_location_specialty_id` FOREIGN KEY (`specialty_id`) REFERENCES `vibe_healthcare_v1`.`provider`.`specialty`(`specialty_id`);
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_location` ADD CONSTRAINT `fk_provider_provider_location_provider_specialty_id` FOREIGN KEY (`provider_specialty_id`) REFERENCES `vibe_healthcare_v1`.`provider`.`specialty`(`specialty_id`);
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`location_specialty` ADD CONSTRAINT `fk_provider_location_specialty_clinician_id` FOREIGN KEY (`clinician_id`) REFERENCES `vibe_healthcare_v1`.`provider`.`clinician`(`clinician_id`);
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`location_specialty` ADD CONSTRAINT `fk_provider_location_specialty_provider_location_id` FOREIGN KEY (`provider_location_id`) REFERENCES `vibe_healthcare_v1`.`provider`.`provider_location`(`provider_location_id`);
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`location_specialty` ADD CONSTRAINT `fk_provider_location_specialty_specialty_id` FOREIGN KEY (`specialty_id`) REFERENCES `vibe_healthcare_v1`.`provider`.`specialty`(`specialty_id`);
 
 -- ========= TAGS =========
-ALTER SCHEMA `vibe_healthcare_v1`.`provider` SET TAGS ('dbx_division' = 'business');
-ALTER SCHEMA `vibe_healthcare_v1`.`provider` SET TAGS ('dbx_domain' = 'provider');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` SET TAGS ('dbx_subdomain' = 'provider_directory');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `clinician_id` SET TAGS ('dbx_business_glossary_term' = 'Clinician ID');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `care_site_id` SET TAGS ('dbx_business_glossary_term' = 'Primary Facility ID');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `specialty_id` SET TAGS ('dbx_business_glossary_term' = 'Primary Specialty Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `npi_registry_id` SET TAGS ('dbx_business_glossary_term' = 'Reference Npi Registry Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `taxonomy_id` SET TAGS ('dbx_business_glossary_term' = 'Provider Taxonomy Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `board_certification_expiration_date` SET TAGS ('dbx_business_glossary_term' = 'Board Certification Expiration Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `board_certified` SET TAGS ('dbx_business_glossary_term' = 'Board Certification Flag');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `caqh_provider_number` SET TAGS ('dbx_business_glossary_term' = 'Council for Affordable Quality Healthcare (CAQH) Provider ID');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `caqh_provider_number` SET TAGS ('dbx_value_regex' = '^[0-9]{8}$');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `caqh_provider_number` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `caqh_provider_number` SET TAGS ('dbx_pii_identifier' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `credentialing_expiration_date` SET TAGS ('dbx_business_glossary_term' = 'Credentialing Expiration Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `credentialing_status` SET TAGS ('dbx_business_glossary_term' = 'Credentialing Status');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `credentialing_status` SET TAGS ('dbx_value_regex' = 'credentialed|pending|expired|suspended|denied');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `date_of_birth` SET TAGS ('dbx_business_glossary_term' = 'Date of Birth');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `date_of_birth` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `date_of_birth` SET TAGS ('dbx_pii_dob' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `dea_number` SET TAGS ('dbx_business_glossary_term' = 'Drug Enforcement Administration (DEA) Registration Number');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `dea_number` SET TAGS ('dbx_value_regex' = '^[A-Z]{2}[0-9]{7}$');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `dea_number` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `dea_number` SET TAGS ('dbx_pii_identifier' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `employment_status` SET TAGS ('dbx_business_glossary_term' = 'Employment Status');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `employment_status` SET TAGS ('dbx_value_regex' = 'active|inactive|on_leave|terminated|suspended');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `employment_status` SET TAGS ('dbx_pii_person_data' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `employment_type` SET TAGS ('dbx_business_glossary_term' = 'Employment Type');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `employment_type` SET TAGS ('dbx_value_regex' = 'employed|independent_contractor|locum_tenens|volunteer|resident|fellow');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `fellowship_completion_date` SET TAGS ('dbx_business_glossary_term' = 'Fellowship Completion Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `fellowship_program_name` SET TAGS ('dbx_business_glossary_term' = 'Fellowship Program Name');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `first_name` SET TAGS ('dbx_business_glossary_term' = 'Clinician First Name');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `first_name` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `first_name` SET TAGS ('dbx_pii_name' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `gender` SET TAGS ('dbx_business_glossary_term' = 'Gender');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `gender` SET TAGS ('dbx_value_regex' = 'male|female|non_binary|unknown|prefer_not_to_say');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `gender` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `gender` SET TAGS ('dbx_pii_health' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `hire_date` SET TAGS ('dbx_business_glossary_term' = 'Hire Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `internship_completion_date` SET TAGS ('dbx_business_glossary_term' = 'Internship Completion Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `internship_program_name` SET TAGS ('dbx_business_glossary_term' = 'Internship Program Name');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `last_name` SET TAGS ('dbx_business_glossary_term' = 'Clinician Last Name');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `last_name` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `last_name` SET TAGS ('dbx_pii_name' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `license_expiration_date` SET TAGS ('dbx_business_glossary_term' = 'License Expiration Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `license_state` SET TAGS ('dbx_business_glossary_term' = 'License State');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `license_state` SET TAGS ('dbx_value_regex' = '^[A-Z]{2}$');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `license_state` SET TAGS ('dbx_pii_category' = 'person_data');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `malpractice_expiration_date` SET TAGS ('dbx_business_glossary_term' = 'Malpractice Insurance Expiration Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `malpractice_policy_number` SET TAGS ('dbx_business_glossary_term' = 'Malpractice Insurance Policy Number');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `malpractice_policy_number` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `medicaid_enrolled` SET TAGS ('dbx_business_glossary_term' = 'Medicaid Enrollment Flag');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `medicaid_enrolled` SET TAGS ('dbx_pii_person_data' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `medical_degree` SET TAGS ('dbx_business_glossary_term' = 'Medical Degree');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `medical_degree` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `medical_degree` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `medical_school_graduation_date` SET TAGS ('dbx_business_glossary_term' = 'Medical School Graduation Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `medical_school_graduation_date` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `medical_school_graduation_date` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `medical_school_name` SET TAGS ('dbx_business_glossary_term' = 'Medical School Name');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `medical_school_name` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `medical_school_name` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `medicare_enrolled` SET TAGS ('dbx_business_glossary_term' = 'Medicare Enrollment Flag');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `medicare_enrolled` SET TAGS ('dbx_pii_person_data' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `middle_name` SET TAGS ('dbx_business_glossary_term' = 'Clinician Middle Name');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `middle_name` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `middle_name` SET TAGS ('dbx_pii_name' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `name_suffix` SET TAGS ('dbx_business_glossary_term' = 'Name Suffix');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `name_suffix` SET TAGS ('dbx_value_regex' = 'Jr.|Sr.|II|III|IV|MD');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `name_suffix` SET TAGS ('dbx_pii_person_data' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `oig_exclusion_check_date` SET TAGS ('dbx_business_glossary_term' = 'OIG Exclusion Check Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `oig_exclusion_checked` SET TAGS ('dbx_business_glossary_term' = 'Office of Inspector General (OIG) Exclusion Check Flag');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `payer_enrollment_status` SET TAGS ('dbx_business_glossary_term' = 'Payer Enrollment Status');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `payer_enrollment_status` SET TAGS ('dbx_value_regex' = 'enrolled|pending|not_enrolled|terminated|suspended');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `primary_source_verified` SET TAGS ('dbx_business_glossary_term' = 'Primary Source Verification Flag');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `professional_designation` SET TAGS ('dbx_business_glossary_term' = 'Professional Designation');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `residency_acgme_accredited` SET TAGS ('dbx_business_glossary_term' = 'Residency ACGME Accreditation Flag');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `residency_completion_date` SET TAGS ('dbx_business_glossary_term' = 'Residency Completion Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `residency_program_name` SET TAGS ('dbx_business_glossary_term' = 'Residency Program Name');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `secondary_specialty` SET TAGS ('dbx_business_glossary_term' = 'Secondary Clinical Specialty');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `state_license_number` SET TAGS ('dbx_business_glossary_term' = 'State Medical License Number');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `state_license_number` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `state_license_number` SET TAGS ('dbx_pii_identifier' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `termination_date` SET TAGS ('dbx_business_glossary_term' = 'Termination Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `clinician_type` SET TAGS ('dbx_business_glossary_term' = 'Clinician Type');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `clinician_type` SET TAGS ('dbx_value_regex' = 'physician|advanced_practice|nursing|allied_health|pharmacy|behavioral_health');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Updated Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `work_email` SET TAGS ('dbx_business_glossary_term' = 'Work Email Address');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `work_email` SET TAGS ('dbx_value_regex' = '^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+.[a-zA-Z]{2,}$');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `work_email` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `work_email` SET TAGS ('dbx_pii_email' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `work_phone` SET TAGS ('dbx_business_glossary_term' = 'Work Phone Number');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `work_phone` SET TAGS ('dbx_value_regex' = '^+?[0-9-s().]{7,20}$');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `work_phone` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `work_phone` SET TAGS ('dbx_pii_phone' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` SET TAGS ('dbx_subdomain' = 'provider_directory');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `org_provider_id` SET TAGS ('dbx_business_glossary_term' = 'Organizational Provider ID');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `accreditation_status_id` SET TAGS ('dbx_business_glossary_term' = 'Accreditation Status Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `business_associate_agreement_id` SET TAGS ('dbx_business_glossary_term' = 'Business Associate Agreement Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `cost_center_id` SET TAGS ('dbx_business_glossary_term' = 'Cost Center Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `npi_registry_id` SET TAGS ('dbx_business_glossary_term' = 'Reference Npi Registry Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `taxonomy_id` SET TAGS ('dbx_business_glossary_term' = 'Provider Taxonomy Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `accreditation_body` SET TAGS ('dbx_business_glossary_term' = 'Accreditation Body');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `accreditation_expiration_date` SET TAGS ('dbx_business_glossary_term' = 'Accreditation Expiration Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `accreditation_status` SET TAGS ('dbx_business_glossary_term' = 'Accreditation Status');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `accreditation_status` SET TAGS ('dbx_value_regex' = 'accredited|provisional|not_accredited|under_review|revoked');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `address_line1` SET TAGS ('dbx_business_glossary_term' = 'Primary Service Address Line 1');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `address_line1` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `address_line1` SET TAGS ('dbx_pii_address' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `address_line2` SET TAGS ('dbx_business_glossary_term' = 'Primary Service Address Line 2');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `address_line2` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `address_line2` SET TAGS ('dbx_pii_address' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `bed_count` SET TAGS ('dbx_business_glossary_term' = 'Licensed Bed Count');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `city` SET TAGS ('dbx_business_glossary_term' = 'Service Location City');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `city` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `city` SET TAGS ('dbx_pii_address' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `cms_certification_number` SET TAGS ('dbx_business_glossary_term' = 'CMS Certification Number (CCN)');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `cms_certification_number` SET TAGS ('dbx_value_regex' = '^[0-9]{6}$');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `cms_certification_number` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `county` SET TAGS ('dbx_business_glossary_term' = 'Service Location County');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `county` SET TAGS ('dbx_pii_person_data' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `credentialing_expiration_date` SET TAGS ('dbx_business_glossary_term' = 'Credentialing Expiration Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `credentialing_status` SET TAGS ('dbx_business_glossary_term' = 'Organizational Credentialing Status');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `credentialing_status` SET TAGS ('dbx_value_regex' = 'credentialed|pending|expired|revoked|not_applicable');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `critical_access_hospital_flag` SET TAGS ('dbx_business_glossary_term' = 'Critical Access Hospital (CAH) Flag');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `disproportionate_share_flag` SET TAGS ('dbx_business_glossary_term' = 'Disproportionate Share Hospital (DSH) Flag');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `doing_business_as_name` SET TAGS ('dbx_business_glossary_term' = 'Doing Business As (DBA) Name');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `effective_date` SET TAGS ('dbx_business_glossary_term' = 'Provider Effective Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `ehr_system` SET TAGS ('dbx_business_glossary_term' = 'Electronic Health Record (EHR) System');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `enrollment_status` SET TAGS ('dbx_business_glossary_term' = 'Medicare/Medicaid Enrollment Status');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `enrollment_status` SET TAGS ('dbx_value_regex' = 'enrolled|not_enrolled|pending|revoked|opt_out');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `facility_type` SET TAGS ('dbx_business_glossary_term' = 'Facility Type');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `fax` SET TAGS ('dbx_business_glossary_term' = 'Primary Fax Number');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `fax` SET TAGS ('dbx_value_regex' = '^+?[0-9-()s]{7,20}$');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `fax` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `fax` SET TAGS ('dbx_pii_phone' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `fhir_endpoint_url` SET TAGS ('dbx_business_glossary_term' = 'Fast Healthcare Interoperability Resources (FHIR) Endpoint URL');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `legal_name` SET TAGS ('dbx_business_glossary_term' = 'Legal Organization Name');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `legal_name` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `legal_name` SET TAGS ('dbx_pii_person_data' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `license_state` SET TAGS ('dbx_business_glossary_term' = 'Facility License State');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `license_state` SET TAGS ('dbx_value_regex' = '^[A-Z]{2}$');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `license_state` SET TAGS ('dbx_pii_category' = 'person_data');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `medicaid_provider_number` SET TAGS ('dbx_business_glossary_term' = 'Medicaid Provider Number');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `medicaid_provider_number` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `medicaid_provider_number` SET TAGS ('dbx_pii_person_data' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `medicare_participation_flag` SET TAGS ('dbx_business_glossary_term' = 'Medicare Participation Flag');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `medicare_participation_flag` SET TAGS ('dbx_pii_person_data' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `network_participation_status` SET TAGS ('dbx_business_glossary_term' = 'Payer Network Participation Status');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `network_participation_status` SET TAGS ('dbx_value_regex' = 'in_network|out_of_network|pending|terminated');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `oig_exclusion_flag` SET TAGS ('dbx_business_glossary_term' = 'Office of Inspector General (OIG) Exclusion Flag');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `organization_type` SET TAGS ('dbx_business_glossary_term' = 'Organization Type');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `ownership_type` SET TAGS ('dbx_business_glossary_term' = 'Ownership Type');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `ownership_type` SET TAGS ('dbx_value_regex' = 'non_profit|for_profit|government|tribal|faith_based');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `phone` SET TAGS ('dbx_business_glossary_term' = 'Primary Contact Phone Number');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `phone` SET TAGS ('dbx_value_regex' = '^+?[0-9-()s]{7,20}$');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `phone` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `phone` SET TAGS ('dbx_pii_phone' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `primary_specialty` SET TAGS ('dbx_business_glossary_term' = 'Primary Organizational Specialty');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `provider_status` SET TAGS ('dbx_business_glossary_term' = 'Organizational Provider Status');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `provider_status` SET TAGS ('dbx_value_regex' = 'active|inactive|pending|suspended|terminated');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `sam_exclusion_flag` SET TAGS ('dbx_business_glossary_term' = 'System for Award Management (SAM) Exclusion Flag');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `state` SET TAGS ('dbx_business_glossary_term' = 'Service Location State');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `state` SET TAGS ('dbx_value_regex' = '^[A-Z]{2}$');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `state` SET TAGS ('dbx_pii_category' = 'person_data');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `state_license_expiration_date` SET TAGS ('dbx_business_glossary_term' = 'State Facility License Expiration Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `state_license_expiration_date` SET TAGS ('dbx_pii_category' = 'person_data');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `state_license_number` SET TAGS ('dbx_business_glossary_term' = 'State Facility License Number');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `state_license_number` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `state_license_number` SET TAGS ('dbx_pii_person_data' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `tax_identification_number` SET TAGS ('dbx_business_glossary_term' = 'Tax Identification Number (TIN) / Employer Identification Number (EIN)');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `tax_identification_number` SET TAGS ('dbx_value_regex' = '^[0-9]{2}-[0-9]{7}$');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `tax_identification_number` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `tax_identification_number` SET TAGS ('dbx_pii_identifier' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `teaching_status` SET TAGS ('dbx_business_glossary_term' = 'Teaching Hospital Status');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `teaching_status` SET TAGS ('dbx_value_regex' = 'major_teaching|minor_teaching|non_teaching');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `termination_date` SET TAGS ('dbx_business_glossary_term' = 'Provider Termination Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `trauma_level` SET TAGS ('dbx_business_glossary_term' = 'Trauma Center Designation Level');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `trauma_level` SET TAGS ('dbx_value_regex' = 'I|II|III|IV|V|not_designated');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Last Updated Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `website_url` SET TAGS ('dbx_business_glossary_term' = 'Organization Website URL');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `zip_code` SET TAGS ('dbx_business_glossary_term' = 'Service Location ZIP Code');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `zip_code` SET TAGS ('dbx_value_regex' = '^[0-9]{5}(-[0-9]{4})?$');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `zip_code` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `zip_code` SET TAGS ('dbx_pii_address' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`specialty` SET TAGS ('dbx_data_type' = 'reference_data');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`specialty` SET TAGS ('dbx_subdomain' = 'provider_directory');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`specialty` ALTER COLUMN `specialty_id` SET TAGS ('dbx_business_glossary_term' = 'Specialty ID');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`specialty` ALTER COLUMN `cpt_code_id` SET TAGS ('dbx_business_glossary_term' = 'Primary Cpt Code Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`specialty` ALTER COLUMN `icd_code_id` SET TAGS ('dbx_business_glossary_term' = 'Primary Icd Code Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`specialty` ALTER COLUMN `snomed_concept_id` SET TAGS ('dbx_business_glossary_term' = 'Systematized Nomenclature of Medicine Clinical Terms (SNOMED CT) Concept ID');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`specialty` ALTER COLUMN `abms_board_name` SET TAGS ('dbx_business_glossary_term' = 'American Board of Medical Specialties (ABMS) Board Name');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`specialty` ALTER COLUMN `acgme_program_code` SET TAGS ('dbx_business_glossary_term' = 'Accreditation Council for Graduate Medical Education (ACGME) Program Code');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`specialty` ALTER COLUMN `acgme_program_code` SET TAGS ('dbx_value_regex' = '^[0-9]{3}-[0-9]{2}$');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`specialty` ALTER COLUMN `additional_credentialing_required` SET TAGS ('dbx_business_glossary_term' = 'Additional Credentialing Required Flag');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`specialty` ALTER COLUMN `board_certification_body` SET TAGS ('dbx_business_glossary_term' = 'Board Certification Body');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`specialty` ALTER COLUMN `board_certification_required` SET TAGS ('dbx_business_glossary_term' = 'Board Certification Required Flag');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`specialty` ALTER COLUMN `specialty_category` SET TAGS ('dbx_business_glossary_term' = 'Specialty Category');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`specialty` ALTER COLUMN `cms_enrollment_specialty_type` SET TAGS ('dbx_business_glossary_term' = 'Centers for Medicare and Medicaid Services (CMS) Enrollment Specialty Type');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`specialty` ALTER COLUMN `cms_specialty_code` SET TAGS ('dbx_business_glossary_term' = 'Centers for Medicare and Medicaid Services (CMS) Specialty Code');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`specialty` ALTER COLUMN `cms_specialty_code` SET TAGS ('dbx_value_regex' = '^[0-9]{2}$');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`specialty` ALTER COLUMN `specialty_code` SET TAGS ('dbx_business_glossary_term' = 'Specialty Code');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`specialty` ALTER COLUMN `specialty_code` SET TAGS ('dbx_value_regex' = '^[A-Z0-9_]{2,20}$');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`specialty` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`specialty` ALTER COLUMN `dea_registration_required` SET TAGS ('dbx_business_glossary_term' = 'Drug Enforcement Administration (DEA) Registration Required Flag');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`specialty` ALTER COLUMN `specialty_description` SET TAGS ('dbx_business_glossary_term' = 'Specialty Description');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`specialty` ALTER COLUMN `display_order` SET TAGS ('dbx_business_glossary_term' = 'Display Order');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`specialty` ALTER COLUMN `effective_date` SET TAGS ('dbx_business_glossary_term' = 'Effective Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`specialty` ALTER COLUMN `end_date` SET TAGS ('dbx_business_glossary_term' = 'End Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`specialty` ALTER COLUMN `fhir_practitioner_role_code` SET TAGS ('dbx_business_glossary_term' = 'Fast Healthcare Interoperability Resources (FHIR) Practitioner Role Code');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`specialty` ALTER COLUMN `hedis_measure_set` SET TAGS ('dbx_business_glossary_term' = 'Healthcare Effectiveness Data and Information Set (HEDIS) Measure Set');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`specialty` ALTER COLUMN `hospital_privileges_applicable` SET TAGS ('dbx_business_glossary_term' = 'Hospital Privileges Applicable Flag');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`specialty` ALTER COLUMN `mips_eligible` SET TAGS ('dbx_business_glossary_term' = 'Merit-based Incentive Payment System (MIPS) Eligible Flag');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`specialty` ALTER COLUMN `specialty_name` SET TAGS ('dbx_business_glossary_term' = 'Specialty Name');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`specialty` ALTER COLUMN `specialty_name` SET TAGS ('dbx_pii_person_data' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`specialty` ALTER COLUMN `network_adequacy_category` SET TAGS ('dbx_business_glossary_term' = 'Network Adequacy Category');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`specialty` ALTER COLUMN `network_adequacy_category` SET TAGS ('dbx_value_regex' = 'essential|non_essential|specialty_care|behavioral_health|primary_care');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`specialty` ALTER COLUMN `npi_taxonomy_eligible` SET TAGS ('dbx_business_glossary_term' = 'National Provider Identifier (NPI) Taxonomy Eligible Flag');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`specialty` ALTER COLUMN `nucc_classification` SET TAGS ('dbx_business_glossary_term' = 'National Uniform Claim Committee (NUCC) Classification');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`specialty` ALTER COLUMN `nucc_provider_type` SET TAGS ('dbx_business_glossary_term' = 'National Uniform Claim Committee (NUCC) Provider Type');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`specialty` ALTER COLUMN `nucc_specialization` SET TAGS ('dbx_business_glossary_term' = 'National Uniform Claim Committee (NUCC) Specialization');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`specialty` ALTER COLUMN `nucc_taxonomy_code` SET TAGS ('dbx_business_glossary_term' = 'National Uniform Claim Committee (NUCC) Taxonomy Code');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`specialty` ALTER COLUMN `nucc_taxonomy_code` SET TAGS ('dbx_value_regex' = '^[0-9]{10}X$');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`specialty` ALTER COLUMN `payer_enrollment_eligible` SET TAGS ('dbx_business_glossary_term' = 'Payer Enrollment Eligible Flag');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`specialty` ALTER COLUMN `pecos_specialty_code` SET TAGS ('dbx_business_glossary_term' = 'Provider Enrollment Chain and Ownership System (PECOS) Specialty Code');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`specialty` ALTER COLUMN `pecos_specialty_code` SET TAGS ('dbx_value_regex' = '^[A-Z0-9]{2,10}$');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`specialty` ALTER COLUMN `prescribing_authority` SET TAGS ('dbx_business_glossary_term' = 'Prescribing Authority Flag');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`specialty` ALTER COLUMN `primary_care_designation` SET TAGS ('dbx_business_glossary_term' = 'Primary Care Physician (PCP) Designation Flag');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`specialty` ALTER COLUMN `prior_authorization_required` SET TAGS ('dbx_business_glossary_term' = 'Prior Authorization Required Flag');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`specialty` ALTER COLUMN `referral_required` SET TAGS ('dbx_business_glossary_term' = 'Referral Required Flag');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`specialty` ALTER COLUMN `rvu_work_component` SET TAGS ('dbx_business_glossary_term' = 'Relative Value Unit (RVU) Work Component');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`specialty` ALTER COLUMN `short_description` SET TAGS ('dbx_business_glossary_term' = 'Specialty Short Description');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`specialty` ALTER COLUMN `specialty_status` SET TAGS ('dbx_business_glossary_term' = 'Specialty Status');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`specialty` ALTER COLUMN `specialty_status` SET TAGS ('dbx_value_regex' = 'active|inactive|deprecated|pending_review');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`specialty` ALTER COLUMN `surgical_specialty` SET TAGS ('dbx_business_glossary_term' = 'Surgical Specialty Flag');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`specialty` ALTER COLUMN `telehealth_eligible` SET TAGS ('dbx_business_glossary_term' = 'Telehealth Eligible Flag');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`specialty` ALTER COLUMN `specialty_type` SET TAGS ('dbx_business_glossary_term' = 'Specialty Type');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`specialty` ALTER COLUMN `specialty_type` SET TAGS ('dbx_value_regex' = 'primary_care|specialist|subspecialist|hospitalist|advanced_practice|ancillary');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`specialty` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Updated Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`specialty` ALTER COLUMN `version_number` SET TAGS ('dbx_business_glossary_term' = 'NUCC Taxonomy Version Number');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`specialty` ALTER COLUMN `version_number` SET TAGS ('dbx_value_regex' = '^[0-9]{2}.[0-9]{1,2}$');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`privileging` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`privileging` SET TAGS ('dbx_subdomain' = 'credentialing_compliance');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`privileging` ALTER COLUMN `privileging_id` SET TAGS ('dbx_business_glossary_term' = 'Privileging ID');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`privileging` ALTER COLUMN `provider_committee_id` SET TAGS ('dbx_business_glossary_term' = 'Approving Committee ID');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`privileging` ALTER COLUMN `audit_id` SET TAGS ('dbx_business_glossary_term' = 'Audit Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`privileging` ALTER COLUMN `care_site_id` SET TAGS ('dbx_business_glossary_term' = 'Facility ID');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`privileging` ALTER COLUMN `org_unit_id` SET TAGS ('dbx_business_glossary_term' = 'Department ID');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`privileging` ALTER COLUMN `clinician_id` SET TAGS ('dbx_business_glossary_term' = 'Provider ID');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`privileging` ALTER COLUMN `privileging_proctor_provider_clinician_id` SET TAGS ('dbx_business_glossary_term' = 'Proctor Provider ID');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`privileging` ALTER COLUMN `specialty_id` SET TAGS ('dbx_business_glossary_term' = 'Specialty Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`privileging` ALTER COLUMN `approval_date` SET TAGS ('dbx_business_glossary_term' = 'Privilege Approval Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`privileging` ALTER COLUMN `board_certification_required` SET TAGS ('dbx_business_glossary_term' = 'Board Certification Required Indicator');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`privileging` ALTER COLUMN `completed_case_volume` SET TAGS ('dbx_business_glossary_term' = 'Completed Case Volume');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`privileging` ALTER COLUMN `cpt_code` SET TAGS ('dbx_business_glossary_term' = 'Current Procedural Terminology (CPT) Code');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`privileging` ALTER COLUMN `cpt_code` SET TAGS ('dbx_value_regex' = '^[0-9]{5}[A-Z0-9]?$');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`privileging` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`privileging` ALTER COLUMN `delineation_form_version` SET TAGS ('dbx_business_glossary_term' = 'Privilege Delineation Form Version');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`privileging` ALTER COLUMN `effective_date` SET TAGS ('dbx_business_glossary_term' = 'Privilege Effective Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`privileging` ALTER COLUMN `emtala_covered` SET TAGS ('dbx_business_glossary_term' = 'Emergency Medical Treatment and Labor Act (EMTALA) Coverage Indicator');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`privileging` ALTER COLUMN `expiration_date` SET TAGS ('dbx_business_glossary_term' = 'Privilege Expiration Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`privileging` ALTER COLUMN `fppe_completion_date` SET TAGS ('dbx_business_glossary_term' = 'Focused Professional Practice Evaluation (FPPE) Completion Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`privileging` ALTER COLUMN `fppe_required` SET TAGS ('dbx_business_glossary_term' = 'Focused Professional Practice Evaluation (FPPE) Required Indicator');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`privileging` ALTER COLUMN `icd10_procedure_code` SET TAGS ('dbx_business_glossary_term' = 'International Classification of Diseases 10th Revision (ICD-10) Procedure Code');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`privileging` ALTER COLUMN `icd10_procedure_code` SET TAGS ('dbx_value_regex' = '^[0-9A-Z]{7}$');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`privileging` ALTER COLUMN `is_provisional` SET TAGS ('dbx_business_glossary_term' = 'Provisional Privilege Indicator');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`privileging` ALTER COLUMN `malpractice_verified` SET TAGS ('dbx_business_glossary_term' = 'Malpractice Insurance Verification Indicator');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`privileging` ALTER COLUMN `npdb_report_date` SET TAGS ('dbx_business_glossary_term' = 'National Practitioner Data Bank (NPDB) Report Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`privileging` ALTER COLUMN `npdb_report_required` SET TAGS ('dbx_business_glossary_term' = 'National Practitioner Data Bank (NPDB) Report Required Indicator');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`privileging` ALTER COLUMN `oppe_last_review_date` SET TAGS ('dbx_business_glossary_term' = 'Ongoing Professional Practice Evaluation (OPPE) Last Review Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`privileging` ALTER COLUMN `peer_review_score` SET TAGS ('dbx_business_glossary_term' = 'Peer Review Score');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`privileging` ALTER COLUMN `peer_review_score` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`privileging` ALTER COLUMN `privilege_category` SET TAGS ('dbx_business_glossary_term' = 'Privilege Category');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`privileging` ALTER COLUMN `privilege_category` SET TAGS ('dbx_value_regex' = 'clinical|surgical|procedural|diagnostic|prescriptive|administrative');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`privileging` ALTER COLUMN `privilege_description` SET TAGS ('dbx_business_glossary_term' = 'Privilege Description');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`privileging` ALTER COLUMN `privilege_name` SET TAGS ('dbx_business_glossary_term' = 'Privilege Name');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`privileging` ALTER COLUMN `privilege_number` SET TAGS ('dbx_business_glossary_term' = 'Privilege Number');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`privileging` ALTER COLUMN `privilege_status` SET TAGS ('dbx_business_glossary_term' = 'Privilege Status');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`privileging` ALTER COLUMN `privilege_status` SET TAGS ('dbx_value_regex' = 'active|provisional|suspended|revoked|expired|pending');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`privileging` ALTER COLUMN `privilege_type` SET TAGS ('dbx_business_glossary_term' = 'Privilege Type');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`privileging` ALTER COLUMN `privilege_type` SET TAGS ('dbx_value_regex' = 'core|special|temporary|telemedicine|locum_tenens|disaster');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`privileging` ALTER COLUMN `provisional_end_date` SET TAGS ('dbx_business_glossary_term' = 'Provisional Period End Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`privileging` ALTER COLUMN `reappointment_cycle_years` SET TAGS ('dbx_business_glossary_term' = 'Reappointment Cycle Years');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`privileging` ALTER COLUMN `request_date` SET TAGS ('dbx_business_glossary_term' = 'Privilege Request Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`privileging` ALTER COLUMN `required_case_volume` SET TAGS ('dbx_business_glossary_term' = 'Required Case Volume');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`privileging` ALTER COLUMN `revocation_date` SET TAGS ('dbx_business_glossary_term' = 'Privilege Revocation Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`privileging` ALTER COLUMN `revocation_reason` SET TAGS ('dbx_business_glossary_term' = 'Privilege Revocation Reason');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`privileging` ALTER COLUMN `revocation_reason` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`privileging` ALTER COLUMN `source_record_reference` SET TAGS ('dbx_business_glossary_term' = 'Source Record ID');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`privileging` ALTER COLUMN `source_system_code` SET TAGS ('dbx_business_glossary_term' = 'Source System Code');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`privileging` ALTER COLUMN `source_system_code` SET TAGS ('dbx_value_regex' = 'SYMPLR|EPIC|CERNER|MEDITECH|MANUAL');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`privileging` ALTER COLUMN `suspension_date` SET TAGS ('dbx_business_glossary_term' = 'Privilege Suspension Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`privileging` ALTER COLUMN `suspension_reason` SET TAGS ('dbx_business_glossary_term' = 'Privilege Suspension Reason');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`privileging` ALTER COLUMN `suspension_reason` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`privileging` ALTER COLUMN `telemedicine_authorized` SET TAGS ('dbx_business_glossary_term' = 'Telemedicine Authorization Indicator');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`privileging` ALTER COLUMN `training_requirement_met` SET TAGS ('dbx_business_glossary_term' = 'Training Requirement Met Indicator');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`privileging` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Updated Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_application` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_application` SET TAGS ('dbx_subdomain' = 'credentialing_compliance');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_application` ALTER COLUMN `credentialing_application_id` SET TAGS ('dbx_business_glossary_term' = 'Credentialing Application ID');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_application` ALTER COLUMN `provider_committee_id` SET TAGS ('dbx_business_glossary_term' = 'Approving Committee Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_application` ALTER COLUMN `audit_id` SET TAGS ('dbx_business_glossary_term' = 'Audit Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_application` ALTER COLUMN `care_site_id` SET TAGS ('dbx_business_glossary_term' = 'Facility ID');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_application` ALTER COLUMN `clinician_id` SET TAGS ('dbx_business_glossary_term' = 'Provider ID');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_application` ALTER COLUMN `compliance_program_id` SET TAGS ('dbx_business_glossary_term' = 'Compliance Program Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_application` ALTER COLUMN `cost_center_id` SET TAGS ('dbx_business_glossary_term' = 'Cost Center Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_application` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Employee Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_application` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_application` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_application` ALTER COLUMN `health_plan_id` SET TAGS ('dbx_business_glossary_term' = 'Health Plan Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_application` ALTER COLUMN `health_plan_id` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_application` ALTER COLUMN `health_plan_id` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_application` ALTER COLUMN `payer_id` SET TAGS ('dbx_business_glossary_term' = 'Payer Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_application` ALTER COLUMN `specialty_id` SET TAGS ('dbx_business_glossary_term' = 'Primary Specialty Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_application` ALTER COLUMN `application_number` SET TAGS ('dbx_business_glossary_term' = 'Credentialing Application Number');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_application` ALTER COLUMN `application_number` SET TAGS ('dbx_value_regex' = '^CRED-[0-9]{4}-[0-9]{6}$');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_application` ALTER COLUMN `application_status` SET TAGS ('dbx_business_glossary_term' = 'Credentialing Application Status');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_application` ALTER COLUMN `application_type` SET TAGS ('dbx_business_glossary_term' = 'Credentialing Application Type');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_application` ALTER COLUMN `application_type` SET TAGS ('dbx_value_regex' = 'initial|reappointment|privilege_expansion|reinstatement|locum_tenens');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_application` ALTER COLUMN `board_certification_status` SET TAGS ('dbx_business_glossary_term' = 'Board Certification Status');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_application` ALTER COLUMN `board_certification_status` SET TAGS ('dbx_value_regex' = 'certified|eligible|not_certified|expired');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_application` ALTER COLUMN `caqh_provider_number` SET TAGS ('dbx_business_glossary_term' = 'Council for Affordable Quality Healthcare (CAQH) Provider ID');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_application` ALTER COLUMN `caqh_provider_number` SET TAGS ('dbx_value_regex' = '^[0-9]{8}$');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_application` ALTER COLUMN `cme_compliance_status` SET TAGS ('dbx_business_glossary_term' = 'Continuing Medical Education (CME) Compliance Status');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_application` ALTER COLUMN `cme_compliance_status` SET TAGS ('dbx_value_regex' = 'compliant|non_compliant|pending|not_applicable');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_application` ALTER COLUMN `committee_review_date` SET TAGS ('dbx_business_glossary_term' = 'Credentialing Committee Review Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_application` ALTER COLUMN `complete_date` SET TAGS ('dbx_business_glossary_term' = 'Application Complete Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_application` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_application` ALTER COLUMN `dea_number` SET TAGS ('dbx_business_glossary_term' = 'Drug Enforcement Administration (DEA) Registration Number');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_application` ALTER COLUMN `dea_number` SET TAGS ('dbx_value_regex' = '^[A-Z]{2}[0-9]{7}$');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_application` ALTER COLUMN `dea_number` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_application` ALTER COLUMN `dea_number` SET TAGS ('dbx_pii_identifier' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_application` ALTER COLUMN `decision_date` SET TAGS ('dbx_business_glossary_term' = 'Credentialing Decision Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_application` ALTER COLUMN `decision_type` SET TAGS ('dbx_business_glossary_term' = 'Credentialing Decision Type');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_application` ALTER COLUMN `decision_type` SET TAGS ('dbx_value_regex' = 'approved|denied|deferred|withdrawn|provisional');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_application` ALTER COLUMN `denial_reason` SET TAGS ('dbx_business_glossary_term' = 'Credentialing Denial Reason');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_application` ALTER COLUMN `denial_reason` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_application` ALTER COLUMN `effective_date` SET TAGS ('dbx_business_glossary_term' = 'Privileges Effective Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_application` ALTER COLUMN `expiration_date` SET TAGS ('dbx_business_glossary_term' = 'Privileges Expiration Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_application` ALTER COLUMN `malpractice_aggregate_limit` SET TAGS ('dbx_business_glossary_term' = 'Malpractice Aggregate Coverage Limit');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_application` ALTER COLUMN `malpractice_aggregate_limit` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_application` ALTER COLUMN `malpractice_coverage_type` SET TAGS ('dbx_business_glossary_term' = 'Malpractice Insurance Coverage Type');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_application` ALTER COLUMN `malpractice_coverage_type` SET TAGS ('dbx_value_regex' = 'occurrence|claims_made');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_application` ALTER COLUMN `malpractice_coverage_type` SET TAGS ('dbx_pii_category' = 'person_data');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_application` ALTER COLUMN `malpractice_insurer_name` SET TAGS ('dbx_business_glossary_term' = 'Malpractice Insurance Carrier Name');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_application` ALTER COLUMN `malpractice_per_occurrence_limit` SET TAGS ('dbx_business_glossary_term' = 'Malpractice Per-Occurrence Coverage Limit');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_application` ALTER COLUMN `malpractice_per_occurrence_limit` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_application` ALTER COLUMN `malpractice_policy_effective_date` SET TAGS ('dbx_business_glossary_term' = 'Malpractice Policy Effective Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_application` ALTER COLUMN `malpractice_policy_expiration_date` SET TAGS ('dbx_business_glossary_term' = 'Malpractice Policy Expiration Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_application` ALTER COLUMN `malpractice_policy_number` SET TAGS ('dbx_business_glossary_term' = 'Malpractice Insurance Policy Number');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_application` ALTER COLUMN `malpractice_policy_number` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_application` ALTER COLUMN `medical_staff_category` SET TAGS ('dbx_business_glossary_term' = 'Medical Staff Category');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_application` ALTER COLUMN `medical_staff_category` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_application` ALTER COLUMN `medical_staff_category` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_application` ALTER COLUMN `npdb_adverse_action_flag` SET TAGS ('dbx_business_glossary_term' = 'National Practitioner Data Bank (NPDB) Adverse Action Flag');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_application` ALTER COLUMN `npdb_adverse_action_flag` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_application` ALTER COLUMN `npdb_malpractice_flag` SET TAGS ('dbx_business_glossary_term' = 'National Practitioner Data Bank (NPDB) Malpractice Payment Flag');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_application` ALTER COLUMN `npdb_malpractice_flag` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_application` ALTER COLUMN `npdb_query_date` SET TAGS ('dbx_business_glossary_term' = 'National Practitioner Data Bank (NPDB) Query Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_application` ALTER COLUMN `npdb_query_type` SET TAGS ('dbx_business_glossary_term' = 'National Practitioner Data Bank (NPDB) Query Type');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_application` ALTER COLUMN `npdb_query_type` SET TAGS ('dbx_value_regex' = 'initial|reappointment|continuous_query');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_application` ALTER COLUMN `npdb_reference_number` SET TAGS ('dbx_business_glossary_term' = 'National Practitioner Data Bank (NPDB) Query Reference Number');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_application` ALTER COLUMN `npdb_response_date` SET TAGS ('dbx_business_glossary_term' = 'National Practitioner Data Bank (NPDB) Response Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_application` ALTER COLUMN `npdb_response_status` SET TAGS ('dbx_business_glossary_term' = 'National Practitioner Data Bank (NPDB) Response Status');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_application` ALTER COLUMN `npdb_response_status` SET TAGS ('dbx_value_regex' = 'no_report|report_found|pending');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_application` ALTER COLUMN `npi` SET TAGS ('dbx_business_glossary_term' = 'National Provider Identifier (NPI)');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_application` ALTER COLUMN `npi` SET TAGS ('dbx_value_regex' = '^[0-9]{10}$');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_application` ALTER COLUMN `oig_exclusion_check_status` SET TAGS ('dbx_business_glossary_term' = 'Office of Inspector General (OIG) Exclusion Check Status');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_application` ALTER COLUMN `oig_exclusion_check_status` SET TAGS ('dbx_value_regex' = 'clear|excluded|pending');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_application` ALTER COLUMN `peer_reference_count` SET TAGS ('dbx_business_glossary_term' = 'Peer Reference Count');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_application` ALTER COLUMN `peer_references_complete_flag` SET TAGS ('dbx_business_glossary_term' = 'Peer References Complete Flag');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_application` ALTER COLUMN `peer_review_summary_status` SET TAGS ('dbx_business_glossary_term' = 'Peer Review Summary Status');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_application` ALTER COLUMN `peer_review_summary_status` SET TAGS ('dbx_value_regex' = 'reviewed|pending|not_applicable');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_application` ALTER COLUMN `peer_review_summary_status` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_application` ALTER COLUMN `provisional_privileges_expiration_date` SET TAGS ('dbx_business_glossary_term' = 'Provisional Privileges Expiration Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_application` ALTER COLUMN `provisional_privileges_flag` SET TAGS ('dbx_business_glossary_term' = 'Provisional Privileges Flag');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_application` ALTER COLUMN `psv_education_status` SET TAGS ('dbx_business_glossary_term' = 'Primary Source Verification (PSV) Education and Training Status');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_application` ALTER COLUMN `psv_education_status` SET TAGS ('dbx_value_regex' = 'verified|pending|failed|not_required');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_application` ALTER COLUMN `psv_license_status` SET TAGS ('dbx_business_glossary_term' = 'Primary Source Verification (PSV) License Status');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_application` ALTER COLUMN `psv_license_status` SET TAGS ('dbx_value_regex' = 'verified|pending|failed|not_required');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_application` ALTER COLUMN `psv_work_history_status` SET TAGS ('dbx_business_glossary_term' = 'Primary Source Verification (PSV) Work History Status');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_application` ALTER COLUMN `psv_work_history_status` SET TAGS ('dbx_value_regex' = 'verified|pending|failed|not_required');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_application` ALTER COLUMN `quality_indicator_review_status` SET TAGS ('dbx_business_glossary_term' = 'Quality Indicator Review Status');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_application` ALTER COLUMN `quality_indicator_review_status` SET TAGS ('dbx_value_regex' = 'reviewed|pending|not_applicable');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_application` ALTER COLUMN `reappointment_review_period_end` SET TAGS ('dbx_business_glossary_term' = 'Reappointment Review Period End Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_application` ALTER COLUMN `reappointment_review_period_start` SET TAGS ('dbx_business_glossary_term' = 'Reappointment Review Period Start Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_application` ALTER COLUMN `received_date` SET TAGS ('dbx_business_glossary_term' = 'Application Received Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_application` ALTER COLUMN `sam_exclusion_check_status` SET TAGS ('dbx_business_glossary_term' = 'System for Award Management (SAM) Exclusion Check Status');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_application` ALTER COLUMN `sam_exclusion_check_status` SET TAGS ('dbx_value_regex' = 'clear|excluded|pending');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_application` ALTER COLUMN `secondary_specialty` SET TAGS ('dbx_business_glossary_term' = 'Secondary Clinical Specialty');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_application` ALTER COLUMN `submission_date` SET TAGS ('dbx_business_glossary_term' = 'Application Submission Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_application` ALTER COLUMN `tail_coverage_indicator` SET TAGS ('dbx_business_glossary_term' = 'Tail Coverage Indicator');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_application` ALTER COLUMN `tail_coverage_indicator` SET TAGS ('dbx_pii_category' = 'person_data');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_application` ALTER COLUMN `telemedicine_privileges_requested` SET TAGS ('dbx_business_glossary_term' = 'Telemedicine Privileges Requested Flag');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_application` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Last Updated Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` SET TAGS ('dbx_subdomain' = 'network_contracting');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` ALTER COLUMN `provider_payer_enrollment_id` SET TAGS ('dbx_business_glossary_term' = 'Payer Enrollment ID');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` ALTER COLUMN `ar_account_id` SET TAGS ('dbx_business_glossary_term' = 'Ar Account Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` ALTER COLUMN `clinician_id` SET TAGS ('dbx_business_glossary_term' = 'Provider ID');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` ALTER COLUMN `cost_center_id` SET TAGS ('dbx_business_glossary_term' = 'Cost Center Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Employee Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` ALTER COLUMN `org_provider_id` SET TAGS ('dbx_business_glossary_term' = 'Org Provider Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` ALTER COLUMN `payer_contract_id` SET TAGS ('dbx_business_glossary_term' = 'Payer Contract ID');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` ALTER COLUMN `payer_id` SET TAGS ('dbx_business_glossary_term' = 'Payer ID');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` ALTER COLUMN `provider_location_id` SET TAGS ('dbx_business_glossary_term' = 'Enrollment Location ID');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` ALTER COLUMN `npi_registry_id` SET TAGS ('dbx_business_glossary_term' = 'Reference Npi Registry Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` ALTER COLUMN `specialty_id` SET TAGS ('dbx_business_glossary_term' = 'Specialty Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` ALTER COLUMN `taxonomy_id` SET TAGS ('dbx_business_glossary_term' = 'Provider Taxonomy Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` ALTER COLUMN `application_submitted_date` SET TAGS ('dbx_business_glossary_term' = 'Application Submitted Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` ALTER COLUMN `approval_date` SET TAGS ('dbx_business_glossary_term' = 'Enrollment Approval Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` ALTER COLUMN `billing_npi` SET TAGS ('dbx_business_glossary_term' = 'Billing National Provider Identifier (NPI)');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` ALTER COLUMN `billing_npi` SET TAGS ('dbx_value_regex' = '^[0-9]{10}$');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` ALTER COLUMN `credentialing_expiration_date` SET TAGS ('dbx_business_glossary_term' = 'Credentialing Expiration Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` ALTER COLUMN `credentialing_status` SET TAGS ('dbx_business_glossary_term' = 'Credentialing Status');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` ALTER COLUMN `credentialing_status` SET TAGS ('dbx_value_regex' = 'credentialed|provisional|pending|expired|denied');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` ALTER COLUMN `credentialing_tier` SET TAGS ('dbx_business_glossary_term' = 'Credentialing Tier');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` ALTER COLUMN `credentialing_tier` SET TAGS ('dbx_value_regex' = 'tier_1|tier_2|tier_3|provisional');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` ALTER COLUMN `dea_number` SET TAGS ('dbx_business_glossary_term' = 'Drug Enforcement Administration (DEA) Number');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` ALTER COLUMN `dea_number` SET TAGS ('dbx_value_regex' = '^[A-Z]{2}[0-9]{7}$');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` ALTER COLUMN `dea_number` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` ALTER COLUMN `edi_submitter_code` SET TAGS ('dbx_business_glossary_term' = 'Electronic Data Interchange (EDI) Submitter ID');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` ALTER COLUMN `effective_date` SET TAGS ('dbx_business_glossary_term' = 'Enrollment Effective Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` ALTER COLUMN `eft_enrolled` SET TAGS ('dbx_business_glossary_term' = 'Electronic Funds Transfer (EFT) Enrolled Flag');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` ALTER COLUMN `enrollment_number` SET TAGS ('dbx_business_glossary_term' = 'Enrollment Number');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` ALTER COLUMN `enrollment_source` SET TAGS ('dbx_business_glossary_term' = 'Enrollment Source');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` ALTER COLUMN `enrollment_source` SET TAGS ('dbx_value_regex' = 'symplr|pecos|state_portal|paper|edi_enrollment|other');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` ALTER COLUMN `enrollment_status` SET TAGS ('dbx_business_glossary_term' = 'Enrollment Status');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` ALTER COLUMN `enrollment_status` SET TAGS ('dbx_value_regex' = 'active|pending|terminated|suspended|rejected|revalidation_required');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` ALTER COLUMN `enrollment_type` SET TAGS ('dbx_business_glossary_term' = 'Enrollment Type');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` ALTER COLUMN `enrollment_type` SET TAGS ('dbx_value_regex' = 'participating|non_participating|opt_out|reassignment');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` ALTER COLUMN `group_npi` SET TAGS ('dbx_business_glossary_term' = 'Group National Provider Identifier (NPI)');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` ALTER COLUMN `group_npi` SET TAGS ('dbx_value_regex' = '^[0-9]{10}$');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` ALTER COLUMN `license_state` SET TAGS ('dbx_business_glossary_term' = 'License State');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` ALTER COLUMN `license_state` SET TAGS ('dbx_value_regex' = '^[A-Z]{2}$');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` ALTER COLUMN `license_state` SET TAGS ('dbx_pii_category' = 'person_data');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` ALTER COLUMN `medicaid_provider_number` SET TAGS ('dbx_business_glossary_term' = 'Medicaid Provider Number');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` ALTER COLUMN `medicaid_provider_number` SET TAGS ('dbx_pii_person_data' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` ALTER COLUMN `network_status` SET TAGS ('dbx_business_glossary_term' = 'Network Status');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` ALTER COLUMN `network_status` SET TAGS ('dbx_value_regex' = 'in_network|out_of_network|pending_network');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Enrollment Notes');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` ALTER COLUMN `oig_exclusion_check_date` SET TAGS ('dbx_business_glossary_term' = 'OIG Exclusion Check Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` ALTER COLUMN `oig_exclusion_checked` SET TAGS ('dbx_business_glossary_term' = 'Office of Inspector General (OIG) Exclusion Check Flag');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` ALTER COLUMN `pay_to_address_line1` SET TAGS ('dbx_business_glossary_term' = 'Pay-To Address Line 1');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` ALTER COLUMN `pay_to_address_line1` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` ALTER COLUMN `pay_to_address_line1` SET TAGS ('dbx_pii_address' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` ALTER COLUMN `payer_plan_name` SET TAGS ('dbx_business_glossary_term' = 'Payer Plan Name');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` ALTER COLUMN `payer_type` SET TAGS ('dbx_business_glossary_term' = 'Payer Type');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` ALTER COLUMN `provider_type` SET TAGS ('dbx_business_glossary_term' = 'Provider Enrollment Type');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` ALTER COLUMN `provider_type` SET TAGS ('dbx_value_regex' = 'individual|group|facility|ancillary');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` ALTER COLUMN `ptan` SET TAGS ('dbx_business_glossary_term' = 'Provider Transaction Access Number (PTAN)');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` ALTER COLUMN `ptan` SET TAGS ('dbx_value_regex' = '^[A-Z0-9]{6,15}$');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` ALTER COLUMN `revalidation_due_date` SET TAGS ('dbx_business_glossary_term' = 'Revalidation Due Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` ALTER COLUMN `sam_exclusion_checked` SET TAGS ('dbx_business_glossary_term' = 'System for Award Management (SAM) Exclusion Check Flag');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` ALTER COLUMN `service_address_line1` SET TAGS ('dbx_business_glossary_term' = 'Service Address Line 1');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` ALTER COLUMN `service_address_line1` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` ALTER COLUMN `service_address_line1` SET TAGS ('dbx_pii_address' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` ALTER COLUMN `service_city` SET TAGS ('dbx_business_glossary_term' = 'Service City');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` ALTER COLUMN `service_city` SET TAGS ('dbx_pii_category' = 'person_data');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` ALTER COLUMN `service_state` SET TAGS ('dbx_business_glossary_term' = 'Service State');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` ALTER COLUMN `service_state` SET TAGS ('dbx_value_regex' = '^[A-Z]{2}$');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` ALTER COLUMN `service_state` SET TAGS ('dbx_pii_category' = 'person_data');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` ALTER COLUMN `service_zip_code` SET TAGS ('dbx_business_glossary_term' = 'Service ZIP Code');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` ALTER COLUMN `service_zip_code` SET TAGS ('dbx_value_regex' = '^[0-9]{5}(-[0-9]{4})?$');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` ALTER COLUMN `service_zip_code` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` ALTER COLUMN `service_zip_code` SET TAGS ('dbx_pii_address' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` ALTER COLUMN `state_license_number` SET TAGS ('dbx_business_glossary_term' = 'State Medical License Number');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` ALTER COLUMN `state_license_number` SET TAGS ('dbx_pii_person_data' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` ALTER COLUMN `tax_identification_number` SET TAGS ('dbx_business_glossary_term' = 'Tax Identification Number (TIN)');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` ALTER COLUMN `tax_identification_number` SET TAGS ('dbx_value_regex' = '^[0-9]{9}$');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` ALTER COLUMN `tax_identification_number` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` ALTER COLUMN `termination_date` SET TAGS ('dbx_business_glossary_term' = 'Enrollment Termination Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` ALTER COLUMN `termination_reason` SET TAGS ('dbx_business_glossary_term' = 'Termination Reason');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Updated Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`network_affiliation` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`network_affiliation` SET TAGS ('dbx_subdomain' = 'network_contracting');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`network_affiliation` ALTER COLUMN `network_affiliation_id` SET TAGS ('dbx_business_glossary_term' = 'Network Affiliation ID');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`network_affiliation` ALTER COLUMN `care_site_id` SET TAGS ('dbx_business_glossary_term' = 'Facility ID');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`network_affiliation` ALTER COLUMN `clinician_id` SET TAGS ('dbx_business_glossary_term' = 'Provider ID');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`network_affiliation` ALTER COLUMN `compliance_regulatory_submission_id` SET TAGS ('dbx_business_glossary_term' = 'Regulatory Submission Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`network_affiliation` ALTER COLUMN `group_id` SET TAGS ('dbx_business_glossary_term' = 'Group Practice ID');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`network_affiliation` ALTER COLUMN `org_provider_id` SET TAGS ('dbx_business_glossary_term' = 'Org Provider Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`network_affiliation` ALTER COLUMN `payer_contract_id` SET TAGS ('dbx_business_glossary_term' = 'Contract ID');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`network_affiliation` ALTER COLUMN `payer_contract_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`network_affiliation` ALTER COLUMN `payer_id` SET TAGS ('dbx_business_glossary_term' = 'Payer ID');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`network_affiliation` ALTER COLUMN `provider_network_id` SET TAGS ('dbx_business_glossary_term' = 'Network ID');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`network_affiliation` ALTER COLUMN `provider_payer_enrollment_id` SET TAGS ('dbx_business_glossary_term' = 'Payer Enrollment ID');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`network_affiliation` ALTER COLUMN `specialty_id` SET TAGS ('dbx_business_glossary_term' = 'Specialty Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`network_affiliation` ALTER COLUMN `accepts_new_patients` SET TAGS ('dbx_business_glossary_term' = 'Accepts New Patients Flag');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`network_affiliation` ALTER COLUMN `aco_participant_flag` SET TAGS ('dbx_business_glossary_term' = 'Accountable Care Organization (ACO) Participant Flag');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`network_affiliation` ALTER COLUMN `affiliation_status` SET TAGS ('dbx_business_glossary_term' = 'Affiliation Status');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`network_affiliation` ALTER COLUMN `affiliation_status` SET TAGS ('dbx_value_regex' = 'active|inactive|pending|suspended|terminated');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`network_affiliation` ALTER COLUMN `age_range_max` SET TAGS ('dbx_business_glossary_term' = 'Maximum Age Served');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`network_affiliation` ALTER COLUMN `age_range_max` SET TAGS ('dbx_pii_category' = 'person_data');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`network_affiliation` ALTER COLUMN `age_range_min` SET TAGS ('dbx_business_glossary_term' = 'Minimum Age Served');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`network_affiliation` ALTER COLUMN `age_range_min` SET TAGS ('dbx_pii_category' = 'person_data');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`network_affiliation` ALTER COLUMN `credentialing_expiration_date` SET TAGS ('dbx_business_glossary_term' = 'Credentialing Expiration Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`network_affiliation` ALTER COLUMN `credentialing_status` SET TAGS ('dbx_business_glossary_term' = 'Credentialing Status');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`network_affiliation` ALTER COLUMN `credentialing_status` SET TAGS ('dbx_value_regex' = 'credentialed|pending|expired|denied|re_credentialing');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`network_affiliation` ALTER COLUMN `directory_published_flag` SET TAGS ('dbx_business_glossary_term' = 'Directory Published Flag');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`network_affiliation` ALTER COLUMN `effective_date` SET TAGS ('dbx_business_glossary_term' = 'Effective Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`network_affiliation` ALTER COLUMN `gender_served` SET TAGS ('dbx_business_glossary_term' = 'Gender Served');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`network_affiliation` ALTER COLUMN `gender_served` SET TAGS ('dbx_value_regex' = 'all|male|female|pediatric');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`network_affiliation` ALTER COLUMN `gender_served` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`network_affiliation` ALTER COLUMN `gender_served` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`network_affiliation` ALTER COLUMN `gender_served` SET TAGS ('dbx_pii_person_data' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`network_affiliation` ALTER COLUMN `geographic_service_area` SET TAGS ('dbx_business_glossary_term' = 'Geographic Service Area');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`network_affiliation` ALTER COLUMN `handicap_accessible` SET TAGS ('dbx_business_glossary_term' = 'Handicap Accessible Flag');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`network_affiliation` ALTER COLUMN `hospital_affiliation_flag` SET TAGS ('dbx_business_glossary_term' = 'Hospital Affiliation Flag');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`network_affiliation` ALTER COLUMN `languages_spoken` SET TAGS ('dbx_business_glossary_term' = 'Languages Spoken');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`network_affiliation` ALTER COLUMN `languages_spoken` SET TAGS ('dbx_pii_category' = 'person_data');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`network_affiliation` ALTER COLUMN `last_verified_date` SET TAGS ('dbx_business_glossary_term' = 'Last Verified Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`network_affiliation` ALTER COLUMN `mips_eligible` SET TAGS ('dbx_business_glossary_term' = 'Merit-based Incentive Payment System (MIPS) Eligible Flag');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`network_affiliation` ALTER COLUMN `network_adequacy_category` SET TAGS ('dbx_business_glossary_term' = 'Network Adequacy Category');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`network_affiliation` ALTER COLUMN `network_adequacy_category` SET TAGS ('dbx_value_regex' = 'primary_care|specialist|behavioral_health|hospital|ancillary|pharmacy');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`network_affiliation` ALTER COLUMN `network_tier` SET TAGS ('dbx_business_glossary_term' = 'Network Tier');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`network_affiliation` ALTER COLUMN `network_tier` SET TAGS ('dbx_value_regex' = 'tier_1|tier_2|tier_3|tier_4');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`network_affiliation` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Affiliation Notes');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`network_affiliation` ALTER COLUMN `npi` SET TAGS ('dbx_business_glossary_term' = 'National Provider Identifier (NPI)');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`network_affiliation` ALTER COLUMN `npi` SET TAGS ('dbx_value_regex' = '^[0-9]{10}$');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`network_affiliation` ALTER COLUMN `npi` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`network_affiliation` ALTER COLUMN `panel_capacity` SET TAGS ('dbx_business_glossary_term' = 'Panel Capacity');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`network_affiliation` ALTER COLUMN `panel_capacity` SET TAGS ('dbx_pii_category' = 'person_data');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`network_affiliation` ALTER COLUMN `panel_current_count` SET TAGS ('dbx_business_glossary_term' = 'Panel Current Count');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`network_affiliation` ALTER COLUMN `panel_status` SET TAGS ('dbx_business_glossary_term' = 'Panel Status');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`network_affiliation` ALTER COLUMN `panel_status` SET TAGS ('dbx_value_regex' = 'open|closed|limited');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`network_affiliation` ALTER COLUMN `participation_type` SET TAGS ('dbx_business_glossary_term' = 'Participation Type');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`network_affiliation` ALTER COLUMN `participation_type` SET TAGS ('dbx_value_regex' = 'in_network|out_of_network|preferred|non_preferred|tiered');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`network_affiliation` ALTER COLUMN `primary_care_designation` SET TAGS ('dbx_business_glossary_term' = 'Primary Care Physician (PCP) Designation Flag');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`network_affiliation` ALTER COLUMN `record_created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`network_affiliation` ALTER COLUMN `record_updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Updated Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`network_affiliation` ALTER COLUMN `reimbursement_model` SET TAGS ('dbx_business_glossary_term' = 'Reimbursement Model');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`network_affiliation` ALTER COLUMN `reimbursement_model` SET TAGS ('dbx_value_regex' = 'fee_for_service|capitation|bundled_payment|value_based|salary|per_diem');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`network_affiliation` ALTER COLUMN `reimbursement_model` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`network_affiliation` ALTER COLUMN `service_area_state` SET TAGS ('dbx_business_glossary_term' = 'Service Area State');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`network_affiliation` ALTER COLUMN `service_area_state` SET TAGS ('dbx_value_regex' = '^[A-Z]{2}$');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`network_affiliation` ALTER COLUMN `service_area_state` SET TAGS ('dbx_pii_category' = 'person_data');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`network_affiliation` ALTER COLUMN `service_area_zip_code` SET TAGS ('dbx_business_glossary_term' = 'Service Area ZIP Code');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`network_affiliation` ALTER COLUMN `service_area_zip_code` SET TAGS ('dbx_value_regex' = '^[0-9]{5}(-[0-9]{4})?$');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`network_affiliation` ALTER COLUMN `service_area_zip_code` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`network_affiliation` ALTER COLUMN `service_area_zip_code` SET TAGS ('dbx_pii_address' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`network_affiliation` ALTER COLUMN `source_record_reference` SET TAGS ('dbx_business_glossary_term' = 'Source Record ID');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`network_affiliation` ALTER COLUMN `telehealth_eligible` SET TAGS ('dbx_business_glossary_term' = 'Telehealth Eligible Flag');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`network_affiliation` ALTER COLUMN `termination_date` SET TAGS ('dbx_business_glossary_term' = 'Termination Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`network_affiliation` ALTER COLUMN `termination_reason` SET TAGS ('dbx_business_glossary_term' = 'Termination Reason');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`network_affiliation` ALTER COLUMN `termination_reason` SET TAGS ('dbx_value_regex' = 'voluntary|involuntary|contract_expiration|credentialing_failure|retirement|other');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` SET TAGS ('dbx_subdomain' = 'provider_directory');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `group_id` SET TAGS ('dbx_business_glossary_term' = 'Provider Group ID');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `business_associate_agreement_id` SET TAGS ('dbx_business_glossary_term' = 'Business Associate Agreement Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `cost_center_id` SET TAGS ('dbx_business_glossary_term' = 'Cost Center Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `specialty_id` SET TAGS ('dbx_business_glossary_term' = 'Primary Specialty Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `taxonomy_id` SET TAGS ('dbx_business_glossary_term' = 'Provider Taxonomy Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `accepts_new_patients` SET TAGS ('dbx_business_glossary_term' = 'Accepts New Patients Flag');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `aco_participant` SET TAGS ('dbx_business_glossary_term' = 'Accountable Care Organization (ACO) Participant Flag');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `admin_contact_email` SET TAGS ('dbx_business_glossary_term' = 'Administrative Contact Email Address');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `admin_contact_email` SET TAGS ('dbx_value_regex' = '^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+.[a-zA-Z]{2,}$');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `admin_contact_email` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `admin_contact_email` SET TAGS ('dbx_pii_address' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `billing_entity_name` SET TAGS ('dbx_business_glossary_term' = 'Billing Entity Legal Name');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `billing_entity_name` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `billing_npi` SET TAGS ('dbx_business_glossary_term' = 'Billing National Provider Identifier (NPI)');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `billing_npi` SET TAGS ('dbx_value_regex' = '^[0-9]{10}$');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `billing_npi` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `contract_effective_date` SET TAGS ('dbx_business_glossary_term' = 'Group Contract Effective Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `contract_termination_date` SET TAGS ('dbx_business_glossary_term' = 'Group Contract Termination Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `credentialing_expiration_date` SET TAGS ('dbx_business_glossary_term' = 'Credentialing Expiration Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `credentialing_status` SET TAGS ('dbx_business_glossary_term' = 'Credentialing Status');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `credentialing_status` SET TAGS ('dbx_value_regex' = 'credentialed|pending_initial|pending_recredentialing|expired|denied|suspended');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `doing_business_as_name` SET TAGS ('dbx_business_glossary_term' = 'Doing Business As (DBA) Name');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `effective_date` SET TAGS ('dbx_business_glossary_term' = 'Provider Group Record Effective Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `fqhc_designation` SET TAGS ('dbx_business_glossary_term' = 'Federally Qualified Health Center (FQHC) Designation Flag');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `hl7_fhir_organization_reference` SET TAGS ('dbx_business_glossary_term' = 'HL7 FHIR Organization Resource ID');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `hospital_affiliation` SET TAGS ('dbx_business_glossary_term' = 'Primary Hospital Affiliation Name');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `languages_supported` SET TAGS ('dbx_business_glossary_term' = 'Languages Supported');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `languages_supported` SET TAGS ('dbx_pii_category' = 'person_data');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `last_credentialing_date` SET TAGS ('dbx_business_glossary_term' = 'Last Credentialing Completed Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `medicaid_enrollment_status` SET TAGS ('dbx_business_glossary_term' = 'Medicaid Enrollment Status');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `medicaid_enrollment_status` SET TAGS ('dbx_value_regex' = 'enrolled|not_enrolled|pending|terminated');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `medicaid_enrollment_status` SET TAGS ('dbx_pii_person_data' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `medicare_enrollment_status` SET TAGS ('dbx_business_glossary_term' = 'Medicare Enrollment Status');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `medicare_enrollment_status` SET TAGS ('dbx_value_regex' = 'enrolled|opt_out|not_enrolled|pending|terminated');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `medicare_enrollment_status` SET TAGS ('dbx_pii_person_data' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `mips_eligible` SET TAGS ('dbx_business_glossary_term' = 'Merit-based Incentive Payment System (MIPS) Eligible Flag');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `mips_group_reporting` SET TAGS ('dbx_business_glossary_term' = 'MIPS Group Reporting Election Flag');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `group_name` SET TAGS ('dbx_business_glossary_term' = 'Provider Group Legal Name');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `group_name` SET TAGS ('dbx_pii_person_data' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `network_participation_status` SET TAGS ('dbx_business_glossary_term' = 'Network Participation Status');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `network_participation_status` SET TAGS ('dbx_value_regex' = 'in_network|out_of_network|pending|terminated');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `npi` SET TAGS ('dbx_business_glossary_term' = 'Group National Provider Identifier (NPI)');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `npi` SET TAGS ('dbx_value_regex' = '^[0-9]{10}$');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `npi` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `payer_enrollment_status` SET TAGS ('dbx_business_glossary_term' = 'Payer Enrollment Status');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `payer_enrollment_status` SET TAGS ('dbx_value_regex' = 'enrolled|pending|not_enrolled|terminated');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `primary_fax` SET TAGS ('dbx_business_glossary_term' = 'Primary Fax Number');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `primary_fax` SET TAGS ('dbx_value_regex' = '^+?[0-9-() ]{7,20}$');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `primary_fax` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `primary_fax` SET TAGS ('dbx_pii_phone' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `primary_phone` SET TAGS ('dbx_business_glossary_term' = 'Primary Contact Phone Number');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `primary_phone` SET TAGS ('dbx_value_regex' = '^+?[0-9-() ]{7,20}$');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `primary_phone` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `primary_phone` SET TAGS ('dbx_pii_phone' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `primary_service_address_line1` SET TAGS ('dbx_business_glossary_term' = 'Primary Service Location Address Line 1');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `primary_service_address_line1` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `primary_service_address_line1` SET TAGS ('dbx_pii_address' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `primary_service_city` SET TAGS ('dbx_business_glossary_term' = 'Primary Service Location City');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `primary_service_city` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `primary_service_city` SET TAGS ('dbx_pii_address' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `primary_service_state` SET TAGS ('dbx_business_glossary_term' = 'Primary Service Location State');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `primary_service_state` SET TAGS ('dbx_value_regex' = '^[A-Z]{2}$');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `primary_service_state` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `primary_service_state` SET TAGS ('dbx_pii_address' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `primary_service_zip` SET TAGS ('dbx_business_glossary_term' = 'Primary Service Location ZIP Code');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `primary_service_zip` SET TAGS ('dbx_value_regex' = '^[0-9]{5}(-[0-9]{4})?$');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `primary_service_zip` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `primary_service_zip` SET TAGS ('dbx_pii_address' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `rhc_designation` SET TAGS ('dbx_business_glossary_term' = 'Rural Health Clinic (RHC) Designation Flag');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `size` SET TAGS ('dbx_business_glossary_term' = 'Provider Group Size (Clinician Count)');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `source_system_group_reference` SET TAGS ('dbx_business_glossary_term' = 'Source System Provider Group Identifier');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `group_status` SET TAGS ('dbx_business_glossary_term' = 'Provider Group Status');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `group_status` SET TAGS ('dbx_value_regex' = 'active|inactive|pending|suspended|terminated');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `tax_identification_number` SET TAGS ('dbx_business_glossary_term' = 'Federal Tax Identification Number (TIN/EIN)');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `tax_identification_number` SET TAGS ('dbx_value_regex' = '^[0-9]{2}-[0-9]{7}$');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `tax_identification_number` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `telehealth_capable` SET TAGS ('dbx_business_glossary_term' = 'Telehealth Capable Flag');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `termination_date` SET TAGS ('dbx_business_glossary_term' = 'Provider Group Record Termination Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `group_type` SET TAGS ('dbx_business_glossary_term' = 'Provider Group Type');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Last Updated Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `website_url` SET TAGS ('dbx_business_glossary_term' = 'Provider Group Website URL');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `website_url` SET TAGS ('dbx_value_regex' = '^https?://[^s/$.?#].[^s]*$');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`group_membership` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`group_membership` SET TAGS ('dbx_subdomain' = 'provider_directory');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`group_membership` ALTER COLUMN `group_membership_id` SET TAGS ('dbx_business_glossary_term' = 'Group Membership ID');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`group_membership` ALTER COLUMN `care_site_id` SET TAGS ('dbx_business_glossary_term' = 'Primary Practice Location ID');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`group_membership` ALTER COLUMN `group_id` SET TAGS ('dbx_business_glossary_term' = 'Provider Group Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`group_membership` ALTER COLUMN `clinician_id` SET TAGS ('dbx_business_glossary_term' = 'Provider ID');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`group_membership` ALTER COLUMN `org_provider_id` SET TAGS ('dbx_business_glossary_term' = 'Organization ID');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`group_membership` ALTER COLUMN `academic_appointment_rank` SET TAGS ('dbx_business_glossary_term' = 'Academic Appointment Rank');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`group_membership` ALTER COLUMN `academic_appointment_rank` SET TAGS ('dbx_value_regex' = 'instructor|assistant_professor|associate_professor|professor|clinical_professor|adjunct');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`group_membership` ALTER COLUMN `aco_participation` SET TAGS ('dbx_business_glossary_term' = 'Accountable Care Organization (ACO) Participation Indicator');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`group_membership` ALTER COLUMN `contract_end_date` SET TAGS ('dbx_business_glossary_term' = 'Contract End Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`group_membership` ALTER COLUMN `contract_number` SET TAGS ('dbx_business_glossary_term' = 'Contract Number');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`group_membership` ALTER COLUMN `contract_start_date` SET TAGS ('dbx_business_glossary_term' = 'Contract Start Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`group_membership` ALTER COLUMN `cost_center_code` SET TAGS ('dbx_business_glossary_term' = 'Cost Center Code');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`group_membership` ALTER COLUMN `credentialing_expiration_date` SET TAGS ('dbx_business_glossary_term' = 'Credentialing Expiration Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`group_membership` ALTER COLUMN `credentialing_status` SET TAGS ('dbx_business_glossary_term' = 'Credentialing Status');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`group_membership` ALTER COLUMN `credentialing_status` SET TAGS ('dbx_value_regex' = 'credentialed|pending|expired|suspended|revoked|not_applicable');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`group_membership` ALTER COLUMN `department` SET TAGS ('dbx_business_glossary_term' = 'Department');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`group_membership` ALTER COLUMN `departure_reason` SET TAGS ('dbx_business_glossary_term' = 'Departure Reason');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`group_membership` ALTER COLUMN `effective_date` SET TAGS ('dbx_business_glossary_term' = 'Effective Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`group_membership` ALTER COLUMN `employment_type` SET TAGS ('dbx_business_glossary_term' = 'Employment Type');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`group_membership` ALTER COLUMN `employment_type` SET TAGS ('dbx_value_regex' = 'employed|independent_contractor|locum_tenens|per_diem|volunteer|academic_appointment');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`group_membership` ALTER COLUMN `end_date` SET TAGS ('dbx_business_glossary_term' = 'End Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`group_membership` ALTER COLUMN `fte_allocation` SET TAGS ('dbx_business_glossary_term' = 'Full-Time Equivalent (FTE) Allocation');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`group_membership` ALTER COLUMN `is_accepting_patients` SET TAGS ('dbx_business_glossary_term' = 'Accepting Patients Indicator');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`group_membership` ALTER COLUMN `is_primary_affiliation` SET TAGS ('dbx_business_glossary_term' = 'Primary Affiliation Indicator');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`group_membership` ALTER COLUMN `is_voluntary_separation` SET TAGS ('dbx_business_glossary_term' = 'Voluntary Separation Indicator');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`group_membership` ALTER COLUMN `medical_staff_category` SET TAGS ('dbx_business_glossary_term' = 'Medical Staff Category');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`group_membership` ALTER COLUMN `medical_staff_category` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`group_membership` ALTER COLUMN `medical_staff_category` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`group_membership` ALTER COLUMN `membership_role` SET TAGS ('dbx_business_glossary_term' = 'Membership Role');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`group_membership` ALTER COLUMN `membership_status` SET TAGS ('dbx_business_glossary_term' = 'Membership Status');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`group_membership` ALTER COLUMN `membership_status` SET TAGS ('dbx_value_regex' = 'active|inactive|pending|suspended|terminated|on_leave');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`group_membership` ALTER COLUMN `mips_eligible` SET TAGS ('dbx_business_glossary_term' = 'Merit-based Incentive Payment System (MIPS) Eligible Indicator');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`group_membership` ALTER COLUMN `network_participation_status` SET TAGS ('dbx_business_glossary_term' = 'Network Participation Status');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`group_membership` ALTER COLUMN `network_participation_status` SET TAGS ('dbx_value_regex' = 'in_network|out_of_network|pending|terminated');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`group_membership` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Affiliation Notes');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`group_membership` ALTER COLUMN `npdb_report_date` SET TAGS ('dbx_business_glossary_term' = 'National Practitioner Data Bank (NPDB) Report Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`group_membership` ALTER COLUMN `npdb_report_required` SET TAGS ('dbx_business_glossary_term' = 'National Practitioner Data Bank (NPDB) Report Required Indicator');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`group_membership` ALTER COLUMN `npi` SET TAGS ('dbx_business_glossary_term' = 'National Provider Identifier (NPI)');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`group_membership` ALTER COLUMN `npi` SET TAGS ('dbx_value_regex' = '^[0-9]{10}$');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`group_membership` ALTER COLUMN `payer_enrollment_status` SET TAGS ('dbx_business_glossary_term' = 'Payer Enrollment Status');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`group_membership` ALTER COLUMN `payer_enrollment_status` SET TAGS ('dbx_value_regex' = 'enrolled|pending|not_enrolled|terminated|excluded');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`group_membership` ALTER COLUMN `primary_specialty` SET TAGS ('dbx_business_glossary_term' = 'Primary Specialty');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`group_membership` ALTER COLUMN `privileging_status` SET TAGS ('dbx_business_glossary_term' = 'Privileging Status');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`group_membership` ALTER COLUMN `privileging_status` SET TAGS ('dbx_value_regex' = 'granted|pending|provisional|suspended|revoked|not_applicable');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`group_membership` ALTER COLUMN `record_created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`group_membership` ALTER COLUMN `record_updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Updated Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`group_membership` ALTER COLUMN `secondary_specialty` SET TAGS ('dbx_business_glossary_term' = 'Secondary Specialty');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`group_membership` ALTER COLUMN `source_system_record_reference` SET TAGS ('dbx_business_glossary_term' = 'Source System Record ID');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`group_membership` ALTER COLUMN `supervision_level` SET TAGS ('dbx_business_glossary_term' = 'Supervision Level');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`group_membership` ALTER COLUMN `supervision_level` SET TAGS ('dbx_value_regex' = 'independent|supervised|collaborative|delegated');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`group_membership` ALTER COLUMN `tax_identification_number` SET TAGS ('dbx_business_glossary_term' = 'Tax Identification Number (TIN)');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`group_membership` ALTER COLUMN `tax_identification_number` SET TAGS ('dbx_value_regex' = '^[0-9]{9}$');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`group_membership` ALTER COLUMN `tax_identification_number` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`group_membership` ALTER COLUMN `verified_by` SET TAGS ('dbx_business_glossary_term' = 'Verified By');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`group_membership` ALTER COLUMN `verified_date` SET TAGS ('dbx_business_glossary_term' = 'Primary Source Verification Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`malpractice_coverage` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`malpractice_coverage` SET TAGS ('dbx_subdomain' = 'credentialing_compliance');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`malpractice_coverage` ALTER COLUMN `malpractice_coverage_id` SET TAGS ('dbx_business_glossary_term' = 'Malpractice Coverage ID');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`malpractice_coverage` ALTER COLUMN `malpractice_coverage_id` SET TAGS ('dbx_pii_category' = 'person_data');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`malpractice_coverage` ALTER COLUMN `ap_invoice_id` SET TAGS ('dbx_business_glossary_term' = 'Ap Invoice Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`malpractice_coverage` ALTER COLUMN `audit_id` SET TAGS ('dbx_business_glossary_term' = 'Audit Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`malpractice_coverage` ALTER COLUMN `care_site_id` SET TAGS ('dbx_business_glossary_term' = 'Facility ID');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`malpractice_coverage` ALTER COLUMN `clinician_id` SET TAGS ('dbx_business_glossary_term' = 'Provider ID');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`malpractice_coverage` ALTER COLUMN `credentialing_application_id` SET TAGS ('dbx_business_glossary_term' = 'Credentialing Application Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`malpractice_coverage` ALTER COLUMN `credentialing_file_id` SET TAGS ('dbx_business_glossary_term' = 'Credentialing File ID');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`malpractice_coverage` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Employee Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`malpractice_coverage` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`malpractice_coverage` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`malpractice_coverage` ALTER COLUMN `aggregate_limit` SET TAGS ('dbx_business_glossary_term' = 'Aggregate Limit');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`malpractice_coverage` ALTER COLUMN `aggregate_limit` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`malpractice_coverage` ALTER COLUMN `certificate_of_insurance_url` SET TAGS ('dbx_business_glossary_term' = 'Certificate of Insurance (COI) Document URL');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`malpractice_coverage` ALTER COLUMN `certificate_of_insurance_url` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`malpractice_coverage` ALTER COLUMN `claims_history_indicator` SET TAGS ('dbx_business_glossary_term' = 'Claims History Indicator');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`malpractice_coverage` ALTER COLUMN `coverage_lapse_indicator` SET TAGS ('dbx_business_glossary_term' = 'Coverage Lapse Indicator');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`malpractice_coverage` ALTER COLUMN `coverage_lapse_indicator` SET TAGS ('dbx_pii_category' = 'person_data');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`malpractice_coverage` ALTER COLUMN `coverage_specialty` SET TAGS ('dbx_business_glossary_term' = 'Coverage Specialty');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`malpractice_coverage` ALTER COLUMN `coverage_specialty` SET TAGS ('dbx_pii_category' = 'person_data');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`malpractice_coverage` ALTER COLUMN `coverage_state` SET TAGS ('dbx_business_glossary_term' = 'Coverage State');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`malpractice_coverage` ALTER COLUMN `coverage_state` SET TAGS ('dbx_value_regex' = '^[A-Z]{2}$');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`malpractice_coverage` ALTER COLUMN `coverage_state` SET TAGS ('dbx_pii_category' = 'person_data');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`malpractice_coverage` ALTER COLUMN `coverage_status` SET TAGS ('dbx_business_glossary_term' = 'Coverage Status');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`malpractice_coverage` ALTER COLUMN `coverage_status` SET TAGS ('dbx_value_regex' = 'active|expired|cancelled|pending|suspended');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`malpractice_coverage` ALTER COLUMN `coverage_status` SET TAGS ('dbx_pii_category' = 'person_data');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`malpractice_coverage` ALTER COLUMN `coverage_type` SET TAGS ('dbx_business_glossary_term' = 'Coverage Type');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`malpractice_coverage` ALTER COLUMN `coverage_type` SET TAGS ('dbx_value_regex' = 'occurrence|claims_made|claims_made_with_tail|nose_coverage|hybrid');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`malpractice_coverage` ALTER COLUMN `coverage_type` SET TAGS ('dbx_pii_category' = 'person_data');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`malpractice_coverage` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`malpractice_coverage` ALTER COLUMN `currency_code` SET TAGS ('dbx_business_glossary_term' = 'Currency Code');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`malpractice_coverage` ALTER COLUMN `currency_code` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`malpractice_coverage` ALTER COLUMN `effective_date` SET TAGS ('dbx_business_glossary_term' = 'Coverage Effective Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`malpractice_coverage` ALTER COLUMN `expiration_date` SET TAGS ('dbx_business_glossary_term' = 'Coverage Expiration Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`malpractice_coverage` ALTER COLUMN `group_policy_indicator` SET TAGS ('dbx_business_glossary_term' = 'Group Policy Indicator');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`malpractice_coverage` ALTER COLUMN `insurer_contact_name` SET TAGS ('dbx_business_glossary_term' = 'Insurer Contact Name');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`malpractice_coverage` ALTER COLUMN `insurer_contact_name` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`malpractice_coverage` ALTER COLUMN `insurer_contact_name` SET TAGS ('dbx_pii_identifier' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`malpractice_coverage` ALTER COLUMN `insurer_contact_phone` SET TAGS ('dbx_business_glossary_term' = 'Insurer Contact Phone');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`malpractice_coverage` ALTER COLUMN `insurer_contact_phone` SET TAGS ('dbx_value_regex' = '^+?[0-9-s().]{7,20}$');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`malpractice_coverage` ALTER COLUMN `insurer_contact_phone` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`malpractice_coverage` ALTER COLUMN `insurer_contact_phone` SET TAGS ('dbx_pii_phone' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`malpractice_coverage` ALTER COLUMN `insurer_naic_code` SET TAGS ('dbx_business_glossary_term' = 'Insurer National Association of Insurance Commissioners (NAIC) Code');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`malpractice_coverage` ALTER COLUMN `insurer_naic_code` SET TAGS ('dbx_value_regex' = '^[0-9]{5}$');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`malpractice_coverage` ALTER COLUMN `lapse_explanation` SET TAGS ('dbx_business_glossary_term' = 'Coverage Lapse Explanation');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`malpractice_coverage` ALTER COLUMN `nose_coverage_indicator` SET TAGS ('dbx_business_glossary_term' = 'Nose Coverage (Prior Acts) Indicator');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`malpractice_coverage` ALTER COLUMN `nose_coverage_indicator` SET TAGS ('dbx_pii_category' = 'person_data');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`malpractice_coverage` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Coverage Notes');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`malpractice_coverage` ALTER COLUMN `open_claims_count` SET TAGS ('dbx_business_glossary_term' = 'Open Claims Count');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`malpractice_coverage` ALTER COLUMN `open_claims_count` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`malpractice_coverage` ALTER COLUMN `per_occurrence_limit` SET TAGS ('dbx_business_glossary_term' = 'Per-Occurrence Limit');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`malpractice_coverage` ALTER COLUMN `per_occurrence_limit` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`malpractice_coverage` ALTER COLUMN `policy_holder_name` SET TAGS ('dbx_business_glossary_term' = 'Policy Holder Name');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`malpractice_coverage` ALTER COLUMN `policy_holder_name` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`malpractice_coverage` ALTER COLUMN `policy_number` SET TAGS ('dbx_business_glossary_term' = 'Policy Number');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`malpractice_coverage` ALTER COLUMN `policy_number` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`malpractice_coverage` ALTER COLUMN `prior_acts_date` SET TAGS ('dbx_business_glossary_term' = 'Prior Acts Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`malpractice_coverage` ALTER COLUMN `renewal_reminder_date` SET TAGS ('dbx_business_glossary_term' = 'Renewal Reminder Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`malpractice_coverage` ALTER COLUMN `self_insured_indicator` SET TAGS ('dbx_business_glossary_term' = 'Self-Insured Indicator');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`malpractice_coverage` ALTER COLUMN `source_record_reference` SET TAGS ('dbx_business_glossary_term' = 'Source Record ID');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`malpractice_coverage` ALTER COLUMN `tail_coverage_effective_date` SET TAGS ('dbx_business_glossary_term' = 'Tail Coverage Effective Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`malpractice_coverage` ALTER COLUMN `tail_coverage_effective_date` SET TAGS ('dbx_pii_category' = 'person_data');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`malpractice_coverage` ALTER COLUMN `tail_coverage_expiration_date` SET TAGS ('dbx_business_glossary_term' = 'Tail Coverage Expiration Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`malpractice_coverage` ALTER COLUMN `tail_coverage_expiration_date` SET TAGS ('dbx_pii_category' = 'person_data');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`malpractice_coverage` ALTER COLUMN `tail_coverage_indicator` SET TAGS ('dbx_business_glossary_term' = 'Tail Coverage Indicator');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`malpractice_coverage` ALTER COLUMN `tail_coverage_indicator` SET TAGS ('dbx_pii_category' = 'person_data');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`malpractice_coverage` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Updated Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`malpractice_coverage` ALTER COLUMN `verification_date` SET TAGS ('dbx_business_glossary_term' = 'Verification Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`malpractice_coverage` ALTER COLUMN `verification_method` SET TAGS ('dbx_business_glossary_term' = 'Verification Method');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`malpractice_coverage` ALTER COLUMN `verification_method` SET TAGS ('dbx_value_regex' = 'phone|fax|online_portal|written_confirmation|automated_feed');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`malpractice_coverage` ALTER COLUMN `verification_status` SET TAGS ('dbx_business_glossary_term' = 'Verification Status');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`malpractice_coverage` ALTER COLUMN `verification_status` SET TAGS ('dbx_value_regex' = 'verified|pending|failed|waived');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`malpractice_coverage` ALTER COLUMN `verified_by` SET TAGS ('dbx_business_glossary_term' = 'Verified By');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`npdb_query` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`npdb_query` SET TAGS ('dbx_subdomain' = 'credentialing_compliance');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`npdb_query` ALTER COLUMN `npdb_query_id` SET TAGS ('dbx_business_glossary_term' = 'National Practitioner Data Bank (NPDB) Query ID');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`npdb_query` ALTER COLUMN `care_site_id` SET TAGS ('dbx_business_glossary_term' = 'Facility ID');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`npdb_query` ALTER COLUMN `clinician_id` SET TAGS ('dbx_business_glossary_term' = 'Provider ID');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`npdb_query` ALTER COLUMN `compliance_regulatory_submission_id` SET TAGS ('dbx_business_glossary_term' = 'Regulatory Submission Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`npdb_query` ALTER COLUMN `credentialing_application_id` SET TAGS ('dbx_business_glossary_term' = 'Credentialing Application ID');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`npdb_query` ALTER COLUMN `original_query_npdb_query_id` SET TAGS ('dbx_business_glossary_term' = 'Original National Practitioner Data Bank (NPDB) Query ID');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`npdb_query` ALTER COLUMN `reappointment_id` SET TAGS ('dbx_business_glossary_term' = 'Reappointment Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`npdb_query` ALTER COLUMN `adverse_action_flag` SET TAGS ('dbx_business_glossary_term' = 'Adverse Action Flag');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`npdb_query` ALTER COLUMN `adverse_action_report_count` SET TAGS ('dbx_business_glossary_term' = 'Adverse Action Report Count');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`npdb_query` ALTER COLUMN `cms_participating_facility_flag` SET TAGS ('dbx_business_glossary_term' = 'Centers for Medicare and Medicaid Services (CMS) Participating Facility Flag');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`npdb_query` ALTER COLUMN `continuous_query_disenrollment_date` SET TAGS ('dbx_business_glossary_term' = 'Continuous Query Disenrollment Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`npdb_query` ALTER COLUMN `continuous_query_enrollment_date` SET TAGS ('dbx_business_glossary_term' = 'Continuous Query Enrollment Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`npdb_query` ALTER COLUMN `continuous_query_enrollment_flag` SET TAGS ('dbx_business_glossary_term' = 'Continuous Query Enrollment Flag');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`npdb_query` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`npdb_query` ALTER COLUMN `credentialing_purpose` SET TAGS ('dbx_business_glossary_term' = 'Credentialing Purpose');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`npdb_query` ALTER COLUMN `credentialing_purpose` SET TAGS ('dbx_value_regex' = 'initial_appointment|reappointment|privilege_expansion|locum_tenens|telemedicine|research');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`npdb_query` ALTER COLUMN `error_code` SET TAGS ('dbx_business_glossary_term' = 'National Practitioner Data Bank (NPDB) Query Error Code');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`npdb_query` ALTER COLUMN `error_description` SET TAGS ('dbx_business_glossary_term' = 'National Practitioner Data Bank (NPDB) Query Error Description');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`npdb_query` ALTER COLUMN `malpractice_payment_flag` SET TAGS ('dbx_business_glossary_term' = 'Malpractice Payment Flag');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`npdb_query` ALTER COLUMN `malpractice_payment_report_count` SET TAGS ('dbx_business_glossary_term' = 'Malpractice Payment Report Count');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`npdb_query` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'National Practitioner Data Bank (NPDB) Query Notes');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`npdb_query` ALTER COLUMN `notes` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`npdb_query` ALTER COLUMN `practitioner_type` SET TAGS ('dbx_business_glossary_term' = 'Practitioner Type');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`npdb_query` ALTER COLUMN `practitioner_type` SET TAGS ('dbx_value_regex' = 'physician|dentist|nurse_practitioner|physician_assistant|podiatrist|other');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`npdb_query` ALTER COLUMN `queried_date_of_birth` SET TAGS ('dbx_business_glossary_term' = 'Queried Practitioner Date of Birth');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`npdb_query` ALTER COLUMN `queried_date_of_birth` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`npdb_query` ALTER COLUMN `queried_date_of_birth` SET TAGS ('dbx_pii_identifier' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`npdb_query` ALTER COLUMN `queried_dea_number` SET TAGS ('dbx_business_glossary_term' = 'Queried Drug Enforcement Administration (DEA) Number');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`npdb_query` ALTER COLUMN `queried_dea_number` SET TAGS ('dbx_value_regex' = '^[A-Z]{2}[0-9]{7}$');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`npdb_query` ALTER COLUMN `queried_dea_number` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`npdb_query` ALTER COLUMN `queried_dea_number` SET TAGS ('dbx_pii_identifier' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`npdb_query` ALTER COLUMN `queried_license_state` SET TAGS ('dbx_business_glossary_term' = 'Queried License State');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`npdb_query` ALTER COLUMN `queried_license_state` SET TAGS ('dbx_value_regex' = '^[A-Z]{2}$');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`npdb_query` ALTER COLUMN `queried_license_state` SET TAGS ('dbx_pii_category' = 'person_data');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`npdb_query` ALTER COLUMN `queried_npi` SET TAGS ('dbx_business_glossary_term' = 'Queried National Provider Identifier (NPI)');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`npdb_query` ALTER COLUMN `queried_npi` SET TAGS ('dbx_value_regex' = '^[0-9]{10}$');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`npdb_query` ALTER COLUMN `queried_npi` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`npdb_query` ALTER COLUMN `queried_npi` SET TAGS ('dbx_pii_identifier' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`npdb_query` ALTER COLUMN `queried_practitioner_name` SET TAGS ('dbx_business_glossary_term' = 'Queried Practitioner Full Name');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`npdb_query` ALTER COLUMN `queried_practitioner_name` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`npdb_query` ALTER COLUMN `queried_practitioner_name` SET TAGS ('dbx_pii_identifier' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`npdb_query` ALTER COLUMN `queried_ssn_last4` SET TAGS ('dbx_business_glossary_term' = 'Queried Social Security Number (SSN) Last Four Digits');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`npdb_query` ALTER COLUMN `queried_ssn_last4` SET TAGS ('dbx_value_regex' = '^[0-9]{4}$');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`npdb_query` ALTER COLUMN `queried_ssn_last4` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`npdb_query` ALTER COLUMN `queried_ssn_last4` SET TAGS ('dbx_pii_identifier' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`npdb_query` ALTER COLUMN `queried_state_license_number` SET TAGS ('dbx_business_glossary_term' = 'Queried State License Number');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`npdb_query` ALTER COLUMN `queried_state_license_number` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`npdb_query` ALTER COLUMN `queried_state_license_number` SET TAGS ('dbx_pii_identifier' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`npdb_query` ALTER COLUMN `query_date` SET TAGS ('dbx_business_glossary_term' = 'National Practitioner Data Bank (NPDB) Query Submission Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`npdb_query` ALTER COLUMN `query_expiration_date` SET TAGS ('dbx_business_glossary_term' = 'National Practitioner Data Bank (NPDB) Query Expiration Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`npdb_query` ALTER COLUMN `query_reference_number` SET TAGS ('dbx_business_glossary_term' = 'National Practitioner Data Bank (NPDB) Query Reference Number');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`npdb_query` ALTER COLUMN `query_status` SET TAGS ('dbx_business_glossary_term' = 'National Practitioner Data Bank (NPDB) Query Status');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`npdb_query` ALTER COLUMN `query_status` SET TAGS ('dbx_value_regex' = 'submitted|pending|completed|error|cancelled');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`npdb_query` ALTER COLUMN `query_type` SET TAGS ('dbx_business_glossary_term' = 'National Practitioner Data Bank (NPDB) Query Type');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`npdb_query` ALTER COLUMN `query_type` SET TAGS ('dbx_value_regex' = 'initial_credentialing|reappointment|continuous_query|one_time_self|one_time_entity');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`npdb_query` ALTER COLUMN `querying_organization_name` SET TAGS ('dbx_business_glossary_term' = 'Querying Organization Name');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`npdb_query` ALTER COLUMN `querying_organization_npdb_number` SET TAGS ('dbx_business_glossary_term' = 'Querying Organization National Practitioner Data Bank (NPDB) Registration ID');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`npdb_query` ALTER COLUMN `report_count` SET TAGS ('dbx_business_glossary_term' = 'National Practitioner Data Bank (NPDB) Report Count');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`npdb_query` ALTER COLUMN `response_date` SET TAGS ('dbx_business_glossary_term' = 'National Practitioner Data Bank (NPDB) Query Response Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`npdb_query` ALTER COLUMN `response_document_reference` SET TAGS ('dbx_business_glossary_term' = 'National Practitioner Data Bank (NPDB) Response Document Reference');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`npdb_query` ALTER COLUMN `response_document_reference` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`npdb_query` ALTER COLUMN `response_status` SET TAGS ('dbx_business_glossary_term' = 'National Practitioner Data Bank (NPDB) Response Status');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`npdb_query` ALTER COLUMN `response_status` SET TAGS ('dbx_value_regex' = 'no_report|report_found|subject_not_found|error|pending');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`npdb_query` ALTER COLUMN `response_turnaround_days` SET TAGS ('dbx_business_glossary_term' = 'National Practitioner Data Bank (NPDB) Response Turnaround Days');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`npdb_query` ALTER COLUMN `resubmission_flag` SET TAGS ('dbx_business_glossary_term' = 'Query Resubmission Flag');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`npdb_query` ALTER COLUMN `review_completed_date` SET TAGS ('dbx_business_glossary_term' = 'Credentialing Committee Review Completed Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`npdb_query` ALTER COLUMN `review_outcome` SET TAGS ('dbx_business_glossary_term' = 'Credentialing Review Outcome');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`npdb_query` ALTER COLUMN `review_outcome` SET TAGS ('dbx_value_regex' = 'approved|approved_with_conditions|deferred|denied|pending');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`npdb_query` ALTER COLUMN `review_required_flag` SET TAGS ('dbx_business_glossary_term' = 'Credentialing Committee Review Required Flag');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`npdb_query` ALTER COLUMN `submission_method` SET TAGS ('dbx_business_glossary_term' = 'National Practitioner Data Bank (NPDB) Query Submission Method');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`npdb_query` ALTER COLUMN `submission_method` SET TAGS ('dbx_value_regex' = 'electronic|manual|api');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`npdb_query` ALTER COLUMN `submitted_by_user` SET TAGS ('dbx_business_glossary_term' = 'Query Submitted By User');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`npdb_query` ALTER COLUMN `submitted_by_user` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`npdb_query` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Last Updated Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`dea_registration` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`dea_registration` SET TAGS ('dbx_subdomain' = 'credentialing_compliance');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`dea_registration` ALTER COLUMN `dea_registration_id` SET TAGS ('dbx_business_glossary_term' = 'Drug Enforcement Administration (DEA) Registration ID');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`dea_registration` ALTER COLUMN `care_site_id` SET TAGS ('dbx_business_glossary_term' = 'Primary Practice Facility ID');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`dea_registration` ALTER COLUMN `clinician_id` SET TAGS ('dbx_business_glossary_term' = 'Provider ID');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`dea_registration` ALTER COLUMN `compliance_regulatory_submission_id` SET TAGS ('dbx_business_glossary_term' = 'Regulatory Submission Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`dea_registration` ALTER COLUMN `credentialing_application_id` SET TAGS ('dbx_business_glossary_term' = 'Credentialing Record ID');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`dea_registration` ALTER COLUMN `business_activity_type` SET TAGS ('dbx_business_glossary_term' = 'DEA Business Activity Type');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`dea_registration` ALTER COLUMN `days_until_expiration` SET TAGS ('dbx_business_glossary_term' = 'Days Until DEA Registration Expiration');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`dea_registration` ALTER COLUMN `dea_number` SET TAGS ('dbx_business_glossary_term' = 'Drug Enforcement Administration (DEA) Number');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`dea_registration` ALTER COLUMN `dea_number` SET TAGS ('dbx_value_regex' = '^[A-Z]{2}[0-9]{7}$');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`dea_registration` ALTER COLUMN `dea_number` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`dea_registration` ALTER COLUMN `dea_number` SET TAGS ('dbx_pii_identifier' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`dea_registration` ALTER COLUMN `expiration_alert_date` SET TAGS ('dbx_business_glossary_term' = 'DEA Expiration Alert Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`dea_registration` ALTER COLUMN `expiration_alert_sent` SET TAGS ('dbx_business_glossary_term' = 'DEA Expiration Alert Sent Flag');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`dea_registration` ALTER COLUMN `expiration_date` SET TAGS ('dbx_business_glossary_term' = 'DEA Registration Expiration Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`dea_registration` ALTER COLUMN `fee_amount` SET TAGS ('dbx_business_glossary_term' = 'DEA Registration Fee Amount');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`dea_registration` ALTER COLUMN `fee_exempt` SET TAGS ('dbx_business_glossary_term' = 'DEA Registration Fee Exemption Flag');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`dea_registration` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'DEA Registration Notes');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`dea_registration` ALTER COLUMN `npi_number` SET TAGS ('dbx_business_glossary_term' = 'National Provider Identifier (NPI) Number');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`dea_registration` ALTER COLUMN `npi_number` SET TAGS ('dbx_value_regex' = '^[0-9]{10}$');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`dea_registration` ALTER COLUMN `payment_date` SET TAGS ('dbx_business_glossary_term' = 'DEA Registration Fee Payment Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`dea_registration` ALTER COLUMN `pdmp_reporting_required` SET TAGS ('dbx_business_glossary_term' = 'Prescription Drug Monitoring Program (PDMP) Reporting Required Flag');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`dea_registration` ALTER COLUMN `practitioner_type_code` SET TAGS ('dbx_business_glossary_term' = 'DEA Practitioner Type Code');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`dea_registration` ALTER COLUMN `record_created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`dea_registration` ALTER COLUMN `record_updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Updated Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`dea_registration` ALTER COLUMN `registered_address_line1` SET TAGS ('dbx_business_glossary_term' = 'DEA Registered Address Line 1');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`dea_registration` ALTER COLUMN `registered_address_line1` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`dea_registration` ALTER COLUMN `registered_address_line1` SET TAGS ('dbx_pii_address' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`dea_registration` ALTER COLUMN `registered_address_line2` SET TAGS ('dbx_business_glossary_term' = 'DEA Registered Address Line 2');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`dea_registration` ALTER COLUMN `registered_address_line2` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`dea_registration` ALTER COLUMN `registered_address_line2` SET TAGS ('dbx_pii_address' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`dea_registration` ALTER COLUMN `registered_city` SET TAGS ('dbx_business_glossary_term' = 'DEA Registered City');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`dea_registration` ALTER COLUMN `registered_city` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`dea_registration` ALTER COLUMN `registered_city` SET TAGS ('dbx_pii_address' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`dea_registration` ALTER COLUMN `registered_name` SET TAGS ('dbx_business_glossary_term' = 'DEA Registered Name');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`dea_registration` ALTER COLUMN `registered_name` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`dea_registration` ALTER COLUMN `registered_name` SET TAGS ('dbx_pii_identifier' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`dea_registration` ALTER COLUMN `registered_zip_code` SET TAGS ('dbx_business_glossary_term' = 'DEA Registered ZIP Code');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`dea_registration` ALTER COLUMN `registered_zip_code` SET TAGS ('dbx_value_regex' = '^[0-9]{5}(-[0-9]{4})?$');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`dea_registration` ALTER COLUMN `registered_zip_code` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`dea_registration` ALTER COLUMN `registered_zip_code` SET TAGS ('dbx_pii_address' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`dea_registration` ALTER COLUMN `registration_date` SET TAGS ('dbx_business_glossary_term' = 'DEA Registration Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`dea_registration` ALTER COLUMN `registration_state` SET TAGS ('dbx_business_glossary_term' = 'DEA Registration State');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`dea_registration` ALTER COLUMN `registration_state` SET TAGS ('dbx_value_regex' = '^[A-Z]{2}$');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`dea_registration` ALTER COLUMN `registration_state` SET TAGS ('dbx_pii_category' = 'person_data');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`dea_registration` ALTER COLUMN `registration_status` SET TAGS ('dbx_business_glossary_term' = 'DEA Registration Status');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`dea_registration` ALTER COLUMN `registration_status` SET TAGS ('dbx_value_regex' = 'active|expired|suspended|revoked|pending|surrendered');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`dea_registration` ALTER COLUMN `registration_type` SET TAGS ('dbx_business_glossary_term' = 'DEA Registration Type');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`dea_registration` ALTER COLUMN `registration_type` SET TAGS ('dbx_value_regex' = 'individual|institutional');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`dea_registration` ALTER COLUMN `renewal_application_date` SET TAGS ('dbx_business_glossary_term' = 'DEA Renewal Application Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`dea_registration` ALTER COLUMN `renewal_confirmation_number` SET TAGS ('dbx_business_glossary_term' = 'DEA Renewal Confirmation Number');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`dea_registration` ALTER COLUMN `revocation_date` SET TAGS ('dbx_business_glossary_term' = 'DEA Registration Revocation Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`dea_registration` ALTER COLUMN `schedule_ii_authorized` SET TAGS ('dbx_business_glossary_term' = 'Schedule II Controlled Substance Authorization');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`dea_registration` ALTER COLUMN `schedule_iii_authorized` SET TAGS ('dbx_business_glossary_term' = 'Schedule III Controlled Substance Authorization');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`dea_registration` ALTER COLUMN `schedule_iin_authorized` SET TAGS ('dbx_business_glossary_term' = 'Schedule IIN (Non-Narcotic) Controlled Substance Authorization');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`dea_registration` ALTER COLUMN `schedule_iv_authorized` SET TAGS ('dbx_business_glossary_term' = 'Schedule IV Controlled Substance Authorization');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`dea_registration` ALTER COLUMN `schedule_v_authorized` SET TAGS ('dbx_business_glossary_term' = 'Schedule V Controlled Substance Authorization');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`dea_registration` ALTER COLUMN `source_system_code` SET TAGS ('dbx_business_glossary_term' = 'Source System Code');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`dea_registration` ALTER COLUMN `source_system_code` SET TAGS ('dbx_value_regex' = 'SYMPLR|EPIC|CERNER|MEDITECH|DEA_PORTAL|MANUAL');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`dea_registration` ALTER COLUMN `source_system_record_reference` SET TAGS ('dbx_business_glossary_term' = 'Source System Record ID');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`dea_registration` ALTER COLUMN `surrender_date` SET TAGS ('dbx_business_glossary_term' = 'DEA Registration Surrender Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`dea_registration` ALTER COLUMN `suspension_date` SET TAGS ('dbx_business_glossary_term' = 'DEA Registration Suspension Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`dea_registration` ALTER COLUMN `suspension_reason` SET TAGS ('dbx_business_glossary_term' = 'DEA Registration Suspension Reason');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`dea_registration` ALTER COLUMN `verification_date` SET TAGS ('dbx_business_glossary_term' = 'DEA Registration Verification Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`dea_registration` ALTER COLUMN `verification_method` SET TAGS ('dbx_business_glossary_term' = 'DEA Registration Verification Method');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`dea_registration` ALTER COLUMN `verification_method` SET TAGS ('dbx_value_regex' = 'dea_portal|primary_source|third_party|manual');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`dea_registration` ALTER COLUMN `x_waiver_authorized` SET TAGS ('dbx_business_glossary_term' = 'Buprenorphine (X-Waiver / DATA 2000 Waiver) Authorization Flag');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`dea_registration` ALTER COLUMN `x_waiver_patient_limit` SET TAGS ('dbx_business_glossary_term' = 'Buprenorphine X-Waiver Patient Limit');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`board_certification` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`board_certification` SET TAGS ('dbx_subdomain' = 'credentialing_compliance');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`board_certification` ALTER COLUMN `board_certification_id` SET TAGS ('dbx_business_glossary_term' = 'Board Certification ID');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`board_certification` ALTER COLUMN `clinician_id` SET TAGS ('dbx_business_glossary_term' = 'Provider ID');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`board_certification` ALTER COLUMN `credentialing_application_id` SET TAGS ('dbx_business_glossary_term' = 'Credentialing Application Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`board_certification` ALTER COLUMN `credentialing_file_id` SET TAGS ('dbx_business_glossary_term' = 'Credentialing File ID');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`board_certification` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Employee Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`board_certification` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`board_certification` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`board_certification` ALTER COLUMN `specialty_id` SET TAGS ('dbx_business_glossary_term' = 'Specialty Id');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`board_certification` ALTER COLUMN `specialty_id` SET TAGS ('dbx_internal' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`board_certification` ALTER COLUMN `caqh_provider_number` SET TAGS ('dbx_business_glossary_term' = 'Council for Affordable Quality Healthcare (CAQH) Provider ID');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`board_certification` ALTER COLUMN `caqh_provider_number` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`board_certification` ALTER COLUMN `certification_number` SET TAGS ('dbx_business_glossary_term' = 'Board Certification Number');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`board_certification` ALTER COLUMN `certification_number` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`board_certification` ALTER COLUMN `certification_status` SET TAGS ('dbx_business_glossary_term' = 'Board Certification Status');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`board_certification` ALTER COLUMN `certification_status` SET TAGS ('dbx_value_regex' = 'Active|Expired|Revoked|Suspended|Pending|Lapsed');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`board_certification` ALTER COLUMN `certification_type` SET TAGS ('dbx_business_glossary_term' = 'Certification Type');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`board_certification` ALTER COLUMN `certification_type` SET TAGS ('dbx_value_regex' = 'Initial|Recertification|Added Qualification|Maintenance of Certification');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`board_certification` ALTER COLUMN `certifying_board_code` SET TAGS ('dbx_business_glossary_term' = 'Certifying Board Code');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`board_certification` ALTER COLUMN `certifying_board_name` SET TAGS ('dbx_business_glossary_term' = 'Certifying Board Name');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`board_certification` ALTER COLUMN `certifying_organization_type` SET TAGS ('dbx_business_glossary_term' = 'Certifying Organization Type');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`board_certification` ALTER COLUMN `certifying_organization_type` SET TAGS ('dbx_value_regex' = 'ABMS|AOA|ANCC|AANP|AAPA|Other');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`board_certification` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`board_certification` ALTER COLUMN `effective_date` SET TAGS ('dbx_business_glossary_term' = 'Certification Effective Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`board_certification` ALTER COLUMN `exam_attempt_number` SET TAGS ('dbx_business_glossary_term' = 'Board Examination Attempt Number');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`board_certification` ALTER COLUMN `exam_pass_date` SET TAGS ('dbx_business_glossary_term' = 'Board Examination Pass Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`board_certification` ALTER COLUMN `expiration_date` SET TAGS ('dbx_business_glossary_term' = 'Certification Expiration Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`board_certification` ALTER COLUMN `initial_certification_date` SET TAGS ('dbx_business_glossary_term' = 'Initial Certification Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`board_certification` ALTER COLUMN `is_active_privileges_required` SET TAGS ('dbx_business_glossary_term' = 'Active Privileges Required Indicator');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`board_certification` ALTER COLUMN `is_lifetime_certification` SET TAGS ('dbx_business_glossary_term' = 'Lifetime Certification Indicator');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`board_certification` ALTER COLUMN `is_primary_specialty` SET TAGS ('dbx_business_glossary_term' = 'Primary Specialty Indicator');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`board_certification` ALTER COLUMN `moc_due_date` SET TAGS ('dbx_business_glossary_term' = 'Maintenance of Certification (MOC) Due Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`board_certification` ALTER COLUMN `moc_enrollment_date` SET TAGS ('dbx_business_glossary_term' = 'Maintenance of Certification (MOC) Enrollment Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`board_certification` ALTER COLUMN `moc_program_name` SET TAGS ('dbx_business_glossary_term' = 'Maintenance of Certification (MOC) Program Name');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`board_certification` ALTER COLUMN `moc_status` SET TAGS ('dbx_business_glossary_term' = 'Maintenance of Certification (MOC) Status');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`board_certification` ALTER COLUMN `moc_status` SET TAGS ('dbx_value_regex' = 'Compliant|Non-Compliant|Exempt|Not Applicable|In Progress');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`board_certification` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Certification Notes');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`board_certification` ALTER COLUMN `npi` SET TAGS ('dbx_business_glossary_term' = 'National Provider Identifier (NPI)');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`board_certification` ALTER COLUMN `npi` SET TAGS ('dbx_value_regex' = '^[0-9]{10}$');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`board_certification` ALTER COLUMN `npi` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`board_certification` ALTER COLUMN `payer_enrollment_required` SET TAGS ('dbx_business_glossary_term' = 'Payer Enrollment Required Indicator');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`board_certification` ALTER COLUMN `recertification_cycle_years` SET TAGS ('dbx_business_glossary_term' = 'Recertification Cycle Duration (Years)');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`board_certification` ALTER COLUMN `recertification_date` SET TAGS ('dbx_business_glossary_term' = 'Recertification Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`board_certification` ALTER COLUMN `revocation_date` SET TAGS ('dbx_business_glossary_term' = 'Certification Revocation Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`board_certification` ALTER COLUMN `revocation_reason` SET TAGS ('dbx_business_glossary_term' = 'Certification Revocation Reason');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`board_certification` ALTER COLUMN `source_system_record_reference` SET TAGS ('dbx_business_glossary_term' = 'Source System Record ID');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`board_certification` ALTER COLUMN `subspecialty_code` SET TAGS ('dbx_business_glossary_term' = 'Board Certified Subspecialty Code');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`board_certification` ALTER COLUMN `subspecialty_name` SET TAGS ('dbx_business_glossary_term' = 'Board Certified Subspecialty Name');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`board_certification` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Updated Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`board_certification` ALTER COLUMN `verification_date` SET TAGS ('dbx_business_glossary_term' = 'Primary Source Verification Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`board_certification` ALTER COLUMN `verification_source` SET TAGS ('dbx_business_glossary_term' = 'Verification Source');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`board_certification` ALTER COLUMN `verification_status` SET TAGS ('dbx_business_glossary_term' = 'Certification Verification Status');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`board_certification` ALTER COLUMN `verification_status` SET TAGS ('dbx_value_regex' = 'Verified|Pending Verification|Unable to Verify|Expired Verification');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`education_training` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`education_training` SET TAGS ('dbx_subdomain' = 'credentialing_compliance');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`education_training` ALTER COLUMN `education_training_id` SET TAGS ('dbx_business_glossary_term' = 'Education and Training Record ID');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`education_training` ALTER COLUMN `clinician_id` SET TAGS ('dbx_business_glossary_term' = 'Provider ID');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`education_training` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Employee Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`education_training` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`education_training` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`education_training` ALTER COLUMN `accreditation_status` SET TAGS ('dbx_business_glossary_term' = 'Program Accreditation Status');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`education_training` ALTER COLUMN `accreditation_status` SET TAGS ('dbx_value_regex' = 'accredited|probationary|withdrawn|not_accredited|pending');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`education_training` ALTER COLUMN `accrediting_body` SET TAGS ('dbx_business_glossary_term' = 'Accrediting Body');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`education_training` ALTER COLUMN `acgme_accredited` SET TAGS ('dbx_business_glossary_term' = 'Accreditation Council for Graduate Medical Education (ACGME) Accredited Flag');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`education_training` ALTER COLUMN `completion_date` SET TAGS ('dbx_business_glossary_term' = 'Program Completion Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`education_training` ALTER COLUMN `credential_type` SET TAGS ('dbx_business_glossary_term' = 'Credential Type');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`education_training` ALTER COLUMN `credential_type` SET TAGS ('dbx_value_regex' = 'degree|certificate|diploma|completion_letter|residency_certificate|fellowship_certificate');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`education_training` ALTER COLUMN `degree_awarded` SET TAGS ('dbx_business_glossary_term' = 'Degree or Certificate Awarded');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`education_training` ALTER COLUMN `discrepancy_description` SET TAGS ('dbx_business_glossary_term' = 'Credentialing Discrepancy Description');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`education_training` ALTER COLUMN `discrepancy_flag` SET TAGS ('dbx_business_glossary_term' = 'Credentialing Discrepancy Flag');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`education_training` ALTER COLUMN `document_on_file` SET TAGS ('dbx_business_glossary_term' = 'Credential Document on File Flag');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`education_training` ALTER COLUMN `document_received_date` SET TAGS ('dbx_business_glossary_term' = 'Credential Document Received Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`education_training` ALTER COLUMN `ecfmg_certificate_number` SET TAGS ('dbx_business_glossary_term' = 'Educational Commission for Foreign Medical Graduates (ECFMG) Certificate Number');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`education_training` ALTER COLUMN `ecfmg_certificate_number` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`education_training` ALTER COLUMN `ecfmg_certified` SET TAGS ('dbx_business_glossary_term' = 'Educational Commission for Foreign Medical Graduates (ECFMG) Certified Flag');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`education_training` ALTER COLUMN `graduation_year` SET TAGS ('dbx_business_glossary_term' = 'Graduation Year');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`education_training` ALTER COLUMN `honors_distinctions` SET TAGS ('dbx_business_glossary_term' = 'Honors and Distinctions');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`education_training` ALTER COLUMN `img_flag` SET TAGS ('dbx_business_glossary_term' = 'International Medical Graduate (IMG) Flag');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`education_training` ALTER COLUMN `institution_city` SET TAGS ('dbx_business_glossary_term' = 'Institution City');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`education_training` ALTER COLUMN `institution_city` SET TAGS ('dbx_pii_category' = 'person_data');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`education_training` ALTER COLUMN `institution_country` SET TAGS ('dbx_business_glossary_term' = 'Institution Country');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`education_training` ALTER COLUMN `institution_country` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`education_training` ALTER COLUMN `institution_country` SET TAGS ('dbx_pii_category' = 'person_data');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`education_training` ALTER COLUMN `institution_name` SET TAGS ('dbx_business_glossary_term' = 'Educational Institution Name');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`education_training` ALTER COLUMN `institution_state` SET TAGS ('dbx_business_glossary_term' = 'Institution State');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`education_training` ALTER COLUMN `institution_state` SET TAGS ('dbx_value_regex' = '^[A-Z]{2}$');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`education_training` ALTER COLUMN `institution_state` SET TAGS ('dbx_pii_category' = 'person_data');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`education_training` ALTER COLUMN `is_current` SET TAGS ('dbx_business_glossary_term' = 'Current Record Flag');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`education_training` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Education Training Notes');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`education_training` ALTER COLUMN `npi` SET TAGS ('dbx_business_glossary_term' = 'National Provider Identifier (NPI)');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`education_training` ALTER COLUMN `npi` SET TAGS ('dbx_value_regex' = '^[0-9]{10}$');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`education_training` ALTER COLUMN `primary_source_verified` SET TAGS ('dbx_business_glossary_term' = 'Primary Source Verification (PSV) Flag');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`education_training` ALTER COLUMN `program_director_email` SET TAGS ('dbx_business_glossary_term' = 'Program Director Email Address');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`education_training` ALTER COLUMN `program_director_email` SET TAGS ('dbx_value_regex' = '^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+.[a-zA-Z]{2,}$');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`education_training` ALTER COLUMN `program_director_email` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`education_training` ALTER COLUMN `program_director_email` SET TAGS ('dbx_pii_email' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`education_training` ALTER COLUMN `program_director_name` SET TAGS ('dbx_business_glossary_term' = 'Program Director Name');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`education_training` ALTER COLUMN `program_director_phone` SET TAGS ('dbx_business_glossary_term' = 'Program Director Phone Number');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`education_training` ALTER COLUMN `program_director_phone` SET TAGS ('dbx_value_regex' = '^+?[0-9s-().]{7,20}$');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`education_training` ALTER COLUMN `program_director_phone` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`education_training` ALTER COLUMN `program_director_phone` SET TAGS ('dbx_pii_phone' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`education_training` ALTER COLUMN `program_duration_months` SET TAGS ('dbx_business_glossary_term' = 'Program Duration in Months');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`education_training` ALTER COLUMN `program_type` SET TAGS ('dbx_business_glossary_term' = 'Training Program Type');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`education_training` ALTER COLUMN `psv_date` SET TAGS ('dbx_business_glossary_term' = 'Primary Source Verification (PSV) Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`education_training` ALTER COLUMN `psv_method` SET TAGS ('dbx_business_glossary_term' = 'Primary Source Verification (PSV) Method');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`education_training` ALTER COLUMN `psv_method` SET TAGS ('dbx_value_regex' = 'direct_contact|online_database|written_correspondence|third_party_service|ecfmg|ama_masterfile');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`education_training` ALTER COLUMN `psv_source` SET TAGS ('dbx_business_glossary_term' = 'Primary Source Verification (PSV) Source');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`education_training` ALTER COLUMN `psv_verified_by` SET TAGS ('dbx_business_glossary_term' = 'Primary Source Verification (PSV) Verified By');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`education_training` ALTER COLUMN `record_created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`education_training` ALTER COLUMN `record_updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Updated Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`education_training` ALTER COLUMN `source_system_record_reference` SET TAGS ('dbx_business_glossary_term' = 'Source System Record ID');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`education_training` ALTER COLUMN `specialty` SET TAGS ('dbx_business_glossary_term' = 'Training Specialty');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`education_training` ALTER COLUMN `start_date` SET TAGS ('dbx_business_glossary_term' = 'Program Start Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`education_training` ALTER COLUMN `subspecialty` SET TAGS ('dbx_business_glossary_term' = 'Training Subspecialty');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`education_training` ALTER COLUMN `training_status` SET TAGS ('dbx_business_glossary_term' = 'Training Status');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`education_training` ALTER COLUMN `training_status` SET TAGS ('dbx_value_regex' = 'completed|in_progress|withdrawn|terminated|deferred');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_location` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_location` SET TAGS ('dbx_subdomain' = 'provider_directory');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_location` ALTER COLUMN `provider_location_id` SET TAGS ('dbx_business_glossary_term' = 'Provider Location ID');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_location` ALTER COLUMN `care_site_id` SET TAGS ('dbx_business_glossary_term' = 'Facility ID');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_location` ALTER COLUMN `clinician_id` SET TAGS ('dbx_business_glossary_term' = 'Provider ID');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_location` ALTER COLUMN `geographic_region_id` SET TAGS ('dbx_business_glossary_term' = 'Geographic Region Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_location` ALTER COLUMN `group_id` SET TAGS ('dbx_business_glossary_term' = 'Provider Group Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_location` ALTER COLUMN `org_provider_id` SET TAGS ('dbx_business_glossary_term' = 'Org Provider Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_location` ALTER COLUMN `accepting_new_patients_updated_date` SET TAGS ('dbx_business_glossary_term' = 'Accepting New Patients Last Updated Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_location` ALTER COLUMN `address_line1` SET TAGS ('dbx_business_glossary_term' = 'Address Line 1');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_location` ALTER COLUMN `address_line1` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_location` ALTER COLUMN `address_line1` SET TAGS ('dbx_pii_address' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_location` ALTER COLUMN `address_line2` SET TAGS ('dbx_business_glossary_term' = 'Address Line 2');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_location` ALTER COLUMN `address_line2` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_location` ALTER COLUMN `address_line2` SET TAGS ('dbx_pii_address' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_location` ALTER COLUMN `after_hours_phone` SET TAGS ('dbx_business_glossary_term' = 'After Hours Phone Number');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_location` ALTER COLUMN `after_hours_phone` SET TAGS ('dbx_value_regex' = '^+?[0-9-() ]{7,20}$');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_location` ALTER COLUMN `after_hours_phone` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_location` ALTER COLUMN `after_hours_phone` SET TAGS ('dbx_pii_phone' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_location` ALTER COLUMN `appointment_scheduling_url` SET TAGS ('dbx_business_glossary_term' = 'Appointment Scheduling URL');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_location` ALTER COLUMN `city` SET TAGS ('dbx_business_glossary_term' = 'City');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_location` ALTER COLUMN `city` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_location` ALTER COLUMN `city` SET TAGS ('dbx_pii_address' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_location` ALTER COLUMN `cms_enrollment_number` SET TAGS ('dbx_business_glossary_term' = 'Centers for Medicare and Medicaid Services (CMS) Enrollment ID');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_location` ALTER COLUMN `cms_place_of_service_code` SET TAGS ('dbx_business_glossary_term' = 'Centers for Medicare and Medicaid Services (CMS) Place of Service (POS) Code');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_location` ALTER COLUMN `cms_place_of_service_code` SET TAGS ('dbx_value_regex' = '^[0-9]{2}$');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_location` ALTER COLUMN `country_code` SET TAGS ('dbx_business_glossary_term' = 'Country Code');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_location` ALTER COLUMN `country_code` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_location` ALTER COLUMN `country_code` SET TAGS ('dbx_pii_category' = 'person_data');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_location` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_location` ALTER COLUMN `credentialing_status` SET TAGS ('dbx_business_glossary_term' = 'Credentialing Status');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_location` ALTER COLUMN `credentialing_status` SET TAGS ('dbx_value_regex' = 'credentialed|pending|expired|suspended|denied');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_location` ALTER COLUMN `directory_last_verified_date` SET TAGS ('dbx_business_glossary_term' = 'Provider Directory Last Verified Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_location` ALTER COLUMN `effective_date` SET TAGS ('dbx_business_glossary_term' = 'Effective Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_location` ALTER COLUMN `email` SET TAGS ('dbx_business_glossary_term' = 'Location Email Address');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_location` ALTER COLUMN `email` SET TAGS ('dbx_value_regex' = '^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+.[a-zA-Z]{2,}$');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_location` ALTER COLUMN `email` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_location` ALTER COLUMN `email` SET TAGS ('dbx_pii_address' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_location` ALTER COLUMN `fax` SET TAGS ('dbx_business_glossary_term' = 'Fax Number');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_location` ALTER COLUMN `fax` SET TAGS ('dbx_value_regex' = '^+?[0-9-() ]{7,20}$');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_location` ALTER COLUMN `fax` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_location` ALTER COLUMN `fax` SET TAGS ('dbx_pii_phone' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_location` ALTER COLUMN `hours_of_operation` SET TAGS ('dbx_business_glossary_term' = 'Hours of Operation');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_location` ALTER COLUMN `is_accepting_new_patients` SET TAGS ('dbx_business_glossary_term' = 'Accepting New Patients Flag');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_location` ALTER COLUMN `is_ada_accessible` SET TAGS ('dbx_business_glossary_term' = 'Americans with Disabilities Act (ADA) Accessibility Indicator');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_location` ALTER COLUMN `is_primary_location` SET TAGS ('dbx_business_glossary_term' = 'Primary Location Flag');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_location` ALTER COLUMN `is_telehealth_enabled` SET TAGS ('dbx_business_glossary_term' = 'Telehealth Enabled Flag');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_location` ALTER COLUMN `language_codes` SET TAGS ('dbx_business_glossary_term' = 'Language Capability Codes');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_location` ALTER COLUMN `language_codes` SET TAGS ('dbx_pii_person_data' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_location` ALTER COLUMN `latitude` SET TAGS ('dbx_business_glossary_term' = 'Latitude');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_location` ALTER COLUMN `latitude` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_location` ALTER COLUMN `latitude` SET TAGS ('dbx_pii_address' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_location` ALTER COLUMN `location_name` SET TAGS ('dbx_business_glossary_term' = 'Location Name');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_location` ALTER COLUMN `location_name` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_location` ALTER COLUMN `location_name` SET TAGS ('dbx_pii_address' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_location` ALTER COLUMN `location_status` SET TAGS ('dbx_business_glossary_term' = 'Location Status');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_location` ALTER COLUMN `location_status` SET TAGS ('dbx_value_regex' = 'active|inactive|pending|suspended|closed');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_location` ALTER COLUMN `location_type` SET TAGS ('dbx_business_glossary_term' = 'Location Type');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_location` ALTER COLUMN `location_type` SET TAGS ('dbx_value_regex' = 'primary_office|satellite_clinic|hospital|telehealth_only|mobile_unit|urgent_care');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_location` ALTER COLUMN `longitude` SET TAGS ('dbx_business_glossary_term' = 'Longitude');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_location` ALTER COLUMN `longitude` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_location` ALTER COLUMN `longitude` SET TAGS ('dbx_pii_address' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_location` ALTER COLUMN `medicaid_provider_number` SET TAGS ('dbx_business_glossary_term' = 'Medicaid Provider Number');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_location` ALTER COLUMN `medicaid_provider_number` SET TAGS ('dbx_pii_person_data' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_location` ALTER COLUMN `network_participation_status` SET TAGS ('dbx_business_glossary_term' = 'Network Participation Status');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_location` ALTER COLUMN `network_participation_status` SET TAGS ('dbx_value_regex' = 'in_network|out_of_network|pending|terminated');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_location` ALTER COLUMN `npi` SET TAGS ('dbx_business_glossary_term' = 'National Provider Identifier (NPI)');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_location` ALTER COLUMN `npi` SET TAGS ('dbx_value_regex' = '^[0-9]{10}$');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_location` ALTER COLUMN `parking_instructions` SET TAGS ('dbx_business_glossary_term' = 'Parking Instructions');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_location` ALTER COLUMN `phone` SET TAGS ('dbx_business_glossary_term' = 'Phone Number');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_location` ALTER COLUMN `phone` SET TAGS ('dbx_value_regex' = '^+?[0-9-() ]{7,20}$');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_location` ALTER COLUMN `phone` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_location` ALTER COLUMN `phone` SET TAGS ('dbx_pii_phone' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_location` ALTER COLUMN `postal_code` SET TAGS ('dbx_business_glossary_term' = 'Postal Code');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_location` ALTER COLUMN `postal_code` SET TAGS ('dbx_value_regex' = '^[0-9]{5}(-[0-9]{4})?$');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_location` ALTER COLUMN `postal_code` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_location` ALTER COLUMN `postal_code` SET TAGS ('dbx_pii_address' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_location` ALTER COLUMN `public_transit_access` SET TAGS ('dbx_business_glossary_term' = 'Public Transit Access Flag');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_location` ALTER COLUMN `source_system_record_reference` SET TAGS ('dbx_business_glossary_term' = 'Source System Record ID');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_location` ALTER COLUMN `specialty_codes` SET TAGS ('dbx_business_glossary_term' = 'Specialty Codes');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_location` ALTER COLUMN `state_code` SET TAGS ('dbx_business_glossary_term' = 'State Code');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_location` ALTER COLUMN `state_code` SET TAGS ('dbx_value_regex' = '^[A-Z]{2}$');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_location` ALTER COLUMN `state_code` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_location` ALTER COLUMN `state_code` SET TAGS ('dbx_pii_address' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_location` ALTER COLUMN `taxonomy_code` SET TAGS ('dbx_business_glossary_term' = 'Health Care Provider Taxonomy Code');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_location` ALTER COLUMN `taxonomy_code` SET TAGS ('dbx_value_regex' = '^[A-Z0-9]{10}$');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_location` ALTER COLUMN `termination_date` SET TAGS ('dbx_business_glossary_term' = 'Termination Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_location` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Updated Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_location` ALTER COLUMN `website_url` SET TAGS ('dbx_business_glossary_term' = 'Website URL');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`reappointment` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`reappointment` SET TAGS ('dbx_subdomain' = 'credentialing_compliance');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`reappointment` ALTER COLUMN `reappointment_id` SET TAGS ('dbx_business_glossary_term' = 'Reappointment ID');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`reappointment` ALTER COLUMN `provider_committee_id` SET TAGS ('dbx_business_glossary_term' = 'Approving Committee Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`reappointment` ALTER COLUMN `audit_id` SET TAGS ('dbx_business_glossary_term' = 'Audit Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`reappointment` ALTER COLUMN `care_site_id` SET TAGS ('dbx_business_glossary_term' = 'Facility ID');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`reappointment` ALTER COLUMN `clinician_id` SET TAGS ('dbx_business_glossary_term' = 'Provider ID');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`reappointment` ALTER COLUMN `org_unit_id` SET TAGS ('dbx_business_glossary_term' = 'Department ID');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`reappointment` ALTER COLUMN `quality_peer_review_id` SET TAGS ('dbx_business_glossary_term' = 'Peer Review Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`reappointment` ALTER COLUMN `specialty_id` SET TAGS ('dbx_business_glossary_term' = 'Specialty Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`reappointment` ALTER COLUMN `application_deadline_date` SET TAGS ('dbx_business_glossary_term' = 'Application Deadline Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`reappointment` ALTER COLUMN `application_received_date` SET TAGS ('dbx_business_glossary_term' = 'Application Received Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`reappointment` ALTER COLUMN `appointment_term_years` SET TAGS ('dbx_business_glossary_term' = 'Appointment Term Years');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`reappointment` ALTER COLUMN `case_volume` SET TAGS ('dbx_business_glossary_term' = 'Case Volume');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`reappointment` ALTER COLUMN `cme_compliance_status` SET TAGS ('dbx_business_glossary_term' = 'Continuing Medical Education (CME) Compliance Status');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`reappointment` ALTER COLUMN `cme_compliance_status` SET TAGS ('dbx_value_regex' = 'compliant|non_compliant|pending_verification|waived');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`reappointment` ALTER COLUMN `cme_hours_completed` SET TAGS ('dbx_business_glossary_term' = 'Continuing Medical Education (CME) Hours Completed');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`reappointment` ALTER COLUMN `cme_hours_required` SET TAGS ('dbx_business_glossary_term' = 'Continuing Medical Education (CME) Hours Required');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`reappointment` ALTER COLUMN `conditions_of_reappointment` SET TAGS ('dbx_business_glossary_term' = 'Conditions of Reappointment');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`reappointment` ALTER COLUMN `conditions_of_reappointment` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`reappointment` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`reappointment` ALTER COLUMN `credentials_committee_recommendation` SET TAGS ('dbx_business_glossary_term' = 'Credentials Committee Recommendation');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`reappointment` ALTER COLUMN `credentials_committee_recommendation` SET TAGS ('dbx_value_regex' = 'recommend_approval|recommend_denial|recommend_deferral|recommend_conditions');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`reappointment` ALTER COLUMN `credentials_committee_recommendation` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`reappointment` ALTER COLUMN `credentials_committee_review_date` SET TAGS ('dbx_business_glossary_term' = 'Credentials Committee Review Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`reappointment` ALTER COLUMN `current_appointment_expiration_date` SET TAGS ('dbx_business_glossary_term' = 'Current Appointment Expiration Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`reappointment` ALTER COLUMN `cycle_number` SET TAGS ('dbx_business_glossary_term' = 'Reappointment Cycle Number');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`reappointment` ALTER COLUMN `dea_verified` SET TAGS ('dbx_business_glossary_term' = 'Drug Enforcement Administration (DEA) Registration Verified Flag');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`reappointment` ALTER COLUMN `decision` SET TAGS ('dbx_business_glossary_term' = 'Reappointment Decision');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`reappointment` ALTER COLUMN `decision` SET TAGS ('dbx_value_regex' = 'approved|approved_with_conditions|denied|deferred|voluntary_resignation');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`reappointment` ALTER COLUMN `decision_date` SET TAGS ('dbx_business_glossary_term' = 'Reappointment Decision Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`reappointment` ALTER COLUMN `denial_reason` SET TAGS ('dbx_business_glossary_term' = 'Reappointment Denial Reason');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`reappointment` ALTER COLUMN `due_process_initiated` SET TAGS ('dbx_business_glossary_term' = 'Due Process Initiated Flag');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`reappointment` ALTER COLUMN `effective_date` SET TAGS ('dbx_business_glossary_term' = 'Reappointment Effective Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`reappointment` ALTER COLUMN `health_status_attestation` SET TAGS ('dbx_business_glossary_term' = 'Health Status Attestation Flag');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`reappointment` ALTER COLUMN `health_status_attestation` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`reappointment` ALTER COLUMN `license_verified` SET TAGS ('dbx_business_glossary_term' = 'License Verified Flag');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`reappointment` ALTER COLUMN `malpractice_coverage_amount` SET TAGS ('dbx_business_glossary_term' = 'Malpractice Coverage Amount');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`reappointment` ALTER COLUMN `malpractice_coverage_amount` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`reappointment` ALTER COLUMN `malpractice_coverage_amount` SET TAGS ('dbx_pii_category' = 'person_data');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`reappointment` ALTER COLUMN `malpractice_insurance_verified` SET TAGS ('dbx_business_glossary_term' = 'Malpractice Insurance Verified Flag');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`reappointment` ALTER COLUMN `medical_staff_category` SET TAGS ('dbx_business_glossary_term' = 'Medical Staff Category');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`reappointment` ALTER COLUMN `medical_staff_category` SET TAGS ('dbx_value_regex' = 'active|associate|courtesy|consulting|honorary|affiliate');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`reappointment` ALTER COLUMN `medical_staff_category` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`reappointment` ALTER COLUMN `medical_staff_category` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`reappointment` ALTER COLUMN `new_appointment_expiration_date` SET TAGS ('dbx_business_glossary_term' = 'New Appointment Expiration Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`reappointment` ALTER COLUMN `npdb_adverse_finding` SET TAGS ('dbx_business_glossary_term' = 'National Practitioner Data Bank (NPDB) Adverse Finding Flag');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`reappointment` ALTER COLUMN `npdb_adverse_finding` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`reappointment` ALTER COLUMN `npdb_queried` SET TAGS ('dbx_business_glossary_term' = 'National Practitioner Data Bank (NPDB) Queried Flag');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`reappointment` ALTER COLUMN `npdb_query_date` SET TAGS ('dbx_business_glossary_term' = 'National Practitioner Data Bank (NPDB) Query Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`reappointment` ALTER COLUMN `npdb_report_date` SET TAGS ('dbx_business_glossary_term' = 'National Practitioner Data Bank (NPDB) Report Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`reappointment` ALTER COLUMN `npdb_report_required` SET TAGS ('dbx_business_glossary_term' = 'National Practitioner Data Bank (NPDB) Report Required Flag');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`reappointment` ALTER COLUMN `number` SET TAGS ('dbx_business_glossary_term' = 'Reappointment Number');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`reappointment` ALTER COLUMN `number` SET TAGS ('dbx_value_regex' = '^REAPPT-[0-9]{4}-[0-9]{6}$');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`reappointment` ALTER COLUMN `oppe_performance_rating` SET TAGS ('dbx_business_glossary_term' = 'Ongoing Professional Practice Evaluation (OPPE) Performance Rating');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`reappointment` ALTER COLUMN `oppe_performance_rating` SET TAGS ('dbx_value_regex' = 'meets_expectations|below_expectations|above_expectations|requires_action');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`reappointment` ALTER COLUMN `oppe_performance_rating` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`reappointment` ALTER COLUMN `oppe_review_date` SET TAGS ('dbx_business_glossary_term' = 'Ongoing Professional Practice Evaluation (OPPE) Review Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`reappointment` ALTER COLUMN `peer_review_summary` SET TAGS ('dbx_business_glossary_term' = 'Peer Review Summary');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`reappointment` ALTER COLUMN `peer_review_summary` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`reappointment` ALTER COLUMN `quality_indicator_met` SET TAGS ('dbx_business_glossary_term' = 'Quality Indicator Met Flag');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`reappointment` ALTER COLUMN `review_period_end_date` SET TAGS ('dbx_business_glossary_term' = 'Review Period End Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`reappointment` ALTER COLUMN `review_period_start_date` SET TAGS ('dbx_business_glossary_term' = 'Review Period Start Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`reappointment` ALTER COLUMN `sanctions_check_completed` SET TAGS ('dbx_business_glossary_term' = 'Sanctions Check Completed Flag');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`reappointment` ALTER COLUMN `sanctions_check_date` SET TAGS ('dbx_business_glossary_term' = 'Sanctions Check Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`reappointment` ALTER COLUMN `sanctions_finding` SET TAGS ('dbx_business_glossary_term' = 'Sanctions Finding Flag');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`reappointment` ALTER COLUMN `sanctions_finding` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`reappointment` ALTER COLUMN `source_record_reference` SET TAGS ('dbx_business_glossary_term' = 'Source System Record ID');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`reappointment` ALTER COLUMN `reappointment_status` SET TAGS ('dbx_business_glossary_term' = 'Reappointment Status');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`reappointment` ALTER COLUMN `reappointment_status` SET TAGS ('dbx_value_regex' = 'pending|in_review|approved|denied|deferred|withdrawn');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`reappointment` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Updated Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`peer_reference` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`peer_reference` SET TAGS ('dbx_subdomain' = 'credentialing_compliance');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`peer_reference` ALTER COLUMN `peer_reference_id` SET TAGS ('dbx_business_glossary_term' = 'Peer Reference ID');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`peer_reference` ALTER COLUMN `care_site_id` SET TAGS ('dbx_business_glossary_term' = 'Facility ID');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`peer_reference` ALTER COLUMN `credentialing_application_id` SET TAGS ('dbx_business_glossary_term' = 'Credentialing Application ID');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`peer_reference` ALTER COLUMN `investigation_id` SET TAGS ('dbx_business_glossary_term' = 'Investigation Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`peer_reference` ALTER COLUMN `clinician_id` SET TAGS ('dbx_business_glossary_term' = 'Applicant Provider ID');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`peer_reference` ALTER COLUMN `reappointment_id` SET TAGS ('dbx_business_glossary_term' = 'Reappointment Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`peer_reference` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Referee Employee Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`peer_reference` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`peer_reference` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`peer_reference` ALTER COLUMN `adverse_action_description` SET TAGS ('dbx_business_glossary_term' = 'Adverse Action Description');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`peer_reference` ALTER COLUMN `adverse_action_description` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`peer_reference` ALTER COLUMN `adverse_action_knowledge` SET TAGS ('dbx_business_glossary_term' = 'Adverse Action Knowledge Flag');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`peer_reference` ALTER COLUMN `clinical_competency_rating` SET TAGS ('dbx_business_glossary_term' = 'Clinical Competency Rating');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`peer_reference` ALTER COLUMN `clinical_competency_rating` SET TAGS ('dbx_value_regex' = 'exceptional|above_average|average|below_average|unsatisfactory|unable_to_assess');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`peer_reference` ALTER COLUMN `committee_review_date` SET TAGS ('dbx_business_glossary_term' = 'Committee Review Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`peer_reference` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`peer_reference` ALTER COLUMN `evaluation_date` SET TAGS ('dbx_business_glossary_term' = 'Peer Reference Evaluation Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`peer_reference` ALTER COLUMN `follow_up_notes` SET TAGS ('dbx_business_glossary_term' = 'Follow-Up Notes');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`peer_reference` ALTER COLUMN `follow_up_notes` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`peer_reference` ALTER COLUMN `follow_up_required` SET TAGS ('dbx_business_glossary_term' = 'Follow-Up Required Flag');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`peer_reference` ALTER COLUMN `form_version` SET TAGS ('dbx_business_glossary_term' = 'Reference Form Version');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`peer_reference` ALTER COLUMN `interpersonal_communication_rating` SET TAGS ('dbx_business_glossary_term' = 'Interpersonal and Communication Skills Rating');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`peer_reference` ALTER COLUMN `interpersonal_communication_rating` SET TAGS ('dbx_value_regex' = 'exceptional|above_average|average|below_average|unsatisfactory|unable_to_assess');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`peer_reference` ALTER COLUMN `is_confidential` SET TAGS ('dbx_business_glossary_term' = 'Confidentiality Flag');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`peer_reference` ALTER COLUMN `is_verbal_reference` SET TAGS ('dbx_business_glossary_term' = 'Verbal Reference Flag');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`peer_reference` ALTER COLUMN `last_reminder_date` SET TAGS ('dbx_business_glossary_term' = 'Last Reminder Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`peer_reference` ALTER COLUMN `medical_knowledge_rating` SET TAGS ('dbx_business_glossary_term' = 'Medical Knowledge Rating');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`peer_reference` ALTER COLUMN `medical_knowledge_rating` SET TAGS ('dbx_value_regex' = 'exceptional|above_average|average|below_average|unsatisfactory|unable_to_assess');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`peer_reference` ALTER COLUMN `medical_knowledge_rating` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`peer_reference` ALTER COLUMN `medical_knowledge_rating` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`peer_reference` ALTER COLUMN `patient_care_rating` SET TAGS ('dbx_business_glossary_term' = 'Patient Care Rating');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`peer_reference` ALTER COLUMN `patient_care_rating` SET TAGS ('dbx_value_regex' = 'exceptional|above_average|average|below_average|unsatisfactory|unable_to_assess');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`peer_reference` ALTER COLUMN `professional_conduct_assessment` SET TAGS ('dbx_business_glossary_term' = 'Professional Conduct Assessment');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`peer_reference` ALTER COLUMN `professional_conduct_assessment` SET TAGS ('dbx_value_regex' = 'no_concerns|minor_concerns|significant_concerns|disqualifying_concerns');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`peer_reference` ALTER COLUMN `professionalism_rating` SET TAGS ('dbx_business_glossary_term' = 'Professionalism Rating');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`peer_reference` ALTER COLUMN `professionalism_rating` SET TAGS ('dbx_value_regex' = 'exceptional|above_average|average|below_average|unsatisfactory|unable_to_assess');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`peer_reference` ALTER COLUMN `recommendation_type` SET TAGS ('dbx_business_glossary_term' = 'Referee Recommendation Type');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`peer_reference` ALTER COLUMN `recommendation_type` SET TAGS ('dbx_value_regex' = 'strongly_recommend|recommend|recommend_with_reservations|unable_to_recommend|not_recommended');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`peer_reference` ALTER COLUMN `referee_comments` SET TAGS ('dbx_business_glossary_term' = 'Referee Narrative Comments');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`peer_reference` ALTER COLUMN `referee_comments` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`peer_reference` ALTER COLUMN `referee_license_number` SET TAGS ('dbx_business_glossary_term' = 'Referee State License Number');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`peer_reference` ALTER COLUMN `referee_license_number` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`peer_reference` ALTER COLUMN `referee_license_number` SET TAGS ('dbx_pii_identifier' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`peer_reference` ALTER COLUMN `referee_license_state` SET TAGS ('dbx_business_glossary_term' = 'Referee License State');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`peer_reference` ALTER COLUMN `referee_license_state` SET TAGS ('dbx_value_regex' = '^[A-Z]{2}$');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`peer_reference` ALTER COLUMN `referee_license_state` SET TAGS ('dbx_pii_category' = 'person_data');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`peer_reference` ALTER COLUMN `referee_npi` SET TAGS ('dbx_business_glossary_term' = 'Referee National Provider Identifier (NPI)');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`peer_reference` ALTER COLUMN `referee_npi` SET TAGS ('dbx_value_regex' = '^[0-9]{10}$');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`peer_reference` ALTER COLUMN `referee_npi` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`peer_reference` ALTER COLUMN `referee_npi` SET TAGS ('dbx_pii_identifier' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`peer_reference` ALTER COLUMN `referee_specialty` SET TAGS ('dbx_business_glossary_term' = 'Referee Clinical Specialty');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`peer_reference` ALTER COLUMN `reference_number` SET TAGS ('dbx_business_glossary_term' = 'Peer Reference Number');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`peer_reference` ALTER COLUMN `reference_number` SET TAGS ('dbx_value_regex' = '^PR-[0-9]{4}-[0-9]{6}$');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`peer_reference` ALTER COLUMN `reference_status` SET TAGS ('dbx_business_glossary_term' = 'Peer Reference Status');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`peer_reference` ALTER COLUMN `reference_status` SET TAGS ('dbx_value_regex' = 'requested|sent|received|completed|expired|withdrawn');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`peer_reference` ALTER COLUMN `reference_type` SET TAGS ('dbx_business_glossary_term' = 'Peer Reference Type');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`peer_reference` ALTER COLUMN `reference_type` SET TAGS ('dbx_value_regex' = 'initial_credentialing|reappointment|privilege_request|focused_review');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`peer_reference` ALTER COLUMN `relationship_to_applicant` SET TAGS ('dbx_business_glossary_term' = 'Referee Relationship to Applicant');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`peer_reference` ALTER COLUMN `relationship_to_applicant` SET TAGS ('dbx_value_regex' = 'colleague|supervisor|department_chief|program_director|co_practitioner|other');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`peer_reference` ALTER COLUMN `reminder_sent_count` SET TAGS ('dbx_business_glossary_term' = 'Reminder Sent Count');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`peer_reference` ALTER COLUMN `request_sent_date` SET TAGS ('dbx_business_glossary_term' = 'Reference Request Sent Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`peer_reference` ALTER COLUMN `response_due_date` SET TAGS ('dbx_business_glossary_term' = 'Reference Response Due Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`peer_reference` ALTER COLUMN `reviewed_by_committee` SET TAGS ('dbx_business_glossary_term' = 'Reviewed by Credentialing Committee Flag');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`peer_reference` ALTER COLUMN `source_system_code` SET TAGS ('dbx_business_glossary_term' = 'Source System Code');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`peer_reference` ALTER COLUMN `source_system_code` SET TAGS ('dbx_value_regex' = 'SYMPLR|EPIC|CERNER|MEDITECH|MANUAL');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`peer_reference` ALTER COLUMN `source_system_record_reference` SET TAGS ('dbx_business_glossary_term' = 'Source System Record ID');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`peer_reference` ALTER COLUMN `submission_method` SET TAGS ('dbx_business_glossary_term' = 'Reference Submission Method');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`peer_reference` ALTER COLUMN `submission_method` SET TAGS ('dbx_value_regex' = 'online_portal|email|fax|mail|verbal');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`peer_reference` ALTER COLUMN `systems_based_practice_rating` SET TAGS ('dbx_business_glossary_term' = 'Systems-Based Practice Rating');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`peer_reference` ALTER COLUMN `systems_based_practice_rating` SET TAGS ('dbx_value_regex' = 'exceptional|above_average|average|below_average|unsatisfactory|unable_to_assess');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`peer_reference` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Updated Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`peer_reference` ALTER COLUMN `verbal_reference_obtained_by` SET TAGS ('dbx_business_glossary_term' = 'Verbal Reference Obtained By');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`peer_reference` ALTER COLUMN `years_known` SET TAGS ('dbx_business_glossary_term' = 'Years Known');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`cme_activity` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`cme_activity` SET TAGS ('dbx_subdomain' = 'credentialing_compliance');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`cme_activity` ALTER COLUMN `cme_activity_id` SET TAGS ('dbx_business_glossary_term' = 'Continuing Medical Education (CME) Activity ID');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`cme_activity` ALTER COLUMN `ap_invoice_id` SET TAGS ('dbx_business_glossary_term' = 'Ap Invoice Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`cme_activity` ALTER COLUMN `board_certification_id` SET TAGS ('dbx_business_glossary_term' = 'Board Certification Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`cme_activity` ALTER COLUMN `care_site_id` SET TAGS ('dbx_business_glossary_term' = 'Facility ID');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`cme_activity` ALTER COLUMN `clinician_id` SET TAGS ('dbx_business_glossary_term' = 'Provider ID');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`cme_activity` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Employee Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`cme_activity` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`cme_activity` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`cme_activity` ALTER COLUMN `reappointment_id` SET TAGS ('dbx_business_glossary_term' = 'Reappointment Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`cme_activity` ALTER COLUMN `specialty_id` SET TAGS ('dbx_business_glossary_term' = 'Specialty Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`cme_activity` ALTER COLUMN `training_id` SET TAGS ('dbx_business_glossary_term' = 'Training Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`cme_activity` ALTER COLUMN `accreditation_standard` SET TAGS ('dbx_business_glossary_term' = 'CME Accreditation Standard');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`cme_activity` ALTER COLUMN `accrediting_organization_code` SET TAGS ('dbx_business_glossary_term' = 'Accrediting Organization Code');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`cme_activity` ALTER COLUMN `accrediting_organization_name` SET TAGS ('dbx_business_glossary_term' = 'Accrediting Organization Name');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`cme_activity` ALTER COLUMN `activity_code` SET TAGS ('dbx_business_glossary_term' = 'CME Activity Code');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`cme_activity` ALTER COLUMN `activity_end_date` SET TAGS ('dbx_business_glossary_term' = 'CME Activity End Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`cme_activity` ALTER COLUMN `activity_location` SET TAGS ('dbx_business_glossary_term' = 'CME Activity Location');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`cme_activity` ALTER COLUMN `activity_start_date` SET TAGS ('dbx_business_glossary_term' = 'CME Activity Start Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`cme_activity` ALTER COLUMN `activity_state` SET TAGS ('dbx_business_glossary_term' = 'CME Activity State');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`cme_activity` ALTER COLUMN `activity_state` SET TAGS ('dbx_pii_category' = 'person_data');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`cme_activity` ALTER COLUMN `activity_status` SET TAGS ('dbx_business_glossary_term' = 'CME Activity Status');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`cme_activity` ALTER COLUMN `activity_status` SET TAGS ('dbx_value_regex' = 'completed|in_progress|pending_verification|verified|rejected|expired');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`cme_activity` ALTER COLUMN `activity_title` SET TAGS ('dbx_business_glossary_term' = 'CME Activity Title');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`cme_activity` ALTER COLUMN `activity_type` SET TAGS ('dbx_business_glossary_term' = 'CME Activity Type');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`cme_activity` ALTER COLUMN `board_certification_applicable` SET TAGS ('dbx_business_glossary_term' = 'Board Certification Applicable Flag');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`cme_activity` ALTER COLUMN `certificate_issue_date` SET TAGS ('dbx_business_glossary_term' = 'CME Certificate Issue Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`cme_activity` ALTER COLUMN `certificate_number` SET TAGS ('dbx_business_glossary_term' = 'CME Certificate Number');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`cme_activity` ALTER COLUMN `cme_category` SET TAGS ('dbx_business_glossary_term' = 'CME Category');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`cme_activity` ALTER COLUMN `cme_category` SET TAGS ('dbx_value_regex' = 'category_1|category_2');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`cme_activity` ALTER COLUMN `commercial_support_flag` SET TAGS ('dbx_business_glossary_term' = 'Commercial Support Flag');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`cme_activity` ALTER COLUMN `completion_date` SET TAGS ('dbx_business_glossary_term' = 'CME Activity Completion Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`cme_activity` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`cme_activity` ALTER COLUMN `credit_hours` SET TAGS ('dbx_business_glossary_term' = 'CME Credit Hours');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`cme_activity` ALTER COLUMN `delivery_method` SET TAGS ('dbx_business_glossary_term' = 'CME Delivery Method');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`cme_activity` ALTER COLUMN `delivery_method` SET TAGS ('dbx_value_regex' = 'in_person|online|hybrid|simulation|journal|podcast');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`cme_activity` ALTER COLUMN `evaluation_completed_flag` SET TAGS ('dbx_business_glossary_term' = 'CME Evaluation Completed Flag');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`cme_activity` ALTER COLUMN `license_state` SET TAGS ('dbx_business_glossary_term' = 'Provider License State');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`cme_activity` ALTER COLUMN `license_state` SET TAGS ('dbx_pii_category' = 'person_data');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`cme_activity` ALTER COLUMN `licensure_cycle_applicable` SET TAGS ('dbx_business_glossary_term' = 'Licensure Cycle Applicable Flag');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`cme_activity` ALTER COLUMN `licensure_renewal_cycle_end_date` SET TAGS ('dbx_business_glossary_term' = 'Licensure Renewal Cycle End Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`cme_activity` ALTER COLUMN `mandatory_topic_flag` SET TAGS ('dbx_business_glossary_term' = 'Mandatory CME Topic Flag');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`cme_activity` ALTER COLUMN `mandatory_topic_type` SET TAGS ('dbx_business_glossary_term' = 'Mandatory CME Topic Type');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`cme_activity` ALTER COLUMN `moc_points_earned` SET TAGS ('dbx_business_glossary_term' = 'Maintenance of Certification (MOC) Points Earned');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`cme_activity` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'CME Activity Notes');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`cme_activity` ALTER COLUMN `npi` SET TAGS ('dbx_business_glossary_term' = 'National Provider Identifier (NPI)');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`cme_activity` ALTER COLUMN `npi` SET TAGS ('dbx_value_regex' = '^[0-9]{10}$');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`cme_activity` ALTER COLUMN `npi` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`cme_activity` ALTER COLUMN `npi` SET TAGS ('dbx_pii_identifier' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`cme_activity` ALTER COLUMN `passing_score_threshold` SET TAGS ('dbx_business_glossary_term' = 'CME Passing Score Threshold');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`cme_activity` ALTER COLUMN `post_test_score` SET TAGS ('dbx_business_glossary_term' = 'CME Post-Test Score');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`cme_activity` ALTER COLUMN `reappointment_cycle_applicable` SET TAGS ('dbx_business_glossary_term' = 'Reappointment Cycle Applicable Flag');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`cme_activity` ALTER COLUMN `source_system_code` SET TAGS ('dbx_business_glossary_term' = 'Source System Code');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`cme_activity` ALTER COLUMN `source_system_record_reference` SET TAGS ('dbx_business_glossary_term' = 'Source System Record ID');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`cme_activity` ALTER COLUMN `sponsoring_organization` SET TAGS ('dbx_business_glossary_term' = 'CME Sponsoring Organization');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`cme_activity` ALTER COLUMN `topic_area` SET TAGS ('dbx_business_glossary_term' = 'CME Topic Area');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`cme_activity` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Updated Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`cme_activity` ALTER COLUMN `verification_date` SET TAGS ('dbx_business_glossary_term' = 'CME Verification Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`cme_activity` ALTER COLUMN `verification_source` SET TAGS ('dbx_business_glossary_term' = 'CME Verification Source');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`cme_activity` ALTER COLUMN `verification_source` SET TAGS ('dbx_value_regex' = 'provider_attestation|accrediting_org|pme_transcript|cme_tracker|primary_source');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`cme_activity` ALTER COLUMN `verification_status` SET TAGS ('dbx_business_glossary_term' = 'CME Verification Status');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`cme_activity` ALTER COLUMN `verification_status` SET TAGS ('dbx_value_regex' = 'unverified|verified|failed_verification|pending');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`telehealth_authorization` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`telehealth_authorization` SET TAGS ('dbx_subdomain' = 'credentialing_compliance');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`telehealth_authorization` ALTER COLUMN `telehealth_authorization_id` SET TAGS ('dbx_business_glossary_term' = 'Telehealth Authorization ID');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`telehealth_authorization` ALTER COLUMN `care_site_id` SET TAGS ('dbx_business_glossary_term' = 'Facility ID');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`telehealth_authorization` ALTER COLUMN `clinician_id` SET TAGS ('dbx_business_glossary_term' = 'Clinician ID');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`telehealth_authorization` ALTER COLUMN `compliance_regulatory_submission_id` SET TAGS ('dbx_business_glossary_term' = 'Regulatory Submission Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`telehealth_authorization` ALTER COLUMN `credentialing_application_id` SET TAGS ('dbx_business_glossary_term' = 'Credentialing Application Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`telehealth_authorization` ALTER COLUMN `credentialing_file_id` SET TAGS ('dbx_business_glossary_term' = 'Credentialing File ID');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`telehealth_authorization` ALTER COLUMN `specialty_id` SET TAGS ('dbx_business_glossary_term' = 'Specialty Id');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`telehealth_authorization` ALTER COLUMN `specialty_id` SET TAGS ('dbx_internal' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`telehealth_authorization` ALTER COLUMN `application_date` SET TAGS ('dbx_business_glossary_term' = 'Authorization Application Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`telehealth_authorization` ALTER COLUMN `approval_date` SET TAGS ('dbx_business_glossary_term' = 'Authorization Approval Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`telehealth_authorization` ALTER COLUMN `audio_only_authorized` SET TAGS ('dbx_business_glossary_term' = 'Audio-Only Telehealth Authorized');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`telehealth_authorization` ALTER COLUMN `authorization_number` SET TAGS ('dbx_business_glossary_term' = 'Telehealth Authorization Number');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`telehealth_authorization` ALTER COLUMN `authorization_status` SET TAGS ('dbx_business_glossary_term' = 'Telehealth Authorization Status');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`telehealth_authorization` ALTER COLUMN `authorization_status` SET TAGS ('dbx_value_regex' = 'active|pending|expired|suspended|revoked|pending_renewal');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`telehealth_authorization` ALTER COLUMN `authorization_type` SET TAGS ('dbx_business_glossary_term' = 'Telehealth Authorization Type');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`telehealth_authorization` ALTER COLUMN `authorization_type` SET TAGS ('dbx_value_regex' = 'state_license|interstate_compact|federal_waiver|reciprocity_agreement|emergency_waiver');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`telehealth_authorization` ALTER COLUMN `cms_telehealth_eligible` SET TAGS ('dbx_business_glossary_term' = 'Centers for Medicare and Medicaid Services (CMS) Telehealth Eligibility Indicator');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`telehealth_authorization` ALTER COLUMN `compact_membership_number` SET TAGS ('dbx_business_glossary_term' = 'Interstate Compact Membership ID');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`telehealth_authorization` ALTER COLUMN `compact_type` SET TAGS ('dbx_business_glossary_term' = 'Interstate Compact Type');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`telehealth_authorization` ALTER COLUMN `controlled_substance_prescribing_allowed` SET TAGS ('dbx_business_glossary_term' = 'Controlled Substance Prescribing Allowed via Telehealth');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`telehealth_authorization` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`telehealth_authorization` ALTER COLUMN `cross_border_country` SET TAGS ('dbx_business_glossary_term' = 'Cross-Border Country Code');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`telehealth_authorization` ALTER COLUMN `cross_border_country` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`telehealth_authorization` ALTER COLUMN `cross_border_country` SET TAGS ('dbx_pii_category' = 'person_data');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`telehealth_authorization` ALTER COLUMN `distant_state` SET TAGS ('dbx_business_glossary_term' = 'Distant State');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`telehealth_authorization` ALTER COLUMN `distant_state` SET TAGS ('dbx_value_regex' = '^[A-Z]{2}$');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`telehealth_authorization` ALTER COLUMN `distant_state` SET TAGS ('dbx_pii_category' = 'person_data');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`telehealth_authorization` ALTER COLUMN `effective_date` SET TAGS ('dbx_business_glossary_term' = 'Authorization Effective Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`telehealth_authorization` ALTER COLUMN `expiration_alert_sent` SET TAGS ('dbx_business_glossary_term' = 'Expiration Alert Sent Indicator');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`telehealth_authorization` ALTER COLUMN `expiration_date` SET TAGS ('dbx_business_glossary_term' = 'Authorization Expiration Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`telehealth_authorization` ALTER COLUMN `issuing_authority` SET TAGS ('dbx_business_glossary_term' = 'Issuing Authority');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`telehealth_authorization` ALTER COLUMN `medicaid_telehealth_eligible` SET TAGS ('dbx_business_glossary_term' = 'Medicaid Telehealth Eligibility Indicator');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`telehealth_authorization` ALTER COLUMN `medicaid_telehealth_eligible` SET TAGS ('dbx_pii_person_data' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`telehealth_authorization` ALTER COLUMN `network_participation_status` SET TAGS ('dbx_business_glossary_term' = 'Telehealth Network Participation Status');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`telehealth_authorization` ALTER COLUMN `network_participation_status` SET TAGS ('dbx_value_regex' = 'in_network|out_of_network|pending|not_applicable');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`telehealth_authorization` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Authorization Notes');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`telehealth_authorization` ALTER COLUMN `npi` SET TAGS ('dbx_business_glossary_term' = 'National Provider Identifier (NPI)');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`telehealth_authorization` ALTER COLUMN `npi` SET TAGS ('dbx_value_regex' = '^[0-9]{10}$');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`telehealth_authorization` ALTER COLUMN `npi` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`telehealth_authorization` ALTER COLUMN `npi` SET TAGS ('dbx_pii_identifier' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`telehealth_authorization` ALTER COLUMN `originating_state` SET TAGS ('dbx_business_glossary_term' = 'Originating State');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`telehealth_authorization` ALTER COLUMN `originating_state` SET TAGS ('dbx_value_regex' = '^[A-Z]{2}$');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`telehealth_authorization` ALTER COLUMN `originating_state` SET TAGS ('dbx_pii_category' = 'person_data');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`telehealth_authorization` ALTER COLUMN `payer_enrollment_date` SET TAGS ('dbx_business_glossary_term' = 'Payer Enrollment Date for Telehealth');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`telehealth_authorization` ALTER COLUMN `payer_enrollment_status` SET TAGS ('dbx_business_glossary_term' = 'Payer Enrollment Status for Telehealth');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`telehealth_authorization` ALTER COLUMN `payer_enrollment_status` SET TAGS ('dbx_value_regex' = 'enrolled|pending|not_enrolled|terminated');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`telehealth_authorization` ALTER COLUMN `platform_restriction` SET TAGS ('dbx_business_glossary_term' = 'Telehealth Platform Restriction');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`telehealth_authorization` ALTER COLUMN `renewal_cycle_months` SET TAGS ('dbx_business_glossary_term' = 'Renewal Cycle (Months)');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`telehealth_authorization` ALTER COLUMN `renewal_date` SET TAGS ('dbx_business_glossary_term' = 'Authorization Renewal Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`telehealth_authorization` ALTER COLUMN `revocation_date` SET TAGS ('dbx_business_glossary_term' = 'Authorization Revocation Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`telehealth_authorization` ALTER COLUMN `revocation_reason` SET TAGS ('dbx_business_glossary_term' = 'Authorization Revocation Reason');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`telehealth_authorization` ALTER COLUMN `service_type_restriction` SET TAGS ('dbx_business_glossary_term' = 'Telehealth Service Type Restriction');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`telehealth_authorization` ALTER COLUMN `source_system_code` SET TAGS ('dbx_business_glossary_term' = 'Source System Code');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`telehealth_authorization` ALTER COLUMN `source_system_code` SET TAGS ('dbx_value_regex' = 'symplr|epic|cerner|meditech|manual');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`telehealth_authorization` ALTER COLUMN `source_system_record_reference` SET TAGS ('dbx_business_glossary_term' = 'Source System Record ID');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`telehealth_authorization` ALTER COLUMN `state_license_number` SET TAGS ('dbx_business_glossary_term' = 'State License Number');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`telehealth_authorization` ALTER COLUMN `state_license_number` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`telehealth_authorization` ALTER COLUMN `state_license_number` SET TAGS ('dbx_pii_identifier' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`telehealth_authorization` ALTER COLUMN `suspension_date` SET TAGS ('dbx_business_glossary_term' = 'Authorization Suspension Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`telehealth_authorization` ALTER COLUMN `suspension_reason` SET TAGS ('dbx_business_glossary_term' = 'Authorization Suspension Reason');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`telehealth_authorization` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Updated Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`telehealth_authorization` ALTER COLUMN `verification_date` SET TAGS ('dbx_business_glossary_term' = 'Primary Source Verification Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`telehealth_authorization` ALTER COLUMN `verification_method` SET TAGS ('dbx_business_glossary_term' = 'Verification Method');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`telehealth_authorization` ALTER COLUMN `verification_method` SET TAGS ('dbx_value_regex' = 'online_portal|phone|written_confirmation|third_party_service|caqh');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`telehealth_authorization` ALTER COLUMN `verification_status` SET TAGS ('dbx_business_glossary_term' = 'Primary Source Verification Status');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`telehealth_authorization` ALTER COLUMN `verification_status` SET TAGS ('dbx_value_regex' = 'verified|pending|failed|not_required');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`taxonomy` SET TAGS ('dbx_data_type' = 'reference_data');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`taxonomy` SET TAGS ('dbx_subdomain' = 'provider_directory');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`taxonomy` ALTER COLUMN `taxonomy_id` SET TAGS ('dbx_business_glossary_term' = 'Provider Taxonomy ID');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`taxonomy` ALTER COLUMN `cpt_code_id` SET TAGS ('dbx_business_glossary_term' = 'Primary Cpt Code Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`taxonomy` ALTER COLUMN `icd_code_id` SET TAGS ('dbx_business_glossary_term' = 'Primary Icd Code Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`taxonomy` ALTER COLUMN `snomed_concept_id` SET TAGS ('dbx_business_glossary_term' = 'Systematized Nomenclature of Medicine Clinical Terms (SNOMED CT) Concept ID');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`taxonomy` ALTER COLUMN `abms_board_name` SET TAGS ('dbx_business_glossary_term' = 'American Board of Medical Specialties (ABMS) Board Name');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`taxonomy` ALTER COLUMN `acgme_program_code` SET TAGS ('dbx_business_glossary_term' = 'Accreditation Council for Graduate Medical Education (ACGME) Program Code');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`taxonomy` ALTER COLUMN `board_certification_required` SET TAGS ('dbx_business_glossary_term' = 'Board Certification Required Indicator');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`taxonomy` ALTER COLUMN `classification` SET TAGS ('dbx_business_glossary_term' = 'Provider Classification');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`taxonomy` ALTER COLUMN `cms_specialty_code` SET TAGS ('dbx_business_glossary_term' = 'Centers for Medicare and Medicaid Services (CMS) Specialty Code');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`taxonomy` ALTER COLUMN `cms_specialty_code` SET TAGS ('dbx_value_regex' = '^[0-9]{2}$');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`taxonomy` ALTER COLUMN `cms_specialty_description` SET TAGS ('dbx_business_glossary_term' = 'Centers for Medicare and Medicaid Services (CMS) Specialty Description');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`taxonomy` ALTER COLUMN `taxonomy_code` SET TAGS ('dbx_business_glossary_term' = 'NUCC Provider Taxonomy Code');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`taxonomy` ALTER COLUMN `taxonomy_code` SET TAGS ('dbx_value_regex' = '^[0-9]{6}[A-Z0-9]{3}X$');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`taxonomy` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`taxonomy` ALTER COLUMN `dea_registration_applicable` SET TAGS ('dbx_business_glossary_term' = 'Drug Enforcement Administration (DEA) Registration Applicable');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`taxonomy` ALTER COLUMN `definition` SET TAGS ('dbx_business_glossary_term' = 'Taxonomy Definition');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`taxonomy` ALTER COLUMN `display_name` SET TAGS ('dbx_business_glossary_term' = 'Taxonomy Display Name');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`taxonomy` ALTER COLUMN `effective_date` SET TAGS ('dbx_business_glossary_term' = 'Taxonomy Code Effective Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`taxonomy` ALTER COLUMN `end_date` SET TAGS ('dbx_business_glossary_term' = 'Taxonomy Code End Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`taxonomy` ALTER COLUMN `fhir_practitioner_role_code` SET TAGS ('dbx_business_glossary_term' = 'Fast Healthcare Interoperability Resources (FHIR) Practitioner Role Code');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`taxonomy` ALTER COLUMN `hospital_privileges_applicable` SET TAGS ('dbx_business_glossary_term' = 'Hospital Privileges Applicable Indicator');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`taxonomy` ALTER COLUMN `individual_or_organization` SET TAGS ('dbx_business_glossary_term' = 'Individual or Organization Indicator');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`taxonomy` ALTER COLUMN `individual_or_organization` SET TAGS ('dbx_value_regex' = 'Individual|Organization');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`taxonomy` ALTER COLUMN `medicaid_enrollment_eligible` SET TAGS ('dbx_business_glossary_term' = 'Medicaid Enrollment Eligible');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`taxonomy` ALTER COLUMN `medicaid_enrollment_eligible` SET TAGS ('dbx_pii_person_data' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`taxonomy` ALTER COLUMN `mips_eligible` SET TAGS ('dbx_business_glossary_term' = 'Merit-based Incentive Payment System (MIPS) Eligible');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`taxonomy` ALTER COLUMN `network_adequacy_category` SET TAGS ('dbx_business_glossary_term' = 'Network Adequacy Category');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`taxonomy` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Taxonomy Notes');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`taxonomy` ALTER COLUMN `npi_type` SET TAGS ('dbx_business_glossary_term' = 'National Provider Identifier (NPI) Type');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`taxonomy` ALTER COLUMN `npi_type` SET TAGS ('dbx_value_regex' = 'Type 1|Type 2');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`taxonomy` ALTER COLUMN `nucc_grouping` SET TAGS ('dbx_business_glossary_term' = 'NUCC Taxonomy Grouping');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`taxonomy` ALTER COLUMN `pecos_enrollment_eligible` SET TAGS ('dbx_business_glossary_term' = 'Provider Enrollment and Chain Ownership System (PECOS) Enrollment Eligible');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`taxonomy` ALTER COLUMN `prescribing_authority` SET TAGS ('dbx_business_glossary_term' = 'Prescribing Authority Indicator');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`taxonomy` ALTER COLUMN `primary_care_designation` SET TAGS ('dbx_business_glossary_term' = 'Primary Care Physician (PCP) Designation');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`taxonomy` ALTER COLUMN `prior_authorization_required` SET TAGS ('dbx_business_glossary_term' = 'Prior Authorization Required Indicator');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`taxonomy` ALTER COLUMN `provider_type` SET TAGS ('dbx_business_glossary_term' = 'Provider Type');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`taxonomy` ALTER COLUMN `referral_required` SET TAGS ('dbx_business_glossary_term' = 'Referral Required Indicator');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`taxonomy` ALTER COLUMN `replacement_taxonomy_code` SET TAGS ('dbx_business_glossary_term' = 'Replacement Taxonomy Code');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`taxonomy` ALTER COLUMN `replacement_taxonomy_code` SET TAGS ('dbx_value_regex' = '^[0-9]{6}[A-Z0-9]{3}X$');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`taxonomy` ALTER COLUMN `rvu_work_component` SET TAGS ('dbx_business_glossary_term' = 'Relative Value Unit (RVU) Work Component');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`taxonomy` ALTER COLUMN `source_system_record_reference` SET TAGS ('dbx_business_glossary_term' = 'Source System Record ID');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`taxonomy` ALTER COLUMN `specialization` SET TAGS ('dbx_business_glossary_term' = 'Provider Specialization');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`taxonomy` ALTER COLUMN `taxonomy_status` SET TAGS ('dbx_business_glossary_term' = 'Taxonomy Code Status');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`taxonomy` ALTER COLUMN `taxonomy_status` SET TAGS ('dbx_value_regex' = 'Active|Retired|Deprecated');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`taxonomy` ALTER COLUMN `surgical_specialty` SET TAGS ('dbx_business_glossary_term' = 'Surgical Specialty Indicator');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`taxonomy` ALTER COLUMN `telehealth_eligible` SET TAGS ('dbx_business_glossary_term' = 'Telehealth Eligible Indicator');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`taxonomy` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Updated Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`taxonomy` ALTER COLUMN `version` SET TAGS ('dbx_business_glossary_term' = 'NUCC Taxonomy Code Set Version');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`taxonomy` ALTER COLUMN `version` SET TAGS ('dbx_value_regex' = '^[0-9]{2}.[0-9]$');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`affiliation_history` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`affiliation_history` SET TAGS ('dbx_subdomain' = 'provider_directory');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`affiliation_history` ALTER COLUMN `affiliation_history_id` SET TAGS ('dbx_business_glossary_term' = 'Affiliation History ID');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`affiliation_history` ALTER COLUMN `clinician_id` SET TAGS ('dbx_business_glossary_term' = 'Clinician ID');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`affiliation_history` ALTER COLUMN `credentialing_application_id` SET TAGS ('dbx_business_glossary_term' = 'Credentialing Application ID');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`affiliation_history` ALTER COLUMN `org_provider_id` SET TAGS ('dbx_business_glossary_term' = 'Organizational Provider ID');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`affiliation_history` ALTER COLUMN `adverse_action_flag` SET TAGS ('dbx_business_glossary_term' = 'Adverse Action Flag');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`affiliation_history` ALTER COLUMN `affiliated_org_address_line1` SET TAGS ('dbx_business_glossary_term' = 'Affiliated Organization Address Line 1');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`affiliation_history` ALTER COLUMN `affiliated_org_address_line1` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`affiliation_history` ALTER COLUMN `affiliated_org_address_line1` SET TAGS ('dbx_pii_address' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`affiliation_history` ALTER COLUMN `affiliated_org_city` SET TAGS ('dbx_business_glossary_term' = 'Affiliated Organization City');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`affiliation_history` ALTER COLUMN `affiliated_org_city` SET TAGS ('dbx_pii_category' = 'person_data');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`affiliation_history` ALTER COLUMN `affiliated_org_country` SET TAGS ('dbx_business_glossary_term' = 'Affiliated Organization Country');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`affiliation_history` ALTER COLUMN `affiliated_org_country` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`affiliation_history` ALTER COLUMN `affiliated_org_country` SET TAGS ('dbx_pii_category' = 'person_data');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`affiliation_history` ALTER COLUMN `affiliated_org_name` SET TAGS ('dbx_business_glossary_term' = 'Affiliated Organization Name');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`affiliation_history` ALTER COLUMN `affiliated_org_npi` SET TAGS ('dbx_business_glossary_term' = 'Affiliated Organization National Provider Identifier (NPI)');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`affiliation_history` ALTER COLUMN `affiliated_org_npi` SET TAGS ('dbx_value_regex' = '^[0-9]{10}$');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`affiliation_history` ALTER COLUMN `affiliated_org_phone` SET TAGS ('dbx_business_glossary_term' = 'Affiliated Organization Phone Number');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`affiliation_history` ALTER COLUMN `affiliated_org_phone` SET TAGS ('dbx_value_regex' = '^+?[0-9-s().]{7,20}$');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`affiliation_history` ALTER COLUMN `affiliated_org_phone` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`affiliation_history` ALTER COLUMN `affiliated_org_phone` SET TAGS ('dbx_pii_phone' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`affiliation_history` ALTER COLUMN `affiliated_org_state` SET TAGS ('dbx_business_glossary_term' = 'Affiliated Organization State');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`affiliation_history` ALTER COLUMN `affiliated_org_state` SET TAGS ('dbx_value_regex' = '^[A-Z]{2}$');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`affiliation_history` ALTER COLUMN `affiliated_org_state` SET TAGS ('dbx_pii_category' = 'person_data');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`affiliation_history` ALTER COLUMN `affiliated_org_type` SET TAGS ('dbx_business_glossary_term' = 'Affiliated Organization Type');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`affiliation_history` ALTER COLUMN `affiliated_org_zip_code` SET TAGS ('dbx_business_glossary_term' = 'Affiliated Organization ZIP Code');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`affiliation_history` ALTER COLUMN `affiliated_org_zip_code` SET TAGS ('dbx_value_regex' = '^[0-9]{5}(-[0-9]{4})?$');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`affiliation_history` ALTER COLUMN `affiliated_org_zip_code` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`affiliation_history` ALTER COLUMN `affiliated_org_zip_code` SET TAGS ('dbx_pii_address' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`affiliation_history` ALTER COLUMN `affiliation_status` SET TAGS ('dbx_business_glossary_term' = 'Affiliation Status');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`affiliation_history` ALTER COLUMN `affiliation_status` SET TAGS ('dbx_value_regex' = 'active|inactive|terminated|resigned|suspended|on_leave');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`affiliation_history` ALTER COLUMN `affiliation_type` SET TAGS ('dbx_business_glossary_term' = 'Affiliation Type');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`affiliation_history` ALTER COLUMN `caqh_provider_number` SET TAGS ('dbx_business_glossary_term' = 'Council for Affordable Quality Healthcare (CAQH) Provider ID');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`affiliation_history` ALTER COLUMN `caqh_provider_number` SET TAGS ('dbx_value_regex' = '^[0-9]{8}$');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`affiliation_history` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`affiliation_history` ALTER COLUMN `department_name` SET TAGS ('dbx_business_glossary_term' = 'Department Name');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`affiliation_history` ALTER COLUMN `departure_reason` SET TAGS ('dbx_business_glossary_term' = 'Departure Reason');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`affiliation_history` ALTER COLUMN `employment_basis` SET TAGS ('dbx_business_glossary_term' = 'Employment Basis');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`affiliation_history` ALTER COLUMN `employment_basis` SET TAGS ('dbx_value_regex' = 'full_time|part_time|per_diem|locum_tenens|contract');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`affiliation_history` ALTER COLUMN `end_date` SET TAGS ('dbx_business_glossary_term' = 'Affiliation End Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`affiliation_history` ALTER COLUMN `fte_percentage` SET TAGS ('dbx_business_glossary_term' = 'Full-Time Equivalent (FTE) Percentage');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`affiliation_history` ALTER COLUMN `fte_percentage` SET TAGS ('dbx_pii_category' = 'person_data');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`affiliation_history` ALTER COLUMN `gap_explanation` SET TAGS ('dbx_business_glossary_term' = 'Employment Gap Explanation');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`affiliation_history` ALTER COLUMN `is_current` SET TAGS ('dbx_business_glossary_term' = 'Is Current Affiliation Indicator');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`affiliation_history` ALTER COLUMN `is_primary_affiliation` SET TAGS ('dbx_business_glossary_term' = 'Is Primary Affiliation Indicator');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`affiliation_history` ALTER COLUMN `is_voluntary_separation` SET TAGS ('dbx_business_glossary_term' = 'Is Voluntary Separation Indicator');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`affiliation_history` ALTER COLUMN `medical_staff_category` SET TAGS ('dbx_business_glossary_term' = 'Medical Staff Category');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`affiliation_history` ALTER COLUMN `medical_staff_category` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`affiliation_history` ALTER COLUMN `medical_staff_category` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`affiliation_history` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Affiliation Notes');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`affiliation_history` ALTER COLUMN `npdb_report_date` SET TAGS ('dbx_business_glossary_term' = 'National Practitioner Data Bank (NPDB) Report Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`affiliation_history` ALTER COLUMN `npdb_report_reference_number` SET TAGS ('dbx_business_glossary_term' = 'National Practitioner Data Bank (NPDB) Report Reference Number');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`affiliation_history` ALTER COLUMN `npdb_report_required` SET TAGS ('dbx_business_glossary_term' = 'National Practitioner Data Bank (NPDB) Report Required Indicator');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`affiliation_history` ALTER COLUMN `privilege_restriction_at_departure` SET TAGS ('dbx_business_glossary_term' = 'Privilege Restriction at Departure Indicator');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`affiliation_history` ALTER COLUMN `psv_date` SET TAGS ('dbx_business_glossary_term' = 'Primary Source Verification (PSV) Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`affiliation_history` ALTER COLUMN `psv_method` SET TAGS ('dbx_business_glossary_term' = 'Primary Source Verification (PSV) Method');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`affiliation_history` ALTER COLUMN `psv_method` SET TAGS ('dbx_value_regex' = 'direct_contact|written_confirmation|online_verification|caqh|third_party_service|unable_to_verify');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`affiliation_history` ALTER COLUMN `psv_status` SET TAGS ('dbx_business_glossary_term' = 'Primary Source Verification (PSV) Status');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`affiliation_history` ALTER COLUMN `psv_status` SET TAGS ('dbx_value_regex' = 'pending|in_progress|verified|unable_to_verify|not_required');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`affiliation_history` ALTER COLUMN `psv_verified_by` SET TAGS ('dbx_business_glossary_term' = 'Primary Source Verification (PSV) Verified By');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`affiliation_history` ALTER COLUMN `resignation_under_investigation` SET TAGS ('dbx_business_glossary_term' = 'Resignation While Under Investigation Indicator');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`affiliation_history` ALTER COLUMN `role_title` SET TAGS ('dbx_business_glossary_term' = 'Role Title');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`affiliation_history` ALTER COLUMN `source_system_record_reference` SET TAGS ('dbx_business_glossary_term' = 'Source System Record ID');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`affiliation_history` ALTER COLUMN `start_date` SET TAGS ('dbx_business_glossary_term' = 'Affiliation Start Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`affiliation_history` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Updated Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`study_team_member` SET TAGS ('dbx_data_type' = 'association_data');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`study_team_member` SET TAGS ('dbx_subdomain' = 'credentialing_compliance');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`study_team_member` SET TAGS ('dbx_association_edges' = 'provider.clinician,research.research_study');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`study_team_member` ALTER COLUMN `study_team_member_id` SET TAGS ('dbx_business_glossary_term' = 'Study Team Member - Study Team Member Id');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`study_team_member` ALTER COLUMN `study_team_member_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`study_team_member` ALTER COLUMN `study_team_member_id` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`study_team_member` ALTER COLUMN `clinician_id` SET TAGS ('dbx_business_glossary_term' = 'Study Team Member - Clinician Id');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`study_team_member` ALTER COLUMN `research_study_id` SET TAGS ('dbx_business_glossary_term' = 'Study Team Member - Research Study Id');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`study_team_member` ALTER COLUMN `assignment_status` SET TAGS ('dbx_business_glossary_term' = 'Team Member Assignment Status');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`study_team_member` ALTER COLUMN `coi_disclosure_date` SET TAGS ('dbx_business_glossary_term' = 'COI Disclosure Submission Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`study_team_member` ALTER COLUMN `conflict_of_interest_disclosed_flag` SET TAGS ('dbx_business_glossary_term' = 'Conflict of Interest Disclosure Indicator');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`study_team_member` ALTER COLUMN `coordinator_flag` SET TAGS ('dbx_business_glossary_term' = 'Study Coordinator Indicator');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`study_team_member` ALTER COLUMN `delegation_log_signed_date` SET TAGS ('dbx_business_glossary_term' = 'Delegation Log Signature Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`study_team_member` ALTER COLUMN `effort_percentage` SET TAGS ('dbx_business_glossary_term' = 'Research Effort Allocation Percentage');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`study_team_member` ALTER COLUMN `effort_percentage` SET TAGS ('dbx_pii_category' = 'person_data');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`study_team_member` ALTER COLUMN `end_date` SET TAGS ('dbx_business_glossary_term' = 'Team Member Assignment End Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`study_team_member` ALTER COLUMN `form_1572_signed_date` SET TAGS ('dbx_business_glossary_term' = 'FDA Form 1572 Signature Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`study_team_member` ALTER COLUMN `gcp_training_completion_date` SET TAGS ('dbx_business_glossary_term' = 'GCP Training Completion Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`study_team_member` ALTER COLUMN `primary_investigator_flag` SET TAGS ('dbx_business_glossary_term' = 'Primary Investigator Indicator');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`study_team_member` ALTER COLUMN `protocol_training_completion_date` SET TAGS ('dbx_business_glossary_term' = 'Protocol-Specific Training Completion Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`study_team_member` ALTER COLUMN `role_type` SET TAGS ('dbx_business_glossary_term' = 'Study Team Role Type');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`study_team_member` ALTER COLUMN `start_date` SET TAGS ('dbx_business_glossary_term' = 'Team Member Assignment Start Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`study_team_member` ALTER COLUMN `sub_investigator_flag` SET TAGS ('dbx_business_glossary_term' = 'Sub-Investigator Indicator');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`affiliation` SET TAGS ('dbx_data_type' = 'association_data');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`affiliation` SET TAGS ('dbx_subdomain' = 'provider_directory');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`affiliation` SET TAGS ('dbx_association_edges' = 'provider.clinician,workforce.org_unit');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`affiliation` ALTER COLUMN `affiliation_id` SET TAGS ('dbx_business_glossary_term' = 'Affiliation Identifier');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`affiliation` ALTER COLUMN `clinician_id` SET TAGS ('dbx_business_glossary_term' = 'Affiliation - Clinician Id');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`affiliation` ALTER COLUMN `org_unit_id` SET TAGS ('dbx_business_glossary_term' = 'Affiliation - Workforce Org Unit Id');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`affiliation` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Creation Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`affiliation` ALTER COLUMN `effective_date` SET TAGS ('dbx_business_glossary_term' = 'Affiliation Effective Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`affiliation` ALTER COLUMN `end_date` SET TAGS ('dbx_business_glossary_term' = 'Affiliation End Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`affiliation` ALTER COLUMN `fte_percentage` SET TAGS ('dbx_business_glossary_term' = 'FTE Allocation Percentage');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`affiliation` ALTER COLUMN `fte_percentage` SET TAGS ('dbx_pii_category' = 'person_data');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`affiliation` ALTER COLUMN `medical_staff_category` SET TAGS ('dbx_business_glossary_term' = 'Medical Staff Category');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`affiliation` ALTER COLUMN `medical_staff_category` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`affiliation` ALTER COLUMN `medical_staff_category` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`affiliation` ALTER COLUMN `primary_affiliation_flag` SET TAGS ('dbx_business_glossary_term' = 'Primary Affiliation Indicator');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`affiliation` ALTER COLUMN `affiliation_type` SET TAGS ('dbx_business_glossary_term' = 'Affiliation Type');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`affiliation` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Update Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_network_participation` SET TAGS ('dbx_data_type' = 'association_data');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_network_participation` SET TAGS ('dbx_subdomain' = 'network_contracting');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_network_participation` SET TAGS ('dbx_association_edges' = 'provider.org_provider,insurance.payer');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_network_participation` ALTER COLUMN `provider_network_participation_id` SET TAGS ('dbx_business_glossary_term' = 'provider_network_participation Identifier');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_network_participation` ALTER COLUMN `insurance_network_participation_id` SET TAGS ('dbx_business_glossary_term' = 'Network Participation Identifier');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_network_participation` ALTER COLUMN `insurance_network_participation_id` SET TAGS ('dbx_fk_label' = 'participating_insurance_network_participation');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_network_participation` ALTER COLUMN `org_provider_id` SET TAGS ('dbx_business_glossary_term' = 'Network Participation - Org Provider Id');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_network_participation` ALTER COLUMN `payer_id` SET TAGS ('dbx_business_glossary_term' = 'Network Participation - Payer Id');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_network_participation` ALTER COLUMN `accepting_new_patients_flag` SET TAGS ('dbx_business_glossary_term' = 'Accepting New Patients Flag');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_network_participation` ALTER COLUMN `contract_reference_number` SET TAGS ('dbx_business_glossary_term' = 'Contract Reference Number');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_network_participation` ALTER COLUMN `created_date` SET TAGS ('dbx_business_glossary_term' = 'Record Created Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_network_participation` ALTER COLUMN `credentialing_effective_date` SET TAGS ('dbx_business_glossary_term' = 'Credentialing Effective Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_network_participation` ALTER COLUMN `credentialing_expiration_date` SET TAGS ('dbx_business_glossary_term' = 'Credentialing Expiration Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_network_participation` ALTER COLUMN `credentialing_status` SET TAGS ('dbx_business_glossary_term' = 'Credentialing Status');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_network_participation` ALTER COLUMN `effective_date` SET TAGS ('dbx_business_glossary_term' = 'Participation Effective Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_network_participation` ALTER COLUMN `enrollment_status` SET TAGS ('dbx_business_glossary_term' = 'Enrollment Status');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_network_participation` ALTER COLUMN `network_participation_status` SET TAGS ('dbx_business_glossary_term' = 'Network Participation Status');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_network_participation` ALTER COLUMN `network_tier` SET TAGS ('dbx_business_glossary_term' = 'Network Tier');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_network_participation` ALTER COLUMN `reimbursement_method` SET TAGS ('dbx_business_glossary_term' = 'Reimbursement Method');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_network_participation` ALTER COLUMN `termination_date` SET TAGS ('dbx_business_glossary_term' = 'Participation Termination Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_network_participation` ALTER COLUMN `updated_date` SET TAGS ('dbx_business_glossary_term' = 'Record Updated Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`preference_card` SET TAGS ('dbx_data_type' = 'association_data');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`preference_card` SET TAGS ('dbx_subdomain' = 'provider_directory');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`preference_card` SET TAGS ('dbx_association_edges' = 'provider.clinician,supply.material_master');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`preference_card` ALTER COLUMN `preference_card_id` SET TAGS ('dbx_business_glossary_term' = 'Preference Card Identifier');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`preference_card` ALTER COLUMN `clinician_id` SET TAGS ('dbx_business_glossary_term' = 'Preference Card - Clinician Id');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`preference_card` ALTER COLUMN `material_master_id` SET TAGS ('dbx_business_glossary_term' = 'Preference Card - Material Master Id');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`preference_card` ALTER COLUMN `approval_date` SET TAGS ('dbx_business_glossary_term' = 'Approval Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`preference_card` ALTER COLUMN `approved_by` SET TAGS ('dbx_business_glossary_term' = 'Approved By');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`preference_card` ALTER COLUMN `clinical_justification` SET TAGS ('dbx_business_glossary_term' = 'Clinical Justification');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`preference_card` ALTER COLUMN `effective_date` SET TAGS ('dbx_business_glossary_term' = 'Effective Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`preference_card` ALTER COLUMN `end_date` SET TAGS ('dbx_business_glossary_term' = 'End Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`preference_card` ALTER COLUMN `formulary_exception_flag` SET TAGS ('dbx_business_glossary_term' = 'Formulary Exception Flag');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`preference_card` ALTER COLUMN `last_used_date` SET TAGS ('dbx_business_glossary_term' = 'Last Used Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`preference_card` ALTER COLUMN `preference_rank` SET TAGS ('dbx_business_glossary_term' = 'Preference Rank');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`preference_card` ALTER COLUMN `preference_status` SET TAGS ('dbx_business_glossary_term' = 'Preference Status');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`preference_card` ALTER COLUMN `procedure_type` SET TAGS ('dbx_business_glossary_term' = 'Procedure Type');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`preference_card` ALTER COLUMN `usage_frequency` SET TAGS ('dbx_business_glossary_term' = 'Usage Frequency');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`preference_card` ALTER COLUMN `usage_frequency` SET TAGS ('dbx_pii_category' = 'person_data');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`survey_participation` SET TAGS ('dbx_data_type' = 'association_data');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`survey_participation` SET TAGS ('dbx_subdomain' = 'credentialing_compliance');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`survey_participation` SET TAGS ('dbx_association_edges' = 'provider.clinician,quality.accreditation_survey');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`survey_participation` ALTER COLUMN `survey_participation_id` SET TAGS ('dbx_business_glossary_term' = 'Survey Participation Identifier');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`survey_participation` ALTER COLUMN `accreditation_survey_id` SET TAGS ('dbx_business_glossary_term' = 'Survey Participation - Accreditation Survey Id');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`survey_participation` ALTER COLUMN `clinician_id` SET TAGS ('dbx_business_glossary_term' = 'Survey Participation - Clinician Id');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`survey_participation` ALTER COLUMN `findings_count` SET TAGS ('dbx_business_glossary_term' = 'Findings Attributed Count');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`survey_participation` ALTER COLUMN `interview_conducted` SET TAGS ('dbx_business_glossary_term' = 'Interview Conducted Flag');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`survey_participation` ALTER COLUMN `interview_duration_minutes` SET TAGS ('dbx_business_glossary_term' = 'Interview Duration');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`survey_participation` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Participation Notes');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`survey_participation` ALTER COLUMN `participation_date` SET TAGS ('dbx_business_glossary_term' = 'Participation Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`survey_participation` ALTER COLUMN `performance_rating` SET TAGS ('dbx_business_glossary_term' = 'Survey Performance Rating');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`survey_participation` ALTER COLUMN `preparation_completed` SET TAGS ('dbx_business_glossary_term' = 'Survey Preparation Completed');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`survey_participation` ALTER COLUMN `survey_role` SET TAGS ('dbx_business_glossary_term' = 'Survey Participation Role');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`survey_participation` ALTER COLUMN `tracer_participation` SET TAGS ('dbx_business_glossary_term' = 'Tracer Participation Flag');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`survey_participation` ALTER COLUMN `tracer_participation` SET TAGS ('dbx_pii_person_data' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_file` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_file` SET TAGS ('dbx_subdomain' = 'credentialing_compliance');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_file` ALTER COLUMN `credentialing_file_id` SET TAGS ('dbx_business_glossary_term' = 'Credentialing File Identifier');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_file` ALTER COLUMN `care_site_id` SET TAGS ('dbx_business_glossary_term' = 'Care Site Id');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_file` ALTER COLUMN `provider_committee_id` SET TAGS ('dbx_business_glossary_term' = 'Credentialing Committee Id');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_file` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Employee Id');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_file` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_file` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_file` ALTER COLUMN `payer_id` SET TAGS ('dbx_business_glossary_term' = 'Payer Id');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_file` ALTER COLUMN `prior_credentialing_file_id` SET TAGS ('dbx_business_glossary_term' = 'Prior Credentialing File Id');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_file` ALTER COLUMN `prior_credentialing_file_id` SET TAGS ('dbx_self_ref_fk' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_file` ALTER COLUMN `clinician_id` SET TAGS ('dbx_business_glossary_term' = 'Provider Clinician Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_file` ALTER COLUMN `appeal_date` SET TAGS ('dbx_business_glossary_term' = 'Appeal Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_file` ALTER COLUMN `appeal_filed` SET TAGS ('dbx_business_glossary_term' = 'Appeal Filed');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_file` ALTER COLUMN `appeal_outcome` SET TAGS ('dbx_business_glossary_term' = 'Appeal Outcome');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_file` ALTER COLUMN `appeal_outcome` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_file` ALTER COLUMN `application_date` SET TAGS ('dbx_business_glossary_term' = 'Application Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_file` ALTER COLUMN `background_check_completed` SET TAGS ('dbx_business_glossary_term' = 'Background Check Completed');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_file` ALTER COLUMN `background_check_date` SET TAGS ('dbx_business_glossary_term' = 'Background Check Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_file` ALTER COLUMN `board_certification_verified` SET TAGS ('dbx_business_glossary_term' = 'Board Certification Verified');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_file` ALTER COLUMN `caqh_attestation_date` SET TAGS ('dbx_business_glossary_term' = 'Caqh Attestation Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_file` ALTER COLUMN `caqh_provider_number` SET TAGS ('dbx_business_glossary_term' = 'Caqh Provider Number');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_file` ALTER COLUMN `conditions_or_restrictions` SET TAGS ('dbx_business_glossary_term' = 'Conditions Or Restrictions');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_file` ALTER COLUMN `conditions_or_restrictions` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_file` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_file` ALTER COLUMN `dea_verified` SET TAGS ('dbx_business_glossary_term' = 'Dea Verified');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_file` ALTER COLUMN `decision` SET TAGS ('dbx_business_glossary_term' = 'Decision');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_file` ALTER COLUMN `decision_rationale` SET TAGS ('dbx_business_glossary_term' = 'Decision Rationale');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_file` ALTER COLUMN `decision_rationale` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_file` ALTER COLUMN `education_verified` SET TAGS ('dbx_business_glossary_term' = 'Education Verified');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_file` ALTER COLUMN `effective_date` SET TAGS ('dbx_business_glossary_term' = 'Effective Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_file` ALTER COLUMN `expiration_date` SET TAGS ('dbx_business_glossary_term' = 'Expiration Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_file` ALTER COLUMN `file_number` SET TAGS ('dbx_business_glossary_term' = 'File Number');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_file` ALTER COLUMN `file_type` SET TAGS ('dbx_business_glossary_term' = 'File Type');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_file` ALTER COLUMN `hospital_privileges_verified` SET TAGS ('dbx_business_glossary_term' = 'Hospital Privileges Verified');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_file` ALTER COLUMN `license_verified` SET TAGS ('dbx_business_glossary_term' = 'License Verified');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_file` ALTER COLUMN `malpractice_coverage_amount` SET TAGS ('dbx_business_glossary_term' = 'Malpractice Coverage Amount');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_file` ALTER COLUMN `malpractice_coverage_amount` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_file` ALTER COLUMN `malpractice_coverage_amount` SET TAGS ('dbx_pii_category' = 'person_data');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_file` ALTER COLUMN `malpractice_insurance_verified` SET TAGS ('dbx_business_glossary_term' = 'Malpractice Insurance Verified');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_file` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Notes');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_file` ALTER COLUMN `notes` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_file` ALTER COLUMN `npi_verified` SET TAGS ('dbx_business_glossary_term' = 'Npi Verified');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_file` ALTER COLUMN `peer_references_verified` SET TAGS ('dbx_business_glossary_term' = 'Peer References Verified');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_file` ALTER COLUMN `privileges_requested` SET TAGS ('dbx_business_glossary_term' = 'Privileges Requested');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_file` ALTER COLUMN `recredentialing_cycle_months` SET TAGS ('dbx_business_glossary_term' = 'Recredentialing Cycle Months');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_file` ALTER COLUMN `review_completion_date` SET TAGS ('dbx_business_glossary_term' = 'Review Completion Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_file` ALTER COLUMN `review_start_date` SET TAGS ('dbx_business_glossary_term' = 'Review Start Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_file` ALTER COLUMN `sanctions_screening_completed` SET TAGS ('dbx_business_glossary_term' = 'Sanctions Screening Completed');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_file` ALTER COLUMN `sanctions_screening_date` SET TAGS ('dbx_business_glossary_term' = 'Sanctions Screening Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_file` ALTER COLUMN `specialty_requested` SET TAGS ('dbx_business_glossary_term' = 'Specialty Requested');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_file` ALTER COLUMN `credentialing_file_status` SET TAGS ('dbx_business_glossary_term' = 'Status');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_file` ALTER COLUMN `updated_by` SET TAGS ('dbx_business_glossary_term' = 'Updated By');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_file` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Updated Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_file` ALTER COLUMN `created_by` SET TAGS ('dbx_business_glossary_term' = 'Created By');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_assignment` SET TAGS ('dbx_data_type' = 'association_data');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_assignment` SET TAGS ('dbx_subdomain' = 'provider_directory');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_assignment` SET TAGS ('dbx_association_edges' = 'provider.clinician,workforce.position');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_assignment` ALTER COLUMN `provider_assignment_id` SET TAGS ('dbx_business_glossary_term' = 'Assignment Identifier');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_assignment` ALTER COLUMN `clinician_id` SET TAGS ('dbx_business_glossary_term' = 'Assignment - Clinician Id');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_assignment` ALTER COLUMN `position_id` SET TAGS ('dbx_business_glossary_term' = 'Assignment - Position Id');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_assignment` ALTER COLUMN `assignment_status` SET TAGS ('dbx_business_glossary_term' = 'Assignment Status');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_assignment` ALTER COLUMN `cost_center_code` SET TAGS ('dbx_business_glossary_term' = 'Assignment Cost Center');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_assignment` ALTER COLUMN `effective_date` SET TAGS ('dbx_business_glossary_term' = 'Assignment Effective Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_assignment` ALTER COLUMN `end_date` SET TAGS ('dbx_business_glossary_term' = 'Assignment End Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_assignment` ALTER COLUMN `fte_allocation` SET TAGS ('dbx_business_glossary_term' = 'Assignment FTE Allocation');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_assignment` ALTER COLUMN `primary_assignment_flag` SET TAGS ('dbx_business_glossary_term' = 'Primary Assignment Indicator');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_committee` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_committee` SET TAGS ('dbx_subdomain' = 'credentialing_compliance');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_committee` ALTER COLUMN `provider_committee_id` SET TAGS ('dbx_business_glossary_term' = 'Committee Identifier');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_committee` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Employee Id');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_committee` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_committee` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_committee` ALTER COLUMN `org_provider_id` SET TAGS ('dbx_business_glossary_term' = 'Org Provider Id');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_committee` ALTER COLUMN `org_unit_id` SET TAGS ('dbx_business_glossary_term' = 'Org Unit Id');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_committee` ALTER COLUMN `parent_committee_id` SET TAGS ('dbx_business_glossary_term' = 'Parent Committee Id');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_committee` ALTER COLUMN `clinician_id` SET TAGS ('dbx_business_glossary_term' = 'Secretary Provider Clinician Id');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_committee` ALTER COLUMN `provider_chair_clinician_id` SET TAGS ('dbx_business_glossary_term' = 'Chair Clinician Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_committee` ALTER COLUMN `provider_clinician_id` SET TAGS ('dbx_business_glossary_term' = 'Clinician Id');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_committee` ALTER COLUMN `provider_reporting_committee_id` SET TAGS ('dbx_business_glossary_term' = 'Reporting Committee Id');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_committee` ALTER COLUMN `provider_reporting_committee_id` SET TAGS ('dbx_relationship' = 'reports_to');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_committee` ALTER COLUMN `accreditation_requirement_flag` SET TAGS ('dbx_business_glossary_term' = 'Accreditation Requirement Flag');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_committee` ALTER COLUMN `approval_authority_flag` SET TAGS ('dbx_business_glossary_term' = 'Approval Authority Flag');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_committee` ALTER COLUMN `authority_level` SET TAGS ('dbx_business_glossary_term' = 'Authority Level');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_committee` ALTER COLUMN `bylaws_reference` SET TAGS ('dbx_business_glossary_term' = 'Bylaws Reference');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_committee` ALTER COLUMN `charter_document_reference` SET TAGS ('dbx_business_glossary_term' = 'Charter Document Reference');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_committee` ALTER COLUMN `provider_committee_code` SET TAGS ('dbx_business_glossary_term' = 'Code');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_committee` ALTER COLUMN `confidentiality_level` SET TAGS ('dbx_business_glossary_term' = 'Confidentiality Level');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_committee` ALTER COLUMN `contact_email` SET TAGS ('dbx_business_glossary_term' = 'Contact Email');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_committee` ALTER COLUMN `contact_email` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_committee` ALTER COLUMN `contact_email` SET TAGS ('dbx_pii_person_data' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_committee` ALTER COLUMN `contact_phone` SET TAGS ('dbx_business_glossary_term' = 'Contact Phone');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_committee` ALTER COLUMN `contact_phone` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_committee` ALTER COLUMN `contact_phone` SET TAGS ('dbx_pii_person_data' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_committee` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_committee` ALTER COLUMN `provider_committee_description` SET TAGS ('dbx_business_glossary_term' = 'Description');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_committee` ALTER COLUMN `effective_end_date` SET TAGS ('dbx_business_glossary_term' = 'Effective End Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_committee` ALTER COLUMN `effective_start_date` SET TAGS ('dbx_business_glossary_term' = 'Effective Start Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_committee` ALTER COLUMN `established_date` SET TAGS ('dbx_business_glossary_term' = 'Established Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_committee` ALTER COLUMN `last_review_date` SET TAGS ('dbx_business_glossary_term' = 'Last Review Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_committee` ALTER COLUMN `meeting_frequency` SET TAGS ('dbx_business_glossary_term' = 'Meeting Frequency');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_committee` ALTER COLUMN `meeting_location` SET TAGS ('dbx_business_glossary_term' = 'Meeting Location');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_committee` ALTER COLUMN `member_count` SET TAGS ('dbx_business_glossary_term' = 'Member Count');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_committee` ALTER COLUMN `provider_committee_name` SET TAGS ('dbx_business_glossary_term' = 'Name');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_committee` ALTER COLUMN `provider_committee_name` SET TAGS ('dbx_pii_person_data' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_committee` ALTER COLUMN `next_review_date` SET TAGS ('dbx_business_glossary_term' = 'Next Review Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_committee` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Notes');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_committee` ALTER COLUMN `peer_review_protected_flag` SET TAGS ('dbx_business_glossary_term' = 'Peer Review Protected Flag');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_committee` ALTER COLUMN `quorum_requirement` SET TAGS ('dbx_business_glossary_term' = 'Quorum Requirement');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_committee` ALTER COLUMN `regulatory_requirement_flag` SET TAGS ('dbx_business_glossary_term' = 'Regulatory Requirement Flag');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_committee` ALTER COLUMN `provider_committee_status` SET TAGS ('dbx_business_glossary_term' = 'Status');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_committee` ALTER COLUMN `term_length_months` SET TAGS ('dbx_business_glossary_term' = 'Term Length Months');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_committee` ALTER COLUMN `term_limit_count` SET TAGS ('dbx_business_glossary_term' = 'Term Limit Count');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_committee` ALTER COLUMN `provider_committee_type` SET TAGS ('dbx_business_glossary_term' = 'Type');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_committee` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Updated Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_committee` ALTER COLUMN `voting_member_count` SET TAGS ('dbx_business_glossary_term' = 'Voting Member Count');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_credential` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_credential` SET TAGS ('dbx_subdomain' = 'credentialing_compliance');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_credential` ALTER COLUMN `provider_credential_id` SET TAGS ('dbx_business_glossary_term' = 'Credential ID');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_credential` ALTER COLUMN `cpt_code_id` SET TAGS ('dbx_business_glossary_term' = 'Authorized Cpt Code Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_credential` ALTER COLUMN `clinician_id` SET TAGS ('dbx_business_glossary_term' = 'Provider ID');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_credential` ALTER COLUMN `cost_center_id` SET TAGS ('dbx_business_glossary_term' = 'Cost Center Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_credential` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Employee Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_credential` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_credential` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_credential` ALTER COLUMN `material_master_id` SET TAGS ('dbx_business_glossary_term' = 'Material Master Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_credential` ALTER COLUMN `specialty_id` SET TAGS ('dbx_business_glossary_term' = 'Specialty Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_credential` ALTER COLUMN `training_id` SET TAGS ('dbx_business_glossary_term' = 'Training Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_credential` ALTER COLUMN `board_action_date` SET TAGS ('dbx_business_glossary_term' = 'Board Action Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_credential` ALTER COLUMN `board_action_flag` SET TAGS ('dbx_business_glossary_term' = 'Board Action Flag');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_credential` ALTER COLUMN `caqh_submitted` SET TAGS ('dbx_business_glossary_term' = 'Council for Affordable Quality Healthcare (CAQH) ProView Submitted Flag');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_credential` ALTER COLUMN `certifying_board_name` SET TAGS ('dbx_business_glossary_term' = 'Certifying Board Name');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_credential` ALTER COLUMN `cme_accrediting_organization` SET TAGS ('dbx_business_glossary_term' = 'Continuing Medical Education (CME) Accrediting Organization');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_credential` ALTER COLUMN `cme_activity_title` SET TAGS ('dbx_business_glossary_term' = 'Continuing Medical Education (CME) Activity Title');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_credential` ALTER COLUMN `cme_activity_type` SET TAGS ('dbx_business_glossary_term' = 'Continuing Medical Education (CME) Activity Type');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_credential` ALTER COLUMN `cme_activity_type` SET TAGS ('dbx_value_regex' = 'live|enduring|performance_improvement|internet_searching|journal_based|other');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_credential` ALTER COLUMN `cme_category` SET TAGS ('dbx_business_glossary_term' = 'Continuing Medical Education (CME) Category');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_credential` ALTER COLUMN `cme_category` SET TAGS ('dbx_value_regex' = 'category_1|category_2');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_credential` ALTER COLUMN `cme_credit_hours` SET TAGS ('dbx_business_glossary_term' = 'Continuing Medical Education (CME) Credit Hours');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_credential` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_credential` ALTER COLUMN `credential_number` SET TAGS ('dbx_business_glossary_term' = 'Credential Number');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_credential` ALTER COLUMN `credential_number` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_credential` ALTER COLUMN `credential_number` SET TAGS ('dbx_pii_identifier' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_credential` ALTER COLUMN `credential_status` SET TAGS ('dbx_business_glossary_term' = 'Credential Status');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_credential` ALTER COLUMN `credential_status` SET TAGS ('dbx_value_regex' = 'active|expired|suspended|revoked|pending|inactive');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_credential` ALTER COLUMN `credential_type` SET TAGS ('dbx_business_glossary_term' = 'Credential Type');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_credential` ALTER COLUMN `credential_type` SET TAGS ('dbx_value_regex' = 'state_license|dea_registration|board_certification|cme_activity|other');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_credential` ALTER COLUMN `days_to_expiration` SET TAGS ('dbx_business_glossary_term' = 'Days to Expiration');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_credential` ALTER COLUMN `dea_business_activity_type` SET TAGS ('dbx_business_glossary_term' = 'DEA (Drug Enforcement Administration) Business Activity Type');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_credential` ALTER COLUMN `dea_business_activity_type` SET TAGS ('dbx_value_regex' = 'practitioner|hospital|retail_pharmacy|teaching_institution|researcher|other');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_credential` ALTER COLUMN `dea_schedule_authorizations` SET TAGS ('dbx_business_glossary_term' = 'DEA (Drug Enforcement Administration) Schedule Authorizations');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_credential` ALTER COLUMN `effective_from` SET TAGS ('dbx_business_glossary_term' = 'Effective From Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_credential` ALTER COLUMN `effective_until` SET TAGS ('dbx_business_glossary_term' = 'Effective Until Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_credential` ALTER COLUMN `expiration_date` SET TAGS ('dbx_business_glossary_term' = 'Expiration Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_credential` ALTER COLUMN `issue_date` SET TAGS ('dbx_business_glossary_term' = 'Issue Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_credential` ALTER COLUMN `issuing_authority_name` SET TAGS ('dbx_business_glossary_term' = 'Issuing Authority Name');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_credential` ALTER COLUMN `issuing_state` SET TAGS ('dbx_business_glossary_term' = 'Issuing State');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_credential` ALTER COLUMN `issuing_state` SET TAGS ('dbx_value_regex' = '^[A-Z]{2}$');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_credential` ALTER COLUMN `issuing_state` SET TAGS ('dbx_pii_category' = 'person_data');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_credential` ALTER COLUMN `moc_status` SET TAGS ('dbx_business_glossary_term' = 'Maintenance of Certification (MOC) Status');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_credential` ALTER COLUMN `moc_status` SET TAGS ('dbx_value_regex' = 'compliant|non_compliant|exempt|not_applicable|pending');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_credential` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Credential Notes');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_credential` ALTER COLUMN `npdb_queried` SET TAGS ('dbx_business_glossary_term' = 'National Practitioner Data Bank (NPDB) Queried Flag');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_credential` ALTER COLUMN `npdb_query_date` SET TAGS ('dbx_business_glossary_term' = 'National Practitioner Data Bank (NPDB) Query Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_credential` ALTER COLUMN `oig_exclusion_check_date` SET TAGS ('dbx_business_glossary_term' = 'Office of Inspector General (OIG) Exclusion Check Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_credential` ALTER COLUMN `oig_exclusion_checked` SET TAGS ('dbx_business_glossary_term' = 'Office of Inspector General (OIG) Exclusion List Checked Flag');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_credential` ALTER COLUMN `payer_enrollment_relevant` SET TAGS ('dbx_business_glossary_term' = 'Payer Enrollment Relevant Flag');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_credential` ALTER COLUMN `primary_source_verified` SET TAGS ('dbx_business_glossary_term' = 'Primary Source Verified Flag');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_credential` ALTER COLUMN `privileging_relevant` SET TAGS ('dbx_business_glossary_term' = 'Privileging Relevant Flag');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_credential` ALTER COLUMN `psv_date` SET TAGS ('dbx_business_glossary_term' = 'Primary Source Verification (PSV) Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_credential` ALTER COLUMN `psv_method` SET TAGS ('dbx_business_glossary_term' = 'Primary Source Verification (PSV) Method');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_credential` ALTER COLUMN `psv_method` SET TAGS ('dbx_value_regex' = 'online_database|written_confirmation|telephone_confirmation|electronic_query|other');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_credential` ALTER COLUMN `recredentialing_due_date` SET TAGS ('dbx_business_glossary_term' = 'Recredentialing Due Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_credential` ALTER COLUMN `renewal_date` SET TAGS ('dbx_business_glossary_term' = 'Renewal Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_credential` ALTER COLUMN `restriction_description` SET TAGS ('dbx_business_glossary_term' = 'Credential Restriction Description');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_credential` ALTER COLUMN `sam_exclusion_checked` SET TAGS ('dbx_business_glossary_term' = 'System for Award Management (SAM) Exclusion Checked Flag');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_credential` ALTER COLUMN `source_system_record_reference` SET TAGS ('dbx_business_glossary_term' = 'Source System Record ID');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_credential` ALTER COLUMN `subtype` SET TAGS ('dbx_business_glossary_term' = 'Credential Subtype');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_credential` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Updated Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_credential` ALTER COLUMN `verification_source` SET TAGS ('dbx_business_glossary_term' = 'Verification Source');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_credential` ALTER COLUMN `verification_source` SET TAGS ('dbx_value_regex' = 'primary_source|secondary_source|self_reported|not_verified');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_sanction` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_sanction` SET TAGS ('dbx_subdomain' = 'credentialing_compliance');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_sanction` ALTER COLUMN `provider_sanction_id` SET TAGS ('dbx_business_glossary_term' = 'Sanction ID');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_sanction` ALTER COLUMN `clinician_id` SET TAGS ('dbx_business_glossary_term' = 'Provider ID');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_sanction` ALTER COLUMN `compliance_regulatory_submission_id` SET TAGS ('dbx_business_glossary_term' = 'Regulatory Submission Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_sanction` ALTER COLUMN `investigation_id` SET TAGS ('dbx_business_glossary_term' = 'Investigation Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_sanction` ALTER COLUMN `org_provider_id` SET TAGS ('dbx_business_glossary_term' = 'Org Provider Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_sanction` ALTER COLUMN `patient_safety_event_id` SET TAGS ('dbx_business_glossary_term' = 'Patient Safety Event Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_sanction` ALTER COLUMN `payer_id` SET TAGS ('dbx_business_glossary_term' = 'Payer Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_sanction` ALTER COLUMN `quality_peer_review_id` SET TAGS ('dbx_business_glossary_term' = 'Peer Review Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_sanction` ALTER COLUMN `specialty_id` SET TAGS ('dbx_business_glossary_term' = 'Specialty Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_sanction` ALTER COLUMN `appeal_date` SET TAGS ('dbx_business_glossary_term' = 'Appeal Filed Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_sanction` ALTER COLUMN `appeal_filed` SET TAGS ('dbx_business_glossary_term' = 'Appeal Filed Flag');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_sanction` ALTER COLUMN `appeal_outcome` SET TAGS ('dbx_business_glossary_term' = 'Appeal Outcome');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_sanction` ALTER COLUMN `appeal_outcome` SET TAGS ('dbx_value_regex' = 'pending|upheld|overturned|modified|withdrawn');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_sanction` ALTER COLUMN `case_reference_number` SET TAGS ('dbx_business_glossary_term' = 'Case Reference Number');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_sanction` ALTER COLUMN `cia_reference_number` SET TAGS ('dbx_business_glossary_term' = 'Corporate Integrity Agreement (CIA) Reference Number');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_sanction` ALTER COLUMN `civil_monetary_penalty_amount` SET TAGS ('dbx_business_glossary_term' = 'Civil Monetary Penalty (CMP) Amount');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_sanction` ALTER COLUMN `civil_monetary_penalty_amount` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_sanction` ALTER COLUMN `corporate_integrity_agreement` SET TAGS ('dbx_business_glossary_term' = 'Corporate Integrity Agreement (CIA) Flag');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_sanction` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_sanction` ALTER COLUMN `credentialing_hold` SET TAGS ('dbx_business_glossary_term' = 'Credentialing Hold Flag');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_sanction` ALTER COLUMN `dea_registration_number` SET TAGS ('dbx_business_glossary_term' = 'Drug Enforcement Administration (DEA) Registration Number');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_sanction` ALTER COLUMN `dea_registration_number` SET TAGS ('dbx_value_regex' = '^[A-Z]{2}[0-9]{7}$');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_sanction` ALTER COLUMN `dea_registration_number` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_sanction` ALTER COLUMN `dea_registration_number` SET TAGS ('dbx_pii_identifier' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_sanction` ALTER COLUMN `exclusion_type_code` SET TAGS ('dbx_business_glossary_term' = 'OIG Exclusion Type Code');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_sanction` ALTER COLUMN `expiration_date` SET TAGS ('dbx_business_glossary_term' = 'Sanction Expiration Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_sanction` ALTER COLUMN `federal_program_exclusion` SET TAGS ('dbx_business_glossary_term' = 'Federal Program Exclusion Flag');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_sanction` ALTER COLUMN `internal_review_date` SET TAGS ('dbx_business_glossary_term' = 'Internal Review Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_sanction` ALTER COLUMN `internal_review_status` SET TAGS ('dbx_business_glossary_term' = 'Internal Review Status');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_sanction` ALTER COLUMN `internal_review_status` SET TAGS ('dbx_value_regex' = 'pending|in_review|completed|escalated');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_sanction` ALTER COLUMN `issuing_authority` SET TAGS ('dbx_business_glossary_term' = 'Issuing Authority');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_sanction` ALTER COLUMN `issuing_authority_type` SET TAGS ('dbx_business_glossary_term' = 'Issuing Authority Type');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_sanction` ALTER COLUMN `issuing_authority_type` SET TAGS ('dbx_value_regex' = 'federal|state|local|accreditation_body|licensing_board');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_sanction` ALTER COLUMN `license_number` SET TAGS ('dbx_business_glossary_term' = 'Provider License Number');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_sanction` ALTER COLUMN `license_number` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_sanction` ALTER COLUMN `license_number` SET TAGS ('dbx_pii_identifier' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_sanction` ALTER COLUMN `license_state` SET TAGS ('dbx_business_glossary_term' = 'License State');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_sanction` ALTER COLUMN `license_state` SET TAGS ('dbx_value_regex' = '^[A-Z]{2}$');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_sanction` ALTER COLUMN `license_state` SET TAGS ('dbx_pii_category' = 'person_data');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_sanction` ALTER COLUMN `medicaid_exclusion` SET TAGS ('dbx_business_glossary_term' = 'Medicaid Exclusion Flag');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_sanction` ALTER COLUMN `medicaid_exclusion` SET TAGS ('dbx_pii_person_data' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_sanction` ALTER COLUMN `medicare_exclusion` SET TAGS ('dbx_business_glossary_term' = 'Medicare Exclusion Flag');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_sanction` ALTER COLUMN `medicare_exclusion` SET TAGS ('dbx_pii_person_data' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_sanction` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Sanction Notes');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_sanction` ALTER COLUMN `notification_date` SET TAGS ('dbx_business_glossary_term' = 'Notification Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_sanction` ALTER COLUMN `notification_sent` SET TAGS ('dbx_business_glossary_term' = 'Notification Sent Flag');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_sanction` ALTER COLUMN `npdb_report_date` SET TAGS ('dbx_business_glossary_term' = 'NPDB Report Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_sanction` ALTER COLUMN `npdb_report_number` SET TAGS ('dbx_business_glossary_term' = 'National Practitioner Data Bank (NPDB) Report Number');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_sanction` ALTER COLUMN `npi` SET TAGS ('dbx_business_glossary_term' = 'National Provider Identifier (NPI)');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_sanction` ALTER COLUMN `npi` SET TAGS ('dbx_value_regex' = '^[0-9]{10}$');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_sanction` ALTER COLUMN `npi` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_sanction` ALTER COLUMN `npi` SET TAGS ('dbx_pii_identifier' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_sanction` ALTER COLUMN `payer_enrollment_impact` SET TAGS ('dbx_business_glossary_term' = 'Payer Enrollment Impact Flag');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_sanction` ALTER COLUMN `privilege_suspension` SET TAGS ('dbx_business_glossary_term' = 'Hospital Privilege Suspension Flag');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_sanction` ALTER COLUMN `provider_type` SET TAGS ('dbx_business_glossary_term' = 'Provider Type');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_sanction` ALTER COLUMN `provider_type` SET TAGS ('dbx_value_regex' = 'individual|organization');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_sanction` ALTER COLUMN `reason` SET TAGS ('dbx_business_glossary_term' = 'Sanction Reason');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_sanction` ALTER COLUMN `reason_code` SET TAGS ('dbx_business_glossary_term' = 'Sanction Reason Code');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_sanction` ALTER COLUMN `reinstatement_date` SET TAGS ('dbx_business_glossary_term' = 'Reinstatement Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_sanction` ALTER COLUMN `reinstatement_date` SET TAGS ('dbx_pii_category' = 'person_data');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_sanction` ALTER COLUMN `reported_to_npdb` SET TAGS ('dbx_business_glossary_term' = 'Reported to National Practitioner Data Bank (NPDB) Flag');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_sanction` ALTER COLUMN `sanction_date` SET TAGS ('dbx_business_glossary_term' = 'Sanction Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_sanction` ALTER COLUMN `sanction_status` SET TAGS ('dbx_business_glossary_term' = 'Sanction Status');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_sanction` ALTER COLUMN `sanction_status` SET TAGS ('dbx_value_regex' = 'active|reinstated|expired|appealed|withdrawn');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_sanction` ALTER COLUMN `sanction_type` SET TAGS ('dbx_business_glossary_term' = 'Sanction Type');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_sanction` ALTER COLUMN `sanction_type` SET TAGS ('dbx_value_regex' = 'exclusion|suspension|revocation|probation|reprimand|civil_monetary_penalty');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_sanction` ALTER COLUMN `screening_date` SET TAGS ('dbx_business_glossary_term' = 'Screening Date');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_sanction` ALTER COLUMN `screening_frequency` SET TAGS ('dbx_business_glossary_term' = 'Screening Frequency');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_sanction` ALTER COLUMN `screening_frequency` SET TAGS ('dbx_value_regex' = 'monthly|quarterly|annually|ad_hoc');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_sanction` ALTER COLUMN `screening_source` SET TAGS ('dbx_business_glossary_term' = 'Screening Source');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_sanction` ALTER COLUMN `settlement_amount` SET TAGS ('dbx_business_glossary_term' = 'Settlement Amount');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_sanction` ALTER COLUMN `settlement_amount` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_sanction` ALTER COLUMN `source_document_reference` SET TAGS ('dbx_business_glossary_term' = 'Source Document Reference');
-ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_sanction` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Updated Timestamp');
+ALTER SCHEMA `vibe_healthcare_v1`.`provider` SET TAGS ('pii_division' = 'business');
+ALTER SCHEMA `vibe_healthcare_v1`.`provider` SET TAGS ('pii_domain' = 'provider');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` SET TAGS ('pii_data_type' = 'master_data');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` SET TAGS ('pii_subdomain' = 'provider_registry');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` SET TAGS ('pii_entity' = 'provider');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` SET TAGS ('pii_subdomain' = 'clinical_staff');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` SET TAGS ('pii_structure_enforced' = 'v22domains');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `clinician_id` SET TAGS ('pii_pk' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `npi_registry_id` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `npi_registry_id` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `npi_registry_id` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `npi_registry_id` SET TAGS ('pii_identifier' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `npi_registry_id` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `npi_registry_id` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `npi_registry_id` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `caqh_provider_number` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `date_of_birth` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `date_of_birth` SET TAGS ('pii_sensitivity' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `date_of_birth` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `dea_number` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `dea_number` SET TAGS ('pii_sensitivity' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `dea_number` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `dea_number` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `dea_number` SET TAGS ('pii_identifier' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `dea_number` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `dea_number` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `dea_number` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `email_address` SET TAGS ('pii_sensitivity' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `email_address` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `email_address` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `email_address` SET TAGS ('pii_address' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `email_address` SET TAGS ('pii_email' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `email_address` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `email_address` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `email_address` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `fellowship_program_name` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `fellowship_program_name` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `fellowship_program_name` SET TAGS ('pii_name' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `fellowship_program_name` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `fellowship_program_name` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `fellowship_program_name` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `first_name` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `first_name` SET TAGS ('pii_sensitivity' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `first_name` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `first_name` SET TAGS ('pii_name' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `first_name` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `first_name` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `first_name` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `gender` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `gender` SET TAGS ('pii_sensitivity' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `internship_program_name` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `internship_program_name` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `internship_program_name` SET TAGS ('pii_name' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `internship_program_name` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `internship_program_name` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `internship_program_name` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `last_name` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `last_name` SET TAGS ('pii_sensitivity' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `last_name` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `last_name` SET TAGS ('pii_name' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `last_name` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `last_name` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `last_name` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `license_state` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `license_state` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `license_state` SET TAGS ('pii_address' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `license_state` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `license_state` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `license_state` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `malpractice_policy_number` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `medical_degree` SET TAGS ('pii_restricted' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `medical_degree` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `medical_school_graduation_date` SET TAGS ('pii_restricted' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `medical_school_graduation_date` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `medical_school_name` SET TAGS ('pii_restricted' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `medical_school_name` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `medical_school_name` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `medical_school_name` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `medical_school_name` SET TAGS ('pii_name' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `medical_school_name` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `medical_school_name` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `medical_school_name` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `middle_name` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `middle_name` SET TAGS ('pii_sensitivity' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `middle_name` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `middle_name` SET TAGS ('pii_name' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `middle_name` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `middle_name` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `middle_name` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `name_suffix` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `name_suffix` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `name_suffix` SET TAGS ('pii_name' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `name_suffix` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `name_suffix` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `name_suffix` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `npi` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `npi` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `npi` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `npi` SET TAGS ('pii_identifier' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `npi` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `npi` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `npi` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `phone` SET TAGS ('pii_sensitivity' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `phone` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `phone` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `phone` SET TAGS ('pii_phone' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `phone` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `phone` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `phone` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `residency_program_name` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `residency_program_name` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `residency_program_name` SET TAGS ('pii_name' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `residency_program_name` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `residency_program_name` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `residency_program_name` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `state_license_number` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `state_license_number` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `state_license_number` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `state_license_number` SET TAGS ('pii_identifier' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `state_license_number` SET TAGS ('pii_address' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `state_license_number` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `state_license_number` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `state_license_number` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `work_email` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `work_email` SET TAGS ('pii_sensitivity' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `work_email` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `work_email` SET TAGS ('pii_email' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `work_email` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `work_email` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `work_email` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `work_phone` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `work_phone` SET TAGS ('pii_sensitivity' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `work_phone` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `work_phone` SET TAGS ('pii_phone' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `work_phone` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `work_phone` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`clinician` ALTER COLUMN `work_phone` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` SET TAGS ('pii_data_type' = 'master_data');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` SET TAGS ('pii_subdomain' = 'provider_registry');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` SET TAGS ('pii_entity' = 'provider');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` SET TAGS ('pii_subdomain' = 'organizational');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` SET TAGS ('pii_structure_enforced' = 'v22domains');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `org_provider_id` SET TAGS ('pii_pk' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `npi_registry_id` SET TAGS ('pii_sensitivity' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `npi_registry_id` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `npi_registry_id` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `npi_registry_id` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `npi_registry_id` SET TAGS ('pii_identifier' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `npi_registry_id` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `npi_registry_id` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `npi_registry_id` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `address_line1` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `address_line1` SET TAGS ('pii_sensitivity' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `address_line1` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `address_line1` SET TAGS ('pii_address' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `address_line1` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `address_line1` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `address_line1` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `address_line2` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `address_line2` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `address_line2` SET TAGS ('pii_address' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `address_line2` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `address_line2` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `address_line2` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `city` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `city` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `city` SET TAGS ('pii_address' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `city` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `city` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `city` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `cms_certification_number` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `county` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `county` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `county` SET TAGS ('pii_address' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `county` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `county` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `county` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `doing_business_as_name` SET TAGS ('pii_sensitivity' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `doing_business_as_name` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `doing_business_as_name` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `doing_business_as_name` SET TAGS ('pii_name' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `doing_business_as_name` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `doing_business_as_name` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `doing_business_as_name` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `fax` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `fax` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `fax` SET TAGS ('pii_phone' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `fax` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `fax` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `fax` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `legal_name` SET TAGS ('pii_sensitivity' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `legal_name` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `legal_name` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `legal_name` SET TAGS ('pii_name' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `legal_name` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `legal_name` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `legal_name` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `license_state` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `license_state` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `license_state` SET TAGS ('pii_address' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `license_state` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `license_state` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `license_state` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `medicaid_provider_number` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `organizational_npi` SET TAGS ('pii_sensitivity' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `organizational_npi` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `organizational_npi` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `organizational_npi` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `organizational_npi` SET TAGS ('pii_identifier' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `organizational_npi` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `organizational_npi` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `organizational_npi` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `phone` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `phone` SET TAGS ('pii_sensitivity' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `phone` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `phone` SET TAGS ('pii_phone' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `phone` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `phone` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `phone` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `state` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `state` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `state` SET TAGS ('pii_address' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `state` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `state` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `state` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `state_license_expiration_date` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `state_license_expiration_date` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `state_license_expiration_date` SET TAGS ('pii_address' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `state_license_expiration_date` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `state_license_expiration_date` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `state_license_expiration_date` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `state_license_number` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `state_license_number` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `state_license_number` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `state_license_number` SET TAGS ('pii_identifier' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `state_license_number` SET TAGS ('pii_address' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `state_license_number` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `state_license_number` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `state_license_number` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `tax_identification_number` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `tax_identification_number` SET TAGS ('pii_sensitivity' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `zip_code` SET TAGS ('pii_restricted' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `zip_code` SET TAGS ('pii_address' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `zip_code` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `zip_code` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `zip_code` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `zip_code` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`org_provider` ALTER COLUMN `zip_code` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`specialty` SET TAGS ('pii_data_type' = 'reference_data');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`specialty` SET TAGS ('pii_subdomain' = 'provider_registry');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`specialty` SET TAGS ('pii_entity' = 'reference');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`specialty` SET TAGS ('pii_subdomain' = 'clinical');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`specialty` SET TAGS ('pii_structure_enforced' = 'v22domains');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`specialty` ALTER COLUMN `specialty_id` SET TAGS ('pii_pk' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`specialty` ALTER COLUMN `abms_board_name` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`specialty` ALTER COLUMN `abms_board_name` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`specialty` ALTER COLUMN `abms_board_name` SET TAGS ('pii_name' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`specialty` ALTER COLUMN `abms_board_name` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`specialty` ALTER COLUMN `abms_board_name` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`specialty` ALTER COLUMN `abms_board_name` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`specialty` ALTER COLUMN `board_name` SET TAGS ('pii_sensitivity' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`specialty` ALTER COLUMN `board_name` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`specialty` ALTER COLUMN `board_name` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`specialty` ALTER COLUMN `board_name` SET TAGS ('pii_name' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`specialty` ALTER COLUMN `board_name` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`specialty` ALTER COLUMN `board_name` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`specialty` ALTER COLUMN `board_name` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`specialty` ALTER COLUMN `dea_registration_required` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`specialty` ALTER COLUMN `dea_registration_required` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`specialty` ALTER COLUMN `dea_registration_required` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`specialty` ALTER COLUMN `dea_registration_required` SET TAGS ('pii_identifier' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`specialty` ALTER COLUMN `dea_registration_required` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`specialty` ALTER COLUMN `dea_registration_required` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`specialty` ALTER COLUMN `dea_registration_required` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`specialty` ALTER COLUMN `specialty_name` SET TAGS ('pii_sensitivity' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`specialty` ALTER COLUMN `specialty_name` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`specialty` ALTER COLUMN `specialty_name` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`specialty` ALTER COLUMN `specialty_name` SET TAGS ('pii_name' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`specialty` ALTER COLUMN `specialty_name` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`specialty` ALTER COLUMN `specialty_name` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`specialty` ALTER COLUMN `specialty_name` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`specialty` ALTER COLUMN `npi_taxonomy_eligible` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`specialty` ALTER COLUMN `npi_taxonomy_eligible` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`specialty` ALTER COLUMN `npi_taxonomy_eligible` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`specialty` ALTER COLUMN `npi_taxonomy_eligible` SET TAGS ('pii_identifier' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`specialty` ALTER COLUMN `npi_taxonomy_eligible` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`specialty` ALTER COLUMN `npi_taxonomy_eligible` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`specialty` ALTER COLUMN `npi_taxonomy_eligible` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`specialty` ALTER COLUMN `telehealth_eligible` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`specialty` ALTER COLUMN `telehealth_eligible` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`specialty` ALTER COLUMN `telehealth_eligible` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`specialty` ALTER COLUMN `telehealth_eligible` SET TAGS ('pii_health' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`specialty` ALTER COLUMN `telehealth_eligible` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`specialty` ALTER COLUMN `telehealth_eligible` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`specialty` ALTER COLUMN `telehealth_eligible` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`credential` SET TAGS ('pii_data_type' = 'master_data');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`credential` SET TAGS ('pii_subdomain' = 'credentialing_compliance');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`credential` SET TAGS ('pii_entity' = 'provider');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`credential` SET TAGS ('pii_subdomain' = 'credentialing');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`credential` SET TAGS ('pii_structure_enforced' = 'v22domains');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`credential` ALTER COLUMN `credential_id` SET TAGS ('pii_pk' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`credential` ALTER COLUMN `employee_id` SET TAGS ('pii_confidential' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`credential` ALTER COLUMN `employee_id` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`credential` ALTER COLUMN `certifying_board_name` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`credential` ALTER COLUMN `certifying_board_name` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`credential` ALTER COLUMN `certifying_board_name` SET TAGS ('pii_name' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`credential` ALTER COLUMN `certifying_board_name` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`credential` ALTER COLUMN `certifying_board_name` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`credential` ALTER COLUMN `certifying_board_name` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`credential` ALTER COLUMN `cme_accrediting_organization` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`credential` ALTER COLUMN `cme_accrediting_organization` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`credential` ALTER COLUMN `cme_accrediting_organization` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`credential` ALTER COLUMN `cme_accrediting_organization` SET TAGS ('pii_identifier' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`credential` ALTER COLUMN `cme_accrediting_organization` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`credential` ALTER COLUMN `cme_accrediting_organization` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`credential` ALTER COLUMN `cme_accrediting_organization` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`credential` ALTER COLUMN `credential_number` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`credential` ALTER COLUMN `dea_business_activity_type` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`credential` ALTER COLUMN `dea_business_activity_type` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`credential` ALTER COLUMN `dea_business_activity_type` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`credential` ALTER COLUMN `dea_business_activity_type` SET TAGS ('pii_identifier' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`credential` ALTER COLUMN `dea_business_activity_type` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`credential` ALTER COLUMN `dea_business_activity_type` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`credential` ALTER COLUMN `dea_business_activity_type` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`credential` ALTER COLUMN `dea_schedule_authorizations` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`credential` ALTER COLUMN `dea_schedule_authorizations` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`credential` ALTER COLUMN `dea_schedule_authorizations` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`credential` ALTER COLUMN `dea_schedule_authorizations` SET TAGS ('pii_identifier' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`credential` ALTER COLUMN `dea_schedule_authorizations` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`credential` ALTER COLUMN `dea_schedule_authorizations` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`credential` ALTER COLUMN `dea_schedule_authorizations` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`credential` ALTER COLUMN `issuing_authority_name` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`credential` ALTER COLUMN `issuing_authority_name` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`credential` ALTER COLUMN `issuing_authority_name` SET TAGS ('pii_name' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`credential` ALTER COLUMN `issuing_authority_name` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`credential` ALTER COLUMN `issuing_authority_name` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`credential` ALTER COLUMN `issuing_authority_name` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`credential` ALTER COLUMN `issuing_state` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`credential` ALTER COLUMN `issuing_state` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`credential` ALTER COLUMN `issuing_state` SET TAGS ('pii_address' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`credential` ALTER COLUMN `issuing_state` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`credential` ALTER COLUMN `issuing_state` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`credential` ALTER COLUMN `issuing_state` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`privileging` SET TAGS ('pii_data_type' = 'master_data');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`privileging` SET TAGS ('pii_subdomain' = 'credentialing_compliance');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`privileging` SET TAGS ('pii_entity' = 'provider');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`privileging` SET TAGS ('pii_subdomain' = 'credentialing');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`privileging` SET TAGS ('pii_structure_enforced' = 'v22domains');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`privileging` ALTER COLUMN `privileging_id` SET TAGS ('pii_pk' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`privileging` ALTER COLUMN `icd10_procedure_code` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`privileging` ALTER COLUMN `icd10_procedure_code` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`privileging` ALTER COLUMN `icd10_procedure_code` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`privileging` ALTER COLUMN `icd10_procedure_code` SET TAGS ('pii_health' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`privileging` ALTER COLUMN `icd10_procedure_code` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`privileging` ALTER COLUMN `icd10_procedure_code` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`privileging` ALTER COLUMN `icd10_procedure_code` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`privileging` ALTER COLUMN `privilege_name` SET TAGS ('pii_sensitivity' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`privileging` ALTER COLUMN `privilege_name` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`privileging` ALTER COLUMN `privilege_name` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`privileging` ALTER COLUMN `privilege_name` SET TAGS ('pii_name' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`privileging` ALTER COLUMN `privilege_name` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`privileging` ALTER COLUMN `privilege_name` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`privileging` ALTER COLUMN `privilege_name` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_application` SET TAGS ('pii_data_type' = 'transactional_data');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_application` SET TAGS ('pii_subdomain' = 'credentialing_compliance');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_application` SET TAGS ('pii_entity' = 'provider');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_application` SET TAGS ('pii_subdomain' = 'credentialing');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_application` SET TAGS ('pii_structure_enforced' = 'v22domains');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_application` ALTER COLUMN `credentialing_application_id` SET TAGS ('pii_pk' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_application` ALTER COLUMN `employee_id` SET TAGS ('pii_confidential' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_application` ALTER COLUMN `employee_id` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_application` ALTER COLUMN `caqh_provider_number` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_application` ALTER COLUMN `dea_number` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_application` ALTER COLUMN `dea_number` SET TAGS ('pii_sensitivity' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_application` ALTER COLUMN `dea_number` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_application` ALTER COLUMN `dea_number` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_application` ALTER COLUMN `dea_number` SET TAGS ('pii_identifier' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_application` ALTER COLUMN `dea_number` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_application` ALTER COLUMN `dea_number` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_application` ALTER COLUMN `dea_number` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_application` ALTER COLUMN `malpractice_insurer_name` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_application` ALTER COLUMN `malpractice_insurer_name` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_application` ALTER COLUMN `malpractice_insurer_name` SET TAGS ('pii_name' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_application` ALTER COLUMN `malpractice_insurer_name` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_application` ALTER COLUMN `malpractice_insurer_name` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_application` ALTER COLUMN `malpractice_insurer_name` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_application` ALTER COLUMN `malpractice_policy_number` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_application` ALTER COLUMN `medical_staff_category` SET TAGS ('pii_restricted' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_application` ALTER COLUMN `medical_staff_category` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_application` ALTER COLUMN `npi` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_application` ALTER COLUMN `npi` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_application` ALTER COLUMN `npi` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_application` ALTER COLUMN `npi` SET TAGS ('pii_identifier' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_application` ALTER COLUMN `npi` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_application` ALTER COLUMN `npi` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_application` ALTER COLUMN `npi` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`network_affiliation` SET TAGS ('pii_data_type' = 'transactional_data');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`network_affiliation` SET TAGS ('pii_subdomain' = 'network_enrollment');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`network_affiliation` SET TAGS ('pii_entity' = 'provider');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`network_affiliation` SET TAGS ('pii_subdomain' = 'network');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`network_affiliation` SET TAGS ('pii_structure_enforced' = 'v22domains');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`network_affiliation` ALTER COLUMN `network_affiliation_id` SET TAGS ('pii_pk' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`network_affiliation` ALTER COLUMN `gender_served` SET TAGS ('pii_confidential' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`network_affiliation` ALTER COLUMN `gender_served` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`network_affiliation` ALTER COLUMN `gender_served` SET TAGS ('pii_person' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`network_affiliation` ALTER COLUMN `geographic_service_area` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`network_affiliation` ALTER COLUMN `geographic_service_area` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`network_affiliation` ALTER COLUMN `geographic_service_area` SET TAGS ('pii_address' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`network_affiliation` ALTER COLUMN `geographic_service_area` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`network_affiliation` ALTER COLUMN `geographic_service_area` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`network_affiliation` ALTER COLUMN `geographic_service_area` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`network_affiliation` ALTER COLUMN `npi` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`network_affiliation` ALTER COLUMN `npi` SET TAGS ('pii_sensitivity' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`network_affiliation` ALTER COLUMN `npi` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`network_affiliation` ALTER COLUMN `npi` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`network_affiliation` ALTER COLUMN `npi` SET TAGS ('pii_identifier' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`network_affiliation` ALTER COLUMN `npi` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`network_affiliation` ALTER COLUMN `npi` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`network_affiliation` ALTER COLUMN `npi` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`network_affiliation` ALTER COLUMN `panel_capacity` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`network_affiliation` ALTER COLUMN `panel_capacity` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`network_affiliation` ALTER COLUMN `panel_capacity` SET TAGS ('pii_address' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`network_affiliation` ALTER COLUMN `panel_capacity` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`network_affiliation` ALTER COLUMN `panel_capacity` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`network_affiliation` ALTER COLUMN `panel_capacity` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`network_affiliation` ALTER COLUMN `service_area_state` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`network_affiliation` ALTER COLUMN `service_area_state` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`network_affiliation` ALTER COLUMN `service_area_state` SET TAGS ('pii_address' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`network_affiliation` ALTER COLUMN `service_area_state` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`network_affiliation` ALTER COLUMN `service_area_state` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`network_affiliation` ALTER COLUMN `service_area_state` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`network_affiliation` ALTER COLUMN `service_area_zip_code` SET TAGS ('pii_restricted' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`network_affiliation` ALTER COLUMN `service_area_zip_code` SET TAGS ('pii_address' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`network_affiliation` ALTER COLUMN `service_area_zip_code` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`network_affiliation` ALTER COLUMN `service_area_zip_code` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`network_affiliation` ALTER COLUMN `service_area_zip_code` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`network_affiliation` ALTER COLUMN `service_area_zip_code` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`network_affiliation` ALTER COLUMN `service_area_zip_code` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`network_affiliation` ALTER COLUMN `telehealth_eligible` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`network_affiliation` ALTER COLUMN `telehealth_eligible` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`network_affiliation` ALTER COLUMN `telehealth_eligible` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`network_affiliation` ALTER COLUMN `telehealth_eligible` SET TAGS ('pii_health' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`network_affiliation` ALTER COLUMN `telehealth_eligible` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`network_affiliation` ALTER COLUMN `telehealth_eligible` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`network_affiliation` ALTER COLUMN `telehealth_eligible` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` SET TAGS ('pii_data_type' = 'master_data');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` SET TAGS ('pii_subdomain' = 'provider_registry');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` SET TAGS ('pii_entity' = 'provider');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` SET TAGS ('pii_subdomain' = 'organizational');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` SET TAGS ('pii_structure_enforced' = 'v22domains');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `group_id` SET TAGS ('pii_pk' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `admin_contact_email` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `admin_contact_email` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `admin_contact_email` SET TAGS ('pii_email' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `admin_contact_email` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `admin_contact_email` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `admin_contact_email` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `billing_entity_name` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `billing_entity_name` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `billing_entity_name` SET TAGS ('pii_name' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `billing_entity_name` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `billing_entity_name` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `billing_entity_name` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `billing_npi` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `billing_npi` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `billing_npi` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `billing_npi` SET TAGS ('pii_identifier' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `billing_npi` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `billing_npi` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `billing_npi` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `doing_business_as_name` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `doing_business_as_name` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `doing_business_as_name` SET TAGS ('pii_name' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `doing_business_as_name` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `doing_business_as_name` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `doing_business_as_name` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `group_npi` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `group_npi` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `group_npi` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `group_npi` SET TAGS ('pii_identifier' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `group_npi` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `group_npi` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `group_npi` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `mips_group_reporting` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `mips_group_reporting` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `mips_group_reporting` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `mips_group_reporting` SET TAGS ('pii_identifier' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `mips_group_reporting` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `mips_group_reporting` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `mips_group_reporting` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `group_name` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `group_name` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `group_name` SET TAGS ('pii_name' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `group_name` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `group_name` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `group_name` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `npi` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `npi` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `npi` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `npi` SET TAGS ('pii_identifier' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `npi` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `npi` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `npi` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `primary_fax` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `primary_fax` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `primary_fax` SET TAGS ('pii_phone' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `primary_fax` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `primary_fax` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `primary_fax` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `primary_phone` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `primary_phone` SET TAGS ('pii_sensitivity' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `primary_phone` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `primary_phone` SET TAGS ('pii_phone' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `primary_phone` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `primary_phone` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `primary_phone` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `primary_service_address_line1` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `primary_service_address_line1` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `primary_service_address_line1` SET TAGS ('pii_address' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `primary_service_address_line1` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `primary_service_address_line1` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `primary_service_address_line1` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `primary_service_city` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `primary_service_city` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `primary_service_city` SET TAGS ('pii_address' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `primary_service_city` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `primary_service_city` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `primary_service_city` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `primary_service_state` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `primary_service_state` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `primary_service_state` SET TAGS ('pii_address' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `primary_service_state` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `primary_service_state` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `primary_service_state` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `primary_service_zip` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `primary_service_zip` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `primary_service_zip` SET TAGS ('pii_address' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `primary_service_zip` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `primary_service_zip` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `primary_service_zip` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `tax_identification_number` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `telehealth_capable` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `telehealth_capable` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `telehealth_capable` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `telehealth_capable` SET TAGS ('pii_health' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `telehealth_capable` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `telehealth_capable` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`group` ALTER COLUMN `telehealth_capable` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`group_membership` SET TAGS ('pii_data_type' = 'transactional_data');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`group_membership` SET TAGS ('pii_subdomain' = 'provider_registry');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`group_membership` SET TAGS ('pii_entity' = 'provider');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`group_membership` SET TAGS ('pii_subdomain' = 'organizational');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`group_membership` SET TAGS ('pii_structure_enforced' = 'v22domains');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`group_membership` ALTER COLUMN `group_membership_id` SET TAGS ('pii_pk' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`group_membership` ALTER COLUMN `is_accepting_patients` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`group_membership` ALTER COLUMN `is_accepting_patients` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`group_membership` ALTER COLUMN `is_accepting_patients` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`group_membership` ALTER COLUMN `is_accepting_patients` SET TAGS ('pii_identifier' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`group_membership` ALTER COLUMN `is_accepting_patients` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`group_membership` ALTER COLUMN `is_accepting_patients` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`group_membership` ALTER COLUMN `is_accepting_patients` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`group_membership` ALTER COLUMN `medical_staff_category` SET TAGS ('pii_restricted' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`group_membership` ALTER COLUMN `medical_staff_category` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`group_membership` ALTER COLUMN `npi` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`group_membership` ALTER COLUMN `npi` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`group_membership` ALTER COLUMN `npi` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`group_membership` ALTER COLUMN `npi` SET TAGS ('pii_identifier' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`group_membership` ALTER COLUMN `npi` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`group_membership` ALTER COLUMN `npi` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`group_membership` ALTER COLUMN `npi` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`group_membership` ALTER COLUMN `tax_identification_number` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`group_membership` ALTER COLUMN `verified_by` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`malpractice_coverage` SET TAGS ('pii_data_type' = 'master_data');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`malpractice_coverage` SET TAGS ('pii_subdomain' = 'credentialing_compliance');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`malpractice_coverage` SET TAGS ('pii_entity' = 'provider');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`malpractice_coverage` SET TAGS ('pii_subdomain' = 'credentialing');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`malpractice_coverage` SET TAGS ('pii_structure_enforced' = 'v22domains');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`malpractice_coverage` ALTER COLUMN `malpractice_coverage_id` SET TAGS ('pii_pk' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`malpractice_coverage` ALTER COLUMN `employee_id` SET TAGS ('pii_confidential' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`malpractice_coverage` ALTER COLUMN `employee_id` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`malpractice_coverage` ALTER COLUMN `carrier_name` SET TAGS ('pii_sensitivity' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`malpractice_coverage` ALTER COLUMN `carrier_name` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`malpractice_coverage` ALTER COLUMN `carrier_name` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`malpractice_coverage` ALTER COLUMN `carrier_name` SET TAGS ('pii_name' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`malpractice_coverage` ALTER COLUMN `carrier_name` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`malpractice_coverage` ALTER COLUMN `carrier_name` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`malpractice_coverage` ALTER COLUMN `carrier_name` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`malpractice_coverage` ALTER COLUMN `coverage_state` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`malpractice_coverage` ALTER COLUMN `coverage_state` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`malpractice_coverage` ALTER COLUMN `coverage_state` SET TAGS ('pii_address' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`malpractice_coverage` ALTER COLUMN `coverage_state` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`malpractice_coverage` ALTER COLUMN `coverage_state` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`malpractice_coverage` ALTER COLUMN `coverage_state` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`malpractice_coverage` ALTER COLUMN `insurer_contact_name` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`malpractice_coverage` ALTER COLUMN `insurer_contact_name` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`malpractice_coverage` ALTER COLUMN `insurer_contact_name` SET TAGS ('pii_name' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`malpractice_coverage` ALTER COLUMN `insurer_contact_name` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`malpractice_coverage` ALTER COLUMN `insurer_contact_name` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`malpractice_coverage` ALTER COLUMN `insurer_contact_name` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`malpractice_coverage` ALTER COLUMN `insurer_contact_phone` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`malpractice_coverage` ALTER COLUMN `insurer_contact_phone` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`malpractice_coverage` ALTER COLUMN `insurer_contact_phone` SET TAGS ('pii_phone' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`malpractice_coverage` ALTER COLUMN `insurer_contact_phone` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`malpractice_coverage` ALTER COLUMN `insurer_contact_phone` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`malpractice_coverage` ALTER COLUMN `insurer_contact_phone` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`malpractice_coverage` ALTER COLUMN `policy_holder_name` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`malpractice_coverage` ALTER COLUMN `policy_holder_name` SET TAGS ('pii_sensitivity' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`malpractice_coverage` ALTER COLUMN `policy_holder_name` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`malpractice_coverage` ALTER COLUMN `policy_holder_name` SET TAGS ('pii_name' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`malpractice_coverage` ALTER COLUMN `policy_holder_name` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`malpractice_coverage` ALTER COLUMN `policy_holder_name` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`malpractice_coverage` ALTER COLUMN `policy_holder_name` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`malpractice_coverage` ALTER COLUMN `policy_number` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`malpractice_coverage` ALTER COLUMN `verified_by` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`npdb_query` SET TAGS ('pii_data_type' = 'transactional_data');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`npdb_query` SET TAGS ('pii_subdomain' = 'credentialing_compliance');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`npdb_query` SET TAGS ('pii_entity' = 'provider');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`npdb_query` SET TAGS ('pii_subdomain' = 'credentialing');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`npdb_query` SET TAGS ('pii_structure_enforced' = 'v22domains');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`npdb_query` ALTER COLUMN `npdb_query_id` SET TAGS ('pii_pk' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`npdb_query` ALTER COLUMN `cms_participating_facility_flag` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`npdb_query` ALTER COLUMN `cms_participating_facility_flag` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`npdb_query` ALTER COLUMN `cms_participating_facility_flag` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`npdb_query` ALTER COLUMN `cms_participating_facility_flag` SET TAGS ('pii_identifier' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`npdb_query` ALTER COLUMN `cms_participating_facility_flag` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`npdb_query` ALTER COLUMN `cms_participating_facility_flag` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`npdb_query` ALTER COLUMN `cms_participating_facility_flag` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`npdb_query` ALTER COLUMN `continuous_query_disenrollment_date` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`npdb_query` ALTER COLUMN `continuous_query_disenrollment_date` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`npdb_query` ALTER COLUMN `continuous_query_disenrollment_date` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`npdb_query` ALTER COLUMN `continuous_query_disenrollment_date` SET TAGS ('pii_identifier' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`npdb_query` ALTER COLUMN `continuous_query_disenrollment_date` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`npdb_query` ALTER COLUMN `continuous_query_disenrollment_date` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`npdb_query` ALTER COLUMN `continuous_query_disenrollment_date` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`npdb_query` ALTER COLUMN `continuous_query_enrollment_date` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`npdb_query` ALTER COLUMN `continuous_query_enrollment_date` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`npdb_query` ALTER COLUMN `continuous_query_enrollment_date` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`npdb_query` ALTER COLUMN `continuous_query_enrollment_date` SET TAGS ('pii_identifier' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`npdb_query` ALTER COLUMN `continuous_query_enrollment_date` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`npdb_query` ALTER COLUMN `continuous_query_enrollment_date` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`npdb_query` ALTER COLUMN `continuous_query_enrollment_date` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`npdb_query` ALTER COLUMN `continuous_query_enrollment_flag` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`npdb_query` ALTER COLUMN `continuous_query_enrollment_flag` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`npdb_query` ALTER COLUMN `continuous_query_enrollment_flag` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`npdb_query` ALTER COLUMN `continuous_query_enrollment_flag` SET TAGS ('pii_identifier' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`npdb_query` ALTER COLUMN `continuous_query_enrollment_flag` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`npdb_query` ALTER COLUMN `continuous_query_enrollment_flag` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`npdb_query` ALTER COLUMN `continuous_query_enrollment_flag` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`npdb_query` ALTER COLUMN `queried_date_of_birth` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`npdb_query` ALTER COLUMN `queried_date_of_birth` SET TAGS ('pii_sensitivity' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`npdb_query` ALTER COLUMN `queried_date_of_birth` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`npdb_query` ALTER COLUMN `queried_dea_number` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`npdb_query` ALTER COLUMN `queried_dea_number` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`npdb_query` ALTER COLUMN `queried_dea_number` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`npdb_query` ALTER COLUMN `queried_dea_number` SET TAGS ('pii_identifier' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`npdb_query` ALTER COLUMN `queried_dea_number` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`npdb_query` ALTER COLUMN `queried_dea_number` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`npdb_query` ALTER COLUMN `queried_dea_number` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`npdb_query` ALTER COLUMN `queried_license_state` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`npdb_query` ALTER COLUMN `queried_license_state` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`npdb_query` ALTER COLUMN `queried_license_state` SET TAGS ('pii_address' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`npdb_query` ALTER COLUMN `queried_license_state` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`npdb_query` ALTER COLUMN `queried_license_state` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`npdb_query` ALTER COLUMN `queried_license_state` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`npdb_query` ALTER COLUMN `queried_npi` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`npdb_query` ALTER COLUMN `queried_npi` SET TAGS ('pii_sensitivity' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`npdb_query` ALTER COLUMN `queried_npi` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`npdb_query` ALTER COLUMN `queried_npi` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`npdb_query` ALTER COLUMN `queried_npi` SET TAGS ('pii_identifier' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`npdb_query` ALTER COLUMN `queried_npi` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`npdb_query` ALTER COLUMN `queried_npi` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`npdb_query` ALTER COLUMN `queried_npi` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`npdb_query` ALTER COLUMN `queried_practitioner_name` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`npdb_query` ALTER COLUMN `queried_practitioner_name` SET TAGS ('pii_sensitivity' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`npdb_query` ALTER COLUMN `queried_practitioner_name` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`npdb_query` ALTER COLUMN `queried_practitioner_name` SET TAGS ('pii_name' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`npdb_query` ALTER COLUMN `queried_practitioner_name` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`npdb_query` ALTER COLUMN `queried_practitioner_name` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`npdb_query` ALTER COLUMN `queried_practitioner_name` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`npdb_query` ALTER COLUMN `queried_ssn_last4` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`npdb_query` ALTER COLUMN `queried_ssn_last4` SET TAGS ('pii_sensitivity' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`npdb_query` ALTER COLUMN `queried_ssn_last4` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`npdb_query` ALTER COLUMN `queried_ssn_last4` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`npdb_query` ALTER COLUMN `queried_ssn_last4` SET TAGS ('pii_identifier' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`npdb_query` ALTER COLUMN `queried_ssn_last4` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`npdb_query` ALTER COLUMN `queried_ssn_last4` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`npdb_query` ALTER COLUMN `queried_ssn_last4` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`npdb_query` ALTER COLUMN `queried_state_license_number` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`npdb_query` ALTER COLUMN `queried_state_license_number` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`npdb_query` ALTER COLUMN `queried_state_license_number` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`npdb_query` ALTER COLUMN `queried_state_license_number` SET TAGS ('pii_identifier' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`npdb_query` ALTER COLUMN `queried_state_license_number` SET TAGS ('pii_address' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`npdb_query` ALTER COLUMN `queried_state_license_number` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`npdb_query` ALTER COLUMN `queried_state_license_number` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`npdb_query` ALTER COLUMN `queried_state_license_number` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`npdb_query` ALTER COLUMN `querying_organization_name` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`npdb_query` ALTER COLUMN `querying_organization_name` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`npdb_query` ALTER COLUMN `querying_organization_name` SET TAGS ('pii_name' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`npdb_query` ALTER COLUMN `querying_organization_name` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`npdb_query` ALTER COLUMN `querying_organization_name` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`npdb_query` ALTER COLUMN `querying_organization_name` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`npdb_query` ALTER COLUMN `submitted_by_user` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`sanction` SET TAGS ('pii_data_type' = 'transactional_data');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`sanction` SET TAGS ('pii_subdomain' = 'credentialing_compliance');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`sanction` SET TAGS ('pii_entity' = 'provider');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`sanction` SET TAGS ('pii_subdomain' = 'compliance');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`sanction` SET TAGS ('pii_structure_enforced' = 'v22domains');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`sanction` ALTER COLUMN `sanction_id` SET TAGS ('pii_pk' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`sanction` ALTER COLUMN `dea_registration_number` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`sanction` ALTER COLUMN `dea_registration_number` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`sanction` ALTER COLUMN `dea_registration_number` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`sanction` ALTER COLUMN `dea_registration_number` SET TAGS ('pii_identifier' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`sanction` ALTER COLUMN `dea_registration_number` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`sanction` ALTER COLUMN `dea_registration_number` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`sanction` ALTER COLUMN `dea_registration_number` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`sanction` ALTER COLUMN `license_number` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`sanction` ALTER COLUMN `license_number` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`sanction` ALTER COLUMN `license_number` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`sanction` ALTER COLUMN `license_number` SET TAGS ('pii_identifier' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`sanction` ALTER COLUMN `license_number` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`sanction` ALTER COLUMN `license_number` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`sanction` ALTER COLUMN `license_number` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`sanction` ALTER COLUMN `license_state` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`sanction` ALTER COLUMN `license_state` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`sanction` ALTER COLUMN `license_state` SET TAGS ('pii_address' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`sanction` ALTER COLUMN `license_state` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`sanction` ALTER COLUMN `license_state` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`sanction` ALTER COLUMN `license_state` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`sanction` ALTER COLUMN `npi` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`sanction` ALTER COLUMN `npi` SET TAGS ('pii_sensitivity' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`sanction` ALTER COLUMN `npi` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`sanction` ALTER COLUMN `npi` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`sanction` ALTER COLUMN `npi` SET TAGS ('pii_identifier' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`sanction` ALTER COLUMN `npi` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`sanction` ALTER COLUMN `npi` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`sanction` ALTER COLUMN `npi` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`sanction` ALTER COLUMN `reinstatement_date` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`sanction` ALTER COLUMN `reinstatement_date` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`sanction` ALTER COLUMN `reinstatement_date` SET TAGS ('pii_address' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`sanction` ALTER COLUMN `reinstatement_date` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`sanction` ALTER COLUMN `reinstatement_date` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`sanction` ALTER COLUMN `reinstatement_date` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`dea_registration` SET TAGS ('pii_data_type' = 'master_data');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`dea_registration` SET TAGS ('pii_subdomain' = 'credentialing_compliance');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`dea_registration` SET TAGS ('pii_entity' = 'provider');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`dea_registration` SET TAGS ('pii_subdomain' = 'credentialing');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`dea_registration` SET TAGS ('pii_structure_enforced' = 'v22domains');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`dea_registration` ALTER COLUMN `dea_registration_id` SET TAGS ('pii_pk' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`dea_registration` ALTER COLUMN `dea_registration_id` SET TAGS ('pii_primary_key' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`dea_registration` ALTER COLUMN `dea_registration_id` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`dea_registration` ALTER COLUMN `dea_registration_id` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`dea_registration` ALTER COLUMN `dea_registration_id` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`dea_registration` ALTER COLUMN `dea_registration_id` SET TAGS ('pii_identifier' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`dea_registration` ALTER COLUMN `dea_registration_id` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`dea_registration` ALTER COLUMN `dea_registration_id` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`dea_registration` ALTER COLUMN `dea_registration_id` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`dea_registration` ALTER COLUMN `dea_number` SET TAGS ('pii_sensitivity' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`dea_registration` ALTER COLUMN `dea_number` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`dea_registration` ALTER COLUMN `dea_number` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`dea_registration` ALTER COLUMN `dea_number` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`dea_registration` ALTER COLUMN `dea_number` SET TAGS ('pii_identifier' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`dea_registration` ALTER COLUMN `dea_number` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`dea_registration` ALTER COLUMN `dea_number` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`dea_registration` ALTER COLUMN `dea_number` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`dea_registration` ALTER COLUMN `dea_schedule` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`dea_registration` ALTER COLUMN `dea_schedule` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`dea_registration` ALTER COLUMN `dea_schedule` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`dea_registration` ALTER COLUMN `dea_schedule` SET TAGS ('pii_identifier' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`dea_registration` ALTER COLUMN `dea_schedule` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`dea_registration` ALTER COLUMN `dea_schedule` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`dea_registration` ALTER COLUMN `dea_schedule` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`dea_registration` ALTER COLUMN `dea_registration_status` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`dea_registration` ALTER COLUMN `dea_registration_status` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`dea_registration` ALTER COLUMN `dea_registration_status` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`dea_registration` ALTER COLUMN `dea_registration_status` SET TAGS ('pii_identifier' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`dea_registration` ALTER COLUMN `dea_registration_status` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`dea_registration` ALTER COLUMN `dea_registration_status` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`dea_registration` ALTER COLUMN `dea_registration_status` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`board_certification` SET TAGS ('pii_data_type' = 'master_data');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`board_certification` SET TAGS ('pii_subdomain' = 'credentialing_compliance');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`board_certification` SET TAGS ('pii_entity' = 'provider');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`board_certification` SET TAGS ('pii_subdomain' = 'credentialing');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`board_certification` SET TAGS ('pii_structure_enforced' = 'v22domains');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`board_certification` ALTER COLUMN `board_certification_id` SET TAGS ('pii_pk' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`board_certification` ALTER COLUMN `board_name` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`board_certification` ALTER COLUMN `board_name` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`board_certification` ALTER COLUMN `board_name` SET TAGS ('pii_name' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`board_certification` ALTER COLUMN `board_name` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`board_certification` ALTER COLUMN `board_name` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`board_certification` ALTER COLUMN `board_name` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`education_training` SET TAGS ('pii_data_type' = 'master_data');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`education_training` SET TAGS ('pii_subdomain' = 'credentialing_compliance');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`education_training` SET TAGS ('pii_entity' = 'provider');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`education_training` SET TAGS ('pii_subdomain' = 'credentialing');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`education_training` SET TAGS ('pii_structure_enforced' = 'v22domains');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`education_training` ALTER COLUMN `education_training_id` SET TAGS ('pii_pk' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`education_training` ALTER COLUMN `institution_name` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`education_training` ALTER COLUMN `institution_name` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`education_training` ALTER COLUMN `institution_name` SET TAGS ('pii_name' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`education_training` ALTER COLUMN `institution_name` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`education_training` ALTER COLUMN `institution_name` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`education_training` ALTER COLUMN `institution_name` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`reappointment` SET TAGS ('pii_data_type' = 'transactional_data');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`reappointment` SET TAGS ('pii_subdomain' = 'credentialing_compliance');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`reappointment` SET TAGS ('pii_entity' = 'provider');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`reappointment` SET TAGS ('pii_subdomain' = 'credentialing');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`reappointment` SET TAGS ('pii_structure_enforced' = 'v22domains');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`reappointment` ALTER COLUMN `reappointment_id` SET TAGS ('pii_pk' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`peer_reference` SET TAGS ('pii_data_type' = 'transactional_data');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`peer_reference` SET TAGS ('pii_subdomain' = 'credentialing_compliance');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`peer_reference` SET TAGS ('pii_entity' = 'provider');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`peer_reference` SET TAGS ('pii_subdomain' = 'credentialing');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`peer_reference` SET TAGS ('pii_structure_enforced' = 'v22domains');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`peer_reference` ALTER COLUMN `peer_reference_id` SET TAGS ('pii_pk' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`peer_reference` ALTER COLUMN `referee_email` SET TAGS ('pii_sensitivity' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`peer_reference` ALTER COLUMN `referee_email` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`peer_reference` ALTER COLUMN `referee_email` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`peer_reference` ALTER COLUMN `referee_email` SET TAGS ('pii_email' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`peer_reference` ALTER COLUMN `referee_email` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`peer_reference` ALTER COLUMN `referee_email` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`peer_reference` ALTER COLUMN `referee_email` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`peer_reference` ALTER COLUMN `referee_name` SET TAGS ('pii_sensitivity' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`peer_reference` ALTER COLUMN `referee_name` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`peer_reference` ALTER COLUMN `referee_name` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`peer_reference` ALTER COLUMN `referee_name` SET TAGS ('pii_name' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`peer_reference` ALTER COLUMN `referee_name` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`peer_reference` ALTER COLUMN `referee_name` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`peer_reference` ALTER COLUMN `referee_name` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`cme_activity` SET TAGS ('pii_data_type' = 'transactional_data');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`cme_activity` SET TAGS ('pii_subdomain' = 'credentialing_compliance');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`cme_activity` SET TAGS ('pii_entity' = 'provider');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`cme_activity` SET TAGS ('pii_subdomain' = 'credentialing');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`cme_activity` SET TAGS ('pii_structure_enforced' = 'v22domains');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`cme_activity` ALTER COLUMN `cme_activity_id` SET TAGS ('pii_pk' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`cme_activity` ALTER COLUMN `activity_name` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`cme_activity` ALTER COLUMN `activity_name` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`cme_activity` ALTER COLUMN `activity_name` SET TAGS ('pii_name' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`cme_activity` ALTER COLUMN `activity_name` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`cme_activity` ALTER COLUMN `activity_name` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`cme_activity` ALTER COLUMN `activity_name` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`telehealth_authorization` SET TAGS ('pii_data_type' = 'master_data');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`telehealth_authorization` SET TAGS ('pii_subdomain' = 'network_enrollment');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`telehealth_authorization` SET TAGS ('pii_entity' = 'provider');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`telehealth_authorization` SET TAGS ('pii_subdomain' = 'credentialing');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`telehealth_authorization` SET TAGS ('pii_structure_enforced' = 'v22domains');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`telehealth_authorization` ALTER COLUMN `telehealth_authorization_id` SET TAGS ('pii_pk' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`telehealth_authorization` ALTER COLUMN `telehealth_authorization_id` SET TAGS ('pii_primary_key' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`telehealth_authorization` ALTER COLUMN `telehealth_authorization_id` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`telehealth_authorization` ALTER COLUMN `telehealth_authorization_id` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`telehealth_authorization` ALTER COLUMN `telehealth_authorization_id` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`telehealth_authorization` ALTER COLUMN `telehealth_authorization_id` SET TAGS ('pii_health' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`telehealth_authorization` ALTER COLUMN `telehealth_authorization_id` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`telehealth_authorization` ALTER COLUMN `telehealth_authorization_id` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`telehealth_authorization` ALTER COLUMN `telehealth_authorization_id` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`telehealth_authorization` ALTER COLUMN `state_code` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`telehealth_authorization` ALTER COLUMN `state_code` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`telehealth_authorization` ALTER COLUMN `state_code` SET TAGS ('pii_address' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`telehealth_authorization` ALTER COLUMN `state_code` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`telehealth_authorization` ALTER COLUMN `state_code` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`telehealth_authorization` ALTER COLUMN `state_code` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`telehealth_authorization` ALTER COLUMN `telehealth_authorization_status` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`telehealth_authorization` ALTER COLUMN `telehealth_authorization_status` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`telehealth_authorization` ALTER COLUMN `telehealth_authorization_status` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`telehealth_authorization` ALTER COLUMN `telehealth_authorization_status` SET TAGS ('pii_health' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`telehealth_authorization` ALTER COLUMN `telehealth_authorization_status` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`telehealth_authorization` ALTER COLUMN `telehealth_authorization_status` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`telehealth_authorization` ALTER COLUMN `telehealth_authorization_status` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`taxonomy` SET TAGS ('pii_data_type' = 'reference_data');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`taxonomy` SET TAGS ('pii_subdomain' = 'provider_registry');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`taxonomy` SET TAGS ('pii_entity' = 'reference');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`taxonomy` SET TAGS ('pii_subdomain' = 'provider');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`taxonomy` SET TAGS ('pii_structure_enforced' = 'v22domains');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`taxonomy` ALTER COLUMN `taxonomy_id` SET TAGS ('pii_pk' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`affiliation_history` SET TAGS ('pii_data_type' = 'transactional_data');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`affiliation_history` SET TAGS ('pii_subdomain' = 'network_enrollment');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`affiliation_history` SET TAGS ('pii_entity' = 'provider');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`affiliation_history` SET TAGS ('pii_subdomain' = 'organizational');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`affiliation_history` SET TAGS ('pii_structure_enforced' = 'v22domains');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`affiliation_history` ALTER COLUMN `affiliation_history_id` SET TAGS ('pii_pk' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`study_team_member` SET TAGS ('pii_data_type' = 'association_data');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`study_team_member` SET TAGS ('pii_subdomain' = 'practice_engagement');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`study_team_member` SET TAGS ('pii_association_edges' = 'provider.clinician,research.research_study');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`study_team_member` SET TAGS ('pii_entity' = 'research');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`study_team_member` SET TAGS ('pii_subdomain' = 'provider');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`study_team_member` SET TAGS ('pii_structure_enforced' = 'v22domains');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`study_team_member` ALTER COLUMN `study_team_member_id` SET TAGS ('pii_pk' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`study_team_member` ALTER COLUMN `study_team_member_id` SET TAGS ('pii_confidential' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`study_team_member` ALTER COLUMN `study_team_member_id` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`study_team_member` ALTER COLUMN `study_team_member_id` SET TAGS ('pii_primary_key' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`study_team_member` ALTER COLUMN `study_team_member_id` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`study_team_member` ALTER COLUMN `study_team_member_id` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`study_team_member` ALTER COLUMN `study_team_member_id` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`study_team_member` ALTER COLUMN `study_team_member_id` SET TAGS ('pii_identifier' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`study_team_member` ALTER COLUMN `study_team_member_id` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`study_team_member` ALTER COLUMN `study_team_member_id` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`study_team_member` ALTER COLUMN `study_team_member_id` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`assignment` SET TAGS ('pii_data_type' = 'association_data');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`assignment` SET TAGS ('pii_subdomain' = 'practice_engagement');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`assignment` SET TAGS ('pii_association_edges' = 'provider.clinician,workforce.position');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`assignment` SET TAGS ('pii_entity' = 'provider');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`assignment` SET TAGS ('pii_subdomain' = 'scheduling');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`assignment` SET TAGS ('pii_structure_enforced' = 'v22domains');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`assignment` ALTER COLUMN `assignment_id` SET TAGS ('pii_pk' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`assignment` ALTER COLUMN `employee_id` SET TAGS ('pii_confidential' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`assignment` ALTER COLUMN `employee_id` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`assignment` ALTER COLUMN `assignment_employee_id` SET TAGS ('pii_confidential' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`assignment` ALTER COLUMN `assignment_employee_id` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`affiliation` SET TAGS ('pii_data_type' = 'association_data');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`affiliation` SET TAGS ('pii_subdomain' = 'network_enrollment');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`affiliation` SET TAGS ('pii_association_edges' = 'provider.clinician,workforce.org_unit');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`affiliation` SET TAGS ('pii_entity' = 'provider');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`affiliation` SET TAGS ('pii_subdomain' = 'organizational');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`affiliation` SET TAGS ('pii_structure_enforced' = 'v22domains');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`affiliation` ALTER COLUMN `affiliation_id` SET TAGS ('pii_pk' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`preference_card` SET TAGS ('pii_data_type' = 'association_data');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`preference_card` SET TAGS ('pii_subdomain' = 'practice_engagement');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`preference_card` SET TAGS ('pii_association_edges' = 'provider.clinician,supply.material_master');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`preference_card` SET TAGS ('pii_entity' = 'provider');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`preference_card` SET TAGS ('pii_subdomain' = 'clinical');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`preference_card` SET TAGS ('pii_structure_enforced' = 'v22domains');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`preference_card` ALTER COLUMN `preference_card_id` SET TAGS ('pii_pk' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`preference_card` ALTER COLUMN `preference_card_id` SET TAGS ('pii_sensitivity' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`preference_card` ALTER COLUMN `card_status` SET TAGS ('pii_sensitivity' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`preference_card` ALTER COLUMN `procedure_name` SET TAGS ('pii_sensitivity' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`preference_card` ALTER COLUMN `procedure_name` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`preference_card` ALTER COLUMN `procedure_name` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`preference_card` ALTER COLUMN `procedure_name` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`preference_card` ALTER COLUMN `procedure_name` SET TAGS ('pii_name' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`preference_card` ALTER COLUMN `procedure_name` SET TAGS ('pii_health' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`preference_card` ALTER COLUMN `procedure_name` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`preference_card` ALTER COLUMN `procedure_name` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`preference_card` ALTER COLUMN `procedure_name` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`survey_participation` SET TAGS ('pii_data_type' = 'association_data');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`survey_participation` SET TAGS ('pii_subdomain' = 'practice_engagement');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`survey_participation` SET TAGS ('pii_association_edges' = 'provider.clinician,quality.accreditation_survey');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`survey_participation` SET TAGS ('pii_entity' = 'provider');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`survey_participation` SET TAGS ('pii_subdomain' = 'quality');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`survey_participation` SET TAGS ('pii_structure_enforced' = 'v22domains');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`survey_participation` ALTER COLUMN `survey_participation_id` SET TAGS ('pii_pk' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`survey_participation` ALTER COLUMN `survey_name` SET TAGS ('pii_sensitivity' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`survey_participation` ALTER COLUMN `survey_name` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`survey_participation` ALTER COLUMN `survey_name` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`survey_participation` ALTER COLUMN `survey_name` SET TAGS ('pii_name' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`survey_participation` ALTER COLUMN `survey_name` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`survey_participation` ALTER COLUMN `survey_name` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`survey_participation` ALTER COLUMN `survey_name` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_file` SET TAGS ('pii_data_type' = 'master_data');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_file` SET TAGS ('pii_subdomain' = 'credentialing_compliance');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_file` SET TAGS ('pii_entity' = 'provider');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_file` SET TAGS ('pii_subdomain' = 'credentialing');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_file` SET TAGS ('pii_structure_enforced' = 'v22domains');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`credentialing_file` ALTER COLUMN `credentialing_file_id` SET TAGS ('pii_pk' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`committee` SET TAGS ('pii_data_type' = 'master_data');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`committee` SET TAGS ('pii_subdomain' = 'credentialing_compliance');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`committee` SET TAGS ('pii_entity' = 'provider');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`committee` SET TAGS ('pii_subdomain' = 'governance');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`committee` SET TAGS ('pii_structure_enforced' = 'v22domains');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`committee` SET TAGS ('pii_ssot_role' = 'alias');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`committee` SET TAGS ('pii_ssot_canonical' = 'quality.committee');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`committee` SET TAGS ('pii_ssot' = 'primary');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`committee` SET TAGS ('pii_ssot_pair' = 'quality.committee');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`committee` SET TAGS ('pii_distinct_document' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`committee` SET TAGS ('pii_ssot_note' = 'distinct_domain_scope_not_duplicate');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`committee` SET TAGS ('pii_ssot_reference' = 'quality.committee');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`committee` SET TAGS ('pii_duplicate_pair' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`committee` SET TAGS ('pii_ssot_primary' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`committee` ALTER COLUMN `committee_id` SET TAGS ('pii_pk' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`committee` ALTER COLUMN `committee_name` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`committee` ALTER COLUMN `committee_name` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`committee` ALTER COLUMN `committee_name` SET TAGS ('pii_name' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`committee` ALTER COLUMN `committee_name` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`committee` ALTER COLUMN `committee_name` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`committee` ALTER COLUMN `committee_name` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`committee` ALTER COLUMN `scope` SET TAGS ('pii_discriminator' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` SET TAGS ('pii_data_type' = 'association_data');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` SET TAGS ('pii_subdomain' = 'network_enrollment');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` SET TAGS ('pii_entity' = 'provider');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` SET TAGS ('pii_subdomain' = 'enrollment');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` SET TAGS ('pii_structure_enforced' = 'v22domains');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` SET TAGS ('pii_ssot_role' = 'canonical');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` SET TAGS ('pii_ssot' = 'primary');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` SET TAGS ('pii_ssot_pair' = 'insurance.insurance_payer_enrollment');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` SET TAGS ('pii_distinct_document' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` SET TAGS ('pii_ssot_note' = 'distinct_domain_scope_not_duplicate');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` SET TAGS ('pii_ssot_duplicate_of' = 'insurance.insurance_payer_enrollment');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` SET TAGS ('pii_ssot_resolution' = 'designate_ssot');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` SET TAGS ('pii_ssot_canonical' = 'insurance.insurance_payer_enrollment');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` SET TAGS ('pii_ssot_pair_winner' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` SET TAGS ('pii_duplicate_of' = 'insurance.insurance_payer_enrollment');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` ALTER COLUMN `provider_payer_enrollment_id` SET TAGS ('pii_pk' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` ALTER COLUMN `employee_id` SET TAGS ('pii_confidential' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` ALTER COLUMN `employee_id` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` ALTER COLUMN `npi_registry_id` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` ALTER COLUMN `npi_registry_id` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` ALTER COLUMN `npi_registry_id` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` ALTER COLUMN `npi_registry_id` SET TAGS ('pii_identifier' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` ALTER COLUMN `npi_registry_id` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` ALTER COLUMN `npi_registry_id` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` ALTER COLUMN `npi_registry_id` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` ALTER COLUMN `billing_npi` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` ALTER COLUMN `billing_npi` SET TAGS ('pii_sensitivity' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` ALTER COLUMN `billing_npi` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` ALTER COLUMN `billing_npi` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` ALTER COLUMN `billing_npi` SET TAGS ('pii_identifier' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` ALTER COLUMN `billing_npi` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` ALTER COLUMN `billing_npi` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` ALTER COLUMN `billing_npi` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` ALTER COLUMN `dea_number` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` ALTER COLUMN `dea_number` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` ALTER COLUMN `dea_number` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` ALTER COLUMN `dea_number` SET TAGS ('pii_identifier' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` ALTER COLUMN `dea_number` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` ALTER COLUMN `dea_number` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` ALTER COLUMN `dea_number` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` ALTER COLUMN `enrollment_scope` SET TAGS ('pii_discriminator' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` ALTER COLUMN `group_npi` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` ALTER COLUMN `group_npi` SET TAGS ('pii_sensitivity' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` ALTER COLUMN `group_npi` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` ALTER COLUMN `group_npi` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` ALTER COLUMN `group_npi` SET TAGS ('pii_identifier' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` ALTER COLUMN `group_npi` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` ALTER COLUMN `group_npi` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` ALTER COLUMN `group_npi` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` ALTER COLUMN `license_state` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` ALTER COLUMN `license_state` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` ALTER COLUMN `license_state` SET TAGS ('pii_address' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` ALTER COLUMN `license_state` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` ALTER COLUMN `license_state` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` ALTER COLUMN `license_state` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` ALTER COLUMN `medicaid_provider_number` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` ALTER COLUMN `pay_to_address_line1` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` ALTER COLUMN `pay_to_address_line1` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` ALTER COLUMN `pay_to_address_line1` SET TAGS ('pii_address' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` ALTER COLUMN `pay_to_address_line1` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` ALTER COLUMN `pay_to_address_line1` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` ALTER COLUMN `pay_to_address_line1` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` ALTER COLUMN `payer_plan_name` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` ALTER COLUMN `payer_plan_name` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` ALTER COLUMN `payer_plan_name` SET TAGS ('pii_name' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` ALTER COLUMN `payer_plan_name` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` ALTER COLUMN `payer_plan_name` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` ALTER COLUMN `payer_plan_name` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` ALTER COLUMN `ptan` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` ALTER COLUMN `service_address_line1` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` ALTER COLUMN `service_address_line1` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` ALTER COLUMN `service_address_line1` SET TAGS ('pii_address' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` ALTER COLUMN `service_address_line1` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` ALTER COLUMN `service_address_line1` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` ALTER COLUMN `service_address_line1` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` ALTER COLUMN `service_city` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` ALTER COLUMN `service_city` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` ALTER COLUMN `service_city` SET TAGS ('pii_address' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` ALTER COLUMN `service_city` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` ALTER COLUMN `service_city` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` ALTER COLUMN `service_city` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` ALTER COLUMN `service_state` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` ALTER COLUMN `service_state` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` ALTER COLUMN `service_state` SET TAGS ('pii_address' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` ALTER COLUMN `service_state` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` ALTER COLUMN `service_state` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` ALTER COLUMN `service_state` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` ALTER COLUMN `service_zip_code` SET TAGS ('pii_restricted' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` ALTER COLUMN `service_zip_code` SET TAGS ('pii_address' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` ALTER COLUMN `service_zip_code` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` ALTER COLUMN `service_zip_code` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` ALTER COLUMN `service_zip_code` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` ALTER COLUMN `service_zip_code` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` ALTER COLUMN `service_zip_code` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` ALTER COLUMN `state_license_number` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` ALTER COLUMN `state_license_number` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` ALTER COLUMN `state_license_number` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` ALTER COLUMN `state_license_number` SET TAGS ('pii_identifier' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` ALTER COLUMN `state_license_number` SET TAGS ('pii_address' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` ALTER COLUMN `state_license_number` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` ALTER COLUMN `state_license_number` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` ALTER COLUMN `state_license_number` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` ALTER COLUMN `tax_identification_number` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_payer_enrollment` ALTER COLUMN `tax_identification_number` SET TAGS ('pii_sensitivity' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_network_participation` SET TAGS ('pii_data_type' = 'association_data');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_network_participation` SET TAGS ('pii_subdomain' = 'network_enrollment');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_network_participation` SET TAGS ('pii_entity' = 'provider');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_network_participation` SET TAGS ('pii_subdomain' = 'network');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_network_participation` SET TAGS ('pii_structure_enforced' = 'v22domains');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_network_participation` SET TAGS ('pii_ssot_role' = 'alias');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_network_participation` SET TAGS ('pii_ssot_canonical' = 'insurance.network_participation');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_network_participation` SET TAGS ('pii_ssot_consolidated_into' = 'insurance.network_participation');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_network_participation` SET TAGS ('pii_deprecated' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_network_participation` SET TAGS ('pii_consolidated_into' = 'insurance.network_participation');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_network_participation` SET TAGS ('pii_ssot' = 'deprecated');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_network_participation` SET TAGS ('pii_ssot_target' = 'insurance.network_participation');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_network_participation` ALTER COLUMN `provider_network_participation_id` SET TAGS ('pii_pk' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_network_participation` ALTER COLUMN `provider_network_participation_id` SET TAGS ('pii_ssot_role' = 'owner');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_location` SET TAGS ('pii_data_type' = 'master_data');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_location` SET TAGS ('pii_subdomain' = 'provider_registry');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_location` SET TAGS ('pii_entity' = 'provider');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_location` SET TAGS ('pii_subdomain' = 'organizational');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_location` SET TAGS ('pii_structure_enforced' = 'v22domains');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_location` SET TAGS ('pii_ssot_role' = 'alias');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_location` SET TAGS ('pii_ssot_canonical' = 'facility.care_site');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_location` SET TAGS ('pii_ssot_note' = 'Both should FK to canonical facility anchor');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_location` SET TAGS ('pii_ssot' = 'primary');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_location` SET TAGS ('pii_ssot_pair' = 'pharmacy.pharmacy_location');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_location` SET TAGS ('pii_distinct_document' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_location` SET TAGS ('pii_ssot_duplicate_of' = 'pharmacy.pharmacy_location');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_location` SET TAGS ('pii_ssot_resolution' = 'designate_ssot');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_location` SET TAGS ('pii_ssot_pair_winner' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_location` SET TAGS ('pii_duplicate_of' = 'pharmacy.pharmacy_location');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_location` SET TAGS ('pii_mvm_alias' = 'provider.location');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_location` SET TAGS ('pii_mvm_ecm_reconciled' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_location` SET TAGS ('pii_ecm_superset' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_location` ALTER COLUMN `provider_location_id` SET TAGS ('pii_pk' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_location` ALTER COLUMN `address_line1` SET TAGS ('pii_restricted' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_location` ALTER COLUMN `address_line1` SET TAGS ('pii_address' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_location` ALTER COLUMN `address_line1` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_location` ALTER COLUMN `address_line1` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_location` ALTER COLUMN `address_line1` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_location` ALTER COLUMN `address_line1` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_location` ALTER COLUMN `address_line1` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_location` ALTER COLUMN `city` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_location` ALTER COLUMN `city` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_location` ALTER COLUMN `city` SET TAGS ('pii_address' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_location` ALTER COLUMN `city` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_location` ALTER COLUMN `city` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_location` ALTER COLUMN `city` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_location` ALTER COLUMN `location_name` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_location` ALTER COLUMN `location_name` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_location` ALTER COLUMN `location_name` SET TAGS ('pii_name' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_location` ALTER COLUMN `location_name` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_location` ALTER COLUMN `location_name` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_location` ALTER COLUMN `location_name` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_location` ALTER COLUMN `location_phone` SET TAGS ('pii_restricted' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_location` ALTER COLUMN `location_phone` SET TAGS ('pii_phone' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_location` ALTER COLUMN `location_phone` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_location` ALTER COLUMN `location_phone` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_location` ALTER COLUMN `location_phone` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_location` ALTER COLUMN `location_phone` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_location` ALTER COLUMN `location_phone` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_location` ALTER COLUMN `location_scope` SET TAGS ('pii_discriminator' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_location` ALTER COLUMN `mvm_source_names` SET TAGS ('pii_business_glossary_term' = 'provider.location;provider.location_specialty');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_location` ALTER COLUMN `mvm_source_names` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_location` ALTER COLUMN `mvm_source_names` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_location` ALTER COLUMN `mvm_source_names` SET TAGS ('pii_name' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_location` ALTER COLUMN `mvm_source_names` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_location` ALTER COLUMN `mvm_source_names` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_location` ALTER COLUMN `mvm_source_names` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_location` ALTER COLUMN `phone` SET TAGS ('pii_sensitivity' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_location` ALTER COLUMN `phone` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_location` ALTER COLUMN `phone` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_location` ALTER COLUMN `phone` SET TAGS ('pii_phone' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_location` ALTER COLUMN `phone` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_location` ALTER COLUMN `phone` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_location` ALTER COLUMN `phone` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_location` ALTER COLUMN `state` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_location` ALTER COLUMN `state` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_location` ALTER COLUMN `state` SET TAGS ('pii_address' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_location` ALTER COLUMN `state` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_location` ALTER COLUMN `state` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_location` ALTER COLUMN `state` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_location` ALTER COLUMN `zip_code` SET TAGS ('pii_restricted' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_location` ALTER COLUMN `zip_code` SET TAGS ('pii_address' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_location` ALTER COLUMN `zip_code` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_location` ALTER COLUMN `zip_code` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_location` ALTER COLUMN `zip_code` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_location` ALTER COLUMN `zip_code` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`provider_location` ALTER COLUMN `zip_code` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`location_specialty` SET TAGS ('pii_data_type' = 'association_data');
+ALTER TABLE `vibe_healthcare_v1`.`provider`.`location_specialty` SET TAGS ('pii_subdomain' = 'provider_registry');

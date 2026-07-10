@@ -1,5 +1,5 @@
--- Schema for Domain: asset | Business:  | Version: v2_ecm
--- Generated on: 2026-07-10 12:58:59
+-- Schema for Domain: asset | Business: Manufacturing | Version: v2_ecm
+-- Generated on: 2026-07-03 05:59:28
 
 -- ========= DATABASE =========
 CREATE DATABASE IF NOT EXISTS `vibe_manufacturing_v1`.`asset` COMMENT 'Equipment and asset lifecycle management domain tracking physical assets, machinery maintenance (CMMS), preventive maintenance scheduling, TPM, work order execution, MTBF/MTTR analysis, downtime events, spare parts, condition monitoring, and CapEx asset registers via Maximo. Manages production equipment, PLCs, CNC machines, robotics, and facility infrastructure.';
@@ -20,36 +20,37 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`asset`.`equipment_register` (
     `sku_master_id` BIGINT COMMENT 'Foreign key linking to product.sku_master. Business justification: Required for Asset Management reports that tie each physical equipment to its product master record for warranty, maintenance, and cost analysis.',
     `stock_location_id` BIGINT COMMENT 'Foreign key linking to inventory.stock_location. Business justification: Business process: Asset Receiving & Storage requires tracking which warehouse bin new equipment is stored in before installation, enabling inventory valuation and location reporting.',
     `supplier_id` BIGINT COMMENT 'Foreign key linking to supplier.supplier. Business justification: Procurement process records primary equipment supplier for warranty and support contracts.',
+    `asset_pm_schedule_id` BIGINT COMMENT 'Reference identifier for the preventive maintenance plan assigned to this equipment in SAP PM or Maximo. Links the asset to its scheduled maintenance cycles, task lists, and service intervals.',
+    `capex_asset_record_id` BIGINT COMMENT 'Foreign key linking to asset.capex_asset_record. Business justification: Each equipment_register represents a physical asset; linking to its financial capex record enables financial‑operational joins and removes duplicated cost fields from equipment_register.',
+    `carrier_id` BIGINT COMMENT 'Foreign key linking to logistics.carrier. Business justification: Preferred Carrier Assignment process records the default carrier responsible for delivering each piece of equipment.',
     `asset_category` STRING COMMENT 'Broad category grouping for the asset used in CapEx asset register classification, depreciation policy assignment, and financial reporting under IFRS/GAAP fixed asset schedules.. Valid values are `Production Equipment|Facility Infrastructure|Utility System|Safety System|Measurement and Test Equipment|IT and Automation`',
     `asset_number` STRING COMMENT 'Externally-known unique asset tag or equipment number assigned in the CapEx asset register and stamped on the physical asset. Corresponds to the Maximo Asset Number and SAP S/4HANA Equipment Number (PM module). Serves as the primary business identifier for cross-system reconciliation.',
-    `asset_pm_schedule_id` BIGINT COMMENT 'Reference identifier for the preventive maintenance plan assigned to this equipment in SAP PM or Maximo. Links the asset to its scheduled maintenance cycles, task lists, and service intervals.',
     `capacity_unit_of_measure` STRING COMMENT 'Unit of measure for the rated capacity value (e.g., units/hr, kg/hr, tonnes/day, cycles/min). Required to correctly interpret and compare capacity figures across heterogeneous equipment types.',
-    `capex_asset_record_id` BIGINT COMMENT 'Foreign key linking to asset.capex_asset_record. Business justification: Each equipment_register represents a physical asset; linking to its financial capex record enables financial‑operational joins and removes duplicated cost fields from equipment_register.',
-    `commissioning_date` DATE COMMENT 'Date on which the equipment was formally commissioned and placed into productive service following installation and acceptance testing. Marks the start of the assets operational lifecycle and triggers depreciation commencement in SAP FI-AA.',
-    `condition_at_transfer` STRING COMMENT 'Recorded physical condition grade of the equipment at the time of its most recent transfer or relocation. Provides a point-in-time condition snapshot for the location assignment history audit trail and insurance/liability documentation.. Valid values are `Excellent|Good|Fair|Poor|Critical`',
+    `commissioning_date` TIMESTAMP COMMENT 'Date on which the equipment was formally commissioned and placed into productive service following installation and acceptance testing. Marks the start of the assets operational lifecycle and triggers depreciation commencement in SAP FI-AA.',
+    `condition_at_transfer` TIMESTAMP COMMENT 'Recorded physical condition grade of the equipment at the time of its most recent transfer or relocation. Provides a point-in-time condition snapshot for the location assignment history audit trail and insurance/liability documentation.',
     `condition_grade` STRING COMMENT 'Current physical condition assessment grade of the equipment based on the most recent inspection or condition monitoring evaluation. Used in asset lifecycle management decisions (repair vs. replace), maintenance prioritization, and insurance assessments.. Valid values are `Excellent|Good|Fair|Poor|Critical`',
     `criticality_ranking` STRING COMMENT 'Business criticality classification of the equipment based on its impact on production throughput, safety, and quality if it fails. Critical assets receive priority maintenance resources and are included in TPM and FMEA programs. Used in maintenance strategy selection and spare parts stocking decisions.. Valid values are `Critical|High|Medium|Low`',
     `currency_code` STRING COMMENT 'ISO 4217 three-letter currency code for all monetary values on this equipment record (acquisition cost, book value, replacement value). Supports multi-currency CapEx reporting for global manufacturing operations.. Valid values are `^[A-Z]{3}$`',
-    `decommission_date` DATE COMMENT 'Date on which the equipment was formally decommissioned and removed from productive service. Triggers asset write-off or disposal processing in SAP FI-AA. Null for active assets.',
-    `device_registry_id` BIGINT COMMENT 'Foreign key linking to automation.device_registry. Business justification: Required for Equipment‑Control Integration Report linking each equipment asset to its primary controller device for diagnostics and maintenance planning.',
+    `decommission_date` TIMESTAMP COMMENT 'Date on which the equipment was formally decommissioned and removed from productive service. Triggers asset write-off or disposal processing in SAP FI-AA. Null for active assets.',
+    `device_registry_code` BIGINT COMMENT 'Foreign key linking to automation.device_registry. Business justification: Required for Equipment‑Control Integration Report linking each equipment asset to its primary controller device for diagnostics and maintenance planning.',
     `equipment_class` STRING COMMENT 'High-level classification of the equipment type used for asset categorization, maintenance strategy assignment, and reporting. [ENUM-REF-CANDIDATE: CNC Machine|PLC|Robotics|Conveyor|HVAC|Compressor|Pump|Electrical Panel|Facility Infrastructure|Inspection Equipment — promote to reference product]',
     `equipment_name` STRING COMMENT 'Human-readable descriptive name of the equipment or asset (e.g., CNC Milling Machine #3, Conveyor Belt Line A). Used as the primary identity label for display in reports, dashboards, and work orders.',
     `functional_location` STRING COMMENT 'Hierarchical functional location code (e.g., PLANT-AREA-LINE-STATION) representing the physical and functional position of the equipment within the facility structure. Corresponds to the SAP PM Functional Location and Maximo Location fields. Supports spatial analytics and maintenance planning.',
-    `installation_date` DATE COMMENT 'Date on which the equipment was physically installed at its designated location. May precede commissioning date if acceptance testing or qualification activities are required before productive use.',
+    `installation_date` TIMESTAMP COMMENT 'Date on which the equipment was physically installed at its designated location. May precede commissioning date if acceptance testing or qualification activities are required before productive use.',
     `last_inspection_date` DATE COMMENT 'Date of the most recent formal inspection or condition assessment performed on the equipment. Used to track regulatory inspection compliance intervals and condition monitoring schedules.',
     `last_maintenance_date` DATE COMMENT 'Date on which the most recent completed maintenance activity (preventive or corrective) was performed on the equipment. Used to calculate maintenance intervals, overdue PM alerts, and MTBF analysis.',
     `last_transfer_date` DATE COMMENT 'Date of the most recent location transfer or relocation of the equipment. Part of the location assignment history audit trail tracking asset movements between plants, production lines, or storage areas.',
     `last_transfer_destination` STRING COMMENT 'Functional location or plant code to which the equipment was most recently transferred. Provides the destination leg of the location transfer audit trail for asset movement traceability.',
     `last_transfer_origin` STRING COMMENT 'Functional location or plant code from which the equipment was most recently transferred. Provides the origin leg of the location transfer audit trail for asset movement traceability.',
     `last_transfer_reason` STRING COMMENT 'Business reason code for the most recent equipment relocation or transfer. Part of the location assignment history audit trail required for asset tracking compliance and CapEx asset register accuracy.. Valid values are `Production Rebalancing|Maintenance|Decommission|New Project|Relocation|Disposal`',
-    `maintenance_strategy` STRING COMMENT 'Assigned maintenance approach for the equipment as defined in the Maximo CMMS and SAP PM maintenance plan. Drives scheduling of preventive maintenance (PM) work orders, TPM activities, and condition monitoring programs.. Valid values are `Preventive|Predictive|Corrective|Condition-Based|Run-to-Failure`',
-    `manufacture_date` DATE COMMENT 'Date on which the equipment was manufactured by the OEM. Used to calculate equipment age, assess remaining useful life, and determine warranty expiry.',
+    `maintenance_strategy` DECIMAL(18,2) COMMENT 'Assigned maintenance approach for the equipment as defined in the Maximo CMMS and SAP PM maintenance plan. Drives scheduling of preventive maintenance (PM) work orders, TPM activities, and condition monitoring programs.',
+    `manufacture_date` TIMESTAMP COMMENT 'Date on which the equipment was manufactured by the OEM. Used to calculate equipment age, assess remaining useful life, and determine warranty expiry.',
     `manufacturer_name` STRING COMMENT 'Name of the original equipment manufacturer (OEM) who produced the asset (e.g., Siemens, Fanuc, ABB, Bosch Rexroth). Used for warranty management, spare parts sourcing, and OEM service contract administration.',
     `mean_time_between_failures` DECIMAL(18,2) COMMENT 'Average elapsed time in hours between successive equipment failures, calculated from historical work order and downtime event data. Key reliability KPI used in TPM programs, maintenance strategy optimization, and OEE analysis. Expressed in hours.',
     `mean_time_to_repair` DECIMAL(18,2) COMMENT 'Average elapsed time in hours required to restore the equipment to operational status following a failure, calculated from historical corrective maintenance work orders. Key maintainability KPI used in TPM and SLA management. Expressed in hours.',
     `model_number` STRING COMMENT 'OEM-assigned model or part number for the equipment. Used for spare parts procurement, technical documentation lookup, and warranty claims.',
-    `next_maintenance_due_date` DATE COMMENT 'Scheduled date for the next planned preventive maintenance activity on the equipment, as calculated by the maintenance plan in SAP PM or Maximo. Drives work order generation and maintenance scheduling.',
-    `operational_status` STRING COMMENT 'Current operational lifecycle state of the equipment. Drives maintenance scheduling, OEE calculations, and asset availability reporting. In Service indicates active production use; Decommissioned triggers asset write-off in SAP FI-AA.. Valid values are `In Service|Out of Service|Under Maintenance|Decommissioned|Standby|Commissioning`',
+    `next_maintenance_due_date` TIMESTAMP COMMENT 'Scheduled date for the next planned preventive maintenance activity on the equipment, as calculated by the maintenance plan in SAP PM or Maximo. Drives work order generation and maintenance scheduling.',
+    `operational_status` DECIMAL(18,2) COMMENT 'Current operational lifecycle state of the equipment. Drives maintenance scheduling, OEE calculations, and asset availability reporting. In Service indicates active production use; Decommissioned triggers asset write-off in SAP FI-AA.',
     `power_rating_kw` DECIMAL(18,2) COMMENT 'Nominal electrical power consumption rating of the equipment in kilowatts as specified by the OEM. Used for energy management planning, ISO 50001 energy audits, electrical load balancing, and CapEx infrastructure sizing.',
     `rated_capacity` DECIMAL(18,2) COMMENT 'OEM-specified nominal production capacity or throughput rating of the equipment (e.g., units per hour, tonnes per day). Serves as the denominator for OEE availability and performance calculations and production planning in APS.',
     `record_created_timestamp` TIMESTAMP COMMENT 'Timestamp when the equipment record was first created in the master data system (Maximo or SAP S/4HANA). Provides the record creation audit trail for data governance and MDM lineage tracking.',
@@ -59,7 +60,7 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`asset`.`equipment_register` (
     `safety_classification` STRING COMMENT 'Safety classification of the equipment based on occupational health and safety risk profile. Determines required safety permits, lockout/tagout (LOTO) procedures, PPE requirements, and regulatory inspection schedules under OSHA and ISO 45001.. Valid values are `Hazardous|Non-Hazardous|Pressure Vessel|Electrical High Voltage|Confined Space|Radiation Source`',
     `serial_number` STRING COMMENT 'Manufacturer-assigned unique serial number for the specific equipment unit. Used for warranty registration, OEM service calls, and regulatory compliance traceability. Classified as confidential device identifier.',
     `transfer_authorization_ref` STRING COMMENT 'Reference number of the authorization document (e.g., work order, change request, or management approval) that sanctioned the most recent equipment transfer or relocation. Provides the authorization audit trail for asset movement governance.',
-    `warranty_expiry_date` DATE COMMENT 'Date on which the OEM or supplier warranty for the equipment expires. Used to trigger preventive maintenance strategy transitions from warranty-covered to self-maintained, and to initiate extended warranty negotiations.',
+    `warranty_expiry_date` TIMESTAMP COMMENT 'Date on which the OEM or supplier warranty for the equipment expires. Used to trigger preventive maintenance strategy transitions from warranty-covered to self-maintained, and to initiate extended warranty negotiations.',
     `weight_kg` DECIMAL(18,2) COMMENT 'Physical weight of the equipment in kilograms as specified by the OEM. Used for facility floor load planning, rigging and relocation logistics, and transportation planning during asset transfers.',
     `work_center_code` STRING COMMENT 'SAP PP/PM work center code associated with the equipment, linking it to production routing and capacity planning. Enables integration between asset management and production scheduling in SAP S/4HANA.',
     CONSTRAINT pk_equipment_register PRIMARY KEY(`equipment_register_id`)
@@ -73,8 +74,6 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`asset`.`location` (
     `network_segment_id` BIGINT COMMENT 'Foreign key linking to automation.network_segment. Business justification: Supports Network Topology Mapping Report linking physical plant locations to the IT network segment that provides connectivity.',
     `node_id` BIGINT COMMENT 'Foreign key linking to logistics.logistics_node. Business justification: Required for Logistics Node Assignment process, mapping each plant location to a logistics node for inbound/outbound shipment planning.',
     `parent_location_id` BIGINT COMMENT 'Self-referencing identifier pointing to the immediate parent location in the functional location hierarchy. Enables recursive traversal of the plant topology from site level down to individual bay/cell coordinates. Null for top-level (plant/site) locations.',
-    `network_node_id` BIGINT COMMENT 'Foreign key linking to supply.network_node. Business justification: Asset physical location is mapped to a Supply Network Node for logistics and traceability; required by the Asset Location – Supply Chain Mapping operational report.',
-    `transport_route_id` BIGINT COMMENT 'Foreign key linking to logistics.transport_route. Business justification: Route Planning process uses a default transport route per location to generate shipment schedules and cost estimates.',
     `address_line1` STRING COMMENT 'Primary street address line of the facility or plant location. Used for regulatory reporting, logistics coordination, emergency services, and legal documentation. Classified as confidential organizational address data.',
     `area_sqm` DECIMAL(18,2) COMMENT 'Physical floor area of the location in square metres. Used for capacity planning, safety zone sizing, equipment layout design, and facility management reporting. Represents the principal quantitative measurement of the location resource.',
     `atex_zone_classification` STRING COMMENT 'Explosive atmosphere zone classification per ATEX Directive 2014/34/EU and IEC 60079 standard (e.g., Zone 0, Zone 1, Zone 2 for gas/vapour; Zone 20, Zone 21, Zone 22 for dust). Mandatory for equipment selection, safety inspections, and regulatory compliance in hazardous areas. Null if location is not classified as hazardous.. Valid values are `Zone 0|Zone 1|Zone 2|Zone 20|Zone 21|Zone 22`',
@@ -136,6 +135,7 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`asset`.`asset_work_order` (
     `parent_work_order_asset_work_order_id` BIGINT COMMENT 'Self-referencing identifier linking this work order to a parent work order, used for shutdown/turnaround scope decomposition or hierarchical work order structures. Null for top-level work orders.',
     `planned_order_id` BIGINT COMMENT 'Foreign key linking to supply.planned_order. Business justification: Execution of a Planned Order creates a Work Order; required for the Planned Order Execution report linking production planning to execution.',
     `employee_id` BIGINT COMMENT 'Reference to the primary maintenance technician or craftsperson assigned to execute this work order. Links to the workforce/employee master. Corresponds to LABORCODE in Maximo and Person Responsible in SAP PM.',
+    `production_work_order_id` BIGINT COMMENT 'SSOT reference to the single source of truth record; this product is a non-authoritative duplicate view.',
     `project_header_id` BIGINT COMMENT 'Foreign key linking to project.project_header. Business justification: Required for Project Execution Work Order Report linking each work order to its capital project.',
     `request_id` BIGINT COMMENT 'Foreign key linking to service.request. Business justification: Service Request fulfillment process creates internal work orders; linking enables request‑to‑work‑order tracking for SLA and performance reporting.',
     `shipment_id` BIGINT COMMENT 'Foreign key linking to logistics.shipment. Business justification: Needed for Load/Unload Work Order process, linking a work order that prepares equipment for a specific shipment.',
@@ -211,15 +211,15 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`asset`.`asset_pm_schedule` (
     `estimated_duration_hours` DECIMAL(18,2) COMMENT 'Estimated number of labor hours required to complete the preventive maintenance task. Used for maintenance scheduling, craft resource planning, and downtime window estimation.',
     `estimated_material_cost` DECIMAL(18,2) COMMENT 'Estimated cost of materials and spare parts required to execute this PM task, in the local operating currency. Used for maintenance budget planning and CapEx/OpEx cost allocation.',
     `frequency_unit` STRING COMMENT 'Unit of measure for the PM recurrence frequency. Combined with frequency_value to define the full interval (e.g., 30 DAYS, 500 HOURS, 10000 CYCLES). Determines whether the schedule is calendar-based or meter-based. [ENUM-REF-CANDIDATE: DAYS|WEEKS|MONTHS|YEARS|HOURS|CYCLES|KILOMETERS — 7 candidates stripped; promote to reference product]',
-    `frequency_value` STRING COMMENT 'Numeric value representing how often the PM task should recur. Interpreted in conjunction with frequency_unit (e.g., a value of 30 with unit DAYS means every 30 days; a value of 500 with unit HOURS means every 500 operating hours).',
+    `frequency_value` DECIMAL(18,2) COMMENT 'Numeric value representing how often the PM task should recur. Interpreted in conjunction with frequency_unit (e.g., a value of 30 with unit DAYS means every 30 days; a value of 500 with unit HOURS means every 500 operating hours).',
     `is_regulatory_required` BOOLEAN COMMENT 'Indicates whether this PM schedule is mandated by a regulatory body (e.g., OSHA, EPA, UL, CE Marking authority) and must be completed and documented for compliance purposes. Drives audit trail requirements.',
     `is_safety_critical` BOOLEAN COMMENT 'Indicates whether this PM schedule is classified as safety-critical, meaning non-execution could result in personnel injury, environmental incident, or regulatory violation. Safety-critical PMs require mandatory completion tracking.',
-    `last_completion_date` DATE COMMENT 'Date on which the most recent execution of this PM schedule was completed and the corresponding work order was closed. Used as the baseline for calculating the next due date.',
+    `last_completion_date` TIMESTAMP COMMENT 'Date on which the most recent execution of this PM schedule was completed and the corresponding work order was closed. Used as the baseline for calculating the next due date.',
     `last_revised_date` DATE COMMENT 'Date on which this PM schedule definition was last revised or updated. Supports document control, audit trails, and change management processes.',
     `lead_time_days` STRING COMMENT 'Number of days before the next_due_date that the PM work order should be generated to allow sufficient time for parts procurement, scheduling, and preparation. Supports JIT maintenance planning.',
     `maintenance_type` STRING COMMENT 'Classification of the maintenance activity type. PREVENTIVE: time/usage-based task to prevent failure. PREDICTIVE: condition-monitoring-driven task. INSPECTION: regulatory or quality inspection. LUBRICATION: lubrication task. CALIBRATION: instrument calibration. OVERHAUL: major scheduled overhaul.. Valid values are `PREVENTIVE|PREDICTIVE|INSPECTION|LUBRICATION|CALIBRATION|OVERHAUL`',
     `meter_unit` STRING COMMENT 'Unit of measure for the meter reading used in meter-based PM scheduling (e.g., HOURS for operating hours, CYCLES for press strokes, KILOMETERS for vehicle mileage). Null when trigger_type is CALENDAR only.. Valid values are `HOURS|CYCLES|KILOMETERS|STROKES|STARTS|UNITS`',
-    `next_due_date` DATE COMMENT 'Calculated date on which the next preventive maintenance work order is due to be generated or executed. Derived from last_completion_date plus the frequency interval. Drives maintenance scheduling and resource planning.',
+    `next_due_date` TIMESTAMP COMMENT 'Calculated date on which the next preventive maintenance work order is due to be generated or executed. Derived from last_completion_date plus the frequency interval. Drives maintenance scheduling and resource planning.',
     `next_due_meter_reading` DECIMAL(18,2) COMMENT 'Meter reading value (e.g., operating hours, cycle count, kilometers) at which the next PM work order is due. Applicable when trigger_type is METER or when a meter-based override supplements calendar scheduling.',
     `priority` STRING COMMENT 'Business priority assigned to this PM schedule, used to rank and sequence work order generation when competing maintenance demands exist. CRITICAL schedules are associated with safety-critical or regulatory-mandated equipment.. Valid values are `CRITICAL|HIGH|MEDIUM|LOW`',
     `regulatory_reference` STRING COMMENT 'Specific regulatory standard, clause, or requirement that mandates this PM schedule (e.g., OSHA 29 CFR 1910.217 Mechanical Power Presses, ISO 9001:2015 Clause 7.1.5 Monitoring Resources). Populated when is_regulatory_required is True.',
@@ -302,7 +302,7 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`asset`.`failure_record` (
     `employee_id` BIGINT COMMENT 'Reference to the employee (operator, technician, or inspector) who initially reported or detected the failure event. Supports accountability tracking and workforce performance analysis via Workday HCM integration.',
     `affected_component_code` STRING COMMENT 'Standardized code identifying the specific sub-component or part of the asset that failed (e.g., bearing, motor, seal, valve, sensor, gearbox). Sourced from the Maximo component hierarchy and aligned with the BOM structure from Siemens Teamcenter PLM.',
     `affected_component_description` STRING COMMENT 'Human-readable description of the affected component or sub-assembly that experienced the failure. Embedded from the FMEA failure mode classification taxonomy as the affected component class descriptor.',
-    `asset_operating_hours_at_failure` DECIMAL(18,2) COMMENT 'Total cumulative operating hours recorded on the asset at the time of the failure event. Used as a key input for reliability analysis, MTBF trending, and predictive maintenance model training.',
+    `asset_operating_hours_at_failure` TIMESTAMP COMMENT 'Total cumulative operating hours recorded on the asset at the time of the failure event. Used as a key input for reliability analysis, MTBF trending, and predictive maintenance model training.',
     `capa_reference_number` STRING COMMENT 'The reference number of the formal CAPA record initiated in response to this failure event. Populated when capa_required_flag is True. Enables traceability between the failure event and the quality management corrective action process.',
     `capa_required_flag` BOOLEAN COMMENT 'Indicates whether a formal Corrective and Preventive Action (CAPA) process must be initiated as a result of this failure event. True if CAPA is required; False otherwise. Driven by RPN threshold, safety impact, or quality management system requirements.',
     `created_timestamp` TIMESTAMP COMMENT 'The date and time at which this failure record was first created in the system of record. Serves as the audit creation timestamp, distinct from the actual failure event time. Used for data lineage and audit trail compliance.',
@@ -350,6 +350,7 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`asset`.`asset_downtime_event` (
     `cost_center_id` BIGINT COMMENT 'Foreign key linking to finance.cost_center. Business justification: LOSS ANALYSIS: Downtime cost allocation requires linking each event to a cost center.',
     `equipment_register_id` BIGINT COMMENT 'Reference to the physical equipment or asset that experienced the stoppage. Links to the asset master record (e.g., CNC machine, PLC, robot, conveyor) managed in Maximo Asset Management.',
     `employee_id` BIGINT COMMENT 'Reference to the operator or technician who reported or initiated the downtime event record. Supports accountability tracking and manual entry audit. Sourced from Workday HCM or Opcenter MES operator login.',
+    `production_downtime_event_id` BIGINT COMMENT 'SSOT reference to the single source of truth record; this product is a non-authoritative duplicate view.',
     `production_line_id` BIGINT COMMENT 'Reference to the production line or work center affected by the downtime event. Used for line-level OEE availability analysis and production loss costing.',
     `production_work_order_id` BIGINT COMMENT 'Reference to the SAP production order or MES work order that was interrupted or delayed by this downtime event. Enables production loss costing and schedule impact analysis.',
     `project_header_id` BIGINT COMMENT 'Foreign key linking to project.project_header. Business justification: Downtime events are reported against project schedules to assess impact on project delivery.',
@@ -447,6 +448,7 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`asset`.`spare_part` (
     `device_registry_id` BIGINT COMMENT 'Foreign key linking to automation.device_registry. Business justification: Spare Part Inventory links parts to the specific device they service, required for Spare Part Allocation and Serviceability reports.',
     `location_id` BIGINT COMMENT 'Foreign key linking to asset.asset_location. Business justification: Spare parts are stored at a physical location; linking to asset_location eliminates redundant location fields and enables location‑based inventory queries.',
     `sku_master_id` BIGINT COMMENT 'Foreign key linking to product.sku_master. Business justification: Enables inventory, procurement and cost tracking by linking each spare part to its SKU definition used in MRP and purchasing.',
+    `stock_location_id` BIGINT COMMENT 'Foreign key linking to inventory.stock_location. Business justification: Spare‑part inventory management uses stock_location to locate bins; linking enables accurate stock counts, replenishment planning, and pick‑list generation.',
     `supplier_id` BIGINT COMMENT 'Foreign key linking to supplier.supplier. Business justification: Spare‑part purchasing tracks which vendor supplies each part for inventory valuation and PO generation.',
     `abc_class` STRING COMMENT 'ABC classification for inventory prioritization based on annual consumption value. A items represent high-value, high-priority parts requiring tight inventory control; B items are moderate value; C items are low-value, high-volume parts with relaxed control. Aligns with SAP MM ABC Indicator and supports MRP/MRP II planning.. Valid values are `A|B|C`',
     `average_annual_consumption` DECIMAL(18,2) COMMENT 'Average quantity of this spare part consumed per year across all work orders and maintenance activities. Used for ABC classification, reorder point calculation, and inventory optimization in Microsoft Dynamics 365 Supply Chain Management.',
@@ -464,7 +466,7 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`asset`.`spare_part` (
     `last_modified_timestamp` TIMESTAMP COMMENT 'Timestamp when the spare part master record was most recently updated in the source system. Used for change tracking, delta load processing in the Databricks Silver Layer, and audit compliance.',
     `last_purchase_price` DECIMAL(18,2) COMMENT 'Most recent purchase price per unit of measure paid to a supplier for this spare part. Sourced from SAP MM purchasing info record (EINA/EINE) or Maximo PO history. Used for budget estimation and procurement benchmarking.',
     `last_received_date` DATE COMMENT 'Date on which the most recent goods receipt was posted for this spare part in the storeroom. Used to track replenishment activity and assess supplier delivery performance.',
-    `maintenance_strategy` STRING COMMENT 'Maintenance strategy associated with this spare part, indicating the primary maintenance approach for which the part is consumed. Supports Total Productive Maintenance (TPM) planning and work order scheduling in Maximo and SAP PM.. Valid values are `preventive|corrective|predictive|condition_based|run_to_failure`',
+    `maintenance_strategy` DECIMAL(18,2) COMMENT 'Maintenance strategy associated with this spare part, indicating the primary maintenance approach for which the part is consumed. Supports Total Productive Maintenance (TPM) planning and work order scheduling in Maximo and SAP PM.',
     `manufacturer_name` STRING COMMENT 'Name of the original equipment manufacturer (OEM) or component manufacturer who produces this spare part. Used for sourcing, warranty management, and OEM compatibility validation.',
     `manufacturer_part_number` STRING COMMENT 'The Original Equipment Manufacturer (OEM) or component manufacturers part number. Used for cross-referencing during procurement, warranty claims, and interchangeability validation. Corresponds to SAP Manufacturer Part Number (MFRPN) and Maximo Manufacturer Part Number field.',
     `material_group_code` STRING COMMENT 'SAP Material Group (MATKL) code classifying the spare part into a procurement category for spend analysis, sourcing strategy, and reporting. Aligns with SAP Ariba category management and supports CapEx/OpEx classification.',
@@ -515,7 +517,7 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`asset`.`reliability_record` (
     `failure_mode_dominant` STRING COMMENT 'The most frequently occurring failure mode for this asset during the measurement period, as classified in the FMEA register (e.g., bearing wear, seal failure, electrical fault, software fault). Sourced from Maximo failure codes and PFMEA documentation in Teamcenter.',
     `failure_rate` DECIMAL(18,2) COMMENT 'Instantaneous failure rate (lambda) expressed as failures per operating hour. Calculated as total_failures / total_uptime_hours. Used in Weibull analysis and reliability growth modeling per IEC 60300-3-1.',
     `last_failure_date` DATE COMMENT 'Date of the most recent confirmed failure event for this asset within or prior to the measurement period. Used to calculate time-since-last-failure and assess current reliability posture.',
-    `maintenance_strategy` STRING COMMENT 'Recommended or active maintenance strategy for the asset based on its reliability tier and Weibull parameters. Drives work order generation in Maximo and maintenance scheduling in SAP PM.. Valid values are `run_to_failure|preventive|predictive|condition_based`',
+    `maintenance_strategy` DECIMAL(18,2) COMMENT 'Recommended or active maintenance strategy for the asset based on its reliability tier and Weibull parameters. Drives work order generation in Maximo and maintenance scheduling in SAP PM.',
     `mean_time_between_failures` DECIMAL(18,2) COMMENT 'Average operating time between consecutive failure events, expressed in hours. Calculated as total_uptime_hours / total_failures. Core RAM metric used for maintenance strategy selection and spare parts planning. Per IEC 60050-192.',
     `mean_time_to_repair` DECIMAL(18,2) COMMENT 'Average time required to restore the asset to operational status following a failure, expressed in hours. Calculated as total_downtime_hours / total_failures. Key maintainability metric per IEC 60050-192.',
     `measurement_period_end` DATE COMMENT 'The end date of the reliability measurement window (yyyy-MM-dd). Together with measurement_period_start, defines the observation interval for all reliability KPIs in this record.',
@@ -525,7 +527,7 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`asset`.`reliability_record` (
     `mttr_target_hours` DECIMAL(18,2) COMMENT 'The engineering or SLA-defined target MTTR value in hours for this asset class. Used to assess maintenance team responsiveness against defined service levels. Sourced from Maximo SLA configuration or OEM documentation.',
     `next_pm_due_date` DATE COMMENT 'Scheduled date for the next preventive maintenance activity for this asset, as generated by Maximo PM scheduling based on the current reliability tier and maintenance strategy. Drives maintenance planning and spare parts pre-positioning.',
     `oee_availability_component` DECIMAL(18,2) COMMENT 'The availability component of the OEE metric for this asset during the measurement period, expressed as a percentage. Represents the proportion of scheduled time the asset was not lost to unplanned downtime. Feeds the OEE dashboard in Opcenter MES.',
-    `period_duration_days` STRING COMMENT 'Total calendar duration of the measurement period in days. Derived from period start and end dates and stored for query performance in RAM analysis and trend reporting.',
+    `period_duration_days` DECIMAL(18,2) COMMENT 'Total calendar duration of the measurement period in days. Derived from period start and end dates and stored for query performance in RAM analysis and trend reporting.',
     `planned_maintenance_hours` DECIMAL(18,2) COMMENT 'Total hours consumed by scheduled preventive maintenance activities during the measurement period. Excluded from unplanned downtime but included in total non-productive time for OEE availability component calculation.',
     `plant_code` STRING COMMENT 'SAP S/4HANA plant code identifying the manufacturing facility where the asset is installed. Used for site-level reliability benchmarking and OEE rollup.. Valid values are `^[A-Z0-9]{2,10}$`',
     `record_number` STRING COMMENT 'Externally-known business identifier for this reliability record, formatted as RR-{YYYY}-{NNNNNN}. Used for cross-system referencing and audit traceability in Maximo and SAP PM.. Valid values are `^RR-[0-9]{4}-[0-9]{6}$`',
@@ -533,7 +535,7 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`asset`.`reliability_record` (
     `reliability_tier` STRING COMMENT 'Criticality-based reliability tier assigned to the asset for this period. P1 = mission-critical (highest priority); P2 = production-critical; P3 = important; P4 = standard; P5 = non-critical. Drives maintenance strategy selection (predictive vs preventive vs run-to-failure) and spare parts stocking levels.. Valid values are `P1|P2|P3|P4|P5`',
     `replacement_recommended` BOOLEAN COMMENT 'Indicates whether the reliability analysis for this period has triggered a capital replacement recommendation for the asset. True = replacement recommended based on Weibull end-of-life analysis or sustained P1 degradation trend. Feeds CapEx planning.',
     `total_downtime_hours` DECIMAL(18,2) COMMENT 'Cumulative unplanned downtime hours for the asset during the measurement period, including all failure-induced stoppages. Used as the primary input for MTTR and availability calculations. Source: Maximo and Opcenter MES.',
-    `total_failures` STRING COMMENT 'Total count of confirmed failure events recorded for the asset during the measurement period. A failure is defined as any unplanned stoppage requiring corrective maintenance. Source: Maximo work order history.',
+    `total_failures` DECIMAL(18,2) COMMENT 'Total count of confirmed failure events recorded for the asset during the measurement period. A failure is defined as any unplanned stoppage requiring corrective maintenance. Source: Maximo work order history.',
     `total_scheduled_hours` DECIMAL(18,2) COMMENT 'Total hours the asset was scheduled for production during the measurement period, excluding planned shutdowns and holidays. Denominator for availability percentage calculation per SEMI E10 standard.',
     `total_uptime_hours` DECIMAL(18,2) COMMENT 'Cumulative operating hours during which the asset was available and running during the measurement period. Used as the primary input for MTBF and availability calculations. Source: Maximo and Aveva SCADA.',
     `trend_direction` STRING COMMENT 'Directional indicator of reliability performance trend compared to the prior measurement period. improving = MTBF increasing / MTTR decreasing; stable = within control limits; degrading = MTBF declining; critical = threshold breach requiring immediate action.. Valid values are `improving|stable|degrading|critical`',
@@ -549,11 +551,11 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`asset`.`capex_asset_record` (
     `capex_asset_record_id` BIGINT COMMENT 'Unique identifier for the capital expenditure asset record. Primary key for the asset register tracking capitalized equipment and infrastructure investments.',
     `cost_center_id` BIGINT COMMENT 'Foreign key linking to finance.cost_center. Business justification: CAPEX: Capital asset records need a cost‑center link for asset capitalization and depreciation tracking.',
     `employee_id` BIGINT COMMENT 'Identifier of the employee or manager responsible for the asset. Used for asset custody tracking and accountability.',
-    `equipment_register_id` BIGINT COMMENT 'add column equipment_register_id (BIGINT) with FK to asset.equipment_register.equipment_register_id - CapEx records should link to the equipment they capitalized',
+    `equipment_register_id` BIGINT COMMENT 'Connect asset.capex_asset_record by adding column equipment_register_id (BIGINT) with an FK to asset.equipment_register.equipment_register_id. P17: connect_table: asset.capex_asset_record** - add column equipment_register_id (BIGINT) with F',
     `supplier_id` BIGINT COMMENT 'Identifier of the vendor or supplier from whom the asset was purchased. Links to procurement and accounts payable systems.',
     `accumulated_depreciation` DECIMAL(18,2) COMMENT 'Total depreciation expense recognized to date since capitalization. Contra-asset account that reduces the gross book value to calculate net book value.',
     `acquisition_cost` DECIMAL(18,2) COMMENT 'Total original cost of acquiring the asset including purchase price, delivery, installation, and any costs necessary to bring the asset to working condition. Represents the capitalized value on the balance sheet.',
-    `acquisition_date` DATE COMMENT 'Date when the asset was acquired or purchased. Used as the starting point for asset lifecycle tracking and may differ from capitalization date.',
+    `acquisition_date` TIMESTAMP COMMENT 'Date when the asset was acquired or purchased. Used as the starting point for asset lifecycle tracking and may differ from capitalization date.',
     `asset_category` STRING COMMENT 'High-level categorization of the asset type for reporting and analysis. Broader classification than asset class code. [ENUM-REF-CANDIDATE: production_equipment|facility_infrastructure|transportation|computer_equipment|furniture_fixtures|land|buildings|leasehold_improvements — 8 candidates stripped; promote to reference product]',
     `asset_class_code` STRING COMMENT 'Classification code defining the type of capital asset (e.g., machinery, buildings, vehicles, computer equipment, production equipment). Determines depreciation rules and financial treatment per SAP asset class hierarchy.. Valid values are `^[A-Z0-9]{4,10}$`',
     `asset_description` STRING COMMENT 'Detailed business description of the capital asset including make, model, specifications, and purpose. Used for asset identification and reporting.',
@@ -605,7 +607,7 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`asset`.`inspection_event` (
     `supplier_id` BIGINT COMMENT 'Foreign key linking to supplier.supplier. Business justification: External inspection agencies are contracted; the link is required for audit traceability and regulatory reports.',
     `tertiary_inspection_approved_by_employee_id` BIGINT COMMENT 'Reference to the supervisor, quality manager, or authorized approver who reviewed and formally approved the inspection results. Required for regulatory compliance inspections and safety-critical equipment per ISO 9001 and OSHA requirements.',
     `approval_timestamp` TIMESTAMP COMMENT 'Date and time when the inspection results were formally reviewed and approved by the authorized approver. Establishes the official close of the inspection event for audit and compliance purposes.',
-    `asset_operational_status_at_inspection` STRING COMMENT 'The operational state of the asset at the time the inspection was conducted: running (in active production), shutdown (powered down for inspection), standby (idle but available), or under_maintenance (already in a maintenance window). Relevant for OEE downtime attribution and safety compliance.. Valid values are `running|shutdown|standby|under_maintenance`',
+    `asset_operational_status_at_inspection` TIMESTAMP COMMENT 'The operational state of the asset at the time the inspection was conducted: running (in active production), shutdown (powered down for inspection), standby (idle but available), or under_maintenance (already in a maintenance window). Relevant for OEE downtime attribution and safety compliance.',
     `capa_reference_number` STRING COMMENT 'The externally visible CAPA or NCR reference number raised in the quality management system as a result of this inspections findings. Populated when corrective_action_required is True. Enables cross-system traceability between inspection events and quality corrective actions.',
     `certificate_expiry_date` DATE COMMENT 'The date on which the compliance or safety certificate issued as a result of this inspection expires. Populated only when certificate_issued is True. Drives certificate renewal scheduling and regulatory compliance monitoring.',
     `certificate_issued` BOOLEAN COMMENT 'Indicates whether a compliance certificate, safety certificate, or inspection certificate was issued as a result of this inspection event (True) or not (False). Relevant for UL, CE, and ISO certification inspections.',
@@ -613,12 +615,12 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`asset`.`inspection_event` (
     `created_timestamp` TIMESTAMP COMMENT 'Date and time when this inspection event record was first created in the system, establishing the audit trail entry point. Distinct from inspection_date which records when the physical inspection occurred.',
     `critical_findings_count` STRING COMMENT 'Number of findings classified as critical or safety-critical, requiring immediate corrective action before the asset may return to service. Supports OSHA compliance reporting and safety escalation workflows.',
     `downtime_caused` BOOLEAN COMMENT 'Indicates whether this inspection event caused a production downtime event (True) or was conducted without interrupting production (False). Used for OEE downtime attribution and production loss reporting.',
-    `downtime_duration_minutes` STRING COMMENT 'Duration in minutes of production downtime directly attributable to this inspection event. Populated only when downtime_caused is True. Feeds OEE availability calculations and production loss reporting.',
+    `downtime_duration_minutes` DECIMAL(18,2) COMMENT 'Duration in minutes of production downtime directly attributable to this inspection event. Populated only when downtime_caused is True. Feeds OEE availability calculations and production loss reporting.',
     `external_audit_reference` STRING COMMENT 'Reference number or identifier assigned by an external regulatory body, certification authority, or third-party auditor for inspections conducted as part of an external audit program (e.g., OSHA inspection citation number, UL audit reference, ISO certification audit ID). Nullable for internal inspections.',
     `findings_count` STRING COMMENT 'Total number of distinct findings, deficiencies, or non-conformances identified during the inspection event. A finding may span multiple checklist items; this field captures the consolidated count used for CAPA prioritization and NCR generation.',
     `findings_summary` STRING COMMENT 'Free-text narrative summary of the key findings, deficiencies, and observations recorded during the inspection. Provides the qualitative context for the quantitative findings_count and supports CAPA root cause analysis.',
-    `inspection_date` DATE COMMENT 'The calendar date on which the inspection was physically performed. This is the principal real-world event date used for compliance reporting, regulatory submissions, and maintenance history analysis.',
-    `inspection_duration_minutes` STRING COMMENT 'Total elapsed time in minutes from inspection start to completion. Derived from start and end timestamps at source but stored as a business fact for resource utilization reporting, labor cost estimation, and inspection planning benchmarks.',
+    `inspection_date` TIMESTAMP COMMENT 'The calendar date on which the inspection was physically performed. This is the principal real-world event date used for compliance reporting, regulatory submissions, and maintenance history analysis.',
+    `inspection_duration_minutes` DECIMAL(18,2) COMMENT 'Total elapsed time in minutes from inspection start to completion. Derived from start and end timestamps at source but stored as a business fact for resource utilization reporting, labor cost estimation, and inspection planning benchmarks.',
     `inspection_end_timestamp` TIMESTAMP COMMENT 'Precise date and time when the inspector completed all inspection activities and closed the event. Combined with start timestamp to derive inspection duration for resource planning.',
     `inspection_interval_days` STRING COMMENT 'The prescribed frequency interval in calendar days between successive inspections of this asset, as defined by the preventive maintenance plan, regulatory requirement, or manufacturer specification. Used to calculate next_inspection_due_date.',
     `inspection_method` STRING COMMENT 'The primary technique used to conduct the inspection: visual (physical observation), functional_test (operational test of equipment), measurement (dimensional or parametric measurement), non_destructive_testing (NDT methods such as ultrasonic or thermographic), or document_review (records and certification review). [ENUM-REF-CANDIDATE: visual|functional_test|measurement|non_destructive_testing|document_review|combined — promote to reference product]. Valid values are `visual|functional_test|measurement|non_destructive_testing|document_review`',
@@ -634,13 +636,13 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`asset`.`inspection_event` (
     `items_failed` STRING COMMENT 'Count of checklist line items that did not meet acceptance criteria during this inspection. Drives findings count reporting, CAPA initiation thresholds, and regulatory non-conformance escalation.',
     `items_passed` STRING COMMENT 'Count of checklist line items that met acceptance criteria during this inspection. Together with total_checklist_items and items_failed, provides the raw data for compliance rate reporting without pre-aggregating the metric.',
     `last_updated_timestamp` TIMESTAMP COMMENT 'Date and time when this inspection event record was most recently modified, supporting data lineage, audit trail, and Silver layer incremental processing in the Databricks Lakehouse.',
-    `next_inspection_due_date` DATE COMMENT 'The date by which the next inspection of this asset must be completed, as determined by the inspection interval, regulatory requirement, or inspector recommendation. Drives the preventive maintenance scheduling engine in Maximo.',
+    `next_inspection_due_date` TIMESTAMP COMMENT 'The date by which the next inspection of this asset must be completed, as determined by the inspection interval, regulatory requirement, or inspector recommendation. Drives the preventive maintenance scheduling engine in Maximo.',
     `plant_code` STRING COMMENT 'SAP S/4HANA plant code identifying the manufacturing facility where the inspected asset resides. Used for cross-system reconciliation between Maximo and SAP PM/QM modules and for plant-level compliance reporting.. Valid values are `^[A-Z0-9]{2,10}$`',
     `regulatory_body` STRING COMMENT 'The governing body or certification authority whose standard applies to this inspection (e.g., OSHA, ISO, IEC, UL, CE, EPA, NIST, ANSI, IPC). Used to filter and group compliance inspections for regulatory reporting dashboards. [ENUM-REF-CANDIDATE: OSHA|ISO|IEC|UL|CE|EPA|NIST|ANSI|IPC|NONE — 10 candidates stripped; promote to reference product]',
     `regulatory_standard` STRING COMMENT 'The specific regulatory or certification standard under which this inspection was conducted (e.g., OSHA 29 CFR 1910, ISO 9001, ISO 14001, ISO 45001, UL 508A, CE Directive 2006/42/EC, IEC 62443). Mandatory for compliance inspections to support regulatory reporting and audit evidence.',
     `risk_level` STRING COMMENT 'Risk classification assigned to the inspection outcome based on the severity and nature of findings: critical (immediate safety or production risk), high (significant risk requiring prompt action), medium (moderate risk with planned remediation), or low (minor or no risk). Drives escalation and prioritization workflows.. Valid values are `critical|high|medium|low`',
     `scheduled_date` DATE COMMENT 'The originally planned date for this inspection as generated by the preventive maintenance schedule or regulatory compliance calendar. Compared against inspection_date to measure schedule adherence.',
-    `total_checklist_items` STRING COMMENT 'Total number of inspection checklist line items evaluated during this inspection event. Used as the denominator for compliance rate calculations and inspection completeness metrics.',
+    `total_checklist_items` DECIMAL(18,2) COMMENT 'Total number of inspection checklist line items evaluated during this inspection event. Used as the denominator for compliance rate calculations and inspection completeness metrics.',
     CONSTRAINT pk_inspection_event PRIMARY KEY(`inspection_event_id`)
 ) COMMENT 'Formal equipment inspection event record capturing scheduled and ad-hoc inspections including safety inspections, regulatory compliance inspections (OSHA, UL, CE), and quality-related equipment audits. Stores inspection type, inspector identity, inspection date, checklist results, pass/fail outcome, findings count, corrective action required flag, and next inspection due date.';
 
@@ -663,22 +665,22 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`asset`.`calibration_record` (
     `as_found_reading` DECIMAL(18,2) COMMENT 'The measured value of the instrument at the start of the calibration event, before any adjustment is made. Used to assess instrument drift, determine if prior measurements were valid, and support SPC instrument traceability analysis.',
     `as_left_error` DECIMAL(18,2) COMMENT 'The calculated deviation of the as-left reading from the reference value (as_left_reading minus reference_value). Confirms residual error after adjustment and is used for measurement uncertainty budgets.',
     `as_left_reading` DECIMAL(18,2) COMMENT 'The measured value of the instrument at the conclusion of the calibration event, after any adjustment or correction has been applied. Confirms the instrument is within tolerance before being returned to service.',
-    `calibration_date` DATE COMMENT 'The date on which the calibration activity was physically performed. This is the principal business event date used for certificate issuance, compliance records, and next-due-date calculation.',
-    `calibration_due_date` DATE COMMENT 'The date by which the next calibration must be completed, calculated from calibration_date plus the calibration_interval. Used for preventive maintenance scheduling and compliance monitoring.',
-    `calibration_interval_days` STRING COMMENT 'The approved recalibration frequency expressed in calendar days. Used to compute calibration_due_date and to schedule preventive maintenance in Maximo. Determined by instrument criticality, historical drift, and manufacturer recommendations.',
-    `calibration_lab` STRING COMMENT 'Indicates whether the calibration was performed by an internal calibration lab, an externally accredited laboratory (ISO/IEC 17025), an external non-accredited service provider, or the OEM service team.. Valid values are `internal|external_accredited|external_non_accredited|oem_service`',
-    `calibration_method` STRING COMMENT 'The documented calibration procedure or method reference used (e.g., internal procedure number, NIST traceable method, manufacturer procedure). Ensures repeatability and traceability of the calibration process.',
-    `calibration_notes` STRING COMMENT 'Free-text field for the technician to record observations, anomalies, special conditions, or additional context about the calibration event not captured in structured fields.',
-    `calibration_number` STRING COMMENT 'Externally visible, human-readable unique identifier for this calibration event, used on calibration certificates and quality records. Format: CAL-{ASSET_CODE}-{SEQUENCE}.. Valid values are `^CAL-[A-Z0-9]{3,10}-[0-9]{4,8}$`',
-    `calibration_status` STRING COMMENT 'Overall result and lifecycle status of the calibration event. pass indicates the instrument is within tolerance; fail triggers quarantine and CAPA; conditional_pass indicates marginal acceptance with restrictions; out_of_tolerance indicates as-found deviation requiring adjustment.. Valid values are `pass|fail|conditional_pass|out_of_tolerance|cancelled|pending_review`',
-    `calibration_type` STRING COMMENT 'Classification of the calibration event by trigger or purpose. initial is performed on new instruments; periodic is routine scheduled calibration; after_repair follows maintenance; unscheduled is triggered by suspected drift or incident.. Valid values are `initial|periodic|after_repair|unscheduled|verification|final_acceptance`',
+    `calibration_date` TIMESTAMP COMMENT 'The date on which the calibration activity was physically performed. This is the principal business event date used for certificate issuance, compliance records, and next-due-date calculation.',
+    `calibration_due_date` TIMESTAMP COMMENT 'The date by which the next calibration must be completed, calculated from calibration_date plus the calibration_interval. Used for preventive maintenance scheduling and compliance monitoring.',
+    `calibration_interval_days` DECIMAL(18,2) COMMENT 'The approved recalibration frequency expressed in calendar days. Used to compute calibration_due_date and to schedule preventive maintenance in Maximo. Determined by instrument criticality, historical drift, and manufacturer recommendations.',
+    `calibration_lab` DECIMAL(18,2) COMMENT 'Indicates whether the calibration was performed by an internal calibration lab, an externally accredited laboratory (ISO/IEC 17025), an external non-accredited service provider, or the OEM service team.',
+    `calibration_method` DECIMAL(18,2) COMMENT 'The documented calibration procedure or method reference used (e.g., internal procedure number, NIST traceable method, manufacturer procedure). Ensures repeatability and traceability of the calibration process.',
+    `calibration_notes` DECIMAL(18,2) COMMENT 'Free-text field for the technician to record observations, anomalies, special conditions, or additional context about the calibration event not captured in structured fields.',
+    `calibration_number` DECIMAL(18,2) COMMENT 'Externally visible, human-readable unique identifier for this calibration event, used on calibration certificates and quality records. Format: CAL-{ASSET_CODE}-{SEQUENCE}.',
+    `calibration_status` DECIMAL(18,2) COMMENT 'Overall result and lifecycle status of the calibration event. pass indicates the instrument is within tolerance; fail triggers quarantine and CAPA; conditional_pass indicates marginal acceptance with restrictions; out_of_tolerance indicates as-found deviation requiring adjustment.',
+    `calibration_type` DECIMAL(18,2) COMMENT 'Classification of the calibration event by trigger or purpose. initial is performed on new instruments; periodic is routine scheduled calibration; after_repair follows maintenance; unscheduled is triggered by suspected drift or incident.',
     `capa_reference` STRING COMMENT 'Reference number of the Corrective and Preventive Action (CAPA) record initiated as a result of a calibration failure or out-of-tolerance finding. Links the calibration event to the quality management corrective action workflow.',
     `certificate_issue_date` DATE COMMENT 'The date on which the calibration certificate was formally issued and signed. May differ from calibration_date if review and approval occur after the physical calibration activity.',
     `certificate_number` STRING COMMENT 'The official certificate number issued upon successful calibration, as printed on the calibration certificate. Used for document control, quality records management, and regulatory audit evidence.',
     `created_timestamp` TIMESTAMP COMMENT 'The timestamp when this calibration record was first created in the system. Used for audit trail, data lineage, and compliance record retention tracking.',
     `environmental_humidity_pct` DECIMAL(18,2) COMMENT 'Relative humidity percentage recorded at the time and location of calibration. Required environmental condition documentation per ISO/IEC 17025 for humidity-sensitive instruments.',
     `environmental_temperature_c` DECIMAL(18,2) COMMENT 'Ambient temperature in degrees Celsius recorded at the time and location of calibration. Environmental conditions can affect measurement accuracy and are required to be documented per ISO/IEC 17025.',
-    `external_lab_accreditation_number` STRING COMMENT 'Accreditation body certificate number for the external calibration laboratory (e.g., A2LA, NVLAP, UKAS accreditation number). Validates the laboratorys ISO/IEC 17025 accreditation status.',
+    `external_lab_accreditation_number` DECIMAL(18,2) COMMENT 'Accreditation body certificate number for the external calibration laboratory (e.g., A2LA, NVLAP, UKAS accreditation number). Validates the laboratorys ISO/IEC 17025 accreditation status.',
     `external_lab_name` STRING COMMENT 'Name of the external calibration service provider or accredited laboratory, when calibration_lab is external_accredited or external_non_accredited. Used for supplier qualification and audit trail.',
     `instrument_tag` STRING COMMENT 'Plant or facility tag number assigned to the measurement instrument per ISA-5.1 instrumentation standards (e.g., TI-101, PT-205). Used for shop floor identification and P&ID cross-reference.',
     `instrument_type` STRING COMMENT 'Classification of the measurement instrument or device being calibrated. Drives applicable calibration procedures and tolerance standards. [ENUM-REF-CANDIDATE: gauge|sensor|transducer|transmitter|analyzer|controller|plc|cnc_probe|torque_wrench|caliper|micrometer|thermometer|pressure_meter|flow_meter — promote to reference product]',
@@ -702,6 +704,7 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`asset`.`asset_warranty` (
     `equipment_register_id` BIGINT COMMENT 'Reference to the physical asset or equipment covered by this warranty record. Links to the asset master in Maximo Asset Management.',
     `project_header_id` BIGINT COMMENT 'Foreign key linking to project.project_header. Business justification: Warranty obligations are managed per project for capital assets.',
     `purchase_order_id` BIGINT COMMENT 'Reference to the original purchase order under which the asset was procured, establishing the warranty entitlement basis.',
+    `service_warranty_id` BIGINT COMMENT 'SSOT reference to the single source of truth record; this product is a non-authoritative duplicate view.',
     `supplier_id` BIGINT COMMENT 'Reference to the Original Equipment Manufacturer (OEM) or warranty service provider responsible for honoring warranty claims. Links to the vendor/supplier master.',
     `activation_date` DATE COMMENT 'The actual date the warranty was formally activated with the OEM or warranty provider. May differ from start_date if activation requires registration or commissioning sign-off.',
     `claim_contact_email` STRING COMMENT 'Email address of the OEM or warranty providers claim contact. Used for formal claim submission and correspondence.. Valid values are `^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+.[a-zA-Z]{2,}$`',
@@ -714,9 +717,9 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`asset`.`asset_warranty` (
     `created_timestamp` TIMESTAMP COMMENT 'The timestamp when the warranty record was first created in the system. Supports data lineage, audit trail, and compliance with ISO 9001 record-keeping requirements.',
     `currency_code` STRING COMMENT 'ISO 4217 three-letter currency code applicable to all monetary values in this warranty record (e.g., USD, EUR, GBP). Ensures consistent financial reporting across multi-currency operations.. Valid values are `^[A-Z]{3}$`',
     `document_reference` STRING COMMENT 'Reference number or path to the warranty certificate, contract document, or terms and conditions stored in the document management system (e.g., Siemens Teamcenter PLM document ID or file path).',
-    `duration_months` STRING COMMENT 'Total duration of the warranty coverage expressed in months. Used for warranty planning, asset lifecycle analysis, and CapEx budgeting for post-warranty maintenance.',
+    `duration_months` DECIMAL(18,2) COMMENT 'Total duration of the warranty coverage expressed in months. Used for warranty planning, asset lifecycle analysis, and CapEx budgeting for post-warranty maintenance.',
     `excluded_components` STRING COMMENT 'Free-text description of components, failure modes, or conditions explicitly excluded from warranty coverage (e.g., Wear parts, consumables, damage from improper use). Critical for claim rejection analysis.',
-    `expiration_date` DATE COMMENT 'The date on which the warranty coverage ends. After this date, maintenance and repair costs are borne by the asset owner. Critical for triggering paid work orders and evaluating RMA eligibility.',
+    `expiration_date` TIMESTAMP COMMENT 'The date on which the warranty coverage ends. After this date, maintenance and repair costs are borne by the asset owner. Critical for triggering paid work orders and evaluating RMA eligibility.',
     `expiry_alert_days` STRING COMMENT 'Number of days before the warranty expiration date that an alert should be triggered to notify asset managers and procurement teams. Enables proactive extended warranty procurement or maintenance budget planning.',
     `extended_warranty_option_flag` BOOLEAN COMMENT 'Indicates whether the OEM or vendor offers an extended warranty option for this asset upon expiration of the current warranty. True = extension is available; False = no extension offered.',
     `labor_coverage_flag` BOOLEAN COMMENT 'Indicates whether labor costs for warranty repairs are covered under this warranty. True = labor is covered; False = labor costs are borne by the asset owner.',
@@ -732,9 +735,9 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`asset`.`asset_warranty` (
     `remaining_warranty_value` DECIMAL(18,2) COMMENT 'The residual monetary value available for future warranty claims, calculated as max_claim_value minus the total value of claims already submitted and approved. Supports CapEx and OpEx planning.',
     `rma_eligible_flag` BOOLEAN COMMENT 'Indicates whether failed components under this warranty are eligible for Return Material Authorization (RMA) processing. True = RMA can be initiated; False = RMA not applicable under this warranty.',
     `source_system_code` STRING COMMENT 'The native identifier of this warranty record in the originating operational system (e.g., Maximo warranty record ID). Enables traceability back to the system of record for reconciliation and lineage.',
-    `start_date` DATE COMMENT 'The date on which the warranty coverage becomes effective. Typically aligned with the asset commissioning date, installation date, or purchase date as defined in the warranty terms.',
+    `start_date` TIMESTAMP COMMENT 'The date on which the warranty coverage becomes effective. Typically aligned with the asset commissioning date, installation date, or purchase date as defined in the warranty terms.',
     `total_claimed_amount` DECIMAL(18,2) COMMENT 'The cumulative monetary value of all warranty claims submitted against this warranty record. Used to track warranty utilization and compare against max_claim_value.',
-    `total_claims_count` STRING COMMENT 'The total number of warranty claims submitted against this warranty record to date. Supports vendor performance analysis and warranty utilization tracking.',
+    `total_claims_count` DECIMAL(18,2) COMMENT 'The total number of warranty claims submitted against this warranty record to date. Supports vendor performance analysis and warranty utilization tracking.',
     `transferable_flag` BOOLEAN COMMENT 'Indicates whether the warranty can be transferred to a new asset owner in the event of asset sale or reassignment. True = warranty is transferable; False = warranty is non-transferable.',
     `travel_coverage_flag` BOOLEAN COMMENT 'Indicates whether travel and transportation costs for on-site warranty service are covered. True = travel is covered; False = travel costs are borne by the asset owner.',
     `updated_timestamp` TIMESTAMP COMMENT 'The timestamp when the warranty record was most recently modified. Supports change tracking, audit compliance, and data freshness monitoring in the Databricks Silver Layer.',
@@ -754,9 +757,9 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`asset`.`asset_certification` (
     `cost_center_id` BIGINT COMMENT 'Foreign key linking to finance.cost_center. Business justification: COMPLIANCE: Certification activities incur costs that must be charged to the responsible cost center.',
     `employee_id` BIGINT COMMENT 'Reference to the internal employee or asset manager responsible for managing the certification lifecycle, including renewal coordination and regulatory compliance. Links to Workday HCM workforce record.',
     `equipment_register_id` BIGINT COMMENT 'Reference to the physical equipment or asset for which this certification applies. Links to the asset master record in Maximo Asset Management.',
-    `product_certification_id` BIGINT COMMENT 'Foreign key linking to product.product_certification. Business justification: Asset certifications derive from product certifications; linking supports regulatory compliance dashboards and audit trails.',
     `project_header_id` BIGINT COMMENT 'Foreign key linking to project.project_header. Business justification: Certifications are required for assets within specific projects to meet compliance.',
     `regulatory_requirement_id` BIGINT COMMENT 'Foreign key linking to compliance.regulatory_requirement. Business justification: CERTIFICATION MANAGEMENT: each asset certification must be tied to the specific regulatory requirement it fulfills for audit and compliance reporting.',
+    `product_certification_id` BIGINT COMMENT 'Foreign key linking to product.product_certification. Business justification: Asset certifications derive from product certifications; linking supports regulatory compliance dashboards and audit trails.',
     `atex_certificate_number` STRING COMMENT 'Specific ATEX (Atmosphères Explosibles) certificate number issued by a notified body for explosion-proof equipment. Null for non-ATEX assets. Required for operation in hazardous areas under EU Directive 2014/34/EU.',
     `ce_marking_flag` BOOLEAN COMMENT 'Indicates whether the asset bears CE marking, confirming conformity with applicable European Union health, safety, and environmental protection standards. True = CE marked; False = not CE marked.',
     `certificate_number` STRING COMMENT 'Externally-issued unique certificate number assigned by the certifying authority. Used for regulatory traceability and audit purposes (e.g., UL certificate number, CE declaration reference, ATEX certificate number).',
@@ -769,18 +772,18 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`asset`.`asset_certification` (
     `document_reference` STRING COMMENT 'Reference number or path to the scanned certificate document stored in the document management system (e.g., Siemens Teamcenter PLM document ID or SAP DMS reference). Enables direct retrieval of the physical certificate for audit purposes.',
     `document_storage_url` STRING COMMENT 'URL or file path to the digital copy of the certificate document stored in the enterprise document management or lakehouse storage layer. Supports paperless audit and compliance review.',
     `equipment_category` STRING COMMENT 'ATEX equipment category indicating the level of protection required (Category 1 = very high protection for Zone 0/20; Category 2 = high protection for Zone 1/21; Category 3 = normal protection for Zone 2/22). Null for non-ATEX certifications.. Valid values are `Category 1|Category 2|Category 3`',
-    `expiry_date` DATE COMMENT 'The date on which the certification expires and the asset is no longer legally authorized to operate under this certification. Null indicates an open-ended or lifetime certification. Drives automated renewal alerts and compliance reporting.',
+    `expiry_date` TIMESTAMP COMMENT 'The date on which the certification expires and the asset is no longer legally authorized to operate under this certification. Null indicates an open-ended or lifetime certification. Drives automated renewal alerts and compliance reporting.',
     `hazardous_zone_classification` STRING COMMENT 'ATEX/IECEx hazardous area zone classification applicable to the certified equipment (e.g., Zone 1 for gas/vapour explosive atmospheres, Zone 21 for dust explosive atmospheres). Null for non-ATEX certifications.. Valid values are `Zone 0|Zone 1|Zone 2|Zone 20|Zone 21|Zone 22`',
     `inspection_date` DATE COMMENT 'The date on which the physical inspection, audit, or test was conducted by the certifying authority or inspector as part of the certification or renewal process.',
     `inspector_license_number` STRING COMMENT 'Official license or accreditation number of the inspector or inspection body, confirming their authority to issue or validate the certification. Required for regulatory audit trails.',
     `inspector_name` STRING COMMENT 'Full name of the qualified inspector or auditor who conducted the certification inspection on behalf of the issuing authority or notified body.',
-    `issue_date` DATE COMMENT 'The date on which the certification was formally issued or granted by the issuing authority. Represents the start of the certifications validity period.',
-    `issuing_authority` STRING COMMENT 'Name of the regulatory body, notified body, or certification organization that issued the certificate (e.g., Underwriters Laboratories (UL), TÜV Rheinland, Bureau Veritas, Lloyds Register, OSHA, CE Notified Body NB 0044). Critical for audit and regulatory reporting.',
-    `issuing_authority_country` STRING COMMENT 'ISO 3166-1 alpha-3 country code of the jurisdiction in which the issuing authority operates (e.g., USA, DEU, GBR). Supports multi-jurisdictional compliance management.. Valid values are `^[A-Z]{3}$`',
+    `issue_date` TIMESTAMP COMMENT 'The date on which the certification was formally issued or granted by the issuing authority. Represents the start of the certifications validity period.',
+    `issuing_authority` BOOLEAN COMMENT 'Name of the regulatory body, notified body, or certification organization that issued the certificate (e.g., Underwriters Laboratories (UL), TÜV Rheinland, Bureau Veritas, Lloyds Register, OSHA, CE Notified Body NB 0044). Critical for audit and regulatory reporting.',
+    `issuing_authority_country` BOOLEAN COMMENT 'ISO 3166-1 alpha-3 country code of the jurisdiction in which the issuing authority operates (e.g., USA, DEU, GBR). Supports multi-jurisdictional compliance management.',
     `last_updated_timestamp` TIMESTAMP COMMENT 'Timestamp when this certification record was most recently modified. Supports change tracking, audit trail, and Silver layer incremental processing in the Databricks Lakehouse.',
     `location_code` STRING COMMENT 'Functional location or area code within the plant where the certified asset is installed (e.g., PLANT-A/LINE-3/PRESS-01). Aligns with Maximo functional location hierarchy for maintenance and compliance management.',
     `mandatory_flag` BOOLEAN COMMENT 'Indicates whether this certification is legally mandatory for the asset to operate (True) or is a voluntary/optional certification (False). Mandatory certifications trigger compliance holds if expired.',
-    `next_inspection_date` DATE COMMENT 'Scheduled date for the next mandatory inspection or re-certification audit. Used for preventive maintenance scheduling and compliance calendar management in Maximo.',
+    `next_inspection_date` TIMESTAMP COMMENT 'Scheduled date for the next mandatory inspection or re-certification audit. Used for preventive maintenance scheduling and compliance calendar management in Maximo.',
     `nonconformance_reference` STRING COMMENT 'Reference number of any Non-Conformance Report (NCR) or Corrective and Preventive Action (CAPA) raised in connection with a failed or conditional certification inspection. Links to the quality management system for corrective action tracking.',
     `operation_hold_flag` BOOLEAN COMMENT 'Indicates whether the asset has been placed on an operational hold due to an expired, suspended, or revoked certification. True = asset must not be operated; False = no hold in effect. Integrates with MES shop floor control to prevent unauthorized use.',
     `pressure_rating_psi` DECIMAL(18,2) COMMENT 'Maximum allowable working pressure in pounds per square inch (PSI) as certified for pressure vessel or piping equipment. Null for non-pressure-rated assets. Critical for ASME and regulatory compliance.',
@@ -801,9 +804,36 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`asset`.`equipment_allocation` (
     `equipment_allocation_id` BIGINT COMMENT 'Primary key for the equipment_allocation association',
     `equipment_register_id` BIGINT COMMENT 'Foreign key linking to the equipment register master record',
     `line_id` BIGINT COMMENT 'Foreign key linking to the sales order line',
-    `allocation_end_date` DATE COMMENT 'Date when the equipment allocation ends for the order line',
-    `allocation_start_date` DATE COMMENT 'Date when the equipment allocation begins for the order line',
+    `allocated_by` STRING COMMENT '',
+    `allocated_by_name` STRING COMMENT '',
+    `allocated_by_user` STRING COMMENT 'allocated by user',
+    `allocated_cost` DECIMAL(18,2) COMMENT '',
+    `allocated_from_timestamp` TIMESTAMP COMMENT 'allocated from timestamp',
+    `allocated_percentage` DECIMAL(18,2) COMMENT '',
+    `allocated_quantity` DECIMAL(18,2) COMMENT '',
+    `allocated_to` STRING COMMENT '',
+    `allocated_to_name` STRING COMMENT '',
+    `allocated_to_timestamp` TIMESTAMP COMMENT 'allocated to timestamp',
+    `allocation_end_date` TIMESTAMP COMMENT 'Date when the equipment allocation ends for the order line',
+    `allocation_notes` STRING COMMENT '',
+    `allocation_number` STRING COMMENT '',
+    `allocation_percentage` DECIMAL(18,2) COMMENT '',
+    `allocation_purpose` STRING COMMENT '',
+    `allocation_reason` STRING COMMENT '',
+    `allocation_start_date` TIMESTAMP COMMENT 'Date when the equipment allocation begins for the order line',
+    `allocation_status` STRING COMMENT '',
+    `allocation_type` STRING COMMENT '',
+    `cost_rate_amount` DECIMAL(18,2) COMMENT '',
+    `created_timestamp` TIMESTAMP COMMENT '',
+    `currency_code` STRING COMMENT '',
+    `is_active` BOOLEAN COMMENT '',
+    `last_modified_timestamp` TIMESTAMP COMMENT '',
+    `notes` STRING COMMENT '',
+    `quantity` DECIMAL(18,2) COMMENT 'Business data attribute for equipment_allocation.',
+    `updated_timestamp` TIMESTAMP COMMENT '',
     `usage_hours` DECIMAL(18,2) COMMENT 'Total hours the equipment was used to fulfill the order line',
+    `utilization_percent` DECIMAL(18,2) COMMENT '',
+    `utilization_rate_percent` DECIMAL(18,2) COMMENT '',
     CONSTRAINT pk_equipment_allocation PRIMARY KEY(`equipment_allocation_id`)
 ) COMMENT 'This association captures the allocation of a specific equipment asset to a sales order line, including the period of allocation and the amount of equipment usage. Each record links one equipment_register to one order_line and stores attributes that belong only to the allocation relationship.. Existence Justification: Equipment from the asset register is allocated to sales order lines for production capacity planning and cost allocation. An equipment item can be allocated to many order lines over its lifecycle, and a single order line can require multiple pieces of equipment. The allocation is managed as an operational record with start/end dates and usage hours.';
 
@@ -811,8 +841,39 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`asset`.`equipment_shipment` (
     `equipment_shipment_id` BIGINT COMMENT 'Primary key for the equipment_shipment association',
     `equipment_register_id` BIGINT COMMENT 'Foreign key linking to equipment_register',
     `shipment_id` BIGINT COMMENT 'Foreign key linking to shipment',
+    `actual_arrival_date` TIMESTAMP COMMENT '',
+    `actual_delivery_date` DATE COMMENT '',
+    `condition_at_shipment` TIMESTAMP COMMENT '',
+    `condition_on_dispatch` STRING COMMENT '',
+    `condition_on_receipt` STRING COMMENT '',
+    `created_timestamp` TIMESTAMP COMMENT '',
+    `currency_code` STRING COMMENT '',
+    `destination_location` STRING COMMENT '',
+    `expected_arrival_date` TIMESTAMP COMMENT 'Business data attribute for equipment_shipment.',
+    `expected_arrival_timestamp` TIMESTAMP COMMENT 'expected arrival timestamp',
+    `expected_delivery_date` DATE COMMENT '',
+    `insured_flag` BOOLEAN COMMENT '',
+    `last_modified_timestamp` TIMESTAMP COMMENT '',
     `load_timestamp` TIMESTAMP COMMENT 'Timestamp when the equipment was loaded onto the shipment',
+    `notes` STRING COMMENT 'Free-form text field capturing additional remarks, special handling instructions, or contextual information related to the equipment shipment record.',
+    `origin_location` STRING COMMENT '',
+    `quantity` DECIMAL(18,2) COMMENT 'Business data attribute for equipment_shipment.',
+    `quantity_shipped` DECIMAL(18,2) COMMENT '',
+    `ship_date` TIMESTAMP COMMENT '',
+    `shipment_cost` DECIMAL(18,2) COMMENT '',
+    `shipment_date` DATE COMMENT '',
+    `shipment_notes` STRING COMMENT '',
+    `shipment_quantity` STRING COMMENT '',
+    `shipment_status` STRING COMMENT '',
+    `shipment_type` STRING COMMENT '',
+    `shipment_value_amount` DECIMAL(18,2) COMMENT '',
+    `shipped_date` TIMESTAMP COMMENT '',
+    `shipped_quantity` DECIMAL(18,2) COMMENT '',
+    `shipped_timestamp` TIMESTAMP COMMENT 'shipped timestamp',
+    `tracking_number` STRING COMMENT '',
+    `tracking_reference` STRING COMMENT 'Business data attribute for equipment_shipment.',
     `unload_timestamp` TIMESTAMP COMMENT 'Timestamp when the equipment was unloaded from the shipment',
+    `updated_timestamp` TIMESTAMP COMMENT '',
     CONSTRAINT pk_equipment_shipment PRIMARY KEY(`equipment_shipment_id`)
 ) COMMENT 'Represents the assignment of a specific equipment item to a specific shipment, capturing the load and unload timestamps for that pairing. Each record links one equipment_register to one shipment.. Existence Justification: Each piece of equipment can be loaded onto multiple shipments over its lifecycle, and each shipment can contain many equipment items. The loading/unloading timestamps are captured for every equipment‑shipment pairing, and the pairing is actively created, updated, and deleted by logistics operators.';
 
@@ -820,30 +881,84 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`asset`.`compliance_assessment` 
     `compliance_assessment_id` BIGINT COMMENT 'Primary key for the compliance_assessment association',
     `equipment_register_id` BIGINT COMMENT 'Foreign key linking to the equipment register',
     `regulatory_requirement_id` BIGINT COMMENT 'Foreign key linking to the regulatory requirement',
-    `assessment_date` DATE COMMENT 'Date on which the compliance assessment was performed',
+    `assessment_date` TIMESTAMP COMMENT 'Date on which the compliance assessment was performed',
+    `assessment_number` STRING COMMENT '',
+    `assessment_result` STRING COMMENT '',
+    `assessment_score` DECIMAL(18,2) COMMENT '',
+    `assessment_status` STRING COMMENT '',
+    `assessment_type` STRING COMMENT '',
+    `assessor` STRING COMMENT 'Business data attribute for compliance_assessment.',
+    `assessor_name` STRING COMMENT '',
+    `compliance_result` STRING COMMENT '',
+    `compliance_score` DECIMAL(18,2) COMMENT '',
     `compliance_status` STRING COMMENT 'Current compliance state of the equipment for this requirement (e.g., Compliant, Non‑Compliant, Pending)',
+    `corrective_action_required` BOOLEAN COMMENT '',
+    `corrective_action_required_flag` BOOLEAN COMMENT '',
+    `created_timestamp` TIMESTAMP COMMENT '',
+    `finding_count` STRING COMMENT '',
+    `finding_summary` STRING COMMENT '',
+    `findings_summary` STRING COMMENT '',
+    `last_modified_timestamp` TIMESTAMP COMMENT '',
+    `next_assessment_date` TIMESTAMP COMMENT '',
+    `notes` STRING COMMENT '',
+    `remediation_required_flag` BOOLEAN COMMENT '',
+    `risk_level` STRING COMMENT '',
+    `score` DECIMAL(18,2) COMMENT 'Business data attribute for compliance_assessment.',
+    `score_value` DECIMAL(18,2) COMMENT 'score value',
+    `updated_timestamp` TIMESTAMP COMMENT '',
     CONSTRAINT pk_compliance_assessment PRIMARY KEY(`compliance_assessment_id`)
 ) COMMENT 'Represents the assessment of a specific equipment register against a specific regulatory requirement. Each record captures the compliance status and the date the assessment was performed, enabling traceability of compliance over time.. Existence Justification: Each piece of equipment must satisfy multiple regulatory requirements, and each regulatory requirement applies to many pieces of equipment. Compliance officers record the status and assessment date for every equipment‑requirement pair, creating a distinct record that is managed, updated, and audited as a business object.';
 
 CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`asset`.`regulatory_applicability` (
     `regulatory_applicability_id` BIGINT COMMENT 'Primary key for the regulatory_applicability association',
+    `equipment_register_id` BIGINT COMMENT '',
     `regulatory_requirement_id` BIGINT COMMENT 'Foreign key linking to the regulatory requirement',
     `spare_part_id` BIGINT COMMENT 'Foreign key linking to the spare part',
+    `applicability_flag` BOOLEAN COMMENT '',
+    `applicability_notes` STRING COMMENT '',
+    `applicability_rationale` DECIMAL(18,2) COMMENT '',
+    `applicability_reason` STRING COMMENT '',
+    `applicability_status` STRING COMMENT '',
+    `applicable_from_date` TIMESTAMP COMMENT '',
+    `applicable_until_date` TIMESTAMP COMMENT '',
+    `assessed_by` STRING COMMENT '',
+    `compliance_deadline_date` TIMESTAMP COMMENT '',
     `compliance_status` STRING COMMENT 'Current compliance status of the spare part for this requirement (e.g., Compliant, Non‑Compliant)',
+    `created_timestamp` TIMESTAMP COMMENT '',
+    `determination_basis` STRING COMMENT 'Business data attribute for regulatory_applicability.',
+    `determination_notes` STRING COMMENT '',
+    `determined_by_name` STRING COMMENT '',
+    `determined_by_user` STRING COMMENT 'determined by user',
     `effective_date` DATE COMMENT 'Date the regulatory requirement became effective for this spare part',
+    `exemption_reason` STRING COMMENT '',
+    `expiry_date` DATE COMMENT '',
+    `is_mandatory` BOOLEAN COMMENT '',
+    `is_mandatory_flag` BOOLEAN COMMENT '',
+    `jurisdiction` STRING COMMENT '',
+    `last_modified_timestamp` TIMESTAMP COMMENT '',
+    `notes` STRING COMMENT '',
+    `regulation_code` STRING COMMENT '',
+    `regulation_name` STRING COMMENT '',
+    `regulation_reference` STRING COMMENT '',
+    `review_date` TIMESTAMP COMMENT '',
+    `review_frequency` STRING COMMENT '',
+    `updated_timestamp` TIMESTAMP COMMENT '',
     CONSTRAINT pk_regulatory_applicability PRIMARY KEY(`regulatory_applicability_id`)
 ) COMMENT 'Represents the mapping between a spare part and a regulatory requirement. Each record captures the compliance status of the part with respect to the requirement and the date the requirement became effective for that part.. Existence Justification: A spare part may need to comply with multiple regulatory requirements, and a single regulatory requirement can apply to many spare parts. The compliance team actively creates, updates, and removes these mappings as regulations change, and each mapping carries its own compliance status and effective date.';
 
 CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`asset`.`asset_plant` (
     `asset_plant_id` BIGINT COMMENT 'Primary key for plant',
+    `company_code_id` BIGINT COMMENT '',
     `parent_plant_id` BIGINT COMMENT 'Self-referencing FK on plant (parent_plant_id)',
+    `production_plant_id` BIGINT COMMENT 'SSOT reference to authoritative source of truth record.',
     `address_line1` STRING COMMENT 'First line of the plants street address.',
     `address_line2` STRING COMMENT 'Second line of the plants street address (optional).',
     `area_sq_m` DECIMAL(18,2) COMMENT 'Total built‑up area of the plant in square meters.',
     `capacity_units_per_year` DECIMAL(18,2) COMMENT 'Maximum number of production units the plant can output in a year.',
     `city` STRING COMMENT 'City where the plant is located.',
-    `cost_center_code` STRING COMMENT 'Internal cost‑center identifier associated with the plant.',
+    `cost_center_code` DECIMAL(18,2) COMMENT 'Internal cost‑center identifier associated with the plant.',
     `country_code` STRING COMMENT 'Three‑letter ISO country code where the plant resides.',
+    `created_timestamp` TIMESTAMP COMMENT '',
     `asset_plant_description` STRING COMMENT 'Free‑form textual description of the plants purpose, capabilities, and notable characteristics.',
     `email_address` STRING COMMENT 'Primary email address for plant communications.',
     `emissions_co2_tons` DECIMAL(18,2) COMMENT 'Total carbon dioxide emissions generated by the plant per year.',
@@ -852,14 +967,14 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`asset`.`asset_plant` (
     `lifecycle_status` STRING COMMENT 'Current operational state of the plant.',
     `longitude` DECIMAL(18,2) COMMENT 'Geographic longitude of the plant (decimal degrees).',
     `maintenance_contract_status` STRING COMMENT 'Current status of any external maintenance contracts.',
-    `maintenance_strategy` STRING COMMENT 'Approach used for maintaining plant equipment.',
+    `maintenance_strategy` DECIMAL(18,2) COMMENT 'Approach used for maintaining plant equipment.',
     `manager_name` STRING COMMENT 'Name of the person responsible for plant operations.',
     `asset_plant_name` STRING COMMENT 'Human‑readable name of the plant.',
     `number_of_employees` STRING COMMENT 'Total headcount employed at the plant.',
     `operational_end_date` DATE COMMENT 'Date when the plant ceased operations (null if still active).',
     `operational_start_date` DATE COMMENT 'Date when the plant began commercial operations.',
     `phone_number` STRING COMMENT 'Primary telephone number for plant communications.',
-    `plant_code` STRING COMMENT 'External code or tag used to reference the plant in enterprise systems.',
+    `plant_status` STRING COMMENT '',
     `plant_type` STRING COMMENT 'Category describing the primary function of the plant.',
     `postal_code` STRING COMMENT 'Postal or ZIP code for the plant address.',
     `record_audit_created` TIMESTAMP COMMENT 'Timestamp when the plant record was first created in the data lake.',
@@ -867,6 +982,7 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`asset`.`asset_plant` (
     `safety_incident_count` STRING COMMENT 'Number of recorded safety incidents at the plant in the most recent year.',
     `state_province` STRING COMMENT 'State or province of the plant location.',
     `timezone` STRING COMMENT 'IANA time‑zone identifier for the plant (e.g., America/Chicago).',
+    `updated_timestamp` TIMESTAMP COMMENT '',
     `website_url` STRING COMMENT 'Public website URL for the plant (if any).',
     CONSTRAINT pk_asset_plant PRIMARY KEY(`asset_plant_id`)
 ) COMMENT 'Master reference table for plant. Referenced by plant_id.';
@@ -877,11 +993,11 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`asset`.`calibration_standard` (
     `accuracy_unit` STRING COMMENT 'Unit associated with the accuracy value.',
     `accuracy_value` DECIMAL(18,2) COMMENT 'Numeric accuracy of the calibration standard.',
     `applicable_equipment_category` STRING COMMENT 'Equipment category for which the calibration standard is valid.',
-    `calibration_certificate_number` STRING COMMENT 'Certificate number issued after calibration.',
-    `calibration_interval_days` STRING COMMENT 'Recommended number of days between successive calibrations.',
-    `calibration_location` STRING COMMENT 'Physical location where the calibration was performed.',
-    `calibration_method` STRING COMMENT 'Method used to perform the calibration.',
-    `calibration_provider` STRING COMMENT 'Organization or vendor that performed the calibration.',
+    `calibration_certificate_number` DECIMAL(18,2) COMMENT 'Certificate number issued after calibration.',
+    `calibration_interval_days` DECIMAL(18,2) COMMENT 'Recommended number of days between successive calibrations.',
+    `calibration_location` DECIMAL(18,2) COMMENT 'Physical location where the calibration was performed.',
+    `calibration_method` DECIMAL(18,2) COMMENT 'Method used to perform the calibration.',
+    `calibration_provider` DECIMAL(18,2) COMMENT 'Organization or vendor that performed the calibration.',
     `calibration_standard_code` STRING COMMENT 'Business identifier or code assigned to the calibration standard.',
     `compliance_category` STRING COMMENT 'Regulatory compliance classification of the standard.',
     `created_timestamp` TIMESTAMP COMMENT 'Timestamp when the calibration standard record was created.',
@@ -890,18 +1006,26 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`asset`.`calibration_standard` (
     `effective_until` DATE COMMENT 'Date until which the standard remains effective (null if open‑ended).',
     `is_traceable` BOOLEAN COMMENT 'Indicates whether the standard is traceable to a national or international reference.',
     `last_calibrated_date` DATE COMMENT 'Date when the standard was last calibrated.',
+    `last_calibration_date` TIMESTAMP COMMENT '',
     `manufacturer` STRING COMMENT 'Organization that manufactures or issues the calibration standard.',
+    `measurement_uncertainty` DECIMAL(18,2) COMMENT '',
     `measurement_unit` STRING COMMENT 'Unit of measurement used by the standard (e.g., °C, Pa, mm, V).',
     `model` STRING COMMENT 'Model identifier of the calibration standard, if applicable.',
     `calibration_standard_name` STRING COMMENT 'Human‑readable name of the calibration standard.',
+    `next_calibration_due_date` TIMESTAMP COMMENT '',
     `next_due_date` DATE COMMENT 'Scheduled date for the next calibration.',
     `notes` STRING COMMENT 'Free‑form notes or remarks about the calibration standard.',
     `required_certification` STRING COMMENT 'Certification(s) required to use or maintain the standard.',
     `standard_body` STRING COMMENT 'Governing body or organization that defines the standard (e.g., ISO, IEC, NIST).',
     `standard_document_number` STRING COMMENT 'Reference number of the official standard document.',
+    `standard_name` STRING COMMENT '',
+    `standard_number` STRING COMMENT '',
+    `standard_status` STRING COMMENT '',
+    `standard_type` STRING COMMENT '',
     `calibration_standard_status` STRING COMMENT 'Current lifecycle status of the calibration standard.',
     `tolerance_unit` STRING COMMENT 'Unit associated with the tolerance value.',
     `tolerance_value` DECIMAL(18,2) COMMENT 'Numeric tolerance allowed for the measurement.',
+    `traceability_reference` STRING COMMENT '',
     `calibration_standard_type` STRING COMMENT 'Category of measurement the standard applies to.',
     `updated_timestamp` TIMESTAMP COMMENT 'Timestamp of the most recent update to the record.',
     `version` STRING COMMENT 'Version identifier of the calibration standard.',
@@ -918,19 +1042,23 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`asset`.`lubrication_route` (
     `end_date` DATE COMMENT 'Date when the lubrication route is retired or superseded; null if open‑ended.',
     `environmental_compliance` BOOLEAN COMMENT 'True if the route complies with environmental regulations for lubricant disposal and emissions.',
     `equipment_category` STRING COMMENT 'Type of equipment or asset that the lubrication route serves.',
+    `estimated_duration_minutes` DECIMAL(18,2) COMMENT '',
     `frequency_unit` STRING COMMENT 'Time unit for the frequency value.',
-    `frequency_value` STRING COMMENT 'Number of lubrication events that should occur within the defined frequency unit.',
+    `frequency_value` DECIMAL(18,2) COMMENT 'Number of lubrication events that should occur within the defined frequency unit.',
     `interval_unit` STRING COMMENT 'Time unit for the interval value.',
-    `interval_value` STRING COMMENT 'Numeric interval between successive lubrication events.',
+    `interval_value` DECIMAL(18,2) COMMENT 'Numeric interval between successive lubrication events.',
     `last_lubrication_timestamp` TIMESTAMP COMMENT 'Timestamp of the most recent lubrication event recorded for this route.',
     `lubricant_type` STRING COMMENT 'Primary type of lubricant used on the route.',
     `lubrication_method` STRING COMMENT 'How lubricant is applied to the route (e.g., manual, automatic, robotic).',
     `next_scheduled_timestamp` TIMESTAMP COMMENT 'Planned timestamp for the next lubrication activity based on frequency/interval.',
     `notes` STRING COMMENT 'Additional remarks, engineering comments, or change‑log entries.',
+    `point_count` STRING COMMENT '',
     `responsible_department` STRING COMMENT 'Organizational department accountable for maintaining the route.',
     `responsible_role` STRING COMMENT 'Job role or title (e.g., Maintenance Engineer) tasked with executing the route.',
     `route_code` STRING COMMENT 'Unique alphanumeric code assigned to the route for reference in Maximo and other CMMS systems.',
     `route_name` STRING COMMENT 'Human‑readable name of the lubrication route used in work orders and maintenance plans.',
+    `route_number` STRING COMMENT '',
+    `route_status` STRING COMMENT '',
     `route_type` STRING COMMENT 'Category describing the method of lubricant delivery along the route.',
     `safety_critical` BOOLEAN COMMENT 'Indicates whether the route is safety‑critical and requires special handling.',
     `start_date` DATE COMMENT 'Date when the lubrication route becomes active.',
@@ -941,27 +1069,33 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`asset`.`lubrication_route` (
 
 CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`asset`.`inspection_checklist` (
     `inspection_checklist_id` BIGINT COMMENT 'Primary key for inspection_checklist',
-    `equipment_register_id` BIGINT COMMENT 'add column equipment_register_id (BIGINT) with FK to asset.equipment_register.equipment_register_id - inspection checklists are designed for specific equipment types',
     `parent_inspection_checklist_id` BIGINT COMMENT 'Self-referencing FK on inspection_checklist (parent_inspection_checklist_id)',
     `applicable_asset_type` STRING COMMENT 'Asset type code to which the checklist applies (e.g., CNC, PLC, robot).',
     `approval_status` STRING COMMENT 'Current approval state of the checklist.',
     `author` STRING COMMENT 'Name or identifier of the person who authored the checklist.',
+    `checklist_name` STRING COMMENT '',
+    `checklist_number` STRING COMMENT '',
+    `checklist_status` STRING COMMENT '',
+    `checklist_type` STRING COMMENT '',
     `inspection_checklist_code` STRING COMMENT 'Business identifier or code used to reference the checklist in work orders and reports.',
     `compliance_standard` STRING COMMENT 'Regulatory or industry standard that the checklist supports (e.g., ISO 45001).',
     `created_timestamp` TIMESTAMP COMMENT 'Date and time when the checklist record was first created.',
     `inspection_checklist_description` STRING COMMENT 'Detailed description of the checklist purpose and scope.',
     `document_url` STRING COMMENT 'Link to the digital document or PDF of the checklist.',
+    `effective_date` TIMESTAMP COMMENT '',
     `effective_from` DATE COMMENT 'Date from which the checklist becomes valid for use.',
     `effective_until` DATE COMMENT 'Date after which the checklist is no longer valid (nullable for open‑ended).',
-    `estimated_duration_minutes` STRING COMMENT 'Typical time required to complete the checklist.',
+    `estimated_duration_minutes` DECIMAL(18,2) COMMENT 'Typical time required to complete the checklist.',
     `frequency` STRING COMMENT 'Recommended execution frequency for the checklist.',
     `inspection_area` STRING COMMENT 'Physical area or system component covered by the checklist.',
+    `item_count` STRING COMMENT '',
     `last_review_date` DATE COMMENT 'Date when the checklist was last reviewed for relevance.',
     `inspection_checklist_name` STRING COMMENT 'Human‑readable name of the inspection checklist.',
     `next_review_date` DATE COMMENT 'Planned date for the next review of the checklist.',
     `number_of_items` STRING COMMENT 'Total count of individual inspection items in the checklist.',
     `required` BOOLEAN COMMENT 'Indicates whether the checklist is mandatory for the associated asset or process.',
     `revision_history` STRING COMMENT 'Free‑text log of changes made to the checklist over time.',
+    `revision_number` STRING COMMENT '',
     `risk_level` STRING COMMENT 'Risk classification associated with the checklist.',
     `safety_critical` BOOLEAN COMMENT 'True if the checklist addresses safety‑critical controls.',
     `inspection_checklist_status` STRING COMMENT 'Current lifecycle status of the checklist.',
@@ -976,9 +1110,10 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`asset`.`work_order_type` (
     `parent_work_order_type_id` BIGINT COMMENT 'Self-referencing FK on work_order_type (parent_work_order_type_id)',
     `work_order_type_category` STRING COMMENT 'High-level category grouping of work order types.',
     `compliance_requirements` STRING COMMENT 'Regulatory or safety compliance requirements applicable to this work order type.',
-    `cost_center` STRING COMMENT 'Financial cost center associated with this work order type for budgeting and chargeback.',
+    `cost_center` DECIMAL(18,2) COMMENT 'Financial cost center associated with this work order type for budgeting and chargeback.',
     `created_timestamp` TIMESTAMP COMMENT 'Timestamp when the work order type record was created in the system.',
-    `default_duration_hours` STRING COMMENT 'Standard estimated duration for work orders of this type, expressed in hours.',
+    `default_duration_hours` DECIMAL(18,2) COMMENT 'Standard estimated duration for work orders of this type, expressed in hours.',
+    `default_priority` STRING COMMENT '',
     `work_order_type_description` STRING COMMENT 'Longer description of the work order type purpose and usage.',
     `effective_from` DATE COMMENT 'Date from which the work order type becomes valid for new work orders.',
     `effective_until` DATE COMMENT 'Date after which the work order type is no longer valid; null if open-ended.',
@@ -986,11 +1121,14 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`asset`.`work_order_type` (
     `is_active` BOOLEAN COMMENT 'Indicates whether the work order type is currently active and usable.',
     `is_deprecated` BOOLEAN COMMENT 'Indicates if the work order type is deprecated and should not be used for new work orders.',
     `is_external` BOOLEAN COMMENT 'True if the work order type is intended for external contractor execution.',
+    `is_preventive` BOOLEAN COMMENT '',
     `work_order_type_name` STRING COMMENT 'Descriptive name of the work order type.',
     `notes` STRING COMMENT 'Free-form notes or comments about the work order type.',
     `priority` STRING COMMENT 'Default priority level assigned to work orders of this type.',
     `requires_approval` BOOLEAN COMMENT 'Indicates if work orders of this type require managerial approval before execution.',
     `type_code` STRING COMMENT 'Short alphanumeric code identifying the work order type.',
+    `type_description` STRING COMMENT '',
+    `type_name` STRING COMMENT '',
     `updated_by` STRING COMMENT 'User identifier who last updated the work order type record.',
     `updated_timestamp` TIMESTAMP COMMENT 'Timestamp of the most recent update to the work order type record.',
     `created_by` STRING COMMENT 'User identifier who created the work order type record.',
@@ -1004,7 +1142,9 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`asset`.`craft_skill` (
     `average_training_hours` STRING COMMENT 'Typical number of training hours required to achieve proficiency.',
     `certification_required` BOOLEAN COMMENT 'Indicates whether formal certification is required to perform the skill.',
     `competency_framework` STRING COMMENT 'Reference to the competency framework governing the skill.',
+    `craft_type` STRING COMMENT '',
     `created_timestamp` TIMESTAMP COMMENT 'Timestamp when the skill record was initially created in the system.',
+    `currency_code` STRING COMMENT '',
     `craft_skill_description` STRING COMMENT 'Detailed textual description of the skill, including typical tasks and responsibilities.',
     `effective_date` DATE COMMENT 'Date from which the skill definition becomes active.',
     `expiration_date` DATE COMMENT 'Date after which the skill definition is retired (nullable).',
@@ -1015,8 +1155,10 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`asset`.`craft_skill` (
     `safety_training_required` BOOLEAN COMMENT 'Indicates whether specific safety training is mandatory for the skill.',
     `skill_category` STRING COMMENT 'Broad category grouping of the skill.',
     `skill_code` STRING COMMENT 'Standardized short code for the skill used in work orders and scheduling.',
+    `skill_description` STRING COMMENT '',
     `skill_level` STRING COMMENT 'Proficiency level required for the skill.',
     `skill_name` STRING COMMENT 'Descriptive name of the craft skill (e.g., Electrical Technician, CNC Machinist).',
+    `standard_labor_rate` DECIMAL(18,2) COMMENT '',
     `craft_skill_status` STRING COMMENT 'Current lifecycle status of the skill.',
     `updated_timestamp` TIMESTAMP COMMENT 'Timestamp of the most recent update to the skill record.',
     CONSTRAINT pk_craft_skill PRIMARY KEY(`craft_skill_id`)
@@ -1036,7 +1178,8 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`asset`.`maintenance_strategy` (
     `estimated_downtime_minutes` STRING COMMENT 'Estimated downtime in minutes associated with the strategy execution.',
     `external_reference_code` STRING COMMENT 'Code linking the strategy to an external standard or vendor catalog.',
     `frequency_interval_unit` STRING COMMENT 'Unit of time for the frequency interval (e.g., day, week, month).',
-    `frequency_interval_value` STRING COMMENT 'Numeric value of the interval that defines how often the maintenance activity recurs.',
+    `frequency_interval_value` DECIMAL(18,2) COMMENT 'Numeric value of the interval that defines how often the maintenance activity recurs.',
+    `is_active` BOOLEAN COMMENT '',
     `is_default` BOOLEAN COMMENT 'Flag indicating whether this strategy is the default for newly commissioned assets.',
     `last_review_date` DATE COMMENT 'Date when the strategy was last reviewed for relevance and effectiveness.',
     `maintenance_window_end_time` TIMESTAMP COMMENT 'Preferred end time of the maintenance window in 24‑hour HH:mm format.',
@@ -1047,7 +1190,10 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`asset`.`maintenance_strategy` (
     `requires_shutdown` BOOLEAN COMMENT 'Indicates whether execution of the strategy requires equipment shutdown.',
     `review_frequency_months` STRING COMMENT 'Number of months between mandatory strategy reviews.',
     `maintenance_strategy_status` STRING COMMENT 'Current lifecycle status of the strategy.',
-    `strategy_type` STRING COMMENT 'Category of maintenance approach applied by the strategy.',
+    `strategy_code` DECIMAL(18,2) COMMENT '',
+    `strategy_description` DECIMAL(18,2) COMMENT '',
+    `strategy_name` DECIMAL(18,2) COMMENT '',
+    `strategy_type` DECIMAL(18,2) COMMENT 'Category of maintenance approach applied by the strategy.',
     `updated_by` STRING COMMENT 'Identifier of the user or system that performed the last update.',
     `updated_timestamp` TIMESTAMP COMMENT 'Timestamp of the most recent update to the strategy record.',
     `version_number` STRING COMMENT 'Version identifier for the maintenance strategy definition.',
@@ -1057,6 +1203,8 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`asset`.`maintenance_strategy` (
 
 -- ========= FOREIGN KEYS =========
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`equipment_register` ADD CONSTRAINT `fk_asset_equipment_register_asset_plant_id` FOREIGN KEY (`asset_plant_id`) REFERENCES `vibe_manufacturing_v1`.`asset`.`asset_plant`(`asset_plant_id`);
+ALTER TABLE `vibe_manufacturing_v1`.`asset`.`equipment_register` ADD CONSTRAINT `fk_asset_equipment_register_asset_pm_schedule_id` FOREIGN KEY (`asset_pm_schedule_id`) REFERENCES `vibe_manufacturing_v1`.`asset`.`asset_pm_schedule`(`asset_pm_schedule_id`);
+ALTER TABLE `vibe_manufacturing_v1`.`asset`.`equipment_register` ADD CONSTRAINT `fk_asset_equipment_register_capex_asset_record_id` FOREIGN KEY (`capex_asset_record_id`) REFERENCES `vibe_manufacturing_v1`.`asset`.`capex_asset_record`(`capex_asset_record_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`location` ADD CONSTRAINT `fk_asset_location_parent_location_id` FOREIGN KEY (`parent_location_id`) REFERENCES `vibe_manufacturing_v1`.`asset`.`location`(`location_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_work_order` ADD CONSTRAINT `fk_asset_asset_work_order_equipment_register_id` FOREIGN KEY (`equipment_register_id`) REFERENCES `vibe_manufacturing_v1`.`asset`.`equipment_register`(`equipment_register_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_work_order` ADD CONSTRAINT `fk_asset_asset_work_order_job_plan_id` FOREIGN KEY (`job_plan_id`) REFERENCES `vibe_manufacturing_v1`.`asset`.`job_plan`(`job_plan_id`);
@@ -1098,11 +1246,11 @@ ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_certification` ADD CONSTRAINT
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`equipment_allocation` ADD CONSTRAINT `fk_asset_equipment_allocation_equipment_register_id` FOREIGN KEY (`equipment_register_id`) REFERENCES `vibe_manufacturing_v1`.`asset`.`equipment_register`(`equipment_register_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`equipment_shipment` ADD CONSTRAINT `fk_asset_equipment_shipment_equipment_register_id` FOREIGN KEY (`equipment_register_id`) REFERENCES `vibe_manufacturing_v1`.`asset`.`equipment_register`(`equipment_register_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`compliance_assessment` ADD CONSTRAINT `fk_asset_compliance_assessment_equipment_register_id` FOREIGN KEY (`equipment_register_id`) REFERENCES `vibe_manufacturing_v1`.`asset`.`equipment_register`(`equipment_register_id`);
+ALTER TABLE `vibe_manufacturing_v1`.`asset`.`regulatory_applicability` ADD CONSTRAINT `fk_asset_regulatory_applicability_equipment_register_id` FOREIGN KEY (`equipment_register_id`) REFERENCES `vibe_manufacturing_v1`.`asset`.`equipment_register`(`equipment_register_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`regulatory_applicability` ADD CONSTRAINT `fk_asset_regulatory_applicability_spare_part_id` FOREIGN KEY (`spare_part_id`) REFERENCES `vibe_manufacturing_v1`.`asset`.`spare_part`(`spare_part_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_plant` ADD CONSTRAINT `fk_asset_asset_plant_parent_plant_id` FOREIGN KEY (`parent_plant_id`) REFERENCES `vibe_manufacturing_v1`.`asset`.`asset_plant`(`asset_plant_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`calibration_standard` ADD CONSTRAINT `fk_asset_calibration_standard_reference_standard_calibration_standard_id` FOREIGN KEY (`reference_standard_calibration_standard_id`) REFERENCES `vibe_manufacturing_v1`.`asset`.`calibration_standard`(`calibration_standard_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`lubrication_route` ADD CONSTRAINT `fk_asset_lubrication_route_parent_lubrication_route_id` FOREIGN KEY (`parent_lubrication_route_id`) REFERENCES `vibe_manufacturing_v1`.`asset`.`lubrication_route`(`lubrication_route_id`);
-ALTER TABLE `vibe_manufacturing_v1`.`asset`.`inspection_checklist` ADD CONSTRAINT `fk_asset_inspection_checklist_equipment_register_id` FOREIGN KEY (`equipment_register_id`) REFERENCES `vibe_manufacturing_v1`.`asset`.`equipment_register`(`equipment_register_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`inspection_checklist` ADD CONSTRAINT `fk_asset_inspection_checklist_parent_inspection_checklist_id` FOREIGN KEY (`parent_inspection_checklist_id`) REFERENCES `vibe_manufacturing_v1`.`asset`.`inspection_checklist`(`inspection_checklist_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`work_order_type` ADD CONSTRAINT `fk_asset_work_order_type_parent_work_order_type_id` FOREIGN KEY (`parent_work_order_type_id`) REFERENCES `vibe_manufacturing_v1`.`asset`.`work_order_type`(`work_order_type_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`craft_skill` ADD CONSTRAINT `fk_asset_craft_skill_parent_craft_skill_id` FOREIGN KEY (`parent_craft_skill_id`) REFERENCES `vibe_manufacturing_v1`.`asset`.`craft_skill`(`craft_skill_id`);
@@ -1129,15 +1277,15 @@ ALTER TABLE `vibe_manufacturing_v1`.`asset`.`equipment_register` ALTER COLUMN `e
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`equipment_register` ALTER COLUMN `sku_master_id` SET TAGS ('dbx_business_glossary_term' = 'Sku Master Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`equipment_register` ALTER COLUMN `stock_location_id` SET TAGS ('dbx_business_glossary_term' = 'Stock Location Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`equipment_register` ALTER COLUMN `supplier_id` SET TAGS ('dbx_business_glossary_term' = 'Supplier Id (Foreign Key)');
+ALTER TABLE `vibe_manufacturing_v1`.`asset`.`equipment_register` ALTER COLUMN `asset_pm_schedule_id` SET TAGS ('dbx_business_glossary_term' = 'Maintenance Plan ID');
+ALTER TABLE `vibe_manufacturing_v1`.`asset`.`equipment_register` ALTER COLUMN `capex_asset_record_id` SET TAGS ('dbx_business_glossary_term' = 'Capex Asset Record Id (Foreign Key)');
+ALTER TABLE `vibe_manufacturing_v1`.`asset`.`equipment_register` ALTER COLUMN `carrier_id` SET TAGS ('dbx_business_glossary_term' = 'Carrier Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`equipment_register` ALTER COLUMN `asset_category` SET TAGS ('dbx_business_glossary_term' = 'Asset Category');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`equipment_register` ALTER COLUMN `asset_category` SET TAGS ('dbx_value_regex' = 'Production Equipment|Facility Infrastructure|Utility System|Safety System|Measurement and Test Equipment|IT and Automation');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`equipment_register` ALTER COLUMN `asset_number` SET TAGS ('dbx_business_glossary_term' = 'Asset Number');
-ALTER TABLE `vibe_manufacturing_v1`.`asset`.`equipment_register` ALTER COLUMN `asset_pm_schedule_id` SET TAGS ('dbx_business_glossary_term' = 'Maintenance Plan ID');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`equipment_register` ALTER COLUMN `capacity_unit_of_measure` SET TAGS ('dbx_business_glossary_term' = 'Capacity Unit of Measure');
-ALTER TABLE `vibe_manufacturing_v1`.`asset`.`equipment_register` ALTER COLUMN `capex_asset_record_id` SET TAGS ('dbx_business_glossary_term' = 'Capex Asset Record Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`equipment_register` ALTER COLUMN `commissioning_date` SET TAGS ('dbx_business_glossary_term' = 'Commissioning Date');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`equipment_register` ALTER COLUMN `condition_at_transfer` SET TAGS ('dbx_business_glossary_term' = 'Condition at Transfer');
-ALTER TABLE `vibe_manufacturing_v1`.`asset`.`equipment_register` ALTER COLUMN `condition_at_transfer` SET TAGS ('dbx_value_regex' = 'Excellent|Good|Fair|Poor|Critical');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`equipment_register` ALTER COLUMN `condition_grade` SET TAGS ('dbx_business_glossary_term' = 'Condition Grade');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`equipment_register` ALTER COLUMN `condition_grade` SET TAGS ('dbx_value_regex' = 'Excellent|Good|Fair|Poor|Critical');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`equipment_register` ALTER COLUMN `criticality_ranking` SET TAGS ('dbx_business_glossary_term' = 'Criticality Ranking');
@@ -1145,9 +1293,11 @@ ALTER TABLE `vibe_manufacturing_v1`.`asset`.`equipment_register` ALTER COLUMN `c
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`equipment_register` ALTER COLUMN `currency_code` SET TAGS ('dbx_business_glossary_term' = 'Currency Code');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`equipment_register` ALTER COLUMN `currency_code` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`equipment_register` ALTER COLUMN `decommission_date` SET TAGS ('dbx_business_glossary_term' = 'Decommission Date');
-ALTER TABLE `vibe_manufacturing_v1`.`asset`.`equipment_register` ALTER COLUMN `device_registry_id` SET TAGS ('dbx_business_glossary_term' = 'Device Registry Id (Foreign Key)');
+ALTER TABLE `vibe_manufacturing_v1`.`asset`.`equipment_register` ALTER COLUMN `device_registry_code` SET TAGS ('dbx_business_glossary_term' = 'Device Registry Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`equipment_register` ALTER COLUMN `equipment_class` SET TAGS ('dbx_business_glossary_term' = 'Equipment Class');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`equipment_register` ALTER COLUMN `equipment_name` SET TAGS ('dbx_business_glossary_term' = 'Equipment Name');
+ALTER TABLE `vibe_manufacturing_v1`.`asset`.`equipment_register` ALTER COLUMN `equipment_name` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`asset`.`equipment_register` ALTER COLUMN `equipment_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`equipment_register` ALTER COLUMN `functional_location` SET TAGS ('dbx_business_glossary_term' = 'Functional Location');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`equipment_register` ALTER COLUMN `installation_date` SET TAGS ('dbx_business_glossary_term' = 'Installation Date');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`equipment_register` ALTER COLUMN `last_inspection_date` SET TAGS ('dbx_business_glossary_term' = 'Last Inspection Date');
@@ -1158,15 +1308,15 @@ ALTER TABLE `vibe_manufacturing_v1`.`asset`.`equipment_register` ALTER COLUMN `l
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`equipment_register` ALTER COLUMN `last_transfer_reason` SET TAGS ('dbx_business_glossary_term' = 'Last Transfer Reason');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`equipment_register` ALTER COLUMN `last_transfer_reason` SET TAGS ('dbx_value_regex' = 'Production Rebalancing|Maintenance|Decommission|New Project|Relocation|Disposal');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`equipment_register` ALTER COLUMN `maintenance_strategy` SET TAGS ('dbx_business_glossary_term' = 'Maintenance Strategy');
-ALTER TABLE `vibe_manufacturing_v1`.`asset`.`equipment_register` ALTER COLUMN `maintenance_strategy` SET TAGS ('dbx_value_regex' = 'Preventive|Predictive|Corrective|Condition-Based|Run-to-Failure');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`equipment_register` ALTER COLUMN `manufacture_date` SET TAGS ('dbx_business_glossary_term' = 'Manufacture Date');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`equipment_register` ALTER COLUMN `manufacturer_name` SET TAGS ('dbx_business_glossary_term' = 'Manufacturer Name');
+ALTER TABLE `vibe_manufacturing_v1`.`asset`.`equipment_register` ALTER COLUMN `manufacturer_name` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`asset`.`equipment_register` ALTER COLUMN `manufacturer_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`equipment_register` ALTER COLUMN `mean_time_between_failures` SET TAGS ('dbx_business_glossary_term' = 'Mean Time Between Failures (MTBF)');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`equipment_register` ALTER COLUMN `mean_time_to_repair` SET TAGS ('dbx_business_glossary_term' = 'Mean Time To Repair (MTTR)');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`equipment_register` ALTER COLUMN `model_number` SET TAGS ('dbx_business_glossary_term' = 'Model Number');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`equipment_register` ALTER COLUMN `next_maintenance_due_date` SET TAGS ('dbx_business_glossary_term' = 'Next Maintenance Due Date');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`equipment_register` ALTER COLUMN `operational_status` SET TAGS ('dbx_business_glossary_term' = 'Operational Status');
-ALTER TABLE `vibe_manufacturing_v1`.`asset`.`equipment_register` ALTER COLUMN `operational_status` SET TAGS ('dbx_value_regex' = 'In Service|Out of Service|Under Maintenance|Decommissioned|Standby|Commissioning');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`equipment_register` ALTER COLUMN `power_rating_kw` SET TAGS ('dbx_business_glossary_term' = 'Power Rating (kW)');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`equipment_register` ALTER COLUMN `rated_capacity` SET TAGS ('dbx_business_glossary_term' = 'Rated Capacity');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`equipment_register` ALTER COLUMN `record_created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
@@ -1192,11 +1342,10 @@ ALTER TABLE `vibe_manufacturing_v1`.`asset`.`location` ALTER COLUMN `engineering
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`location` ALTER COLUMN `network_segment_id` SET TAGS ('dbx_business_glossary_term' = 'Network Segment Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`location` ALTER COLUMN `node_id` SET TAGS ('dbx_business_glossary_term' = 'Logistics Node Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`location` ALTER COLUMN `parent_location_id` SET TAGS ('dbx_business_glossary_term' = 'Parent Location ID');
-ALTER TABLE `vibe_manufacturing_v1`.`asset`.`location` ALTER COLUMN `network_node_id` SET TAGS ('dbx_business_glossary_term' = 'Supply Network Node Id (Foreign Key)');
-ALTER TABLE `vibe_manufacturing_v1`.`asset`.`location` ALTER COLUMN `transport_route_id` SET TAGS ('dbx_business_glossary_term' = 'Transport Route Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`location` ALTER COLUMN `address_line1` SET TAGS ('dbx_business_glossary_term' = 'Address Line 1');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`location` ALTER COLUMN `address_line1` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`location` ALTER COLUMN `address_line1` SET TAGS ('dbx_pii_address' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`asset`.`location` ALTER COLUMN `address_line1` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`location` ALTER COLUMN `area_sqm` SET TAGS ('dbx_business_glossary_term' = 'Area (Square Metres)');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`location` ALTER COLUMN `atex_zone_classification` SET TAGS ('dbx_business_glossary_term' = 'ATEX Zone Classification');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`location` ALTER COLUMN `atex_zone_classification` SET TAGS ('dbx_value_regex' = 'Zone 0|Zone 1|Zone 2|Zone 20|Zone 21|Zone 22');
@@ -1249,6 +1398,8 @@ ALTER TABLE `vibe_manufacturing_v1`.`asset`.`location` ALTER COLUMN `max_asset_c
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`location` ALTER COLUMN `max_load_capacity_kg` SET TAGS ('dbx_business_glossary_term' = 'Maximum Load Capacity (Kilograms)');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`location` ALTER COLUMN `maximo_location_code` SET TAGS ('dbx_business_glossary_term' = 'Maximo Location ID');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`location` ALTER COLUMN `location_name` SET TAGS ('dbx_business_glossary_term' = 'Location Name');
+ALTER TABLE `vibe_manufacturing_v1`.`asset`.`location` ALTER COLUMN `location_name` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`asset`.`location` ALTER COLUMN `location_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`location` ALTER COLUMN `network_segment` SET TAGS ('dbx_business_glossary_term' = 'Network Segment');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`location` ALTER COLUMN `network_segment` SET TAGS ('dbx_value_regex' = '^[A-Za-z0-9_-]{1,50}$');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`location` ALTER COLUMN `pm_schedule_type` SET TAGS ('dbx_business_glossary_term' = 'Preventive Maintenance (PM) Schedule Type');
@@ -1262,11 +1413,17 @@ ALTER TABLE `vibe_manufacturing_v1`.`asset`.`location` ALTER COLUMN `safety_zone
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`location` ALTER COLUMN `site_code` SET TAGS ('dbx_business_glossary_term' = 'Site Code');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`location` ALTER COLUMN `site_code` SET TAGS ('dbx_value_regex' = '^[A-Z0-9]{2,10}$');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`location` ALTER COLUMN `site_name` SET TAGS ('dbx_business_glossary_term' = 'Site Name');
+ALTER TABLE `vibe_manufacturing_v1`.`asset`.`location` ALTER COLUMN `site_name` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`asset`.`location` ALTER COLUMN `site_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`location` ALTER COLUMN `timezone` SET TAGS ('dbx_business_glossary_term' = 'Time Zone');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`location` ALTER COLUMN `work_center_code` SET TAGS ('dbx_business_glossary_term' = 'Work Center Code');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`location` ALTER COLUMN `work_center_code` SET TAGS ('dbx_value_regex' = '^[A-Z0-9_-]{1,20}$');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_work_order` SET TAGS ('dbx_data_type' = 'transactional_data');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_work_order` SET TAGS ('dbx_subdomain' = 'maintenance_operations');
+ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_work_order` SET TAGS ('dbx_ssot' = 'master');
+ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_work_order` SET TAGS ('dbx_ssot_group' = 'work_order');
+ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_work_order` SET TAGS ('dbx_ssot_of' = 'production.production_work_order');
+ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_work_order` SET TAGS ('dbx_ssot_role' = 'duplicate');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_work_order` ALTER COLUMN `asset_work_order_id` SET TAGS ('dbx_business_glossary_term' = 'Work Order ID');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_work_order` ALTER COLUMN `control_system_id` SET TAGS ('dbx_business_glossary_term' = 'Control System Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_work_order` ALTER COLUMN `cost_center_id` SET TAGS ('dbx_business_glossary_term' = 'Cost Center Id (Foreign Key)');
@@ -1282,6 +1439,8 @@ ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_work_order` ALTER COLUMN `pla
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_work_order` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Assigned Technician ID');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_work_order` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_work_order` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_work_order` ALTER COLUMN `production_work_order_id` SET TAGS ('dbx_ssot_ref' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_work_order` ALTER COLUMN `production_work_order_id` SET TAGS ('dbx_ssot_reference' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_work_order` ALTER COLUMN `project_header_id` SET TAGS ('dbx_business_glossary_term' = 'Project Header Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_work_order` ALTER COLUMN `request_id` SET TAGS ('dbx_business_glossary_term' = 'Service Request Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_work_order` ALTER COLUMN `shipment_id` SET TAGS ('dbx_business_glossary_term' = 'Shipment Id (Foreign Key)');
@@ -1339,7 +1498,13 @@ ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_work_order` ALTER COLUMN `wor
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_work_order` ALTER COLUMN `work_order_status` SET TAGS ('dbx_business_glossary_term' = 'Work Order Status');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_pm_schedule` SET TAGS ('dbx_data_type' = 'master_data');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_pm_schedule` SET TAGS ('dbx_subdomain' = 'maintenance_operations');
+ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_pm_schedule` SET TAGS ('dbx_ssot' = 'master');
+ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_pm_schedule` SET TAGS ('dbx_ssot_group' = 'pm_schedule');
+ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_pm_schedule` SET TAGS ('dbx_ssot_of' = 'asset.asset_pm_schedule');
+ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_pm_schedule` SET TAGS ('dbx_ssot_role' = 'source_of_truth');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_pm_schedule` ALTER COLUMN `asset_pm_schedule_id` SET TAGS ('dbx_business_glossary_term' = 'Preventive Maintenance (PM) Schedule ID');
+ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_pm_schedule` ALTER COLUMN `asset_pm_schedule_id` SET TAGS ('dbx_ssot_duplicate_resolved' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_pm_schedule` ALTER COLUMN `asset_pm_schedule_id` SET TAGS ('dbx_ssot_master' = 'service.service_pm_schedule');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_pm_schedule` ALTER COLUMN `asset_work_order_id` SET TAGS ('dbx_business_glossary_term' = 'Last Generated Work Order ID');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_pm_schedule` ALTER COLUMN `component_id` SET TAGS ('dbx_business_glossary_term' = 'Component Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_pm_schedule` ALTER COLUMN `control_system_id` SET TAGS ('dbx_business_glossary_term' = 'Control System Id (Foreign Key)');
@@ -1386,6 +1551,8 @@ ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_pm_schedule` ALTER COLUMN `pr
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_pm_schedule` ALTER COLUMN `regulatory_reference` SET TAGS ('dbx_business_glossary_term' = 'Regulatory Reference');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_pm_schedule` ALTER COLUMN `revision_number` SET TAGS ('dbx_business_glossary_term' = 'PM Schedule Revision Number');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_pm_schedule` ALTER COLUMN `schedule_name` SET TAGS ('dbx_business_glossary_term' = 'Preventive Maintenance (PM) Schedule Name');
+ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_pm_schedule` ALTER COLUMN `schedule_name` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_pm_schedule` ALTER COLUMN `schedule_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_pm_schedule` ALTER COLUMN `schedule_number` SET TAGS ('dbx_business_glossary_term' = 'Preventive Maintenance (PM) Schedule Number');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_pm_schedule` ALTER COLUMN `schedule_status` SET TAGS ('dbx_business_glossary_term' = 'PM Schedule Status');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_pm_schedule` ALTER COLUMN `schedule_status` SET TAGS ('dbx_value_regex' = 'ACTIVE|INACTIVE|DRAFT|SUSPENDED|CLOSED');
@@ -1517,6 +1684,10 @@ ALTER TABLE `vibe_manufacturing_v1`.`asset`.`failure_record` ALTER COLUMN `sever
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`failure_record` ALTER COLUMN `spare_part_consumed_flag` SET TAGS ('dbx_business_glossary_term' = 'Spare Part Consumed Flag');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_downtime_event` SET TAGS ('dbx_data_type' = 'transactional_data');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_downtime_event` SET TAGS ('dbx_subdomain' = 'maintenance_operations');
+ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_downtime_event` SET TAGS ('dbx_ssot' = 'master');
+ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_downtime_event` SET TAGS ('dbx_ssot_group' = 'downtime_event');
+ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_downtime_event` SET TAGS ('dbx_ssot_of' = 'asset.asset_downtime_event');
+ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_downtime_event` SET TAGS ('dbx_ssot_role' = 'duplicate');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_downtime_event` ALTER COLUMN `asset_downtime_event_id` SET TAGS ('dbx_business_glossary_term' = 'Downtime Event ID');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_downtime_event` ALTER COLUMN `alarm_event_id` SET TAGS ('dbx_business_glossary_term' = 'SCADA Alarm ID');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_downtime_event` ALTER COLUMN `asset_work_order_id` SET TAGS ('dbx_business_glossary_term' = 'Work Order ID');
@@ -1525,6 +1696,8 @@ ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_downtime_event` ALTER COLUMN 
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_downtime_event` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Reported By Employee ID');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_downtime_event` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_downtime_event` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_downtime_event` ALTER COLUMN `production_downtime_event_id` SET TAGS ('dbx_ssot_ref' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_downtime_event` ALTER COLUMN `production_downtime_event_id` SET TAGS ('dbx_ssot_reference' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_downtime_event` ALTER COLUMN `production_line_id` SET TAGS ('dbx_business_glossary_term' = 'Production Line ID');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_downtime_event` ALTER COLUMN `production_work_order_id` SET TAGS ('dbx_business_glossary_term' = 'Production Order ID');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_downtime_event` ALTER COLUMN `project_header_id` SET TAGS ('dbx_business_glossary_term' = 'Project Header Id (Foreign Key)');
@@ -1571,7 +1744,7 @@ ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_downtime_event` ALTER COLUMN 
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_downtime_event` ALTER COLUMN `start_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Downtime Start Timestamp');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_downtime_event` ALTER COLUMN `technician_notes` SET TAGS ('dbx_business_glossary_term' = 'Technician Notes');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`condition_reading` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_manufacturing_v1`.`asset`.`condition_reading` SET TAGS ('dbx_subdomain' = 'reliability_monitoring');
+ALTER TABLE `vibe_manufacturing_v1`.`asset`.`condition_reading` SET TAGS ('dbx_subdomain' = 'condition_monitoring');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`condition_reading` ALTER COLUMN `condition_reading_id` SET TAGS ('dbx_business_glossary_term' = 'Condition Reading ID');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`condition_reading` ALTER COLUMN `alarm_event_id` SET TAGS ('dbx_business_glossary_term' = 'Alert ID');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`condition_reading` ALTER COLUMN `asset_downtime_event_id` SET TAGS ('dbx_business_glossary_term' = 'Downtime Event ID');
@@ -1626,12 +1799,13 @@ ALTER TABLE `vibe_manufacturing_v1`.`asset`.`condition_reading` ALTER COLUMN `th
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`condition_reading` ALTER COLUMN `unit_of_measure` SET TAGS ('dbx_business_glossary_term' = 'Unit of Measure (UoM)');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`condition_reading` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Updated Timestamp');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`spare_part` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_manufacturing_v1`.`asset`.`spare_part` SET TAGS ('dbx_subdomain' = 'asset_lifecycle');
+ALTER TABLE `vibe_manufacturing_v1`.`asset`.`spare_part` SET TAGS ('dbx_subdomain' = 'equipment_registry');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`spare_part` ALTER COLUMN `spare_part_id` SET TAGS ('dbx_business_glossary_term' = 'Spare Part ID');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`spare_part` ALTER COLUMN `component_id` SET TAGS ('dbx_business_glossary_term' = 'Component Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`spare_part` ALTER COLUMN `device_registry_id` SET TAGS ('dbx_business_glossary_term' = 'Device Registry Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`spare_part` ALTER COLUMN `location_id` SET TAGS ('dbx_business_glossary_term' = 'Asset Location Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`spare_part` ALTER COLUMN `sku_master_id` SET TAGS ('dbx_business_glossary_term' = 'Sku Master Id (Foreign Key)');
+ALTER TABLE `vibe_manufacturing_v1`.`asset`.`spare_part` ALTER COLUMN `stock_location_id` SET TAGS ('dbx_business_glossary_term' = 'Stock Location Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`spare_part` ALTER COLUMN `supplier_id` SET TAGS ('dbx_business_glossary_term' = 'Supplier Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`spare_part` ALTER COLUMN `abc_class` SET TAGS ('dbx_business_glossary_term' = 'ABC Inventory Classification');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`spare_part` ALTER COLUMN `abc_class` SET TAGS ('dbx_value_regex' = 'A|B|C');
@@ -1654,8 +1828,9 @@ ALTER TABLE `vibe_manufacturing_v1`.`asset`.`spare_part` ALTER COLUMN `last_purc
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`spare_part` ALTER COLUMN `last_purchase_price` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`spare_part` ALTER COLUMN `last_received_date` SET TAGS ('dbx_business_glossary_term' = 'Last Received Date');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`spare_part` ALTER COLUMN `maintenance_strategy` SET TAGS ('dbx_business_glossary_term' = 'Maintenance Strategy');
-ALTER TABLE `vibe_manufacturing_v1`.`asset`.`spare_part` ALTER COLUMN `maintenance_strategy` SET TAGS ('dbx_value_regex' = 'preventive|corrective|predictive|condition_based|run_to_failure');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`spare_part` ALTER COLUMN `manufacturer_name` SET TAGS ('dbx_business_glossary_term' = 'Manufacturer Name');
+ALTER TABLE `vibe_manufacturing_v1`.`asset`.`spare_part` ALTER COLUMN `manufacturer_name` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`asset`.`spare_part` ALTER COLUMN `manufacturer_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`spare_part` ALTER COLUMN `manufacturer_part_number` SET TAGS ('dbx_business_glossary_term' = 'Manufacturer Part Number (MPN)');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`spare_part` ALTER COLUMN `material_group_code` SET TAGS ('dbx_business_glossary_term' = 'Material Group Code (SAP MATKL)');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`spare_part` ALTER COLUMN `max_stock_qty` SET TAGS ('dbx_business_glossary_term' = 'Maximum Stock Quantity');
@@ -1664,6 +1839,8 @@ ALTER TABLE `vibe_manufacturing_v1`.`asset`.`spare_part` ALTER COLUMN `mro_categ
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`spare_part` ALTER COLUMN `mro_category` SET TAGS ('dbx_value_regex' = 'spare_parts|consumables|lubricants|tools|safety_supplies|electrical_supplies');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`spare_part` ALTER COLUMN `part_description` SET TAGS ('dbx_business_glossary_term' = 'Spare Part Description');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`spare_part` ALTER COLUMN `part_name` SET TAGS ('dbx_business_glossary_term' = 'Spare Part Name');
+ALTER TABLE `vibe_manufacturing_v1`.`asset`.`spare_part` ALTER COLUMN `part_name` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`asset`.`spare_part` ALTER COLUMN `part_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`spare_part` ALTER COLUMN `part_number` SET TAGS ('dbx_business_glossary_term' = 'Part Number');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`spare_part` ALTER COLUMN `part_number` SET TAGS ('dbx_value_regex' = '^[A-Z0-9-.]{3,40}$');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`spare_part` ALTER COLUMN `part_status` SET TAGS ('dbx_business_glossary_term' = 'Spare Part Lifecycle Status');
@@ -1685,7 +1862,7 @@ ALTER TABLE `vibe_manufacturing_v1`.`asset`.`spare_part` ALTER COLUMN `valuation
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`spare_part` ALTER COLUMN `warranty_expiry_date` SET TAGS ('dbx_business_glossary_term' = 'Warranty Expiry Date');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`spare_part` ALTER COLUMN `weight_kg` SET TAGS ('dbx_business_glossary_term' = 'Weight (Kilograms)');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`reliability_record` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_manufacturing_v1`.`asset`.`reliability_record` SET TAGS ('dbx_subdomain' = 'reliability_monitoring');
+ALTER TABLE `vibe_manufacturing_v1`.`asset`.`reliability_record` SET TAGS ('dbx_subdomain' = 'equipment_registry');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`reliability_record` ALTER COLUMN `reliability_record_id` SET TAGS ('dbx_business_glossary_term' = 'Reliability Record ID');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`reliability_record` ALTER COLUMN `asset_work_order_id` SET TAGS ('dbx_business_glossary_term' = 'Work Order ID');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`reliability_record` ALTER COLUMN `cost_center_id` SET TAGS ('dbx_business_glossary_term' = 'Cost Center Id (Foreign Key)');
@@ -1713,7 +1890,6 @@ ALTER TABLE `vibe_manufacturing_v1`.`asset`.`reliability_record` ALTER COLUMN `f
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`reliability_record` ALTER COLUMN `failure_rate` SET TAGS ('dbx_business_glossary_term' = 'Failure Rate (Lambda)');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`reliability_record` ALTER COLUMN `last_failure_date` SET TAGS ('dbx_business_glossary_term' = 'Last Failure Date');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`reliability_record` ALTER COLUMN `maintenance_strategy` SET TAGS ('dbx_business_glossary_term' = 'Maintenance Strategy');
-ALTER TABLE `vibe_manufacturing_v1`.`asset`.`reliability_record` ALTER COLUMN `maintenance_strategy` SET TAGS ('dbx_value_regex' = 'run_to_failure|preventive|predictive|condition_based');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`reliability_record` ALTER COLUMN `mean_time_between_failures` SET TAGS ('dbx_business_glossary_term' = 'Mean Time Between Failures (MTBF)');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`reliability_record` ALTER COLUMN `mean_time_to_repair` SET TAGS ('dbx_business_glossary_term' = 'Mean Time To Repair (MTTR)');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`reliability_record` ALTER COLUMN `measurement_period_end` SET TAGS ('dbx_business_glossary_term' = 'Measurement Period End Date');
@@ -1746,7 +1922,7 @@ ALTER TABLE `vibe_manufacturing_v1`.`asset`.`reliability_record` ALTER COLUMN `w
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`reliability_record` ALTER COLUMN `weibull_gamma` SET TAGS ('dbx_business_glossary_term' = 'Weibull Location Parameter (Gamma)');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`reliability_record` ALTER COLUMN `weibull_r_squared` SET TAGS ('dbx_business_glossary_term' = 'Weibull Goodness-of-Fit (R-Squared)');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`capex_asset_record` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_manufacturing_v1`.`asset`.`capex_asset_record` SET TAGS ('dbx_subdomain' = 'asset_lifecycle');
+ALTER TABLE `vibe_manufacturing_v1`.`asset`.`capex_asset_record` SET TAGS ('dbx_subdomain' = 'equipment_registry');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`capex_asset_record` ALTER COLUMN `capex_asset_record_id` SET TAGS ('dbx_business_glossary_term' = 'Capital Expenditure (CapEx) Asset Record ID');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`capex_asset_record` ALTER COLUMN `cost_center_id` SET TAGS ('dbx_business_glossary_term' = 'Cost Center Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`capex_asset_record` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Responsible Person ID');
@@ -1784,6 +1960,8 @@ ALTER TABLE `vibe_manufacturing_v1`.`asset`.`capex_asset_record` ALTER COLUMN `l
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`capex_asset_record` ALTER COLUMN `last_modified_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Last Modified Timestamp');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`capex_asset_record` ALTER COLUMN `location_description` SET TAGS ('dbx_business_glossary_term' = 'Location Description');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`capex_asset_record` ALTER COLUMN `manufacturer_name` SET TAGS ('dbx_business_glossary_term' = 'Manufacturer Name');
+ALTER TABLE `vibe_manufacturing_v1`.`asset`.`capex_asset_record` ALTER COLUMN `manufacturer_name` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`asset`.`capex_asset_record` ALTER COLUMN `manufacturer_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`capex_asset_record` ALTER COLUMN `model_number` SET TAGS ('dbx_business_glossary_term' = 'Model Number');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`capex_asset_record` ALTER COLUMN `net_book_value` SET TAGS ('dbx_business_glossary_term' = 'Net Book Value (NBV)');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`capex_asset_record` ALTER COLUMN `plant_code` SET TAGS ('dbx_business_glossary_term' = 'Plant Code');
@@ -1800,7 +1978,7 @@ ALTER TABLE `vibe_manufacturing_v1`.`asset`.`capex_asset_record` ALTER COLUMN `t
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`capex_asset_record` ALTER COLUMN `useful_life_years` SET TAGS ('dbx_business_glossary_term' = 'Useful Life Years');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`capex_asset_record` ALTER COLUMN `warranty_expiration_date` SET TAGS ('dbx_business_glossary_term' = 'Warranty Expiration Date');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`inspection_event` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_manufacturing_v1`.`asset`.`inspection_event` SET TAGS ('dbx_subdomain' = 'reliability_monitoring');
+ALTER TABLE `vibe_manufacturing_v1`.`asset`.`inspection_event` SET TAGS ('dbx_subdomain' = 'condition_monitoring');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`inspection_event` ALTER COLUMN `inspection_event_id` SET TAGS ('dbx_business_glossary_term' = 'Inspection Event ID');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`inspection_event` ALTER COLUMN `asset_work_order_id` SET TAGS ('dbx_business_glossary_term' = 'Work Order ID');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`inspection_event` ALTER COLUMN `cost_center_id` SET TAGS ('dbx_business_glossary_term' = 'Cost Center ID');
@@ -1819,7 +1997,6 @@ ALTER TABLE `vibe_manufacturing_v1`.`asset`.`inspection_event` ALTER COLUMN `ter
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`inspection_event` ALTER COLUMN `tertiary_inspection_approved_by_employee_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`inspection_event` ALTER COLUMN `approval_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Approval Timestamp');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`inspection_event` ALTER COLUMN `asset_operational_status_at_inspection` SET TAGS ('dbx_business_glossary_term' = 'Asset Operational Status at Inspection');
-ALTER TABLE `vibe_manufacturing_v1`.`asset`.`inspection_event` ALTER COLUMN `asset_operational_status_at_inspection` SET TAGS ('dbx_value_regex' = 'running|shutdown|standby|under_maintenance');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`inspection_event` ALTER COLUMN `capa_reference_number` SET TAGS ('dbx_business_glossary_term' = 'Corrective and Preventive Action (CAPA) Reference Number');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`inspection_event` ALTER COLUMN `certificate_expiry_date` SET TAGS ('dbx_business_glossary_term' = 'Certificate Expiry Date');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`inspection_event` ALTER COLUMN `certificate_issued` SET TAGS ('dbx_business_glossary_term' = 'Certificate Issued Flag');
@@ -1851,6 +2028,8 @@ ALTER TABLE `vibe_manufacturing_v1`.`asset`.`inspection_event` ALTER COLUMN `ins
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`inspection_event` ALTER COLUMN `inspector_certification_number` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`inspection_event` ALTER COLUMN `inspector_name` SET TAGS ('dbx_business_glossary_term' = 'Inspector Name');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`inspection_event` ALTER COLUMN `inspector_name` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`asset`.`inspection_event` ALTER COLUMN `inspector_name` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`asset`.`inspection_event` ALTER COLUMN `inspector_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`inspection_event` ALTER COLUMN `inspector_remarks` SET TAGS ('dbx_business_glossary_term' = 'Inspector Remarks');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`inspection_event` ALTER COLUMN `items_failed` SET TAGS ('dbx_business_glossary_term' = 'Checklist Items Failed');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`inspection_event` ALTER COLUMN `items_passed` SET TAGS ('dbx_business_glossary_term' = 'Checklist Items Passed');
@@ -1865,7 +2044,7 @@ ALTER TABLE `vibe_manufacturing_v1`.`asset`.`inspection_event` ALTER COLUMN `ris
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`inspection_event` ALTER COLUMN `scheduled_date` SET TAGS ('dbx_business_glossary_term' = 'Scheduled Inspection Date');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`inspection_event` ALTER COLUMN `total_checklist_items` SET TAGS ('dbx_business_glossary_term' = 'Total Checklist Items');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`calibration_record` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_manufacturing_v1`.`asset`.`calibration_record` SET TAGS ('dbx_subdomain' = 'reliability_monitoring');
+ALTER TABLE `vibe_manufacturing_v1`.`asset`.`calibration_record` SET TAGS ('dbx_subdomain' = 'condition_monitoring');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`calibration_record` ALTER COLUMN `calibration_record_id` SET TAGS ('dbx_business_glossary_term' = 'Calibration Record ID');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`calibration_record` ALTER COLUMN `asset_work_order_id` SET TAGS ('dbx_business_glossary_term' = 'Work Order ID');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`calibration_record` ALTER COLUMN `calibration_standard_id` SET TAGS ('dbx_business_glossary_term' = 'Calibration Standard ID');
@@ -1890,15 +2069,11 @@ ALTER TABLE `vibe_manufacturing_v1`.`asset`.`calibration_record` ALTER COLUMN `c
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`calibration_record` ALTER COLUMN `calibration_due_date` SET TAGS ('dbx_business_glossary_term' = 'Calibration Due Date (Next Calibration Date)');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`calibration_record` ALTER COLUMN `calibration_interval_days` SET TAGS ('dbx_business_glossary_term' = 'Calibration Interval (Days)');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`calibration_record` ALTER COLUMN `calibration_lab` SET TAGS ('dbx_business_glossary_term' = 'Calibration Laboratory Type');
-ALTER TABLE `vibe_manufacturing_v1`.`asset`.`calibration_record` ALTER COLUMN `calibration_lab` SET TAGS ('dbx_value_regex' = 'internal|external_accredited|external_non_accredited|oem_service');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`calibration_record` ALTER COLUMN `calibration_method` SET TAGS ('dbx_business_glossary_term' = 'Calibration Method');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`calibration_record` ALTER COLUMN `calibration_notes` SET TAGS ('dbx_business_glossary_term' = 'Calibration Notes');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`calibration_record` ALTER COLUMN `calibration_number` SET TAGS ('dbx_business_glossary_term' = 'Calibration Record Number');
-ALTER TABLE `vibe_manufacturing_v1`.`asset`.`calibration_record` ALTER COLUMN `calibration_number` SET TAGS ('dbx_value_regex' = '^CAL-[A-Z0-9]{3,10}-[0-9]{4,8}$');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`calibration_record` ALTER COLUMN `calibration_status` SET TAGS ('dbx_business_glossary_term' = 'Calibration Status');
-ALTER TABLE `vibe_manufacturing_v1`.`asset`.`calibration_record` ALTER COLUMN `calibration_status` SET TAGS ('dbx_value_regex' = 'pass|fail|conditional_pass|out_of_tolerance|cancelled|pending_review');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`calibration_record` ALTER COLUMN `calibration_type` SET TAGS ('dbx_business_glossary_term' = 'Calibration Type');
-ALTER TABLE `vibe_manufacturing_v1`.`asset`.`calibration_record` ALTER COLUMN `calibration_type` SET TAGS ('dbx_value_regex' = 'initial|periodic|after_repair|unscheduled|verification|final_acceptance');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`calibration_record` ALTER COLUMN `capa_reference` SET TAGS ('dbx_business_glossary_term' = 'CAPA (Corrective and Preventive Action) Reference Number');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`calibration_record` ALTER COLUMN `certificate_issue_date` SET TAGS ('dbx_business_glossary_term' = 'Calibration Certificate Issue Date');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`calibration_record` ALTER COLUMN `certificate_number` SET TAGS ('dbx_business_glossary_term' = 'Calibration Certificate Number');
@@ -1907,6 +2082,8 @@ ALTER TABLE `vibe_manufacturing_v1`.`asset`.`calibration_record` ALTER COLUMN `e
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`calibration_record` ALTER COLUMN `environmental_temperature_c` SET TAGS ('dbx_business_glossary_term' = 'Environmental Temperature at Calibration (°C)');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`calibration_record` ALTER COLUMN `external_lab_accreditation_number` SET TAGS ('dbx_business_glossary_term' = 'External Laboratory Accreditation Number');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`calibration_record` ALTER COLUMN `external_lab_name` SET TAGS ('dbx_business_glossary_term' = 'External Laboratory Name');
+ALTER TABLE `vibe_manufacturing_v1`.`asset`.`calibration_record` ALTER COLUMN `external_lab_name` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`asset`.`calibration_record` ALTER COLUMN `external_lab_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`calibration_record` ALTER COLUMN `instrument_tag` SET TAGS ('dbx_business_glossary_term' = 'Instrument Tag Number');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`calibration_record` ALTER COLUMN `instrument_type` SET TAGS ('dbx_business_glossary_term' = 'Instrument Type');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`calibration_record` ALTER COLUMN `measurement_parameter` SET TAGS ('dbx_business_glossary_term' = 'Measurement Parameter');
@@ -1920,27 +2097,43 @@ ALTER TABLE `vibe_manufacturing_v1`.`asset`.`calibration_record` ALTER COLUMN `s
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`calibration_record` ALTER COLUMN `technician_certification_number` SET TAGS ('dbx_business_glossary_term' = 'Technician Certification Number');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`calibration_record` ALTER COLUMN `technician_name` SET TAGS ('dbx_business_glossary_term' = 'Certifying Technician Name');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`calibration_record` ALTER COLUMN `technician_name` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`asset`.`calibration_record` ALTER COLUMN `technician_name` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`asset`.`calibration_record` ALTER COLUMN `technician_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`calibration_record` ALTER COLUMN `tolerance_lower_limit` SET TAGS ('dbx_business_glossary_term' = 'Tolerance Lower Limit');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`calibration_record` ALTER COLUMN `tolerance_upper_limit` SET TAGS ('dbx_business_glossary_term' = 'Tolerance Upper Limit');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`calibration_record` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Last Updated Timestamp');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_warranty` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_warranty` SET TAGS ('dbx_subdomain' = 'asset_lifecycle');
+ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_warranty` SET TAGS ('dbx_subdomain' = 'equipment_registry');
+ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_warranty` SET TAGS ('dbx_ssot' = 'master');
+ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_warranty` SET TAGS ('dbx_ssot_group' = 'warranty');
+ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_warranty` SET TAGS ('dbx_ssot_of' = 'asset.asset_warranty');
+ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_warranty` SET TAGS ('dbx_ssot_role' = 'duplicate');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_warranty` ALTER COLUMN `asset_warranty_id` SET TAGS ('dbx_business_glossary_term' = 'Asset Warranty ID');
+ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_warranty` ALTER COLUMN `asset_warranty_id` SET TAGS ('dbx_ssot_duplicate_resolved' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_warranty` ALTER COLUMN `asset_warranty_id` SET TAGS ('dbx_ssot_master' = 'service.service_warranty');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_warranty` ALTER COLUMN `equipment_register_id` SET TAGS ('dbx_business_glossary_term' = 'Asset ID');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_warranty` ALTER COLUMN `project_header_id` SET TAGS ('dbx_business_glossary_term' = 'Project Header Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_warranty` ALTER COLUMN `purchase_order_id` SET TAGS ('dbx_business_glossary_term' = 'Purchase Order (PO) ID');
+ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_warranty` ALTER COLUMN `service_warranty_id` SET TAGS ('dbx_ssot_ref' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_warranty` ALTER COLUMN `service_warranty_id` SET TAGS ('dbx_ssot_reference' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_warranty` ALTER COLUMN `supplier_id` SET TAGS ('dbx_business_glossary_term' = 'Vendor ID');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_warranty` ALTER COLUMN `activation_date` SET TAGS ('dbx_business_glossary_term' = 'Warranty Activation Date');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_warranty` ALTER COLUMN `claim_contact_email` SET TAGS ('dbx_business_glossary_term' = 'Warranty Claim Contact Email');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_warranty` ALTER COLUMN `claim_contact_email` SET TAGS ('dbx_value_regex' = '^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+.[a-zA-Z]{2,}$');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_warranty` ALTER COLUMN `claim_contact_email` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_warranty` ALTER COLUMN `claim_contact_email` SET TAGS ('dbx_pii_email' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_warranty` ALTER COLUMN `claim_contact_email` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_warranty` ALTER COLUMN `claim_contact_email` SET TAGS ('dbx_sensitivity' = 'pii');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_warranty` ALTER COLUMN `claim_contact_name` SET TAGS ('dbx_business_glossary_term' = 'Warranty Claim Contact Name');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_warranty` ALTER COLUMN `claim_contact_name` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_warranty` ALTER COLUMN `claim_contact_name` SET TAGS ('dbx_pii_identifier' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_warranty` ALTER COLUMN `claim_contact_name` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_warranty` ALTER COLUMN `claim_contact_name` SET TAGS ('dbx_sensitivity' = 'pii');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_warranty` ALTER COLUMN `claim_contact_phone` SET TAGS ('dbx_business_glossary_term' = 'Warranty Claim Contact Phone');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_warranty` ALTER COLUMN `claim_contact_phone` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_warranty` ALTER COLUMN `claim_contact_phone` SET TAGS ('dbx_pii_phone' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_warranty` ALTER COLUMN `claim_contact_phone` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_warranty` ALTER COLUMN `claim_contact_phone` SET TAGS ('dbx_sensitivity' = 'pii');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_warranty` ALTER COLUMN `claim_response_sla_days` SET TAGS ('dbx_business_glossary_term' = 'Warranty Claim Response Service Level Agreement (SLA) Days');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_warranty` ALTER COLUMN `claim_submission_process` SET TAGS ('dbx_business_glossary_term' = 'Warranty Claim Submission Process');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_warranty` ALTER COLUMN `claim_submission_process` SET TAGS ('dbx_value_regex' = 'online_portal|email|phone|field_service_dispatch|rma_process');
@@ -1965,6 +2158,8 @@ ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_warranty` ALTER COLUMN `max_c
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_warranty` ALTER COLUMN `max_claim_value` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_warranty` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Warranty Notes');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_warranty` ALTER COLUMN `oem_vendor_name` SET TAGS ('dbx_business_glossary_term' = 'Original Equipment Manufacturer (OEM) Vendor Name');
+ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_warranty` ALTER COLUMN `oem_vendor_name` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_warranty` ALTER COLUMN `oem_vendor_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_warranty` ALTER COLUMN `oem_warranty_reference` SET TAGS ('dbx_business_glossary_term' = 'OEM Warranty Reference Number');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_warranty` ALTER COLUMN `parts_coverage_flag` SET TAGS ('dbx_business_glossary_term' = 'Parts Coverage Flag');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_warranty` ALTER COLUMN `preventive_maintenance_covered_flag` SET TAGS ('dbx_business_glossary_term' = 'Preventive Maintenance (PM) Covered Flag');
@@ -1984,13 +2179,21 @@ ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_warranty` ALTER COLUMN `usage
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_warranty` ALTER COLUMN `usage_limit_unit` SET TAGS ('dbx_value_regex' = 'hours|cycles|kilometers|strokes|starts');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_warranty` ALTER COLUMN `usage_limit_value` SET TAGS ('dbx_business_glossary_term' = 'Warranty Usage Limit Value');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_warranty` ALTER COLUMN `warranty_name` SET TAGS ('dbx_business_glossary_term' = 'Warranty Name');
+ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_warranty` ALTER COLUMN `warranty_name` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_warranty` ALTER COLUMN `warranty_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_warranty` ALTER COLUMN `warranty_number` SET TAGS ('dbx_business_glossary_term' = 'Warranty Number');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_warranty` ALTER COLUMN `warranty_status` SET TAGS ('dbx_business_glossary_term' = 'Warranty Status');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_warranty` ALTER COLUMN `warranty_status` SET TAGS ('dbx_value_regex' = 'active|expired|pending|voided|suspended');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_warranty` ALTER COLUMN `warranty_type` SET TAGS ('dbx_business_glossary_term' = 'Warranty Type');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_warranty` ALTER COLUMN `warranty_type` SET TAGS ('dbx_value_regex' = 'parts_only|labor_only|full_coverage|extended|limited|manufacturer');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_certification` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_certification` SET TAGS ('dbx_subdomain' = 'asset_lifecycle');
+ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_certification` SET TAGS ('dbx_subdomain' = 'equipment_registry');
+ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_certification` SET TAGS ('dbx_ssot' = 'master');
+ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_certification` SET TAGS ('dbx_ssot_group' = 'certification');
+ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_certification` SET TAGS ('dbx_ssot_of' = 'asset.asset_certification');
+ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_certification` SET TAGS ('dbx_ssot_subject' = 'asset_equipment_certification');
+ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_certification` SET TAGS ('dbx_duplicate_resolution' = 'subject_partition');
+ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_certification` SET TAGS ('dbx_ssot_role' = 'source_of_truth');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_certification` ALTER COLUMN `asset_certification_id` SET TAGS ('dbx_business_glossary_term' = 'Asset Certification ID');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_certification` ALTER COLUMN `asset_work_order_id` SET TAGS ('dbx_business_glossary_term' = 'Work Order ID');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_certification` ALTER COLUMN `cost_center_id` SET TAGS ('dbx_business_glossary_term' = 'Cost Center Id (Foreign Key)');
@@ -1998,9 +2201,9 @@ ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_certification` ALTER COLUMN `
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_certification` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_certification` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_certification` ALTER COLUMN `equipment_register_id` SET TAGS ('dbx_business_glossary_term' = 'Asset ID');
-ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_certification` ALTER COLUMN `product_certification_id` SET TAGS ('dbx_business_glossary_term' = 'Product Certification Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_certification` ALTER COLUMN `project_header_id` SET TAGS ('dbx_business_glossary_term' = 'Project Header Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_certification` ALTER COLUMN `regulatory_requirement_id` SET TAGS ('dbx_business_glossary_term' = 'Regulatory Requirement Id (Foreign Key)');
+ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_certification` ALTER COLUMN `product_certification_id` SET TAGS ('dbx_business_glossary_term' = 'Product Certification Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_certification` ALTER COLUMN `atex_certificate_number` SET TAGS ('dbx_business_glossary_term' = 'ATEX Certificate Number');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_certification` ALTER COLUMN `ce_marking_flag` SET TAGS ('dbx_business_glossary_term' = 'CE Marking Flag');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_certification` ALTER COLUMN `certificate_number` SET TAGS ('dbx_business_glossary_term' = 'Certificate Number');
@@ -2024,10 +2227,11 @@ ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_certification` ALTER COLUMN `
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_certification` ALTER COLUMN `inspection_date` SET TAGS ('dbx_business_glossary_term' = 'Inspection Date');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_certification` ALTER COLUMN `inspector_license_number` SET TAGS ('dbx_business_glossary_term' = 'Inspector License Number');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_certification` ALTER COLUMN `inspector_name` SET TAGS ('dbx_business_glossary_term' = 'Inspector Name');
+ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_certification` ALTER COLUMN `inspector_name` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_certification` ALTER COLUMN `inspector_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_certification` ALTER COLUMN `issue_date` SET TAGS ('dbx_business_glossary_term' = 'Certificate Issue Date');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_certification` ALTER COLUMN `issuing_authority` SET TAGS ('dbx_business_glossary_term' = 'Issuing Authority');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_certification` ALTER COLUMN `issuing_authority_country` SET TAGS ('dbx_business_glossary_term' = 'Issuing Authority Country');
-ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_certification` ALTER COLUMN `issuing_authority_country` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_certification` ALTER COLUMN `last_updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Last Updated Timestamp');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_certification` ALTER COLUMN `location_code` SET TAGS ('dbx_business_glossary_term' = 'Asset Location Code');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_certification` ALTER COLUMN `mandatory_flag` SET TAGS ('dbx_business_glossary_term' = 'Mandatory Certification Flag');
@@ -2048,16 +2252,19 @@ ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_certification` ALTER COLUMN `
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_certification` ALTER COLUMN `ul_listed_flag` SET TAGS ('dbx_business_glossary_term' = 'UL Listed Flag');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_certification` ALTER COLUMN `voltage_rating_v` SET TAGS ('dbx_business_glossary_term' = 'Voltage Rating (V)');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`equipment_allocation` SET TAGS ('dbx_data_type' = 'association_data');
-ALTER TABLE `vibe_manufacturing_v1`.`asset`.`equipment_allocation` SET TAGS ('dbx_subdomain' = 'asset_lifecycle');
+ALTER TABLE `vibe_manufacturing_v1`.`asset`.`equipment_allocation` SET TAGS ('dbx_subdomain' = 'equipment_registry');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`equipment_allocation` SET TAGS ('dbx_association_edges' = 'asset.equipment_register,order.order_line');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`equipment_allocation` ALTER COLUMN `equipment_allocation_id` SET TAGS ('dbx_business_glossary_term' = 'Equipment Allocation - Equipment Allocation Id');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`equipment_allocation` ALTER COLUMN `equipment_register_id` SET TAGS ('dbx_business_glossary_term' = 'Equipment Allocation - Equipment Register Id');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`equipment_allocation` ALTER COLUMN `line_id` SET TAGS ('dbx_business_glossary_term' = 'Equipment Allocation - Order Line Id');
+ALTER TABLE `vibe_manufacturing_v1`.`asset`.`equipment_allocation` ALTER COLUMN `allocated_by_name` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`asset`.`equipment_allocation` ALTER COLUMN `allocated_to_name` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`asset`.`equipment_allocation` ALTER COLUMN `allocated_to_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`equipment_allocation` ALTER COLUMN `allocation_end_date` SET TAGS ('dbx_business_glossary_term' = 'Allocation End Date');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`equipment_allocation` ALTER COLUMN `allocation_start_date` SET TAGS ('dbx_business_glossary_term' = 'Allocation Start Date');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`equipment_allocation` ALTER COLUMN `usage_hours` SET TAGS ('dbx_business_glossary_term' = 'Usage Hours');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`equipment_shipment` SET TAGS ('dbx_data_type' = 'association_data');
-ALTER TABLE `vibe_manufacturing_v1`.`asset`.`equipment_shipment` SET TAGS ('dbx_subdomain' = 'asset_lifecycle');
+ALTER TABLE `vibe_manufacturing_v1`.`asset`.`equipment_shipment` SET TAGS ('dbx_subdomain' = 'equipment_registry');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`equipment_shipment` SET TAGS ('dbx_association_edges' = 'asset.equipment_register,logistics.shipment');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`equipment_shipment` ALTER COLUMN `equipment_shipment_id` SET TAGS ('dbx_business_glossary_term' = 'Equipment Shipment - Equipment Shipment Id');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`equipment_shipment` ALTER COLUMN `equipment_register_id` SET TAGS ('dbx_business_glossary_term' = 'Equipment Shipment - Equipment Register Id');
@@ -2071,6 +2278,8 @@ ALTER TABLE `vibe_manufacturing_v1`.`asset`.`compliance_assessment` ALTER COLUMN
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`compliance_assessment` ALTER COLUMN `equipment_register_id` SET TAGS ('dbx_business_glossary_term' = 'Compliance Assessment - Equipment Register Id');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`compliance_assessment` ALTER COLUMN `regulatory_requirement_id` SET TAGS ('dbx_business_glossary_term' = 'Compliance Assessment - Regulatory Requirement Id');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`compliance_assessment` ALTER COLUMN `assessment_date` SET TAGS ('dbx_business_glossary_term' = 'Assessment Date');
+ALTER TABLE `vibe_manufacturing_v1`.`asset`.`compliance_assessment` ALTER COLUMN `assessor_name` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`asset`.`compliance_assessment` ALTER COLUMN `assessor_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`compliance_assessment` ALTER COLUMN `compliance_status` SET TAGS ('dbx_business_glossary_term' = 'Compliance Status');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`regulatory_applicability` SET TAGS ('dbx_data_type' = 'association_data');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`regulatory_applicability` SET TAGS ('dbx_subdomain' = 'regulatory_compliance');
@@ -2080,18 +2289,30 @@ ALTER TABLE `vibe_manufacturing_v1`.`asset`.`regulatory_applicability` ALTER COL
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`regulatory_applicability` ALTER COLUMN `spare_part_id` SET TAGS ('dbx_business_glossary_term' = 'Regulatory Applicability - Spare Part Id');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`regulatory_applicability` ALTER COLUMN `compliance_status` SET TAGS ('dbx_business_glossary_term' = 'Compliance Status');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`regulatory_applicability` ALTER COLUMN `compliance_status` SET TAGS ('dbx_sensitive' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`asset`.`regulatory_applicability` ALTER COLUMN `determined_by_name` SET TAGS ('dbx_sensitivity' = 'pii');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`regulatory_applicability` ALTER COLUMN `effective_date` SET TAGS ('dbx_business_glossary_term' = 'Effective Date');
+ALTER TABLE `vibe_manufacturing_v1`.`asset`.`regulatory_applicability` ALTER COLUMN `regulation_name` SET TAGS ('dbx_sensitivity' = 'pii');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_plant` SET TAGS ('dbx_data_type' = 'master_data');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_plant` SET TAGS ('dbx_subdomain' = 'equipment_registry');
+ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_plant` SET TAGS ('dbx_ssot' = 'master');
+ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_plant` SET TAGS ('dbx_ssot_group' = 'plant');
+ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_plant` SET TAGS ('dbx_ssot_of' = 'asset.plant');
+ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_plant` SET TAGS ('dbx_ssot_role' = 'duplicate');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_plant` ALTER COLUMN `asset_plant_id` SET TAGS ('dbx_business_glossary_term' = 'Plant Identifier');
+ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_plant` ALTER COLUMN `asset_plant_id` SET TAGS ('dbx_ssot' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_plant` ALTER COLUMN `asset_plant_id` SET TAGS ('dbx_ssot_owner' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_plant` ALTER COLUMN `parent_plant_id` SET TAGS ('dbx_business_glossary_term' = 'Parent Plant Id');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_plant` ALTER COLUMN `parent_plant_id` SET TAGS ('dbx_self_ref_fk' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_plant` ALTER COLUMN `production_plant_id` SET TAGS ('dbx_ssot' = 'reference');
+ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_plant` ALTER COLUMN `production_plant_id` SET TAGS ('dbx_ssot_reference' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_plant` ALTER COLUMN `address_line1` SET TAGS ('dbx_business_glossary_term' = 'Address Line1');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_plant` ALTER COLUMN `address_line1` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_plant` ALTER COLUMN `address_line1` SET TAGS ('dbx_pii_address' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_plant` ALTER COLUMN `address_line1` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_plant` ALTER COLUMN `address_line2` SET TAGS ('dbx_business_glossary_term' = 'Address Line2');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_plant` ALTER COLUMN `address_line2` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_plant` ALTER COLUMN `address_line2` SET TAGS ('dbx_pii_address' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_plant` ALTER COLUMN `address_line2` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_plant` ALTER COLUMN `area_sq_m` SET TAGS ('dbx_business_glossary_term' = 'Area Sq M');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_plant` ALTER COLUMN `capacity_units_per_year` SET TAGS ('dbx_business_glossary_term' = 'Capacity Units Per Year');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_plant` ALTER COLUMN `city` SET TAGS ('dbx_business_glossary_term' = 'City');
@@ -2105,6 +2326,8 @@ ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_plant` ALTER COLUMN `asset_pl
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_plant` ALTER COLUMN `email_address` SET TAGS ('dbx_business_glossary_term' = 'Email Address');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_plant` ALTER COLUMN `email_address` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_plant` ALTER COLUMN `email_address` SET TAGS ('dbx_pii_email' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_plant` ALTER COLUMN `email_address` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_plant` ALTER COLUMN `email_address` SET TAGS ('dbx_sensitivity' = 'pii');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_plant` ALTER COLUMN `emissions_co2_tons` SET TAGS ('dbx_business_glossary_term' = 'Emissions Co2 Tons');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_plant` ALTER COLUMN `energy_consumption_mwh` SET TAGS ('dbx_business_glossary_term' = 'Energy Consumption Mwh');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_plant` ALTER COLUMN `latitude` SET TAGS ('dbx_business_glossary_term' = 'Latitude');
@@ -2117,14 +2340,18 @@ ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_plant` ALTER COLUMN `longitud
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_plant` ALTER COLUMN `maintenance_contract_status` SET TAGS ('dbx_business_glossary_term' = 'Maintenance Contract Status');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_plant` ALTER COLUMN `maintenance_strategy` SET TAGS ('dbx_business_glossary_term' = 'Maintenance Strategy');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_plant` ALTER COLUMN `manager_name` SET TAGS ('dbx_business_glossary_term' = 'Manager Name');
+ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_plant` ALTER COLUMN `manager_name` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_plant` ALTER COLUMN `manager_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_plant` ALTER COLUMN `asset_plant_name` SET TAGS ('dbx_business_glossary_term' = 'Name');
+ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_plant` ALTER COLUMN `asset_plant_name` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_plant` ALTER COLUMN `asset_plant_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_plant` ALTER COLUMN `number_of_employees` SET TAGS ('dbx_business_glossary_term' = 'Number Of Employees');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_plant` ALTER COLUMN `operational_end_date` SET TAGS ('dbx_business_glossary_term' = 'Operational End Date');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_plant` ALTER COLUMN `operational_start_date` SET TAGS ('dbx_business_glossary_term' = 'Operational Start Date');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_plant` ALTER COLUMN `phone_number` SET TAGS ('dbx_business_glossary_term' = 'Phone Number');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_plant` ALTER COLUMN `phone_number` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_plant` ALTER COLUMN `phone_number` SET TAGS ('dbx_pii_phone' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_plant` ALTER COLUMN `plant_code` SET TAGS ('dbx_business_glossary_term' = 'Plant Code');
+ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_plant` ALTER COLUMN `phone_number` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_plant` ALTER COLUMN `plant_type` SET TAGS ('dbx_business_glossary_term' = 'Plant Type');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_plant` ALTER COLUMN `postal_code` SET TAGS ('dbx_business_glossary_term' = 'Postal Code');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_plant` ALTER COLUMN `postal_code` SET TAGS ('dbx_confidential' = 'true');
@@ -2138,7 +2365,7 @@ ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_plant` ALTER COLUMN `state_pr
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_plant` ALTER COLUMN `timezone` SET TAGS ('dbx_business_glossary_term' = 'Timezone');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`asset_plant` ALTER COLUMN `website_url` SET TAGS ('dbx_business_glossary_term' = 'Website Url');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`calibration_standard` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_manufacturing_v1`.`asset`.`calibration_standard` SET TAGS ('dbx_subdomain' = 'reliability_monitoring');
+ALTER TABLE `vibe_manufacturing_v1`.`asset`.`calibration_standard` SET TAGS ('dbx_subdomain' = 'condition_monitoring');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`calibration_standard` ALTER COLUMN `calibration_standard_id` SET TAGS ('dbx_business_glossary_term' = 'Calibration Standard Identifier');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`calibration_standard` ALTER COLUMN `reference_standard_calibration_standard_id` SET TAGS ('dbx_business_glossary_term' = 'Reference Calibration Standard Id');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`calibration_standard` ALTER COLUMN `reference_standard_calibration_standard_id` SET TAGS ('dbx_self_ref_fk' = 'true');
@@ -2157,19 +2384,25 @@ ALTER TABLE `vibe_manufacturing_v1`.`asset`.`calibration_standard` ALTER COLUMN 
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`calibration_standard` ALTER COLUMN `effective_from` SET TAGS ('dbx_business_glossary_term' = 'Effective From');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`calibration_standard` ALTER COLUMN `effective_until` SET TAGS ('dbx_business_glossary_term' = 'Effective Until');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`calibration_standard` ALTER COLUMN `is_traceable` SET TAGS ('dbx_business_glossary_term' = 'Is Traceable');
+ALTER TABLE `vibe_manufacturing_v1`.`asset`.`calibration_standard` ALTER COLUMN `is_traceable` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`asset`.`calibration_standard` ALTER COLUMN `is_traceable` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`calibration_standard` ALTER COLUMN `last_calibrated_date` SET TAGS ('dbx_business_glossary_term' = 'Last Calibrated Date');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`calibration_standard` ALTER COLUMN `manufacturer` SET TAGS ('dbx_business_glossary_term' = 'Manufacturer');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`calibration_standard` ALTER COLUMN `measurement_unit` SET TAGS ('dbx_business_glossary_term' = 'Measurement Unit');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`calibration_standard` ALTER COLUMN `model` SET TAGS ('dbx_business_glossary_term' = 'Model');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`calibration_standard` ALTER COLUMN `calibration_standard_name` SET TAGS ('dbx_business_glossary_term' = 'Name');
+ALTER TABLE `vibe_manufacturing_v1`.`asset`.`calibration_standard` ALTER COLUMN `calibration_standard_name` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`asset`.`calibration_standard` ALTER COLUMN `calibration_standard_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`calibration_standard` ALTER COLUMN `next_due_date` SET TAGS ('dbx_business_glossary_term' = 'Next Due Date');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`calibration_standard` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Notes');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`calibration_standard` ALTER COLUMN `required_certification` SET TAGS ('dbx_business_glossary_term' = 'Required Certification');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`calibration_standard` ALTER COLUMN `standard_body` SET TAGS ('dbx_business_glossary_term' = 'Standard Body');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`calibration_standard` ALTER COLUMN `standard_document_number` SET TAGS ('dbx_business_glossary_term' = 'Standard Document Number');
+ALTER TABLE `vibe_manufacturing_v1`.`asset`.`calibration_standard` ALTER COLUMN `standard_name` SET TAGS ('dbx_sensitivity' = 'pii');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`calibration_standard` ALTER COLUMN `calibration_standard_status` SET TAGS ('dbx_business_glossary_term' = 'Status');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`calibration_standard` ALTER COLUMN `tolerance_unit` SET TAGS ('dbx_business_glossary_term' = 'Tolerance Unit');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`calibration_standard` ALTER COLUMN `tolerance_value` SET TAGS ('dbx_business_glossary_term' = 'Tolerance Value');
+ALTER TABLE `vibe_manufacturing_v1`.`asset`.`calibration_standard` ALTER COLUMN `traceability_reference` SET TAGS ('dbx_sensitivity' = 'pii');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`calibration_standard` ALTER COLUMN `calibration_standard_type` SET TAGS ('dbx_business_glossary_term' = 'Type');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`calibration_standard` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Updated Timestamp');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`calibration_standard` ALTER COLUMN `version` SET TAGS ('dbx_business_glossary_term' = 'Version');
@@ -2198,19 +2431,22 @@ ALTER TABLE `vibe_manufacturing_v1`.`asset`.`lubrication_route` ALTER COLUMN `re
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`lubrication_route` ALTER COLUMN `responsible_role` SET TAGS ('dbx_business_glossary_term' = 'Responsible Role');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`lubrication_route` ALTER COLUMN `route_code` SET TAGS ('dbx_business_glossary_term' = 'Route Code');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`lubrication_route` ALTER COLUMN `route_name` SET TAGS ('dbx_business_glossary_term' = 'Route Name');
+ALTER TABLE `vibe_manufacturing_v1`.`asset`.`lubrication_route` ALTER COLUMN `route_name` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`asset`.`lubrication_route` ALTER COLUMN `route_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`lubrication_route` ALTER COLUMN `route_type` SET TAGS ('dbx_business_glossary_term' = 'Route Type');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`lubrication_route` ALTER COLUMN `safety_critical` SET TAGS ('dbx_business_glossary_term' = 'Safety Critical');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`lubrication_route` ALTER COLUMN `start_date` SET TAGS ('dbx_business_glossary_term' = 'Start Date');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`lubrication_route` ALTER COLUMN `lubrication_route_status` SET TAGS ('dbx_business_glossary_term' = 'Status');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`lubrication_route` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Updated Timestamp');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`inspection_checklist` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_manufacturing_v1`.`asset`.`inspection_checklist` SET TAGS ('dbx_subdomain' = 'reliability_monitoring');
+ALTER TABLE `vibe_manufacturing_v1`.`asset`.`inspection_checklist` SET TAGS ('dbx_subdomain' = 'condition_monitoring');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`inspection_checklist` ALTER COLUMN `inspection_checklist_id` SET TAGS ('dbx_business_glossary_term' = 'Inspection Checklist Identifier');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`inspection_checklist` ALTER COLUMN `parent_inspection_checklist_id` SET TAGS ('dbx_business_glossary_term' = 'Parent Inspection Checklist Id');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`inspection_checklist` ALTER COLUMN `parent_inspection_checklist_id` SET TAGS ('dbx_self_ref_fk' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`inspection_checklist` ALTER COLUMN `applicable_asset_type` SET TAGS ('dbx_business_glossary_term' = 'Applicable Asset Type');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`inspection_checklist` ALTER COLUMN `approval_status` SET TAGS ('dbx_business_glossary_term' = 'Approval Status');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`inspection_checklist` ALTER COLUMN `author` SET TAGS ('dbx_business_glossary_term' = 'Author');
+ALTER TABLE `vibe_manufacturing_v1`.`asset`.`inspection_checklist` ALTER COLUMN `checklist_name` SET TAGS ('dbx_sensitivity' = 'pii');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`inspection_checklist` ALTER COLUMN `inspection_checklist_code` SET TAGS ('dbx_business_glossary_term' = 'Code');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`inspection_checklist` ALTER COLUMN `compliance_standard` SET TAGS ('dbx_business_glossary_term' = 'Compliance Standard');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`inspection_checklist` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
@@ -2223,6 +2459,8 @@ ALTER TABLE `vibe_manufacturing_v1`.`asset`.`inspection_checklist` ALTER COLUMN 
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`inspection_checklist` ALTER COLUMN `inspection_area` SET TAGS ('dbx_business_glossary_term' = 'Inspection Area');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`inspection_checklist` ALTER COLUMN `last_review_date` SET TAGS ('dbx_business_glossary_term' = 'Last Review Date');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`inspection_checklist` ALTER COLUMN `inspection_checklist_name` SET TAGS ('dbx_business_glossary_term' = 'Name');
+ALTER TABLE `vibe_manufacturing_v1`.`asset`.`inspection_checklist` ALTER COLUMN `inspection_checklist_name` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`asset`.`inspection_checklist` ALTER COLUMN `inspection_checklist_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`inspection_checklist` ALTER COLUMN `next_review_date` SET TAGS ('dbx_business_glossary_term' = 'Next Review Date');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`inspection_checklist` ALTER COLUMN `number_of_items` SET TAGS ('dbx_business_glossary_term' = 'Number Of Items');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`inspection_checklist` ALTER COLUMN `required` SET TAGS ('dbx_business_glossary_term' = 'Required');
@@ -2251,10 +2489,13 @@ ALTER TABLE `vibe_manufacturing_v1`.`asset`.`work_order_type` ALTER COLUMN `is_a
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`work_order_type` ALTER COLUMN `is_deprecated` SET TAGS ('dbx_business_glossary_term' = 'Is Deprecated');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`work_order_type` ALTER COLUMN `is_external` SET TAGS ('dbx_business_glossary_term' = 'Is External');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`work_order_type` ALTER COLUMN `work_order_type_name` SET TAGS ('dbx_business_glossary_term' = 'Name');
+ALTER TABLE `vibe_manufacturing_v1`.`asset`.`work_order_type` ALTER COLUMN `work_order_type_name` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`asset`.`work_order_type` ALTER COLUMN `work_order_type_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`work_order_type` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Notes');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`work_order_type` ALTER COLUMN `priority` SET TAGS ('dbx_business_glossary_term' = 'Priority');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`work_order_type` ALTER COLUMN `requires_approval` SET TAGS ('dbx_business_glossary_term' = 'Requires Approval');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`work_order_type` ALTER COLUMN `type_code` SET TAGS ('dbx_business_glossary_term' = 'Type Code');
+ALTER TABLE `vibe_manufacturing_v1`.`asset`.`work_order_type` ALTER COLUMN `type_name` SET TAGS ('dbx_sensitivity' = 'pii');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`work_order_type` ALTER COLUMN `updated_by` SET TAGS ('dbx_business_glossary_term' = 'Updated By');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`work_order_type` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Updated Timestamp');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`work_order_type` ALTER COLUMN `created_by` SET TAGS ('dbx_business_glossary_term' = 'Created By');
@@ -2280,6 +2521,8 @@ ALTER TABLE `vibe_manufacturing_v1`.`asset`.`craft_skill` ALTER COLUMN `skill_ca
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`craft_skill` ALTER COLUMN `skill_code` SET TAGS ('dbx_business_glossary_term' = 'Skill Code');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`craft_skill` ALTER COLUMN `skill_level` SET TAGS ('dbx_business_glossary_term' = 'Skill Level');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`craft_skill` ALTER COLUMN `skill_name` SET TAGS ('dbx_business_glossary_term' = 'Skill Name');
+ALTER TABLE `vibe_manufacturing_v1`.`asset`.`craft_skill` ALTER COLUMN `skill_name` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`asset`.`craft_skill` ALTER COLUMN `skill_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`craft_skill` ALTER COLUMN `craft_skill_status` SET TAGS ('dbx_business_glossary_term' = 'Status');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`craft_skill` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Updated Timestamp');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`maintenance_strategy` SET TAGS ('dbx_data_type' = 'master_data');
@@ -2304,11 +2547,14 @@ ALTER TABLE `vibe_manufacturing_v1`.`asset`.`maintenance_strategy` ALTER COLUMN 
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`maintenance_strategy` ALTER COLUMN `maintenance_window_end_time` SET TAGS ('dbx_business_glossary_term' = 'Maintenance Window End Time');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`maintenance_strategy` ALTER COLUMN `maintenance_window_start_time` SET TAGS ('dbx_business_glossary_term' = 'Maintenance Window Start Time');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`maintenance_strategy` ALTER COLUMN `maintenance_strategy_name` SET TAGS ('dbx_business_glossary_term' = 'Name');
+ALTER TABLE `vibe_manufacturing_v1`.`asset`.`maintenance_strategy` ALTER COLUMN `maintenance_strategy_name` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`asset`.`maintenance_strategy` ALTER COLUMN `maintenance_strategy_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`maintenance_strategy` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Notes');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`maintenance_strategy` ALTER COLUMN `priority` SET TAGS ('dbx_business_glossary_term' = 'Priority');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`maintenance_strategy` ALTER COLUMN `requires_shutdown` SET TAGS ('dbx_business_glossary_term' = 'Requires Shutdown');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`maintenance_strategy` ALTER COLUMN `review_frequency_months` SET TAGS ('dbx_business_glossary_term' = 'Review Frequency Months');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`maintenance_strategy` ALTER COLUMN `maintenance_strategy_status` SET TAGS ('dbx_business_glossary_term' = 'Status');
+ALTER TABLE `vibe_manufacturing_v1`.`asset`.`maintenance_strategy` ALTER COLUMN `strategy_name` SET TAGS ('dbx_sensitivity' = 'pii');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`maintenance_strategy` ALTER COLUMN `strategy_type` SET TAGS ('dbx_business_glossary_term' = 'Strategy Type');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`maintenance_strategy` ALTER COLUMN `updated_by` SET TAGS ('dbx_business_glossary_term' = 'Updated By');
 ALTER TABLE `vibe_manufacturing_v1`.`asset`.`maintenance_strategy` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Updated Timestamp');

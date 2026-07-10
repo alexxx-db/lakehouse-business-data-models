@@ -1,5 +1,5 @@
--- Schema for Domain: workforce | Business:  | Version: v2_ecm
--- Generated on: 2026-07-10 12:59:05
+-- Schema for Domain: workforce | Business: Manufacturing | Version: v2_ecm
+-- Generated on: 2026-07-03 05:59:39
 
 -- ========= DATABASE =========
 CREATE DATABASE IF NOT EXISTS `vibe_manufacturing_v1`.`workforce` COMMENT 'Human capital and workforce management domain covering employee master data, organizational structure, skills and certifications, shift scheduling, labor tracking, payroll, talent management, and HR administration via Workday HCM. Supports labor cost allocation and ISO 45001 occupational health compliance.';
@@ -10,7 +10,7 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`workforce`.`employee` (
     `company_code_id` BIGINT COMMENT 'Foreign key linking to finance.company_code. Business justification: Payroll tax reporting requires linking each employee to their legal entity (company code) for statutory compliance.',
     `supervisor_employee_id` BIGINT COMMENT 'Employee ID of the direct supervisor or manager. Establishes reporting hierarchy for organizational structure, approval workflows, and performance management.',
     `annual_salary` DECIMAL(18,2) COMMENT 'Annual base salary for salaried employees. Used for budgeting, compensation analysis, and financial reporting. Null for hourly employees.',
-    `cost_center` STRING COMMENT 'Financial cost center code for labor cost allocation and budgeting. Used in SAP S/4HANA CO (Controlling) module for tracking labor expenses against departmental budgets and calculating manufacturing overhead.. Valid values are `^[A-Z0-9]{4,10}$`',
+    `cost_center` DECIMAL(18,2) COMMENT 'Financial cost center code for labor cost allocation and budgeting. Used in SAP S/4HANA CO (Controlling) module for tracking labor expenses against departmental budgets and calculating manufacturing overhead.',
     `created_timestamp` TIMESTAMP COMMENT 'Timestamp when this employee record was first created in the system. Used for audit trail, data lineage, and compliance with data governance policies.',
     `currency_code` STRING COMMENT 'Three-letter ISO 4217 currency code for compensation. Examples: USD, EUR, GBP, CNY. Used for multi-currency payroll processing and global workforce reporting.. Valid values are `^[A-Z]{3}$`',
     `date_of_birth` DATE COMMENT 'Date of birth of the employee. Used for age verification, benefits eligibility, retirement planning, and compliance with labor laws.',
@@ -77,6 +77,7 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`workforce`.`org_unit` (
     `hierarchy_level` STRING COMMENT 'Numeric level in the organizational hierarchy (1=corporate, 2=division, 3=business unit, etc.). Used for hierarchical rollup reporting.',
     `hierarchy_path` STRING COMMENT 'Full hierarchical path from corporate root to this organizational unit (e.g., /CORP/DIV01/PLANT05/DEPT20). Enables efficient hierarchy traversal queries.',
     `is_production_unit` BOOLEAN COMMENT 'Indicates whether this organizational unit is directly involved in manufacturing production activities. Used for production reporting and Manufacturing Execution System (MES) integration.',
+    `last_modified_timestamp` TIMESTAMP COMMENT '',
     `location_code` STRING COMMENT 'Physical location or site code where this organizational unit operates. Links to facility master data for geographic reporting.. Valid values are `^[A-Z0-9]{3,10}$`',
     `modified_by_user` STRING COMMENT 'User ID or system account that last modified this organizational unit record. Used for audit trail and data stewardship.',
     `modified_timestamp` TIMESTAMP COMMENT 'Timestamp when this organizational unit record was last modified. Used for change tracking and data quality monitoring.',
@@ -105,16 +106,22 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`workforce`.`job_profile` (
     `approved_timestamp` TIMESTAMP COMMENT 'Date and time when this job profile was approved for use.',
     `base_pay_type` STRING COMMENT 'Primary compensation structure for this job profile: Hourly (paid per hour worked), Salary (fixed annual amount), or Piece Rate (paid per unit produced).. Valid values are `hourly|salary|piece_rate`',
     `bonus_target_percentage` DECIMAL(18,2) COMMENT 'Target annual bonus as a percentage of base salary for this job profile (e.g., 10.00 represents 10% target bonus).',
+    `job_profile_code` STRING COMMENT '',
     `created_timestamp` TIMESTAMP COMMENT 'Date and time when this job profile record was first created in the system.',
     `currency_code` STRING COMMENT 'Three-letter ISO 4217 currency code for salary range values (e.g., USD, EUR, GBP).. Valid values are `^[A-Z]{3}$`',
     `effective_end_date` DATE COMMENT 'Date when this job profile is retired or superseded. Null for open-ended profiles.',
     `effective_start_date` DATE COMMENT 'Date when this job profile becomes active and available for use in hiring, workforce planning, and organizational design.',
     `flsa_classification` STRING COMMENT 'FLSA overtime eligibility classification: Exempt (salaried, not eligible for overtime) or Non-Exempt (hourly, eligible for overtime).. Valid values are `exempt|non_exempt`',
+    `is_active` BOOLEAN COMMENT '',
+    `job_description` STRING COMMENT '',
     `job_family` STRING COMMENT 'Broad occupational category grouping similar roles (e.g., Production, Engineering, Quality, Maintenance, Supply Chain, Sales, Finance, HR, IT, Management). [ENUM-REF-CANDIDATE: production|engineering|quality|maintenance|supply_chain|sales|finance|hr|it|management — 10 candidates stripped; promote to reference product]',
     `job_level` STRING COMMENT 'Hierarchical level of the position within the organization (e.g., Entry, Intermediate, Senior, Lead, Manager, Director, Executive). [ENUM-REF-CANDIDATE: entry|intermediate|senior|lead|manager|director|executive — 7 candidates stripped; promote to reference product]',
     `job_profile_status` STRING COMMENT 'Current lifecycle status of the job profile: Active (in use), Inactive (temporarily suspended), Draft (under development), Obsolete (retired).. Valid values are `active|inactive|draft|obsolete`',
     `last_modified_timestamp` TIMESTAMP COMMENT 'Date and time when this job profile record was last updated.',
     `last_review_date` DATE COMMENT 'Date when this job profile was last reviewed and validated by HR and business leadership.',
+    `max_salary` DECIMAL(18,2) COMMENT '',
+    `min_salary` DECIMAL(18,2) COMMENT '',
+    `job_profile_name` STRING COMMENT '',
     `next_review_date` DATE COMMENT 'Scheduled date for the next periodic review and update of this job profile.',
     `occupational_classification_code` STRING COMMENT 'Standard Occupational Classification (SOC) code aligning this job profile to national occupational taxonomy (format: XX-XXXX).. Valid values are `^[0-9]{2}-[0-9]{4}$`',
     `overtime_eligible` BOOLEAN COMMENT 'Indicates whether positions under this job profile are eligible for overtime compensation under FLSA and local labor laws.',
@@ -127,6 +134,7 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`workforce`.`job_profile` (
     `remote_work_eligible` BOOLEAN COMMENT 'Indicates whether this job profile is eligible for remote or hybrid work arrangements.',
     `required_certifications` STRING COMMENT 'Comma-separated list of mandatory professional certifications, licenses, or credentials required for this job profile (e.g., CNC Operator Certification, OSHA 30-Hour, Forklift License).',
     `required_education_level` STRING COMMENT 'Minimum educational attainment required for this job profile (e.g., High School, Associate, Bachelor, Master, Doctorate, Vocational, None). [ENUM-REF-CANDIDATE: high_school|associate|bachelor|master|doctorate|vocational|none — 7 candidates stripped; promote to reference product]',
+    `required_skills` STRING COMMENT '',
     `safety_sensitive_position` BOOLEAN COMMENT 'Indicates whether this job profile is classified as safety-sensitive, requiring additional screening, training, and compliance monitoring under OSHA and ISO 45001.',
     `salary_range_maximum` DECIMAL(18,2) COMMENT 'Maximum annual base salary for this job profile in the enterprise default currency.',
     `salary_range_midpoint` DECIMAL(18,2) COMMENT 'Midpoint annual base salary for this job profile, representing the target compensation for fully competent performance.',
@@ -152,9 +160,11 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`workforce`.`position` (
     `supervisor_position_id` BIGINT COMMENT 'Reference to the position that supervises this position in the organizational hierarchy.',
     `approved_date` DATE COMMENT 'Date when this position was approved by management for inclusion in the authorized headcount.',
     `budgeted_headcount` DECIMAL(18,2) COMMENT 'Approved headcount allocation for this position in the annual budget, used for workforce planning and gap analysis.',
+    `budgeted_salary` DECIMAL(18,2) COMMENT '',
     `business_unit` STRING COMMENT 'High-level business unit or division to which this position belongs for strategic workforce planning.',
     `position_code` STRING COMMENT 'Business-assigned unique code for the position, used for external identification and reporting.. Valid values are `^[A-Z0-9]{6,12}$`',
     `created_date` DATE COMMENT 'Date when this position record was originally created in the system.',
+    `created_timestamp` TIMESTAMP COMMENT '',
     `critical_position_flag` BOOLEAN COMMENT 'Indicates whether this position is classified as business-critical for succession planning and talent management purposes.',
     `position_description` STRING COMMENT 'Detailed description of the position responsibilities, duties, and key accountabilities.',
     `effective_end_date` DATE COMMENT 'Date when this position was closed or is scheduled to be closed. Null for open-ended positions.',
@@ -162,7 +172,9 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`workforce`.`position` (
     `employment_category` STRING COMMENT 'Employment category indicating the work schedule pattern: full-time, part-time, casual, or on-call.. Valid values are `full_time|part_time|casual|on_call`',
     `exempt_status` STRING COMMENT 'FLSA classification indicating whether the position is exempt or non-exempt from overtime pay requirements.. Valid values are `exempt|non_exempt`',
     `fte_allocation` DECIMAL(18,2) COMMENT 'Full-time equivalent allocation for this position, representing the proportion of a full-time workload (e.g., 1.00 for full-time, 0.50 for half-time).',
+    `fte_value` DECIMAL(18,2) COMMENT '',
     `is_safety_sensitive` BOOLEAN COMMENT 'Indicates whether this position is classified as safety-sensitive, requiring additional health and safety compliance per ISO 45001 and OSHA regulations.',
+    `is_vacant` BOOLEAN COMMENT '',
     `job_family` STRING COMMENT 'Broad job family classification grouping similar positions (e.g., Engineering, Operations, Finance, Human Resources).',
     `job_level` STRING COMMENT 'Hierarchical level of the position within the organization (e.g., entry, mid, senior, executive).. Valid values are `^[A-Z0-9]{1,4}$`',
     `justification` STRING COMMENT 'Business justification for creating or maintaining this position, used for budget approval and workforce planning.',
@@ -173,13 +185,14 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`workforce`.`position` (
     `notes` STRING COMMENT 'Additional notes or comments about this position for internal HR and management reference.',
     `pay_grade` STRING COMMENT 'Compensation grade or band assigned to this position, defining the salary range and compensation structure.. Valid values are `^[A-Z0-9]{2,6}$`',
     `position_status` STRING COMMENT 'Current lifecycle status of the position indicating whether it is filled, vacant, frozen for budget reasons, pending approval, closed, or suspended.. Valid values are `filled|vacant|frozen|pending_approval|closed|suspended`',
+    `position_title` STRING COMMENT '',
     `position_type` STRING COMMENT 'Classification of the position based on employment type: regular (permanent), temporary, contract, seasonal, or intern.. Valid values are `regular|temporary|contract|seasonal|intern`',
     `remote_work_eligible` BOOLEAN COMMENT 'Indicates whether this position is eligible for remote or hybrid work arrangements.',
     `replacement_position_flag` BOOLEAN COMMENT 'Indicates whether this position is a replacement for a previously closed position or a net-new headcount addition.',
     `requires_certification` BOOLEAN COMMENT 'Indicates whether this position requires specific professional certifications, licenses, or qualifications to perform the role.',
     `shift_pattern` STRING COMMENT 'Standard shift pattern assigned to this position for manufacturing operations and scheduling.. Valid values are `day|night|rotating|fixed|flexible`',
     `title` STRING COMMENT 'Official job title for the position as defined in the organizational structure.',
-    `travel_requirement_percentage` STRING COMMENT 'Percentage of time this position is expected to travel for business purposes (0-100).',
+    `travel_requirement_percentage` DECIMAL(18,2) COMMENT 'Percentage of time this position is expected to travel for business purposes (0-100).',
     `union_code` STRING COMMENT 'Code identifying the labor union or collective bargaining unit to which this position belongs, if applicable.. Valid values are `^[A-Z0-9]{2,8}$`',
     `vacancy_start_date` DATE COMMENT 'Date when this position became vacant, used for time-to-fill metrics and workforce gap analysis.',
     `work_schedule_hours` DECIMAL(18,2) COMMENT 'Standard number of hours per week assigned to this position for scheduling and labor tracking purposes.',
@@ -188,13 +201,14 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`workforce`.`position` (
 
 CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`workforce`.`assignment` (
     `assignment_id` BIGINT COMMENT 'Primary key for assignment',
+    `employee_id` BIGINT COMMENT '',
     `assignment_org_unit_id` BIGINT COMMENT 'Reference to the organizational unit to which the employee is assigned. Links to the organizational hierarchy.',
     `cost_center_id` BIGINT COMMENT 'Reference to the primary cost center for labor cost allocation. Used for financial reporting and production cost tracking.',
     `device_registry_id` BIGINT COMMENT 'Foreign key linking to automation.device_registry. Business justification: Equipment assignment records which employee is assigned to maintain or operate a device, supporting maintenance planning.',
     `job_profile_id` BIGINT COMMENT 'Reference to the job profile defining the role, responsibilities, and competencies for this assignment.',
     `org_unit_id` BIGINT COMMENT 'Reference to the business unit for financial and operational reporting. Links to the enterprise business unit hierarchy.',
     `position_id` BIGINT COMMENT 'Reference to the position master record. Identifies the specific position to which the employee is assigned.',
-    `employee_id` BIGINT COMMENT 'Reference to the employee master record. Links this assignment to the worker in the workforce domain.',
+    `primary_assignment_employee_id` BIGINT COMMENT 'Reference to the employee master record. Links this assignment to the worker in the workforce domain.',
     `location_id` BIGINT COMMENT 'Reference to the primary physical work location for this assignment. Links to facility or site master data.',
     `assignment_number` STRING COMMENT 'Business-facing unique identifier for the assignment. Used for external reference and reporting.',
     `assignment_status` STRING COMMENT 'Current lifecycle status of the assignment. Indicates whether the assignment is currently active, inactive, suspended, terminated, or pending activation.. Valid values are `active|inactive|suspended|terminated|pending`',
@@ -207,9 +221,12 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`workforce`.`assignment` (
     `effective_end_date` DATE COMMENT 'Date when the assignment ends or is scheduled to end. Nullable for open-ended assignments.',
     `effective_start_date` DATE COMMENT 'Date when the assignment becomes effective. Marks the beginning of the assignment period.',
     `employment_type` STRING COMMENT 'Classification of the employment arrangement. Distinguishes between full-time, part-time, casual, and seasonal employment.. Valid values are `full_time|part_time|casual|seasonal`',
+    `end_date` TIMESTAMP COMMENT '',
     `fte_percentage` DECIMAL(18,2) COMMENT 'Percentage of full-time equivalent hours for this assignment. 100.00 represents full-time, values below 100 represent part-time.',
+    `is_primary` BOOLEAN COMMENT '',
     `job_family` STRING COMMENT 'Broad categorization of the job role. Groups similar positions for workforce planning and talent management.',
     `job_level` STRING COMMENT 'Hierarchical level of the position within the organization. Used for career progression tracking and compensation benchmarking.',
+    `last_modified_timestamp` TIMESTAMP COMMENT '',
     `modified_by` STRING COMMENT 'User identifier or system account that last modified the assignment record. Used for audit trail and accountability.',
     `modified_timestamp` TIMESTAMP COMMENT 'Timestamp when the assignment record was last modified. Used for audit trail and change tracking.',
     `notes` STRING COMMENT 'Free-text field for additional notes or comments about the assignment. Used for documenting special circumstances or conditions.',
@@ -224,6 +241,7 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`workforce`.`assignment` (
     `scheduled_weekly_hours` DECIMAL(18,2) COMMENT 'Standard number of hours the employee is scheduled to work per week under this assignment.',
     `shift_premium_eligible_flag` BOOLEAN COMMENT 'Indicates whether the assignment is eligible for shift premium pay. True if eligible for additional compensation for non-standard shifts.',
     `source_system_code` STRING COMMENT 'Code identifying the source system from which this assignment record originated. Used for data lineage and integration tracking.',
+    `start_date` TIMESTAMP COMMENT '',
     `termination_date` DATE COMMENT 'Date when the assignment was terminated. Null for active assignments. Used for historical tracking and compliance reporting.',
     `termination_reason` STRING COMMENT 'Reason for assignment termination. Examples include resignation, retirement, layoff, dismissal, end of contract, or transfer. Null for active assignments.',
     `time_type` STRING COMMENT 'Classification of time tracking method for this assignment. Examples include salaried exempt, salaried non-exempt, hourly, or piece-rate.',
@@ -239,25 +257,29 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`workforce`.`workforce_certifica
     `certification_type_id` BIGINT COMMENT 'Unique identifier of the certification type from the master catalog. Defines the regulatory, safety, or professional certification standard (e.g., ISO 45001, OSHA 10/30, forklift operator, electrical safety, AWS/ASME welding qualifications, quality auditor).',
     `employee_id` BIGINT COMMENT 'Unique identifier of the employee who holds or is pursuing this certification. Links to the employee master record in Workday HCM.',
     `regulatory_requirement_id` BIGINT COMMENT 'Foreign key linking to compliance.regulatory_requirement. Business justification: Required for tracking which regulatory requirement each certification satisfies, essential for compliance audit reports.',
+    `workforce_certification_type_id` BIGINT COMMENT '',
     `attachment_url` STRING COMMENT 'URL or file path to the digital copy of the certification document, certificate, or credential stored in the document management system. Null if no digital copy is available.',
     `certificate_number` STRING COMMENT 'Unique certificate or credential number issued by the certifying authority. Used for verification and audit purposes.',
     `certification_category` STRING COMMENT 'High-level classification of the certification domain: safety (OSHA, ISO 45001), quality (ISO 9001, Six Sigma), technical (welding, electrical), regulatory (EPA, FDA), professional (PMP, CPA), or operational (forklift, crane operator).. Valid values are `safety|quality|technical|regulatory|professional|operational`',
     `certification_code` STRING COMMENT 'Standardized code or abbreviation for the certification type used for internal classification and reporting (e.g., OSHA-30, AWS-CWI, ISO9001-LA).',
     `certification_level` STRING COMMENT 'Proficiency or qualification level of the certification (e.g., Basic, Intermediate, Advanced, Lead Auditor, Master Craftsman). Null if the certification does not have levels.',
     `certification_name` STRING COMMENT 'Full name of the certification as recognized by the issuing authority (e.g., OSHA 30-Hour General Industry, AWS Certified Welder, ISO 9001 Lead Auditor).',
+    `certification_number` STRING COMMENT '',
+    `certification_status` STRING COMMENT '',
     `compliance_requirement_flag` BOOLEAN COMMENT 'Indicates whether this certification is mandated by regulatory or company policy for the employees role (True) or is optional/voluntary (False). Used to enforce ISO 45001 occupational health compliance.',
     `cost_amount` DECIMAL(18,2) COMMENT 'Total cost incurred to obtain or renew this certification, including training fees, examination fees, and certification fees. Used for labor cost allocation and training budget tracking.',
-    `cost_center_code` STRING COMMENT 'SAP FI/CO cost center code to which the certification cost is allocated. Used for departmental budget tracking and labor cost allocation.',
-    `cost_currency_code` STRING COMMENT 'Three-letter ISO 4217 currency code for the certification cost amount (e.g., USD, EUR, CNY).. Valid values are `^[A-Z]{3}$`',
+    `cost_center_code` DECIMAL(18,2) COMMENT 'SAP FI/CO cost center code to which the certification cost is allocated. Used for departmental budget tracking and labor cost allocation.',
+    `cost_currency_code` DECIMAL(18,2) COMMENT 'Three-letter ISO 4217 currency code for the certification cost amount (e.g., USD, EUR, CNY).',
     `created_timestamp` TIMESTAMP COMMENT 'Timestamp when this certification record was first created in the system. Used for audit trail and data lineage.',
     `effective_date` DATE COMMENT 'Date from which the certification is valid and the employee is authorized to perform certified tasks. May differ from issue date if there is a waiting period.',
     `equipment_authorization` STRING COMMENT 'Comma-separated list of equipment types or asset classes the employee is authorized to operate or work on with this certification (e.g., Overhead Crane, Gantry Crane, MIG Welder, TIG Welder, High Voltage Switchgear).',
     `examination_date` DATE COMMENT 'Date on which the employee took the certification examination or assessment. Null if no examination is required.',
     `examination_score` DECIMAL(18,2) COMMENT 'Numerical score or percentage achieved by the employee on the certification examination. Null if no examination is required or score is not recorded.',
     `expiry_date` DATE COMMENT 'Date on which the certification expires and is no longer valid unless renewed. Null for certifications with no expiration (lifetime certifications).',
-    `issue_date` DATE COMMENT 'Date on which the certification was originally issued to the employee by the certifying authority.',
-    `issuing_authority` STRING COMMENT 'Name of the organization or regulatory body that issued the certification (e.g., OSHA, American Welding Society, International Register of Certificated Auditors).',
-    `issuing_country_code` STRING COMMENT 'Three-letter ISO 3166-1 alpha-3 country code of the jurisdiction where the certification was issued (e.g., USA, DEU, CHN).. Valid values are `^[A-Z]{3}$`',
+    `issue_date` TIMESTAMP COMMENT 'Date on which the certification was originally issued to the employee by the certifying authority.',
+    `issuing_authority` BOOLEAN COMMENT 'Name of the organization or regulatory body that issued the certification (e.g., OSHA, American Welding Society, International Register of Certificated Auditors).',
+    `issuing_body` STRING COMMENT '',
+    `issuing_country_code` BOOLEAN COMMENT 'Three-letter ISO 3166-1 alpha-3 country code of the jurisdiction where the certification was issued (e.g., USA, DEU, CHN).',
     `job_role_applicability` STRING COMMENT 'Comma-separated list of job roles or job families for which this certification is required or recommended (e.g., Welder, Fabricator, Quality Inspector, Auditor, Forklift Operator, Material Handler).',
     `last_modified_timestamp` TIMESTAMP COMMENT 'Timestamp when this certification record was most recently updated. Used for audit trail and change tracking.',
     `last_renewal_date` DATE COMMENT 'Date of the most recent renewal or recertification event. Null if the certification has never been renewed.',
@@ -284,23 +306,26 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`workforce`.`workforce_certifica
 
 CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`workforce`.`shift_schedule` (
     `shift_schedule_id` BIGINT COMMENT 'Unique identifier for the shift schedule record. Primary key for the shift schedule entity.',
-    `device_registry_id` BIGINT COMMENT 'Foreign key linking to automation.device_registry. Business justification: Operator shift schedules assign specific machines to employees, enabling production planning and labor tracking.',
+    `org_unit_id` BIGINT COMMENT '',
     `employee_id` BIGINT COMMENT 'Unique identifier of the employee assigned to this shift. Links to the employee master record in Workday HCM.',
     `production_line_id` BIGINT COMMENT 'Unique identifier of the production line to which the employee is assigned during this shift. Links to production line master data.',
+    `shift_employee_id` BIGINT COMMENT '',
     `shift_pattern_id` BIGINT COMMENT 'Unique identifier of the shift pattern template applied to this schedule (e.g., 3-shift rotation, 4-on-4-off). Links to shift pattern reference data.',
     `work_center_id` BIGINT COMMENT 'Unique identifier of the work center where the employee is scheduled to work. Links to the work center master in SAP S/4HANA PP.',
-    `break_duration_minutes` STRING COMMENT 'Total planned break time in minutes during the shift (e.g., lunch break, rest breaks). Used to calculate net productive hours and ensure compliance with labor regulations.',
+    `break_duration_minutes` DECIMAL(18,2) COMMENT 'Total planned break time in minutes during the shift (e.g., lunch break, rest breaks). Used to calculate net productive hours and ensure compliance with labor regulations.',
     `cancellation_reason` STRING COMMENT 'Free-text description of the reason for shift cancellation (e.g., production order cancelled, employee absence, equipment failure). Populated only when schedule_status is cancelled.',
     `cancelled_datetime` TIMESTAMP COMMENT 'Date and time when the shift schedule was cancelled. Populated only when schedule_status is cancelled. Format: yyyy-MM-ddTHH:mm:ss.SSSXXX.',
     `confirmed_datetime` TIMESTAMP COMMENT 'Date and time when the employee acknowledged or confirmed the shift assignment. Used for tracking employee acceptance and attendance planning. Format: yyyy-MM-ddTHH:mm:ss.SSSXXX.',
     `created_by_user` STRING COMMENT 'Username or identifier of the user who created this shift schedule record. Used for audit trail and accountability.',
     `created_datetime` TIMESTAMP COMMENT 'Date and time when this shift schedule record was first created in the system. Used for audit trail and data lineage. Format: yyyy-MM-ddTHH:mm:ss.SSSXXX.',
+    `created_timestamp` TIMESTAMP COMMENT '',
     `exception_reason` STRING COMMENT 'Free-text description of the reason for any schedule exception (e.g., production surge, equipment breakdown, employee request). Populated only when schedule_exception_flag is true.',
     `is_holiday` BOOLEAN COMMENT 'Boolean flag indicating whether the shift occurs on a recognized company or statutory holiday. Used for premium pay calculation and compliance reporting.',
     `is_night_shift` BOOLEAN COMMENT 'Boolean flag indicating whether the shift occurs during night hours (typically 10 PM to 6 AM). Used for shift differential pay and occupational health compliance.',
     `is_overtime` BOOLEAN COMMENT 'Boolean flag indicating whether this shift qualifies as overtime under labor regulations. True if the shift exceeds standard working hours or occurs outside regular schedule.',
     `is_weekend` BOOLEAN COMMENT 'Boolean flag indicating whether the shift occurs on a weekend (Saturday or Sunday). Used for premium pay calculation and workforce analytics.',
-    `labor_cost_center` STRING COMMENT 'Cost center code to which labor hours and costs for this shift are allocated. Used for financial reporting and cost accounting in SAP S/4HANA CO.',
+    `labor_cost_center` DECIMAL(18,2) COMMENT 'Cost center code to which labor hours and costs for this shift are allocated. Used for financial reporting and cost accounting in SAP S/4HANA CO.',
+    `last_modified_timestamp` TIMESTAMP COMMENT '',
     `modified_by_user` STRING COMMENT 'Username or identifier of the user who last modified this shift schedule record. Used for audit trail and accountability.',
     `modified_datetime` TIMESTAMP COMMENT 'Date and time when this shift schedule record was last modified. Used for audit trail and change tracking. Format: yyyy-MM-ddTHH:mm:ss.SSSXXX.',
     `net_productive_hours` DECIMAL(18,2) COMMENT 'Net available labor hours after deducting break time from scheduled duration. Used for capacity planning and Overall Equipment Effectiveness (OEE) calculations.',
@@ -315,10 +340,14 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`workforce`.`shift_schedule` (
     `schedule_year` STRING COMMENT 'Calendar year of the scheduled shift. Used for annual labor reporting and compliance.',
     `scheduled_duration_hours` DECIMAL(18,2) COMMENT 'Total planned duration of the shift in hours, calculated as the difference between scheduled end and start datetime. Used for labor capacity planning and payroll calculation.',
     `scheduled_end_datetime` TIMESTAMP COMMENT 'Planned end date and time of the shift. Represents the clock-out time for the employee at the assigned work center. Format: yyyy-MM-ddTHH:mm:ss.SSSXXX.',
+    `scheduled_hours` DECIMAL(18,2) COMMENT '',
     `scheduled_start_datetime` TIMESTAMP COMMENT 'Planned start date and time of the shift. Represents the clock-in time for the employee at the assigned work center. Format: yyyy-MM-ddTHH:mm:ss.SSSXXX.',
     `scheduling_horizon_weeks` STRING COMMENT 'Number of weeks in advance that this shift was scheduled. Used for workforce planning analytics and compliance with advance notice regulations.',
+    `shift_end_timestamp` TIMESTAMP COMMENT '',
     `shift_name` STRING COMMENT 'Descriptive name of the shift (e.g., Morning Shift, Night Shift, Swing Shift, Weekend Crew). Used for human-readable identification and communication.',
     `shift_priority` STRING COMMENT 'Business priority level of the shift assignment. Critical shifts support high-priority production orders; high-priority shifts support key customer deliveries; normal shifts are standard operations; low-priority shifts are for non-urgent tasks.. Valid values are `critical|high|normal|low`',
+    `shift_start_timestamp` TIMESTAMP COMMENT '',
+    `shift_status` STRING COMMENT '',
     `shift_type` STRING COMMENT 'Classification of the shift assignment. Regular shifts are standard production hours; overtime shifts exceed standard hours; on-call and standby shifts are for emergency coverage; training shifts are for skill development; maintenance shifts are for equipment servicing.. Valid values are `regular|overtime|on_call|standby|training|maintenance`',
     `skill_requirement` STRING COMMENT 'Required skill or certification for the employee to perform this shift (e.g., CNC Operator, Forklift Certified, Quality Inspector). Used for skill-based scheduling and compliance.',
     `source_system_code` STRING COMMENT 'Unique identifier of this shift schedule record in the source system. Used for data lineage and reconciliation.',
@@ -328,21 +357,25 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`workforce`.`shift_schedule` (
 CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`workforce`.`time_entry` (
     `time_entry_id` BIGINT COMMENT 'Unique identifier for the time entry record. Primary key for the time entry transaction.',
     `asset_work_order_id` BIGINT COMMENT 'Unique identifier of the production work order or maintenance job that this labor time is charged to. Used for labor cost allocation to manufacturing operations.',
+    `assignment_id` BIGINT COMMENT '',
     `cost_center_id` BIGINT COMMENT 'Foreign key linking to finance.cost_center. Business justification: Time‑entry records must allocate labor hours to a cost center for accurate financial statements.',
     `equipment_register_id` BIGINT COMMENT 'Unique identifier of the machine, equipment, or asset operated or maintained during this time entry. Used for equipment utilization and maintenance labor tracking.',
     `payroll_period_id` BIGINT COMMENT 'Unique identifier of the payroll period to which this time entry is assigned for payment processing.',
     `employee_id` BIGINT COMMENT 'Unique identifier of the employee who recorded this time entry. Links to the employee master record in Workday HCM.',
     `tertiary_time_modified_by_employee_id` BIGINT COMMENT 'Unique identifier of the user or employee who last modified this time entry record. Used for audit trail and accountability.',
+    `time_employee_id` BIGINT COMMENT '',
     `absence_type` STRING COMMENT 'Type of paid or unpaid absence if this time entry represents non-working time. Set to none for regular working time entries. [ENUM-REF-CANDIDATE: none|sick_leave|vacation|personal|bereavement|jury_duty|training|other — 8 candidates stripped; promote to reference product]',
     `activity_code` STRING COMMENT 'The specific work activity or operation code performed during this time entry (e.g., ASSEMBLY, WELDING, INSPECTION, SETUP, MAINTENANCE). Used for detailed labor tracking and OEE analysis.. Valid values are `^[A-Z0-9_]{2,20}$`',
     `approval_status` STRING COMMENT 'Current approval status of the time entry in the workflow. Time entries must be approved before being released to payroll processing.. Valid values are `pending|approved|rejected|submitted|draft`',
     `approval_timestamp` TIMESTAMP COMMENT 'The date and time when this time entry was approved by the supervisor. Null if not yet approved.',
-    `break_duration_minutes` STRING COMMENT 'Total duration of unpaid breaks taken during this time entry, expressed in minutes. Deducted from total hours for payroll calculation.',
+    `approved_flag` BOOLEAN COMMENT '',
+    `break_duration_minutes` DECIMAL(18,2) COMMENT 'Total duration of unpaid breaks taken during this time entry, expressed in minutes. Deducted from total hours for payroll calculation.',
     `clock_in_timestamp` TIMESTAMP COMMENT 'The exact date and time when the employee clocked in or started work for this time entry. Captured from MES shop floor terminals or Workday HCM time tracking.',
     `clock_out_timestamp` TIMESTAMP COMMENT 'The exact date and time when the employee clocked out or ended work for this time entry. Used to calculate total hours worked.',
     `compliance_verified` BOOLEAN COMMENT 'Indicates whether this time entry has been verified for compliance with labor regulations, union agreements, and ISO 45001 occupational health and safety requirements (e.g., maximum consecutive hours, mandatory rest periods).',
     `created_timestamp` TIMESTAMP COMMENT 'The date and time when this time entry record was first created in the system. Used for audit trail and data lineage.',
     `currency_code` STRING COMMENT 'Three-letter ISO 4217 currency code for labor rate, premium, and cost amounts (e.g., USD, EUR, GBP).. Valid values are `^[A-Z]{3}$`',
+    `entry_date` TIMESTAMP COMMENT '',
     `exception_code` STRING COMMENT 'Code indicating any time entry exception or anomaly requiring review (e.g., LATE_CLOCK_IN, MISSING_CLOCK_OUT, OVERTIME_THRESHOLD). Empty if no exception.. Valid values are `^[A-Z0-9_]{0,20}$`',
     `exception_notes` STRING COMMENT 'Free-text notes or comments explaining any time entry exception, correction, or special circumstance. Used for audit trail and dispute resolution.',
     `hours_worked` DECIMAL(18,2) COMMENT 'Total number of hours worked during this time entry, calculated from clock-in and clock-out timestamps. Expressed in decimal hours (e.g., 8.50 for 8 hours 30 minutes).',
@@ -350,18 +383,22 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`workforce`.`time_entry` (
     `labor_cost` DECIMAL(18,2) COMMENT 'Total labor cost for this time entry, calculated as hours worked multiplied by labor rate plus any shift premiums. Used for work order costing and variance analysis.',
     `labor_rate` DECIMAL(18,2) COMMENT 'The hourly labor rate applied to this time entry for cost calculation purposes. May differ from actual employee pay rate for standard costing purposes.',
     `labor_type` STRING COMMENT 'Classification of the labor time for payroll and costing purposes. Determines the pay rate multiplier and labor cost calculation method.. Valid values are `regular|overtime|double_time|holiday|on_call|standby`',
+    `last_modified_timestamp` TIMESTAMP COMMENT '',
     `location_code` STRING COMMENT 'The plant, facility, or work center location code where this time was worked. Used for multi-site labor reporting and compliance.. Valid values are `^[A-Z0-9]{2,10}$`',
     `modified_timestamp` TIMESTAMP COMMENT 'The date and time when this time entry record was last modified or updated. Used for change tracking and audit compliance.',
-    `oee_productive_time` BOOLEAN COMMENT 'Indicates whether this time entry represents productive manufacturing time that should be included in OEE (Overall Equipment Effectiveness) labor efficiency calculations. False for indirect labor, breaks, or non-productive activities.',
-    `operation_sequence` STRING COMMENT 'The sequence number of the manufacturing operation or routing step being performed during this time entry. Used to track labor against specific production process steps.',
+    `oee_productive_time` TIMESTAMP COMMENT 'Indicates whether this time entry represents productive manufacturing time that should be included in OEE (Overall Equipment Effectiveness) labor efficiency calculations. False for indirect labor, breaks, or non-productive activities.',
+    `operation_sequence` DECIMAL(18,2) COMMENT 'The sequence number of the manufacturing operation or routing step being performed during this time entry. Used to track labor against specific production process steps.',
     `overtime_eligible` BOOLEAN COMMENT 'Indicates whether the employee is eligible for overtime pay for this time entry based on employment classification and labor regulations.',
+    `overtime_hours` DECIMAL(18,2) COMMENT '',
     `payroll_processed` BOOLEAN COMMENT 'Indicates whether this time entry has been processed and included in a payroll run. Once true, the time entry is locked from further edits.',
     `project_code` STRING COMMENT 'The project or capital expenditure (CapEx) project code to which this labor time is charged. Used for project accounting and capital asset construction tracking.. Valid values are `^[A-Z0-9-]{0,20}$`',
     `quantity_produced` DECIMAL(18,2) COMMENT 'The number of units or pieces produced or processed during this time entry. Used for productivity analysis and labor efficiency calculations (units per hour).',
+    `regular_hours` DECIMAL(18,2) COMMENT '',
     `shift_code` STRING COMMENT 'The shift identifier or code during which this time was worked (e.g., DAY, NIGHT, SWING). Used for shift premium calculation and production scheduling analysis.. Valid values are `^[A-Z0-9]{1,10}$`',
     `shift_premium_amount` DECIMAL(18,2) COMMENT 'The additional premium amount paid for this time entry due to shift differential, expressed in the payroll currency. Null if no premium applies.',
     `shift_premium_eligible` BOOLEAN COMMENT 'Indicates whether this time entry qualifies for shift differential or premium pay based on the shift worked and labor agreement terms.',
     `source` STRING COMMENT 'The system or method through which this time entry was captured (e.g., MES shop floor terminal, Workday mobile app, manual supervisor entry).. Valid values are `shop_floor_terminal|mobile_app|web_portal|supervisor_entry|import|biometric`',
+    `time_entry_status` STRING COMMENT '',
     `unit_of_measure` STRING COMMENT 'The unit of measure for the quantity produced (e.g., EA for each, KG for kilograms, M for meters). Aligns with material master UOM definitions.. Valid values are `^[A-Z]{2,6}$`',
     `work_date` DATE COMMENT 'The calendar date on which the work was performed. Used for payroll period assignment and labor reporting.',
     CONSTRAINT pk_time_entry PRIMARY KEY(`time_entry_id`)
@@ -369,18 +406,22 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`workforce`.`time_entry` (
 
 CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`workforce`.`absence_record` (
     `absence_record_id` BIGINT COMMENT 'Unique identifier for the absence record. Primary key.',
+    `employee_id` BIGINT COMMENT '',
     `asset_work_order_id` BIGINT COMMENT 'Identifier of the work order or production order that was impacted by this absence. Used to track production capacity gaps and schedule adjustments.',
     `cost_center_id` BIGINT COMMENT 'Foreign key linking to finance.cost_center. Business justification: Absence cost impact is charged to the employees cost center for variance analysis.',
     `payroll_period_id` BIGINT COMMENT 'Identifier of the payroll period in which this absence is processed for payroll deduction or accrual adjustment.',
-    `employee_id` BIGINT COMMENT 'Identifier of the employee who is absent. Links to the employee master record in Workday HCM.',
+    `primary_absence_employee_id` BIGINT COMMENT 'Identifier of the employee who is absent. Links to the employee master record in Workday HCM.',
     `shift_id` BIGINT COMMENT 'Identifier of the scheduled shift from which the employee was absent. Supports shift-level labor availability tracking.',
     `tertiary_absence_replacement_employee_id` BIGINT COMMENT 'Employee identifier of the replacement worker assigned to cover the absent employees shift or responsibilities.',
     `absence_notes` STRING COMMENT 'Free-text notes or comments regarding the absence, including special circumstances, accommodation requests, or manager observations.',
     `absence_reason_code` STRING COMMENT 'Detailed reason code for the absence. May include specific illness codes, family emergency types, or other granular classifications as defined by HR policy.',
+    `absence_status` STRING COMMENT '',
+    `absence_type` STRING COMMENT '',
     `absence_type_code` STRING COMMENT 'Code representing the category of absence: VACATION (planned vacation leave), SICK (unplanned sick leave), PERSONAL (personal time off), PARENTAL (maternity/paternity leave), FMLA (Family and Medical Leave Act protected leave), BEREAVEMENT (compassionate leave), JURY_DUTY (civic duty leave), MILITARY (military service leave), UNPAID (unpaid leave of absence). [ENUM-REF-CANDIDATE: VACATION|SICK|PERSONAL|PARENTAL|FMLA|BEREAVEMENT|JURY_DUTY|MILITARY|UNPAID — 9 candidates stripped; promote to reference product]',
     `accrual_balance_deducted` DECIMAL(18,2) COMMENT 'Number of hours deducted from the employees leave accrual balance (vacation bank, sick leave bank, etc.) for this absence.',
     `approval_status` STRING COMMENT 'Current approval workflow status of the absence request: PENDING (awaiting manager review), APPROVED (authorized by manager), REJECTED (denied by manager), CANCELLED (approved but subsequently cancelled), WITHDRAWN (employee withdrew request before approval).. Valid values are `PENDING|APPROVED|REJECTED|CANCELLED|WITHDRAWN`',
     `approval_timestamp` TIMESTAMP COMMENT 'Date and time when the absence request was approved or rejected by the manager.',
+    `approved_by` STRING COMMENT '',
     `created_timestamp` TIMESTAMP COMMENT 'Date and time when this absence record was first created in the lakehouse silver layer.',
     `duration_days` DECIMAL(18,2) COMMENT 'Total duration of the absence measured in calendar days. Supports fractional days for partial-day absences.',
     `duration_hours` DECIMAL(18,2) COMMENT 'Total duration of the absence measured in hours. Used for hourly payroll deduction and accrual calculations.',
@@ -391,21 +432,25 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`workforce`.`absence_record` (
     `last_modified_timestamp` TIMESTAMP COMMENT 'Date and time when this absence record was last updated in the lakehouse silver layer.',
     `medical_certification_received` BOOLEAN COMMENT 'Indicates whether the required medical certification documentation has been received and validated by HR.',
     `medical_certification_required` BOOLEAN COMMENT 'Indicates whether medical certification documentation is required for this absence per company policy or regulatory requirement.',
+    `paid_flag` BOOLEAN COMMENT '',
+    `reason_code` STRING COMMENT '',
     `request_timestamp` TIMESTAMP COMMENT 'Date and time when the employee originally submitted the absence request in Workday HCM.',
     `return_to_work_certification_received` BOOLEAN COMMENT 'Indicates whether a medical clearance or return-to-work certification was received before the employee resumed duties, as required by occupational health policy per ISO 45001.',
     `return_to_work_date` DATE COMMENT 'Actual date the employee returned to work following the absence. May differ from the planned end_date if the absence was extended or shortened.',
     `source_system_code` STRING COMMENT 'Code identifying the source system from which this absence record originated (e.g., WORKDAY_HCM, SAP_HR, MANUAL_ENTRY).',
     `source_system_record_code` STRING COMMENT 'The unique identifier of this absence record in the source system (e.g., Workday HCM absence event ID). Used for data lineage and reconciliation.',
     `start_date` DATE COMMENT 'The first calendar date of the absence period. Used for production capacity planning and labor availability forecasting.',
+    `total_days` DECIMAL(18,2) COMMENT '',
     CONSTRAINT pk_absence_record PRIMARY KEY(`absence_record_id`)
 ) COMMENT 'Transactional record of employee absences including planned leave (vacation, personal, parental), unplanned absences (sick leave, FMLA), and approved time-off requests. Captures absence type, start/end dates, duration in hours/days, approval status, and reason code. Supports production capacity planning by surfacing labor availability gaps and feeds payroll deduction or accrual calculations.';
 
 CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`workforce`.`payroll_result` (
     `payroll_result_id` BIGINT COMMENT 'Unique identifier for the payroll calculation result record. Primary key.',
     `cost_center_id` BIGINT COMMENT 'Foreign key linking to finance.cost_center. Business justification: Payroll expenses are allocated to cost centers to support financial reporting and budgeting.',
-    `payroll_period_id` BIGINT COMMENT 'add column payroll_period_id (BIGINT) with FK to workforce.payroll_period.payroll_period_id - payroll results must reference the period they cover',
-    `production_run_id` BIGINT COMMENT 'Identifier of the payroll processing batch or run that generated this result. Used for traceability and audit purposes.',
-    `employee_id` BIGINT COMMENT 'Unique identifier of the employee for whom this payroll result was calculated. Links to employee master data in Workday HCM.',
+    `employee_id` BIGINT COMMENT '',
+    `payroll_period_id` BIGINT COMMENT '',
+    `run_id` BIGINT COMMENT 'Identifier of the payroll processing batch or run that generated this result. Used for traceability and audit purposes.',
+    `primary_payroll_employee_id` BIGINT COMMENT 'Unique identifier of the employee for whom this payroll result was calculated. Links to employee master data in Workday HCM.',
     `allowance_amount` DECIMAL(18,2) COMMENT 'Total allowances paid to the employee (housing, transportation, meal allowances, etc.).',
     `approval_timestamp` TIMESTAMP COMMENT 'The date and time when this payroll result was approved for payment.',
     `bank_account_last_four` STRING COMMENT 'Last four digits of the bank account number used for direct deposit payment. Stored for verification purposes only.. Valid values are `^[0-9]{4}$`',
@@ -413,16 +458,20 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`workforce`.`payroll_result` (
     `bonus_amount` DECIMAL(18,2) COMMENT 'One-time or periodic bonus payments included in this payroll result (performance bonus, retention bonus, etc.).',
     `capex_allocation_percentage` DECIMAL(18,2) COMMENT 'Percentage of total labor cost allocated to capital expenditure projects for this pay period. Used for financial capitalization of labor costs.',
     `commission_amount` DECIMAL(18,2) COMMENT 'Sales commission or incentive earnings included in this payroll result.',
+    `created_timestamp` TIMESTAMP COMMENT '',
     `currency_code` STRING COMMENT 'Three-letter ISO 4217 currency code for all monetary amounts in this payroll result (e.g., USD, EUR, GBP).. Valid values are `^[A-Z]{3}$`',
     `department_code` STRING COMMENT 'The department code of the employee at the time of payroll calculation.',
     `employer_benefits_cost_amount` DECIMAL(18,2) COMMENT 'Total employer-paid benefits costs (employer contribution to health insurance, retirement matching, etc.) for this payroll result. Used for total labor cost calculation.',
     `employer_tax_amount` DECIMAL(18,2) COMMENT 'Total employer-paid payroll taxes (employer portion of Social Security, Medicare, unemployment insurance, etc.) for this payroll result. Used for CapEx/OpEx labor cost allocation.',
     `federal_tax_amount` DECIMAL(18,2) COMMENT 'Federal income tax withheld from the employees gross pay for this pay period.',
     `garnishment_amount` DECIMAL(18,2) COMMENT 'Court-ordered wage garnishments deducted from gross pay (child support, tax levies, creditor garnishments).',
+    `gross_pay` DECIMAL(18,2) COMMENT '',
     `gross_pay_amount` DECIMAL(18,2) COMMENT 'Total earnings before any deductions. Sum of base pay, overtime, bonuses, commissions, allowances, and other earnings.',
     `health_insurance_deduction_amount` DECIMAL(18,2) COMMENT 'Employee contribution to health insurance premiums deducted from gross pay.',
+    `last_modified_timestamp` TIMESTAMP COMMENT '',
     `local_tax_amount` DECIMAL(18,2) COMMENT 'Local or municipal tax withheld from the employees gross pay for this pay period.',
     `medicare_tax_amount` DECIMAL(18,2) COMMENT 'Medicare tax withheld from the employees gross pay for this pay period.',
+    `net_pay` DECIMAL(18,2) COMMENT '',
     `net_pay_amount` DECIMAL(18,2) COMMENT 'The final take-home pay amount after all deductions. This is the amount paid to the employee.',
     `opex_allocation_percentage` DECIMAL(18,2) COMMENT 'Percentage of total labor cost allocated to operational expenditure for this pay period. Used for financial expense reporting.',
     `other_benefits_deduction_amount` DECIMAL(18,2) COMMENT 'Total deductions for other employee benefits (dental, vision, life insurance, disability insurance, etc.).',
@@ -434,8 +483,8 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`workforce`.`payroll_result` (
     `pay_group` STRING COMMENT 'The pay group to which the employee belongs, determining pay schedule and processing rules.',
     `pay_period_end_date` DATE COMMENT 'The last date of the pay period covered by this payroll result.',
     `pay_period_start_date` DATE COMMENT 'The first date of the pay period covered by this payroll result.',
-    `payment_date` DATE COMMENT 'The date on which the employee will receive or received payment for this payroll result.',
-    `payment_method` STRING COMMENT 'The method by which the employee receives payment (direct deposit, physical check, cash, wire transfer).. Valid values are `direct_deposit|check|cash|wire_transfer`',
+    `payment_date` TIMESTAMP COMMENT 'The date on which the employee will receive or received payment for this payroll result.',
+    `payment_method` DECIMAL(18,2) COMMENT 'The method by which the employee receives payment (direct deposit, physical check, cash, wire transfer).',
     `payroll_calculation_timestamp` TIMESTAMP COMMENT 'The date and time when this payroll result was calculated by the payroll system.',
     `payroll_status` STRING COMMENT 'Current lifecycle status of the payroll result indicating its processing stage.. Valid values are `draft|calculated|approved|paid|voided|reversed`',
     `regular_hours_worked` DECIMAL(18,2) COMMENT 'Total regular hours worked by the employee during the pay period, excluding overtime.',
@@ -444,16 +493,18 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`workforce`.`payroll_result` (
     `social_security_tax_amount` DECIMAL(18,2) COMMENT 'Social Security (FICA) tax withheld from the employees gross pay for this pay period.',
     `state_tax_amount` DECIMAL(18,2) COMMENT 'State income tax withheld from the employees gross pay for this pay period.',
     `total_deduction_amount` DECIMAL(18,2) COMMENT 'Sum of all deductions (taxes, benefits, garnishments, etc.) subtracted from gross pay.',
+    `total_deductions` DECIMAL(18,2) COMMENT '',
     `total_labor_cost_amount` DECIMAL(18,2) COMMENT 'Total fully-loaded labor cost including gross pay, employer taxes, and employer benefits. Used for CapEx/OpEx allocation and financial reporting.',
+    `total_taxes` DECIMAL(18,2) COMMENT '',
     `union_dues_amount` DECIMAL(18,2) COMMENT 'Union membership dues deducted from gross pay as per collective bargaining agreement.',
     CONSTRAINT pk_payroll_result PRIMARY KEY(`payroll_result_id`)
 ) COMMENT 'Transactional record of payroll calculation outcomes per employee per pay period. Captures gross pay, net pay, earnings components (base, overtime, shift premium, bonus), deduction components (tax withholding, benefits, garnishments), pay period dates, payroll run identifier, and payment method. Sourced from Workday HCM Payroll. Supports labor cost allocation to cost centers and CapEx/OpEx reporting.';
 
 CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`workforce`.`benefit_plan` (
     `benefit_plan_id` BIGINT COMMENT 'Unique identifier for the benefit plan. Primary key.',
-    `employee_id` BIGINT COMMENT 'add column employee_id (BIGINT) with FK to workforce.employee.employee_id - benefit plans must be assignable to employees',
     `org_unit_id` BIGINT COMMENT 'Foreign key linking to workforce.org_unit. Business justification: Benefit plans are offered by a specific organizational unit; adding offering_org_unit_id provides clear ownership and enables joins to org_unit for cost center and location context.',
     `aca_compliant` BOOLEAN COMMENT 'Indicates whether this health benefit plan meets ACA minimum essential coverage and minimum value standards. Required for employer mandate reporting.',
+    `annual_cost` DECIMAL(18,2) COMMENT '',
     `carrier_name` STRING COMMENT 'Name of the insurance carrier or third-party administrator providing the benefit plan (e.g., Blue Cross Blue Shield, Aetna, Fidelity).',
     `carrier_policy_number` STRING COMMENT 'Policy or contract number assigned by the insurance carrier to this benefit plan. Used for claims processing and carrier communications.',
     `cobra_eligible` BOOLEAN COMMENT 'Indicates whether this benefit plan is subject to COBRA continuation coverage requirements, allowing terminated employees to continue coverage at their own expense.',
@@ -470,11 +521,15 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`workforce`.`benefit_plan` (
     `effective_start_date` DATE COMMENT 'Date when this benefit plan becomes available for enrollment and coverage begins. Typically aligns with plan year start or new hire eligibility.',
     `eligibility_rule` STRING COMMENT 'Business rule defining which employee classes or employment types are eligible for this benefit plan (e.g., Full-time employees with 90 days of service, Salaried employees only).',
     `employee_contribution_amount` DECIMAL(18,2) COMMENT 'Amount the employee pays per pay period for this benefit plan coverage tier. Deducted from payroll pre-tax or post-tax depending on plan type.',
+    `employee_contribution_pct` DECIMAL(18,2) COMMENT '',
     `employer_contribution_amount` DECIMAL(18,2) COMMENT 'Amount the employer pays per pay period toward this benefit plan coverage tier. Represents labor cost allocation for financial reporting.',
+    `employer_contribution_pct` DECIMAL(18,2) COMMENT '',
     `enrollment_close_date` DATE COMMENT 'Last date employees can enroll in or make changes to this benefit plan during the annual open enrollment period.',
     `enrollment_open_date` DATE COMMENT 'First date employees can enroll in or make changes to this benefit plan during the annual open enrollment period.',
     `erisa_plan_number` STRING COMMENT 'Three-digit plan number assigned to this benefit plan for ERISA Form 5500 reporting. Required for all ERISA-covered plans.',
     `hipaa_compliant` BOOLEAN COMMENT 'Indicates whether this benefit plan complies with HIPAA privacy and security requirements for protected health information (PHI).',
+    `is_active` BOOLEAN COMMENT '',
+    `last_modified_timestamp` TIMESTAMP COMMENT '',
     `max_dependents` STRING COMMENT 'Maximum number of dependents an employee can enroll under this benefit plan. Null if no limit applies.',
     `modified_by_user` STRING COMMENT 'User ID or name of the HR administrator who last modified this benefit plan record. Supports audit and compliance requirements.',
     `modified_timestamp` TIMESTAMP COMMENT 'Timestamp when this benefit plan record was last updated. Tracks changes to plan configuration, rates, or terms.',
@@ -489,6 +544,7 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`workforce`.`benefit_plan` (
     `plan_status` STRING COMMENT 'Current lifecycle status of the benefit plan. Active plans are available for enrollment; inactive plans are closed to new enrollments but may have existing participants.. Valid values are `active|inactive|pending|suspended|terminated`',
     `plan_type` STRING COMMENT 'Category of benefit plan offered. Determines regulatory compliance requirements and enrollment rules. [ENUM-REF-CANDIDATE: health|dental|vision|life|disability|retirement|hsa|fsa|eap|other — 10 candidates stripped; promote to reference product]',
     `plan_year` STRING COMMENT 'Calendar year for which this benefit plan configuration is effective. Benefit plans are typically versioned annually with new rates and terms.',
+    `provider_name` STRING COMMENT '',
     `section_125_eligible` BOOLEAN COMMENT 'Indicates whether this benefit plan is eligible for pre-tax payroll deductions under an IRC Section 125 cafeteria plan.',
     `tax_treatment` STRING COMMENT 'Tax treatment of employee contributions to this benefit plan. Pre-tax contributions reduce taxable income; post-tax contributions do not.. Valid values are `pre_tax|post_tax|employer_paid|mixed`',
     `waiting_period_days` STRING COMMENT 'Number of days a new hire must wait before becoming eligible to enroll in this benefit plan. Regulatory limits apply under ACA.',
@@ -501,7 +557,7 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`workforce`.`training_course` (
     `org_unit_id` BIGINT COMMENT 'Foreign key linking to workforce.org_unit. Business justification: Each training course is owned by a department; linking to org_unit provides hierarchy and removes redundant owner_department string.',
     `regulatory_requirement_id` BIGINT COMMENT 'Foreign key linking to compliance.regulatory_requirement. Business justification: Ensures each training course is linked to the specific regulation it fulfills, used in compliance training matrices.',
     `supplier_id` BIGINT COMMENT 'Unique identifier for the external training vendor in the procurement system. Null for internal training.',
-    `accreditation_number` STRING COMMENT 'Official accreditation or approval number issued by the regulatory body or industry association for the training course. Used for compliance audit trails.',
+    `accreditation_number` DECIMAL(18,2) COMMENT 'Official accreditation or approval number issued by the regulatory body or industry association for the training course. Used for compliance audit trails.',
     `assessment_required` BOOLEAN COMMENT 'Indicates whether a formal assessment (test, exam, practical demonstration) is required to complete the course. True if assessment is mandatory; false if completion is based on attendance only.',
     `certification_awarded` BOOLEAN COMMENT 'Indicates whether successful completion of the course results in a formal certification or credential being awarded to the employee.',
     `certification_name` STRING COMMENT 'Name of the certification or credential awarded upon successful course completion. Null if no certification is awarded.',
@@ -511,6 +567,7 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`workforce`.`training_course` (
     `course_code` STRING COMMENT 'Unique alphanumeric code identifying the training course in the learning management system. Used for course catalog reference and enrollment processing.. Valid values are `^[A-Z0-9]{4,12}$`',
     `course_description` STRING COMMENT 'Detailed description of the training course content, learning objectives, target audience, and prerequisites.',
     `course_materials_url` STRING COMMENT 'Web address or document management system link to access course materials, handouts, presentations, and reference documents.',
+    `course_name` STRING COMMENT '',
     `course_status` STRING COMMENT 'Current lifecycle status of the training course. Active courses are available for enrollment; inactive courses are temporarily unavailable; draft courses are under development; retired courses are no longer offered; under review courses are being updated or audited.. Valid values are `active|inactive|draft|retired|under_review`',
     `course_title` STRING COMMENT 'Full descriptive title of the training course as displayed in the learning catalog and on certificates.',
     `course_type` STRING COMMENT 'Classification indicating whether the course is mandatory for specific roles, elective for employee development, or recommended for career progression.. Valid values are `mandatory|elective|recommended`',
@@ -523,7 +580,10 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`workforce`.`training_course` (
     `effective_end_date` DATE COMMENT 'Date when the training course is retired or no longer available for new enrollments. Null for active courses with no planned retirement date.',
     `effective_start_date` DATE COMMENT 'Date when the training course becomes available for enrollment and delivery. Used for course catalog management and scheduling.',
     `instructor_required` BOOLEAN COMMENT 'Indicates whether the course requires a qualified instructor to deliver the training. True for classroom, OJT, and virtual instructor-led courses; false for self-paced e-learning.',
+    `is_active` BOOLEAN COMMENT '',
+    `is_mandatory` BOOLEAN COMMENT '',
     `language` STRING COMMENT 'Three-letter ISO 639-2 language code indicating the primary language in which the course is delivered. Used for multi-language workforce training planning.. Valid values are `^[A-Z]{3}$`',
+    `last_modified_timestamp` TIMESTAMP COMMENT '',
     `last_review_date` DATE COMMENT 'Date when the training course content was last reviewed for accuracy, relevance, and compliance. Used to track course maintenance and ensure content currency.',
     `max_participants` STRING COMMENT 'Maximum number of employees that can be enrolled in a single course session. Used for capacity planning and session scheduling. Null for unlimited enrollment courses such as self-paced e-learning.',
     `min_participants` STRING COMMENT 'Minimum number of enrolled employees required to run a scheduled course session. Sessions below this threshold may be cancelled or rescheduled. Null for self-paced courses.',
@@ -532,6 +592,7 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`workforce`.`training_course` (
     `next_review_date` DATE COMMENT 'Scheduled date for the next periodic review of the training course content. Used for course maintenance planning and compliance with ISO 9001 training program requirements.',
     `passing_score` DECIMAL(18,2) COMMENT 'Minimum score required to successfully complete the course, expressed as a percentage (0-100). Used to determine pass/fail status and certification eligibility.',
     `prerequisite_courses` STRING COMMENT 'Comma-separated list of course codes that must be completed before enrolling in this course. Null if no prerequisites exist.',
+    `provider_name` STRING COMMENT '',
     `recurrence_interval_months` STRING COMMENT 'Number of months between required course repetitions for recurrent training. Null if recurrence is not required. Common values include 12 (annual), 24 (biennial), or 36 (triennial) for safety and compliance training.',
     `recurrence_required` BOOLEAN COMMENT 'Indicates whether the training course must be repeated periodically to maintain competence or compliance. True for courses with expiration requirements such as safety training, regulatory compliance, or equipment certifications.',
     `regulatory_body` STRING COMMENT 'Name of the regulatory or governing body that mandates or recognizes the training. Examples include OSHA, EPA, ISO, IEC, ANSI, UL, NIST. Null for non-regulatory training.',
@@ -543,16 +604,16 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`workforce`.`training_course` (
 
 CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`workforce`.`performance_review` (
     `performance_review_id` BIGINT COMMENT 'Unique identifier for the performance review record. Primary key.',
-    `employee_id` BIGINT COMMENT 'add column supervisor_employee_id (BIGINT) with FK to workforce.employee.employee_id - performance reviews require the reviewing manager',
+    `employee_id` BIGINT COMMENT '',
     `primary_performance_employee_id` BIGINT COMMENT 'Unique identifier of the employee being reviewed. Links to employee master data.',
     `reviewer_employee_id` BIGINT COMMENT 'Unique identifier of the manager or supervisor conducting the performance review.',
     `calibration_date` DATE COMMENT 'Date when the performance rating was calibrated through organizational review and alignment process.',
-    `calibration_status` STRING COMMENT 'Status indicating whether the performance rating has been through organizational calibration process to ensure consistency (not calibrated, pending calibration, calibrated, calibration waived).. Valid values are `not_calibrated|pending_calibration|calibrated|calibration_waived`',
+    `calibration_status` DECIMAL(18,2) COMMENT 'Status indicating whether the performance rating has been through organizational calibration process to ensure consistency (not calibrated, pending calibration, calibrated, calibration waived).',
     `competency_rating` STRING COMMENT 'Rating reflecting the employees demonstration of core competencies and behavioral skills (expert, proficient, developing, basic, not demonstrated).. Valid values are `expert|proficient|developing|basic|not_demonstrated`',
     `competency_score` DECIMAL(18,2) COMMENT 'Numeric score representing competency assessment, typically on a scale (e.g., 1.0 to 5.0).',
     `compliance_training_completed` BOOLEAN COMMENT 'Flag indicating whether the employee completed all required compliance training during the review period, relevant for ISO 45001 occupational health and safety compliance.',
     `created_timestamp` TIMESTAMP COMMENT 'Timestamp when the performance review record was first created in the system.',
-    `department_at_review` STRING COMMENT 'Department or organizational unit of the employee at the time the review was conducted.',
+    `department_at_review` TIMESTAMP COMMENT 'Department or organizational unit of the employee at the time the review was conducted.',
     `development_plan` STRING COMMENT 'Documented plan outlining specific development actions, training, and growth opportunities for the employee going forward.',
     `employee_acknowledgement_date` DATE COMMENT 'Date when the employee acknowledged receipt and review of their performance evaluation.',
     `employee_acknowledgement_status` STRING COMMENT 'Status indicating whether the employee has acknowledged the review (pending, acknowledged, disputed).. Valid values are `pending|acknowledged|disputed`',
@@ -560,20 +621,25 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`workforce`.`performance_review`
     `employee_self_assessment` STRING COMMENT 'Employees self-evaluation narrative describing their own performance, accomplishments, and development needs during the review period.',
     `goal_achievement_rating` STRING COMMENT 'Rating reflecting the employees achievement of individual goals and objectives set for the review period.. Valid values are `exceeded|achieved|partially_achieved|not_achieved`',
     `goal_achievement_score` DECIMAL(18,2) COMMENT 'Numeric score representing goal achievement performance, typically on a scale (e.g., 1.0 to 5.0).',
-    `job_profile_at_review` STRING COMMENT 'Job profile or position title of the employee at the time the review was conducted.',
+    `goals_summary` STRING COMMENT '',
+    `job_profile_at_review` TIMESTAMP COMMENT 'Job profile or position title of the employee at the time the review was conducted.',
     `last_modified_timestamp` TIMESTAMP COMMENT 'Timestamp when the performance review record was last updated or modified.',
-    `location_at_review` STRING COMMENT 'Work location or site of the employee at the time the review was conducted.',
+    `location_at_review` TIMESTAMP COMMENT 'Work location or site of the employee at the time the review was conducted.',
     `manager_comments` STRING COMMENT 'Detailed narrative comments and feedback provided by the reviewing manager regarding employee performance, strengths, and development areas.',
     `merit_increase_eligible` BOOLEAN COMMENT 'Flag indicating whether the employee is eligible for merit-based salary increase based on this performance review outcome.',
     `overall_rating` STRING COMMENT 'Overall performance rating assigned to the employee for the review period (exceeds expectations, meets expectations, needs improvement, unsatisfactory, outstanding).. Valid values are `exceeds_expectations|meets_expectations|needs_improvement|unsatisfactory|outstanding`',
     `overall_rating_score` DECIMAL(18,2) COMMENT 'Numeric score representing the overall performance rating, typically on a scale (e.g., 1.0 to 5.0).',
     `performance_improvement_plan_required` BOOLEAN COMMENT 'Flag indicating whether a formal Performance Improvement Plan is required due to unsatisfactory performance.',
+    `performance_score` DECIMAL(18,2) COMMENT '',
     `promotion_recommended` BOOLEAN COMMENT 'Flag indicating whether the reviewing manager recommends the employee for promotion based on performance.',
     `review_completion_date` DATE COMMENT 'Date when the performance review was finalized and marked as complete.',
     `review_cycle_year` STRING COMMENT 'Calendar year in which the performance review cycle occurred.',
+    `review_date` TIMESTAMP COMMENT '',
     `review_due_date` DATE COMMENT 'Target or deadline date by which the performance review should be completed.',
     `review_language` STRING COMMENT 'Language in which the performance review was conducted and documented, using ISO 639-2 three-letter codes. [ENUM-REF-CANDIDATE: ENG|SPA|FRA|DEU|ZHO|JPN|POR — 7 candidates stripped; promote to reference product]',
+    `review_period_end` TIMESTAMP COMMENT '',
     `review_period_end_date` DATE COMMENT 'End date of the performance evaluation period being assessed.',
+    `review_period_start` TIMESTAMP COMMENT '',
     `review_period_start_date` DATE COMMENT 'Start date of the performance evaluation period being assessed.',
     `review_status` STRING COMMENT 'Current lifecycle status of the performance review (draft, in progress, submitted, manager review, calibration, approved, completed, cancelled). [ENUM-REF-CANDIDATE: draft|in_progress|submitted|manager_review|calibration|approved|completed|cancelled — 8 candidates stripped; promote to reference product]',
     `review_template_name` STRING COMMENT 'Name of the performance review template or form used for this evaluation (e.g., standard annual review, leadership review).',
@@ -594,12 +660,14 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`workforce`.`requisition` (
     `org_unit_id` BIGINT COMMENT 'Reference to the organizational department or business unit for this position.',
     `position_id` BIGINT COMMENT 'Reference to the organizational position this requisition is intended to fill.',
     `primary_requisition_approved_by_employee_id` BIGINT COMMENT 'Reference to the employee who approved the requisition for opening.',
+    `requisition_hiring_manager_employee_id` BIGINT COMMENT '',
     `requisition_last_modified_by_employee_id` BIGINT COMMENT 'Reference to the employee who last modified the requisition record.',
     `tertiary_requisition_recruiter_employee_id` BIGINT COMMENT 'Reference to the HR recruiter assigned to manage the candidate pipeline for this requisition.',
     `applicant_count` STRING COMMENT 'Total number of candidates who have applied to this requisition.',
     `approval_status` STRING COMMENT 'Status of the requisition approval workflow indicating whether it has been authorized for recruiting.. Valid values are `pending|approved|rejected|withdrawn`',
     `approved_date` DATE COMMENT 'Date when the requisition was approved by the authorizing manager or HR.',
     `background_check_required` BOOLEAN COMMENT 'Indicates whether a background check is mandatory for candidates selected for this position.',
+    `budgeted_salary` DECIMAL(18,2) COMMENT '',
     `closed_date` DATE COMMENT 'Date when the requisition was closed, either due to being filled or cancelled.',
     `created_timestamp` TIMESTAMP COMMENT 'Timestamp when the requisition record was first created in the system.',
     `currency_code` STRING COMMENT 'Three-letter ISO 4217 currency code for salary and compensation amounts.. Valid values are `^[A-Z]{3}$`',
@@ -614,6 +682,7 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`workforce`.`requisition` (
     `posting_end_date` DATE COMMENT 'Date when the job posting is scheduled to be removed from public visibility.',
     `posting_start_date` DATE COMMENT 'Date when the job posting becomes publicly visible on job boards and career sites.',
     `posting_title` STRING COMMENT 'Public-facing job title used in external job postings and advertisements.',
+    `priority_code` STRING COMMENT '',
     `priority_level` STRING COMMENT 'Business priority assigned to this requisition indicating urgency of filling the position.. Valid values are `low|medium|high|critical`',
     `reason` STRING COMMENT 'Business justification or reason for opening this requisition, such as growth, attrition, or reorganization.',
     `remote_work_eligible` BOOLEAN COMMENT 'Indicates whether the position is eligible for remote or hybrid work arrangements.',
@@ -628,13 +697,12 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`workforce`.`requisition` (
     `sourcing_channel` STRING COMMENT 'Primary channel or method used to source candidates for this requisition. [ENUM-REF-CANDIDATE: internal|external|referral|agency|campus|job_board|social_media — 7 candidates stripped; promote to reference product]',
     `target_start_date` DATE COMMENT 'Desired date for the selected candidate to begin employment.',
     `time_to_fill_days` STRING COMMENT 'Number of calendar days from requisition opening to position being filled, used for recruiting KPI tracking.',
-    `travel_percentage` STRING COMMENT 'Expected percentage of time the position requires business travel.',
+    `travel_percentage` DECIMAL(18,2) COMMENT 'Expected percentage of time the position requires business travel.',
     CONSTRAINT pk_requisition PRIMARY KEY(`requisition_id`)
 ) COMMENT 'Transactional record of approved requests to fill positions through internal transfer or external hiring. Captures requisition number, linked position, job profile, target start date, hiring manager, recruiter assignment, requisition status (open/in-progress/on-hold/filled/cancelled), sourcing channel, and time-to-fill metrics. Includes candidate pipeline tracking: applicant records with source, pipeline stage (applied/screened/interviewed/offered/hired/rejected), assessment results, background check status, and offer details. Sourced from Workday HCM Recruiting. Serves as the SSOT for the full recruiting lifecycle from requisition opening through candidate hire.';
 
 CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`workforce`.`labor_agreement` (
     `labor_agreement_id` BIGINT COMMENT 'Primary key for labor_agreement',
-    `employee_id` BIGINT COMMENT 'add column employee_id (BIGINT) with FK to workforce.employee.employee_id - labor agreements govern employee terms and must link to affected employees',
     `org_unit_id` BIGINT COMMENT 'Foreign key linking to workforce.org_unit. Business justification: Labor agreements are tied to a specific org unit; linking provides context and removes redundant business_unit string.',
     `agreement_document_url` STRING COMMENT 'URL or file path to the full legal text of the labor agreement. Links to document management system or shared repository.. Valid values are `^https?://.*`',
     `agreement_name` STRING COMMENT 'Human-readable name or title of the labor agreement. Typically includes union name and location or business unit covered.',
@@ -645,8 +713,9 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`workforce`.`labor_agreement` (
     `annual_wage_increase_percentage` DECIMAL(18,2) COMMENT 'Negotiated annual percentage increase in base wages. May be fixed or tied to cost-of-living adjustments (COLA).',
     `arbitration_clause_flag` BOOLEAN COMMENT 'Indicates whether the agreement includes binding arbitration as the final step in the grievance process.',
     `bargaining_unit_code` STRING COMMENT 'Code identifying the bargaining unit or employee group covered by this agreement. Used for payroll, benefits administration, and labor cost allocation.. Valid values are `^[A-Z0-9]{2,10}$`',
-    `base_wage_scale_reference` STRING COMMENT 'Reference to the wage scale or pay table defined in the agreement. Links to detailed wage schedules by job classification and seniority.',
+    `base_wage_scale_reference` DECIMAL(18,2) COMMENT 'Reference to the wage scale or pay table defined in the agreement. Links to detailed wage schedules by job classification and seniority.',
     `cola_provision_flag` BOOLEAN COMMENT 'Indicates whether the agreement includes a cost-of-living adjustment provision that ties wage increases to inflation indices.',
+    `covered_employee_count` STRING COMMENT '',
     `covered_employee_group` STRING COMMENT 'Description of the employee population covered by this agreement. May reference job families, locations, business units, or other grouping criteria.',
     `created_timestamp` TIMESTAMP COMMENT 'Timestamp when this labor agreement record was first created in the system. Used for audit trail and data lineage.',
     `effective_end_date` DATE COMMENT 'Date when the labor agreement expires or terminates. Null for open-ended agreements or those without a defined end date.',
@@ -657,6 +726,7 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`workforce`.`labor_agreement` (
     `last_modified_timestamp` TIMESTAMP COMMENT 'Timestamp when this labor agreement record was last updated. Supports change tracking and audit compliance.',
     `lead_negotiator_name` STRING COMMENT 'Name of the primary management representative who led negotiations for this agreement. Used for accountability and historical reference.',
     `management_rights_clause` STRING COMMENT 'Text or summary of the management rights clause, which reserves certain decision-making authority to the employer outside the scope of collective bargaining.',
+    `negotiated_wage_increase_pct` DECIMAL(18,2) COMMENT '',
     `negotiation_completion_date` DATE COMMENT 'Date when negotiations concluded and a tentative agreement was reached, prior to ratification.',
     `negotiation_start_date` DATE COMMENT 'Date when formal negotiations for this agreement began. Used for tracking negotiation timelines and labor relations history.',
     `no_strike_clause_flag` BOOLEAN COMMENT 'Indicates whether the agreement includes a no-strike provision prohibiting work stoppages during the term of the contract.',
@@ -673,6 +743,7 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`workforce`.`labor_agreement` (
     `shift_differential_amount` DECIMAL(18,2) COMMENT 'Additional compensation per hour for non-standard shifts (e.g., night shift, weekend shift) as defined in the agreement.',
     `subcontracting_restrictions` STRING COMMENT 'Description of any restrictions on the employers ability to subcontract work covered by the bargaining unit, protecting union jobs.',
     `successor_clause_flag` BOOLEAN COMMENT 'Indicates whether the agreement includes a successor clause requiring a new owner to honor the existing labor agreement in the event of a business sale or merger.',
+    `terms_summary` STRING COMMENT '',
     `union_dues_deduction_flag` BOOLEAN COMMENT 'Indicates whether the employer is required to deduct union dues from employee paychecks and remit them to the union (checkoff provision).',
     `union_local_number` STRING COMMENT 'Local chapter or branch number of the union. Used to identify the specific union local that negotiated and is covered by this agreement.',
     `union_name` STRING COMMENT 'Name of the labor union or bargaining unit that is party to this agreement. Null for individual labor agreements not involving a union.',
@@ -683,21 +754,29 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`workforce`.`labor_agreement` (
 
 CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`workforce`.`payroll_period` (
     `payroll_period_id` BIGINT COMMENT 'Primary key for payroll_period',
+    `company_code_id` BIGINT COMMENT '',
     `previous_payroll_period_id` BIGINT COMMENT 'Self-referencing FK on payroll_period (previous_payroll_period_id)',
     `created_timestamp` TIMESTAMP COMMENT 'Timestamp when the payroll period record was first created in the system.',
     `currency_code` STRING COMMENT 'ISO 4217 currency code for payroll amounts in this period.',
     `payroll_period_description` STRING COMMENT 'Additional free‑text description of the payroll period.',
-    `duration_days` STRING COMMENT 'Number of days in the payroll period.',
+    `duration_days` DECIMAL(18,2) COMMENT 'Number of days in the payroll period.',
     `end_date` DATE COMMENT 'Last calendar date covered by the payroll period.',
     `fiscal_quarter` STRING COMMENT 'Fiscal quarter (1‑4) for the payroll period.',
     `fiscal_year` STRING COMMENT 'Fiscal year to which the payroll period belongs.',
+    `frequency` STRING COMMENT '',
+    `is_closed` BOOLEAN COMMENT '',
     `is_current` BOOLEAN COMMENT 'Indicates whether this period is the active payroll period.',
+    `last_modified_timestamp` TIMESTAMP COMMENT '',
     `lock_timestamp` TIMESTAMP COMMENT 'Timestamp when the payroll period was locked for changes.',
+    `payment_date` TIMESTAMP COMMENT '',
     `payroll_cycle_number` STRING COMMENT 'Ordinal number of the payroll cycle within the year (e.g., 1 for first weekly cycle).',
     `payroll_frequency` STRING COMMENT 'Frequency at which payroll is processed for this period.',
     `period_code` STRING COMMENT 'External code representing the payroll period, typically in YYYYMM format.',
+    `period_end_date` TIMESTAMP COMMENT '',
     `period_name` STRING COMMENT 'Human‑readable name for the payroll period (e.g., "January 2024 Payroll").',
     `period_sequence` STRING COMMENT 'Sequential number of the period within the fiscal year.',
+    `period_start_date` TIMESTAMP COMMENT '',
+    `period_status` STRING COMMENT '',
     `period_type` STRING COMMENT 'Category of the payroll period indicating its purpose.',
     `processed_timestamp` TIMESTAMP COMMENT 'Timestamp when payroll calculations were completed for the period.',
     `start_date` DATE COMMENT 'First calendar date covered by the payroll period.',
@@ -708,9 +787,8 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`workforce`.`payroll_period` (
 
 CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`workforce`.`shift_pattern` (
     `shift_pattern_id` BIGINT COMMENT 'Primary key for shift_pattern',
-    `production_plant_id` BIGINT COMMENT 'add column plant_id (BIGINT) with FK to production.plant.plant_id - shift patterns are defined per plant location',
     `rotation_shift_pattern_id` BIGINT COMMENT 'Self-referencing FK on shift_pattern (rotation_shift_pattern_id)',
-    `break_duration_minutes` STRING COMMENT 'Total allotted break time within the shift, expressed in minutes.',
+    `break_duration_minutes` DECIMAL(18,2) COMMENT 'Total allotted break time within the shift, expressed in minutes.',
     `shift_pattern_code` STRING COMMENT 'Business identifier code for the shift pattern, used in scheduling and reporting.',
     `compliance_iso45001` BOOLEAN COMMENT 'Indicates whether the shift pattern complies with ISO 45001 occupational health and safety standards.',
     `created_timestamp` TIMESTAMP COMMENT 'Timestamp when the shift pattern record was first created in the system.',
@@ -718,17 +796,23 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`workforce`.`shift_pattern` (
     `duration_hours` DECIMAL(18,2) COMMENT 'Total length of the shift pattern expressed in hours.',
     `effective_from` DATE COMMENT 'Date when the shift pattern becomes valid for scheduling.',
     `effective_until` DATE COMMENT 'Date when the shift pattern expires; null if open‑ended.',
+    `is_active` BOOLEAN COMMENT '',
     `is_default` BOOLEAN COMMENT 'Flag indicating whether this pattern is the default for new employees or locations.',
     `labor_category` STRING COMMENT 'Category of labor to which the shift pattern applies.',
+    `last_modified_timestamp` TIMESTAMP COMMENT '',
     `max_consecutive_days` STRING COMMENT 'Maximum number of days an employee may work consecutively under this pattern.',
     `min_rest_hours` DECIMAL(18,2) COMMENT 'Minimum required rest period between the end of one shift and the start of the next, expressed in hours.',
     `shift_pattern_name` STRING COMMENT 'Human‑readable name of the shift pattern.',
     `notes` STRING COMMENT 'Free‑form field for any supplemental information or remarks about the shift pattern.',
     `overtime_allowed` BOOLEAN COMMENT 'Indicates if overtime work is permitted under this shift pattern.',
+    `pattern_code` STRING COMMENT '',
+    `pattern_name` STRING COMMENT '',
     `pattern_type` STRING COMMENT 'Classification of the shift pattern based on its scheduling logic.',
+    `rotation_days` STRING COMMENT '',
     `shift_end_time` TIMESTAMP COMMENT 'Scheduled end time of the shift within a day (24‑hour format).',
     `shift_start_time` TIMESTAMP COMMENT 'Scheduled start time of the shift within a day (24‑hour format).',
     `shift_pattern_status` STRING COMMENT 'Current lifecycle status of the shift pattern.',
+    `total_hours` DECIMAL(18,2) COMMENT '',
     `updated_timestamp` TIMESTAMP COMMENT 'Timestamp of the most recent update to the shift pattern record.',
     CONSTRAINT pk_shift_pattern PRIMARY KEY(`shift_pattern_id`)
 ) COMMENT 'Master reference table for shift_pattern. Referenced by shift_pattern_id.';
@@ -745,13 +829,19 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`workforce`.`certification_type`
     `effective_date` DATE COMMENT 'Date on which the certification type becomes effective for use.',
     `expiry_date` DATE COMMENT 'Optional date after which the certification type is no longer valid for new assignments.',
     `external_reference_code` STRING COMMENT 'Identifier used in external systems (e.g., ISO catalog) to reference the certification.',
+    `is_active` BOOLEAN COMMENT '',
     `is_mandatory` BOOLEAN COMMENT 'Flag indicating whether the certification is mandatory for the associated job roles.',
-    `issuing_body` STRING COMMENT 'Organization or authority that issues and governs the certification.',
+    `issuing_authority` STRING COMMENT '',
+    `issuing_body` BOOLEAN COMMENT 'Organization or authority that issues and governs the certification.',
+    `last_modified_timestamp` TIMESTAMP COMMENT '',
     `last_review_date` DATE COMMENT 'Date when the certification type definition was last reviewed for relevance or updates.',
     `certification_type_name` STRING COMMENT 'Human‑readable name of the certification type (e.g., "ISO 45001 Safety Certification").',
     `renewal_period_months` STRING COMMENT 'Number of months between required renewals when renewal_required is true.',
     `renewal_required` BOOLEAN COMMENT 'Indicates whether the certification must be renewed periodically.',
+    `renewal_required_flag` BOOLEAN COMMENT '',
     `certification_type_status` STRING COMMENT 'Current lifecycle status of the certification type.',
+    `type_code` STRING COMMENT '',
+    `type_name` STRING COMMENT '',
     `updated_timestamp` TIMESTAMP COMMENT 'Timestamp of the most recent update to the certification type record.',
     `validity_period_months` STRING COMMENT 'Number of months the certification remains valid from the effective date.',
     `version_number` STRING COMMENT 'Sequential version number for changes to the certification type definition.',
@@ -767,24 +857,31 @@ ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`position` ADD CONSTRAINT `fk_wo
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`position` ADD CONSTRAINT `fk_workforce_position_job_profile_id` FOREIGN KEY (`job_profile_id`) REFERENCES `vibe_manufacturing_v1`.`workforce`.`job_profile`(`job_profile_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`position` ADD CONSTRAINT `fk_workforce_position_org_unit_id` FOREIGN KEY (`org_unit_id`) REFERENCES `vibe_manufacturing_v1`.`workforce`.`org_unit`(`org_unit_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`position` ADD CONSTRAINT `fk_workforce_position_supervisor_position_id` FOREIGN KEY (`supervisor_position_id`) REFERENCES `vibe_manufacturing_v1`.`workforce`.`position`(`position_id`);
+ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`assignment` ADD CONSTRAINT `fk_workforce_assignment_employee_id` FOREIGN KEY (`employee_id`) REFERENCES `vibe_manufacturing_v1`.`workforce`.`employee`(`employee_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`assignment` ADD CONSTRAINT `fk_workforce_assignment_assignment_org_unit_id` FOREIGN KEY (`assignment_org_unit_id`) REFERENCES `vibe_manufacturing_v1`.`workforce`.`org_unit`(`org_unit_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`assignment` ADD CONSTRAINT `fk_workforce_assignment_job_profile_id` FOREIGN KEY (`job_profile_id`) REFERENCES `vibe_manufacturing_v1`.`workforce`.`job_profile`(`job_profile_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`assignment` ADD CONSTRAINT `fk_workforce_assignment_org_unit_id` FOREIGN KEY (`org_unit_id`) REFERENCES `vibe_manufacturing_v1`.`workforce`.`org_unit`(`org_unit_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`assignment` ADD CONSTRAINT `fk_workforce_assignment_position_id` FOREIGN KEY (`position_id`) REFERENCES `vibe_manufacturing_v1`.`workforce`.`position`(`position_id`);
-ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`assignment` ADD CONSTRAINT `fk_workforce_assignment_employee_id` FOREIGN KEY (`employee_id`) REFERENCES `vibe_manufacturing_v1`.`workforce`.`employee`(`employee_id`);
+ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`assignment` ADD CONSTRAINT `fk_workforce_assignment_primary_assignment_employee_id` FOREIGN KEY (`primary_assignment_employee_id`) REFERENCES `vibe_manufacturing_v1`.`workforce`.`employee`(`employee_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`workforce_certification` ADD CONSTRAINT `fk_workforce_workforce_certification_certification_type_id` FOREIGN KEY (`certification_type_id`) REFERENCES `vibe_manufacturing_v1`.`workforce`.`certification_type`(`certification_type_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`workforce_certification` ADD CONSTRAINT `fk_workforce_workforce_certification_employee_id` FOREIGN KEY (`employee_id`) REFERENCES `vibe_manufacturing_v1`.`workforce`.`employee`(`employee_id`);
+ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`workforce_certification` ADD CONSTRAINT `fk_workforce_workforce_certification_workforce_certification_type_id` FOREIGN KEY (`workforce_certification_type_id`) REFERENCES `vibe_manufacturing_v1`.`workforce`.`certification_type`(`certification_type_id`);
+ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`shift_schedule` ADD CONSTRAINT `fk_workforce_shift_schedule_org_unit_id` FOREIGN KEY (`org_unit_id`) REFERENCES `vibe_manufacturing_v1`.`workforce`.`org_unit`(`org_unit_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`shift_schedule` ADD CONSTRAINT `fk_workforce_shift_schedule_employee_id` FOREIGN KEY (`employee_id`) REFERENCES `vibe_manufacturing_v1`.`workforce`.`employee`(`employee_id`);
+ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`shift_schedule` ADD CONSTRAINT `fk_workforce_shift_schedule_shift_employee_id` FOREIGN KEY (`shift_employee_id`) REFERENCES `vibe_manufacturing_v1`.`workforce`.`employee`(`employee_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`shift_schedule` ADD CONSTRAINT `fk_workforce_shift_schedule_shift_pattern_id` FOREIGN KEY (`shift_pattern_id`) REFERENCES `vibe_manufacturing_v1`.`workforce`.`shift_pattern`(`shift_pattern_id`);
+ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`time_entry` ADD CONSTRAINT `fk_workforce_time_entry_assignment_id` FOREIGN KEY (`assignment_id`) REFERENCES `vibe_manufacturing_v1`.`workforce`.`assignment`(`assignment_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`time_entry` ADD CONSTRAINT `fk_workforce_time_entry_payroll_period_id` FOREIGN KEY (`payroll_period_id`) REFERENCES `vibe_manufacturing_v1`.`workforce`.`payroll_period`(`payroll_period_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`time_entry` ADD CONSTRAINT `fk_workforce_time_entry_employee_id` FOREIGN KEY (`employee_id`) REFERENCES `vibe_manufacturing_v1`.`workforce`.`employee`(`employee_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`time_entry` ADD CONSTRAINT `fk_workforce_time_entry_tertiary_time_modified_by_employee_id` FOREIGN KEY (`tertiary_time_modified_by_employee_id`) REFERENCES `vibe_manufacturing_v1`.`workforce`.`employee`(`employee_id`);
-ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`absence_record` ADD CONSTRAINT `fk_workforce_absence_record_payroll_period_id` FOREIGN KEY (`payroll_period_id`) REFERENCES `vibe_manufacturing_v1`.`workforce`.`payroll_period`(`payroll_period_id`);
+ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`time_entry` ADD CONSTRAINT `fk_workforce_time_entry_time_employee_id` FOREIGN KEY (`time_employee_id`) REFERENCES `vibe_manufacturing_v1`.`workforce`.`employee`(`employee_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`absence_record` ADD CONSTRAINT `fk_workforce_absence_record_employee_id` FOREIGN KEY (`employee_id`) REFERENCES `vibe_manufacturing_v1`.`workforce`.`employee`(`employee_id`);
+ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`absence_record` ADD CONSTRAINT `fk_workforce_absence_record_payroll_period_id` FOREIGN KEY (`payroll_period_id`) REFERENCES `vibe_manufacturing_v1`.`workforce`.`payroll_period`(`payroll_period_id`);
+ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`absence_record` ADD CONSTRAINT `fk_workforce_absence_record_primary_absence_employee_id` FOREIGN KEY (`primary_absence_employee_id`) REFERENCES `vibe_manufacturing_v1`.`workforce`.`employee`(`employee_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`absence_record` ADD CONSTRAINT `fk_workforce_absence_record_tertiary_absence_replacement_employee_id` FOREIGN KEY (`tertiary_absence_replacement_employee_id`) REFERENCES `vibe_manufacturing_v1`.`workforce`.`employee`(`employee_id`);
-ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`payroll_result` ADD CONSTRAINT `fk_workforce_payroll_result_payroll_period_id` FOREIGN KEY (`payroll_period_id`) REFERENCES `vibe_manufacturing_v1`.`workforce`.`payroll_period`(`payroll_period_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`payroll_result` ADD CONSTRAINT `fk_workforce_payroll_result_employee_id` FOREIGN KEY (`employee_id`) REFERENCES `vibe_manufacturing_v1`.`workforce`.`employee`(`employee_id`);
-ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`benefit_plan` ADD CONSTRAINT `fk_workforce_benefit_plan_employee_id` FOREIGN KEY (`employee_id`) REFERENCES `vibe_manufacturing_v1`.`workforce`.`employee`(`employee_id`);
+ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`payroll_result` ADD CONSTRAINT `fk_workforce_payroll_result_payroll_period_id` FOREIGN KEY (`payroll_period_id`) REFERENCES `vibe_manufacturing_v1`.`workforce`.`payroll_period`(`payroll_period_id`);
+ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`payroll_result` ADD CONSTRAINT `fk_workforce_payroll_result_primary_payroll_employee_id` FOREIGN KEY (`primary_payroll_employee_id`) REFERENCES `vibe_manufacturing_v1`.`workforce`.`employee`(`employee_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`benefit_plan` ADD CONSTRAINT `fk_workforce_benefit_plan_org_unit_id` FOREIGN KEY (`org_unit_id`) REFERENCES `vibe_manufacturing_v1`.`workforce`.`org_unit`(`org_unit_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`training_course` ADD CONSTRAINT `fk_workforce_training_course_employee_id` FOREIGN KEY (`employee_id`) REFERENCES `vibe_manufacturing_v1`.`workforce`.`employee`(`employee_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`training_course` ADD CONSTRAINT `fk_workforce_training_course_org_unit_id` FOREIGN KEY (`org_unit_id`) REFERENCES `vibe_manufacturing_v1`.`workforce`.`org_unit`(`org_unit_id`);
@@ -796,9 +893,9 @@ ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`requisition` ADD CONSTRAINT `fk
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`requisition` ADD CONSTRAINT `fk_workforce_requisition_org_unit_id` FOREIGN KEY (`org_unit_id`) REFERENCES `vibe_manufacturing_v1`.`workforce`.`org_unit`(`org_unit_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`requisition` ADD CONSTRAINT `fk_workforce_requisition_position_id` FOREIGN KEY (`position_id`) REFERENCES `vibe_manufacturing_v1`.`workforce`.`position`(`position_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`requisition` ADD CONSTRAINT `fk_workforce_requisition_primary_requisition_approved_by_employee_id` FOREIGN KEY (`primary_requisition_approved_by_employee_id`) REFERENCES `vibe_manufacturing_v1`.`workforce`.`employee`(`employee_id`);
+ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`requisition` ADD CONSTRAINT `fk_workforce_requisition_requisition_hiring_manager_employee_id` FOREIGN KEY (`requisition_hiring_manager_employee_id`) REFERENCES `vibe_manufacturing_v1`.`workforce`.`employee`(`employee_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`requisition` ADD CONSTRAINT `fk_workforce_requisition_requisition_last_modified_by_employee_id` FOREIGN KEY (`requisition_last_modified_by_employee_id`) REFERENCES `vibe_manufacturing_v1`.`workforce`.`employee`(`employee_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`requisition` ADD CONSTRAINT `fk_workforce_requisition_tertiary_requisition_recruiter_employee_id` FOREIGN KEY (`tertiary_requisition_recruiter_employee_id`) REFERENCES `vibe_manufacturing_v1`.`workforce`.`employee`(`employee_id`);
-ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`labor_agreement` ADD CONSTRAINT `fk_workforce_labor_agreement_employee_id` FOREIGN KEY (`employee_id`) REFERENCES `vibe_manufacturing_v1`.`workforce`.`employee`(`employee_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`labor_agreement` ADD CONSTRAINT `fk_workforce_labor_agreement_org_unit_id` FOREIGN KEY (`org_unit_id`) REFERENCES `vibe_manufacturing_v1`.`workforce`.`org_unit`(`org_unit_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`payroll_period` ADD CONSTRAINT `fk_workforce_payroll_period_previous_payroll_period_id` FOREIGN KEY (`previous_payroll_period_id`) REFERENCES `vibe_manufacturing_v1`.`workforce`.`payroll_period`(`payroll_period_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`shift_pattern` ADD CONSTRAINT `fk_workforce_shift_pattern_rotation_shift_pattern_id` FOREIGN KEY (`rotation_shift_pattern_id`) REFERENCES `vibe_manufacturing_v1`.`workforce`.`shift_pattern`(`shift_pattern_id`);
@@ -819,7 +916,6 @@ ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`employee` ALTER COLUMN `supervi
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`employee` ALTER COLUMN `annual_salary` SET TAGS ('dbx_business_glossary_term' = 'Annual Salary');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`employee` ALTER COLUMN `annual_salary` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`employee` ALTER COLUMN `cost_center` SET TAGS ('dbx_business_glossary_term' = 'Cost Center');
-ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`employee` ALTER COLUMN `cost_center` SET TAGS ('dbx_value_regex' = '^[A-Z0-9]{4,10}$');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`employee` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`employee` ALTER COLUMN `currency_code` SET TAGS ('dbx_business_glossary_term' = 'Currency Code');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`employee` ALTER COLUMN `currency_code` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
@@ -829,15 +925,23 @@ ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`employee` ALTER COLUMN `date_of
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`employee` ALTER COLUMN `department_code` SET TAGS ('dbx_business_glossary_term' = 'Department Code');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`employee` ALTER COLUMN `department_code` SET TAGS ('dbx_value_regex' = '^[A-Z0-9]{3,8}$');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`employee` ALTER COLUMN `department_name` SET TAGS ('dbx_business_glossary_term' = 'Department Name');
+ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`employee` ALTER COLUMN `department_name` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`employee` ALTER COLUMN `department_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`employee` ALTER COLUMN `email_address` SET TAGS ('dbx_business_glossary_term' = 'Employee Email Address');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`employee` ALTER COLUMN `email_address` SET TAGS ('dbx_value_regex' = '^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+.[a-zA-Z]{2,}$');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`employee` ALTER COLUMN `email_address` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`employee` ALTER COLUMN `email_address` SET TAGS ('dbx_pii_email' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`employee` ALTER COLUMN `email_address` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`employee` ALTER COLUMN `email_address` SET TAGS ('dbx_sensitivity' = 'pii');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`employee` ALTER COLUMN `emergency_contact_name` SET TAGS ('dbx_business_glossary_term' = 'Emergency Contact Name');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`employee` ALTER COLUMN `emergency_contact_name` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`employee` ALTER COLUMN `emergency_contact_name` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`employee` ALTER COLUMN `emergency_contact_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`employee` ALTER COLUMN `emergency_contact_phone` SET TAGS ('dbx_business_glossary_term' = 'Emergency Contact Phone Number');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`employee` ALTER COLUMN `emergency_contact_phone` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`employee` ALTER COLUMN `emergency_contact_phone` SET TAGS ('dbx_pii_phone' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`employee` ALTER COLUMN `emergency_contact_phone` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`employee` ALTER COLUMN `emergency_contact_phone` SET TAGS ('dbx_sensitivity' = 'pii');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`employee` ALTER COLUMN `emergency_contact_relationship` SET TAGS ('dbx_business_glossary_term' = 'Emergency Contact Relationship');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`employee` ALTER COLUMN `emergency_contact_relationship` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`employee` ALTER COLUMN `employee_number` SET TAGS ('dbx_business_glossary_term' = 'Employee Number');
@@ -849,6 +953,8 @@ ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`employee` ALTER COLUMN `employm
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`employee` ALTER COLUMN `first_name` SET TAGS ('dbx_business_glossary_term' = 'Employee First Name');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`employee` ALTER COLUMN `first_name` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`employee` ALTER COLUMN `first_name` SET TAGS ('dbx_pii_name' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`employee` ALTER COLUMN `first_name` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`employee` ALTER COLUMN `first_name` SET TAGS ('dbx_sensitivity' = 'pii');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`employee` ALTER COLUMN `hire_date` SET TAGS ('dbx_business_glossary_term' = 'Hire Date');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`employee` ALTER COLUMN `hourly_rate` SET TAGS ('dbx_business_glossary_term' = 'Hourly Pay Rate');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`employee` ALTER COLUMN `hourly_rate` SET TAGS ('dbx_confidential' = 'true');
@@ -860,13 +966,19 @@ ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`employee` ALTER COLUMN `job_tit
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`employee` ALTER COLUMN `last_name` SET TAGS ('dbx_business_glossary_term' = 'Employee Last Name');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`employee` ALTER COLUMN `last_name` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`employee` ALTER COLUMN `last_name` SET TAGS ('dbx_pii_name' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`employee` ALTER COLUMN `last_name` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`employee` ALTER COLUMN `last_name` SET TAGS ('dbx_sensitivity' = 'pii');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`employee` ALTER COLUMN `last_performance_review_date` SET TAGS ('dbx_business_glossary_term' = 'Last Performance Review Date');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`employee` ALTER COLUMN `middle_name` SET TAGS ('dbx_business_glossary_term' = 'Employee Middle Name');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`employee` ALTER COLUMN `middle_name` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`employee` ALTER COLUMN `middle_name` SET TAGS ('dbx_pii_name' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`employee` ALTER COLUMN `middle_name` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`employee` ALTER COLUMN `middle_name` SET TAGS ('dbx_sensitivity' = 'pii');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`employee` ALTER COLUMN `national_id_number` SET TAGS ('dbx_business_glossary_term' = 'National Identification Number');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`employee` ALTER COLUMN `national_id_number` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`employee` ALTER COLUMN `national_id_number` SET TAGS ('dbx_pii_national_id' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`employee` ALTER COLUMN `national_id_number` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`employee` ALTER COLUMN `national_id_number` SET TAGS ('dbx_sensitivity' = 'pii');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`employee` ALTER COLUMN `pay_grade` SET TAGS ('dbx_business_glossary_term' = 'Pay Grade');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`employee` ALTER COLUMN `pay_grade` SET TAGS ('dbx_value_regex' = '^[A-Z0-9]{2,6}$');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`employee` ALTER COLUMN `pay_grade` SET TAGS ('dbx_confidential' = 'true');
@@ -876,6 +988,7 @@ ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`employee` ALTER COLUMN `perform
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`employee` ALTER COLUMN `phone_number` SET TAGS ('dbx_business_glossary_term' = 'Employee Phone Number');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`employee` ALTER COLUMN `phone_number` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`employee` ALTER COLUMN `phone_number` SET TAGS ('dbx_pii_phone' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`employee` ALTER COLUMN `phone_number` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`employee` ALTER COLUMN `safety_certification_expiry_date` SET TAGS ('dbx_business_glossary_term' = 'Safety Certification Expiry Date');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`employee` ALTER COLUMN `safety_certification_status` SET TAGS ('dbx_business_glossary_term' = 'Safety Certification Status');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`employee` ALTER COLUMN `safety_certification_status` SET TAGS ('dbx_value_regex' = 'certified|expired|pending|not_required');
@@ -893,6 +1006,8 @@ ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`employee` ALTER COLUMN `updated
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`employee` ALTER COLUMN `work_location_code` SET TAGS ('dbx_business_glossary_term' = 'Work Location Code');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`employee` ALTER COLUMN `work_location_code` SET TAGS ('dbx_value_regex' = '^[A-Z0-9]{3,8}$');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`employee` ALTER COLUMN `work_location_name` SET TAGS ('dbx_business_glossary_term' = 'Work Location Name');
+ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`employee` ALTER COLUMN `work_location_name` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`employee` ALTER COLUMN `work_location_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`employee` ALTER COLUMN `work_permit_expiry_date` SET TAGS ('dbx_business_glossary_term' = 'Work Permit Expiry Date');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`employee` ALTER COLUMN `work_permit_required_flag` SET TAGS ('dbx_business_glossary_term' = 'Work Permit Required Flag');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`org_unit` SET TAGS ('dbx_data_type' = 'master_data');
@@ -931,6 +1046,8 @@ ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`org_unit` ALTER COLUMN `locatio
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`org_unit` ALTER COLUMN `modified_by_user` SET TAGS ('dbx_business_glossary_term' = 'Modified By User');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`org_unit` ALTER COLUMN `modified_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Modified Timestamp');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`org_unit` ALTER COLUMN `org_unit_name` SET TAGS ('dbx_business_glossary_term' = 'Organizational Unit Name');
+ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`org_unit` ALTER COLUMN `org_unit_name` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`org_unit` ALTER COLUMN `org_unit_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`org_unit` ALTER COLUMN `org_unit_status` SET TAGS ('dbx_business_glossary_term' = 'Organizational Unit Status');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`org_unit` ALTER COLUMN `org_unit_status` SET TAGS ('dbx_value_regex' = 'active|inactive|planned|closed|suspended');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`org_unit` ALTER COLUMN `org_unit_type` SET TAGS ('dbx_business_glossary_term' = 'Organizational Unit Type');
@@ -945,6 +1062,8 @@ ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`org_unit` ALTER COLUMN `safety_
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`org_unit` ALTER COLUMN `shift_pattern` SET TAGS ('dbx_business_glossary_term' = 'Shift Pattern');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`org_unit` ALTER COLUMN `shift_pattern` SET TAGS ('dbx_value_regex' = 'single_shift|two_shift|three_shift|continuous|flexible');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`org_unit` ALTER COLUMN `short_name` SET TAGS ('dbx_business_glossary_term' = 'Organizational Unit Short Name');
+ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`org_unit` ALTER COLUMN `short_name` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`org_unit` ALTER COLUMN `short_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`org_unit` ALTER COLUMN `time_zone` SET TAGS ('dbx_business_glossary_term' = 'Time Zone');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`org_unit` ALTER COLUMN `union_code` SET TAGS ('dbx_business_glossary_term' = 'Union Code');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`org_unit` ALTER COLUMN `union_representation` SET TAGS ('dbx_business_glossary_term' = 'Union Representation Flag');
@@ -975,6 +1094,11 @@ ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`job_profile` ALTER COLUMN `job_
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`job_profile` ALTER COLUMN `job_profile_status` SET TAGS ('dbx_value_regex' = 'active|inactive|draft|obsolete');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`job_profile` ALTER COLUMN `last_modified_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Last Modified Timestamp');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`job_profile` ALTER COLUMN `last_review_date` SET TAGS ('dbx_business_glossary_term' = 'Last Review Date');
+ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`job_profile` ALTER COLUMN `max_salary` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`job_profile` ALTER COLUMN `max_salary` SET TAGS ('dbx_pii_financial' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`job_profile` ALTER COLUMN `min_salary` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`job_profile` ALTER COLUMN `min_salary` SET TAGS ('dbx_pii_financial' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`job_profile` ALTER COLUMN `job_profile_name` SET TAGS ('dbx_sensitivity' = 'pii');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`job_profile` ALTER COLUMN `next_review_date` SET TAGS ('dbx_business_glossary_term' = 'Next Review Date');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`job_profile` ALTER COLUMN `occupational_classification_code` SET TAGS ('dbx_business_glossary_term' = 'Occupational Classification Code');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`job_profile` ALTER COLUMN `occupational_classification_code` SET TAGS ('dbx_value_regex' = '^[0-9]{2}-[0-9]{4}$');
@@ -988,6 +1112,7 @@ ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`job_profile` ALTER COLUMN `prof
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`job_profile` ALTER COLUMN `profile_code` SET TAGS ('dbx_value_regex' = '^[A-Z0-9]{6,12}$');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`job_profile` ALTER COLUMN `profile_description` SET TAGS ('dbx_business_glossary_term' = 'Job Profile Description');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`job_profile` ALTER COLUMN `profile_name` SET TAGS ('dbx_business_glossary_term' = 'Job Profile Name');
+ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`job_profile` ALTER COLUMN `profile_name` SET TAGS ('dbx_sensitivity' = 'pii');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`job_profile` ALTER COLUMN `remote_work_eligible` SET TAGS ('dbx_business_glossary_term' = 'Remote Work Eligible');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`job_profile` ALTER COLUMN `required_certifications` SET TAGS ('dbx_business_glossary_term' = 'Required Certifications');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`job_profile` ALTER COLUMN `required_education_level` SET TAGS ('dbx_business_glossary_term' = 'Required Education Level');
@@ -1019,6 +1144,8 @@ ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`position` ALTER COLUMN `org_uni
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`position` ALTER COLUMN `supervisor_position_id` SET TAGS ('dbx_business_glossary_term' = 'Supervisor Position Identifier (ID)');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`position` ALTER COLUMN `approved_date` SET TAGS ('dbx_business_glossary_term' = 'Position Approved Date');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`position` ALTER COLUMN `budgeted_headcount` SET TAGS ('dbx_business_glossary_term' = 'Budgeted Headcount');
+ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`position` ALTER COLUMN `budgeted_salary` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`position` ALTER COLUMN `budgeted_salary` SET TAGS ('dbx_pii_financial' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`position` ALTER COLUMN `business_unit` SET TAGS ('dbx_business_glossary_term' = 'Business Unit');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`position` ALTER COLUMN `position_code` SET TAGS ('dbx_business_glossary_term' = 'Position Code');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`position` ALTER COLUMN `position_code` SET TAGS ('dbx_value_regex' = '^[A-Z0-9]{6,12}$');
@@ -1063,15 +1190,17 @@ ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`position` ALTER COLUMN `work_sc
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`assignment` SET TAGS ('dbx_data_type' = 'transactional_data');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`assignment` SET TAGS ('dbx_subdomain' = 'employee_records');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`assignment` ALTER COLUMN `assignment_id` SET TAGS ('dbx_business_glossary_term' = 'Assignment Identifier');
+ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`assignment` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`assignment` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`assignment` ALTER COLUMN `assignment_org_unit_id` SET TAGS ('dbx_business_glossary_term' = 'Organizational Unit Identifier (ID)');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`assignment` ALTER COLUMN `cost_center_id` SET TAGS ('dbx_business_glossary_term' = 'Cost Center Identifier (ID)');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`assignment` ALTER COLUMN `device_registry_id` SET TAGS ('dbx_business_glossary_term' = 'Device Registry Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`assignment` ALTER COLUMN `job_profile_id` SET TAGS ('dbx_business_glossary_term' = 'Job Profile Identifier (ID)');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`assignment` ALTER COLUMN `org_unit_id` SET TAGS ('dbx_business_glossary_term' = 'Business Unit Identifier (ID)');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`assignment` ALTER COLUMN `position_id` SET TAGS ('dbx_business_glossary_term' = 'Position Identifier (ID)');
-ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`assignment` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Employee Identifier (ID)');
-ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`assignment` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`assignment` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`assignment` ALTER COLUMN `primary_assignment_employee_id` SET TAGS ('dbx_business_glossary_term' = 'Employee Identifier (ID)');
+ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`assignment` ALTER COLUMN `primary_assignment_employee_id` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`assignment` ALTER COLUMN `primary_assignment_employee_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`assignment` ALTER COLUMN `location_id` SET TAGS ('dbx_business_glossary_term' = 'Work Location Identifier (ID)');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`assignment` ALTER COLUMN `assignment_number` SET TAGS ('dbx_business_glossary_term' = 'Assignment Number');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`assignment` ALTER COLUMN `assignment_status` SET TAGS ('dbx_business_glossary_term' = 'Assignment Status');
@@ -1117,7 +1246,15 @@ ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`assignment` ALTER COLUMN `union
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`assignment` ALTER COLUMN `work_shift_code` SET TAGS ('dbx_business_glossary_term' = 'Work Shift Code');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`assignment` ALTER COLUMN `created_by` SET TAGS ('dbx_business_glossary_term' = 'Assignment Created By');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`workforce_certification` SET TAGS ('dbx_data_type' = 'reference_data');
-ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`workforce_certification` SET TAGS ('dbx_subdomain' = 'employee_records');
+ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`workforce_certification` SET TAGS ('dbx_subdomain' = 'learning_development');
+ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`workforce_certification` SET TAGS ('dbx_ssot' = 'reference');
+ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`workforce_certification` SET TAGS ('dbx_ssot_group' = 'certification');
+ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`workforce_certification` SET TAGS ('dbx_ssot_master' = 'asset.asset_certification');
+ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`workforce_certification` SET TAGS ('dbx_ssot_of' = 'asset.asset_certification');
+ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`workforce_certification` SET TAGS ('dbx_ssot_role' = 'owner');
+ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`workforce_certification` SET TAGS ('dbx_ssot_subject' = 'personnel_certification');
+ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`workforce_certification` SET TAGS ('dbx_duplicate_resolution' = 'subject_partition');
+ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`workforce_certification` SET TAGS ('dbx_ssot_canonical' = 'asset.asset_certification');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`workforce_certification` ALTER COLUMN `workforce_certification_id` SET TAGS ('dbx_business_glossary_term' = 'Workforce Certification ID');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`workforce_certification` ALTER COLUMN `certification_type_id` SET TAGS ('dbx_business_glossary_term' = 'Certification Type ID');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`workforce_certification` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Employee ID');
@@ -1133,12 +1270,13 @@ ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`workforce_certification` ALTER 
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`workforce_certification` ALTER COLUMN `certification_code` SET TAGS ('dbx_business_glossary_term' = 'Certification Code');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`workforce_certification` ALTER COLUMN `certification_level` SET TAGS ('dbx_business_glossary_term' = 'Certification Level');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`workforce_certification` ALTER COLUMN `certification_name` SET TAGS ('dbx_business_glossary_term' = 'Certification Name');
+ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`workforce_certification` ALTER COLUMN `certification_name` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`workforce_certification` ALTER COLUMN `certification_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`workforce_certification` ALTER COLUMN `compliance_requirement_flag` SET TAGS ('dbx_business_glossary_term' = 'Compliance Requirement Flag');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`workforce_certification` ALTER COLUMN `cost_amount` SET TAGS ('dbx_business_glossary_term' = 'Certification Cost Amount');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`workforce_certification` ALTER COLUMN `cost_amount` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`workforce_certification` ALTER COLUMN `cost_center_code` SET TAGS ('dbx_business_glossary_term' = 'Cost Center Code');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`workforce_certification` ALTER COLUMN `cost_currency_code` SET TAGS ('dbx_business_glossary_term' = 'Cost Currency Code');
-ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`workforce_certification` ALTER COLUMN `cost_currency_code` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`workforce_certification` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`workforce_certification` ALTER COLUMN `effective_date` SET TAGS ('dbx_business_glossary_term' = 'Effective Date');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`workforce_certification` ALTER COLUMN `equipment_authorization` SET TAGS ('dbx_business_glossary_term' = 'Equipment Authorization');
@@ -1149,7 +1287,6 @@ ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`workforce_certification` ALTER 
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`workforce_certification` ALTER COLUMN `issue_date` SET TAGS ('dbx_business_glossary_term' = 'Issue Date');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`workforce_certification` ALTER COLUMN `issuing_authority` SET TAGS ('dbx_business_glossary_term' = 'Issuing Authority');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`workforce_certification` ALTER COLUMN `issuing_country_code` SET TAGS ('dbx_business_glossary_term' = 'Issuing Country Code');
-ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`workforce_certification` ALTER COLUMN `issuing_country_code` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`workforce_certification` ALTER COLUMN `job_role_applicability` SET TAGS ('dbx_business_glossary_term' = 'Job Role Applicability');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`workforce_certification` ALTER COLUMN `last_modified_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Last Modified Timestamp');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`workforce_certification` ALTER COLUMN `last_renewal_date` SET TAGS ('dbx_business_glossary_term' = 'Last Renewal Date');
@@ -1177,11 +1314,12 @@ ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`workforce_certification` ALTER 
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`shift_schedule` SET TAGS ('dbx_data_type' = 'transactional_data');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`shift_schedule` SET TAGS ('dbx_subdomain' = 'shift_planning');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`shift_schedule` ALTER COLUMN `shift_schedule_id` SET TAGS ('dbx_business_glossary_term' = 'Shift Schedule Identifier (ID)');
-ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`shift_schedule` ALTER COLUMN `device_registry_id` SET TAGS ('dbx_business_glossary_term' = 'Device Registry Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`shift_schedule` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Employee Identifier (ID)');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`shift_schedule` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`shift_schedule` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`shift_schedule` ALTER COLUMN `production_line_id` SET TAGS ('dbx_business_glossary_term' = 'Production Line Identifier (ID)');
+ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`shift_schedule` ALTER COLUMN `shift_employee_id` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`shift_schedule` ALTER COLUMN `shift_employee_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`shift_schedule` ALTER COLUMN `shift_pattern_id` SET TAGS ('dbx_business_glossary_term' = 'Shift Pattern Identifier (ID)');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`shift_schedule` ALTER COLUMN `work_center_id` SET TAGS ('dbx_business_glossary_term' = 'Work Center Identifier (ID)');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`shift_schedule` ALTER COLUMN `break_duration_minutes` SET TAGS ('dbx_business_glossary_term' = 'Break Duration in Minutes');
@@ -1215,6 +1353,8 @@ ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`shift_schedule` ALTER COLUMN `s
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`shift_schedule` ALTER COLUMN `scheduled_start_datetime` SET TAGS ('dbx_business_glossary_term' = 'Scheduled Start Date and Time');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`shift_schedule` ALTER COLUMN `scheduling_horizon_weeks` SET TAGS ('dbx_business_glossary_term' = 'Scheduling Horizon in Weeks');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`shift_schedule` ALTER COLUMN `shift_name` SET TAGS ('dbx_business_glossary_term' = 'Shift Name');
+ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`shift_schedule` ALTER COLUMN `shift_name` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`shift_schedule` ALTER COLUMN `shift_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`shift_schedule` ALTER COLUMN `shift_priority` SET TAGS ('dbx_business_glossary_term' = 'Shift Priority');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`shift_schedule` ALTER COLUMN `shift_priority` SET TAGS ('dbx_value_regex' = 'critical|high|normal|low');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`shift_schedule` ALTER COLUMN `shift_type` SET TAGS ('dbx_business_glossary_term' = 'Shift Type');
@@ -1234,6 +1374,8 @@ ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`time_entry` ALTER COLUMN `emplo
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`time_entry` ALTER COLUMN `tertiary_time_modified_by_employee_id` SET TAGS ('dbx_business_glossary_term' = 'Modified By Employee Identifier (ID)');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`time_entry` ALTER COLUMN `tertiary_time_modified_by_employee_id` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`time_entry` ALTER COLUMN `tertiary_time_modified_by_employee_id` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`time_entry` ALTER COLUMN `time_employee_id` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`time_entry` ALTER COLUMN `time_employee_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`time_entry` ALTER COLUMN `absence_type` SET TAGS ('dbx_business_glossary_term' = 'Absence Type');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`time_entry` ALTER COLUMN `activity_code` SET TAGS ('dbx_business_glossary_term' = 'Activity Code');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`time_entry` ALTER COLUMN `activity_code` SET TAGS ('dbx_value_regex' = '^[A-Z0-9_]{2,20}$');
@@ -1281,12 +1423,14 @@ ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`time_entry` ALTER COLUMN `work_
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`absence_record` SET TAGS ('dbx_data_type' = 'transactional_data');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`absence_record` SET TAGS ('dbx_subdomain' = 'shift_planning');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`absence_record` ALTER COLUMN `absence_record_id` SET TAGS ('dbx_business_glossary_term' = 'Absence Record Identifier (ID)');
+ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`absence_record` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`absence_record` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`absence_record` ALTER COLUMN `asset_work_order_id` SET TAGS ('dbx_business_glossary_term' = 'Work Order Identifier (ID)');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`absence_record` ALTER COLUMN `cost_center_id` SET TAGS ('dbx_business_glossary_term' = 'Cost Center Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`absence_record` ALTER COLUMN `payroll_period_id` SET TAGS ('dbx_business_glossary_term' = 'Payroll Period Identifier (ID)');
-ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`absence_record` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Employee Identifier (ID)');
-ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`absence_record` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`absence_record` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`absence_record` ALTER COLUMN `primary_absence_employee_id` SET TAGS ('dbx_business_glossary_term' = 'Employee Identifier (ID)');
+ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`absence_record` ALTER COLUMN `primary_absence_employee_id` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`absence_record` ALTER COLUMN `primary_absence_employee_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`absence_record` ALTER COLUMN `shift_id` SET TAGS ('dbx_business_glossary_term' = 'Shift Identifier (ID)');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`absence_record` ALTER COLUMN `tertiary_absence_replacement_employee_id` SET TAGS ('dbx_business_glossary_term' = 'Replacement Employee Identifier (ID)');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`absence_record` ALTER COLUMN `tertiary_absence_replacement_employee_id` SET TAGS ('dbx_confidential' = 'true');
@@ -1322,10 +1466,12 @@ ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`payroll_result` SET TAGS ('dbx_
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`payroll_result` SET TAGS ('dbx_subdomain' = 'payroll_benefits');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`payroll_result` ALTER COLUMN `payroll_result_id` SET TAGS ('dbx_business_glossary_term' = 'Payroll Result ID');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`payroll_result` ALTER COLUMN `cost_center_id` SET TAGS ('dbx_business_glossary_term' = 'Cost Center Id (Foreign Key)');
-ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`payroll_result` ALTER COLUMN `production_run_id` SET TAGS ('dbx_business_glossary_term' = 'Payroll Run ID');
-ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`payroll_result` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Employee ID');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`payroll_result` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`payroll_result` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`payroll_result` ALTER COLUMN `run_id` SET TAGS ('dbx_business_glossary_term' = 'Payroll Run ID');
+ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`payroll_result` ALTER COLUMN `primary_payroll_employee_id` SET TAGS ('dbx_business_glossary_term' = 'Employee ID');
+ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`payroll_result` ALTER COLUMN `primary_payroll_employee_id` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`payroll_result` ALTER COLUMN `primary_payroll_employee_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`payroll_result` ALTER COLUMN `allowance_amount` SET TAGS ('dbx_business_glossary_term' = 'Allowance Amount');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`payroll_result` ALTER COLUMN `allowance_amount` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`payroll_result` ALTER COLUMN `approval_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Approval Timestamp');
@@ -1352,6 +1498,8 @@ ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`payroll_result` ALTER COLUMN `f
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`payroll_result` ALTER COLUMN `garnishment_amount` SET TAGS ('dbx_business_glossary_term' = 'Garnishment Amount');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`payroll_result` ALTER COLUMN `garnishment_amount` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`payroll_result` ALTER COLUMN `garnishment_amount` SET TAGS ('dbx_pii_financial' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`payroll_result` ALTER COLUMN `gross_pay` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`payroll_result` ALTER COLUMN `gross_pay` SET TAGS ('dbx_pii_financial' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`payroll_result` ALTER COLUMN `gross_pay_amount` SET TAGS ('dbx_business_glossary_term' = 'Gross Pay Amount');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`payroll_result` ALTER COLUMN `gross_pay_amount` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`payroll_result` ALTER COLUMN `health_insurance_deduction_amount` SET TAGS ('dbx_business_glossary_term' = 'Health Insurance Deduction Amount');
@@ -1360,6 +1508,8 @@ ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`payroll_result` ALTER COLUMN `l
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`payroll_result` ALTER COLUMN `local_tax_amount` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`payroll_result` ALTER COLUMN `medicare_tax_amount` SET TAGS ('dbx_business_glossary_term' = 'Medicare Tax Amount');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`payroll_result` ALTER COLUMN `medicare_tax_amount` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`payroll_result` ALTER COLUMN `net_pay` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`payroll_result` ALTER COLUMN `net_pay` SET TAGS ('dbx_pii_financial' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`payroll_result` ALTER COLUMN `net_pay_amount` SET TAGS ('dbx_business_glossary_term' = 'Net Pay Amount');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`payroll_result` ALTER COLUMN `net_pay_amount` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`payroll_result` ALTER COLUMN `net_pay_amount` SET TAGS ('dbx_pii_financial' = 'true');
@@ -1379,7 +1529,6 @@ ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`payroll_result` ALTER COLUMN `p
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`payroll_result` ALTER COLUMN `pay_period_start_date` SET TAGS ('dbx_business_glossary_term' = 'Pay Period Start Date');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`payroll_result` ALTER COLUMN `payment_date` SET TAGS ('dbx_business_glossary_term' = 'Payment Date');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`payroll_result` ALTER COLUMN `payment_method` SET TAGS ('dbx_business_glossary_term' = 'Payment Method');
-ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`payroll_result` ALTER COLUMN `payment_method` SET TAGS ('dbx_value_regex' = 'direct_deposit|check|cash|wire_transfer');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`payroll_result` ALTER COLUMN `payroll_calculation_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Payroll Calculation Timestamp');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`payroll_result` ALTER COLUMN `payroll_status` SET TAGS ('dbx_business_glossary_term' = 'Payroll Status');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`payroll_result` ALTER COLUMN `payroll_status` SET TAGS ('dbx_value_regex' = 'draft|calculated|approved|paid|voided|reversed');
@@ -1401,11 +1550,11 @@ ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`payroll_result` ALTER COLUMN `u
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`benefit_plan` SET TAGS ('dbx_data_type' = 'reference_data');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`benefit_plan` SET TAGS ('dbx_subdomain' = 'payroll_benefits');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`benefit_plan` ALTER COLUMN `benefit_plan_id` SET TAGS ('dbx_business_glossary_term' = 'Benefit Plan Identifier (ID)');
-ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`benefit_plan` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`benefit_plan` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`benefit_plan` ALTER COLUMN `org_unit_id` SET TAGS ('dbx_business_glossary_term' = 'Offering Org Unit Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`benefit_plan` ALTER COLUMN `aca_compliant` SET TAGS ('dbx_business_glossary_term' = 'Affordable Care Act (ACA) Compliant Flag');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`benefit_plan` ALTER COLUMN `carrier_name` SET TAGS ('dbx_business_glossary_term' = 'Insurance Carrier Name');
+ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`benefit_plan` ALTER COLUMN `carrier_name` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`benefit_plan` ALTER COLUMN `carrier_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`benefit_plan` ALTER COLUMN `carrier_policy_number` SET TAGS ('dbx_business_glossary_term' = 'Carrier Policy Number');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`benefit_plan` ALTER COLUMN `carrier_policy_number` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`benefit_plan` ALTER COLUMN `cobra_eligible` SET TAGS ('dbx_business_glossary_term' = 'Consolidated Omnibus Budget Reconciliation Act (COBRA) Eligible Flag');
@@ -1438,19 +1587,28 @@ ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`benefit_plan` ALTER COLUMN `pla
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`benefit_plan` ALTER COLUMN `plan_administrator_email` SET TAGS ('dbx_value_regex' = '^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+.[a-zA-Z]{2,}$');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`benefit_plan` ALTER COLUMN `plan_administrator_email` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`benefit_plan` ALTER COLUMN `plan_administrator_email` SET TAGS ('dbx_pii_email' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`benefit_plan` ALTER COLUMN `plan_administrator_email` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`benefit_plan` ALTER COLUMN `plan_administrator_email` SET TAGS ('dbx_sensitivity' = 'pii');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`benefit_plan` ALTER COLUMN `plan_administrator_name` SET TAGS ('dbx_business_glossary_term' = 'Plan Administrator Name');
+ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`benefit_plan` ALTER COLUMN `plan_administrator_name` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`benefit_plan` ALTER COLUMN `plan_administrator_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`benefit_plan` ALTER COLUMN `plan_administrator_phone` SET TAGS ('dbx_business_glossary_term' = 'Plan Administrator Phone Number');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`benefit_plan` ALTER COLUMN `plan_administrator_phone` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`benefit_plan` ALTER COLUMN `plan_administrator_phone` SET TAGS ('dbx_pii_phone' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`benefit_plan` ALTER COLUMN `plan_administrator_phone` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`benefit_plan` ALTER COLUMN `plan_administrator_phone` SET TAGS ('dbx_sensitivity' = 'pii');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`benefit_plan` ALTER COLUMN `plan_code` SET TAGS ('dbx_business_glossary_term' = 'Benefit Plan Code');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`benefit_plan` ALTER COLUMN `plan_code` SET TAGS ('dbx_value_regex' = '^[A-Z0-9]{4,20}$');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`benefit_plan` ALTER COLUMN `plan_document_url` SET TAGS ('dbx_business_glossary_term' = 'Plan Document Uniform Resource Locator (URL)');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`benefit_plan` ALTER COLUMN `plan_name` SET TAGS ('dbx_business_glossary_term' = 'Benefit Plan Name');
+ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`benefit_plan` ALTER COLUMN `plan_name` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`benefit_plan` ALTER COLUMN `plan_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`benefit_plan` ALTER COLUMN `plan_notes` SET TAGS ('dbx_business_glossary_term' = 'Benefit Plan Notes');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`benefit_plan` ALTER COLUMN `plan_status` SET TAGS ('dbx_business_glossary_term' = 'Benefit Plan Status');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`benefit_plan` ALTER COLUMN `plan_status` SET TAGS ('dbx_value_regex' = 'active|inactive|pending|suspended|terminated');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`benefit_plan` ALTER COLUMN `plan_type` SET TAGS ('dbx_business_glossary_term' = 'Benefit Plan Type');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`benefit_plan` ALTER COLUMN `plan_year` SET TAGS ('dbx_business_glossary_term' = 'Benefit Plan Year');
+ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`benefit_plan` ALTER COLUMN `provider_name` SET TAGS ('dbx_sensitivity' = 'pii');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`benefit_plan` ALTER COLUMN `section_125_eligible` SET TAGS ('dbx_business_glossary_term' = 'Internal Revenue Code (IRC) Section 125 Cafeteria Plan Eligible Flag');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`benefit_plan` ALTER COLUMN `tax_treatment` SET TAGS ('dbx_business_glossary_term' = 'Tax Treatment Classification');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`benefit_plan` ALTER COLUMN `tax_treatment` SET TAGS ('dbx_value_regex' = 'pre_tax|post_tax|employer_paid|mixed');
@@ -1458,7 +1616,7 @@ ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`benefit_plan` ALTER COLUMN `tax
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`benefit_plan` ALTER COLUMN `tax_treatment` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`benefit_plan` ALTER COLUMN `waiting_period_days` SET TAGS ('dbx_business_glossary_term' = 'Waiting Period (Days)');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`training_course` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`training_course` SET TAGS ('dbx_subdomain' = 'talent_acquisition');
+ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`training_course` SET TAGS ('dbx_subdomain' = 'learning_development');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`training_course` ALTER COLUMN `training_course_id` SET TAGS ('dbx_business_glossary_term' = 'Training Course ID');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`training_course` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Instructor Employee Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`training_course` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
@@ -1470,6 +1628,8 @@ ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`training_course` ALTER COLUMN `
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`training_course` ALTER COLUMN `assessment_required` SET TAGS ('dbx_business_glossary_term' = 'Assessment Required Flag');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`training_course` ALTER COLUMN `certification_awarded` SET TAGS ('dbx_business_glossary_term' = 'Certification Awarded Flag');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`training_course` ALTER COLUMN `certification_name` SET TAGS ('dbx_business_glossary_term' = 'Certification Name');
+ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`training_course` ALTER COLUMN `certification_name` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`training_course` ALTER COLUMN `certification_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`training_course` ALTER COLUMN `compliance_framework` SET TAGS ('dbx_business_glossary_term' = 'Compliance Framework');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`training_course` ALTER COLUMN `cost_per_participant` SET TAGS ('dbx_business_glossary_term' = 'Cost Per Participant');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`training_course` ALTER COLUMN `course_category` SET TAGS ('dbx_business_glossary_term' = 'Course Category');
@@ -1478,6 +1638,7 @@ ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`training_course` ALTER COLUMN `
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`training_course` ALTER COLUMN `course_code` SET TAGS ('dbx_value_regex' = '^[A-Z0-9]{4,12}$');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`training_course` ALTER COLUMN `course_description` SET TAGS ('dbx_business_glossary_term' = 'Course Description');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`training_course` ALTER COLUMN `course_materials_url` SET TAGS ('dbx_business_glossary_term' = 'Course Materials URL');
+ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`training_course` ALTER COLUMN `course_name` SET TAGS ('dbx_sensitivity' = 'pii');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`training_course` ALTER COLUMN `course_status` SET TAGS ('dbx_business_glossary_term' = 'Course Status');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`training_course` ALTER COLUMN `course_status` SET TAGS ('dbx_value_regex' = 'active|inactive|draft|retired|under_review');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`training_course` ALTER COLUMN `course_title` SET TAGS ('dbx_business_glossary_term' = 'Course Title');
@@ -1505,6 +1666,7 @@ ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`training_course` ALTER COLUMN `
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`training_course` ALTER COLUMN `next_review_date` SET TAGS ('dbx_business_glossary_term' = 'Next Review Date');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`training_course` ALTER COLUMN `passing_score` SET TAGS ('dbx_business_glossary_term' = 'Passing Score');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`training_course` ALTER COLUMN `prerequisite_courses` SET TAGS ('dbx_business_glossary_term' = 'Prerequisite Courses');
+ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`training_course` ALTER COLUMN `provider_name` SET TAGS ('dbx_sensitivity' = 'pii');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`training_course` ALTER COLUMN `recurrence_interval_months` SET TAGS ('dbx_business_glossary_term' = 'Recurrence Interval Months');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`training_course` ALTER COLUMN `recurrence_required` SET TAGS ('dbx_business_glossary_term' = 'Recurrence Required Flag');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`training_course` ALTER COLUMN `regulatory_body` SET TAGS ('dbx_business_glossary_term' = 'Regulatory Body');
@@ -1512,7 +1674,7 @@ ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`training_course` ALTER COLUMN `
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`training_course` ALTER COLUMN `target_audience` SET TAGS ('dbx_business_glossary_term' = 'Target Audience');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`training_course` ALTER COLUMN `created_by` SET TAGS ('dbx_business_glossary_term' = 'Created By User');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`performance_review` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`performance_review` SET TAGS ('dbx_subdomain' = 'talent_acquisition');
+ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`performance_review` SET TAGS ('dbx_subdomain' = 'learning_development');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`performance_review` ALTER COLUMN `performance_review_id` SET TAGS ('dbx_business_glossary_term' = 'Performance Review ID');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`performance_review` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`performance_review` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
@@ -1524,7 +1686,6 @@ ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`performance_review` ALTER COLUM
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`performance_review` ALTER COLUMN `reviewer_employee_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`performance_review` ALTER COLUMN `calibration_date` SET TAGS ('dbx_business_glossary_term' = 'Calibration Date');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`performance_review` ALTER COLUMN `calibration_status` SET TAGS ('dbx_business_glossary_term' = 'Calibration Status');
-ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`performance_review` ALTER COLUMN `calibration_status` SET TAGS ('dbx_value_regex' = 'not_calibrated|pending_calibration|calibrated|calibration_waived');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`performance_review` ALTER COLUMN `competency_rating` SET TAGS ('dbx_business_glossary_term' = 'Competency Rating');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`performance_review` ALTER COLUMN `competency_rating` SET TAGS ('dbx_value_regex' = 'expert|proficient|developing|basic|not_demonstrated');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`performance_review` ALTER COLUMN `competency_score` SET TAGS ('dbx_business_glossary_term' = 'Competency Score');
@@ -1558,6 +1719,8 @@ ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`performance_review` ALTER COLUM
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`performance_review` ALTER COLUMN `review_period_start_date` SET TAGS ('dbx_business_glossary_term' = 'Review Period Start Date');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`performance_review` ALTER COLUMN `review_status` SET TAGS ('dbx_business_glossary_term' = 'Review Status');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`performance_review` ALTER COLUMN `review_template_name` SET TAGS ('dbx_business_glossary_term' = 'Review Template Name');
+ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`performance_review` ALTER COLUMN `review_template_name` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`performance_review` ALTER COLUMN `review_template_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`performance_review` ALTER COLUMN `review_type` SET TAGS ('dbx_business_glossary_term' = 'Review Type');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`performance_review` ALTER COLUMN `review_type` SET TAGS ('dbx_value_regex' = 'annual|mid_year|probationary|project_based|ad_hoc|quarterly');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`performance_review` ALTER COLUMN `reviewer_signature_date` SET TAGS ('dbx_business_glossary_term' = 'Reviewer Signature Date');
@@ -1565,7 +1728,7 @@ ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`performance_review` ALTER COLUM
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`performance_review` ALTER COLUMN `second_level_reviewer_comments` SET TAGS ('dbx_business_glossary_term' = 'Second Level Reviewer Comments');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`performance_review` ALTER COLUMN `succession_plan_candidate` SET TAGS ('dbx_business_glossary_term' = 'Succession Plan Candidate');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`requisition` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`requisition` SET TAGS ('dbx_subdomain' = 'talent_acquisition');
+ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`requisition` SET TAGS ('dbx_subdomain' = 'employee_records');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`requisition` ALTER COLUMN `requisition_id` SET TAGS ('dbx_business_glossary_term' = 'Requisition ID');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`requisition` ALTER COLUMN `cost_center_id` SET TAGS ('dbx_business_glossary_term' = 'Cost Center ID');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`requisition` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Created By ID');
@@ -1578,6 +1741,8 @@ ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`requisition` ALTER COLUMN `posi
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`requisition` ALTER COLUMN `primary_requisition_approved_by_employee_id` SET TAGS ('dbx_business_glossary_term' = 'Approved By ID');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`requisition` ALTER COLUMN `primary_requisition_approved_by_employee_id` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`requisition` ALTER COLUMN `primary_requisition_approved_by_employee_id` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`requisition` ALTER COLUMN `requisition_hiring_manager_employee_id` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`requisition` ALTER COLUMN `requisition_hiring_manager_employee_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`requisition` ALTER COLUMN `requisition_last_modified_by_employee_id` SET TAGS ('dbx_business_glossary_term' = 'Last Modified By ID');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`requisition` ALTER COLUMN `requisition_last_modified_by_employee_id` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`requisition` ALTER COLUMN `requisition_last_modified_by_employee_id` SET TAGS ('dbx_pii' = 'true');
@@ -1589,6 +1754,8 @@ ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`requisition` ALTER COLUMN `appr
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`requisition` ALTER COLUMN `approval_status` SET TAGS ('dbx_value_regex' = 'pending|approved|rejected|withdrawn');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`requisition` ALTER COLUMN `approved_date` SET TAGS ('dbx_business_glossary_term' = 'Approved Date');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`requisition` ALTER COLUMN `background_check_required` SET TAGS ('dbx_business_glossary_term' = 'Background Check Required');
+ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`requisition` ALTER COLUMN `budgeted_salary` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`requisition` ALTER COLUMN `budgeted_salary` SET TAGS ('dbx_pii_financial' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`requisition` ALTER COLUMN `closed_date` SET TAGS ('dbx_business_glossary_term' = 'Requisition Closed Date');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`requisition` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`requisition` ALTER COLUMN `currency_code` SET TAGS ('dbx_business_glossary_term' = 'Currency Code');
@@ -1630,12 +1797,12 @@ ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`requisition` ALTER COLUMN `trav
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`labor_agreement` SET TAGS ('dbx_data_type' = 'master_data');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`labor_agreement` SET TAGS ('dbx_subdomain' = 'employee_records');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`labor_agreement` ALTER COLUMN `labor_agreement_id` SET TAGS ('dbx_business_glossary_term' = 'Labor Agreement Identifier');
-ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`labor_agreement` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`labor_agreement` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`labor_agreement` ALTER COLUMN `org_unit_id` SET TAGS ('dbx_business_glossary_term' = 'Org Unit Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`labor_agreement` ALTER COLUMN `agreement_document_url` SET TAGS ('dbx_business_glossary_term' = 'Agreement Document URL');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`labor_agreement` ALTER COLUMN `agreement_document_url` SET TAGS ('dbx_value_regex' = '^https?://.*');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`labor_agreement` ALTER COLUMN `agreement_name` SET TAGS ('dbx_business_glossary_term' = 'Agreement Name');
+ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`labor_agreement` ALTER COLUMN `agreement_name` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`labor_agreement` ALTER COLUMN `agreement_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`labor_agreement` ALTER COLUMN `agreement_notes` SET TAGS ('dbx_business_glossary_term' = 'Agreement Notes');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`labor_agreement` ALTER COLUMN `agreement_number` SET TAGS ('dbx_business_glossary_term' = 'Agreement Number');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`labor_agreement` ALTER COLUMN `agreement_number` SET TAGS ('dbx_value_regex' = '^[A-Z0-9]{6,20}$');
@@ -1663,7 +1830,11 @@ ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`labor_agreement` ALTER COLUMN `
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`labor_agreement` ALTER COLUMN `job_security_clause_flag` SET TAGS ('dbx_business_glossary_term' = 'Job Security Clause Flag');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`labor_agreement` ALTER COLUMN `last_modified_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Last Modified Timestamp');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`labor_agreement` ALTER COLUMN `lead_negotiator_name` SET TAGS ('dbx_business_glossary_term' = 'Lead Negotiator Name');
+ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`labor_agreement` ALTER COLUMN `lead_negotiator_name` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`labor_agreement` ALTER COLUMN `lead_negotiator_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`labor_agreement` ALTER COLUMN `management_rights_clause` SET TAGS ('dbx_business_glossary_term' = 'Management Rights Clause');
+ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`labor_agreement` ALTER COLUMN `negotiated_wage_increase_pct` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`labor_agreement` ALTER COLUMN `negotiated_wage_increase_pct` SET TAGS ('dbx_pii_financial' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`labor_agreement` ALTER COLUMN `negotiation_completion_date` SET TAGS ('dbx_business_glossary_term' = 'Negotiation Completion Date');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`labor_agreement` ALTER COLUMN `negotiation_start_date` SET TAGS ('dbx_business_glossary_term' = 'Negotiation Start Date');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`labor_agreement` ALTER COLUMN `no_strike_clause_flag` SET TAGS ('dbx_business_glossary_term' = 'No-Strike Clause Flag');
@@ -1684,6 +1855,8 @@ ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`labor_agreement` ALTER COLUMN `
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`labor_agreement` ALTER COLUMN `union_dues_deduction_flag` SET TAGS ('dbx_business_glossary_term' = 'Union Dues Deduction Flag');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`labor_agreement` ALTER COLUMN `union_local_number` SET TAGS ('dbx_business_glossary_term' = 'Union Local Number');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`labor_agreement` ALTER COLUMN `union_name` SET TAGS ('dbx_business_glossary_term' = 'Union Name');
+ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`labor_agreement` ALTER COLUMN `union_name` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`labor_agreement` ALTER COLUMN `union_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`labor_agreement` ALTER COLUMN `union_security_clause_type` SET TAGS ('dbx_business_glossary_term' = 'Union Security Clause Type');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`labor_agreement` ALTER COLUMN `union_security_clause_type` SET TAGS ('dbx_value_regex' = 'union_shop|agency_shop|open_shop|closed_shop|maintenance_of_membership');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`labor_agreement` ALTER COLUMN `vacation_accrual_rate` SET TAGS ('dbx_business_glossary_term' = 'Vacation Accrual Rate');
@@ -1705,6 +1878,8 @@ ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`payroll_period` ALTER COLUMN `p
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`payroll_period` ALTER COLUMN `payroll_frequency` SET TAGS ('dbx_business_glossary_term' = 'Payroll Frequency');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`payroll_period` ALTER COLUMN `period_code` SET TAGS ('dbx_business_glossary_term' = 'Period Code');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`payroll_period` ALTER COLUMN `period_name` SET TAGS ('dbx_business_glossary_term' = 'Period Name');
+ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`payroll_period` ALTER COLUMN `period_name` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`payroll_period` ALTER COLUMN `period_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`payroll_period` ALTER COLUMN `period_sequence` SET TAGS ('dbx_business_glossary_term' = 'Period Sequence');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`payroll_period` ALTER COLUMN `period_type` SET TAGS ('dbx_business_glossary_term' = 'Period Type');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`payroll_period` ALTER COLUMN `processed_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Processed Timestamp');
@@ -1729,15 +1904,20 @@ ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`shift_pattern` ALTER COLUMN `la
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`shift_pattern` ALTER COLUMN `max_consecutive_days` SET TAGS ('dbx_business_glossary_term' = 'Max Consecutive Days');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`shift_pattern` ALTER COLUMN `min_rest_hours` SET TAGS ('dbx_business_glossary_term' = 'Min Rest Hours');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`shift_pattern` ALTER COLUMN `shift_pattern_name` SET TAGS ('dbx_business_glossary_term' = 'Name');
+ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`shift_pattern` ALTER COLUMN `shift_pattern_name` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`shift_pattern` ALTER COLUMN `shift_pattern_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`shift_pattern` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Notes');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`shift_pattern` ALTER COLUMN `overtime_allowed` SET TAGS ('dbx_business_glossary_term' = 'Overtime Allowed');
+ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`shift_pattern` ALTER COLUMN `pattern_name` SET TAGS ('dbx_sensitivity' = 'pii');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`shift_pattern` ALTER COLUMN `pattern_type` SET TAGS ('dbx_business_glossary_term' = 'Pattern Type');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`shift_pattern` ALTER COLUMN `shift_end_time` SET TAGS ('dbx_business_glossary_term' = 'Shift End Time');
+ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`shift_pattern` ALTER COLUMN `shift_end_time` SET TAGS ('dbx_physical_type' = 'TIMESTAMP');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`shift_pattern` ALTER COLUMN `shift_start_time` SET TAGS ('dbx_business_glossary_term' = 'Shift Start Time');
+ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`shift_pattern` ALTER COLUMN `shift_start_time` SET TAGS ('dbx_physical_type' = 'TIMESTAMP');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`shift_pattern` ALTER COLUMN `shift_pattern_status` SET TAGS ('dbx_business_glossary_term' = 'Status');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`shift_pattern` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Updated Timestamp');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`certification_type` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`certification_type` SET TAGS ('dbx_subdomain' = 'talent_acquisition');
+ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`certification_type` SET TAGS ('dbx_subdomain' = 'learning_development');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`certification_type` ALTER COLUMN `certification_type_id` SET TAGS ('dbx_business_glossary_term' = 'Certification Type Identifier');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`certification_type` ALTER COLUMN `parent_certification_type_id` SET TAGS ('dbx_business_glossary_term' = 'Parent Certification Type Id');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`certification_type` ALTER COLUMN `parent_certification_type_id` SET TAGS ('dbx_self_ref_fk' = 'true');
@@ -1754,9 +1934,12 @@ ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`certification_type` ALTER COLUM
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`certification_type` ALTER COLUMN `issuing_body` SET TAGS ('dbx_business_glossary_term' = 'Issuing Body');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`certification_type` ALTER COLUMN `last_review_date` SET TAGS ('dbx_business_glossary_term' = 'Last Review Date');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`certification_type` ALTER COLUMN `certification_type_name` SET TAGS ('dbx_business_glossary_term' = 'Name');
+ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`certification_type` ALTER COLUMN `certification_type_name` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`certification_type` ALTER COLUMN `certification_type_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`certification_type` ALTER COLUMN `renewal_period_months` SET TAGS ('dbx_business_glossary_term' = 'Renewal Period Months');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`certification_type` ALTER COLUMN `renewal_required` SET TAGS ('dbx_business_glossary_term' = 'Renewal Required');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`certification_type` ALTER COLUMN `certification_type_status` SET TAGS ('dbx_business_glossary_term' = 'Status');
+ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`certification_type` ALTER COLUMN `type_name` SET TAGS ('dbx_sensitivity' = 'pii');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`certification_type` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Updated Timestamp');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`certification_type` ALTER COLUMN `validity_period_months` SET TAGS ('dbx_business_glossary_term' = 'Validity Period Months');
 ALTER TABLE `vibe_manufacturing_v1`.`workforce`.`certification_type` ALTER COLUMN `version_number` SET TAGS ('dbx_business_glossary_term' = 'Version Number');

@@ -1,5 +1,5 @@
--- Schema for Domain: project | Business:  | Version: v2_ecm
--- Generated on: 2026-07-10 12:59:03
+-- Schema for Domain: project | Business: Manufacturing | Version: v2_ecm
+-- Generated on: 2026-07-03 05:59:36
 
 -- ========= DATABASE =========
 CREATE DATABASE IF NOT EXISTS `vibe_manufacturing_v1`.`project` COMMENT 'Project management domain governing capital projects, engineering projects, plant construction, commissioning, and project-based manufacturing execution including WBS, milestones, resource allocation, and project cost tracking';
@@ -14,15 +14,16 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`project`.`project_header` (
     `employee_id` BIGINT COMMENT 'Identifier of the employee managing the project.',
     `parent_project_header_id` BIGINT COMMENT 'Self-referencing FK on project_header (parent_project_header_id)',
     `profit_center_id` BIGINT COMMENT 'Foreign key linking to finance.profit_center. Business justification: Project profitability reporting is done per profit center; linking enables profit‑center based P&L statements.',
-    `supply_plan_id` BIGINT COMMENT 'Foreign key linking to supply.plan. Business justification: Project Execution Dashboard requires the supply plan used to meet project material needs.',
+    `plan_id` BIGINT COMMENT 'Reference to the health and safety plan document.',
+    `project_supply_plan_id` BIGINT COMMENT 'Foreign key linking to supply.plan. Business justification: Project Execution Dashboard requires the supply plan used to meet project material needs.',
     `sku_master_id` BIGINT COMMENT 'Foreign key linking to product.sku_master. Business justification: Project charter defines target product SKU for which the project delivers a new manufacturing line; essential for product‑specific reporting.',
+    `automation_project_id` BIGINT COMMENT 'Foreign key linking to automation.automation_project. Business justification: Automation Implementation Tracking report requires linking each overall project to its specific automation project for budgeting and schedule alignment.',
     `actual_cost` DECIMAL(18,2) COMMENT 'Total cost incurred to date.',
-    `actual_end_date` DATE COMMENT 'Date when the project actually completed.',
+    `actual_end_date` TIMESTAMP COMMENT 'Date when the project actually completed.',
     `actual_oee_percent` DECIMAL(18,2) COMMENT 'Measured OEE achieved.',
-    `actual_start_date` DATE COMMENT 'Date when the project actually started.',
+    `actual_start_date` TIMESTAMP COMMENT 'Date when the project actually started.',
     `actual_work_hours` DECIMAL(18,2) COMMENT 'Actual labor hours recorded.',
     `approval_date` DATE COMMENT 'Date when the project received formal approval.',
-    `automation_project_id` BIGINT COMMENT 'Foreign key linking to automation.automation_project. Business justification: Automation Implementation Tracking report requires linking each overall project to its specific automation project for budgeting and schedule alignment.',
     `budget_amount` DECIMAL(18,2) COMMENT 'Approved budget amount for the project.',
     `change_order_count` STRING COMMENT 'Total number of engineering change orders (ECO/ECN) associated.',
     `closeout_date` DATE COMMENT 'Date when the project was officially closed.',
@@ -30,7 +31,7 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`project`.`project_header` (
     `compliance_status` STRING COMMENT 'Regulatory compliance status of the project.. Valid values are `compliant|non_compliant|exempt`',
     `contract_number` STRING COMMENT 'Associated contract number for EPC or procurement.',
     `created_timestamp` TIMESTAMP COMMENT 'Timestamp when the project record was created.',
-    `critical_path_duration_days` STRING COMMENT 'Duration of the projects critical path.',
+    `critical_path_duration_days` DECIMAL(18,2) COMMENT 'Duration of the projects critical path.',
     `currency_code` STRING COMMENT 'ISO 4217 currency code for budget and cost. [ENUM-REF-CANDIDATE: USD|EUR|JPY|GBP|CNY|CHF — promote to reference product]',
     `project_header_description` STRING COMMENT 'Detailed description of the projects scope and objectives.',
     `environmental_impact_score` DECIMAL(18,2) COMMENT 'Score assessing environmental impact per ISO 14001.',
@@ -39,19 +40,22 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`project`.`project_header` (
     `funding_source` STRING COMMENT 'Source of funding for the project.. Valid values are `internal|external|joint_venture`',
     `governance_approval_status` STRING COMMENT 'Status of governance approval for the project.. Valid values are `pending|approved|rejected`',
     `is_template` BOOLEAN COMMENT 'Indicates whether this project record is a reusable template.',
+    `last_modified_timestamp` TIMESTAMP COMMENT '',
     `lead_time_days` STRING COMMENT 'Average lead time for critical materials in days.',
     `location` STRING COMMENT 'Primary geographic location of the project (city, site).',
     `milestone_count` STRING COMMENT 'Number of milestones defined for the project.',
-    `planned_end_date` DATE COMMENT 'Scheduled end date for the project.',
-    `planned_start_date` DATE COMMENT 'Scheduled start date for the project.',
+    `notes` STRING COMMENT '',
+    `planned_end_date` TIMESTAMP COMMENT 'Scheduled end date for the project.',
+    `planned_start_date` TIMESTAMP COMMENT 'Scheduled start date for the project.',
     `priority` STRING COMMENT 'Priority level assigned to the project.. Valid values are `low|medium|high|critical`',
-    `procurement_strategy` STRING COMMENT 'Strategy used for procuring materials.. Valid values are `jig|make_to_order|make_to_stock|consignment`',
+    `procurement_strategy` DECIMAL(18,2) COMMENT 'Strategy used for procuring materials.',
     `project_category` STRING COMMENT 'Broad category of the project.. Valid values are `capital|operational|research|maintenance`',
     `project_code` STRING COMMENT 'Unique business identifier or code for the project.',
     `project_header_status` STRING COMMENT 'Current lifecycle status of the project.. Valid values are `planned|active|on_hold|completed|cancelled`',
     `project_name` STRING COMMENT 'Descriptive name of the project.',
     `project_phase` STRING COMMENT 'Current phase of the project lifecycle.. Valid values are `initiation|planning|execution|monitoring|closure`',
     `project_type` STRING COMMENT 'Classification of the project type.. Valid values are `EPC|CapEx|NPI|MTO`',
+    `record_status` STRING COMMENT '',
     `region_code` STRING COMMENT 'Internal region code for reporting.',
     `risk_level` STRING COMMENT 'Overall risk assessment of the project.. Valid values are `low|moderate|high|critical`',
     `safety_incident_count` STRING COMMENT 'Number of safety incidents recorded for the project.',
@@ -59,6 +63,7 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`project`.`project_header` (
     `total_work_hours` DECIMAL(18,2) COMMENT 'Total labor hours planned for the project.',
     `updated_timestamp` TIMESTAMP COMMENT 'Timestamp of the most recent update to the project record.',
     `wbs_code` STRING COMMENT 'Hierarchical code representing the projects WBS element.',
+    `created_by` STRING COMMENT '',
     CONSTRAINT pk_project_header PRIMARY KEY(`project_header_id`)
 ) COMMENT 'Master record for all capital projects, engineering projects, plant construction initiatives, and project-based manufacturing engagements. Serves as the SSOT for project identity, classification, lifecycle stage, budget baseline, schedule baseline, sponsoring business unit, project manager assignment, priority, and governance attributes. Covers EPC (Engineering, Procurement, Construction), CapEx, NPI, and MTO project types.';
 
@@ -80,19 +85,27 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`project`.`wbs_element` (
     `created_timestamp` TIMESTAMP COMMENT 'Date‑time when the WBS element record was first created in the system.',
     `currency_code` STRING COMMENT 'Three‑letter ISO 4217 code of the currency used for cost amounts.. Valid values are `^[A-Z]{3}$`',
     `wbs_element_description` STRING COMMENT 'Full textual description of the WBS elements scope and purpose.',
+    `is_billing_element` BOOLEAN COMMENT '',
+    `last_modified_timestamp` TIMESTAMP COMMENT '',
     `wbs_element_level` STRING COMMENT 'Numeric depth of the element within the WBS hierarchy (root = 1).',
     `milestone_flag` BOOLEAN COMMENT 'True if the element represents a project milestone.',
+    `notes` STRING COMMENT '',
     `percent_complete` DECIMAL(18,2) COMMENT 'Progress of the WBS element expressed as a percentage (0‑100).',
     `planned_cost` DECIMAL(18,2) COMMENT 'Budgeted cost amount allocated to the WBS element.',
-    `planned_end_date` DATE COMMENT 'Scheduled finish date for the WBS element as per project plan.',
-    `planned_start_date` DATE COMMENT 'Scheduled start date for the WBS element as per project plan.',
+    `planned_end_date` TIMESTAMP COMMENT 'Scheduled finish date for the WBS element as per project plan.',
+    `planned_start_date` TIMESTAMP COMMENT 'Scheduled start date for the WBS element as per project plan.',
+    `record_status` STRING COMMENT '',
     `responsible_department_code` STRING COMMENT 'Organizational department that owns the WBS element.',
     `schedule_status` STRING COMMENT 'Current schedule performance relative to the baseline.. Valid values are `on_schedule|behind|ahead`',
     `short_description` STRING COMMENT 'Brief description (max 100 characters) for UI listings.',
     `updated_timestamp` TIMESTAMP COMMENT 'Date‑time of the most recent modification to the WBS element record.',
     `wbs_code` STRING COMMENT 'External business identifier for the WBS element, typically hierarchical (e.g., 1.2.3).',
     `wbs_element_status` STRING COMMENT 'Current lifecycle status of the WBS element.. Valid values are `planned|in_progress|completed|closed|cancelled`',
+    `wbs_level` STRING COMMENT '',
+    `wbs_name` STRING COMMENT '',
+    `wbs_status` STRING COMMENT '',
     `wbs_type` STRING COMMENT 'Classification of the WBS element by business purpose.. Valid values are `internal|external|contract|support`',
+    `created_by` STRING COMMENT '',
     CONSTRAINT pk_wbs_element PRIMARY KEY(`wbs_element_id`)
 ) COMMENT 'Work Breakdown Structure (WBS) element master record representing a discrete node in the hierarchical project decomposition tree. Captures WBS code, description, level, parent WBS reference, responsible cost center, billing element flag, account assignment category, planned cost, actual cost, and status. Aligns with SAP PS WBS element (PRPS) and PMI WBS standards.';
 
@@ -104,52 +117,59 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`project`.`milestone` (
     `project_header_id` BIGINT COMMENT 'Identifier of the parent project containing this milestone.',
     `wbs_element_id` BIGINT COMMENT 'Reference to the Work Breakdown Structure element to which the milestone belongs.',
     `actual_cost` DECIMAL(18,2) COMMENT 'Actual cost incurred to complete the milestone.',
-    `actual_date` DATE COMMENT 'Date when the milestone was actually completed.',
-    `actual_duration_days` STRING COMMENT 'Actual number of calendar days taken to complete the milestone.',
+    `actual_date` TIMESTAMP COMMENT 'Date when the milestone was actually completed.',
+    `actual_duration_days` DECIMAL(18,2) COMMENT 'Actual number of calendar days taken to complete the milestone.',
     `budgeted_cost` DECIMAL(18,2) COMMENT 'Planned cost budget allocated for the milestone.',
     `milestone_code` STRING COMMENT 'Business identifier or code assigned to the milestone (e.g., M-001, M-002).',
     `completion_criteria` STRING COMMENT 'Specific criteria that must be satisfied for the milestone to be considered complete.',
+    `completion_percentage` DECIMAL(18,2) COMMENT '',
     `compliance_requirement` STRING COMMENT 'Regulatory or contractual requirement linked to the milestone.',
     `compliance_status` STRING COMMENT 'Current compliance status of the milestone against its requirement.. Valid values are `compliant|non_compliant|pending|exempt`',
-    `cost_center_code` STRING COMMENT 'Internal cost center to which the milestone costs are charged.',
+    `cost_center_code` DECIMAL(18,2) COMMENT 'Internal cost center to which the milestone costs are charged.',
     `cost_variance` DECIMAL(18,2) COMMENT 'Difference between budgeted and actual cost (budgeted_cost - actual_cost).',
     `created_timestamp` TIMESTAMP COMMENT 'Timestamp when the milestone record was first created in the system.',
     `currency_code` STRING COMMENT 'Three‑letter ISO 4217 currency code for monetary values.',
     `milestone_description` STRING COMMENT 'Detailed description of the milestone scope and deliverables.',
     `forecast_date` DATE COMMENT 'Updated forecast date based on latest project outlook.',
     `is_critical` BOOLEAN COMMENT 'Indicates whether the milestone is classified as critical for project success.',
+    `last_modified_timestamp` TIMESTAMP COMMENT '',
     `milestone_status` STRING COMMENT 'Current lifecycle status of the milestone.. Valid values are `planned|in_progress|completed|delayed|cancelled`',
     `milestone_type` STRING COMMENT 'Category of the milestone indicating its purpose (e.g., contractual, internal, payment trigger).. Valid values are `contractual|internal|payment|regulatory|technical`',
     `milestone_name` STRING COMMENT 'Human‑readable name of the milestone.',
     `notes` STRING COMMENT 'Free‑form notes or comments captured by project team members.',
     `payment_amount` DECIMAL(18,2) COMMENT 'Monetary amount associated with the milestone payment trigger.',
-    `payment_trigger` BOOLEAN COMMENT 'Indicates whether the milestone serves as a trigger for invoicing or payment.',
-    `planned_date` DATE COMMENT 'Scheduled date when the milestone is expected to be achieved.',
-    `planned_duration_days` STRING COMMENT 'Planned number of calendar days allocated to complete the milestone.',
+    `payment_trigger` DECIMAL(18,2) COMMENT 'Indicates whether the milestone serves as a trigger for invoicing or payment.',
+    `planned_date` TIMESTAMP COMMENT 'Scheduled date when the milestone is expected to be achieved.',
+    `planned_duration_days` DECIMAL(18,2) COMMENT 'Planned number of calendar days allocated to complete the milestone.',
+    `record_status` STRING COMMENT '',
     `responsible_party_role` STRING COMMENT 'Role of the responsible party with respect to the milestone.. Valid values are `project_manager|engineer|contractor|client`',
     `risk_description` STRING COMMENT 'Narrative description of risks associated with the milestone.',
     `risk_level` STRING COMMENT 'Qualitative risk rating assigned to the milestone.. Valid values are `low|medium|high`',
     `sequence` STRING COMMENT 'Ordinal position of the milestone within the project schedule.',
     `updated_timestamp` TIMESTAMP COMMENT 'Timestamp of the most recent update to the milestone record.',
+    `created_by` STRING COMMENT '',
     CONSTRAINT pk_milestone PRIMARY KEY(`milestone_id`)
 ) COMMENT 'Project milestone master record defining key schedule gates, contractual delivery checkpoints, payment trigger events, and phase-completion criteria within a project or WBS element. Captures milestone name, type (contractual, internal, payment), planned date, forecast date, actual completion date, responsible party, completion criteria, and linked billing schedule reference.';
 
 CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`project`.`activity` (
     `activity_id` BIGINT COMMENT 'Unique surrogate key for the project activity record.',
     `device_registry_id` BIGINT COMMENT 'Foreign key linking to automation.device_registry. Business justification: Device Installation Activity logs which physical device is being installed, needed for work order execution and traceability.',
-    `material_requirement_id` BIGINT COMMENT 'Foreign key linking to supply.material_requirement. Business justification: Supports Project Material Allocation process, tying each activity to its MRP‑generated material requirement.',
     `predecessor_activity_id` BIGINT COMMENT 'Self-referencing FK on activity (predecessor_activity_id)',
     `configuration_id` BIGINT COMMENT 'Foreign key linking to product.configuration. Business justification: Activities such as build or test reference a specific product configuration; needed for configuration‑level progress and quality tracking.',
     `production_work_order_id` BIGINT COMMENT 'Foreign key linking to production.production_work_order. Business justification: EXECUTION TRACKING: Links a project activity to the actual production work order that executes it, required for activity status and cost roll‑up.',
     `project_contract_id` BIGINT COMMENT 'Identifier of an external contract or subcontract linked to the activity.',
     `project_header_id` BIGINT COMMENT 'Identifier of the parent project to which this activity belongs.',
+    `wbs_element_id` BIGINT COMMENT '',
     `work_center_id` BIGINT COMMENT 'Foreign key linking to production.work_center. Business justification: CAPACITY PLANNING: Project activities need a specific work center assignment for scheduling and capacity load reports.',
     `activity_status` STRING COMMENT 'Current lifecycle status of the activity.. Valid values are `planned|in_progress|completed|cancelled|on_hold`',
     `activity_type` STRING COMMENT 'Classification of the activity (e.g., internal work, external subcontract, cost‑only, or milestone).. Valid values are `internal|external|cost|milestone`',
+    `actual_duration_days` DECIMAL(18,2) COMMENT '',
+    `actual_finish_date` TIMESTAMP COMMENT '',
     `actual_finish_timestamp` TIMESTAMP COMMENT 'Timestamp when work on the activity actually finished.',
+    `actual_start_date` TIMESTAMP COMMENT '',
     `actual_start_timestamp` TIMESTAMP COMMENT 'Timestamp when work on the activity actually began.',
     `activity_code` STRING COMMENT 'Business identifier for the activity, used in schedules and reports.. Valid values are `^ACT-[0-9]{5}$`',
-    `cost_center_code` STRING COMMENT 'Cost center responsible for the activitys expenses.',
+    `cost_center_code` DECIMAL(18,2) COMMENT 'Cost center responsible for the activitys expenses.',
     `created_timestamp` TIMESTAMP COMMENT 'Timestamp when the activity record was first created in the system.',
     `currency_code` STRING COMMENT 'Three‑letter ISO currency code for monetary values.. Valid values are `^[A-Z]{3}$`',
     `activity_description` STRING COMMENT 'Detailed description of the work to be performed.',
@@ -161,28 +181,35 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`project`.`activity` (
     `equipment_cost_estimated` DECIMAL(18,2) COMMENT 'Planned cost of equipment usage for the activity.',
     `float_days` DECIMAL(18,2) COMMENT 'Available scheduling float for the activity in days.',
     `is_critical_path` BOOLEAN COMMENT 'Flag indicating whether the activity lies on the project critical path.',
+    `is_on_critical_path` BOOLEAN COMMENT '',
     `labor_hours_actual` DECIMAL(18,2) COMMENT 'Labor hours actually recorded for the activity.',
     `labor_hours_estimated` DECIMAL(18,2) COMMENT 'Planned labor effort for the activity in hours.',
+    `last_modified_timestamp` TIMESTAMP COMMENT '',
     `material_cost_actual` DECIMAL(18,2) COMMENT 'Actual cost of materials consumed by the activity.',
     `material_cost_estimated` DECIMAL(18,2) COMMENT 'Planned cost of materials required for the activity.',
     `milestone_flag` BOOLEAN COMMENT 'True if the activity represents a project milestone.',
     `activity_name` STRING COMMENT 'Human‑readable name or title of the activity.',
     `notes` STRING COMMENT 'Free‑form notes or comments entered by planners.',
     `percent_complete` DECIMAL(18,2) COMMENT 'Current progress of the activity expressed as a percentage.',
-    `planned_finish_date` DATE COMMENT 'Planned calendar date for activity completion.',
-    `planned_start_date` DATE COMMENT 'Planned calendar date for activity start.',
+    `planned_duration_days` DECIMAL(18,2) COMMENT '',
+    `planned_finish_date` TIMESTAMP COMMENT 'Planned calendar date for activity completion.',
+    `planned_start_date` TIMESTAMP COMMENT 'Planned calendar date for activity start.',
     `predecessor_activity_ids` STRING COMMENT 'Comma‑separated list of activity IDs that must finish before this activity can start.',
+    `record_status` STRING COMMENT '',
     `resource_requirements` STRING COMMENT 'Free‑text description of labor, material, and equipment needed.',
     `successor_activity_ids` STRING COMMENT 'Comma‑separated list of activity IDs that follow this activity in the schedule.',
     `total_cost_estimated` DECIMAL(18,2) COMMENT 'Sum of estimated labor, material, and equipment costs for the activity.',
     `updated_timestamp` TIMESTAMP COMMENT 'Timestamp of the most recent modification to the activity record.',
     `wbs_element` STRING COMMENT 'Identifier of the WBS element to which the activity belongs.',
+    `created_by` STRING COMMENT '',
     CONSTRAINT pk_activity PRIMARY KEY(`activity_id`)
 ) COMMENT 'Granular project activity (network activity) record representing a discrete work package or task within the project schedule network. Captures activity ID, description, activity type (internal, external, cost), work center assignment, planned start/finish, actual start/finish, duration, float, predecessor/successor relationships, resource requirements, and earned value data (BCWS, BCWP, ACWP).';
 
 CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`project`.`project_budget` (
     `project_budget_id` BIGINT COMMENT 'Unique identifier for the project budget record.',
+    `cost_center_id` BIGINT COMMENT '',
     `employee_id` BIGINT COMMENT 'Identifier of the person responsible for the budget.',
+    `planning_parameter_id` BIGINT COMMENT 'Foreign key linking to supply.planning_parameter. Business justification: Aligns budgeting assumptions with supply planning parameters for accurate project budgeting.',
     `primary_project_employee_id` BIGINT COMMENT 'Identifier of the user who created the budget record.',
     `family_id` BIGINT COMMENT 'Foreign key linking to product.family. Business justification: Budget allocations are often planned per product family to align financial planning with product strategy.',
     `project_header_id` BIGINT COMMENT 'Identifier of the project to which this budget belongs.',
@@ -190,25 +217,30 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`project`.`project_budget` (
     `wbs_element_id` BIGINT COMMENT 'Identifier of the WBS element associated with this budget line.',
     `allocation_method` STRING COMMENT 'Method used to allocate the budget (manual, automatic, roll‑up).. Valid values are `manual|automatic|rollup`',
     `approval_date` DATE COMMENT 'Date on which the budget was formally approved.',
+    `budget_amount` DECIMAL(18,2) COMMENT '',
     `budget_category` STRING COMMENT 'High‑level classification of the budget (e.g., capital project, maintenance, R&D).',
-    `budget_number` STRING COMMENT 'External budget number or code used for reference in financial systems.',
-    `budget_source` STRING COMMENT 'Origin of the budget funds.. Valid values are `internal|external|grant`',
-    `budget_type` STRING COMMENT 'Classification of the budget as Capital Expenditure, Operational Expenditure, or mixed.. Valid values are `capex|opex|mixed`',
+    `budget_number` DECIMAL(18,2) COMMENT 'External budget number or code used for reference in financial systems.',
+    `budget_source` DECIMAL(18,2) COMMENT 'Origin of the budget funds.',
+    `budget_status` STRING COMMENT '',
+    `budget_type` DECIMAL(18,2) COMMENT 'Classification of the budget as Capital Expenditure, Operational Expenditure, or mixed.',
+    `budget_version` STRING COMMENT '',
     `change_reason` STRING COMMENT 'Reason or justification for the latest budget change.',
     `committed_amount` DECIMAL(18,2) COMMENT 'Portion of the budget that has been committed to purchase orders or contracts.',
-    `cost_center_code` STRING COMMENT 'Code of the cost center responsible for the budget.',
-    `cost_element_code` STRING COMMENT 'Code representing the cost element (e.g., labor, material, overhead).',
+    `cost_element_code` DECIMAL(18,2) COMMENT 'Code representing the cost element (e.g., labor, material, overhead).',
     `created_timestamp` TIMESTAMP COMMENT 'Timestamp when the budget record was first created in the system.',
     `currency_code` STRING COMMENT 'Three‑letter ISO currency code for the budget amounts.. Valid values are `^[A-Z]{3}$`',
-    `project_budget_description` STRING COMMENT 'Free‑text description of the budget line purpose or scope.',
+    `project_budget_description` DECIMAL(18,2) COMMENT 'Free‑text description of the budget line purpose or scope.',
     `effective_end_date` DATE COMMENT 'Date when the budget expires or is superseded.',
     `effective_start_date` DATE COMMENT 'Date when the budget becomes effective for spending.',
     `fiscal_year` STRING COMMENT 'Fiscal year to which the budget applies.',
     `is_locked` BOOLEAN COMMENT 'Indicates whether the budget is locked from further changes.',
     `last_approval_timestamp` TIMESTAMP COMMENT 'Timestamp of the most recent budget approval action.',
+    `last_modified_timestamp` TIMESTAMP COMMENT '',
+    `notes` STRING COMMENT '',
     `original_budget_amount` DECIMAL(18,2) COMMENT 'Approved original budget amount at the time of creation.',
     `owner_role` STRING COMMENT 'Role or title of the budget owner (e.g., Project Manager, Finance Lead).',
-    `project_budget_status` STRING COMMENT 'Current lifecycle status of the budget.. Valid values are `planned|approved|revised|closed|cancelled`',
+    `project_budget_status` DECIMAL(18,2) COMMENT 'Current lifecycle status of the budget.',
+    `record_status` STRING COMMENT '',
     `remaining_amount` DECIMAL(18,2) COMMENT 'Budget amount still available after commitments and spend.',
     `revised_budget_amount` DECIMAL(18,2) COMMENT 'Budget amount after approved revisions or supplements.',
     `spent_amount` DECIMAL(18,2) COMMENT 'Actual expenditures recorded against the budget.',
@@ -216,6 +248,7 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`project`.`project_budget` (
     `transferred_out_amount` DECIMAL(18,2) COMMENT 'Amount transferred out of this budget to other budgets.',
     `updated_timestamp` TIMESTAMP COMMENT 'Timestamp of the most recent update to the budget record.',
     `version` STRING COMMENT 'Version identifier for the budget (e.g., initial, revised).',
+    `created_by` STRING COMMENT '',
     CONSTRAINT pk_project_budget PRIMARY KEY(`project_budget_id`)
 ) COMMENT 'Project budget record capturing the approved cost baseline for a project or WBS element by cost element, fiscal year, and budget version. Tracks original budget, approved supplements, transfers, returns, current budget, and commitment values. Supports CapEx/OpEx split, budget availability control, and multi-year capital planning. Aligns with SAP PS budget management (BPGE/BPJA).';
 
@@ -237,13 +270,14 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`project`.`cost_actual` (
     `audit_trail_reference` BIGINT COMMENT 'Identifier linking to the detailed audit trail for this cost line.',
     `budget_amount` DECIMAL(18,2) COMMENT 'Planned amount for this cost line according to the budget.',
     `cost_allocation_percentage` DECIMAL(18,2) COMMENT 'Percentage of the cost allocated to this line based on the rule.',
-    `cost_allocation_rule` STRING COMMENT 'Name or code of the rule used to allocate overhead or indirect costs.',
-    `cost_category` STRING COMMENT 'High‑level classification of the cost (direct, indirect, etc.).. Valid values are `direct|indirect|capital|operational`',
-    `cost_element_code` STRING COMMENT 'Code representing the type of cost (e.g., labor, material, overhead).',
-    `cost_type` STRING COMMENT 'Classification of the cost (e.g., labor, material, service).. Valid values are `labor|material|service|overhead|subcontract|misc`',
+    `cost_allocation_rule` DECIMAL(18,2) COMMENT 'Name or code of the rule used to allocate overhead or indirect costs.',
+    `cost_category` DECIMAL(18,2) COMMENT 'High‑level classification of the cost (direct, indirect, etc.).',
+    `cost_element` DECIMAL(18,2) COMMENT '',
+    `cost_element_code` DECIMAL(18,2) COMMENT 'Code representing the type of cost (e.g., labor, material, overhead).',
+    `cost_type` DECIMAL(18,2) COMMENT 'Classification of the cost (e.g., labor, material, service).',
     `created_timestamp` TIMESTAMP COMMENT 'Date and time when the cost line record was created.',
     `currency_code` STRING COMMENT 'Three‑letter ISO currency code of the posting currency.. Valid values are `USD|EUR|GBP|JPY|CNY|CHF`',
-    `cost_actual_description` STRING COMMENT 'Free‑text description or notes for the cost line.',
+    `cost_actual_description` DECIMAL(18,2) COMMENT 'Free‑text description or notes for the cost line.',
     `document_number` STRING COMMENT 'Reference number of the source document (e.g., invoice, goods receipt).',
     `exchange_rate` DECIMAL(18,2) COMMENT 'Rate used to convert posting currency to controlling currency.',
     `external_reference` STRING COMMENT 'Reference to an external document or system (e.g., vendor invoice).',
@@ -252,18 +286,22 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`project`.`cost_actual` (
     `internal_order_number` STRING COMMENT 'Internal order identifier linked to the cost posting.',
     `is_budgeted` BOOLEAN COMMENT 'Indicates whether the cost line was part of the approved budget.',
     `is_manual_entry` BOOLEAN COMMENT 'True if the cost line was entered manually rather than via interface.',
+    `last_modified_timestamp` TIMESTAMP COMMENT '',
     `line_sequence` STRING COMMENT 'Sequential order of the line within the posting document.',
+    `notes` STRING COMMENT '',
     `overhead_allocation_flag` BOOLEAN COMMENT 'Indicates whether the cost line includes overhead allocation.',
-    `posting_date` DATE COMMENT 'Calendar date on which the cost was posted.',
+    `posting_date` TIMESTAMP COMMENT 'Calendar date on which the cost was posted.',
     `posting_status` STRING COMMENT 'Current processing status of the cost line.. Valid values are `posted|pending|reversed|rejected`',
     `posting_timestamp` TIMESTAMP COMMENT 'Exact date and time when the cost posting was recorded.',
     `project_phase` STRING COMMENT 'Lifecycle phase of the project when the cost was incurred.. Valid values are `initiation|planning|execution|monitoring|closing`',
     `quantity` DECIMAL(18,2) COMMENT 'Amount of the resource consumed (e.g., hours, units, kilograms).',
+    `record_status` STRING COMMENT '',
     `tax_amount` DECIMAL(18,2) COMMENT 'Tax component of the posted amount, if applicable.',
     `unit_of_measure` STRING COMMENT 'Measurement unit for the quantity (e.g., EA, KG, HOUR).',
     `updated_timestamp` TIMESTAMP COMMENT 'Date and time of the most recent update to the record.',
     `variance_amount` DECIMAL(18,2) COMMENT 'Difference between actual amount and budgeted amount.',
     `variance_percent` DECIMAL(18,2) COMMENT 'Percentage variance relative to the budgeted amount.',
+    `created_by` STRING COMMENT '',
     CONSTRAINT pk_cost_actual PRIMARY KEY(`cost_actual_id`)
 ) COMMENT 'Actual cost posting record capturing all cost transactions charged to a WBS element or project activity, including labor confirmations, material goods issues, purchase order commitments, service entry sheet postings, and overhead allocations. Captures cost element, cost center origin, posting date, document reference, quantity, and amount in project and controlling currency.';
 
@@ -274,7 +312,7 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`project`.`commitment` (
     `originating_commitment_id` BIGINT COMMENT 'Self-referencing FK on commitment (originating_commitment_id)',
     `procurement_contract_id` BIGINT COMMENT 'Foreign key linking to procurement.procurement_contract. Business justification: Project commitments (fund reservations) are tied to procurement contracts; the FK enables commitment‑to‑contract reconciliation.',
     `project_header_id` BIGINT COMMENT 'Identifier of the project to which the commitment belongs.',
-    `replenishment_proposal_id` BIGINT COMMENT 'Foreign key linking to supply.replenishment_proposal. Business justification: Allows Project Commitment Review to reference the supply proposal that generated the commitment.',
+    `purchase_order_id` BIGINT COMMENT '',
     `supplier_id` BIGINT COMMENT 'Identifier of the vendor or supplier associated with the commitment.',
     `wbs_element_id` BIGINT COMMENT 'Identifier of the WBS element linked to the commitment.',
     `actual_delivery_date` DATE COMMENT 'Date when the goods or services were actually delivered.',
@@ -288,19 +326,24 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`project`.`commitment` (
     `commitment_type` STRING COMMENT 'Indicates the origin of the commitment such as purchase order, requisition, or fund reservation.. Valid values are `purchase_order|requisition|fund_reservation`',
     `committed_amount` DECIMAL(18,2) COMMENT 'Gross monetary value of the commitment before taxes or adjustments.',
     `committed_quantity` DECIMAL(18,2) COMMENT 'Quantity of goods or services committed.',
-    `cost_element_code` STRING COMMENT 'Accounting cost element code used for budgeting and expense tracking.',
+    `consumed_amount` DECIMAL(18,2) COMMENT '',
+    `cost_element_code` DECIMAL(18,2) COMMENT 'Accounting cost element code used for budgeting and expense tracking.',
     `created_timestamp` TIMESTAMP COMMENT 'Timestamp when the commitment record was first created in the system.',
     `currency_code` STRING COMMENT 'Three‑letter ISO 4217 currency code for the monetary values.. Valid values are `^[A-Z]{3}$`',
     `commitment_description` STRING COMMENT 'Free‑form description of the commitment purpose or details.',
     `expected_delivery_date` DATE COMMENT 'Planned date for delivery of the committed goods or services.',
     `is_funds_reserved` BOOLEAN COMMENT 'Indicates whether funds have been reserved for this commitment.',
+    `last_modified_timestamp` TIMESTAMP COMMENT '',
     `net_committed_amount` DECIMAL(18,2) COMMENT 'Net monetary value after tax and adjustments.',
     `notes` STRING COMMENT 'Supplementary remarks or comments related to the commitment.',
+    `open_amount` DECIMAL(18,2) COMMENT '',
+    `record_status` STRING COMMENT '',
     `reservation_number` BIGINT COMMENT 'Identifier of the fund reservation record linked to the commitment.',
     `tax_amount` DECIMAL(18,2) COMMENT 'Tax component associated with the committed amount.',
     `unit_of_measure` STRING COMMENT 'Standard unit of measure for the committed quantity (e.g., EA, KG, L).',
     `updated_timestamp` TIMESTAMP COMMENT 'Timestamp of the most recent update to the commitment record.',
     `variance_amount` DECIMAL(18,2) COMMENT 'Difference between budgeted and actual spent amounts.',
+    `created_by` STRING COMMENT '',
     CONSTRAINT pk_commitment PRIMARY KEY(`commitment_id`)
 ) COMMENT 'Open commitment record tracking purchase order commitments, purchase requisition commitments, and funds reservations against WBS elements and project activities. Captures commitment type, originating document, vendor, cost element, committed quantity, committed value, expected delivery date, and open/closed status. Critical for budget availability control and cash flow forecasting.';
 
@@ -319,22 +362,30 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`project`.`plan_version` (
     `created_timestamp` TIMESTAMP COMMENT 'Timestamp when the version record was initially created in the system.',
     `currency_code` STRING COMMENT 'Three‑letter ISO 4217 code of the currency used for the cost fields.',
     `plan_version_description` STRING COMMENT 'Free‑form textual description of the purpose or scope of this version.',
+    `effective_date` TIMESTAMP COMMENT '',
     `effective_end_date` DATE COMMENT 'Date on which this version ceases to be operative (null if open‑ended).',
     `effective_start_date` DATE COMMENT 'Date from which this version becomes the operative baseline.',
     `freeze_date` DATE COMMENT 'Date on which the plan version was frozen and became immutable for reporting.',
     `is_active` BOOLEAN COMMENT 'Indicates whether the version is currently active for reporting.',
+    `is_baseline` BOOLEAN COMMENT '',
+    `last_modified_timestamp` TIMESTAMP COMMENT '',
     `last_reviewed_by` STRING COMMENT 'Identifier of the reviewer who performed the latest review.',
     `last_reviewed_timestamp` TIMESTAMP COMMENT 'Timestamp of the most recent formal review of the version.',
     `milestone_count` STRING COMMENT 'Number of defined milestones captured in this version of the plan.',
+    `notes` STRING COMMENT '',
     `plan_version_status` STRING COMMENT 'Lifecycle status of the version record.. Valid values are `draft|active|archived`',
-    `planned_duration_days` STRING COMMENT 'Planned overall duration of the project plan version expressed in calendar days.',
+    `planned_duration_days` DECIMAL(18,2) COMMENT 'Planned overall duration of the project plan version expressed in calendar days.',
+    `record_status` STRING COMMENT '',
     `risk_level` STRING COMMENT 'Overall risk classification assigned to this version during planning.. Valid values are `low|medium|high`',
     `schedule_variance_days` STRING COMMENT 'Difference in days between planned schedule and actual schedule at the time of snapshot.',
     `total_planned_cost` DECIMAL(18,2) COMMENT 'Aggregated cost budget for the entire project plan version, expressed in the selected currency.',
     `updated_by` STRING COMMENT 'User or system identifier that performed the latest update.',
     `updated_timestamp` TIMESTAMP COMMENT 'Timestamp of the most recent update to the version record.',
+    `version_code` STRING COMMENT '',
     `version_comment` STRING COMMENT 'Additional comments or notes entered by the planner during version creation.',
+    `version_name` STRING COMMENT '',
     `version_number` STRING COMMENT 'Sequential integer indicating the version order of the project plan.',
+    `version_status` STRING COMMENT '',
     `version_type` STRING COMMENT 'Indicates whether the version is the original baseline, a re-baseline, or a what‑if scenario.. Valid values are `original|rebaseline|what-if`',
     `wbs_code` STRING COMMENT 'Hierarchical code representing the WBS element associated with this version.',
     `created_by` STRING COMMENT 'User or system identifier that created the version record.',
@@ -346,35 +397,44 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`project`.`resource_assignment` 
     `activity_id` BIGINT COMMENT 'Unique identifier of the project activity or WBS element to which the resource is assigned.',
     `employee_id` BIGINT COMMENT 'Unique identifier of the assigned resource (personnel, equipment, or contractor).',
     `location_id` BIGINT COMMENT 'Identifier of the physical location where the resource performs the work.',
+    `project_header_id` BIGINT COMMENT '',
     `replaced_resource_assignment_id` BIGINT COMMENT 'Self-referencing FK on resource_assignment (replaced_resource_assignment_id)',
+    `wbs_element_id` BIGINT COMMENT '',
     `actual_hours` DECIMAL(18,2) COMMENT 'Number of work hours actually logged for the assignment.',
+    `allocation_percent` DECIMAL(18,2) COMMENT '',
     `approval_timestamp` TIMESTAMP COMMENT 'Timestamp when the assignment was approved.',
     `approved_by` STRING COMMENT 'Name or identifier of the manager who approved the assignment.',
     `assignment_role` STRING COMMENT 'Role performed by the resource on the activity (e.g., Engineer, Technician).. Valid values are `engineer|technician|foreman|contractor|manager`',
     `assignment_status` STRING COMMENT 'Current lifecycle status of the assignment.. Valid values are `planned|active|completed|cancelled|on_hold`',
     `assignment_type` STRING COMMENT 'Indicates whether the resource is internal staff or external contractor.. Valid values are `internal|external`',
-    `billing_rate_type` STRING COMMENT 'Type of billing rate applied to the assignment.. Valid values are `hourly|daily|fixed`',
+    `billing_rate_type` DECIMAL(18,2) COMMENT 'Type of billing rate applied to the assignment.',
     `billing_status` STRING COMMENT 'Indicates whether the assignment is billable to a customer.. Valid values are `billable|non_billable|pending`',
-    `cost_center_code` STRING COMMENT 'Internal cost center to which the assignment cost is charged.',
+    `cost_center_code` DECIMAL(18,2) COMMENT 'Internal cost center to which the assignment cost is charged.',
+    `cost_rate` DECIMAL(18,2) COMMENT '',
     `cost_rate_amount` DECIMAL(18,2) COMMENT 'Monetary rate (per hour or per unit) charged for the resource.',
-    `cost_rate_currency` STRING COMMENT 'Currency of the cost rate applied to the resource.. Valid values are `USD|EUR|GBP|JPY|CNY|CAD`',
+    `cost_rate_currency` DECIMAL(18,2) COMMENT 'Currency of the cost rate applied to the resource.',
     `created_timestamp` TIMESTAMP COMMENT 'Timestamp when the assignment record was first created.',
     `department_code` STRING COMMENT 'Code of the department responsible for the resource.',
     `effective_from` DATE COMMENT 'Date when the assignment becomes effective.',
     `effective_until` DATE COMMENT 'Date when the assignment ends or expires (null if open‑ended).',
+    `end_date` TIMESTAMP COMMENT '',
     `is_overtime` BOOLEAN COMMENT 'Flag indicating whether the assignment includes overtime work.',
     `last_modified_by` STRING COMMENT 'User identifier of the person who last updated the record.',
+    `last_modified_timestamp` TIMESTAMP COMMENT '',
     `notes` STRING COMMENT 'Free‑form comments or remarks about the assignment.',
     `overtime_hours` DECIMAL(18,2) COMMENT 'Number of overtime hours logged for the assignment.',
     `planned_hours` DECIMAL(18,2) COMMENT 'Number of work hours originally planned for the assignment.',
     `priority_level` STRING COMMENT 'Business priority assigned to the resource assignment.. Valid values are `low|medium|high|critical`',
     `record_status` STRING COMMENT 'Logical status of the record for soft‑delete handling.',
     `resource_utilization_category` STRING COMMENT 'Classification of the resources employment type for utilization reporting.. Valid values are `full_time|part_time|temp|contract`',
+    `role` STRING COMMENT '',
     `shift_code` STRING COMMENT 'Code representing the work shift for the assignment.. Valid values are `day|night|swing`',
     `skill_level` STRING COMMENT 'Declared skill proficiency of the resource for the assigned role.. Valid values are `beginner|intermediate|advanced|expert`',
+    `start_date` TIMESTAMP COMMENT '',
     `updated_timestamp` TIMESTAMP COMMENT 'Timestamp of the most recent modification to the assignment record.',
     `utilization_percent` DECIMAL(18,2) COMMENT 'Percentage of the resources available capacity consumed by this assignment.',
     `version_number` STRING COMMENT 'Incremental version number for optimistic concurrency control.',
+    `created_by` STRING COMMENT '',
     CONSTRAINT pk_resource_assignment PRIMARY KEY(`resource_assignment_id`)
 ) COMMENT 'Project resource assignment record linking workforce personnel, work centers, equipment, or external contractors to specific project activities or WBS elements. Captures resource type, assigned resource identity, planned hours/quantity, actual hours/quantity, assignment period, role, skill requirement, utilization percentage, and cost rate applied.';
 
@@ -383,21 +443,24 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`project`.`procurement_item` (
     `blanket_procurement_item_id` BIGINT COMMENT 'Self-referencing FK on procurement_item (blanket_procurement_item_id)',
     `planned_order_id` BIGINT COMMENT 'Foreign key linking to supply.planned_order. Business justification: Needed for Project Procurement Tracking report, showing which planned order fulfills each procurement item.',
     `purchase_order_id` BIGINT COMMENT 'Identifier of the parent procurement transaction header that groups line items for the same purchase request.',
-    `procurement_purchase_order_id` BIGINT COMMENT 'Foreign key linking to procurement.purchase_order. Business justification: Project procurement items are fulfilled by purchase orders; the FK allows project cost roll‑up and PO status monitoring.',
     `purchase_requisition_id` BIGINT COMMENT 'Foreign key linking to procurement.purchase_requisition. Business justification: Project procurement items originate from a purchase requisition; linking enables traceability from project spend back to the original requisition.',
+    `procurement_purchase_order_id` BIGINT COMMENT 'Foreign key linking to procurement.purchase_order. Business justification: Project procurement items are fulfilled by purchase orders; the FK allows project cost roll‑up and PO status monitoring.',
+    `procurement_purchase_requisition_id` BIGINT COMMENT '',
     `project_header_id` BIGINT COMMENT 'Foreign key linking to project.project_header. Business justification: Procurement items belong to a specific project; linking enables aggregation, reporting and eliminates the need for any ad‑hoc project identifiers stored elsewhere.',
     `sku_master_id` BIGINT COMMENT 'Foreign key linking to product.sku_master. Business justification: Procurement lines must be tied to a definitive SKU for inventory, cost, and compliance tracking; replaces denormalized material_number.',
     `supplier_id` BIGINT COMMENT 'Unique identifier of the external supplier providing the item.',
     `wbs_element_id` BIGINT COMMENT 'Foreign key linking to project.wbs_element. Business justification: The string column wbs_element_code is a duplicate of the WBS element identifier; adding a proper foreign key to wbs_element provides full hierarchy access and removes the redundant code column.',
+    `actual_cost` DECIMAL(18,2) COMMENT '',
     `actual_lead_time_days` STRING COMMENT 'Observed number of days between order and receipt.',
     `approval_status` STRING COMMENT 'Current approval workflow state of the procurement line.. Valid values are `draft|submitted|approved|rejected|cancelled`',
     `compliance_status` STRING COMMENT 'Indicates whether the procurement complies with internal and external regulations.. Valid values are `compliant|non_compliant|exempt|pending`',
     `contract_number` STRING COMMENT 'Reference to a master contract or agreement governing the purchase.',
-    `cost_center_code` STRING COMMENT 'Financial cost center responsible for the expense of this procurement item.',
+    `cost_center_code` DECIMAL(18,2) COMMENT 'Financial cost center responsible for the expense of this procurement item.',
     `created_timestamp` TIMESTAMP COMMENT 'Date and time when the line record was created in the system.',
     `currency_code` STRING COMMENT 'Three‑letter ISO currency code for monetary values.',
     `delivery_date` DATE COMMENT 'Date the supplier is expected to deliver the item.',
     `discount_amount` DECIMAL(18,2) COMMENT 'Discounts granted on the line item.',
+    `estimated_cost` DECIMAL(18,2) COMMENT '',
     `expected_lead_time_days` STRING COMMENT 'Planned number of days between order and delivery.',
     `invoice_date` DATE COMMENT 'Date the supplier issued the invoice.',
     `invoice_number` STRING COMMENT 'Supplier invoice identifier for this line item.',
@@ -405,17 +468,23 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`project`.`procurement_item` (
     `is_invoiced` BOOLEAN COMMENT 'True when an invoice has been recorded for the line.',
     `is_received` BOOLEAN COMMENT 'Indicates whether the goods have been received (true) or not (false).',
     `item_description` STRING COMMENT 'Free‑text description of the material, service, or equipment being procured.',
+    `item_status` STRING COMMENT '',
+    `last_modified_timestamp` TIMESTAMP COMMENT '',
     `lifecycle_status` STRING COMMENT 'Overall state of the procurement line from creation to closure.. Valid values are `planned|released|ordered|received|invoiced|closed`',
     `line_quantity` DECIMAL(18,2) COMMENT 'Requested quantity of the item in the unit of measure.',
     `line_sequence` STRING COMMENT 'Sequential order of the line item within the procurement header.',
     `net_amount` DECIMAL(18,2) COMMENT 'Net monetary value after tax and discount (total_price + tax_amount - discount_amount).',
-    `payment_due_date` DATE COMMENT 'Date by which payment must be made to the vendor.',
-    `payment_status` STRING COMMENT 'Payment settlement status for the invoice.. Valid values are `unpaid|paid|partial|overdue|cancelled`',
+    `notes` STRING COMMENT '',
+    `payment_due_date` TIMESTAMP COMMENT 'Date by which payment must be made to the vendor.',
+    `payment_status` DECIMAL(18,2) COMMENT 'Payment settlement status for the invoice.',
     `procurement_category` STRING COMMENT 'Classification of the spend type for reporting and compliance.. Valid values are `capital|services|materials|equipment|software|other`',
     `procurement_method` STRING COMMENT 'Method used to acquire the item, e.g., internal requisition or external purchase.. Valid values are `internal|external|direct|indirect`',
+    `quantity` DECIMAL(18,2) COMMENT '',
     `receipt_date` DATE COMMENT 'Date the item was actually received on site.',
     `receipt_quantity` DECIMAL(18,2) COMMENT 'Quantity of the item actually received.',
+    `record_status` STRING COMMENT '',
     `remarks` STRING COMMENT 'Free‑form notes or comments entered by users.',
+    `required_date` TIMESTAMP COMMENT '',
     `risk_rating` STRING COMMENT 'Risk assessment of the procurement item (e.g., supplier risk, safety risk).. Valid values are `low|medium|high|critical`',
     `tax_amount` DECIMAL(18,2) COMMENT 'Tax applied to the line item.',
     `tax_code` STRING COMMENT 'Tax jurisdiction or rate code applied to the line.',
@@ -434,57 +503,122 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`project`.`project_status_event`
     `preceding_project_status_event_id` BIGINT COMMENT 'Self-referencing FK on project_status_event (preceding_project_status_event_id)',
     `project_header_id` BIGINT COMMENT 'Identifier of the project to which this status event belongs.',
     `approval_document_reference` STRING COMMENT 'Reference (e.g., document number or URL) to the approval document associated with the event, if applicable.',
+    `comments` STRING COMMENT '',
+    `created_timestamp` TIMESTAMP COMMENT '',
     `event_comment` STRING COMMENT 'Additional notes or comments captured at the time of the event.',
     `event_reason` STRING COMMENT 'Free‑text reason explaining why the status change was made.',
     `event_timestamp` TIMESTAMP COMMENT 'Exact date and time when the status event occurred.',
     `event_type` STRING COMMENT 'Category of the event indicating the nature of the status transition or related action.. Valid values are `status_change|approval|milestone|cancellation`',
     `is_audit_trail` BOOLEAN COMMENT 'Flag indicating whether this record is part of the compliance audit trail.',
+    `last_modified_timestamp` TIMESTAMP COMMENT '',
     `new_status` STRING COMMENT 'Project status value after this event was applied.',
+    `notes` STRING COMMENT '',
     `previous_status` STRING COMMENT 'Project status value before this event was applied.',
+    `reason_code` STRING COMMENT '',
     `record_created_timestamp` TIMESTAMP COMMENT 'Timestamp when this event record was first inserted into the lakehouse.',
     `record_source_system` STRING COMMENT 'Name of the source system (e.g., SAP S/4HANA, Siemens Opcenter) that generated the event.',
+    `record_status` STRING COMMENT '',
     `source_system_event_code` STRING COMMENT 'Original identifier of the event in the source system.',
     `triggered_by_user_name` STRING COMMENT 'Display name of the user who triggered the event.',
+    `changed_by` STRING COMMENT '',
+    `created_by` STRING COMMENT '',
     CONSTRAINT pk_project_status_event PRIMARY KEY(`project_status_event_id`)
 ) COMMENT 'Immutable event log capturing every status transition and lifecycle milestone in the project lifecycle including project creation, approval, release, execution start, suspension, completion, settlement, and closure. Captures event type, previous status, new status, event timestamp, triggered by user, and associated approval document reference. Supports project governance audit trail.';
+
+CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`project`.`issue` (
+    `issue_id` BIGINT COMMENT 'System-generated unique identifier for the project issue record.',
+    `alarm_event_id` BIGINT COMMENT 'Foreign key linking to automation.alarm_event. Business justification: Issue Management process records the originating alarm event to support root‑cause analysis and compliance reporting.',
+    `employee_id` BIGINT COMMENT '',
+    `project_header_id` BIGINT COMMENT '',
+    `issue_related_project_project_header_id` BIGINT COMMENT 'Identifier of the project to which this issue belongs.',
+    `parent_issue_id` BIGINT COMMENT 'Self-referencing FK on issue (parent_issue_id)',
+    `primary_issue_employee_id` BIGINT COMMENT 'Person or role accountable for resolving the issue.',
+    `wbs_element_id` BIGINT COMMENT 'WBS code linking the issue to a specific work package.',
+    `action_items` STRING COMMENT 'List of concrete actions assigned to resolve the issue.',
+    `actual_cost` DECIMAL(18,2) COMMENT 'Real cost incurred after issue resolution.',
+    `actual_resolution_date` DATE COMMENT 'Date the issue was actually closed or resolved.',
+    `issue_code` STRING COMMENT '',
+    `created_timestamp` TIMESTAMP COMMENT 'Timestamp when the record was initially created.',
+    `currency_code` STRING COMMENT 'Three‑letter ISO currency code for cost fields.. Valid values are `USD|EUR|GBP|JPY|CNY|CAD`',
+    `issue_description` STRING COMMENT 'Detailed narrative of the problem, risk, or change request.',
+    `escalation_status` STRING COMMENT 'Indicates whether the issue has been escalated for higher‑level attention.. Valid values are `none|escalated|pending_review`',
+    `estimated_cost` DECIMAL(18,2) COMMENT 'Projected financial impact if the issue materializes.',
+    `identified_timestamp` TIMESTAMP COMMENT 'Exact time the issue was first recorded in the system.',
+    `impact` STRING COMMENT 'Potential effect on schedule, cost, or scope if the issue materializes.. Valid values are `low|medium|high|critical`',
+    `issue_number` BOOLEAN COMMENT 'Human‑readable unique code assigned to the issue for tracking across systems.',
+    `issue_status` STRING COMMENT 'Current state of the issue within its lifecycle.. Valid values are `open|in_progress|resolved|closed|escalated`',
+    `issue_type` STRING COMMENT 'Category describing the nature of the record.. Valid values are `risk|issue|change_request|blocker`',
+    `last_modified_timestamp` TIMESTAMP COMMENT '',
+    `mitigation_plan` STRING COMMENT 'Planned actions to reduce probability or impact.',
+    `notes` STRING COMMENT '',
+    `priority` STRING COMMENT 'Combined assessment of severity, probability, and impact used for triage.. Valid values are `low|medium|high|critical`',
+    `probability_percent` DECIMAL(18,2) COMMENT 'Likelihood of the issue occurring, expressed as a percentage.',
+    `raised_date` TIMESTAMP COMMENT '',
+    `record_status` STRING COMMENT '',
+    `resolution` STRING COMMENT '',
+    `resolved_date` TIMESTAMP COMMENT '',
+    `risk_score` DECIMAL(18,2) COMMENT 'Composite numeric score derived from severity, probability, and impact.',
+    `root_cause` STRING COMMENT 'Identified underlying cause of the issue.',
+    `severity` STRING COMMENT 'Impact severity rating assigned by the project team.. Valid values are `low|medium|high|critical`',
+    `target_resolution_date` TIMESTAMP COMMENT 'Planned date by which the issue should be closed.',
+    `title` STRING COMMENT '',
+    `updated_timestamp` TIMESTAMP COMMENT 'Timestamp of the most recent modification to the record.',
+    `created_by` STRING COMMENT '',
+    CONSTRAINT pk_issue PRIMARY KEY(`issue_id`)
+) COMMENT 'Project issue and risk register record capturing identified risks, open issues, blockers, and action items that threaten project schedule, cost, or scope. Captures issue type (risk, issue, change request, blocker), severity, probability, impact, owner, mitigation plan, target resolution date, actual resolution date, and escalation status. Supports PMO governance and project health reporting.';
 
 CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`project`.`project_change_request` (
     `project_change_request_id` BIGINT COMMENT 'System-generated unique identifier for the project change request record.',
     `employee_id` BIGINT COMMENT 'Identifier of the employee who originated the change request.',
     `project_header_id` BIGINT COMMENT 'Identifier of the parent project to which the change request belongs.',
+    `project_requested_by_employee_id` BIGINT COMMENT '',
     `superseded_project_change_request_id` BIGINT COMMENT 'Self-referencing FK on project_change_request (superseded_project_change_request_id)',
     `tertiary_project_created_by_employee_id` BIGINT COMMENT 'Identifier of the employee who initially created the change request record.',
     `wbs_element_id` BIGINT COMMENT 'Work‑breakdown‑structure element that will be affected by the change.',
+    `approval_date` TIMESTAMP COMMENT '',
     `approval_status` STRING COMMENT 'Current approval outcome of the change request.. Valid values are `pending|approved|rejected`',
     `approval_timestamp` TIMESTAMP COMMENT 'Date‑time when the change request was approved or rejected.',
+    `change_description` STRING COMMENT '',
     `change_reason` STRING COMMENT 'Root cause or business driver prompting the change request.',
     `change_request_number` STRING COMMENT 'Human‑readable reference number assigned to the change request, used in communications and tracking.',
+    `change_status` STRING COMMENT '',
+    `change_title` STRING COMMENT '',
     `change_type` STRING COMMENT 'Category of the change request indicating what aspect of the project is affected.. Valid values are `scope|schedule|cost|technical|other`',
     `compliance_requirements` STRING COMMENT 'List of regulatory or internal compliance items impacted by the change.',
     `cost_delta_amount` DECIMAL(18,2) COMMENT 'Net change in project budget resulting from the request (positive for increase, negative for decrease).',
-    `cost_delta_currency` STRING COMMENT 'Three‑letter ISO 4217 currency code for the cost delta. [ENUM-REF-CANDIDATE: USD|EUR|GBP|JPY|CNY|CHF|CAD|AUD|NZD|SEK|NOK|DKK|ZAR|INR|BRL — promote to reference product]',
+    `cost_delta_currency` DECIMAL(18,2) COMMENT 'Three‑letter ISO 4217 currency code for the cost delta. [ENUM-REF-CANDIDATE: USD|EUR|GBP|JPY|CNY|CHF|CAD|AUD|NZD|SEK|NOK|DKK|ZAR|INR|BRL — promote to reference product]',
+    `cost_impact_amount` DECIMAL(18,2) COMMENT '',
     `created_timestamp` TIMESTAMP COMMENT 'Date‑time when the change request record was first created in the system.',
+    `currency_code` STRING COMMENT '',
     `project_change_request_description` STRING COMMENT 'Detailed narrative of the requested change, including rationale and scope.',
     `impact_assessment` STRING COMMENT 'Qualitative and quantitative analysis of how the change will affect cost, schedule, scope, and risk.',
     `is_critical` BOOLEAN COMMENT 'Indicates whether the change request is deemed critical to project success.',
+    `last_modified_timestamp` TIMESTAMP COMMENT '',
+    `notes` STRING COMMENT '',
     `priority` STRING COMMENT 'Business‑defined urgency level for processing the change request.. Valid values are `low|medium|high|critical`',
     `project_change_request_status` STRING COMMENT 'Current workflow state of the change request.. Valid values are `draft|submitted|approved|rejected|implemented|closed`',
+    `record_status` STRING COMMENT '',
     `regulatory_impact` STRING COMMENT 'Description of how the change affects regulatory reporting or certifications.',
     `request_timestamp` TIMESTAMP COMMENT 'Date‑time when the change request was formally submitted.',
+    `requested_date` TIMESTAMP COMMENT '',
     `revised_baseline_reference` STRING COMMENT 'Identifier of the new project baseline version that incorporates this change.',
     `risk_level` STRING COMMENT 'Assessed risk impact of the change on project objectives.. Valid values are `low|medium|high`',
     `schedule_delta_days` STRING COMMENT 'Planned change in project duration expressed in calendar days (positive for extension, negative for compression).',
+    `schedule_impact_days` STRING COMMENT '',
     `updated_timestamp` TIMESTAMP COMMENT 'Date‑time of the most recent modification to the change request record.',
+    `created_by` STRING COMMENT '',
     CONSTRAINT pk_project_change_request PRIMARY KEY(`project_change_request_id`)
 ) COMMENT 'Project change request (PCR) record governing scope changes, schedule changes, and budget amendments to an approved project baseline. Captures change request number, description, change type (scope, schedule, cost, technical), impact assessment, requested by, approval workflow status, approved/rejected date, cost delta, schedule delta, and revised baseline reference.';
 
 CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`project`.`timesheet` (
     `timesheet_id` BIGINT COMMENT 'Unique surrogate key for each timesheet entry.',
+    `activity_id` BIGINT COMMENT '',
     `corrected_timesheet_id` BIGINT COMMENT 'Self-referencing FK on timesheet (corrected_timesheet_id)',
     `location_id` BIGINT COMMENT 'Identifier of the plant or site where work was performed.',
     `employee_id` BIGINT COMMENT 'Identifier of the manager or supervisor who approved the entry.',
     `project_header_id` BIGINT COMMENT 'Identifier of the project to which the labor is allocated.',
     `tertiary_timesheet_entered_by_employee_id` BIGINT COMMENT 'Identifier of the user who entered the timesheet data.',
+    `timesheet_employee_id` BIGINT COMMENT '',
     `wbs_element_id` BIGINT COMMENT 'Identifier of the Work Breakdown Structure element the labor is charged to.',
     `activity_description` STRING COMMENT 'Free‑text description of the work performed.',
     `activity_type` STRING COMMENT 'Category of work performed for the timesheet entry. [ENUM-REF-CANDIDATE: design|assembly|testing|maintenance|inspection|setup|other — 7 candidates stripped; promote to reference product]',
@@ -495,7 +629,8 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`project`.`timesheet` (
     `billable_flag` BOOLEAN COMMENT 'Indicates whether the labor entry is billable to the customer.',
     `compliance_code` STRING COMMENT 'Code referencing the specific compliance requirement (e.g., ISO45001).',
     `compliance_flag` BOOLEAN COMMENT 'Indicates if the labor entry is subject to regulatory compliance tracking.',
-    `cost_center_code` STRING COMMENT 'Internal cost‑center code for financial allocation.',
+    `cost_amount` DECIMAL(18,2) COMMENT '',
+    `cost_center_code` DECIMAL(18,2) COMMENT 'Internal cost‑center code for financial allocation.',
     `cost_rate` DECIMAL(18,2) COMMENT 'Hourly billing or cost rate applicable to the employee for this activity.',
     `created_timestamp` TIMESTAMP COMMENT 'Date‑time when the timesheet line was initially created.',
     `currency_code` STRING COMMENT 'Three‑letter ISO currency code for monetary values.. Valid values are `^[A-Z]{3}$`',
@@ -506,11 +641,13 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`project`.`timesheet` (
     `expense_flag` BOOLEAN COMMENT 'Indicates if the entry includes a reimbursable expense.',
     `expense_type` STRING COMMENT 'Category of the expense, if expense_flag is true.. Valid values are `travel|material|tool|other`',
     `external_reference` STRING COMMENT 'Identifier from an external timesheet or payroll system.',
+    `hourly_rate` DECIMAL(18,2) COMMENT '',
     `hours_worked` DECIMAL(18,2) COMMENT 'Total regular labor hours recorded for the activity.',
     `is_deleted` BOOLEAN COMMENT 'Soft‑delete flag indicating logical removal.',
     `labor_category` STRING COMMENT 'Classification of labor for costing and compliance purposes.. Valid values are `regular|overtime|holiday|sick|training|other`',
     `labor_grade` STRING COMMENT 'Skill or pay grade of the labor resource.. Valid values are `A|B|C|D|E|F`',
-    `labor_rate_type` STRING COMMENT 'Classification of the rate applied to the labor.. Valid values are `hourly|salary|contract`',
+    `labor_rate_type` DECIMAL(18,2) COMMENT 'Classification of the rate applied to the labor.',
+    `last_modified_timestamp` TIMESTAMP COMMENT '',
     `line_sequence` STRING COMMENT 'Sequential order of the line within the timesheet batch.',
     `notes` STRING COMMENT 'Additional free‑form comments or remarks.',
     `overtime_hours` DECIMAL(18,2) COMMENT 'Additional hours worked beyond regular schedule, if any.',
@@ -521,7 +658,8 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`project`.`timesheet` (
     `total_cost` DECIMAL(18,2) COMMENT 'Calculated cost = (hours_worked + overtime_hours) * cost_rate.',
     `updated_timestamp` TIMESTAMP COMMENT 'Date‑time of the most recent modification to the record.',
     `version_number` STRING COMMENT 'Optimistic lock version for concurrency control.',
-    `work_date` DATE COMMENT 'Calendar date on which the labor was performed.',
+    `work_date` TIMESTAMP COMMENT 'Calendar date on which the labor was performed.',
+    `created_by` STRING COMMENT '',
     CONSTRAINT pk_timesheet PRIMARY KEY(`timesheet_id`)
 ) COMMENT 'Project labor time recording document capturing hours worked by employees and contractors against specific WBS elements and project activities. Captures employee/contractor identity, work date, WBS element, activity type, hours worked, activity description, approval status, and cost rate. Feeds actual labor cost postings to project cost accounting.';
 
@@ -533,19 +671,25 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`project`.`commissioning_checkli
     `employee_id` BIGINT COMMENT 'Identifier of the engineer accountable for completing the checklist.',
     `project_header_id` BIGINT COMMENT 'Reference to the capital or engineering project associated with the checklist.',
     `supplier_id` BIGINT COMMENT 'Identifier of the external vendor, if applicable.',
+    `wbs_element_id` BIGINT COMMENT '',
     `actual_duration_hours` DECIMAL(18,2) COMMENT 'Measured effort duration from actual start to actual end.',
     `actual_end_timestamp` TIMESTAMP COMMENT 'Timestamp when work on the checklist actually finished.',
     `actual_start_timestamp` TIMESTAMP COMMENT 'Timestamp when work on the checklist actually began.',
     `approval_status` STRING COMMENT 'Current approval state of the checklist after review.. Valid values are `pending|approved|rejected`',
     `approved_timestamp` TIMESTAMP COMMENT 'Timestamp when the checklist received formal approval.',
     `change_order_reference` STRING COMMENT 'Reference to any engineering change order that impacts the checklist.',
+    `checklist_name` STRING COMMENT '',
     `checklist_number` STRING COMMENT 'Human‑readable identifier assigned to the checklist for tracking and reference.',
+    `checklist_status` STRING COMMENT '',
     `checklist_type` STRING COMMENT 'Category of the checklist reflecting the phase of plant commissioning.. Valid values are `mechanical_completion|pre_commissioning|commissioning|startup`',
     `comments` STRING COMMENT 'Free‑form notes entered by the engineer or reviewers.',
     `commissioning_checklist_status` STRING COMMENT 'Current lifecycle state of the checklist.. Valid values are `draft|in_progress|completed|closed|rejected`',
+    `commissioning_date` TIMESTAMP COMMENT '',
+    `completed_items` STRING COMMENT '',
     `completion_date` DATE COMMENT 'Date on which the checklist was formally completed.',
+    `completion_percentage` DECIMAL(18,2) COMMENT '',
     `compliance_standard` STRING COMMENT 'Regulatory or industry standard governing the commissioning activity.. Valid values are `ISO9001|ISO14001|ISO45001|IEC62443|NIST|OSHA`',
-    `cost_currency_code` STRING COMMENT 'Three‑letter ISO currency code for the cost estimate.. Valid values are `USD|EUR|GBP|JPY|CNY`',
+    `cost_currency_code` DECIMAL(18,2) COMMENT 'Three‑letter ISO currency code for the cost estimate.',
     `cost_estimate` DECIMAL(18,2) COMMENT 'Financial estimate for the commissioning work.',
     `created_timestamp` TIMESTAMP COMMENT 'Timestamp when the checklist record was first created in the system.',
     `documentation_reference` STRING COMMENT 'Identifier or URL linking to detailed supporting documents (e.g., test reports).',
@@ -557,54 +701,73 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`project`.`commissioning_checkli
     `is_external_vendor_involved` BOOLEAN COMMENT 'Indicates whether an external supplier contributed to the commissioning.',
     `is_overtime_required` BOOLEAN COMMENT 'True if overtime work is needed to meet the schedule.',
     `is_training_required` BOOLEAN COMMENT 'Indicates whether specialized training is required for the commissioning task.',
+    `last_modified_timestamp` TIMESTAMP COMMENT '',
     `line_item_count` STRING COMMENT 'Count of individual verification items defined in the checklist.',
+    `notes` STRING COMMENT '',
     `overall_pass` BOOLEAN COMMENT 'Indicates whether the entire checklist met the pass criteria (true = pass).',
     `overtime_hours` DECIMAL(18,2) COMMENT 'Number of overtime hours planned or used.',
     `passed_item_count` STRING COMMENT 'How many checklist items have been marked as passed.',
     `punch_list_item_count` STRING COMMENT 'Number of open punch‑list items remaining after the checklist execution.',
     `quality_sign_off` BOOLEAN COMMENT 'Indicates whether quality sign‑off was obtained (true = yes).',
+    `record_status` STRING COMMENT '',
     `revision_number` STRING COMMENT 'Version number of the checklist document, incremented on each change.',
     `risk_level` STRING COMMENT 'Qualitative risk rating associated with the commissioning activity.. Valid values are `low|medium|high`',
     `safety_sign_off` BOOLEAN COMMENT 'Indicates whether safety sign‑off was obtained (true = yes).',
     `scheduled_end_date` DATE COMMENT 'Planned end date for the checklist execution.',
     `scheduled_start_date` DATE COMMENT 'Planned start date for the checklist execution.',
+    `signed_off_by` STRING COMMENT '',
     `system_scope` STRING COMMENT 'Name or code of the system/subsystem that the checklist covers (e.g., HVAC, Control System).',
+    `total_items` DECIMAL(18,2) COMMENT '',
     `training_completion_date` DATE COMMENT 'Date when required training was completed.',
     `updated_timestamp` TIMESTAMP COMMENT 'Timestamp of the most recent modification to the checklist record.',
+    `created_by` STRING COMMENT '',
     CONSTRAINT pk_commissioning_checklist PRIMARY KEY(`commissioning_checklist_id`)
 ) COMMENT 'Plant commissioning and startup checklist record tracking the structured verification activities required to bring a new production asset, automation system, or facility into operational service. Captures checklist type (mechanical completion, pre-commissioning, commissioning, startup), system/subsystem scope, line items with pass/fail status, responsible engineer, completion date, and punch list item count.';
 
 CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`project`.`punch_list_item` (
     `punch_list_item_id` BIGINT COMMENT 'System generated unique identifier for the punch list item.',
+    `employee_id` BIGINT COMMENT '',
     `device_registry_id` BIGINT COMMENT 'Foreign key linking to automation.device_registry. Business justification: Punch‑list items for equipment require linking to the specific device to track resolution and cost impact.',
     `parent_punch_list_item_id` BIGINT COMMENT 'Self-referencing FK on punch_list_item (parent_punch_list_item_id)',
+    `project_header_id` BIGINT COMMENT '',
     `wbs_element_id` BIGINT COMMENT 'Identifier of the WBS element to which the punch item is linked.',
+    `actual_closure_date` TIMESTAMP COMMENT '',
     `actual_completion_date` DATE COMMENT 'Date the punch item was actually closed.',
-    `punch_list_item_category` STRING COMMENT 'High‑level classification of the punch item type.. Valid values are `safety|quality|mechanical|electrical|civil`',
     `comments` STRING COMMENT 'Free‑form notes added by inspectors or contractors.',
     `compliance_status` STRING COMMENT 'Regulatory compliance state of the punch item.. Valid values are `compliant|non_compliant|pending`',
     `cost_actual` DECIMAL(18,2) COMMENT 'Actual monetary cost incurred to resolve the punch item.',
     `cost_estimate` DECIMAL(18,2) COMMENT 'Estimated monetary cost to resolve the punch item.',
     `created_timestamp` TIMESTAMP COMMENT 'Timestamp when the punch list record was created in the source system.',
     `punch_list_item_description` STRING COMMENT 'Detailed textual description of the deficiency or corrective action required.',
+    `identified_date` TIMESTAMP COMMENT '',
     `inspection_date` DATE COMMENT 'Date the deficiency was identified during inspection.',
     `is_critical` BOOLEAN COMMENT 'Indicates whether the punch item is deemed critical to project safety or schedule.',
+    `item_description` STRING COMMENT '',
     `item_number` STRING COMMENT 'Business visible identifier assigned to the punch list item, e.g., PLI-000123.. Valid values are `^PLI-d{6}$`',
+    `item_status` STRING COMMENT '',
+    `last_modified_timestamp` TIMESTAMP COMMENT '',
+    `location` STRING COMMENT '',
     `location_code` STRING COMMENT 'Plant or area code where the punch item is located.. Valid values are `^[A-Z]{3}-[A-Z0-9]{2,5}$`',
+    `notes` STRING COMMENT '',
     `priority` STRING COMMENT 'Priority level indicating urgency: A (critical), B (high), C (normal).. Valid values are `A|B|C`',
+    `punch_list_item_category` STRING COMMENT 'High‑level classification of the punch item type.. Valid values are `safety|quality|mechanical|electrical|civil`',
     `punch_list_item_status` STRING COMMENT 'Current lifecycle status of the punch item.. Valid values are `open|in_progress|closed|rejected|deferred`',
+    `record_status` STRING COMMENT '',
     `resolution_type` STRING COMMENT 'Method used to close the punch item.. Valid values are `repair|replace|rework|none`',
     `responsible_contractor` STRING COMMENT 'Name of the contractor responsible for addressing the punch item.',
     `severity` STRING COMMENT 'Severity of the issue impacting safety, quality, or schedule.. Valid values are `high|medium|low`',
     `sign_off_by` STRING COMMENT 'Name of the individual who signed off the punch item.',
     `sign_off_timestamp` TIMESTAMP COMMENT 'Timestamp when the punch item was formally signed off as completed.',
+    `target_closure_date` TIMESTAMP COMMENT '',
     `target_completion_date` DATE COMMENT 'Planned date by which the punch item should be resolved.',
     `updated_timestamp` TIMESTAMP COMMENT 'Timestamp of the most recent modification to the punch list record.',
+    `created_by` STRING COMMENT '',
     CONSTRAINT pk_punch_list_item PRIMARY KEY(`punch_list_item_id`)
 ) COMMENT 'Individual punch list item record representing an outstanding deficiency, incomplete work item, or corrective action identified during construction inspection, pre-commissioning, or commissioning walkdowns. Captures item number, description, category (A/B/C priority), responsible contractor, target completion date, actual completion date, and sign-off status. Critical for mechanical completion and handover management.';
 
 CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`project`.`handover` (
     `handover_id` BIGINT COMMENT 'Unique system-generated identifier for each project handover record.',
+    `customer_account_id` BIGINT COMMENT '',
     `org_unit_id` BIGINT COMMENT 'Identifier of the organization that receives the handover.',
     `handover_org_unit_id` BIGINT COMMENT 'Identifier of the organization that performed the handover.',
     `network_node_id` BIGINT COMMENT 'Foreign key linking to supply.network_node. Business justification: Identifies the physical network node (site) where handover occurs, supporting Handover Checklist.',
@@ -613,6 +776,9 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`project`.`handover` (
     `project_header_id` BIGINT COMMENT 'Reference to the project whose deliverables are being transferred.',
     `tertiary_handover_updated_by_user_employee_id` BIGINT COMMENT 'System identifier of the user who last updated the record.',
     `acceptance_date` DATE COMMENT 'Date when the accepting organization formally accepted the handover.',
+    `acceptance_status` STRING COMMENT '',
+    `accepted_by` STRING COMMENT '',
+    `actual_handover_date` TIMESTAMP COMMENT '',
     `approval_timestamp` TIMESTAMP COMMENT 'Date‑time when the handover received formal approval.',
     `approved_by_user_name` STRING COMMENT 'Full name of the user who approved the handover.',
     `as_built_document_status` STRING COMMENT 'Indicates whether as‑built drawings and documents are complete.. Valid values are `complete|incomplete|pending`',
@@ -623,20 +789,25 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`project`.`handover` (
     `created_by_user_name` STRING COMMENT 'Full name of the user who created the record.',
     `created_timestamp` TIMESTAMP COMMENT 'Date‑time when the handover record was initially entered into the system.',
     `currency_code` STRING COMMENT 'ISO 4217 three‑letter currency code for monetary amounts.',
+    `documentation_complete_flag` BOOLEAN COMMENT '',
     `documentation_package_status` STRING COMMENT 'Indicates completeness of the documentation handed over.. Valid values are `complete|partial|missing`',
     `final_cost_amount` DECIMAL(18,2) COMMENT 'Total cost captured at handover closure.',
-    `final_cost_currency_code` STRING COMMENT 'ISO 4217 currency code for the final cost amount.',
+    `final_cost_currency_code` DECIMAL(18,2) COMMENT 'ISO 4217 currency code for the final cost amount.',
     `handover_date` DATE COMMENT 'The calendar date on which the handover took place.',
     `handover_number` STRING COMMENT 'Business-visible handover number assigned by the project management system.',
     `handover_status` STRING COMMENT 'Current processing state of the handover record.. Valid values are `draft|in_review|approved|rejected|completed`',
     `handover_type` STRING COMMENT 'Indicates whether the handover is a partial or final transfer of deliverables.. Valid values are `partial|final`',
+    `last_modified_timestamp` TIMESTAMP COMMENT '',
     `location` STRING COMMENT 'Site or plant identifier where the handover was executed.',
     `maintenance_plan_details` STRING COMMENT 'Summary of the maintenance schedule, scope, and responsibilities.',
     `maintenance_plan_transfer_flag` BOOLEAN COMMENT 'True if the ongoing maintenance plan is handed over.',
+    `notes` STRING COMMENT '',
     `outstanding_items_description` STRING COMMENT 'Narrative description of remaining issues or actions.',
     `outstanding_items_flag` BOOLEAN COMMENT 'True if any punch‑list items are still open at handover.',
+    `planned_handover_date` TIMESTAMP COMMENT '',
     `record_source_system` STRING COMMENT 'Name of the source application (e.g., SAP S/4HANA, Siemens Teamcenter).',
-    `review_meeting_attendees` STRING COMMENT 'Comma‑separated list of participants in the review meeting.',
+    `record_status` STRING COMMENT '',
+    `review_meeting_attendees` TIMESTAMP COMMENT 'Comma‑separated list of participants in the review meeting.',
     `review_meeting_date` DATE COMMENT 'Scheduled date for the post‑handover review meeting.',
     `risk_assessment_status` STRING COMMENT 'Overall risk rating assigned during handover review.. Valid values are `low|medium|high|critical`',
     `scope_description` STRING COMMENT 'Free‑text description of what is included in the handover.',
@@ -650,6 +821,7 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`project`.`handover` (
     `value_amount` DECIMAL(18,2) COMMENT 'Financial value assigned to the handed‑over deliverables.',
     `warranty_expiration_date` DATE COMMENT 'Date when the transferred warranty period ends.',
     `warranty_transfer_flag` BOOLEAN COMMENT 'True when warranty obligations are passed to the receiving organization.',
+    `created_by` STRING COMMENT '',
     CONSTRAINT pk_handover PRIMARY KEY(`handover_id`)
 ) COMMENT 'Project handover record documenting the formal transfer of a completed project deliverable, facility, or system from the project team to the operations/maintenance organization. Captures handover type (partial, final), scope of handover, handover date, accepting organization, outstanding items, as-built documentation status, training completion status, and sign-off approvals.';
 
@@ -666,30 +838,39 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`project`.`project_contract` (
     `amendment_count` STRING COMMENT 'Number of times the contract has been amended.',
     `contract_category` STRING COMMENT 'Business domain of the contract (e.g., EPC, consulting).. Valid values are `epc|subcontract|consulting|equipment_vendor|other`',
     `contract_number` STRING COMMENT 'External contract reference number assigned by the contracting party.',
+    `contract_status` STRING COMMENT '',
     `contract_type` STRING COMMENT 'Classification of the contract pricing model.. Valid values are `lump_sum|cost_plus|unit_rate|time_and_materials|other`',
-    `cost_center_code` STRING COMMENT 'Accounting cost center associated with the contract.',
+    `contract_value` DECIMAL(18,2) COMMENT '',
+    `cost_center_code` DECIMAL(18,2) COMMENT 'Accounting cost center associated with the contract.',
     `created_timestamp` TIMESTAMP COMMENT 'Timestamp when the contract record was first created in the system.',
     `currency_code` STRING COMMENT 'ISO 4217 three‑letter code of the contract currency.. Valid values are `USD|EUR|GBP|JPY|CNY|CAD`',
     `document_url` STRING COMMENT 'Link to the stored electronic contract document.',
     `effective_from` DATE COMMENT 'Date when the contract becomes binding.',
     `effective_until` DATE COMMENT 'Date when the contract expires or terminates (nullable for open‑ended).',
+    `end_date` TIMESTAMP COMMENT '',
     `expiration_date` DATE COMMENT 'Date the contract is scheduled to expire, if different from effective_until.',
     `last_amendment_date` DATE COMMENT 'Date of the most recent contract amendment.',
+    `last_modified_timestamp` TIMESTAMP COMMENT '',
     `liquidated_damages_clause` STRING COMMENT 'Text of the clause defining penalties for delayed performance.',
-    `payment_terms` STRING COMMENT 'Agreed payment schedule and conditions (e.g., Net 30, milestone based).. Valid values are `net_30|net_60|milestone|progress|other`',
+    `notes` STRING COMMENT '',
+    `payment_terms` DECIMAL(18,2) COMMENT 'Agreed payment schedule and conditions (e.g., Net 30, milestone based).',
     `performance_bond_amount` DECIMAL(18,2) COMMENT 'Monetary value of the performance bond, if required.',
     `performance_bond_required` BOOLEAN COMMENT 'Indicates whether a performance bond is required for the contract.',
     `project_contract_status` STRING COMMENT 'Current lifecycle state of the contract.. Valid values are `draft|active|suspended|terminated|closed|pending`',
+    `record_status` STRING COMMENT '',
     `renewal_option_flag` BOOLEAN COMMENT 'Indicates whether the contract includes a renewal option.',
     `renewal_term_months` STRING COMMENT 'Length of the renewal period in months, if renewal_option_flag is true.',
     `retention_amount` DECIMAL(18,2) COMMENT 'Monetary amount held as retention based on the retention percentage.',
+    `retention_percent` DECIMAL(18,2) COMMENT '',
     `retention_percentage` DECIMAL(18,2) COMMENT 'Percentage of contract value retained until final acceptance.',
     `scope_of_work` STRING COMMENT 'Brief description of the work, deliverables, and responsibilities covered by the contract.',
     `signed_date` DATE COMMENT 'Date the contract was formally signed by all parties.',
+    `start_date` TIMESTAMP COMMENT '',
     `tax_amount` DECIMAL(18,2) COMMENT 'Tax component applied to the gross contract value.',
     `updated_timestamp` TIMESTAMP COMMENT 'Timestamp of the most recent update to the contract record.',
     `value_gross` DECIMAL(18,2) COMMENT 'Total contract amount before taxes, discounts, or retentions.',
     `value_net` DECIMAL(18,2) COMMENT 'Contract amount after taxes, discounts, and retentions.',
+    `created_by` STRING COMMENT '',
     CONSTRAINT pk_project_contract PRIMARY KEY(`project_contract_id`)
 ) COMMENT 'Project-specific contract record governing agreements with EPC contractors, construction subcontractors, engineering consultants, and equipment vendors for project execution. Captures contract number, contract type (lump sum, cost-plus, unit rate, T&M), contractor identity, scope of work, contract value, payment terms, retention percentage, performance bond, liquidated damages clause, and contract status.';
 
@@ -698,6 +879,8 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`project`.`invoice_request` (
     `credited_invoice_request_id` BIGINT COMMENT 'Self-referencing FK on invoice_request (credited_invoice_request_id)',
     `customer_account_id` BIGINT COMMENT 'Identifier of the customer to be billed.',
     `invoice_id` BIGINT COMMENT 'Foreign key linking to billing.invoice. Business justification: Invoice requests must be linked to the actual invoice issued for audit, reconciliation, and compliance reporting.',
+    `milestone_id` BIGINT COMMENT '',
+    `project_contract_id` BIGINT COMMENT '',
     `project_header_id` BIGINT COMMENT 'Identifier of the project associated with the invoice request.',
     `wbs_element_id` BIGINT COMMENT 'Identifier of the WBS element linked to the billing.',
     `amount_gross` DECIMAL(18,2) COMMENT 'Total amount before taxes and discounts.',
@@ -706,8 +889,8 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`project`.`invoice_request` (
     `approved_by` BIGINT COMMENT 'User identifier of the person who approved the invoice request.',
     `approved_timestamp` TIMESTAMP COMMENT 'Timestamp when the invoice request was approved.',
     `billing_basis` STRING COMMENT 'Method used to calculate the billable amount.. Valid values are `milestone|percentage|time_and_material|fixed_price`',
-    `billing_period_end` DATE COMMENT 'End date of the billing period covered by the request.',
-    `billing_period_start` DATE COMMENT 'Start date of the billing period covered by the request.',
+    `billing_period_end` TIMESTAMP COMMENT 'End date of the billing period covered by the request.',
+    `billing_period_start` TIMESTAMP COMMENT 'Start date of the billing period covered by the request.',
     `contract_number` STRING COMMENT 'Reference to the governing contract or agreement.',
     `created_timestamp` TIMESTAMP COMMENT 'Timestamp when the record was first captured in the system.',
     `currency_code` STRING COMMENT 'Three‑letter ISO currency code for the invoice amounts.',
@@ -718,44 +901,53 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`project`.`invoice_request` (
     `invoice_request_status` STRING COMMENT 'Current lifecycle status of the invoice request.. Valid values are `pending|approved|rejected|cancelled|issued`',
     `is_advance` BOOLEAN COMMENT 'Flag indicating whether this is an advance (pre‑payment) invoice.',
     `is_final` BOOLEAN COMMENT 'Flag indicating whether this invoice request represents the final billing for the project.',
-    `milestone_code` STRING COMMENT 'Identifier of the project milestone tied to this billing request.',
-    `payment_terms` STRING COMMENT 'Contractual payment terms associated with the invoice.. Valid values are `net30|net45|net60|upon_receipt`',
+    `last_modified_timestamp` TIMESTAMP COMMENT '',
+    `notes` STRING COMMENT '',
+    `payment_terms` DECIMAL(18,2) COMMENT 'Contractual payment terms associated with the invoice.',
     `percent_complete` DECIMAL(18,2) COMMENT 'Percentage of project completion used for percentage‑based billing.',
+    `record_status` STRING COMMENT '',
+    `request_date` TIMESTAMP COMMENT '',
     `request_number` STRING COMMENT 'Business identifier assigned to the invoice request.',
+    `request_status` STRING COMMENT '',
     `request_timestamp` TIMESTAMP COMMENT 'Timestamp when the invoice request was generated.',
-    `revenue_recognition_method` STRING COMMENT 'Method used for recognizing revenue from this invoice.. Valid values are `percentage_of_completion|completed_contract|milestone_based`',
+    `requested_amount` DECIMAL(18,2) COMMENT '',
+    `revenue_recognition_method` DECIMAL(18,2) COMMENT 'Method used for recognizing revenue from this invoice.',
     `source_system_code` STRING COMMENT 'Original identifier of the record in the source system.',
     `tax_amount` DECIMAL(18,2) COMMENT 'Tax component of the invoice.',
     `tax_code` STRING COMMENT 'Code representing the tax jurisdiction or rule applied.',
     `tax_rate` DECIMAL(18,2) COMMENT 'Applicable tax rate expressed as a percentage.',
     `updated_by` BIGINT COMMENT 'User identifier who last modified the record.',
     `updated_timestamp` TIMESTAMP COMMENT 'Timestamp of the most recent modification to the record.',
-    `created_by` BIGINT COMMENT 'User identifier who initially created the record.',
+    `created_by` STRING COMMENT 'User identifier who initially created the record.',
     CONSTRAINT pk_invoice_request PRIMARY KEY(`invoice_request_id`)
 ) COMMENT 'Project billing and invoice request record capturing milestone-based or progress-based billing events triggered by project milestone completion, percentage completion, or contractual billing schedule. Captures billing basis (milestone, POC, time-and-material), billing period, billable amount, WBS billing element, customer reference, revenue recognition method, and billing document status.';
 
 CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`project`.`earned_value_record` (
     `earned_value_record_id` BIGINT COMMENT 'Unique identifier for the earned value performance record.',
     `previous_earned_value_record_id` BIGINT COMMENT 'Self-referencing FK on earned_value_record (previous_earned_value_record_id)',
+    `project_header_id` BIGINT COMMENT '',
     `wbs_element_id` BIGINT COMMENT 'Identifier of the WBS element to which this earned value data applies.',
     `actual_cost` DECIMAL(18,2) COMMENT 'Actual cost incurred for work performed up to the reporting date.',
     `approval_timestamp` TIMESTAMP COMMENT 'Timestamp when the earned value record was approved.',
     `approved_by` STRING COMMENT 'User identifier of the person who approved the earned value record.',
     `baseline_version` STRING COMMENT 'Identifier of the project baseline version against which the metrics are measured.',
     `cost_performance_index` DECIMAL(18,2) COMMENT 'Ratio of earned value to actual cost (EV/AC). Values >1 indicate cost efficiency.',
-    `cost_type` STRING COMMENT 'Classification of costs represented in the record.. Valid values are `direct|indirect|overhead|capital|operating`',
+    `cost_type` DECIMAL(18,2) COMMENT 'Classification of costs represented in the record.',
     `cost_variance` DECIMAL(18,2) COMMENT 'Difference between earned value and actual cost (EV‑AC). Positive indicates under budget.',
     `created_timestamp` TIMESTAMP COMMENT 'Timestamp when the earned value record was first created in the system.',
     `currency_code` STRING COMMENT 'Three‑letter ISO currency code for monetary values.',
     `earned_value` DECIMAL(18,2) COMMENT 'Monetary value of work actually performed by the reporting date.',
-    `earned_value_record_status` STRING COMMENT 'Current lifecycle status of the earned value record.. Valid values are `planned|in_progress|completed|closed|revised`',
-    `estimate_at_completion` DECIMAL(18,2) COMMENT 'Forecasted total cost of the project at completion based on current performance.',
+    `earned_value_record_status` DECIMAL(18,2) COMMENT 'Current lifecycle status of the earned value record.',
+    `estimate_at_completion` TIMESTAMP COMMENT 'Forecasted total cost of the project at completion based on current performance.',
     `estimate_to_complete` DECIMAL(18,2) COMMENT 'Projected cost required to finish the remaining work.',
     `forecast_method` STRING COMMENT 'Methodology used to generate forecasted earned value figures.. Valid values are `parametric|expert|historical|none`',
     `is_forecast` BOOLEAN COMMENT 'True if the record represents a forecasted value rather than actual measured data.',
+    `last_modified_timestamp` TIMESTAMP COMMENT '',
+    `measurement_date` TIMESTAMP COMMENT '',
     `notes` STRING COMMENT 'Free‑form comments or observations related to the earned value record.',
     `percent_complete` DECIMAL(18,2) COMMENT 'Percentage of the WBS element work that has been completed to date.',
     `planned_value` DECIMAL(18,2) COMMENT 'Planned monetary value of work scheduled to be performed by the reporting date.',
+    `record_status` STRING COMMENT '',
     `reporting_date` DATE COMMENT 'Date on which the earned value record is reported (typically the period end date).',
     `reporting_period_end_date` DATE COMMENT 'Last day of the reporting period for which the earned value metrics are calculated.',
     `reporting_period_start_date` DATE COMMENT 'First day of the reporting period for which the earned value metrics are calculated.',
@@ -763,7 +955,8 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`project`.`earned_value_record` 
     `schedule_variance` DECIMAL(18,2) COMMENT 'Difference between earned value and planned value (EV‑PV). Positive indicates ahead of schedule.',
     `source_system_record_code` STRING COMMENT 'Unique identifier of the source record in the originating system.',
     `updated_timestamp` TIMESTAMP COMMENT 'Timestamp of the most recent modification to the earned value record.',
-    `variance_at_completion` DECIMAL(18,2) COMMENT 'Difference between the original budget and the estimate at completion (BAC‑EAC).',
+    `variance_at_completion` TIMESTAMP COMMENT 'Difference between the original budget and the estimate at completion (BAC‑EAC).',
+    `created_by` STRING COMMENT '',
     CONSTRAINT pk_earned_value_record PRIMARY KEY(`earned_value_record_id`)
 ) COMMENT 'Earned Value Management (EVM) performance record capturing periodic EVM metrics for a WBS element or project. Stores BCWS (Planned Value), BCWP (Earned Value), ACWP (Actual Cost), Schedule Variance (SV), Cost Variance (CV), SPI, CPI, EAC, ETC, and VAC per reporting period. Enables project performance trending and forecasting at WBS and project level.';
 
@@ -771,6 +964,7 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`project`.`project_document` (
     `project_document_id` BIGINT COMMENT 'System-generated unique identifier for the project document record.',
     `project_header_id` BIGINT COMMENT 'Identifier of the project to which the document belongs.',
     `wbs_element_id` BIGINT COMMENT 'Identifier of the WBS element associated with the document.',
+    `project_wbs_element_id` BIGINT COMMENT '',
     `superseded_project_document_id` BIGINT COMMENT 'Self-referencing FK on project_document (superseded_project_document_id)',
     `approval_date` DATE COMMENT 'Date the document received formal approval.',
     `approver` STRING COMMENT 'Name of the person who approved the document.',
@@ -786,8 +980,11 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`project`.`project_document` (
     `distribution_list` STRING COMMENT 'Comma‑separated list of parties who receive the document.',
     `document_category` STRING COMMENT 'High‑level grouping of the document (e.g., Engineering, Legal, Safety).',
     `document_description` STRING COMMENT 'Brief free‑text description summarizing the documents purpose.',
+    `document_name` STRING COMMENT '',
     `document_number` STRING COMMENT 'Business identifier assigned to the document, often used for tracking and reference.',
+    `document_status` STRING COMMENT '',
     `document_type` STRING COMMENT 'Category of the document indicating its purpose or content. [ENUM-REF-CANDIDATE: drawing|specification|contract|permit|inspection_report|test_record|as_built|procedure|policy — 9 candidates stripped; promote to reference product]',
+    `document_url` STRING COMMENT '',
     `effective_date` DATE COMMENT 'Date from which the documents content becomes effective.',
     `electronic_signature_present` BOOLEAN COMMENT 'Indicates whether the document includes an electronic signature.',
     `expiration_date` DATE COMMENT 'Date after which the document is no longer valid.',
@@ -796,13 +993,16 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`project`.`project_document` (
     `is_archived` BOOLEAN COMMENT 'Indicates whether the document has been moved to archive storage.',
     `is_controlled` BOOLEAN COMMENT 'True if the document is subject to formal control and change management.',
     `is_electronic` BOOLEAN COMMENT 'True if the document exists in electronic form.',
-    `issue_date` DATE COMMENT 'Date the document was officially issued.',
+    `issue_date` TIMESTAMP COMMENT 'Date the document was officially issued.',
     `keywords` STRING COMMENT 'Comma‑separated list of keywords for search and classification.',
     `language` STRING COMMENT 'ISO 639‑2 language code of the document content.. Valid values are `ENG|SPA|FRE|GER|CHN|JPN`',
+    `last_modified_timestamp` TIMESTAMP COMMENT '',
     `last_review_date` DATE COMMENT 'Date the document was last reviewed for relevance or compliance.',
     `mime_type` STRING COMMENT 'Standard MIME type describing the file format (e.g., application/pdf).',
+    `notes` STRING COMMENT '',
     `originator` STRING COMMENT 'Name of the individual or department that originated the document.',
     `project_document_status` STRING COMMENT 'Current lifecycle status of the document.. Valid values are `draft|issued|approved|archived|retracted`',
+    `record_status` STRING COMMENT '',
     `regulatory_reference` STRING COMMENT 'Identifier of the external regulation or filing that references this document.',
     `retention_period_years` STRING COMMENT 'Number of years the document must be retained per policy.',
     `review_cycle_days` STRING COMMENT 'Number of days between scheduled reviews of the document.',
@@ -813,27 +1013,81 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`project`.`project_document` (
     `subcategory` STRING COMMENT 'More specific classification within the main category.',
     `title` STRING COMMENT 'Descriptive title of the document as shown to users.',
     `updated_timestamp` TIMESTAMP COMMENT 'Timestamp of the most recent update to the document record.',
+    `upload_date` TIMESTAMP COMMENT '',
+    `uploaded_by` STRING COMMENT '',
     `version_number` STRING COMMENT 'Sequential numeric version of the document.',
+    `created_by` STRING COMMENT '',
     CONSTRAINT pk_project_document PRIMARY KEY(`project_document_id`)
 ) COMMENT 'Project document register record tracking all formal project documents including engineering drawings, specifications, contracts, permits, inspection reports, test records, and as-built documentation. Captures document number, title, document type, revision, originator, issue date, distribution list, approval status, and document management system reference. Supports project document control per ISO 9001.';
+
+CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`project`.`phase` (
+    `phase_id` BIGINT COMMENT 'System-generated unique identifier for the project phase record.',
+    `predecessor_phase_id` BIGINT COMMENT 'Self-referencing FK on phase (predecessor_phase_id)',
+    `project_header_id` BIGINT COMMENT 'Identifier of the parent project to which this phase belongs.',
+    `actual_cost` DECIMAL(18,2) COMMENT 'Total cost incurred for the phase to date.',
+    `actual_duration_days` DECIMAL(18,2) COMMENT 'Number of calendar days the phase actually took to complete.',
+    `actual_end_date` TIMESTAMP COMMENT 'Date the phase was completed or closed.',
+    `actual_start_date` TIMESTAMP COMMENT 'Date the phase actually commenced on the shop floor or in engineering.',
+    `approval_date` DATE COMMENT 'Date on which the phase gate was approved.',
+    `approval_status` STRING COMMENT 'Result of the formal approval process for the phase gate.. Valid values are `pending|approved|rejected`',
+    `approved_by` STRING COMMENT 'Name of the person or role that approved the phase.',
+    `change_control_number` STRING COMMENT 'Reference number for any change control associated with the phase.',
+    `phase_code` STRING COMMENT 'Short alphanumeric code used to identify the phase in project documentation and systems.',
+    `compliance_requirement` STRING COMMENT 'Specific regulatory or internal compliance requirement applicable to the phase.',
+    `compliance_status` STRING COMMENT 'Current compliance status for the phase.. Valid values are `compliant|non_compliant|pending`',
+    `cost_estimate` DECIMAL(18,2) COMMENT 'Budgeted cost for the phase as originally planned.',
+    `created_timestamp` TIMESTAMP COMMENT 'Timestamp when the phase record was first created in the system.',
+    `currency_code` STRING COMMENT 'Three‑letter ISO 4217 code of the currency used for cost fields.. Valid values are `USD|EUR|GBP|JPY|CNY`',
+    `phase_description` STRING COMMENT 'Detailed description of the phase scope, objectives, and deliverables.',
+    `effective_from` DATE COMMENT 'Date from which the phase definition becomes effective (often same as actual_start_date).',
+    `effective_until` DATE COMMENT 'Date after which the phase definition is superseded or closed (often same as actual_end_date).',
+    `gate_approval_status` STRING COMMENT '',
+    `gate_review_criteria` STRING COMMENT 'Key criteria that must be satisfied for the phase gate to be approved.',
+    `is_critical` BOOLEAN COMMENT 'True if the phase is deemed critical to project success.',
+    `last_modified_timestamp` TIMESTAMP COMMENT '',
+    `milestone_flag` BOOLEAN COMMENT 'True if the phase includes a major project milestone.',
+    `phase_name` STRING COMMENT 'Human‑readable name of the phase (e.g., Concept, FEED, Detailed Engineering).',
+    `notes` STRING COMMENT 'Free‑form comments or observations about the phase.',
+    `percent_complete` DECIMAL(18,2) COMMENT 'Current percentage of work completed for the phase, expressed with two decimal precision.',
+    `phase_sequence` STRING COMMENT '',
+    `phase_status` STRING COMMENT 'Current lifecycle status of the phase.. Valid values are `planned|in_progress|completed|closed|on_hold`',
+    `planned_duration_days` DECIMAL(18,2) COMMENT 'Number of calendar days originally planned for the phase.',
+    `planned_end_date` TIMESTAMP COMMENT 'Scheduled end date for the phase as defined in the project plan.',
+    `planned_start_date` TIMESTAMP COMMENT 'Scheduled start date for the phase as defined in the project plan.',
+    `record_status` STRING COMMENT '',
+    `risk_description` STRING COMMENT 'Narrative description of identified risks for the phase.',
+    `risk_level` STRING COMMENT 'Overall risk rating assigned to the phase.. Valid values are `low|medium|high|critical`',
+    `sequence` STRING COMMENT 'Numeric order of the phase within the overall project lifecycle.',
+    `updated_timestamp` TIMESTAMP COMMENT 'Timestamp of the most recent update to the phase record.',
+    `version_number` STRING COMMENT 'Version of the phase definition, incremented on each redesign.',
+    `wbs_element_code` STRING COMMENT 'Code of the associated Work Breakdown Structure element.',
+    `created_by` STRING COMMENT '',
+    CONSTRAINT pk_phase PRIMARY KEY(`phase_id`)
+) COMMENT 'Project phase master record defining the structured lifecycle phases of a capital or engineering project (e.g., Concept, FEED, Detailed Engineering, Procurement, Construction, Commissioning, Startup, Closeout). Captures phase name, phase code, sequence, planned start/end dates, actual start/end dates, gate review criteria, approval status, and phase completion percentage.';
 
 CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`project`.`team_member` (
     `team_member_id` BIGINT COMMENT 'Surrogate primary key for the project team member assignment record.',
     `employee_id` BIGINT COMMENT 'Unique identifier of the person assigned to the project (links to master party/person record).',
     `project_header_id` BIGINT COMMENT 'Unique identifier of the project to which the team member is assigned.',
     `reports_to_team_member_id` BIGINT COMMENT 'Self-referencing FK on team_member (reports_to_team_member_id)',
+    `team_employee_id` BIGINT COMMENT '',
     `access_level` STRING COMMENT 'System access level assigned to the team member for project data and tools.. Valid values are `read|write|admin`',
     `allocation_percent` DECIMAL(18,2) COMMENT 'Percentage of the persons effort allocated to the project (0-100).',
     `authority_level` STRING COMMENT 'Level of decision‑making authority granted to the team member for this project.. Valid values are `low|medium|high|executive`',
     `cost_rate_amount` DECIMAL(18,2) COMMENT 'Hourly cost rate for the team members labor on the project, expressed in the specified currency.',
-    `cost_rate_currency` STRING COMMENT 'ISO 4217 currency code for the cost rate associated with the team members allocation.. Valid values are `[A-Z]{3}`',
+    `cost_rate_currency` DECIMAL(18,2) COMMENT 'ISO 4217 currency code for the cost rate associated with the team members allocation.',
     `created_timestamp` TIMESTAMP COMMENT 'Timestamp when the assignment record was created.',
-    `end_date` DATE COMMENT 'Date when the team members assignment to the project ends (null if ongoing).',
+    `end_date` TIMESTAMP COMMENT 'Date when the team members assignment to the project ends (null if ongoing).',
+    `is_lead` BOOLEAN COMMENT '',
+    `last_modified_timestamp` TIMESTAMP COMMENT '',
+    `member_status` STRING COMMENT '',
     `notes` STRING COMMENT 'Free‑text notes regarding the assignment, such as special conditions or comments.',
+    `record_status` STRING COMMENT '',
     `role` STRING COMMENT 'Role of the team member within the project organization. [ENUM-REF-CANDIDATE: project_manager|project_engineer|cost_controller|scheduler|site_manager|quality_engineer|procurement_lead|safety_officer — 8 candidates stripped; promote to reference product]',
-    `start_date` DATE COMMENT 'Date when the team members assignment to the project begins.',
+    `start_date` TIMESTAMP COMMENT 'Date when the team members assignment to the project begins.',
     `team_member_status` STRING COMMENT 'Current status of the team members assignment.. Valid values are `active|inactive|on_hold|completed|terminated`',
     `updated_timestamp` TIMESTAMP COMMENT 'Timestamp of the most recent update to the assignment record.',
+    `created_by` STRING COMMENT '',
     CONSTRAINT pk_team_member PRIMARY KEY(`team_member_id`)
 ) COMMENT 'Project team member assignment record defining the project organizational structure by linking personnel to specific project roles, responsibilities, and authority levels. Captures team member identity, project role (PM, project engineer, cost controller, scheduler, site manager), assignment start/end dates, allocation percentage, reporting line within project, and access authorization level.';
 
@@ -851,21 +1105,28 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`project`.`progress_report` (
     `comments` STRING COMMENT 'Free‑form comments or notes added by the author.',
     `compliance_requirement` STRING COMMENT 'Specific regulatory or quality requirement applicable to the project.',
     `compliance_status` STRING COMMENT 'Indicates whether the project complies with relevant standards and regulations.. Valid values are `compliant|non_compliant|pending`',
-    `cost_status` STRING COMMENT 'Cost performance relative to budget (on budget, over budget, under budget).. Valid values are `on_budget|over_budget|under_budget`',
+    `cost_status` DECIMAL(18,2) COMMENT 'Cost performance relative to budget (on budget, over budget, under budget).',
     `cost_variance_amount` DECIMAL(18,2) COMMENT 'Monetary difference between budgeted and actual cost.',
     `created_timestamp` TIMESTAMP COMMENT 'Timestamp when the progress report record was first created in the system.',
     `forecast_completion_date` DATE COMMENT 'Projected date when the project is expected to be fully completed.',
     `forecast_percent_complete` DECIMAL(18,2) COMMENT 'Projected overall percent complete at forecast completion date.',
     `is_critical` BOOLEAN COMMENT 'True if the reporting period includes a critical milestone or decision point.',
-    `issues_and_risks` STRING COMMENT 'Summary of current issues, risks, and mitigation actions.',
+    `issues_and_risks` BOOLEAN COMMENT 'Summary of current issues, risks, and mitigation actions.',
     `key_accomplishments` STRING COMMENT 'Narrative description of major achievements during the reporting period.',
+    `last_modified_timestamp` TIMESTAMP COMMENT '',
+    `notes` STRING COMMENT '',
+    `overall_percent_complete` DECIMAL(18,2) COMMENT '',
     `overall_status` STRING COMMENT 'Overall health of the project using Red/Amber/Green (RAG) coding.. Valid values are `red|amber|green`',
     `percent_complete` DECIMAL(18,2) COMMENT 'Overall percentage of work completed to date.',
-    `report_date` DATE COMMENT 'Date on which the progress report was submitted or finalized.',
+    `prepared_by` STRING COMMENT '',
+    `record_status` STRING COMMENT '',
+    `report_date` TIMESTAMP COMMENT 'Date on which the progress report was submitted or finalized.',
+    `report_number` STRING COMMENT '',
     `report_status` STRING COMMENT 'Current lifecycle status of the report (draft, submitted, approved, rejected).. Valid values are `draft|submitted|approved|rejected`',
+    `report_summary` STRING COMMENT '',
     `reporting_cadence` STRING COMMENT 'Frequency at which the report is generated (e.g., weekly, monthly, quarterly).. Valid values are `weekly|monthly|quarterly`',
-    `reporting_period_end` DATE COMMENT 'Last day of the reporting period covered by this progress report.',
-    `reporting_period_start` DATE COMMENT 'First day of the reporting period covered by this progress report.',
+    `reporting_period_end` TIMESTAMP COMMENT 'Last day of the reporting period covered by this progress report.',
+    `reporting_period_start` TIMESTAMP COMMENT 'First day of the reporting period covered by this progress report.',
     `risk_description` STRING COMMENT 'Detailed description of identified risks and their potential impact.',
     `risk_level` STRING COMMENT 'Overall risk rating for the project during the reporting period.. Valid values are `low|medium|high|critical`',
     `schedule_status` STRING COMMENT 'Current schedule performance relative to the baseline (on track, behind, ahead).. Valid values are `on_track|behind|ahead`',
@@ -873,48 +1134,62 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`project`.`progress_report` (
     `upcoming_activities` STRING COMMENT 'Planned work and milestones for the next reporting period.',
     `updated_timestamp` TIMESTAMP COMMENT 'Timestamp of the most recent update to the progress report record.',
     `version_number` STRING COMMENT 'Sequential version number of the report for change tracking.',
+    `created_by` STRING COMMENT '',
     CONSTRAINT pk_progress_report PRIMARY KEY(`progress_report_id`)
 ) COMMENT 'Periodic project progress report record capturing the formal status update submitted by the project team at a defined reporting cadence (weekly, monthly). Captures reporting period, overall project health (RAG status), schedule performance summary, cost performance summary, key accomplishments, upcoming activities, issues and risks summary, and forecast completion date.';
 
 CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`project`.`settlement` (
     `settlement_id` BIGINT COMMENT 'Unique surrogate key for each project settlement record.',
+    `cost_center_id` BIGINT COMMENT '',
+    `fixed_asset_id` BIGINT COMMENT '',
     `primary_reversal_of_settlement_id` BIGINT COMMENT 'Reference to the original settlement that is being reversed.',
     `employee_id` BIGINT COMMENT 'Identifier of the employee who approved the settlement.',
     `project_header_id` BIGINT COMMENT 'Foreign key linking to project.project_header. Business justification: Settlement records are always associated with a project; linking to project_header provides context for financial reporting and eliminates the need for external project look‑ups.',
     `wbs_element_id` BIGINT COMMENT 'WBS element from which costs are being settled.',
+    `settlement_wbs_element_id` BIGINT COMMENT '',
+    `amount` DECIMAL(18,2) COMMENT '',
     `amount_gross` DECIMAL(18,2) COMMENT 'Total amount before tax or adjustments.',
     `amount_net` DECIMAL(18,2) COMMENT 'Net amount after tax and adjustments.',
     `approval_status` STRING COMMENT 'Current approval state of the settlement.. Valid values are `pending|approved|rejected`',
     `approval_timestamp` TIMESTAMP COMMENT 'Timestamp when the settlement was approved.',
-    `cost_element_code` STRING COMMENT 'Cost element used for the settlement (e.g., L001 for labor).',
+    `cost_element_code` DECIMAL(18,2) COMMENT 'Cost element used for the settlement (e.g., L001 for labor).',
     `created_timestamp` TIMESTAMP COMMENT 'Timestamp when the settlement record was first created in the lakehouse.',
     `currency_code` STRING COMMENT 'Three‑letter ISO currency code of the settlement amounts.',
     `settlement_description` STRING COMMENT 'Free‑text description or notes about the settlement.',
     `external_document_reference` STRING COMMENT 'Reference to an external document (e.g., invoice, contract) linked to the settlement.',
     `is_manual_settlement` BOOLEAN COMMENT 'Flag indicating whether the settlement was entered manually (true) or generated automatically (false).',
+    `last_modified_timestamp` TIMESTAMP COMMENT '',
+    `notes` STRING COMMENT '',
     `posting_period` STRING COMMENT 'Fiscal period identifier (e.g., 2023Q1) for the settlement posting.',
     `receiver_object_reference` BIGINT COMMENT 'Identifier of the receiving cost object (e.g., cost center, asset, order).',
     `receiver_object_type` STRING COMMENT 'Type of the cost object receiving the settled amount.. Valid values are `cost_center|fixed_asset|internal_order|profitability_segment`',
+    `record_status` STRING COMMENT '',
     `reversal_indicator` BOOLEAN COMMENT 'True if this record represents a reversal of a prior settlement.',
     `rule` STRING COMMENT 'Name or code of the settlement rule used to allocate costs.',
-    `settlement_date` DATE COMMENT 'Date on which the settlement was executed or posted.',
+    `settlement_date` TIMESTAMP COMMENT 'Date on which the settlement was executed or posted.',
     `settlement_number` STRING COMMENT 'External reference number assigned to the settlement document by the source system.',
+    `settlement_rule` STRING COMMENT '',
     `settlement_status` STRING COMMENT 'Current lifecycle status of the settlement.. Valid values are `pending|posted|reversed|cancelled`',
+    `settlement_type` STRING COMMENT '',
     `source_system_settlement_code` STRING COMMENT 'Identifier of the settlement in the source system.',
     `tax_amount` DECIMAL(18,2) COMMENT 'Tax component associated with the settlement.',
     `updated_timestamp` TIMESTAMP COMMENT 'Timestamp of the most recent update to the settlement record.',
+    `created_by` STRING COMMENT '',
     CONSTRAINT pk_settlement PRIMARY KEY(`settlement_id`)
 ) COMMENT 'Project cost settlement record capturing the periodic or final allocation of project costs from WBS elements to receiving cost objects (fixed assets, cost centers, orders, profitability segments). Captures settlement rule, sender WBS element, receiver object type and identity, settlement amount by cost element, settlement period, and settlement document reference. Aligns with SAP PS settlement (KO88/CJ88).';
 
 CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`project`.`gate_review` (
     `gate_review_id` BIGINT COMMENT 'Unique identifier for the gate review record.',
     `deferred_gate_review_id` BIGINT COMMENT 'Self-referencing FK on gate_review (deferred_gate_review_id)',
+    `phase_id` BIGINT COMMENT '',
     `project_header_id` BIGINT COMMENT 'Identifier of the project to which this gate review belongs.',
     `compliance_status` STRING COMMENT 'Indicates whether the project meets relevant compliance requirements at this gate.. Valid values are `compliant|non_compliant|pending`',
-    `conditions_attached` STRING COMMENT 'Specific conditions or actions required for the project to proceed to the next gate.',
+    `conditions_attached` TIMESTAMP COMMENT 'Specific conditions or actions required for the project to proceed to the next gate.',
     `created_timestamp` TIMESTAMP COMMENT 'Timestamp when this gate review record was initially created.',
     `currency_code` STRING COMMENT 'Three‑letter ISO currency code for the reauthorized amount.. Valid values are `^[A-Z]{3}$`',
+    `decision` STRING COMMENT '',
     `decision_outcome` STRING COMMENT 'Formal outcome of the gate review governing the next project step.. Valid values are `proceed|hold|kill|recycle`',
+    `decision_rationale` DECIMAL(18,2) COMMENT '',
     `decision_reason` STRING COMMENT 'Narrative explanation for the decision outcome.',
     `financial_status` STRING COMMENT 'Current financial approval status of the gate.. Valid values are `approved|pending|rejected`',
     `gate_name` STRING COMMENT 'Human‑readable name of the gate (e.g., Concept, Design, Production).',
@@ -922,88 +1197,22 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`project`.`gate_review` (
     `gate_sequence` STRING COMMENT 'Ordinal position of the gate within the overall project schedule.',
     `gate_type` STRING COMMENT 'Category of the gate based on the project methodology.',
     `is_critical` BOOLEAN COMMENT 'Flag indicating if this gate is deemed critical for project success.',
+    `last_modified_timestamp` TIMESTAMP COMMENT '',
     `next_gate_target_date` DATE COMMENT 'Planned date for the next gate review.',
     `notes` STRING COMMENT 'Free‑form field for any additional comments or observations.',
     `reauthorized_amount` DECIMAL(18,2) COMMENT 'Monetary amount re‑approved for the project at this gate.',
+    `record_status` STRING COMMENT '',
     `review_board` STRING COMMENT 'Comma‑separated list of individuals or groups that formed the review board.',
+    `review_date` TIMESTAMP COMMENT '',
+    `review_status` STRING COMMENT '',
     `review_timestamp` TIMESTAMP COMMENT 'Exact date and time when the gate review decision was made.',
+    `reviewer` STRING COMMENT '',
     `risk_assessment_summary` STRING COMMENT 'Brief summary of risks identified at this gate.',
     `risk_level` STRING COMMENT 'Overall risk rating assigned during the gate review.. Valid values are `low|medium|high`',
     `updated_timestamp` TIMESTAMP COMMENT 'Timestamp of the most recent update to this gate review record.',
+    `created_by` STRING COMMENT '',
     CONSTRAINT pk_gate_review PRIMARY KEY(`gate_review_id`)
 ) COMMENT 'Stage-gate review event record capturing the formal governance decision point at each project phase boundary. Captures gate number, gate name, review date, review board members, decision outcome (proceed, hold, kill, recycle), conditions attached to approval, risk assessment summary, financial re-authorization status, and next gate target date. Supports CapEx governance and investment committee oversight.';
-
-CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`project`.`project_phase` (
-    `project_phase_id` BIGINT COMMENT 'System-generated unique identifier for the project phase record.',
-    `predecessor_phase_id` BIGINT COMMENT 'Self-referencing FK on phase (predecessor_phase_id)',
-    `project_header_id` BIGINT COMMENT 'Identifier of the parent project to which this phase belongs.',
-    `actual_cost` DECIMAL(18,2) COMMENT 'Total cost incurred for the phase to date.',
-    `actual_duration_days` STRING COMMENT 'Number of calendar days the phase actually took to complete.',
-    `actual_end_date` DATE COMMENT 'Date the phase was completed or closed.',
-    `actual_start_date` DATE COMMENT 'Date the phase actually commenced on the shop floor or in engineering.',
-    `approval_date` DATE COMMENT 'Date on which the phase gate was approved.',
-    `approval_status` STRING COMMENT 'Result of the formal approval process for the phase gate.. Valid values are `pending|approved|rejected`',
-    `approved_by` STRING COMMENT 'Name of the person or role that approved the phase.',
-    `change_control_number` STRING COMMENT 'Reference number for any change control associated with the phase.',
-    `compliance_requirement` STRING COMMENT 'Specific regulatory or internal compliance requirement applicable to the phase.',
-    `compliance_status` STRING COMMENT 'Current compliance status for the phase.. Valid values are `compliant|non_compliant|pending`',
-    `cost_estimate` DECIMAL(18,2) COMMENT 'Budgeted cost for the phase as originally planned.',
-    `created_timestamp` TIMESTAMP COMMENT 'Timestamp when the phase record was first created in the system.',
-    `currency_code` STRING COMMENT 'Three‑letter ISO 4217 code of the currency used for cost fields.. Valid values are `USD|EUR|GBP|JPY|CNY`',
-    `effective_from` DATE COMMENT 'Date from which the phase definition becomes effective (often same as actual_start_date).',
-    `effective_until` DATE COMMENT 'Date after which the phase definition is superseded or closed (often same as actual_end_date).',
-    `gate_review_criteria` STRING COMMENT 'Key criteria that must be satisfied for the phase gate to be approved.',
-    `is_critical` BOOLEAN COMMENT 'True if the phase is deemed critical to project success.',
-    `milestone_flag` BOOLEAN COMMENT 'True if the phase includes a major project milestone.',
-    `notes` STRING COMMENT 'Free‑form comments or observations about the phase.',
-    `percent_complete` DECIMAL(18,2) COMMENT 'Current percentage of work completed for the phase, expressed with two decimal precision.',
-    `phase_code` STRING COMMENT 'Short alphanumeric code used to identify the phase in project documentation and systems.',
-    `phase_description` STRING COMMENT 'Detailed description of the phase scope, objectives, and deliverables.',
-    `phase_name` STRING COMMENT 'Human‑readable name of the phase (e.g., Concept, FEED, Detailed Engineering).',
-    `phase_status` STRING COMMENT 'Current lifecycle status of the phase.. Valid values are `planned|in_progress|completed|closed|on_hold`',
-    `planned_duration_days` STRING COMMENT 'Number of calendar days originally planned for the phase.',
-    `planned_end_date` DATE COMMENT 'Scheduled end date for the phase as defined in the project plan.',
-    `planned_start_date` DATE COMMENT 'Scheduled start date for the phase as defined in the project plan.',
-    `risk_description` STRING COMMENT 'Narrative description of identified risks for the phase.',
-    `risk_level` STRING COMMENT 'Overall risk rating assigned to the phase.. Valid values are `low|medium|high|critical`',
-    `sequence` STRING COMMENT 'Numeric order of the phase within the overall project lifecycle.',
-    `updated_timestamp` TIMESTAMP COMMENT 'Timestamp of the most recent update to the phase record.',
-    `version_number` STRING COMMENT 'Version of the phase definition, incremented on each redesign.',
-    `wbs_element_code` STRING COMMENT 'Code of the associated Work Breakdown Structure element.',
-    CONSTRAINT pk_project_phase PRIMARY KEY(`project_phase_id`)
-) COMMENT 'Project phase master record defining the structured lifecycle phases of a capital or engineering project (e.g., Concept, FEED, Detailed Engineering, Procurement, Construction, Commissioning, Startup, Closeout). Captures phase name, phase code, sequence, planned start/end dates, actual start/end dates, gate review criteria, approval status, and phase completion percentage.';
-
-CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`project`.`project_issue` (
-    `project_issue_id` BIGINT COMMENT 'System-generated unique identifier for the project issue record.',
-    `alarm_event_id` BIGINT COMMENT 'Foreign key linking to automation.alarm_event. Business justification: Issue Management process records the originating alarm event to support root‑cause analysis and compliance reporting.',
-    `parent_issue_id` BIGINT COMMENT 'Self-referencing FK on issue (parent_issue_id)',
-    `employee_id` BIGINT COMMENT 'Person or role accountable for resolving the issue.',
-    `project_issue_reporter_employee_id` BIGINT COMMENT 'Person who originally logged the issue.',
-    `project_header_id` BIGINT COMMENT 'Identifier of the project to which this issue belongs.',
-    `wbs_element_id` BIGINT COMMENT 'WBS code linking the issue to a specific work package.',
-    `action_items` STRING COMMENT 'List of concrete actions assigned to resolve the issue.',
-    `actual_cost` DECIMAL(18,2) COMMENT 'Real cost incurred after issue resolution.',
-    `actual_resolution_date` DATE COMMENT 'Date the issue was actually closed or resolved.',
-    `created_timestamp` TIMESTAMP COMMENT 'Timestamp when the record was initially created.',
-    `currency_code` STRING COMMENT 'Three‑letter ISO currency code for cost fields.. Valid values are `USD|EUR|GBP|JPY|CNY|CAD`',
-    `escalation_status` STRING COMMENT 'Indicates whether the issue has been escalated for higher‑level attention.. Valid values are `none|escalated|pending_review`',
-    `estimated_cost` DECIMAL(18,2) COMMENT 'Projected financial impact if the issue materializes.',
-    `identified_timestamp` TIMESTAMP COMMENT 'Exact time the issue was first recorded in the system.',
-    `impact` STRING COMMENT 'Potential effect on schedule, cost, or scope if the issue materializes.. Valid values are `low|medium|high|critical`',
-    `issue_description` STRING COMMENT 'Detailed narrative of the problem, risk, or change request.',
-    `issue_number` STRING COMMENT 'Human‑readable unique code assigned to the issue for tracking across systems.',
-    `issue_status` STRING COMMENT 'Current state of the issue within its lifecycle.. Valid values are `open|in_progress|resolved|closed|escalated`',
-    `issue_type` STRING COMMENT 'Category describing the nature of the record.. Valid values are `risk|issue|change_request|blocker`',
-    `mitigation_plan` STRING COMMENT 'Planned actions to reduce probability or impact.',
-    `priority` STRING COMMENT 'Combined assessment of severity, probability, and impact used for triage.. Valid values are `low|medium|high|critical`',
-    `probability_percent` DECIMAL(18,2) COMMENT 'Likelihood of the issue occurring, expressed as a percentage.',
-    `risk_score` DECIMAL(18,2) COMMENT 'Composite numeric score derived from severity, probability, and impact.',
-    `root_cause` STRING COMMENT 'Identified underlying cause of the issue.',
-    `severity` STRING COMMENT 'Impact severity rating assigned by the project team.. Valid values are `low|medium|high|critical`',
-    `target_resolution_date` DATE COMMENT 'Planned date by which the issue should be closed.',
-    `updated_timestamp` TIMESTAMP COMMENT 'Timestamp of the most recent modification to the record.',
-    CONSTRAINT pk_project_issue PRIMARY KEY(`project_issue_id`)
-) COMMENT 'Project issue and risk register record capturing identified risks, open issues, blockers, and action items that threaten project schedule, cost, or scope. Captures issue type (risk, issue, change request, blocker), severity, probability, impact, owner, mitigation plan, target resolution date, actual resolution date, and escalation status. Supports PMO governance and project health reporting.';
 
 -- ========= FOREIGN KEYS =========
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_header` ADD CONSTRAINT `fk_project_project_header_parent_project_header_id` FOREIGN KEY (`parent_project_header_id`) REFERENCES `vibe_manufacturing_v1`.`project`.`project_header`(`project_header_id`);
@@ -1016,6 +1225,7 @@ ALTER TABLE `vibe_manufacturing_v1`.`project`.`milestone` ADD CONSTRAINT `fk_pro
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`activity` ADD CONSTRAINT `fk_project_activity_predecessor_activity_id` FOREIGN KEY (`predecessor_activity_id`) REFERENCES `vibe_manufacturing_v1`.`project`.`activity`(`activity_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`activity` ADD CONSTRAINT `fk_project_activity_project_contract_id` FOREIGN KEY (`project_contract_id`) REFERENCES `vibe_manufacturing_v1`.`project`.`project_contract`(`project_contract_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`activity` ADD CONSTRAINT `fk_project_activity_project_header_id` FOREIGN KEY (`project_header_id`) REFERENCES `vibe_manufacturing_v1`.`project`.`project_header`(`project_header_id`);
+ALTER TABLE `vibe_manufacturing_v1`.`project`.`activity` ADD CONSTRAINT `fk_project_activity_wbs_element_id` FOREIGN KEY (`wbs_element_id`) REFERENCES `vibe_manufacturing_v1`.`project`.`wbs_element`(`wbs_element_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_budget` ADD CONSTRAINT `fk_project_project_budget_project_header_id` FOREIGN KEY (`project_header_id`) REFERENCES `vibe_manufacturing_v1`.`project`.`project_header`(`project_header_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_budget` ADD CONSTRAINT `fk_project_project_budget_transferred_from_project_budget_id` FOREIGN KEY (`transferred_from_project_budget_id`) REFERENCES `vibe_manufacturing_v1`.`project`.`project_budget`(`project_budget_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_budget` ADD CONSTRAINT `fk_project_project_budget_wbs_element_id` FOREIGN KEY (`wbs_element_id`) REFERENCES `vibe_manufacturing_v1`.`project`.`wbs_element`(`wbs_element_id`);
@@ -1031,21 +1241,30 @@ ALTER TABLE `vibe_manufacturing_v1`.`project`.`commitment` ADD CONSTRAINT `fk_pr
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`plan_version` ADD CONSTRAINT `fk_project_plan_version_baseline_plan_version_id` FOREIGN KEY (`baseline_plan_version_id`) REFERENCES `vibe_manufacturing_v1`.`project`.`plan_version`(`plan_version_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`plan_version` ADD CONSTRAINT `fk_project_plan_version_project_header_id` FOREIGN KEY (`project_header_id`) REFERENCES `vibe_manufacturing_v1`.`project`.`project_header`(`project_header_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`resource_assignment` ADD CONSTRAINT `fk_project_resource_assignment_activity_id` FOREIGN KEY (`activity_id`) REFERENCES `vibe_manufacturing_v1`.`project`.`activity`(`activity_id`);
+ALTER TABLE `vibe_manufacturing_v1`.`project`.`resource_assignment` ADD CONSTRAINT `fk_project_resource_assignment_project_header_id` FOREIGN KEY (`project_header_id`) REFERENCES `vibe_manufacturing_v1`.`project`.`project_header`(`project_header_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`resource_assignment` ADD CONSTRAINT `fk_project_resource_assignment_replaced_resource_assignment_id` FOREIGN KEY (`replaced_resource_assignment_id`) REFERENCES `vibe_manufacturing_v1`.`project`.`resource_assignment`(`resource_assignment_id`);
+ALTER TABLE `vibe_manufacturing_v1`.`project`.`resource_assignment` ADD CONSTRAINT `fk_project_resource_assignment_wbs_element_id` FOREIGN KEY (`wbs_element_id`) REFERENCES `vibe_manufacturing_v1`.`project`.`wbs_element`(`wbs_element_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`procurement_item` ADD CONSTRAINT `fk_project_procurement_item_blanket_procurement_item_id` FOREIGN KEY (`blanket_procurement_item_id`) REFERENCES `vibe_manufacturing_v1`.`project`.`procurement_item`(`procurement_item_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`procurement_item` ADD CONSTRAINT `fk_project_procurement_item_project_header_id` FOREIGN KEY (`project_header_id`) REFERENCES `vibe_manufacturing_v1`.`project`.`project_header`(`project_header_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`procurement_item` ADD CONSTRAINT `fk_project_procurement_item_wbs_element_id` FOREIGN KEY (`wbs_element_id`) REFERENCES `vibe_manufacturing_v1`.`project`.`wbs_element`(`wbs_element_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_status_event` ADD CONSTRAINT `fk_project_project_status_event_preceding_project_status_event_id` FOREIGN KEY (`preceding_project_status_event_id`) REFERENCES `vibe_manufacturing_v1`.`project`.`project_status_event`(`project_status_event_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_status_event` ADD CONSTRAINT `fk_project_project_status_event_project_header_id` FOREIGN KEY (`project_header_id`) REFERENCES `vibe_manufacturing_v1`.`project`.`project_header`(`project_header_id`);
+ALTER TABLE `vibe_manufacturing_v1`.`project`.`issue` ADD CONSTRAINT `fk_project_issue_project_header_id` FOREIGN KEY (`project_header_id`) REFERENCES `vibe_manufacturing_v1`.`project`.`project_header`(`project_header_id`);
+ALTER TABLE `vibe_manufacturing_v1`.`project`.`issue` ADD CONSTRAINT `fk_project_issue_issue_related_project_project_header_id` FOREIGN KEY (`issue_related_project_project_header_id`) REFERENCES `vibe_manufacturing_v1`.`project`.`project_header`(`project_header_id`);
+ALTER TABLE `vibe_manufacturing_v1`.`project`.`issue` ADD CONSTRAINT `fk_project_issue_parent_issue_id` FOREIGN KEY (`parent_issue_id`) REFERENCES `vibe_manufacturing_v1`.`project`.`issue`(`issue_id`);
+ALTER TABLE `vibe_manufacturing_v1`.`project`.`issue` ADD CONSTRAINT `fk_project_issue_wbs_element_id` FOREIGN KEY (`wbs_element_id`) REFERENCES `vibe_manufacturing_v1`.`project`.`wbs_element`(`wbs_element_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_change_request` ADD CONSTRAINT `fk_project_project_change_request_project_header_id` FOREIGN KEY (`project_header_id`) REFERENCES `vibe_manufacturing_v1`.`project`.`project_header`(`project_header_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_change_request` ADD CONSTRAINT `fk_project_project_change_request_superseded_project_change_request_id` FOREIGN KEY (`superseded_project_change_request_id`) REFERENCES `vibe_manufacturing_v1`.`project`.`project_change_request`(`project_change_request_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_change_request` ADD CONSTRAINT `fk_project_project_change_request_wbs_element_id` FOREIGN KEY (`wbs_element_id`) REFERENCES `vibe_manufacturing_v1`.`project`.`wbs_element`(`wbs_element_id`);
+ALTER TABLE `vibe_manufacturing_v1`.`project`.`timesheet` ADD CONSTRAINT `fk_project_timesheet_activity_id` FOREIGN KEY (`activity_id`) REFERENCES `vibe_manufacturing_v1`.`project`.`activity`(`activity_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`timesheet` ADD CONSTRAINT `fk_project_timesheet_corrected_timesheet_id` FOREIGN KEY (`corrected_timesheet_id`) REFERENCES `vibe_manufacturing_v1`.`project`.`timesheet`(`timesheet_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`timesheet` ADD CONSTRAINT `fk_project_timesheet_project_header_id` FOREIGN KEY (`project_header_id`) REFERENCES `vibe_manufacturing_v1`.`project`.`project_header`(`project_header_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`timesheet` ADD CONSTRAINT `fk_project_timesheet_wbs_element_id` FOREIGN KEY (`wbs_element_id`) REFERENCES `vibe_manufacturing_v1`.`project`.`wbs_element`(`wbs_element_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`commissioning_checklist` ADD CONSTRAINT `fk_project_commissioning_checklist_parent_commissioning_checklist_id` FOREIGN KEY (`parent_commissioning_checklist_id`) REFERENCES `vibe_manufacturing_v1`.`project`.`commissioning_checklist`(`commissioning_checklist_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`commissioning_checklist` ADD CONSTRAINT `fk_project_commissioning_checklist_project_header_id` FOREIGN KEY (`project_header_id`) REFERENCES `vibe_manufacturing_v1`.`project`.`project_header`(`project_header_id`);
+ALTER TABLE `vibe_manufacturing_v1`.`project`.`commissioning_checklist` ADD CONSTRAINT `fk_project_commissioning_checklist_wbs_element_id` FOREIGN KEY (`wbs_element_id`) REFERENCES `vibe_manufacturing_v1`.`project`.`wbs_element`(`wbs_element_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`punch_list_item` ADD CONSTRAINT `fk_project_punch_list_item_parent_punch_list_item_id` FOREIGN KEY (`parent_punch_list_item_id`) REFERENCES `vibe_manufacturing_v1`.`project`.`punch_list_item`(`punch_list_item_id`);
+ALTER TABLE `vibe_manufacturing_v1`.`project`.`punch_list_item` ADD CONSTRAINT `fk_project_punch_list_item_project_header_id` FOREIGN KEY (`project_header_id`) REFERENCES `vibe_manufacturing_v1`.`project`.`project_header`(`project_header_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`punch_list_item` ADD CONSTRAINT `fk_project_punch_list_item_wbs_element_id` FOREIGN KEY (`wbs_element_id`) REFERENCES `vibe_manufacturing_v1`.`project`.`wbs_element`(`wbs_element_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`handover` ADD CONSTRAINT `fk_project_handover_partial_handover_id` FOREIGN KEY (`partial_handover_id`) REFERENCES `vibe_manufacturing_v1`.`project`.`handover`(`handover_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`handover` ADD CONSTRAINT `fk_project_handover_project_header_id` FOREIGN KEY (`project_header_id`) REFERENCES `vibe_manufacturing_v1`.`project`.`project_header`(`project_header_id`);
@@ -1053,13 +1272,19 @@ ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_contract` ADD CONSTRAINT 
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_contract` ADD CONSTRAINT `fk_project_project_contract_project_header_id` FOREIGN KEY (`project_header_id`) REFERENCES `vibe_manufacturing_v1`.`project`.`project_header`(`project_header_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_contract` ADD CONSTRAINT `fk_project_project_contract_wbs_element_id` FOREIGN KEY (`wbs_element_id`) REFERENCES `vibe_manufacturing_v1`.`project`.`wbs_element`(`wbs_element_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`invoice_request` ADD CONSTRAINT `fk_project_invoice_request_credited_invoice_request_id` FOREIGN KEY (`credited_invoice_request_id`) REFERENCES `vibe_manufacturing_v1`.`project`.`invoice_request`(`invoice_request_id`);
+ALTER TABLE `vibe_manufacturing_v1`.`project`.`invoice_request` ADD CONSTRAINT `fk_project_invoice_request_milestone_id` FOREIGN KEY (`milestone_id`) REFERENCES `vibe_manufacturing_v1`.`project`.`milestone`(`milestone_id`);
+ALTER TABLE `vibe_manufacturing_v1`.`project`.`invoice_request` ADD CONSTRAINT `fk_project_invoice_request_project_contract_id` FOREIGN KEY (`project_contract_id`) REFERENCES `vibe_manufacturing_v1`.`project`.`project_contract`(`project_contract_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`invoice_request` ADD CONSTRAINT `fk_project_invoice_request_project_header_id` FOREIGN KEY (`project_header_id`) REFERENCES `vibe_manufacturing_v1`.`project`.`project_header`(`project_header_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`invoice_request` ADD CONSTRAINT `fk_project_invoice_request_wbs_element_id` FOREIGN KEY (`wbs_element_id`) REFERENCES `vibe_manufacturing_v1`.`project`.`wbs_element`(`wbs_element_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`earned_value_record` ADD CONSTRAINT `fk_project_earned_value_record_previous_earned_value_record_id` FOREIGN KEY (`previous_earned_value_record_id`) REFERENCES `vibe_manufacturing_v1`.`project`.`earned_value_record`(`earned_value_record_id`);
+ALTER TABLE `vibe_manufacturing_v1`.`project`.`earned_value_record` ADD CONSTRAINT `fk_project_earned_value_record_project_header_id` FOREIGN KEY (`project_header_id`) REFERENCES `vibe_manufacturing_v1`.`project`.`project_header`(`project_header_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`earned_value_record` ADD CONSTRAINT `fk_project_earned_value_record_wbs_element_id` FOREIGN KEY (`wbs_element_id`) REFERENCES `vibe_manufacturing_v1`.`project`.`wbs_element`(`wbs_element_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_document` ADD CONSTRAINT `fk_project_project_document_project_header_id` FOREIGN KEY (`project_header_id`) REFERENCES `vibe_manufacturing_v1`.`project`.`project_header`(`project_header_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_document` ADD CONSTRAINT `fk_project_project_document_wbs_element_id` FOREIGN KEY (`wbs_element_id`) REFERENCES `vibe_manufacturing_v1`.`project`.`wbs_element`(`wbs_element_id`);
+ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_document` ADD CONSTRAINT `fk_project_project_document_project_wbs_element_id` FOREIGN KEY (`project_wbs_element_id`) REFERENCES `vibe_manufacturing_v1`.`project`.`wbs_element`(`wbs_element_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_document` ADD CONSTRAINT `fk_project_project_document_superseded_project_document_id` FOREIGN KEY (`superseded_project_document_id`) REFERENCES `vibe_manufacturing_v1`.`project`.`project_document`(`project_document_id`);
+ALTER TABLE `vibe_manufacturing_v1`.`project`.`phase` ADD CONSTRAINT `fk_project_phase_predecessor_phase_id` FOREIGN KEY (`predecessor_phase_id`) REFERENCES `vibe_manufacturing_v1`.`project`.`phase`(`phase_id`);
+ALTER TABLE `vibe_manufacturing_v1`.`project`.`phase` ADD CONSTRAINT `fk_project_phase_project_header_id` FOREIGN KEY (`project_header_id`) REFERENCES `vibe_manufacturing_v1`.`project`.`project_header`(`project_header_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`team_member` ADD CONSTRAINT `fk_project_team_member_project_header_id` FOREIGN KEY (`project_header_id`) REFERENCES `vibe_manufacturing_v1`.`project`.`project_header`(`project_header_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`team_member` ADD CONSTRAINT `fk_project_team_member_reports_to_team_member_id` FOREIGN KEY (`reports_to_team_member_id`) REFERENCES `vibe_manufacturing_v1`.`project`.`team_member`(`team_member_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`progress_report` ADD CONSTRAINT `fk_project_progress_report_previous_progress_report_id` FOREIGN KEY (`previous_progress_report_id`) REFERENCES `vibe_manufacturing_v1`.`project`.`progress_report`(`progress_report_id`);
@@ -1067,13 +1292,10 @@ ALTER TABLE `vibe_manufacturing_v1`.`project`.`progress_report` ADD CONSTRAINT `
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`settlement` ADD CONSTRAINT `fk_project_settlement_primary_reversal_of_settlement_id` FOREIGN KEY (`primary_reversal_of_settlement_id`) REFERENCES `vibe_manufacturing_v1`.`project`.`settlement`(`settlement_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`settlement` ADD CONSTRAINT `fk_project_settlement_project_header_id` FOREIGN KEY (`project_header_id`) REFERENCES `vibe_manufacturing_v1`.`project`.`project_header`(`project_header_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`settlement` ADD CONSTRAINT `fk_project_settlement_wbs_element_id` FOREIGN KEY (`wbs_element_id`) REFERENCES `vibe_manufacturing_v1`.`project`.`wbs_element`(`wbs_element_id`);
+ALTER TABLE `vibe_manufacturing_v1`.`project`.`settlement` ADD CONSTRAINT `fk_project_settlement_settlement_wbs_element_id` FOREIGN KEY (`settlement_wbs_element_id`) REFERENCES `vibe_manufacturing_v1`.`project`.`wbs_element`(`wbs_element_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`gate_review` ADD CONSTRAINT `fk_project_gate_review_deferred_gate_review_id` FOREIGN KEY (`deferred_gate_review_id`) REFERENCES `vibe_manufacturing_v1`.`project`.`gate_review`(`gate_review_id`);
+ALTER TABLE `vibe_manufacturing_v1`.`project`.`gate_review` ADD CONSTRAINT `fk_project_gate_review_phase_id` FOREIGN KEY (`phase_id`) REFERENCES `vibe_manufacturing_v1`.`project`.`phase`(`phase_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`gate_review` ADD CONSTRAINT `fk_project_gate_review_project_header_id` FOREIGN KEY (`project_header_id`) REFERENCES `vibe_manufacturing_v1`.`project`.`project_header`(`project_header_id`);
-ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_phase` ADD CONSTRAINT `fk_project_project_phase_predecessor_phase_id` FOREIGN KEY (`predecessor_phase_id`) REFERENCES `vibe_manufacturing_v1`.`project`.`project_phase`(`project_phase_id`);
-ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_phase` ADD CONSTRAINT `fk_project_project_phase_project_header_id` FOREIGN KEY (`project_header_id`) REFERENCES `vibe_manufacturing_v1`.`project`.`project_header`(`project_header_id`);
-ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_issue` ADD CONSTRAINT `fk_project_project_issue_parent_issue_id` FOREIGN KEY (`parent_issue_id`) REFERENCES `vibe_manufacturing_v1`.`project`.`project_issue`(`project_issue_id`);
-ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_issue` ADD CONSTRAINT `fk_project_project_issue_project_header_id` FOREIGN KEY (`project_header_id`) REFERENCES `vibe_manufacturing_v1`.`project`.`project_header`(`project_header_id`);
-ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_issue` ADD CONSTRAINT `fk_project_project_issue_wbs_element_id` FOREIGN KEY (`wbs_element_id`) REFERENCES `vibe_manufacturing_v1`.`project`.`wbs_element`(`wbs_element_id`);
 
 -- ========= TAGS =========
 ALTER SCHEMA `vibe_manufacturing_v1`.`project` SET TAGS ('dbx_division' = 'business');
@@ -1091,15 +1313,18 @@ ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_header` ALTER COLUMN `emp
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_header` ALTER COLUMN `parent_project_header_id` SET TAGS ('dbx_business_glossary_term' = 'Parent Project Header Id');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_header` ALTER COLUMN `parent_project_header_id` SET TAGS ('dbx_self_ref_fk' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_header` ALTER COLUMN `profit_center_id` SET TAGS ('dbx_business_glossary_term' = 'Profit Center Id (Foreign Key)');
-ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_header` ALTER COLUMN `supply_plan_id` SET TAGS ('dbx_business_glossary_term' = 'Supply Plan Id (Foreign Key)');
+ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_header` ALTER COLUMN `plan_id` SET TAGS ('dbx_business_glossary_term' = 'Health and Safety Plan Identifier');
+ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_header` ALTER COLUMN `plan_id` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_header` ALTER COLUMN `plan_id` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_header` ALTER COLUMN `project_supply_plan_id` SET TAGS ('dbx_business_glossary_term' = 'Supply Plan Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_header` ALTER COLUMN `sku_master_id` SET TAGS ('dbx_business_glossary_term' = 'Sku Master Id (Foreign Key)');
+ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_header` ALTER COLUMN `automation_project_id` SET TAGS ('dbx_business_glossary_term' = 'Automation Project Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_header` ALTER COLUMN `actual_cost` SET TAGS ('dbx_business_glossary_term' = 'Actual Cost');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_header` ALTER COLUMN `actual_end_date` SET TAGS ('dbx_business_glossary_term' = 'Actual End Date');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_header` ALTER COLUMN `actual_oee_percent` SET TAGS ('dbx_business_glossary_term' = 'Actual OEE Percentage');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_header` ALTER COLUMN `actual_start_date` SET TAGS ('dbx_business_glossary_term' = 'Actual Start Date');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_header` ALTER COLUMN `actual_work_hours` SET TAGS ('dbx_business_glossary_term' = 'Actual Work Hours');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_header` ALTER COLUMN `approval_date` SET TAGS ('dbx_business_glossary_term' = 'Approval Date');
-ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_header` ALTER COLUMN `automation_project_id` SET TAGS ('dbx_business_glossary_term' = 'Automation Project Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_header` ALTER COLUMN `budget_amount` SET TAGS ('dbx_business_glossary_term' = 'Budget Amount');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_header` ALTER COLUMN `change_order_count` SET TAGS ('dbx_business_glossary_term' = 'Change Order Count');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_header` ALTER COLUMN `closeout_date` SET TAGS ('dbx_business_glossary_term' = 'Closeout Date');
@@ -1127,13 +1352,14 @@ ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_header` ALTER COLUMN `pla
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_header` ALTER COLUMN `priority` SET TAGS ('dbx_business_glossary_term' = 'Project Priority');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_header` ALTER COLUMN `priority` SET TAGS ('dbx_value_regex' = 'low|medium|high|critical');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_header` ALTER COLUMN `procurement_strategy` SET TAGS ('dbx_business_glossary_term' = 'Procurement Strategy');
-ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_header` ALTER COLUMN `procurement_strategy` SET TAGS ('dbx_value_regex' = 'jig|make_to_order|make_to_stock|consignment');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_header` ALTER COLUMN `project_category` SET TAGS ('dbx_business_glossary_term' = 'Project Category');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_header` ALTER COLUMN `project_category` SET TAGS ('dbx_value_regex' = 'capital|operational|research|maintenance');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_header` ALTER COLUMN `project_code` SET TAGS ('dbx_business_glossary_term' = 'Project Code');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_header` ALTER COLUMN `project_header_status` SET TAGS ('dbx_business_glossary_term' = 'Project Status');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_header` ALTER COLUMN `project_header_status` SET TAGS ('dbx_value_regex' = 'planned|active|on_hold|completed|cancelled');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_header` ALTER COLUMN `project_name` SET TAGS ('dbx_business_glossary_term' = 'Project Name');
+ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_header` ALTER COLUMN `project_name` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_header` ALTER COLUMN `project_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_header` ALTER COLUMN `project_phase` SET TAGS ('dbx_business_glossary_term' = 'Project Phase');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_header` ALTER COLUMN `project_phase` SET TAGS ('dbx_value_regex' = 'initiation|planning|execution|monitoring|closure');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_header` ALTER COLUMN `project_type` SET TAGS ('dbx_business_glossary_term' = 'Project Type');
@@ -1147,7 +1373,7 @@ ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_header` ALTER COLUMN `tot
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_header` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Update Timestamp');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_header` ALTER COLUMN `wbs_code` SET TAGS ('dbx_business_glossary_term' = 'Work Breakdown Structure Code');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`wbs_element` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_manufacturing_v1`.`project`.`wbs_element` SET TAGS ('dbx_subdomain' = 'schedule_planning');
+ALTER TABLE `vibe_manufacturing_v1`.`project`.`wbs_element` SET TAGS ('dbx_subdomain' = 'project_governance');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`wbs_element` ALTER COLUMN `wbs_element_id` SET TAGS ('dbx_business_glossary_term' = 'Work Breakdown Structure (WBS) Element ID');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`wbs_element` ALTER COLUMN `capacity_plan_id` SET TAGS ('dbx_business_glossary_term' = 'Capacity Plan Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`wbs_element` ALTER COLUMN `cost_center_id` SET TAGS ('dbx_business_glossary_term' = 'Cost Center Id (Foreign Key)');
@@ -1184,10 +1410,11 @@ ALTER TABLE `vibe_manufacturing_v1`.`project`.`wbs_element` ALTER COLUMN `update
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`wbs_element` ALTER COLUMN `wbs_code` SET TAGS ('dbx_business_glossary_term' = 'WBS Code');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`wbs_element` ALTER COLUMN `wbs_element_status` SET TAGS ('dbx_business_glossary_term' = 'WBS Status');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`wbs_element` ALTER COLUMN `wbs_element_status` SET TAGS ('dbx_value_regex' = 'planned|in_progress|completed|closed|cancelled');
+ALTER TABLE `vibe_manufacturing_v1`.`project`.`wbs_element` ALTER COLUMN `wbs_name` SET TAGS ('dbx_sensitivity' = 'pii');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`wbs_element` ALTER COLUMN `wbs_type` SET TAGS ('dbx_business_glossary_term' = 'WBS Type');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`wbs_element` ALTER COLUMN `wbs_type` SET TAGS ('dbx_value_regex' = 'internal|external|contract|support');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`milestone` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_manufacturing_v1`.`project`.`milestone` SET TAGS ('dbx_subdomain' = 'schedule_planning');
+ALTER TABLE `vibe_manufacturing_v1`.`project`.`milestone` SET TAGS ('dbx_subdomain' = 'schedule_execution');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`milestone` ALTER COLUMN `milestone_id` SET TAGS ('dbx_business_glossary_term' = 'Milestone ID');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`milestone` ALTER COLUMN `control_system_id` SET TAGS ('dbx_business_glossary_term' = 'Control System Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`milestone` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Responsible Party ID');
@@ -1218,6 +1445,8 @@ ALTER TABLE `vibe_manufacturing_v1`.`project`.`milestone` ALTER COLUMN `mileston
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`milestone` ALTER COLUMN `milestone_type` SET TAGS ('dbx_business_glossary_term' = 'Milestone Type');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`milestone` ALTER COLUMN `milestone_type` SET TAGS ('dbx_value_regex' = 'contractual|internal|payment|regulatory|technical');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`milestone` ALTER COLUMN `milestone_name` SET TAGS ('dbx_business_glossary_term' = 'Milestone Name');
+ALTER TABLE `vibe_manufacturing_v1`.`project`.`milestone` ALTER COLUMN `milestone_name` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`project`.`milestone` ALTER COLUMN `milestone_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`milestone` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Milestone Notes');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`milestone` ALTER COLUMN `payment_amount` SET TAGS ('dbx_business_glossary_term' = 'Payment Amount');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`milestone` ALTER COLUMN `payment_trigger` SET TAGS ('dbx_business_glossary_term' = 'Payment Trigger Flag');
@@ -1231,10 +1460,9 @@ ALTER TABLE `vibe_manufacturing_v1`.`project`.`milestone` ALTER COLUMN `risk_lev
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`milestone` ALTER COLUMN `sequence` SET TAGS ('dbx_business_glossary_term' = 'Milestone Sequence');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`milestone` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Update Timestamp');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`activity` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_manufacturing_v1`.`project`.`activity` SET TAGS ('dbx_subdomain' = 'schedule_planning');
+ALTER TABLE `vibe_manufacturing_v1`.`project`.`activity` SET TAGS ('dbx_subdomain' = 'schedule_execution');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`activity` ALTER COLUMN `activity_id` SET TAGS ('dbx_business_glossary_term' = 'Project Activity Identifier (PAI)');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`activity` ALTER COLUMN `device_registry_id` SET TAGS ('dbx_business_glossary_term' = 'Device Registry Id (Foreign Key)');
-ALTER TABLE `vibe_manufacturing_v1`.`project`.`activity` ALTER COLUMN `material_requirement_id` SET TAGS ('dbx_business_glossary_term' = 'Material Requirement Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`activity` ALTER COLUMN `predecessor_activity_id` SET TAGS ('dbx_business_glossary_term' = 'Predecessor Activity Id');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`activity` ALTER COLUMN `predecessor_activity_id` SET TAGS ('dbx_self_ref_fk' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`activity` ALTER COLUMN `configuration_id` SET TAGS ('dbx_business_glossary_term' = 'Product Configuration Id (Foreign Key)');
@@ -1269,6 +1497,8 @@ ALTER TABLE `vibe_manufacturing_v1`.`project`.`activity` ALTER COLUMN `material_
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`activity` ALTER COLUMN `material_cost_estimated` SET TAGS ('dbx_business_glossary_term' = 'Estimated Material Cost (EMC)');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`activity` ALTER COLUMN `milestone_flag` SET TAGS ('dbx_business_glossary_term' = 'Milestone Indicator (MI)');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`activity` ALTER COLUMN `activity_name` SET TAGS ('dbx_business_glossary_term' = 'Project Activity Name (PAN)');
+ALTER TABLE `vibe_manufacturing_v1`.`project`.`activity` ALTER COLUMN `activity_name` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`project`.`activity` ALTER COLUMN `activity_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`activity` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Activity Notes (AN)');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`activity` ALTER COLUMN `percent_complete` SET TAGS ('dbx_business_glossary_term' = 'Percent Complete (PC)');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`activity` ALTER COLUMN `planned_finish_date` SET TAGS ('dbx_business_glossary_term' = 'Planned Finish Date (PFD)');
@@ -1285,6 +1515,7 @@ ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_budget` ALTER COLUMN `pro
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_budget` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Budget Owner Identifier (BOI)');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_budget` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_budget` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_budget` ALTER COLUMN `planning_parameter_id` SET TAGS ('dbx_business_glossary_term' = 'Supply Plan Parameter Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_budget` ALTER COLUMN `primary_project_employee_id` SET TAGS ('dbx_business_glossary_term' = 'Created By User Identifier (CBUI)');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_budget` ALTER COLUMN `primary_project_employee_id` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_budget` ALTER COLUMN `primary_project_employee_id` SET TAGS ('dbx_pii' = 'true');
@@ -1299,12 +1530,9 @@ ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_budget` ALTER COLUMN `app
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_budget` ALTER COLUMN `budget_category` SET TAGS ('dbx_business_glossary_term' = 'Budget Category (BCAT)');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_budget` ALTER COLUMN `budget_number` SET TAGS ('dbx_business_glossary_term' = 'Budget Number (BN)');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_budget` ALTER COLUMN `budget_source` SET TAGS ('dbx_business_glossary_term' = 'Budget Source (BSRC)');
-ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_budget` ALTER COLUMN `budget_source` SET TAGS ('dbx_value_regex' = 'internal|external|grant');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_budget` ALTER COLUMN `budget_type` SET TAGS ('dbx_business_glossary_term' = 'Budget Type (CapEx/OpEx) (BT)');
-ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_budget` ALTER COLUMN `budget_type` SET TAGS ('dbx_value_regex' = 'capex|opex|mixed');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_budget` ALTER COLUMN `change_reason` SET TAGS ('dbx_business_glossary_term' = 'Budget Change Reason (BCR)');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_budget` ALTER COLUMN `committed_amount` SET TAGS ('dbx_business_glossary_term' = 'Committed Budget Amount (CBA)');
-ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_budget` ALTER COLUMN `cost_center_code` SET TAGS ('dbx_business_glossary_term' = 'Cost Center Code (CCC)');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_budget` ALTER COLUMN `cost_element_code` SET TAGS ('dbx_business_glossary_term' = 'Cost Element Code (CEC)');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_budget` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Creation Timestamp (RCT)');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_budget` ALTER COLUMN `currency_code` SET TAGS ('dbx_business_glossary_term' = 'Currency Code (ISO 4217)');
@@ -1318,7 +1546,6 @@ ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_budget` ALTER COLUMN `las
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_budget` ALTER COLUMN `original_budget_amount` SET TAGS ('dbx_business_glossary_term' = 'Original Budget Amount (OBA)');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_budget` ALTER COLUMN `owner_role` SET TAGS ('dbx_business_glossary_term' = 'Budget Owner Role (BOR)');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_budget` ALTER COLUMN `project_budget_status` SET TAGS ('dbx_business_glossary_term' = 'Budget Status (BS)');
-ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_budget` ALTER COLUMN `project_budget_status` SET TAGS ('dbx_value_regex' = 'planned|approved|revised|closed|cancelled');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_budget` ALTER COLUMN `remaining_amount` SET TAGS ('dbx_business_glossary_term' = 'Remaining Budget Amount (RBA)');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_budget` ALTER COLUMN `revised_budget_amount` SET TAGS ('dbx_business_glossary_term' = 'Revised Budget Amount (RBA)');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_budget` ALTER COLUMN `spent_amount` SET TAGS ('dbx_business_glossary_term' = 'Spent Budget Amount (SBA)');
@@ -1353,10 +1580,8 @@ ALTER TABLE `vibe_manufacturing_v1`.`project`.`cost_actual` ALTER COLUMN `budget
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`cost_actual` ALTER COLUMN `cost_allocation_percentage` SET TAGS ('dbx_business_glossary_term' = 'Cost Allocation Percentage');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`cost_actual` ALTER COLUMN `cost_allocation_rule` SET TAGS ('dbx_business_glossary_term' = 'Cost Allocation Rule');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`cost_actual` ALTER COLUMN `cost_category` SET TAGS ('dbx_business_glossary_term' = 'Cost Category');
-ALTER TABLE `vibe_manufacturing_v1`.`project`.`cost_actual` ALTER COLUMN `cost_category` SET TAGS ('dbx_value_regex' = 'direct|indirect|capital|operational');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`cost_actual` ALTER COLUMN `cost_element_code` SET TAGS ('dbx_business_glossary_term' = 'Cost Element Code');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`cost_actual` ALTER COLUMN `cost_type` SET TAGS ('dbx_business_glossary_term' = 'Cost Type');
-ALTER TABLE `vibe_manufacturing_v1`.`project`.`cost_actual` ALTER COLUMN `cost_type` SET TAGS ('dbx_value_regex' = 'labor|material|service|overhead|subcontract|misc');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`cost_actual` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`cost_actual` ALTER COLUMN `currency_code` SET TAGS ('dbx_business_glossary_term' = 'Currency Code (ISO 4217)');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`cost_actual` ALTER COLUMN `currency_code` SET TAGS ('dbx_value_regex' = 'USD|EUR|GBP|JPY|CNY|CHF');
@@ -1393,7 +1618,6 @@ ALTER TABLE `vibe_manufacturing_v1`.`project`.`commitment` ALTER COLUMN `origina
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`commitment` ALTER COLUMN `originating_commitment_id` SET TAGS ('dbx_self_ref_fk' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`commitment` ALTER COLUMN `procurement_contract_id` SET TAGS ('dbx_business_glossary_term' = 'Procurement Contract Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`commitment` ALTER COLUMN `project_header_id` SET TAGS ('dbx_business_glossary_term' = 'Project Identifier (PROJ_ID)');
-ALTER TABLE `vibe_manufacturing_v1`.`project`.`commitment` ALTER COLUMN `replenishment_proposal_id` SET TAGS ('dbx_business_glossary_term' = 'Replenishment Proposal Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`commitment` ALTER COLUMN `supplier_id` SET TAGS ('dbx_business_glossary_term' = 'Vendor Identifier (VEND_ID)');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`commitment` ALTER COLUMN `wbs_element_id` SET TAGS ('dbx_business_glossary_term' = 'Work Breakdown Structure (WBS) Element Identifier (WBS_ELEM_ID)');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`commitment` ALTER COLUMN `actual_delivery_date` SET TAGS ('dbx_business_glossary_term' = 'Actual Delivery Date (ACT_DELIV_DATE)');
@@ -1425,7 +1649,7 @@ ALTER TABLE `vibe_manufacturing_v1`.`project`.`commitment` ALTER COLUMN `unit_of
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`commitment` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Last Updated Timestamp (REC_UPDATE_TS)');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`commitment` ALTER COLUMN `variance_amount` SET TAGS ('dbx_business_glossary_term' = 'Variance Amount (VAR_AMT)');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`plan_version` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_manufacturing_v1`.`project`.`plan_version` SET TAGS ('dbx_subdomain' = 'schedule_planning');
+ALTER TABLE `vibe_manufacturing_v1`.`project`.`plan_version` SET TAGS ('dbx_subdomain' = 'project_governance');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`plan_version` ALTER COLUMN `plan_version_id` SET TAGS ('dbx_business_glossary_term' = 'Project Plan Version Identifier (PPVID)');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`plan_version` ALTER COLUMN `baseline_plan_version_id` SET TAGS ('dbx_business_glossary_term' = 'Baseline Plan Version Id');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`plan_version` ALTER COLUMN `baseline_plan_version_id` SET TAGS ('dbx_self_ref_fk' = 'true');
@@ -1460,13 +1684,14 @@ ALTER TABLE `vibe_manufacturing_v1`.`project`.`plan_version` ALTER COLUMN `total
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`plan_version` ALTER COLUMN `updated_by` SET TAGS ('dbx_business_glossary_term' = 'Record Updated By (RUB)');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`plan_version` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Update Timestamp (RUT)');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`plan_version` ALTER COLUMN `version_comment` SET TAGS ('dbx_business_glossary_term' = 'Version Comment (VC)');
+ALTER TABLE `vibe_manufacturing_v1`.`project`.`plan_version` ALTER COLUMN `version_name` SET TAGS ('dbx_sensitivity' = 'pii');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`plan_version` ALTER COLUMN `version_number` SET TAGS ('dbx_business_glossary_term' = 'Project Plan Version Number (VPN)');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`plan_version` ALTER COLUMN `version_type` SET TAGS ('dbx_business_glossary_term' = 'Project Plan Version Type (PVT)');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`plan_version` ALTER COLUMN `version_type` SET TAGS ('dbx_value_regex' = 'original|rebaseline|what-if');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`plan_version` ALTER COLUMN `wbs_code` SET TAGS ('dbx_business_glossary_term' = 'Work Breakdown Structure Code (WBS)');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`plan_version` ALTER COLUMN `created_by` SET TAGS ('dbx_business_glossary_term' = 'Record Created By (RCB)');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`resource_assignment` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_manufacturing_v1`.`project`.`resource_assignment` SET TAGS ('dbx_subdomain' = 'schedule_planning');
+ALTER TABLE `vibe_manufacturing_v1`.`project`.`resource_assignment` SET TAGS ('dbx_subdomain' = 'schedule_execution');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`resource_assignment` ALTER COLUMN `resource_assignment_id` SET TAGS ('dbx_business_glossary_term' = 'Resource Assignment Identifier');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`resource_assignment` ALTER COLUMN `activity_id` SET TAGS ('dbx_business_glossary_term' = 'Project Activity Identifier');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`resource_assignment` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Resource Identifier');
@@ -1485,13 +1710,11 @@ ALTER TABLE `vibe_manufacturing_v1`.`project`.`resource_assignment` ALTER COLUMN
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`resource_assignment` ALTER COLUMN `assignment_type` SET TAGS ('dbx_business_glossary_term' = 'Assignment Type (TYPE)');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`resource_assignment` ALTER COLUMN `assignment_type` SET TAGS ('dbx_value_regex' = 'internal|external');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`resource_assignment` ALTER COLUMN `billing_rate_type` SET TAGS ('dbx_business_glossary_term' = 'Billing Rate Type');
-ALTER TABLE `vibe_manufacturing_v1`.`project`.`resource_assignment` ALTER COLUMN `billing_rate_type` SET TAGS ('dbx_value_regex' = 'hourly|daily|fixed');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`resource_assignment` ALTER COLUMN `billing_status` SET TAGS ('dbx_business_glossary_term' = 'Billing Status');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`resource_assignment` ALTER COLUMN `billing_status` SET TAGS ('dbx_value_regex' = 'billable|non_billable|pending');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`resource_assignment` ALTER COLUMN `cost_center_code` SET TAGS ('dbx_business_glossary_term' = 'Cost Center Code');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`resource_assignment` ALTER COLUMN `cost_rate_amount` SET TAGS ('dbx_business_glossary_term' = 'Cost Rate Amount');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`resource_assignment` ALTER COLUMN `cost_rate_currency` SET TAGS ('dbx_business_glossary_term' = 'Cost Rate Currency (CUR)');
-ALTER TABLE `vibe_manufacturing_v1`.`project`.`resource_assignment` ALTER COLUMN `cost_rate_currency` SET TAGS ('dbx_value_regex' = 'USD|EUR|GBP|JPY|CNY|CAD');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`resource_assignment` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Creation Timestamp');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`resource_assignment` ALTER COLUMN `department_code` SET TAGS ('dbx_business_glossary_term' = 'Department Code');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`resource_assignment` ALTER COLUMN `effective_from` SET TAGS ('dbx_business_glossary_term' = 'Effective From Date');
@@ -1520,8 +1743,8 @@ ALTER TABLE `vibe_manufacturing_v1`.`project`.`procurement_item` ALTER COLUMN `b
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`procurement_item` ALTER COLUMN `blanket_procurement_item_id` SET TAGS ('dbx_self_ref_fk' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`procurement_item` ALTER COLUMN `planned_order_id` SET TAGS ('dbx_business_glossary_term' = 'Planned Order Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`procurement_item` ALTER COLUMN `purchase_order_id` SET TAGS ('dbx_business_glossary_term' = 'Procurement Header ID');
-ALTER TABLE `vibe_manufacturing_v1`.`project`.`procurement_item` ALTER COLUMN `procurement_purchase_order_id` SET TAGS ('dbx_business_glossary_term' = 'Purchase Order Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`procurement_item` ALTER COLUMN `purchase_requisition_id` SET TAGS ('dbx_business_glossary_term' = 'Procurement Purchase Requisition Id (Foreign Key)');
+ALTER TABLE `vibe_manufacturing_v1`.`project`.`procurement_item` ALTER COLUMN `procurement_purchase_order_id` SET TAGS ('dbx_business_glossary_term' = 'Purchase Order Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`procurement_item` ALTER COLUMN `project_header_id` SET TAGS ('dbx_business_glossary_term' = 'Project Header Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`procurement_item` ALTER COLUMN `sku_master_id` SET TAGS ('dbx_business_glossary_term' = 'Sku Master Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`procurement_item` ALTER COLUMN `supplier_id` SET TAGS ('dbx_business_glossary_term' = 'Vendor ID');
@@ -1552,7 +1775,6 @@ ALTER TABLE `vibe_manufacturing_v1`.`project`.`procurement_item` ALTER COLUMN `l
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`procurement_item` ALTER COLUMN `net_amount` SET TAGS ('dbx_business_glossary_term' = 'Net Amount');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`procurement_item` ALTER COLUMN `payment_due_date` SET TAGS ('dbx_business_glossary_term' = 'Payment Due Date');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`procurement_item` ALTER COLUMN `payment_status` SET TAGS ('dbx_business_glossary_term' = 'Payment Status');
-ALTER TABLE `vibe_manufacturing_v1`.`project`.`procurement_item` ALTER COLUMN `payment_status` SET TAGS ('dbx_value_regex' = 'unpaid|paid|partial|overdue|cancelled');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`procurement_item` ALTER COLUMN `procurement_category` SET TAGS ('dbx_business_glossary_term' = 'Procurement Category');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`procurement_item` ALTER COLUMN `procurement_category` SET TAGS ('dbx_value_regex' = 'capital|services|materials|equipment|software|other');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`procurement_item` ALTER COLUMN `procurement_method` SET TAGS ('dbx_business_glossary_term' = 'Procurement Method');
@@ -1594,6 +1816,49 @@ ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_status_event` ALTER COLUM
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_status_event` ALTER COLUMN `triggered_by_user_name` SET TAGS ('dbx_business_glossary_term' = 'Triggered By User Name');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_status_event` ALTER COLUMN `triggered_by_user_name` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_status_event` ALTER COLUMN `triggered_by_user_name` SET TAGS ('dbx_pii_identifier' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_status_event` ALTER COLUMN `triggered_by_user_name` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_status_event` ALTER COLUMN `triggered_by_user_name` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`project`.`issue` SET TAGS ('dbx_data_type' = 'transactional_data');
+ALTER TABLE `vibe_manufacturing_v1`.`project`.`issue` SET TAGS ('dbx_subdomain' = 'project_governance');
+ALTER TABLE `vibe_manufacturing_v1`.`project`.`issue` ALTER COLUMN `issue_id` SET TAGS ('dbx_business_glossary_term' = 'Project Issue ID (PID)');
+ALTER TABLE `vibe_manufacturing_v1`.`project`.`issue` ALTER COLUMN `alarm_event_id` SET TAGS ('dbx_business_glossary_term' = 'Alarm Event Id (Foreign Key)');
+ALTER TABLE `vibe_manufacturing_v1`.`project`.`issue` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`project`.`issue` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`project`.`issue` ALTER COLUMN `issue_related_project_project_header_id` SET TAGS ('dbx_business_glossary_term' = 'Related Project Identifier (Project ID)');
+ALTER TABLE `vibe_manufacturing_v1`.`project`.`issue` ALTER COLUMN `parent_issue_id` SET TAGS ('dbx_business_glossary_term' = 'Parent Issue Id');
+ALTER TABLE `vibe_manufacturing_v1`.`project`.`issue` ALTER COLUMN `parent_issue_id` SET TAGS ('dbx_self_ref_fk' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`project`.`issue` ALTER COLUMN `primary_issue_employee_id` SET TAGS ('dbx_business_glossary_term' = 'Owner Identifier (Owner ID)');
+ALTER TABLE `vibe_manufacturing_v1`.`project`.`issue` ALTER COLUMN `primary_issue_employee_id` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`project`.`issue` ALTER COLUMN `primary_issue_employee_id` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`project`.`issue` ALTER COLUMN `wbs_element_id` SET TAGS ('dbx_business_glossary_term' = 'Work Breakdown Structure Element ID (WBS ID)');
+ALTER TABLE `vibe_manufacturing_v1`.`project`.`issue` ALTER COLUMN `action_items` SET TAGS ('dbx_business_glossary_term' = 'Action Items (Action Items)');
+ALTER TABLE `vibe_manufacturing_v1`.`project`.`issue` ALTER COLUMN `actual_cost` SET TAGS ('dbx_business_glossary_term' = 'Actual Cost Impact (Actual Cost)');
+ALTER TABLE `vibe_manufacturing_v1`.`project`.`issue` ALTER COLUMN `actual_resolution_date` SET TAGS ('dbx_business_glossary_term' = 'Actual Resolution Date (Actual Date)');
+ALTER TABLE `vibe_manufacturing_v1`.`project`.`issue` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Creation Timestamp (Created At)');
+ALTER TABLE `vibe_manufacturing_v1`.`project`.`issue` ALTER COLUMN `currency_code` SET TAGS ('dbx_business_glossary_term' = 'Currency Code (ISO 4217)');
+ALTER TABLE `vibe_manufacturing_v1`.`project`.`issue` ALTER COLUMN `currency_code` SET TAGS ('dbx_value_regex' = 'USD|EUR|GBP|JPY|CNY|CAD');
+ALTER TABLE `vibe_manufacturing_v1`.`project`.`issue` ALTER COLUMN `issue_description` SET TAGS ('dbx_business_glossary_term' = 'Issue Description (Description)');
+ALTER TABLE `vibe_manufacturing_v1`.`project`.`issue` ALTER COLUMN `escalation_status` SET TAGS ('dbx_business_glossary_term' = 'Escalation Status (Escalation Status)');
+ALTER TABLE `vibe_manufacturing_v1`.`project`.`issue` ALTER COLUMN `escalation_status` SET TAGS ('dbx_value_regex' = 'none|escalated|pending_review');
+ALTER TABLE `vibe_manufacturing_v1`.`project`.`issue` ALTER COLUMN `estimated_cost` SET TAGS ('dbx_business_glossary_term' = 'Estimated Cost Impact (Estimated Cost)');
+ALTER TABLE `vibe_manufacturing_v1`.`project`.`issue` ALTER COLUMN `identified_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Issue Identified Timestamp (Identified At)');
+ALTER TABLE `vibe_manufacturing_v1`.`project`.`issue` ALTER COLUMN `impact` SET TAGS ('dbx_business_glossary_term' = 'Impact Level (Impact)');
+ALTER TABLE `vibe_manufacturing_v1`.`project`.`issue` ALTER COLUMN `impact` SET TAGS ('dbx_value_regex' = 'low|medium|high|critical');
+ALTER TABLE `vibe_manufacturing_v1`.`project`.`issue` ALTER COLUMN `issue_number` SET TAGS ('dbx_business_glossary_term' = 'Issue Identifier (ISSUE_NO)');
+ALTER TABLE `vibe_manufacturing_v1`.`project`.`issue` ALTER COLUMN `issue_status` SET TAGS ('dbx_business_glossary_term' = 'Issue Status (Status)');
+ALTER TABLE `vibe_manufacturing_v1`.`project`.`issue` ALTER COLUMN `issue_status` SET TAGS ('dbx_value_regex' = 'open|in_progress|resolved|closed|escalated');
+ALTER TABLE `vibe_manufacturing_v1`.`project`.`issue` ALTER COLUMN `issue_type` SET TAGS ('dbx_business_glossary_term' = 'Issue Type (e.g., Risk, Issue, Change Request, Blocker)');
+ALTER TABLE `vibe_manufacturing_v1`.`project`.`issue` ALTER COLUMN `issue_type` SET TAGS ('dbx_value_regex' = 'risk|issue|change_request|blocker');
+ALTER TABLE `vibe_manufacturing_v1`.`project`.`issue` ALTER COLUMN `mitigation_plan` SET TAGS ('dbx_business_glossary_term' = 'Mitigation Plan (Mitigation Plan)');
+ALTER TABLE `vibe_manufacturing_v1`.`project`.`issue` ALTER COLUMN `priority` SET TAGS ('dbx_business_glossary_term' = 'Priority Level (Priority)');
+ALTER TABLE `vibe_manufacturing_v1`.`project`.`issue` ALTER COLUMN `priority` SET TAGS ('dbx_value_regex' = 'low|medium|high|critical');
+ALTER TABLE `vibe_manufacturing_v1`.`project`.`issue` ALTER COLUMN `probability_percent` SET TAGS ('dbx_business_glossary_term' = 'Probability Percentage (Prob%)');
+ALTER TABLE `vibe_manufacturing_v1`.`project`.`issue` ALTER COLUMN `risk_score` SET TAGS ('dbx_business_glossary_term' = 'Risk Score (Risk Score)');
+ALTER TABLE `vibe_manufacturing_v1`.`project`.`issue` ALTER COLUMN `root_cause` SET TAGS ('dbx_business_glossary_term' = 'Root Cause Analysis (Root Cause)');
+ALTER TABLE `vibe_manufacturing_v1`.`project`.`issue` ALTER COLUMN `severity` SET TAGS ('dbx_business_glossary_term' = 'Severity Level (Severity)');
+ALTER TABLE `vibe_manufacturing_v1`.`project`.`issue` ALTER COLUMN `severity` SET TAGS ('dbx_value_regex' = 'low|medium|high|critical');
+ALTER TABLE `vibe_manufacturing_v1`.`project`.`issue` ALTER COLUMN `target_resolution_date` SET TAGS ('dbx_business_glossary_term' = 'Target Resolution Date (Target Date)');
+ALTER TABLE `vibe_manufacturing_v1`.`project`.`issue` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Last Updated Timestamp (Updated At)');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_change_request` SET TAGS ('dbx_data_type' = 'transactional_data');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_change_request` SET TAGS ('dbx_subdomain' = 'project_governance');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_change_request` ALTER COLUMN `project_change_request_id` SET TAGS ('dbx_business_glossary_term' = 'Project Change Request ID');
@@ -1601,6 +1866,8 @@ ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_change_request` ALTER COL
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_change_request` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_change_request` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_change_request` ALTER COLUMN `project_header_id` SET TAGS ('dbx_business_glossary_term' = 'Project ID');
+ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_change_request` ALTER COLUMN `project_requested_by_employee_id` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_change_request` ALTER COLUMN `project_requested_by_employee_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_change_request` ALTER COLUMN `superseded_project_change_request_id` SET TAGS ('dbx_business_glossary_term' = 'Superseded Project Change Request Id');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_change_request` ALTER COLUMN `superseded_project_change_request_id` SET TAGS ('dbx_self_ref_fk' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_change_request` ALTER COLUMN `tertiary_project_created_by_employee_id` SET TAGS ('dbx_business_glossary_term' = 'Created By Identifier');
@@ -1633,7 +1900,7 @@ ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_change_request` ALTER COL
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_change_request` ALTER COLUMN `schedule_delta_days` SET TAGS ('dbx_business_glossary_term' = 'Schedule Delta (Days)');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_change_request` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Updated Timestamp');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`timesheet` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_manufacturing_v1`.`project`.`timesheet` SET TAGS ('dbx_subdomain' = 'cost_control');
+ALTER TABLE `vibe_manufacturing_v1`.`project`.`timesheet` SET TAGS ('dbx_subdomain' = 'schedule_execution');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`timesheet` ALTER COLUMN `timesheet_id` SET TAGS ('dbx_business_glossary_term' = 'Project Timesheet ID');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`timesheet` ALTER COLUMN `corrected_timesheet_id` SET TAGS ('dbx_business_glossary_term' = 'Corrected Timesheet Id');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`timesheet` ALTER COLUMN `corrected_timesheet_id` SET TAGS ('dbx_self_ref_fk' = 'true');
@@ -1645,6 +1912,8 @@ ALTER TABLE `vibe_manufacturing_v1`.`project`.`timesheet` ALTER COLUMN `project_
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`timesheet` ALTER COLUMN `tertiary_timesheet_entered_by_employee_id` SET TAGS ('dbx_business_glossary_term' = 'Entered By ID');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`timesheet` ALTER COLUMN `tertiary_timesheet_entered_by_employee_id` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`timesheet` ALTER COLUMN `tertiary_timesheet_entered_by_employee_id` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`project`.`timesheet` ALTER COLUMN `timesheet_employee_id` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`project`.`timesheet` ALTER COLUMN `timesheet_employee_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`timesheet` ALTER COLUMN `wbs_element_id` SET TAGS ('dbx_business_glossary_term' = 'WBS Element ID');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`timesheet` ALTER COLUMN `activity_description` SET TAGS ('dbx_business_glossary_term' = 'Activity Description');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`timesheet` ALTER COLUMN `activity_type` SET TAGS ('dbx_business_glossary_term' = 'Activity Type');
@@ -1677,7 +1946,6 @@ ALTER TABLE `vibe_manufacturing_v1`.`project`.`timesheet` ALTER COLUMN `labor_ca
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`timesheet` ALTER COLUMN `labor_grade` SET TAGS ('dbx_business_glossary_term' = 'Labor Grade');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`timesheet` ALTER COLUMN `labor_grade` SET TAGS ('dbx_value_regex' = 'A|B|C|D|E|F');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`timesheet` ALTER COLUMN `labor_rate_type` SET TAGS ('dbx_business_glossary_term' = 'Labor Rate Type');
-ALTER TABLE `vibe_manufacturing_v1`.`project`.`timesheet` ALTER COLUMN `labor_rate_type` SET TAGS ('dbx_value_regex' = 'hourly|salary|contract');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`timesheet` ALTER COLUMN `line_sequence` SET TAGS ('dbx_business_glossary_term' = 'Line Sequence');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`timesheet` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Notes');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`timesheet` ALTER COLUMN `overtime_hours` SET TAGS ('dbx_business_glossary_term' = 'Overtime Hours');
@@ -1692,7 +1960,7 @@ ALTER TABLE `vibe_manufacturing_v1`.`project`.`timesheet` ALTER COLUMN `updated_
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`timesheet` ALTER COLUMN `version_number` SET TAGS ('dbx_business_glossary_term' = 'Version Number');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`timesheet` ALTER COLUMN `work_date` SET TAGS ('dbx_business_glossary_term' = 'Work Date');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`commissioning_checklist` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_manufacturing_v1`.`project`.`commissioning_checklist` SET TAGS ('dbx_subdomain' = 'delivery_execution');
+ALTER TABLE `vibe_manufacturing_v1`.`project`.`commissioning_checklist` SET TAGS ('dbx_subdomain' = 'delivery_closeout');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`commissioning_checklist` ALTER COLUMN `commissioning_checklist_id` SET TAGS ('dbx_business_glossary_term' = 'Commissioning Checklist Identifier (CHKLIST_ID)');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`commissioning_checklist` ALTER COLUMN `device_registry_id` SET TAGS ('dbx_business_glossary_term' = 'Device Registry Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`commissioning_checklist` ALTER COLUMN `equipment_register_id` SET TAGS ('dbx_business_glossary_term' = 'Equipment Identifier (EQUIP_ID)');
@@ -1710,6 +1978,7 @@ ALTER TABLE `vibe_manufacturing_v1`.`project`.`commissioning_checklist` ALTER CO
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`commissioning_checklist` ALTER COLUMN `approval_status` SET TAGS ('dbx_value_regex' = 'pending|approved|rejected');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`commissioning_checklist` ALTER COLUMN `approved_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Approval Timestamp (APPROVAL_TS)');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`commissioning_checklist` ALTER COLUMN `change_order_reference` SET TAGS ('dbx_business_glossary_term' = 'Change Order Reference Identifier (CO_REF)');
+ALTER TABLE `vibe_manufacturing_v1`.`project`.`commissioning_checklist` ALTER COLUMN `checklist_name` SET TAGS ('dbx_sensitivity' = 'pii');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`commissioning_checklist` ALTER COLUMN `checklist_number` SET TAGS ('dbx_business_glossary_term' = 'Commissioning Checklist Number (CHKLIST_NO)');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`commissioning_checklist` ALTER COLUMN `checklist_type` SET TAGS ('dbx_business_glossary_term' = 'Commissioning Checklist Type (CHKLIST_TYPE)');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`commissioning_checklist` ALTER COLUMN `checklist_type` SET TAGS ('dbx_value_regex' = 'mechanical_completion|pre_commissioning|commissioning|startup');
@@ -1720,7 +1989,6 @@ ALTER TABLE `vibe_manufacturing_v1`.`project`.`commissioning_checklist` ALTER CO
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`commissioning_checklist` ALTER COLUMN `compliance_standard` SET TAGS ('dbx_business_glossary_term' = 'Applicable Compliance Standard (COMPLIANCE_STD)');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`commissioning_checklist` ALTER COLUMN `compliance_standard` SET TAGS ('dbx_value_regex' = 'ISO9001|ISO14001|ISO45001|IEC62443|NIST|OSHA');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`commissioning_checklist` ALTER COLUMN `cost_currency_code` SET TAGS ('dbx_business_glossary_term' = 'Currency Code for Cost (COST_CURR_CODE)');
-ALTER TABLE `vibe_manufacturing_v1`.`project`.`commissioning_checklist` ALTER COLUMN `cost_currency_code` SET TAGS ('dbx_value_regex' = 'USD|EUR|GBP|JPY|CNY');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`commissioning_checklist` ALTER COLUMN `cost_estimate` SET TAGS ('dbx_business_glossary_term' = 'Estimated Cost (COST_ESTIMATE)');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`commissioning_checklist` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Creation Timestamp (REC_CREATED_TS)');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`commissioning_checklist` ALTER COLUMN `documentation_reference` SET TAGS ('dbx_business_glossary_term' = 'Reference to Supporting Documentation (DOC_REF)');
@@ -1748,15 +2016,15 @@ ALTER TABLE `vibe_manufacturing_v1`.`project`.`commissioning_checklist` ALTER CO
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`commissioning_checklist` ALTER COLUMN `training_completion_date` SET TAGS ('dbx_business_glossary_term' = 'Training Completion Date (TRAINING_COMP_DATE)');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`commissioning_checklist` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Last Updated Timestamp (REC_UPDATED_TS)');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`punch_list_item` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_manufacturing_v1`.`project`.`punch_list_item` SET TAGS ('dbx_subdomain' = 'delivery_execution');
+ALTER TABLE `vibe_manufacturing_v1`.`project`.`punch_list_item` SET TAGS ('dbx_subdomain' = 'delivery_closeout');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`punch_list_item` ALTER COLUMN `punch_list_item_id` SET TAGS ('dbx_business_glossary_term' = 'Punch List Item ID');
+ALTER TABLE `vibe_manufacturing_v1`.`project`.`punch_list_item` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`project`.`punch_list_item` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`punch_list_item` ALTER COLUMN `device_registry_id` SET TAGS ('dbx_business_glossary_term' = 'Device Registry Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`punch_list_item` ALTER COLUMN `parent_punch_list_item_id` SET TAGS ('dbx_business_glossary_term' = 'Parent Punch List Item Id');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`punch_list_item` ALTER COLUMN `parent_punch_list_item_id` SET TAGS ('dbx_self_ref_fk' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`punch_list_item` ALTER COLUMN `wbs_element_id` SET TAGS ('dbx_business_glossary_term' = 'Work Breakdown Structure Element ID');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`punch_list_item` ALTER COLUMN `actual_completion_date` SET TAGS ('dbx_business_glossary_term' = 'Actual Completion Date');
-ALTER TABLE `vibe_manufacturing_v1`.`project`.`punch_list_item` ALTER COLUMN `punch_list_item_category` SET TAGS ('dbx_business_glossary_term' = 'Punch List Category');
-ALTER TABLE `vibe_manufacturing_v1`.`project`.`punch_list_item` ALTER COLUMN `punch_list_item_category` SET TAGS ('dbx_value_regex' = 'safety|quality|mechanical|electrical|civil');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`punch_list_item` ALTER COLUMN `comments` SET TAGS ('dbx_business_glossary_term' = 'Punch List Comments');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`punch_list_item` ALTER COLUMN `compliance_status` SET TAGS ('dbx_business_glossary_term' = 'Compliance Status');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`punch_list_item` ALTER COLUMN `compliance_status` SET TAGS ('dbx_value_regex' = 'compliant|non_compliant|pending');
@@ -1772,6 +2040,8 @@ ALTER TABLE `vibe_manufacturing_v1`.`project`.`punch_list_item` ALTER COLUMN `lo
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`punch_list_item` ALTER COLUMN `location_code` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}-[A-Z0-9]{2,5}$');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`punch_list_item` ALTER COLUMN `priority` SET TAGS ('dbx_business_glossary_term' = 'Punch List Priority');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`punch_list_item` ALTER COLUMN `priority` SET TAGS ('dbx_value_regex' = 'A|B|C');
+ALTER TABLE `vibe_manufacturing_v1`.`project`.`punch_list_item` ALTER COLUMN `punch_list_item_category` SET TAGS ('dbx_business_glossary_term' = 'Punch List Category');
+ALTER TABLE `vibe_manufacturing_v1`.`project`.`punch_list_item` ALTER COLUMN `punch_list_item_category` SET TAGS ('dbx_value_regex' = 'safety|quality|mechanical|electrical|civil');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`punch_list_item` ALTER COLUMN `punch_list_item_status` SET TAGS ('dbx_business_glossary_term' = 'Punch List Status');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`punch_list_item` ALTER COLUMN `punch_list_item_status` SET TAGS ('dbx_value_regex' = 'open|in_progress|closed|rejected|deferred');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`punch_list_item` ALTER COLUMN `resolution_type` SET TAGS ('dbx_business_glossary_term' = 'Resolution Type');
@@ -1786,7 +2056,7 @@ ALTER TABLE `vibe_manufacturing_v1`.`project`.`punch_list_item` ALTER COLUMN `si
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`punch_list_item` ALTER COLUMN `target_completion_date` SET TAGS ('dbx_business_glossary_term' = 'Target Completion Date');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`punch_list_item` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Update Timestamp');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`handover` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_manufacturing_v1`.`project`.`handover` SET TAGS ('dbx_subdomain' = 'delivery_execution');
+ALTER TABLE `vibe_manufacturing_v1`.`project`.`handover` SET TAGS ('dbx_subdomain' = 'delivery_closeout');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`handover` ALTER COLUMN `handover_id` SET TAGS ('dbx_business_glossary_term' = 'Project Handover ID');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`handover` ALTER COLUMN `org_unit_id` SET TAGS ('dbx_business_glossary_term' = 'Accepting Organization ID');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`handover` ALTER COLUMN `handover_org_unit_id` SET TAGS ('dbx_business_glossary_term' = 'Delivering Organization ID');
@@ -1805,6 +2075,8 @@ ALTER TABLE `vibe_manufacturing_v1`.`project`.`handover` ALTER COLUMN `approval_
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`handover` ALTER COLUMN `approved_by_user_name` SET TAGS ('dbx_business_glossary_term' = 'Approved By User Name');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`handover` ALTER COLUMN `approved_by_user_name` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`handover` ALTER COLUMN `approved_by_user_name` SET TAGS ('dbx_pii_identifier' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`project`.`handover` ALTER COLUMN `approved_by_user_name` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`project`.`handover` ALTER COLUMN `approved_by_user_name` SET TAGS ('dbx_sensitivity' = 'pii');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`handover` ALTER COLUMN `as_built_document_status` SET TAGS ('dbx_business_glossary_term' = 'As‑Built Document Status');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`handover` ALTER COLUMN `as_built_document_status` SET TAGS ('dbx_value_regex' = 'complete|incomplete|pending');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`handover` ALTER COLUMN `change_order_reference` SET TAGS ('dbx_business_glossary_term' = 'Change Order Reference');
@@ -1814,6 +2086,8 @@ ALTER TABLE `vibe_manufacturing_v1`.`project`.`handover` ALTER COLUMN `complianc
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`handover` ALTER COLUMN `created_by_user_name` SET TAGS ('dbx_business_glossary_term' = 'Created By User Name');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`handover` ALTER COLUMN `created_by_user_name` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`handover` ALTER COLUMN `created_by_user_name` SET TAGS ('dbx_pii_identifier' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`project`.`handover` ALTER COLUMN `created_by_user_name` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`project`.`handover` ALTER COLUMN `created_by_user_name` SET TAGS ('dbx_sensitivity' = 'pii');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`handover` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`handover` ALTER COLUMN `currency_code` SET TAGS ('dbx_business_glossary_term' = 'Currency Code');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`handover` ALTER COLUMN `documentation_package_status` SET TAGS ('dbx_business_glossary_term' = 'Documentation Package Status');
@@ -1846,12 +2120,14 @@ ALTER TABLE `vibe_manufacturing_v1`.`project`.`handover` ALTER COLUMN `training_
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`handover` ALTER COLUMN `updated_by_user_name` SET TAGS ('dbx_business_glossary_term' = 'Updated By User Name');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`handover` ALTER COLUMN `updated_by_user_name` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`handover` ALTER COLUMN `updated_by_user_name` SET TAGS ('dbx_pii_identifier' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`project`.`handover` ALTER COLUMN `updated_by_user_name` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`project`.`handover` ALTER COLUMN `updated_by_user_name` SET TAGS ('dbx_sensitivity' = 'pii');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`handover` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Updated Timestamp');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`handover` ALTER COLUMN `value_amount` SET TAGS ('dbx_business_glossary_term' = 'Handover Value Amount');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`handover` ALTER COLUMN `warranty_expiration_date` SET TAGS ('dbx_business_glossary_term' = 'Warranty Expiration Date');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`handover` ALTER COLUMN `warranty_transfer_flag` SET TAGS ('dbx_business_glossary_term' = 'Warranty Transfer Flag');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_contract` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_contract` SET TAGS ('dbx_subdomain' = 'project_governance');
+ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_contract` SET TAGS ('dbx_subdomain' = 'delivery_closeout');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_contract` ALTER COLUMN `project_contract_id` SET TAGS ('dbx_business_glossary_term' = 'Project Contract ID');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_contract` ALTER COLUMN `customer_account_id` SET TAGS ('dbx_business_glossary_term' = 'Customer Account Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_contract` ALTER COLUMN `master_project_contract_id` SET TAGS ('dbx_business_glossary_term' = 'Master Project Contract Id');
@@ -1883,7 +2159,6 @@ ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_contract` ALTER COLUMN `e
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_contract` ALTER COLUMN `last_amendment_date` SET TAGS ('dbx_business_glossary_term' = 'Last Amendment Date');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_contract` ALTER COLUMN `liquidated_damages_clause` SET TAGS ('dbx_business_glossary_term' = 'Liquidated Damages Clause');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_contract` ALTER COLUMN `payment_terms` SET TAGS ('dbx_business_glossary_term' = 'Payment Terms');
-ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_contract` ALTER COLUMN `payment_terms` SET TAGS ('dbx_value_regex' = 'net_30|net_60|milestone|progress|other');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_contract` ALTER COLUMN `performance_bond_amount` SET TAGS ('dbx_business_glossary_term' = 'Performance Bond Amount');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_contract` ALTER COLUMN `performance_bond_amount` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_contract` ALTER COLUMN `performance_bond_amount` SET TAGS ('dbx_pii_financial' = 'true');
@@ -1940,14 +2215,11 @@ ALTER TABLE `vibe_manufacturing_v1`.`project`.`invoice_request` ALTER COLUMN `in
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`invoice_request` ALTER COLUMN `invoice_request_status` SET TAGS ('dbx_value_regex' = 'pending|approved|rejected|cancelled|issued');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`invoice_request` ALTER COLUMN `is_advance` SET TAGS ('dbx_business_glossary_term' = 'Advance Invoice Indicator');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`invoice_request` ALTER COLUMN `is_final` SET TAGS ('dbx_business_glossary_term' = 'Final Invoice Indicator');
-ALTER TABLE `vibe_manufacturing_v1`.`project`.`invoice_request` ALTER COLUMN `milestone_code` SET TAGS ('dbx_business_glossary_term' = 'Milestone Code');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`invoice_request` ALTER COLUMN `payment_terms` SET TAGS ('dbx_business_glossary_term' = 'Payment Terms');
-ALTER TABLE `vibe_manufacturing_v1`.`project`.`invoice_request` ALTER COLUMN `payment_terms` SET TAGS ('dbx_value_regex' = 'net30|net45|net60|upon_receipt');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`invoice_request` ALTER COLUMN `percent_complete` SET TAGS ('dbx_business_glossary_term' = 'Project Percent Complete for Billing');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`invoice_request` ALTER COLUMN `request_number` SET TAGS ('dbx_business_glossary_term' = 'Invoice Request Number (REQ_NUM)');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`invoice_request` ALTER COLUMN `request_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Invoice Request Creation Timestamp');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`invoice_request` ALTER COLUMN `revenue_recognition_method` SET TAGS ('dbx_business_glossary_term' = 'Revenue Recognition Method');
-ALTER TABLE `vibe_manufacturing_v1`.`project`.`invoice_request` ALTER COLUMN `revenue_recognition_method` SET TAGS ('dbx_value_regex' = 'percentage_of_completion|completed_contract|milestone_based');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`invoice_request` ALTER COLUMN `source_system_code` SET TAGS ('dbx_business_glossary_term' = 'Source System Record Identifier');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`invoice_request` ALTER COLUMN `tax_amount` SET TAGS ('dbx_business_glossary_term' = 'Tax Amount');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`invoice_request` ALTER COLUMN `tax_code` SET TAGS ('dbx_business_glossary_term' = 'Tax Code');
@@ -1967,13 +2239,11 @@ ALTER TABLE `vibe_manufacturing_v1`.`project`.`earned_value_record` ALTER COLUMN
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`earned_value_record` ALTER COLUMN `baseline_version` SET TAGS ('dbx_business_glossary_term' = 'Baseline Version Identifier');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`earned_value_record` ALTER COLUMN `cost_performance_index` SET TAGS ('dbx_business_glossary_term' = 'Cost Performance Index (CPI)');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`earned_value_record` ALTER COLUMN `cost_type` SET TAGS ('dbx_business_glossary_term' = 'Cost Type Classification');
-ALTER TABLE `vibe_manufacturing_v1`.`project`.`earned_value_record` ALTER COLUMN `cost_type` SET TAGS ('dbx_value_regex' = 'direct|indirect|overhead|capital|operating');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`earned_value_record` ALTER COLUMN `cost_variance` SET TAGS ('dbx_business_glossary_term' = 'Cost Variance (CV)');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`earned_value_record` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Creation Timestamp');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`earned_value_record` ALTER COLUMN `currency_code` SET TAGS ('dbx_business_glossary_term' = 'Currency Code (ISO 4217)');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`earned_value_record` ALTER COLUMN `earned_value` SET TAGS ('dbx_business_glossary_term' = 'Budgeted Cost of Work Performed (BCWP) – Earned Value');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`earned_value_record` ALTER COLUMN `earned_value_record_status` SET TAGS ('dbx_business_glossary_term' = 'Earned Value Record Status');
-ALTER TABLE `vibe_manufacturing_v1`.`project`.`earned_value_record` ALTER COLUMN `earned_value_record_status` SET TAGS ('dbx_value_regex' = 'planned|in_progress|completed|closed|revised');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`earned_value_record` ALTER COLUMN `estimate_at_completion` SET TAGS ('dbx_business_glossary_term' = 'Estimate at Completion (EAC)');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`earned_value_record` ALTER COLUMN `estimate_to_complete` SET TAGS ('dbx_business_glossary_term' = 'Estimate to Complete (ETC)');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`earned_value_record` ALTER COLUMN `forecast_method` SET TAGS ('dbx_business_glossary_term' = 'Forecast Method');
@@ -1991,7 +2261,7 @@ ALTER TABLE `vibe_manufacturing_v1`.`project`.`earned_value_record` ALTER COLUMN
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`earned_value_record` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Last Updated Timestamp');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`earned_value_record` ALTER COLUMN `variance_at_completion` SET TAGS ('dbx_business_glossary_term' = 'Variance at Completion (VAC)');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_document` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_document` SET TAGS ('dbx_subdomain' = 'delivery_execution');
+ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_document` SET TAGS ('dbx_subdomain' = 'delivery_closeout');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_document` ALTER COLUMN `project_document_id` SET TAGS ('dbx_business_glossary_term' = 'Project Document ID');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_document` ALTER COLUMN `project_header_id` SET TAGS ('dbx_business_glossary_term' = 'Related Project ID');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_document` ALTER COLUMN `wbs_element_id` SET TAGS ('dbx_business_glossary_term' = 'Related WBS Element ID');
@@ -2017,6 +2287,7 @@ ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_document` ALTER COLUMN `c
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_document` ALTER COLUMN `distribution_list` SET TAGS ('dbx_business_glossary_term' = 'Document Distribution List');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_document` ALTER COLUMN `document_category` SET TAGS ('dbx_business_glossary_term' = 'Document Category');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_document` ALTER COLUMN `document_description` SET TAGS ('dbx_business_glossary_term' = 'Document Description');
+ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_document` ALTER COLUMN `document_name` SET TAGS ('dbx_sensitivity' = 'pii');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_document` ALTER COLUMN `document_number` SET TAGS ('dbx_business_glossary_term' = 'Document Number');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_document` ALTER COLUMN `document_type` SET TAGS ('dbx_business_glossary_term' = 'Document Type');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_document` ALTER COLUMN `effective_date` SET TAGS ('dbx_business_glossary_term' = 'Document Effective Date');
@@ -2051,8 +2322,54 @@ ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_document` ALTER COLUMN `s
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_document` ALTER COLUMN `title` SET TAGS ('dbx_business_glossary_term' = 'Document Title');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_document` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Document Record Updated Timestamp');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_document` ALTER COLUMN `version_number` SET TAGS ('dbx_business_glossary_term' = 'Document Version Number');
+ALTER TABLE `vibe_manufacturing_v1`.`project`.`phase` SET TAGS ('dbx_data_type' = 'master_data');
+ALTER TABLE `vibe_manufacturing_v1`.`project`.`phase` SET TAGS ('dbx_subdomain' = 'project_governance');
+ALTER TABLE `vibe_manufacturing_v1`.`project`.`phase` ALTER COLUMN `phase_id` SET TAGS ('dbx_business_glossary_term' = 'Project Phase Identifier');
+ALTER TABLE `vibe_manufacturing_v1`.`project`.`phase` ALTER COLUMN `predecessor_phase_id` SET TAGS ('dbx_business_glossary_term' = 'Predecessor Phase Id');
+ALTER TABLE `vibe_manufacturing_v1`.`project`.`phase` ALTER COLUMN `predecessor_phase_id` SET TAGS ('dbx_self_ref_fk' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`project`.`phase` ALTER COLUMN `project_header_id` SET TAGS ('dbx_business_glossary_term' = 'Project Identifier');
+ALTER TABLE `vibe_manufacturing_v1`.`project`.`phase` ALTER COLUMN `actual_cost` SET TAGS ('dbx_business_glossary_term' = 'Phase Actual Cost');
+ALTER TABLE `vibe_manufacturing_v1`.`project`.`phase` ALTER COLUMN `actual_duration_days` SET TAGS ('dbx_business_glossary_term' = 'Actual Phase Duration (Days)');
+ALTER TABLE `vibe_manufacturing_v1`.`project`.`phase` ALTER COLUMN `actual_end_date` SET TAGS ('dbx_business_glossary_term' = 'Actual Phase End Date');
+ALTER TABLE `vibe_manufacturing_v1`.`project`.`phase` ALTER COLUMN `actual_start_date` SET TAGS ('dbx_business_glossary_term' = 'Actual Phase Start Date');
+ALTER TABLE `vibe_manufacturing_v1`.`project`.`phase` ALTER COLUMN `approval_date` SET TAGS ('dbx_business_glossary_term' = 'Phase Approval Date');
+ALTER TABLE `vibe_manufacturing_v1`.`project`.`phase` ALTER COLUMN `approval_status` SET TAGS ('dbx_business_glossary_term' = 'Phase Approval Status');
+ALTER TABLE `vibe_manufacturing_v1`.`project`.`phase` ALTER COLUMN `approval_status` SET TAGS ('dbx_value_regex' = 'pending|approved|rejected');
+ALTER TABLE `vibe_manufacturing_v1`.`project`.`phase` ALTER COLUMN `approved_by` SET TAGS ('dbx_business_glossary_term' = 'Phase Approved By');
+ALTER TABLE `vibe_manufacturing_v1`.`project`.`phase` ALTER COLUMN `change_control_number` SET TAGS ('dbx_business_glossary_term' = 'Change Control Number');
+ALTER TABLE `vibe_manufacturing_v1`.`project`.`phase` ALTER COLUMN `phase_code` SET TAGS ('dbx_business_glossary_term' = 'Project Phase Code');
+ALTER TABLE `vibe_manufacturing_v1`.`project`.`phase` ALTER COLUMN `compliance_requirement` SET TAGS ('dbx_business_glossary_term' = 'Compliance Requirement');
+ALTER TABLE `vibe_manufacturing_v1`.`project`.`phase` ALTER COLUMN `compliance_status` SET TAGS ('dbx_business_glossary_term' = 'Compliance Status');
+ALTER TABLE `vibe_manufacturing_v1`.`project`.`phase` ALTER COLUMN `compliance_status` SET TAGS ('dbx_value_regex' = 'compliant|non_compliant|pending');
+ALTER TABLE `vibe_manufacturing_v1`.`project`.`phase` ALTER COLUMN `cost_estimate` SET TAGS ('dbx_business_glossary_term' = 'Phase Cost Estimate');
+ALTER TABLE `vibe_manufacturing_v1`.`project`.`phase` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Creation Timestamp');
+ALTER TABLE `vibe_manufacturing_v1`.`project`.`phase` ALTER COLUMN `currency_code` SET TAGS ('dbx_business_glossary_term' = 'Currency Code');
+ALTER TABLE `vibe_manufacturing_v1`.`project`.`phase` ALTER COLUMN `currency_code` SET TAGS ('dbx_value_regex' = 'USD|EUR|GBP|JPY|CNY');
+ALTER TABLE `vibe_manufacturing_v1`.`project`.`phase` ALTER COLUMN `phase_description` SET TAGS ('dbx_business_glossary_term' = 'Project Phase Description');
+ALTER TABLE `vibe_manufacturing_v1`.`project`.`phase` ALTER COLUMN `effective_from` SET TAGS ('dbx_business_glossary_term' = 'Effective From Date');
+ALTER TABLE `vibe_manufacturing_v1`.`project`.`phase` ALTER COLUMN `effective_until` SET TAGS ('dbx_business_glossary_term' = 'Effective Until Date');
+ALTER TABLE `vibe_manufacturing_v1`.`project`.`phase` ALTER COLUMN `gate_review_criteria` SET TAGS ('dbx_business_glossary_term' = 'Gate Review Criteria');
+ALTER TABLE `vibe_manufacturing_v1`.`project`.`phase` ALTER COLUMN `is_critical` SET TAGS ('dbx_business_glossary_term' = 'Critical Phase Indicator');
+ALTER TABLE `vibe_manufacturing_v1`.`project`.`phase` ALTER COLUMN `milestone_flag` SET TAGS ('dbx_business_glossary_term' = 'Milestone Flag');
+ALTER TABLE `vibe_manufacturing_v1`.`project`.`phase` ALTER COLUMN `phase_name` SET TAGS ('dbx_business_glossary_term' = 'Project Phase Name');
+ALTER TABLE `vibe_manufacturing_v1`.`project`.`phase` ALTER COLUMN `phase_name` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`project`.`phase` ALTER COLUMN `phase_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`project`.`phase` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Phase Notes');
+ALTER TABLE `vibe_manufacturing_v1`.`project`.`phase` ALTER COLUMN `percent_complete` SET TAGS ('dbx_business_glossary_term' = 'Phase Completion Percentage');
+ALTER TABLE `vibe_manufacturing_v1`.`project`.`phase` ALTER COLUMN `phase_status` SET TAGS ('dbx_business_glossary_term' = 'Phase Status');
+ALTER TABLE `vibe_manufacturing_v1`.`project`.`phase` ALTER COLUMN `phase_status` SET TAGS ('dbx_value_regex' = 'planned|in_progress|completed|closed|on_hold');
+ALTER TABLE `vibe_manufacturing_v1`.`project`.`phase` ALTER COLUMN `planned_duration_days` SET TAGS ('dbx_business_glossary_term' = 'Planned Phase Duration (Days)');
+ALTER TABLE `vibe_manufacturing_v1`.`project`.`phase` ALTER COLUMN `planned_end_date` SET TAGS ('dbx_business_glossary_term' = 'Planned Phase End Date');
+ALTER TABLE `vibe_manufacturing_v1`.`project`.`phase` ALTER COLUMN `planned_start_date` SET TAGS ('dbx_business_glossary_term' = 'Planned Phase Start Date');
+ALTER TABLE `vibe_manufacturing_v1`.`project`.`phase` ALTER COLUMN `risk_description` SET TAGS ('dbx_business_glossary_term' = 'Phase Risk Description');
+ALTER TABLE `vibe_manufacturing_v1`.`project`.`phase` ALTER COLUMN `risk_level` SET TAGS ('dbx_business_glossary_term' = 'Phase Risk Level');
+ALTER TABLE `vibe_manufacturing_v1`.`project`.`phase` ALTER COLUMN `risk_level` SET TAGS ('dbx_value_regex' = 'low|medium|high|critical');
+ALTER TABLE `vibe_manufacturing_v1`.`project`.`phase` ALTER COLUMN `sequence` SET TAGS ('dbx_business_glossary_term' = 'Phase Sequence Number');
+ALTER TABLE `vibe_manufacturing_v1`.`project`.`phase` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Update Timestamp');
+ALTER TABLE `vibe_manufacturing_v1`.`project`.`phase` ALTER COLUMN `version_number` SET TAGS ('dbx_business_glossary_term' = 'Phase Version Number');
+ALTER TABLE `vibe_manufacturing_v1`.`project`.`phase` ALTER COLUMN `wbs_element_code` SET TAGS ('dbx_business_glossary_term' = 'WBS Element Code');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`team_member` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_manufacturing_v1`.`project`.`team_member` SET TAGS ('dbx_subdomain' = 'project_governance');
+ALTER TABLE `vibe_manufacturing_v1`.`project`.`team_member` SET TAGS ('dbx_subdomain' = 'schedule_execution');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`team_member` ALTER COLUMN `team_member_id` SET TAGS ('dbx_business_glossary_term' = 'Project Team Member ID');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`team_member` ALTER COLUMN `team_member_id` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`team_member` ALTER COLUMN `team_member_id` SET TAGS ('dbx_pii' = 'true');
@@ -2064,6 +2381,8 @@ ALTER TABLE `vibe_manufacturing_v1`.`project`.`team_member` ALTER COLUMN `report
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`team_member` ALTER COLUMN `reports_to_team_member_id` SET TAGS ('dbx_self_ref_fk' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`team_member` ALTER COLUMN `reports_to_team_member_id` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`team_member` ALTER COLUMN `reports_to_team_member_id` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`project`.`team_member` ALTER COLUMN `team_employee_id` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`project`.`team_member` ALTER COLUMN `team_employee_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`team_member` ALTER COLUMN `access_level` SET TAGS ('dbx_business_glossary_term' = 'System Access Level');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`team_member` ALTER COLUMN `access_level` SET TAGS ('dbx_value_regex' = 'read|write|admin');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`team_member` ALTER COLUMN `allocation_percent` SET TAGS ('dbx_business_glossary_term' = 'Allocation Percentage');
@@ -2071,7 +2390,6 @@ ALTER TABLE `vibe_manufacturing_v1`.`project`.`team_member` ALTER COLUMN `author
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`team_member` ALTER COLUMN `authority_level` SET TAGS ('dbx_value_regex' = 'low|medium|high|executive');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`team_member` ALTER COLUMN `cost_rate_amount` SET TAGS ('dbx_business_glossary_term' = 'Cost Rate Amount');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`team_member` ALTER COLUMN `cost_rate_currency` SET TAGS ('dbx_business_glossary_term' = 'Cost Rate Currency');
-ALTER TABLE `vibe_manufacturing_v1`.`project`.`team_member` ALTER COLUMN `cost_rate_currency` SET TAGS ('dbx_value_regex' = '[A-Z]{3}');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`team_member` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Creation Timestamp');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`team_member` ALTER COLUMN `end_date` SET TAGS ('dbx_business_glossary_term' = 'Assignment End Date');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`team_member` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Assignment Notes');
@@ -2081,7 +2399,7 @@ ALTER TABLE `vibe_manufacturing_v1`.`project`.`team_member` ALTER COLUMN `team_m
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`team_member` ALTER COLUMN `team_member_status` SET TAGS ('dbx_value_regex' = 'active|inactive|on_hold|completed|terminated');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`team_member` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Update Timestamp');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`progress_report` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_manufacturing_v1`.`project`.`progress_report` SET TAGS ('dbx_subdomain' = 'delivery_execution');
+ALTER TABLE `vibe_manufacturing_v1`.`project`.`progress_report` SET TAGS ('dbx_subdomain' = 'schedule_execution');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`progress_report` ALTER COLUMN `progress_report_id` SET TAGS ('dbx_business_glossary_term' = 'Project Progress Report ID');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`progress_report` ALTER COLUMN `previous_progress_report_id` SET TAGS ('dbx_business_glossary_term' = 'Previous Progress Report Id');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`progress_report` ALTER COLUMN `previous_progress_report_id` SET TAGS ('dbx_self_ref_fk' = 'true');
@@ -2094,9 +2412,13 @@ ALTER TABLE `vibe_manufacturing_v1`.`project`.`progress_report` ALTER COLUMN `ap
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`progress_report` ALTER COLUMN `approved_by_name` SET TAGS ('dbx_business_glossary_term' = 'Approved By Name');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`progress_report` ALTER COLUMN `approved_by_name` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`progress_report` ALTER COLUMN `approved_by_name` SET TAGS ('dbx_pii_name' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`project`.`progress_report` ALTER COLUMN `approved_by_name` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`project`.`progress_report` ALTER COLUMN `approved_by_name` SET TAGS ('dbx_sensitivity' = 'pii');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`progress_report` ALTER COLUMN `author_name` SET TAGS ('dbx_business_glossary_term' = 'Report Author Name');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`progress_report` ALTER COLUMN `author_name` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`progress_report` ALTER COLUMN `author_name` SET TAGS ('dbx_pii_name' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`project`.`progress_report` ALTER COLUMN `author_name` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`project`.`progress_report` ALTER COLUMN `author_name` SET TAGS ('dbx_sensitivity' = 'pii');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`progress_report` ALTER COLUMN `budgeted_cost` SET TAGS ('dbx_business_glossary_term' = 'Budgeted Cost');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`progress_report` ALTER COLUMN `change_control_number` SET TAGS ('dbx_business_glossary_term' = 'Change Control Number');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`progress_report` ALTER COLUMN `comments` SET TAGS ('dbx_business_glossary_term' = 'Additional Comments');
@@ -2104,7 +2426,6 @@ ALTER TABLE `vibe_manufacturing_v1`.`project`.`progress_report` ALTER COLUMN `co
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`progress_report` ALTER COLUMN `compliance_status` SET TAGS ('dbx_business_glossary_term' = 'Compliance Status');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`progress_report` ALTER COLUMN `compliance_status` SET TAGS ('dbx_value_regex' = 'compliant|non_compliant|pending');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`progress_report` ALTER COLUMN `cost_status` SET TAGS ('dbx_business_glossary_term' = 'Cost Status');
-ALTER TABLE `vibe_manufacturing_v1`.`project`.`progress_report` ALTER COLUMN `cost_status` SET TAGS ('dbx_value_regex' = 'on_budget|over_budget|under_budget');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`progress_report` ALTER COLUMN `cost_variance_amount` SET TAGS ('dbx_business_glossary_term' = 'Cost Variance Amount');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`progress_report` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`progress_report` ALTER COLUMN `forecast_completion_date` SET TAGS ('dbx_business_glossary_term' = 'Forecast Completion Date');
@@ -2182,9 +2503,16 @@ ALTER TABLE `vibe_manufacturing_v1`.`project`.`gate_review` ALTER COLUMN `decisi
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`gate_review` ALTER COLUMN `financial_status` SET TAGS ('dbx_business_glossary_term' = 'Financial Re‑Authorization Status (Financial Approval State)');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`gate_review` ALTER COLUMN `financial_status` SET TAGS ('dbx_value_regex' = 'approved|pending|rejected');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`gate_review` ALTER COLUMN `gate_name` SET TAGS ('dbx_business_glossary_term' = 'Gate Name (Descriptive Phase Name)');
+ALTER TABLE `vibe_manufacturing_v1`.`project`.`gate_review` ALTER COLUMN `gate_name` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`project`.`gate_review` ALTER COLUMN `gate_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`gate_review` ALTER COLUMN `gate_number` SET TAGS ('dbx_business_glossary_term' = 'Gate Number (Sequential Identifier)');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`gate_review` ALTER COLUMN `gate_sequence` SET TAGS ('dbx_business_glossary_term' = 'Gate Sequence (Order of Gates in Project Lifecycle)');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`gate_review` ALTER COLUMN `gate_type` SET TAGS ('dbx_business_glossary_term' = 'Gate Type (Category of Review Phase)');
+ALTER TABLE `vibe_manufacturing_v1`.`project`.`gate_review` ALTER COLUMN `gate_type` SET TAGS ('dbx_value_regex' = 'concept');
+ALTER TABLE `vibe_manufacturing_v1`.`project`.`gate_review` ALTER COLUMN `gate_type` SET TAGS ('dbx_design' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`project`.`gate_review` ALTER COLUMN `gate_type` SET TAGS ('dbx_prototype' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`project`.`gate_review` ALTER COLUMN `gate_type` SET TAGS ('dbx_production' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`project`.`gate_review` ALTER COLUMN `gate_type` SET TAGS ('dbx_commissioning' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`gate_review` ALTER COLUMN `is_critical` SET TAGS ('dbx_business_glossary_term' = 'Is Critical (Indicates Whether Gate Is Critical to Project Success)');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`gate_review` ALTER COLUMN `next_gate_target_date` SET TAGS ('dbx_business_glossary_term' = 'Next Gate Target Date (Planned Date for Subsequent Gate Review)');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`gate_review` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Notes (Additional Free‑Form Comments Regarding the Gate Review)');
@@ -2197,89 +2525,3 @@ ALTER TABLE `vibe_manufacturing_v1`.`project`.`gate_review` ALTER COLUMN `risk_a
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`gate_review` ALTER COLUMN `risk_level` SET TAGS ('dbx_business_glossary_term' = 'Risk Level (Risk Rating for the Gate)');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`gate_review` ALTER COLUMN `risk_level` SET TAGS ('dbx_value_regex' = 'low|medium|high');
 ALTER TABLE `vibe_manufacturing_v1`.`project`.`gate_review` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Updated Timestamp (When the Gate Review Record Was Last Modified)');
-ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_phase` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_phase` SET TAGS ('dbx_subdomain' = 'project_governance');
-ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_phase` ALTER COLUMN `project_phase_id` SET TAGS ('dbx_business_glossary_term' = 'Project Phase Identifier');
-ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_phase` ALTER COLUMN `predecessor_phase_id` SET TAGS ('dbx_business_glossary_term' = 'Predecessor Phase Id');
-ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_phase` ALTER COLUMN `predecessor_phase_id` SET TAGS ('dbx_self_ref_fk' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_phase` ALTER COLUMN `project_header_id` SET TAGS ('dbx_business_glossary_term' = 'Project Identifier');
-ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_phase` ALTER COLUMN `actual_cost` SET TAGS ('dbx_business_glossary_term' = 'Phase Actual Cost');
-ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_phase` ALTER COLUMN `actual_duration_days` SET TAGS ('dbx_business_glossary_term' = 'Actual Phase Duration (Days)');
-ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_phase` ALTER COLUMN `actual_end_date` SET TAGS ('dbx_business_glossary_term' = 'Actual Phase End Date');
-ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_phase` ALTER COLUMN `actual_start_date` SET TAGS ('dbx_business_glossary_term' = 'Actual Phase Start Date');
-ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_phase` ALTER COLUMN `approval_date` SET TAGS ('dbx_business_glossary_term' = 'Phase Approval Date');
-ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_phase` ALTER COLUMN `approval_status` SET TAGS ('dbx_business_glossary_term' = 'Phase Approval Status');
-ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_phase` ALTER COLUMN `approval_status` SET TAGS ('dbx_value_regex' = 'pending|approved|rejected');
-ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_phase` ALTER COLUMN `approved_by` SET TAGS ('dbx_business_glossary_term' = 'Phase Approved By');
-ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_phase` ALTER COLUMN `change_control_number` SET TAGS ('dbx_business_glossary_term' = 'Change Control Number');
-ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_phase` ALTER COLUMN `compliance_requirement` SET TAGS ('dbx_business_glossary_term' = 'Compliance Requirement');
-ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_phase` ALTER COLUMN `compliance_status` SET TAGS ('dbx_business_glossary_term' = 'Compliance Status');
-ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_phase` ALTER COLUMN `compliance_status` SET TAGS ('dbx_value_regex' = 'compliant|non_compliant|pending');
-ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_phase` ALTER COLUMN `cost_estimate` SET TAGS ('dbx_business_glossary_term' = 'Phase Cost Estimate');
-ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_phase` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Creation Timestamp');
-ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_phase` ALTER COLUMN `currency_code` SET TAGS ('dbx_business_glossary_term' = 'Currency Code');
-ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_phase` ALTER COLUMN `currency_code` SET TAGS ('dbx_value_regex' = 'USD|EUR|GBP|JPY|CNY');
-ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_phase` ALTER COLUMN `effective_from` SET TAGS ('dbx_business_glossary_term' = 'Effective From Date');
-ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_phase` ALTER COLUMN `effective_until` SET TAGS ('dbx_business_glossary_term' = 'Effective Until Date');
-ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_phase` ALTER COLUMN `gate_review_criteria` SET TAGS ('dbx_business_glossary_term' = 'Gate Review Criteria');
-ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_phase` ALTER COLUMN `is_critical` SET TAGS ('dbx_business_glossary_term' = 'Critical Phase Indicator');
-ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_phase` ALTER COLUMN `milestone_flag` SET TAGS ('dbx_business_glossary_term' = 'Milestone Flag');
-ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_phase` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Phase Notes');
-ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_phase` ALTER COLUMN `percent_complete` SET TAGS ('dbx_business_glossary_term' = 'Phase Completion Percentage');
-ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_phase` ALTER COLUMN `phase_code` SET TAGS ('dbx_business_glossary_term' = 'Project Phase Code');
-ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_phase` ALTER COLUMN `phase_description` SET TAGS ('dbx_business_glossary_term' = 'Project Phase Description');
-ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_phase` ALTER COLUMN `phase_name` SET TAGS ('dbx_business_glossary_term' = 'Project Phase Name');
-ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_phase` ALTER COLUMN `phase_status` SET TAGS ('dbx_business_glossary_term' = 'Phase Status');
-ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_phase` ALTER COLUMN `phase_status` SET TAGS ('dbx_value_regex' = 'planned|in_progress|completed|closed|on_hold');
-ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_phase` ALTER COLUMN `planned_duration_days` SET TAGS ('dbx_business_glossary_term' = 'Planned Phase Duration (Days)');
-ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_phase` ALTER COLUMN `planned_end_date` SET TAGS ('dbx_business_glossary_term' = 'Planned Phase End Date');
-ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_phase` ALTER COLUMN `planned_start_date` SET TAGS ('dbx_business_glossary_term' = 'Planned Phase Start Date');
-ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_phase` ALTER COLUMN `risk_description` SET TAGS ('dbx_business_glossary_term' = 'Phase Risk Description');
-ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_phase` ALTER COLUMN `risk_level` SET TAGS ('dbx_business_glossary_term' = 'Phase Risk Level');
-ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_phase` ALTER COLUMN `risk_level` SET TAGS ('dbx_value_regex' = 'low|medium|high|critical');
-ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_phase` ALTER COLUMN `sequence` SET TAGS ('dbx_business_glossary_term' = 'Phase Sequence Number');
-ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_phase` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Update Timestamp');
-ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_phase` ALTER COLUMN `version_number` SET TAGS ('dbx_business_glossary_term' = 'Phase Version Number');
-ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_phase` ALTER COLUMN `wbs_element_code` SET TAGS ('dbx_business_glossary_term' = 'WBS Element Code');
-ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_issue` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_issue` SET TAGS ('dbx_subdomain' = 'delivery_execution');
-ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_issue` ALTER COLUMN `project_issue_id` SET TAGS ('dbx_business_glossary_term' = 'Project Issue ID (PID)');
-ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_issue` ALTER COLUMN `alarm_event_id` SET TAGS ('dbx_business_glossary_term' = 'Alarm Event Id (Foreign Key)');
-ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_issue` ALTER COLUMN `parent_issue_id` SET TAGS ('dbx_business_glossary_term' = 'Parent Issue Id');
-ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_issue` ALTER COLUMN `parent_issue_id` SET TAGS ('dbx_self_ref_fk' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_issue` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Owner Identifier (Owner ID)');
-ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_issue` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_issue` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_issue` ALTER COLUMN `project_issue_reporter_employee_id` SET TAGS ('dbx_business_glossary_term' = 'Reporter Identifier (Reporter ID)');
-ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_issue` ALTER COLUMN `project_issue_reporter_employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_issue` ALTER COLUMN `project_issue_reporter_employee_id` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_issue` ALTER COLUMN `project_header_id` SET TAGS ('dbx_business_glossary_term' = 'Related Project Identifier (Project ID)');
-ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_issue` ALTER COLUMN `wbs_element_id` SET TAGS ('dbx_business_glossary_term' = 'Work Breakdown Structure Element ID (WBS ID)');
-ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_issue` ALTER COLUMN `action_items` SET TAGS ('dbx_business_glossary_term' = 'Action Items (Action Items)');
-ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_issue` ALTER COLUMN `actual_cost` SET TAGS ('dbx_business_glossary_term' = 'Actual Cost Impact (Actual Cost)');
-ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_issue` ALTER COLUMN `actual_resolution_date` SET TAGS ('dbx_business_glossary_term' = 'Actual Resolution Date (Actual Date)');
-ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_issue` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Creation Timestamp (Created At)');
-ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_issue` ALTER COLUMN `currency_code` SET TAGS ('dbx_business_glossary_term' = 'Currency Code (ISO 4217)');
-ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_issue` ALTER COLUMN `currency_code` SET TAGS ('dbx_value_regex' = 'USD|EUR|GBP|JPY|CNY|CAD');
-ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_issue` ALTER COLUMN `escalation_status` SET TAGS ('dbx_business_glossary_term' = 'Escalation Status (Escalation Status)');
-ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_issue` ALTER COLUMN `escalation_status` SET TAGS ('dbx_value_regex' = 'none|escalated|pending_review');
-ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_issue` ALTER COLUMN `estimated_cost` SET TAGS ('dbx_business_glossary_term' = 'Estimated Cost Impact (Estimated Cost)');
-ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_issue` ALTER COLUMN `identified_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Issue Identified Timestamp (Identified At)');
-ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_issue` ALTER COLUMN `impact` SET TAGS ('dbx_business_glossary_term' = 'Impact Level (Impact)');
-ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_issue` ALTER COLUMN `impact` SET TAGS ('dbx_value_regex' = 'low|medium|high|critical');
-ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_issue` ALTER COLUMN `issue_description` SET TAGS ('dbx_business_glossary_term' = 'Issue Description (Description)');
-ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_issue` ALTER COLUMN `issue_number` SET TAGS ('dbx_business_glossary_term' = 'Issue Identifier (ISSUE_NO)');
-ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_issue` ALTER COLUMN `issue_status` SET TAGS ('dbx_business_glossary_term' = 'Issue Status (Status)');
-ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_issue` ALTER COLUMN `issue_status` SET TAGS ('dbx_value_regex' = 'open|in_progress|resolved|closed|escalated');
-ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_issue` ALTER COLUMN `issue_type` SET TAGS ('dbx_business_glossary_term' = 'Issue Type (e.g., Risk, Issue, Change Request, Blocker)');
-ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_issue` ALTER COLUMN `issue_type` SET TAGS ('dbx_value_regex' = 'risk|issue|change_request|blocker');
-ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_issue` ALTER COLUMN `mitigation_plan` SET TAGS ('dbx_business_glossary_term' = 'Mitigation Plan (Mitigation Plan)');
-ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_issue` ALTER COLUMN `priority` SET TAGS ('dbx_business_glossary_term' = 'Priority Level (Priority)');
-ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_issue` ALTER COLUMN `priority` SET TAGS ('dbx_value_regex' = 'low|medium|high|critical');
-ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_issue` ALTER COLUMN `probability_percent` SET TAGS ('dbx_business_glossary_term' = 'Probability Percentage (Prob%)');
-ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_issue` ALTER COLUMN `risk_score` SET TAGS ('dbx_business_glossary_term' = 'Risk Score (Risk Score)');
-ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_issue` ALTER COLUMN `root_cause` SET TAGS ('dbx_business_glossary_term' = 'Root Cause Analysis (Root Cause)');
-ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_issue` ALTER COLUMN `severity` SET TAGS ('dbx_business_glossary_term' = 'Severity Level (Severity)');
-ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_issue` ALTER COLUMN `severity` SET TAGS ('dbx_value_regex' = 'low|medium|high|critical');
-ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_issue` ALTER COLUMN `target_resolution_date` SET TAGS ('dbx_business_glossary_term' = 'Target Resolution Date (Target Date)');
-ALTER TABLE `vibe_manufacturing_v1`.`project`.`project_issue` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Last Updated Timestamp (Updated At)');

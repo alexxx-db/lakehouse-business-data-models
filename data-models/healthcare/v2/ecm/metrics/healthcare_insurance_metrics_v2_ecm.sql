@@ -1,47 +1,94 @@
--- Metric views for domain: insurance | Business: Healthcare | Version: 2 | Generated on: 2026-07-10 14:53:25
+-- Metric views for domain: insurance | Business: Healthcare | Version: 2 | Generated on: 2026-07-02 07:21:53
+
+CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`insurance_premium_billing`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Premium billing and collections KPIs used by finance leadership to monitor cash collection, subsidy exposure, and delinquency risk across employer groups and health plans."
+  source: "`vibe_healthcare_v1`.`insurance`.`premium_billing`"
+  dimensions:
+    - name: "billing_status"
+      expr: billing_status
+      comment: "Lifecycle state of the premium invoice (e.g. paid, open, delinquent) for collections segmentation."
+    - name: "billing_frequency"
+      expr: billing_frequency
+      comment: "Cadence of premium billing (monthly, quarterly) for cash-flow cadence analysis."
+    - name: "payment_method"
+      expr: payment_method
+      comment: "Method of premium payment (EFT, check) for payment-channel efficiency analysis."
+    - name: "billing_month"
+      expr: DATE_TRUNC('MONTH', billing_date)
+      comment: "Billing period bucketed to month for premium-revenue trending."
+  measures:
+    - name: "invoice_count"
+      expr: COUNT(1)
+      comment: "Number of premium invoices - baseline volume for billing operations."
+    - name: "total_amount_due"
+      expr: SUM(CAST(total_amount_due AS DOUBLE))
+      comment: "Total premium billed - drives topline premium revenue expectations."
+    - name: "total_amount_paid"
+      expr: SUM(CAST(amount_paid AS DOUBLE))
+      comment: "Total premium collected - core cash-collection KPI for finance."
+    - name: "total_subsidy_amount"
+      expr: SUM(CAST(subsidy_amount AS DOUBLE))
+      comment: "Total subsidy applied - quantifies exchange/subsidy exposure for reconciliation."
+    - name: "total_late_fee_amount"
+      expr: SUM(CAST(late_fee_amount AS DOUBLE))
+      comment: "Total late fees assessed - indicator of delinquency and collection friction."
+    - name: "avg_amount_due_per_invoice"
+      expr: AVG(CAST(amount_due AS DOUBLE))
+      comment: "Average amount due per invoice - premium intensity per member/group."
+    - name: "collection_rate_pct"
+      expr: ROUND(100.0 * SUM(CAST(amount_paid AS DOUBLE)) / NULLIF(SUM(CAST(total_amount_due AS DOUBLE)), 0), 2)
+      comment: "Percent of billed premium collected - primary revenue-cycle health KPI."
+$$;
 
 CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`insurance_capitation_payment`
 WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Value-based capitation payment performance: gross vs net payments, quality withholds, and risk-adjusted amounts for VBC settlement oversight."
+  comment: "Capitation payment KPIs for value-based contracting leadership to monitor PMPM spend, quality bonus/withhold flow, and net financial exposure to at-risk provider arrangements."
   source: "`vibe_healthcare_v1`.`insurance`.`capitation_payment`"
   dimensions:
     - name: "payment_status"
       expr: payment_status
-      comment: "Lifecycle status of the capitation payment (e.g. pending, paid, reconciled) for AR aging views."
-    - name: "reconciliation_status"
-      expr: reconciliation_status
-      comment: "Whether the capitation payment has been reconciled against contract terms."
-    - name: "payment_period_year"
-      expr: payment_period_year
-      comment: "Contract year the capitation payment applies to, for trending."
+      comment: "State of the capitation payment (issued, pending) for payment-operations tracking."
+    - name: "payment_method"
+      expr: payment_method
+      comment: "Disbursement method for capitation payments."
+    - name: "adjustment_reason"
+      expr: adjustment_reason
+      comment: "Reason for payment adjustment - drives reconciliation and dispute analysis."
     - name: "payment_month"
-      expr: DATE_TRUNC('MONTH', payment_due_date)
-      comment: "Month bucket of payment due date for time-series analysis."
+      expr: DATE_TRUNC('MONTH', payment_date)
+      comment: "Payment date bucketed to month for capitation spend trending."
   measures:
-    - name: "Payment Count"
+    - name: "payment_count"
       expr: COUNT(1)
-      comment: "Number of capitation payment records — baseline volume."
-    - name: "Total Gross Capitation"
-      expr: SUM(CAST(gross_capitation_amount AS DOUBLE))
-      comment: "Total gross capitation dollars, the top-line PMPM obligation."
-    - name: "Total Net Payment"
+      comment: "Number of capitation payments - baseline disbursement volume."
+    - name: "total_net_payment"
       expr: SUM(CAST(net_payment_amount AS DOUBLE))
-      comment: "Total net dollars actually paid after adjustments and withholds."
-    - name: "Total Quality Withhold"
+      comment: "Total net capitation paid - core at-risk cost KPI for VBC finance."
+    - name: "total_base_capitation"
+      expr: SUM(CAST(base_capitation_amount AS DOUBLE))
+      comment: "Total base capitation before adjustments - baseline PMPM commitment."
+    - name: "total_quality_bonus"
+      expr: SUM(CAST(quality_bonus_amount AS DOUBLE))
+      comment: "Total quality bonus paid - quantifies performance-incentive spend."
+    - name: "total_quality_withhold"
       expr: SUM(CAST(quality_withhold_amount AS DOUBLE))
-      comment: "Total dollars withheld pending quality performance — at-risk revenue."
-    - name: "Total Adjustment Amount"
-      expr: SUM(CAST(adjustment_amount AS DOUBLE))
-      comment: "Total retroactive adjustments to capitation, indicating reconciliation churn."
-    - name: "Avg PMPM Rate"
-      expr: AVG(CAST(pmpm_rate AS DOUBLE))
-      comment: "Average per-member-per-month rate across payments, benchmark for contract negotiation."
-    - name: "Avg Risk Adjustment Factor"
-      expr: AVG(CAST(risk_adjustment_factor AS DOUBLE))
-      comment: "Average risk score factor applied, driving expected acuity-based revenue."
+      comment: "Total quality withhold - dollars held pending performance, key exposure metric."
+    - name: "total_risk_adjustment"
+      expr: SUM(CAST(risk_adjustment_amount AS DOUBLE))
+      comment: "Total risk adjustment applied - measures acuity-driven payment shift."
+    - name: "avg_net_payment"
+      expr: AVG(CAST(net_payment_amount AS DOUBLE))
+      comment: "Average net payment per capitation cycle - unit economics of at-risk contracts."
+    - name: "quality_bonus_share_pct"
+      expr: ROUND(100.0 * SUM(CAST(quality_bonus_amount AS DOUBLE)) / NULLIF(SUM(CAST(net_payment_amount AS DOUBLE)), 0), 2)
+      comment: "Quality bonus as percent of net payment - shows performance-incentive weighting."
 $$;
 
 CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`insurance_vbc_performance`
@@ -49,93 +96,49 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Value-based care contract settlement outcomes: shared savings/loss, total cost of care vs benchmark, and quality performance for executive VBC steering."
+  comment: "Value-based care performance KPIs for population-health and network executives to monitor quality attainment vs benchmark, shared-savings capture, and total cost of care."
   source: "`vibe_healthcare_v1`.`insurance`.`vbc_performance`"
   dimensions:
-    - name: "settlement_status"
-      expr: settlement_status
-      comment: "Settlement lifecycle status for tracking VBC reconciliation progress."
-    - name: "risk_arrangement_type"
-      expr: risk_arrangement_type
-      comment: "Upside-only vs two-sided risk arrangement, key to VBC portfolio strategy."
-    - name: "measurement_year"
-      expr: measurement_year
-      comment: "Performance measurement year for year-over-year VBC trending."
-    - name: "dispute_flag"
-      expr: dispute_flag
-      comment: "Whether the settlement is under dispute — flags reconciliation risk."
+    - name: "performance_status"
+      expr: performance_status
+      comment: "Overall VBC performance status for contract-level scorecarding."
+    - name: "performance_tier"
+      expr: performance_tier
+      comment: "Performance tier classification for provider ranking and bonus banding."
+    - name: "measure_name"
+      expr: measure_name
+      comment: "Quality measure being evaluated for measure-level performance analysis."
+    - name: "measurement_period"
+      expr: measurement_period
+      comment: "Reporting period label for period-over-period VBC comparison."
   measures:
-    - name: "Performance Record Count"
+    - name: "performance_record_count"
       expr: COUNT(1)
-      comment: "Number of VBC performance records — baseline."
-    - name: "Total Savings/Loss"
-      expr: SUM(CAST(savings_loss_amount AS DOUBLE))
-      comment: "Net shared savings (positive) or loss (negative) — the core VBC financial outcome."
-    - name: "Total Cost of Care"
+      comment: "Number of performance evaluations - baseline VBC reporting volume."
+    - name: "total_shared_savings"
+      expr: SUM(CAST(shared_savings_amount AS DOUBLE))
+      comment: "Total shared savings earned - headline financial upside of VBC arrangements."
+    - name: "total_bonus_amount"
+      expr: SUM(CAST(bonus_amount AS DOUBLE))
+      comment: "Total quality bonus earned across measures - incentive capture KPI."
+    - name: "total_penalty_amount"
+      expr: SUM(CAST(penalty_amount AS DOUBLE))
+      comment: "Total penalties incurred - downside risk realized in VBC contracts."
+    - name: "total_cost_of_care"
       expr: SUM(CAST(total_cost_of_care_amount AS DOUBLE))
-      comment: "Total actual cost of care for attributed populations."
-    - name: "Total Benchmark TCOC"
-      expr: SUM(CAST(benchmark_tcoc_amount AS DOUBLE))
-      comment: "Total benchmark total cost of care target — comparison baseline for savings."
-    - name: "Total Shared Savings Distribution"
-      expr: SUM(CAST(shared_savings_distribution_amount AS DOUBLE))
-      comment: "Dollars distributed to providers from shared savings."
-    - name: "Total Quality Withhold Earned"
-      expr: SUM(CAST(quality_withhold_earned_amount AS DOUBLE))
-      comment: "Quality withhold dollars earned back through performance."
-    - name: "Total Quality Withhold Forfeited"
-      expr: SUM(CAST(quality_withhold_forfeited_amount AS DOUBLE))
-      comment: "Quality withhold dollars forfeited due to missed targets — lost revenue."
-    - name: "Avg Quality Score"
-      expr: AVG(CAST(quality_score AS DOUBLE))
-      comment: "Average quality score across contracts, driver of withhold recovery."
-$$;
-
-CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`insurance_premium_billing`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Premium billing and collections health: total premium billed, outstanding balances, delinquency, and employer/employee contribution split for revenue cycle steering."
-  source: "`vibe_healthcare_v1`.`insurance`.`premium_billing`"
-  dimensions:
-    - name: "billing_status"
-      expr: billing_status
-      comment: "Billing lifecycle status (invoiced, paid, delinquent) for AR management."
-    - name: "billing_type"
-      expr: billing_type
-      comment: "Type of premium billing (group, individual, COBRA) for segmentation."
-    - name: "billing_frequency"
-      expr: billing_frequency
-      comment: "Billing cadence for cash-flow forecasting."
-    - name: "billing_month"
-      expr: DATE_TRUNC('MONTH', billing_due_date)
-      comment: "Month bucket of billing due date for time-series."
-  measures:
-    - name: "Billing Record Count"
-      expr: COUNT(1)
-      comment: "Number of premium billing records — baseline volume."
-    - name: "Total Premium Billed"
-      expr: SUM(CAST(total_premium_amount AS DOUBLE))
-      comment: "Total premium dollars billed — top-line premium revenue."
-    - name: "Total Net Premium Due"
-      expr: SUM(CAST(net_premium_due AS DOUBLE))
-      comment: "Total net premium due after subsidies and adjustments."
-    - name: "Total Outstanding Balance"
-      expr: SUM(CAST(outstanding_balance AS DOUBLE))
-      comment: "Total unpaid premium balance — collections exposure."
-    - name: "Total Payment Received"
-      expr: SUM(CAST(payment_amount AS DOUBLE))
-      comment: "Total premium payments collected."
-    - name: "Total Employer Contribution"
-      expr: SUM(CAST(employer_contribution_amount AS DOUBLE))
-      comment: "Total employer-funded premium contributions."
-    - name: "Total Employee Contribution"
-      expr: SUM(CAST(employee_contribution_amount AS DOUBLE))
-      comment: "Total employee-funded premium contributions."
-    - name: "Total Subsidy Amount"
-      expr: SUM(CAST(subsidy_amount AS DOUBLE))
-      comment: "Total premium subsidies (ACA/APTC) applied."
+      comment: "Aggregate total cost of care - denominator for savings and efficiency analysis."
+    - name: "avg_performance_score"
+      expr: AVG(CAST(performance_score AS DOUBLE))
+      comment: "Average performance score - overall quality attainment indicator."
+    - name: "avg_actual_performance_rate"
+      expr: AVG(CAST(actual_performance_rate AS DOUBLE))
+      comment: "Average actual performance rate across measures for quality steering."
+    - name: "avg_benchmark_rate"
+      expr: AVG(CAST(benchmark_rate AS DOUBLE))
+      comment: "Average benchmark rate - comparison line for performance gap analysis."
+    - name: "performance_vs_benchmark_pct"
+      expr: ROUND(100.0 * SUM(CAST(actual_performance_rate AS DOUBLE)) / NULLIF(SUM(CAST(benchmark_rate AS DOUBLE)), 0), 2)
+      comment: "Actual performance relative to benchmark - core VBC quality attainment KPI."
 $$;
 
 CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`insurance_risk_adjustment`
@@ -143,43 +146,37 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Risk adjustment revenue and HCC capture: risk scores, payment impact, RADV audit exposure, and recapture rates for actuarial and revenue-integrity steering."
+  comment: "Risk-adjustment KPIs for actuarial and revenue-integrity leaders to monitor RAF scores, HCC capture, and CMS submission completeness that drive risk-based revenue."
   source: "`vibe_healthcare_v1`.`insurance`.`risk_adjustment`"
   dimensions:
+    - name: "risk_model"
+      expr: risk_model
+      comment: "Risk-adjustment model applied (e.g. HCC) for methodology-level analysis."
+    - name: "risk_score_category"
+      expr: risk_score_category
+      comment: "RAF score band for member-acuity segmentation."
     - name: "submission_status"
       expr: submission_status
-      comment: "Status of the risk-adjustment submission to CMS/payer."
-    - name: "radv_audit_status"
-      expr: radv_audit_status
-      comment: "RADV audit status — flags compliance and clawback exposure."
-    - name: "payment_year"
-      expr: payment_year
-      comment: "Payment year for risk-adjustment revenue trending."
-    - name: "recapture_flag"
-      expr: recapture_flag
-      comment: "Whether the HCC was recaptured in the current year — key gap-closure metric."
-    - name: "suspect_flag"
-      expr: suspect_flag
-      comment: "Whether the condition is a suspect (unconfirmed) HCC for chart-chase prioritization."
+      comment: "CMS submission state - drives revenue-integrity completeness tracking."
+    - name: "measurement_year"
+      expr: measurement_year
+      comment: "Measurement year for year-over-year RAF trending."
   measures:
-    - name: "Risk Adjustment Record Count"
+    - name: "risk_record_count"
       expr: COUNT(1)
-      comment: "Number of risk-adjustment records — baseline volume."
-    - name: "Avg Risk Score"
-      expr: AVG(CAST(risk_score AS DOUBLE))
-      comment: "Average member risk score, the primary driver of risk-adjusted revenue."
-    - name: "Avg Disease Score"
-      expr: AVG(CAST(disease_score AS DOUBLE))
-      comment: "Average disease component of the risk score for acuity analysis."
-    - name: "Total Payment Impact"
-      expr: SUM(CAST(payment_impact_amount AS DOUBLE))
-      comment: "Total dollar impact of risk adjustment on payments — revenue at stake."
-    - name: "Total Payment Amount"
-      expr: SUM(CAST(payment_amount AS DOUBLE))
-      comment: "Total risk-adjusted payment dollars."
-    - name: "Distinct Members"
+      comment: "Number of risk-adjustment records - baseline population coverage."
+    - name: "member_count"
       expr: COUNT(DISTINCT mpi_record_id)
-      comment: "Distinct members with risk-adjustment records — population coverage."
+      comment: "Distinct members risk-scored - denominator for average acuity KPIs."
+    - name: "avg_raf_score"
+      expr: AVG(CAST(raf_score AS DOUBLE))
+      comment: "Average RAF score - headline acuity metric driving risk-based revenue."
+    - name: "max_raf_score"
+      expr: MAX(CAST(raf_score AS DOUBLE))
+      comment: "Highest RAF score - identifies most acute members for care management."
+    - name: "total_raf_score"
+      expr: SUM(CAST(raf_score AS DOUBLE))
+      comment: "Sum of RAF scores - aggregate acuity used with member count for weighted averages."
 $$;
 
 CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`insurance_utilization_review`
@@ -187,78 +184,43 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Utilization management performance: review volumes, denial rates, appeal activity, and turnaround-time compliance for UM operations steering."
+  comment: "Utilization-review KPIs for medical-management leadership to monitor authorization decisions, denial rates, appeals, and regulatory turnaround compliance."
   source: "`vibe_healthcare_v1`.`insurance`.`utilization_review`"
   dimensions:
-    - name: "review_status"
-      expr: review_status
-      comment: "Status of the utilization review for pipeline management."
     - name: "review_type"
       expr: review_type
-      comment: "Prospective/concurrent/retrospective review type for UM segmentation."
+      comment: "Type of UR review (prospective, concurrent, retrospective) for workload segmentation."
     - name: "review_decision"
       expr: review_decision
-      comment: "Approval/denial decision, the core UM outcome dimension."
-    - name: "regulatory_timeframe_met"
-      expr: regulatory_timeframe_met
-      comment: "Whether the review met regulatory turnaround requirements — compliance flag."
+      comment: "Outcome of the review (approved, denied, partial) - core decision KPI dimension."
+    - name: "review_status"
+      expr: review_status
+      comment: "Current status of the review case for pipeline monitoring."
+    - name: "denial_reason_code"
+      expr: denial_reason_code
+      comment: "Reason code for denials - drives root-cause and provider-education analysis."
     - name: "review_month"
-      expr: DATE_TRUNC('MONTH', review_completion_date)
-      comment: "Month bucket of review completion for trending."
+      expr: DATE_TRUNC('MONTH', review_initiation_date)
+      comment: "Review initiation bucketed to month for UR volume trending."
   measures:
-    - name: "Review Count"
+    - name: "review_count"
       expr: COUNT(1)
-      comment: "Total utilization reviews performed — baseline UM volume."
-    - name: "Denied Review Count"
-      expr: COUNT(CASE WHEN denial_reason_code IS NOT NULL THEN 1 END)
-      comment: "Count of reviews resulting in a denial — drives appeal and member impact analysis."
-    - name: "Appeal Filed Count"
+      comment: "Number of utilization reviews - baseline UR workload volume."
+    - name: "denied_review_count"
+      expr: COUNT(CASE WHEN review_decision = 'Denied' THEN 1 END)
+      comment: "Count of denied reviews - numerator for denial-rate KPI."
+    - name: "appeal_count"
       expr: COUNT(CASE WHEN appeal_filed = TRUE THEN 1 END)
-      comment: "Count of reviews where an appeal was filed — downstream workload driver."
-    - name: "Timeframe Met Count"
-      expr: COUNT(CASE WHEN regulatory_timeframe_met = TRUE THEN 1 END)
-      comment: "Reviews meeting regulatory turnaround — numerator for compliance rate."
-    - name: "Avg Turnaround Hours"
-      expr: AVG(CAST(turnaround_time_hours AS DOUBLE))
-      comment: "Average review turnaround in hours — UM efficiency and compliance metric."
-$$;
-
-CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`insurance_network_adequacy`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Network adequacy compliance: access standards, provider-to-member ratios, and deficiency tracking for regulatory network-adequacy steering."
-  source: "`vibe_healthcare_v1`.`insurance`.`network_adequacy`"
-  dimensions:
-    - name: "adequacy_determination"
-      expr: adequacy_determination
-      comment: "Whether the network was determined adequate — core regulatory outcome."
-    - name: "assessment_status"
-      expr: assessment_status
-      comment: "Status of the adequacy assessment for workflow tracking."
-    - name: "specialty_category"
-      expr: specialty_category
-      comment: "Specialty grouping to pinpoint access gaps by service line."
-    - name: "state_code"
-      expr: state_code
-      comment: "State of the assessment for regulatory jurisdiction views."
-  measures:
-    - name: "Assessment Count"
-      expr: COUNT(1)
-      comment: "Number of adequacy assessments — baseline volume."
-    - name: "Avg Pct Members Within Standard"
-      expr: AVG(CAST(percentage_members_within_standard AS DOUBLE))
-      comment: "Average share of members meeting time/distance standards — headline adequacy KPI."
-    - name: "Avg Actual Distance Miles"
-      expr: AVG(CAST(actual_average_distance_miles AS DOUBLE))
-      comment: "Average actual member travel distance to providers — access burden metric."
-    - name: "Avg Actual Provider Member Ratio"
-      expr: AVG(CAST(actual_provider_to_member_ratio AS DOUBLE))
-      comment: "Average actual provider-to-member ratio, adequacy sufficiency indicator."
-    - name: "Adequate Assessment Count"
-      expr: COUNT(CASE WHEN essential_community_provider_flag = TRUE THEN 1 END)
-      comment: "Assessments including essential community providers — safety-net access indicator."
+      comment: "Count of reviews with an appeal filed - measures member/provider dispute pressure."
+    - name: "denial_rate_pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN review_decision = 'Denied' THEN 1 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percent of reviews denied - key medical-management and abrasion KPI."
+    - name: "regulatory_timeframe_met_rate_pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN regulatory_timeframe_met = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percent of reviews meeting regulatory turnaround - compliance-risk KPI."
+    - name: "peer_to_peer_rate_pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN peer_to_peer_requested = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percent of reviews escalated to peer-to-peer - indicator of clinical-dispute intensity."
 $$;
 
 CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`insurance_member_enrollment`
@@ -266,122 +228,49 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Membership and enrollment health: enrolled member counts, premium and subsidy volumes, and terminations for membership growth steering."
+  comment: "Member enrollment KPIs for growth and membership leaders to monitor active membership, premium revenue base, subsidy mix, and churn drivers by plan and channel."
   source: "`vibe_healthcare_v1`.`insurance`.`member_enrollment`"
   dimensions:
     - name: "enrollment_status"
       expr: enrollment_status
-      comment: "Enrollment lifecycle status (active, termed, pending) for membership tracking."
+      comment: "Current enrollment state (active, terminated) for membership counts."
     - name: "enrollment_type"
       expr: enrollment_type
-      comment: "Type of enrollment (new, renewal, special enrollment) for channel analysis."
-    - name: "coverage_tier"
-      expr: coverage_tier
-      comment: "Coverage tier (individual, family) for premium mix analysis."
+      comment: "Type of enrollment (new, renewal, special) for growth-mix analysis."
     - name: "enrollment_channel"
       expr: enrollment_channel
-      comment: "Acquisition channel for enrollment marketing ROI."
+      comment: "Acquisition channel for enrollment - channel-efficiency segmentation."
+    - name: "coverage_tier"
+      expr: coverage_tier
+      comment: "Coverage tier (individual, family) for premium-mix analysis."
+    - name: "termination_reason"
+      expr: termination_reason
+      comment: "Reason for termination - drives churn root-cause analysis."
     - name: "enrollment_month"
       expr: DATE_TRUNC('MONTH', enrollment_effective_date)
-      comment: "Month bucket of enrollment effective date for growth trending."
+      comment: "Effective date bucketed to month for enrollment trending."
   measures:
-    - name: "Enrollment Count"
+    - name: "enrollment_count"
       expr: COUNT(1)
-      comment: "Number of enrollment records — baseline volume."
-    - name: "Distinct Enrolled Members"
+      comment: "Number of enrollment records - baseline membership volume."
+    - name: "distinct_member_count"
       expr: COUNT(DISTINCT mpi_record_id)
-      comment: "Distinct enrolled members — headline membership count."
-    - name: "Total Premium Amount"
+      comment: "Distinct enrolled members - core membership-size KPI for growth steering."
+    - name: "terminated_enrollment_count"
+      expr: COUNT(CASE WHEN enrollment_status = 'Terminated' THEN 1 END)
+      comment: "Count of terminated enrollments - numerator for churn analysis."
+    - name: "churn_rate_pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN enrollment_status = 'Terminated' THEN 1 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percent of enrollments terminated - membership retention KPI."
+    - name: "total_premium_amount"
       expr: SUM(CAST(premium_amount AS DOUBLE))
-      comment: "Total premium dollars associated with enrollments — recurring revenue base."
-    - name: "Total Subsidy Amount"
+      comment: "Total premium across enrollments - membership-driven revenue base."
+    - name: "total_subsidy_amount"
       expr: SUM(CAST(subsidy_amount AS DOUBLE))
-      comment: "Total subsidy dollars supporting enrollment premiums."
-    - name: "Terminated Enrollment Count"
-      expr: COUNT(CASE WHEN enrollment_termination_date IS NOT NULL THEN 1 END)
-      comment: "Enrollments with a termination date — churn/attrition indicator."
-$$;
-
-CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`insurance_member_attribution`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Population attribution and VBC panel management: attributed members, risk scores, and capitation amounts for value-based population steering."
-  source: "`vibe_healthcare_v1`.`insurance`.`member_attribution`"
-  dimensions:
-    - name: "attribution_status"
-      expr: attribution_status
-      comment: "Status of member attribution for panel accuracy."
-    - name: "attribution_method"
-      expr: attribution_method
-      comment: "Method used to attribute members (claims-based, prospective) for methodology analysis."
-    - name: "attribution_type"
-      expr: attribution_type
-      comment: "Type of attribution arrangement for VBC segmentation."
-    - name: "performance_year"
-      expr: performance_year
-      comment: "Performance year for attribution trending."
-    - name: "shared_savings_eligible"
-      expr: shared_savings_eligible
-      comment: "Whether the attributed member is shared-savings eligible — VBC revenue driver."
-  measures:
-    - name: "Attribution Count"
-      expr: COUNT(1)
-      comment: "Number of attribution records — baseline volume."
-    - name: "Distinct Attributed Members"
-      expr: COUNT(DISTINCT mpi_record_id)
-      comment: "Distinct attributed members — the managed population size."
-    - name: "Avg Risk Score"
-      expr: AVG(CAST(risk_score AS DOUBLE))
-      comment: "Average risk score of attributed members — panel acuity for capitation adequacy."
-    - name: "Total Capitation Amount"
-      expr: SUM(CAST(capitation_amount AS DOUBLE))
-      comment: "Total capitation dollars tied to attributed members — VBC revenue."
-    - name: "Avg Attribution Confidence"
-      expr: AVG(CAST(attribution_confidence_score AS DOUBLE))
-      comment: "Average attribution confidence score — data-quality/panel-reliability metric."
-$$;
-
-CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`insurance_accountable_care_organization`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "ACO performance oversight: shared savings vs losses, expenditure against benchmark, and quality scores for ACO program steering."
-  source: "`vibe_healthcare_v1`.`insurance`.`accountable_care_organization`"
-  dimensions:
-    - name: "aco_type"
-      expr: aco_type
-      comment: "ACO model type for program segmentation."
-    - name: "track_level"
-      expr: track_level
-      comment: "Risk track level (upside vs two-sided) for risk-portfolio analysis."
-    - name: "program_model"
-      expr: program_model
-      comment: "CMS program model (MSSP, REACH) for program comparison."
-    - name: "performance_year"
-      expr: performance_year
-      comment: "Performance year for ACO trending."
-  measures:
-    - name: "ACO Count"
-      expr: COUNT(1)
-      comment: "Number of ACO records — baseline."
-    - name: "Total Shared Savings"
-      expr: SUM(CAST(shared_savings_amount AS DOUBLE))
-      comment: "Total shared savings earned by ACOs — headline VBC outcome."
-    - name: "Total Shared Loss"
-      expr: SUM(CAST(shared_loss_amount AS DOUBLE))
-      comment: "Total shared losses owed by ACOs — downside risk realized."
-    - name: "Total Actual Expenditure"
-      expr: SUM(CAST(actual_expenditure_amount AS DOUBLE))
-      comment: "Total actual expenditure for attributed populations."
-    - name: "Total Benchmark Expenditure"
-      expr: SUM(CAST(benchmark_expenditure_amount AS DOUBLE))
-      comment: "Total benchmark expenditure target — savings comparison baseline."
-    - name: "Avg Quality Score"
-      expr: AVG(CAST(quality_score AS DOUBLE))
-      comment: "Average ACO quality score, gate for shared-savings eligibility."
+      comment: "Total subsidy amount - exchange/subsidy exposure of the book."
+    - name: "avg_premium_amount"
+      expr: AVG(CAST(premium_amount AS DOUBLE))
+      comment: "Average premium per enrollment - premium yield per member."
 $$;
 
 CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`insurance_accumulator`
@@ -389,38 +278,225 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Member cost-share accumulator tracking: accumulated amounts, remaining deductible/OOP, and threshold attainment for benefit-utilization steering."
+  comment: "Benefit-accumulator KPIs for actuarial and member-experience teams to monitor deductible and out-of-pocket progression, remaining exposure, and cost-sharing burden."
   source: "`vibe_healthcare_v1`.`insurance`.`accumulator`"
   dimensions:
     - name: "accumulator_type"
       expr: accumulator_type
-      comment: "Type of accumulator (deductible, OOP max) for cost-share analysis."
-    - name: "accumulator_status"
-      expr: accumulator_status
-      comment: "Status of the accumulator record."
-    - name: "coverage_level"
-      expr: coverage_level
-      comment: "Individual vs family coverage level for cost-share segmentation."
-    - name: "benefit_year"
-      expr: benefit_year
-      comment: "Benefit year for accumulator reset trending."
-    - name: "threshold_met_indicator"
-      expr: threshold_met_indicator
-      comment: "Whether the deductible/OOP threshold has been met — claims-liability signal."
+      comment: "Type of accumulator (deductible, OOP) for cost-sharing segmentation."
+    - name: "service_category"
+      expr: service_category
+      comment: "Service category the accumulator applies to for spend-category analysis."
+    - name: "network_tier"
+      expr: network_tier
+      comment: "Network tier for in vs out-of-network cost-share analysis."
+    - name: "in_network_flag"
+      expr: in_network_flag
+      comment: "Whether accumulation is in-network - drives network-steerage insight."
   measures:
-    - name: "Accumulator Count"
+    - name: "accumulator_count"
       expr: COUNT(1)
-      comment: "Number of accumulator records — baseline volume."
-    - name: "Total Accumulated Amount"
-      expr: SUM(CAST(accumulated_amount AS DOUBLE))
-      comment: "Total member cost-share accumulated to date."
-    - name: "Total Remaining Amount"
-      expr: SUM(CAST(remaining_amount AS DOUBLE))
-      comment: "Total remaining before thresholds met — forward payer liability exposure."
-    - name: "Distinct Members"
+      comment: "Number of accumulator records - baseline coverage volume."
+    - name: "total_deductible_accumulated"
+      expr: SUM(CAST(deductible_accumulated_amount AS DOUBLE))
+      comment: "Total deductible met across members - member cost-burden indicator."
+    - name: "total_oop_accumulated"
+      expr: SUM(CAST(oop_accumulated_amount AS DOUBLE))
+      comment: "Total out-of-pocket accumulated - member financial-burden KPI."
+    - name: "total_oop_remaining"
+      expr: SUM(CAST(oop_remaining_amount AS DOUBLE))
+      comment: "Total remaining out-of-pocket exposure - forward liability estimate."
+    - name: "avg_deductible_remaining"
+      expr: AVG(CAST(deductible_remaining_amount AS DOUBLE))
+      comment: "Average remaining deductible per member - cost-share progression indicator."
+    - name: "oop_utilization_pct"
+      expr: ROUND(100.0 * SUM(CAST(oop_accumulated_amount AS DOUBLE)) / NULLIF(SUM(CAST(limit_amount AS DOUBLE)), 0), 2)
+      comment: "Accumulated OOP as percent of limit - shows how far members are through cost-share caps."
+$$;
+
+CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`insurance_coordination_of_benefits`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Coordination-of-benefits KPIs for payment-integrity teams to monitor primary vs secondary payer recovery and COB determination coverage."
+  source: "`vibe_healthcare_v1`.`insurance`.`coordination_of_benefits`"
+  dimensions:
+    - name: "cob_status"
+      expr: cob_status
+      comment: "Status of the COB determination for payment-integrity tracking."
+    - name: "cob_type"
+      expr: cob_type
+      comment: "Type of coordination (primary, secondary) for recovery analysis."
+    - name: "cob_determination_method"
+      expr: cob_determination_method
+      comment: "Method used to determine COB order - drives automation-vs-manual analysis."
+    - name: "cob_determination_month"
+      expr: DATE_TRUNC('MONTH', cob_determination_date)
+      comment: "Determination date bucketed to month for COB trending."
+  measures:
+    - name: "cob_record_count"
+      expr: COUNT(1)
+      comment: "Number of COB records - baseline coordination volume."
+    - name: "total_primary_paid"
+      expr: SUM(CAST(primary_payer_paid_amount AS DOUBLE))
+      comment: "Total paid by primary payer - primary-liability spend."
+    - name: "total_other_paid"
+      expr: SUM(CAST(other_payer_paid_amount AS DOUBLE))
+      comment: "Total paid by other payers - COB recovery/offset amount."
+    - name: "avg_primary_paid"
+      expr: AVG(CAST(primary_payer_paid_amount AS DOUBLE))
+      comment: "Average primary payer payment per COB record."
+$$;
+
+CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`insurance_capitation_contract`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Capitation-contract KPIs for network-strategy leaders to monitor PMPM rate structure, quality-withhold exposure, and stop-loss protection across at-risk contracts."
+  source: "`vibe_healthcare_v1`.`insurance`.`capitation_contract`"
+  dimensions:
+    - name: "contract_status"
+      expr: contract_status
+      comment: "Contract lifecycle state for active at-risk portfolio tracking."
+    - name: "risk_arrangement_type"
+      expr: risk_arrangement_type
+      comment: "Type of risk arrangement (full-risk, shared) for portfolio-risk segmentation."
+    - name: "payment_frequency"
+      expr: payment_frequency
+      comment: "Capitation payment cadence for cash-flow planning."
+    - name: "quality_bonus_eligible"
+      expr: quality_bonus_eligible
+      comment: "Whether the contract is quality-bonus eligible - incentive-design analysis."
+    - name: "effective_year"
+      expr: YEAR(effective_date)
+      comment: "Contract effective year for cohort-based contract analysis."
+  measures:
+    - name: "contract_count"
+      expr: COUNT(1)
+      comment: "Number of capitation contracts - baseline at-risk contract volume."
+    - name: "avg_pmpm_rate"
+      expr: AVG(CAST(capitation_rate_pmpm AS DOUBLE))
+      comment: "Average PMPM capitation rate - core at-risk pricing KPI."
+    - name: "avg_quality_withhold_pct"
+      expr: AVG(CAST(quality_withhold_percentage AS DOUBLE))
+      comment: "Average quality withhold percentage - performance-at-risk design metric."
+    - name: "avg_stop_loss_threshold"
+      expr: AVG(CAST(stop_loss_threshold AS DOUBLE))
+      comment: "Average stop-loss threshold - catastrophic-risk protection level."
+$$;
+
+CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`insurance_network_adequacy`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Network-adequacy KPIs for network-management and compliance leaders to monitor time/distance standard attainment and provider-to-member ratios by specialty and region."
+  source: "`vibe_healthcare_v1`.`insurance`.`network_adequacy`"
+  dimensions:
+    - name: "adequacy_status"
+      expr: adequacy_status
+      comment: "Overall adequacy status for compliance scorecarding."
+    - name: "compliance_status"
+      expr: compliance_status
+      comment: "Regulatory compliance status of the network assessment."
+    - name: "specialty_type"
+      expr: specialty_type
+      comment: "Specialty being assessed for adequacy - drives gap targeting."
+    - name: "geographic_region"
+      expr: geographic_region
+      comment: "Region of the adequacy assessment for geographic gap analysis."
+    - name: "assessment_month"
+      expr: DATE_TRUNC('MONTH', assessment_date)
+      comment: "Assessment date bucketed to month for adequacy trending."
+  measures:
+    - name: "assessment_count"
+      expr: COUNT(1)
+      comment: "Number of adequacy assessments - baseline compliance workload."
+    - name: "distance_standard_met_rate_pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN distance_standard_met = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percent of assessments meeting distance standards - core adequacy-compliance KPI."
+    - name: "time_standard_met_rate_pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN time_standard_met = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percent of assessments meeting wait-time standards - access-compliance KPI."
+    - name: "avg_max_distance_miles"
+      expr: AVG(CAST(max_distance_miles AS DOUBLE))
+      comment: "Average max distance to nearest provider - member-access burden indicator."
+    - name: "avg_provider_to_member_ratio"
+      expr: AVG(CAST(provider_to_member_ratio AS DOUBLE))
+      comment: "Average provider-to-member ratio - network-capacity adequacy metric."
+$$;
+
+CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`insurance_network_participation`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Provider network-participation KPIs for network-operations leaders to monitor credentialing status, panel openness, and recredentialing pipeline health."
+  source: "`vibe_healthcare_v1`.`insurance`.`insurance_network_participation`"
+  dimensions:
+    - name: "participation_status"
+      expr: participation_status
+      comment: "Provider participation status for active-network sizing."
+    - name: "credentialing_status"
+      expr: credentialing_status
+      comment: "Credentialing state - drives onboarding-pipeline analysis."
+    - name: "network_tier"
+      expr: network_tier
+      comment: "Network tier of participation for tiered-network analysis."
+    - name: "panel_status"
+      expr: panel_status
+      comment: "Panel open/closed status for access and steerage analysis."
+    - name: "effective_month"
+      expr: DATE_TRUNC('MONTH', effective_date)
+      comment: "Participation effective date bucketed to month for network-growth trending."
+  measures:
+    - name: "participation_count"
+      expr: COUNT(1)
+      comment: "Number of participation records - baseline network-size volume."
+    - name: "distinct_provider_count"
+      expr: COUNT(DISTINCT clinician_id)
+      comment: "Distinct participating clinicians - core network-breadth KPI."
+    - name: "accepting_new_patients_rate_pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN accepting_new_patients = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percent of providers accepting new patients - member-access KPI."
+    - name: "directory_visible_rate_pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN directory_visible = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percent of providers visible in directory - directory-accuracy/compliance indicator."
+$$;
+
+CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`insurance_member_attribution`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Member-attribution KPIs for population-health leaders to monitor attributed panel size, attribution churn, and method mix underlying VBC financial arrangements."
+  source: "`vibe_healthcare_v1`.`insurance`.`member_attribution`"
+  dimensions:
+    - name: "attribution_status"
+      expr: attribution_status
+      comment: "Current attribution status for active-panel sizing."
+    - name: "attribution_method"
+      expr: attribution_method
+      comment: "Method of attribution (claims-based, selection) for methodology analysis."
+    - name: "attribution_type"
+      expr: attribution_type
+      comment: "Type of attribution for VBC-arrangement segmentation."
+    - name: "measurement_year"
+      expr: measurement_year
+      comment: "Measurement year for year-over-year attributed-panel trending."
+  measures:
+    - name: "attribution_count"
+      expr: COUNT(1)
+      comment: "Number of attribution records - baseline attribution volume."
+    - name: "attributed_member_count"
       expr: COUNT(DISTINCT mpi_record_id)
-      comment: "Distinct members with accumulators — coverage breadth."
-    - name: "Threshold Met Count"
-      expr: COUNT(CASE WHEN threshold_met_indicator = TRUE THEN 1 END)
-      comment: "Members who met deductible/OOP thresholds — full-liability population."
+      comment: "Distinct attributed members - core attributed-panel-size KPI for VBC."
+    - name: "attributed_provider_count"
+      expr: COUNT(DISTINCT clinician_id)
+      comment: "Distinct providers with attributed members - panel-distribution indicator."
+    - name: "active_attribution_rate_pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN attribution_status = 'Active' THEN 1 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percent of attributions currently active - attribution-stability KPI."
 $$;

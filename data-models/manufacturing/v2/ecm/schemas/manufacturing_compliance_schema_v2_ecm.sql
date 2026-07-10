@@ -1,5 +1,5 @@
--- Schema for Domain: compliance | Business:  | Version: v2_ecm
--- Generated on: 2026-07-10 12:59:00
+-- Schema for Domain: compliance | Business: Manufacturing | Version: v2_ecm
+-- Generated on: 2026-07-03 05:59:30
 
 -- ========= DATABASE =========
 CREATE DATABASE IF NOT EXISTS `vibe_manufacturing_v1`.`compliance` COMMENT 'Regulatory compliance and environmental health and safety domain managing ISO 14001 environmental records, ISO 45001 safety incidents, OSHA reporting, EPA emissions data, CE/UL product certifications, IEC 62443 cybersecurity compliance, audit management, regulatory filings, and corrective actions.';
@@ -7,7 +7,6 @@ CREATE DATABASE IF NOT EXISTS `vibe_manufacturing_v1`.`compliance` COMMENT 'Regu
 -- ========= TABLES =========
 CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`compliance`.`regulatory_requirement` (
     `regulatory_requirement_id` BIGINT COMMENT 'Unique surrogate key for each regulatory requirement record.',
-    `family_id` BIGINT COMMENT 'add column product_family_id (BIGINT) with FK to product.family.family_id - regulatory requirements often apply to entire product families',
     `adoption_status` STRING COMMENT 'Current internal adoption state of the requirement.. Valid values are `adopted|planned|not_adopted|under_review`',
     `applicability_scope` STRING COMMENT 'Scope of applicability (e.g., plant, product line, business unit, global).',
     `audit_frequency_months` STRING COMMENT 'How often internal audits must be performed for this requirement.',
@@ -18,17 +17,18 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`compliance`.`regulatory_require
     `compliance_level` STRING COMMENT 'Degree to which compliance is required by law or policy.. Valid values are `mandatory|optional|recommended`',
     `compliance_status` STRING COMMENT 'Current compliance state of the organization with respect to this requirement.. Valid values are `compliant|non_compliant|partial|unknown`',
     `created_timestamp` TIMESTAMP COMMENT 'Timestamp when the regulatory requirement record was first created in the data lake.',
-    `regulatory_requirement_description` STRING COMMENT 'Full textual description of the requirement, including scope and key obligations.',
     `document_last_updated` TIMESTAMP COMMENT 'Timestamp of the most recent amendment to the requirement document.',
     `document_release_date` DATE COMMENT 'Date the current version of the requirement document was released.',
     `document_version` STRING COMMENT 'Version identifier of the official requirement document.',
     `effective_date` DATE COMMENT 'Date on which the requirement becomes effective.',
     `expiration_date` DATE COMMENT 'Date on which the requirement expires or is superseded, if applicable.',
     `jurisdiction` STRING COMMENT 'Geographic jurisdiction to which the requirement applies, expressed as a three‑letter ISO country code.',
+    `last_modified_timestamp` TIMESTAMP COMMENT '',
     `last_reviewed_date` DATE COMMENT 'Date when the requirement was last reviewed for relevance or changes.',
     `notes` STRING COMMENT 'Free‑form field for any supplemental information or comments.',
     `penalty_amount` DECIMAL(18,2) COMMENT 'Monetary penalty associated with non‑compliance, if defined.',
     `penalty_currency` STRING COMMENT 'Three‑letter ISO currency code for the penalty amount.',
+    `regulatory_requirement_description` STRING COMMENT 'Full textual description of the requirement, including scope and key obligations.',
     `regulatory_requirement_status` STRING COMMENT 'Current lifecycle status of the requirement within the organization.. Valid values are `active|inactive|pending|retired`',
     `reporting_requirements` STRING COMMENT 'Specific reporting obligations (e.g., quarterly emissions report).',
     `requirement_code` STRING COMMENT 'Unique business identifier or code assigned by the issuing authority (e.g., ISO‑9001, OSHA‑1910).',
@@ -38,6 +38,7 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`compliance`.`regulatory_require
     `risk_level` STRING COMMENT 'Risk rating associated with non‑compliance.. Valid values are `low|medium|high|critical`',
     `source_url` STRING COMMENT 'Web link to the official source or full text of the requirement.',
     `updated_timestamp` TIMESTAMP COMMENT 'Timestamp of the most recent update to the regulatory requirement record.',
+    `created_by` STRING COMMENT '',
     CONSTRAINT pk_regulatory_requirement PRIMARY KEY(`regulatory_requirement_id`)
 ) COMMENT 'Master catalog of all applicable laws, regulations, standards, and compliance obligations governing Manufacturing operations across all jurisdictions. Encompasses ISO 9001, ISO 14001, ISO 45001, ISO 50001, IEC 62443, OSHA, EPA, CE Marking, UL, ANSI, REACH, RoHS, and jurisdiction-specific requirements. Each record defines the regulation source, issuing authority, jurisdiction (federal, state, local, EU, international), applicability scope (plant, product line, geography), effective date, mandatory compliance deadline, review frequency, and current adoption status. Serves as the single authoritative legal register and compliance universe from which all specific obligations, permits, and filings are derived.';
 
@@ -58,6 +59,7 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`compliance`.`obligation` (
     `compliance_status` STRING COMMENT 'Result of the most recent compliance assessment.. Valid values are `compliant|partially_compliant|non_compliant|not_assessed|deferred`',
     `corrective_action_due_date` DATE COMMENT 'Target date for completing the corrective action.',
     `created_timestamp` TIMESTAMP COMMENT 'Date‑time when the obligation record was first created in the system.',
+    `obligation_description` STRING COMMENT '',
     `due_date` DATE COMMENT 'Deadline by which compliance must be demonstrated.',
     `effective_from` DATE COMMENT 'Date when the obligation becomes binding.',
     `effective_until` DATE COMMENT 'Date when the obligation expires, if applicable.',
@@ -67,15 +69,18 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`compliance`.`obligation` (
     `is_mandatory` BOOLEAN COMMENT 'Indicates whether the obligation is mandatory (true) or optional (false).',
     `jurisdiction` STRING COMMENT 'Geographic or legal jurisdiction (e.g., country code) to which the obligation applies.',
     `last_assessment_date` DATE COMMENT 'Date of the most recent compliance assessment.',
+    `last_modified_timestamp` TIMESTAMP COMMENT '',
     `next_assessment_due` DATE COMMENT 'Planned date for the next compliance assessment.',
     `notes` STRING COMMENT 'Free‑form comments or additional information about the obligation.',
     `obligation_status` STRING COMMENT 'Current lifecycle state of the obligation.. Valid values are `active|inactive|pending|closed|expired`',
     `obligation_type` STRING COMMENT 'Category of the regulatory requirement the obligation satisfies.. Valid values are `environmental|safety|cybersecurity|quality|financial`',
+    `owner_name` STRING COMMENT '',
     `recurrence_schedule` STRING COMMENT 'Frequency with which the obligation must be reassessed or renewed.. Valid values are `annual|semi-annual|quarterly|monthly|one-time|ad-hoc`',
     `remediation_action` STRING COMMENT 'Planned corrective action to address a non‑compliant status.',
     `risk_rating` DECIMAL(18,2) COMMENT 'Numeric risk score (e.g., 0.00‑10.00) derived from severity and likelihood.',
     `risk_severity` STRING COMMENT 'Qualitative severity of the risk if the obligation is not met.. Valid values are `low|medium|high|critical`',
     `updated_timestamp` TIMESTAMP COMMENT 'Date‑time of the most recent modification to the obligation record.',
+    `created_by` STRING COMMENT '',
     CONSTRAINT pk_obligation PRIMARY KEY(`obligation_id`)
 ) COMMENT 'Operational compliance obligation instance record assigning a specific regulatory requirement to a designated organizational unit, facility, product line, or process within Manufacturing. Each obligation represents a concrete compliance task or demonstration requirement derived from the regulatory_requirement master catalog. Tracks obligation owner, responsible department, due date, recurrence schedule, current compliance status (compliant, partially compliant, non-compliant, not yet assessed), evidence of compliance (linked documents, test results, certifications), last assessment date, next assessment due, and linkage to the governing regulatory requirement. Enables compliance gap analysis, obligation coverage reporting, and proactive deadline management across all jurisdictions and standards.';
 
@@ -83,28 +88,38 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`compliance`.`audit_plan` (
     `audit_plan_id` BIGINT COMMENT 'Unique identifier for the audit plan record.',
     `employee_id` BIGINT COMMENT 'Foreign key linking to workforce.employee. Business justification: Links audit plan to the employee acting as lead auditor, needed for audit scheduling and responsibility tracking.',
     `project_header_id` BIGINT COMMENT 'Foreign key linking to project.project_header. Business justification: Audit plans are created for projects to assess compliance with standards and regulations.',
+    `regulatory_requirement_id` BIGINT COMMENT '',
     `applicable_standards` STRING COMMENT 'Standards, regulations, or certifications the audit addresses (e.g., ISO 14001, ISO 45001, IEC 62443).',
     `audit_frequency` STRING COMMENT 'Planned recurrence of the audit (e.g., annual, semi‑annual, quarterly, monthly, ad‑hoc).. Valid values are `annual|semi_annual|quarterly|monthly|ad_hoc`',
     `audit_methodology` STRING COMMENT 'Methodological approach used for the audit (e.g., checklist, interview, sampling).',
     `audit_objectives` STRING COMMENT 'Key objectives and goals the audit intends to achieve.',
     `audit_plan_status` STRING COMMENT 'Current lifecycle status of the audit plan.. Valid values are `planned|in_progress|completed|cancelled|postponed|deferred`',
+    `audit_scope` STRING COMMENT '',
     `audit_score` DECIMAL(18,2) COMMENT 'Overall audit performance score (e.g., 0‑100 scale).',
     `audit_team` STRING COMMENT 'Comma‑separated list of auditors assigned to execute the audit.',
     `audit_type` STRING COMMENT 'Classification of the audit (internal, external, supplier, regulatory, certification).. Valid values are `internal|external|supplier|regulatory|certification`',
+    `audit_plan_code` STRING COMMENT '',
     `compliance_score` DECIMAL(18,2) COMMENT 'Aggregated compliance rating derived from audit findings.',
     `corrective_action_due_date` DATE COMMENT 'Deadline by which identified corrective actions must be completed.',
+    `created_timestamp` TIMESTAMP COMMENT '',
     `creation_timestamp` TIMESTAMP COMMENT 'Timestamp when the audit plan record was first created in the system.',
+    `audit_plan_description` STRING COMMENT '',
     `effective_from` DATE COMMENT 'Date when the audit plan becomes effective.',
     `effective_until` DATE COMMENT 'Date when the audit plan expires or is no longer active (nullable for open‑ended plans).',
     `findings_count` STRING COMMENT 'Total count of audit findings recorded for the plan.',
+    `frequency_months` STRING COMMENT '',
+    `last_modified_timestamp` TIMESTAMP COMMENT '',
     `last_updated_timestamp` TIMESTAMP COMMENT 'Timestamp of the most recent modification to the audit plan record.',
     `notes` STRING COMMENT 'Free‑form field for any supplemental information or comments.',
     `plan_code` STRING COMMENT 'External business identifier or code used to reference the audit plan.',
+    `planned_end_date` TIMESTAMP COMMENT '',
+    `planned_start_date` TIMESTAMP COMMENT '',
     `risk_level` STRING COMMENT 'Risk rating assigned to the audit based on potential impact and likelihood.. Valid values are `low|medium|high|critical`',
     `scheduled_end_date` DATE COMMENT 'Planned calendar date when the audit is expected to conclude.',
     `scheduled_start_date` DATE COMMENT 'Planned calendar date when the audit is to commence.',
     `scope_description` STRING COMMENT 'Narrative description of the audit scope, including processes, facilities, and products covered.',
     `target_facilities` STRING COMMENT 'Facilities, plants, or operational units that are subject to the audit.',
+    `created_by` STRING COMMENT '',
     CONSTRAINT pk_audit_plan PRIMARY KEY(`audit_plan_id`)
 ) COMMENT 'Planned internal or external audit program record defining the audit scope, type (ISO surveillance, OSHA inspection, IEC 62443 cybersecurity, supplier audit, internal quality audit, management system review), scheduled dates, lead auditor, audit team, applicable standards, and target facilities or processes. Serves as the master schedule and compliance calendar for all audit and periodic evaluation activities across Manufacturing.';
 
@@ -117,27 +132,35 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`compliance`.`audit_event` (
     `project_header_id` BIGINT COMMENT 'Foreign key linking to project.project_header. Business justification: Audit events are logged against the project they audit, supporting traceability and reporting.',
     `assessment_method` STRING COMMENT 'Technique used to conduct the audit.. Valid values are `on_site|remote|document_review|observation|testing|checklist`',
     `assessment_type` STRING COMMENT 'Category of the audit activity (e.g., certification_audit, regulatory_inspection, internal_audit, periodic_evaluation, safety_inspection, cybersecurity_assessment, management_review). [ENUM-REF-CANDIDATE: certification_audit|regulatory_inspection|internal_audit|periodic_evaluation|safety_inspection|cybersecurity_assessment|management_review — promote to reference product]',
+    `audit_date` TIMESTAMP COMMENT '',
     `audit_event_status` STRING COMMENT 'Current lifecycle state of the audit event record.. Valid values are `open|closed|in_progress|cancelled`',
     `auditor_name` STRING COMMENT 'Name of the individual who performed the audit.',
     `certification_body` STRING COMMENT 'External organization that issued a certification (e.g., ISO, UL, CE).',
+    `audit_event_code` STRING COMMENT '',
     `corrective_action_due_date` DATE COMMENT 'Target date for completion of required corrective actions.',
     `corrective_action_required` BOOLEAN COMMENT 'Indicates whether a corrective action plan is mandated.',
     `created_timestamp` TIMESTAMP COMMENT 'Timestamp when the audit event record was first created in the system.',
     `department` STRING COMMENT 'Organizational department responsible for the audited area.',
+    `audit_event_description` STRING COMMENT '',
     `documentation_link` STRING COMMENT 'URL or path to supporting audit documentation and evidence.',
     `event_timestamp` TIMESTAMP COMMENT 'Date and time when the audit or inspection was performed.',
-    `evidence_attached` BOOLEAN COMMENT 'True if supporting evidence files are attached to the audit record.',
+    `evidence_attached` TIMESTAMP COMMENT 'True if supporting evidence files are attached to the audit record.',
+    `findings_count` STRING COMMENT '',
     `follow_up_action` STRING COMMENT 'Planned follow‑up activity after the audit closure.',
     `hazards_identified` STRING COMMENT 'List of safety or health hazards discovered during the audit.',
+    `last_modified_timestamp` TIMESTAMP COMMENT '',
     `location` STRING COMMENT 'Physical location or facility where the audit took place.',
+    `notes` STRING COMMENT '',
     `outcome` STRING COMMENT 'Result of the audit after evaluation.. Valid values are `conforming|nonconformance|observation|pass|fail`',
     `regulatory_agency` STRING COMMENT 'Government or industry agency responsible for the inspection (e.g., OSHA, EPA).',
+    `result_rating` STRING COMMENT '',
     `risk_score` DECIMAL(18,2) COMMENT 'Numerical risk rating derived from severity and likelihood (0.00‑10.00).',
     `scope` STRING COMMENT 'Defined boundaries of the audit (facility, zone, process, system, etc.).',
     `severity_rating` STRING COMMENT 'Risk severity assigned to any non‑conformance or observation.. Valid values are `critical|high|medium|low|informational`',
     `summary` STRING COMMENT 'Free‑text summary of the audit findings and observations.',
     `updated_timestamp` TIMESTAMP COMMENT 'Timestamp of the most recent modification to the audit event record.',
     `vulnerabilities_identified` STRING COMMENT 'Security or process vulnerabilities uncovered, especially for cybersecurity assessments.',
+    `created_by` STRING COMMENT '',
     CONSTRAINT pk_audit_event PRIMARY KEY(`audit_event_id`)
 ) COMMENT 'Unified execution record of any compliance assessment, verification, or inspection activity conducted at Manufacturing. Encompasses formal certification audits (ISO 9001, ISO 14001, ISO 45001, IEC 62443), regulatory inspections (OSHA, EPA), internal quality audits, periodic compliance evaluations (ISO 14001 Clause 9.1.2, ISO 45001 Clause 9.1.2), workplace safety inspections and walkthroughs (routine, pre-startup, LOTO verification, fire safety, ergonomic), cybersecurity risk assessments (IEC 62443-3-2 zone/conduit analysis, NIST CSF), and management system reviews. Captures assessment type (certification_audit, regulatory_inspection, internal_audit, periodic_evaluation, safety_inspection, cybersecurity_assessment, management_review), actual dates, assessor/auditor names, assessment method (on-site, remote, document review, observation, testing, checklist), scope (facility, zone, process, system, area), overall outcome (conforming, nonconformance, observation, pass/fail), severity/risk rating, summary narrative, hazards or vulnerabilities identified, and certification body or regulatory agency involved. Links to the governing audit_plan and generates audit_findings. Serves as the single authoritative transactional record for ALL compliance verification activities at Manufacturing.';
 
@@ -145,24 +168,28 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`compliance`.`compliance_audit_f
     `compliance_audit_finding_id` BIGINT COMMENT 'Unique identifier for the audit finding record.',
     `control_system_id` BIGINT COMMENT 'Foreign key linking to automation.control_system. Business justification: Audit findings often target a specific control system; linking enables traceability for corrective actions.',
     `controlled_document_id` BIGINT COMMENT 'Identifier of the supporting evidence document linked to the finding.',
-    `customer_account_id` BIGINT COMMENT 'Foreign key linking to customer.customer_account. Business justification: Audit findings are tied to the audited customer account; this link supports the Audit Findings per Account compliance report.',
     `prior_finding_id` BIGINT COMMENT 'Identifier of the prior related finding, if any.',
     `project_header_id` BIGINT COMMENT 'Foreign key linking to project.project_header. Business justification: Findings are linked to the project they affect to drive corrective actions within that project.',
     `employee_id` BIGINT COMMENT 'Foreign key linking to workforce.employee. Business justification: Assigns a responsible employee for corrective action on each finding, essential for CAPA tracking.',
+    `audit_event_id` BIGINT COMMENT 'Identifier of the audit event that generated this finding.',
     `actual_resolution_date` DATE COMMENT 'Date when the finding was actually resolved.',
     `affected_process` STRING COMMENT 'Business process impacted by the finding.. Valid values are `design|production|procurement|quality|maintenance|customer_service`',
-    `audit_event_id` BIGINT COMMENT 'Identifier of the audit event that generated this finding.',
     `audit_finding_number` STRING COMMENT 'Human‑readable identifier for the finding used in reports.. Valid values are `^AF-d{6}$`',
     `clause_violated` STRING COMMENT 'Specific clause or requirement that was violated.',
+    `closure_date` TIMESTAMP COMMENT '',
+    `compliance_audit_finding_description` STRING COMMENT 'Detailed narrative of the audit finding.',
     `compliance_audit_finding_status` STRING COMMENT 'Current lifecycle status of the finding.. Valid values are `open|in_progress|closed|deferred|rejected`',
     `corrective_action_description` STRING COMMENT 'Description of the corrective action to be taken.',
+    `corrective_action_due_date` TIMESTAMP COMMENT '',
     `corrective_action_required` BOOLEAN COMMENT 'Indicates whether a corrective action is mandated.',
     `created_timestamp` TIMESTAMP COMMENT 'Timestamp when the finding record was created in the system.',
-    `compliance_audit_finding_description` STRING COMMENT 'Detailed narrative of the audit finding.',
     `discovery_date` DATE COMMENT 'Date when the finding was identified.',
+    `finding_code` STRING COMMENT '',
+    `finding_description` STRING COMMENT '',
     `finding_type` STRING COMMENT 'Category of the audit finding indicating its nature.. Valid values are `major_nonconformance|minor_nonconformance|observation|opportunity_for_improvement`',
     `impact_area` STRING COMMENT 'Primary business area impacted by the finding.. Valid values are `safety|environment|quality|cost|schedule|regulatory`',
     `is_repeat_finding` BOOLEAN COMMENT 'Indicates if this finding repeats a previously recorded issue.',
+    `last_modified_timestamp` TIMESTAMP COMMENT '',
     `notes` STRING COMMENT 'Free‑form notes related to the finding.',
     `regulatory_reference` STRING COMMENT 'Reference to the regulatory standard or clause associated with the finding.',
     `reported_by` STRING COMMENT 'Name or identifier of the person who reported the finding.',
@@ -171,6 +198,7 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`compliance`.`compliance_audit_f
     `severity` STRING COMMENT 'Severity rating of the finding based on impact.. Valid values are `critical|high|medium|low|informational`',
     `target_resolution_date` DATE COMMENT 'Planned date for corrective action completion.',
     `updated_timestamp` TIMESTAMP COMMENT 'Timestamp of the most recent update to the finding record.',
+    `created_by` STRING COMMENT '',
     CONSTRAINT pk_compliance_audit_finding PRIMARY KEY(`compliance_audit_finding_id`)
 ) COMMENT 'Individual finding record raised during a compliance audit, capturing finding type (major nonconformance, minor nonconformance, observation, opportunity for improvement), the specific clause or requirement violated, affected process or area, finding description, severity, and required response timeline. Each finding is linked to an audit event and may trigger a CAPA record. Serves as the authoritative record of audit outcomes requiring corrective action.';
 
@@ -185,7 +213,10 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`compliance`.`compliance_capa_re
     `project_header_id` BIGINT COMMENT 'Foreign key linking to project.project_header. Business justification: CAPA records address issues identified in project audits and must be tied to the originating project.',
     `regulatory_requirement_id` BIGINT COMMENT 'Identifier of the regulatory citation associated with this CAPA.',
     `abatement_deadline` DATE COMMENT 'Date by which the penalty must be paid or remedial action completed.',
+    `action_plan` STRING COMMENT '',
+    `actual_completion_date` TIMESTAMP COMMENT '',
     `capa_number` STRING COMMENT 'Business identifier assigned to the CAPA record.',
+    `capa_type` STRING COMMENT '',
     `citation_reference` STRING COMMENT 'Reference number or identifier of the regulatory citation.',
     `closure_date` DATE COMMENT 'Date when the CAPA record was formally closed.',
     `closure_status` STRING COMMENT 'Final status indicating how the CAPA was concluded.. Valid values are `completed|cancelled|deferred`',
@@ -194,12 +225,15 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`compliance`.`compliance_capa_re
     `corrective_action_description` STRING COMMENT 'Description of the corrective action to address the root cause.',
     `created_timestamp` TIMESTAMP COMMENT 'Timestamp when the CAPA record was created in the system.',
     `department_responsible` STRING COMMENT 'Department accountable for executing the CAPA.. Valid values are `quality|production|engineering|safety|procurement|other`',
+    `compliance_capa_record_description` STRING COMMENT '',
     `documentation_reference` STRING COMMENT 'Reference to supporting documentation for the CAPA.',
     `effectiveness_review_outcome` STRING COMMENT 'Result of the effectiveness review after verification.. Valid values are `effective|partially_effective|ineffective|not_verified`',
     `effectiveness_score` DECIMAL(18,2) COMMENT 'Numeric rating (0‑100) indicating the effectiveness of the corrective action after verification.',
+    `effectiveness_verified_flag` BOOLEAN COMMENT '',
     `event_timestamp` TIMESTAMP COMMENT 'Timestamp when the CAPA was initiated.',
     `is_external_citation` BOOLEAN COMMENT 'Indicates whether the citation originates from an external regulator.',
-    `issuing_agency` STRING COMMENT 'Agency that issued the regulatory citation prompting the CAPA.',
+    `issuing_agency` BOOLEAN COMMENT 'Agency that issued the regulatory citation prompting the CAPA.',
+    `last_modified_timestamp` TIMESTAMP COMMENT '',
     `last_review_date` DATE COMMENT 'Date of the most recent effectiveness review.',
     `notes` STRING COMMENT 'Free‑form field for any additional information or comments.',
     `penalty_amount` DECIMAL(18,2) COMMENT 'Monetary penalty associated with the regulatory citation.',
@@ -208,12 +242,14 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`compliance`.`compliance_capa_re
     `priority` STRING COMMENT 'Priority level assigned to the CAPA.. Valid values are `low|medium|high|critical`',
     `review_frequency` STRING COMMENT 'Frequency at which the CAPA effectiveness is reviewed.. Valid values are `weekly|monthly|quarterly|annually`',
     `risk_level` STRING COMMENT 'Overall risk level associated with the CAPA.. Valid values are `low|medium|high`',
+    `root_cause` STRING COMMENT '',
     `root_cause_description` STRING COMMENT 'Detailed description of the identified root cause.',
     `root_cause_method` STRING COMMENT 'Method used to determine the root cause of the issue.. Valid values are `5-why|fishbone|8d|fmea|other`',
     `severity` STRING COMMENT 'Severity of the issue addressed by the CAPA.. Valid values are `minor|major|critical`',
     `target_completion_date` DATE COMMENT 'Planned date by which the corrective and preventive actions should be completed.',
     `updated_timestamp` TIMESTAMP COMMENT 'Timestamp of the most recent update to the CAPA record.',
     `verification_method` STRING COMMENT 'Method used to verify that the corrective action was effective.. Valid values are `inspection|test|audit|review|other`',
+    `created_by` STRING COMMENT '',
     CONSTRAINT pk_compliance_capa_record PRIMARY KEY(`compliance_capa_record_id`)
 ) COMMENT 'Corrective and Preventive Action (CAPA) record managing the full lifecycle of corrective actions arising from audit findings, safety incidents, enforcement actions, NCRs, customer complaints, or regulatory citations. Captures root cause analysis method (5-Why, Fishbone, 8D, FMEA), root cause description, corrective action plan, preventive action plan, responsible owner, target completion date, verification method, effectiveness review outcome, and closure status. Also accommodates enforcement action details (issuing agency, citation reference, penalty amount, abatement deadline) when the CAPA originates from a regulatory citation. Aligns with ISO 9001 Clause 10.2 and APQP CAPA requirements.';
 
@@ -222,6 +258,7 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`compliance`.`safety_incident` (
     `account_site_id` BIGINT COMMENT 'Foreign key linking to customer.account_site. Business justification: Incident management requires associating each safety incident with the specific site for root cause analysis and regulatory reporting.',
     `employee_id` BIGINT COMMENT 'Identifier of the employee (worker) involved or affected by the incident.',
     `equipment_register_id` BIGINT COMMENT 'Identifier of the equipment or asset involved in the incident.',
+    `facility_id` BIGINT COMMENT '',
     `previous_incident_safety_incident_id` BIGINT COMMENT 'Identifier of the prior incident if this is a repeat.',
     `project_header_id` BIGINT COMMENT 'Foreign key linking to project.project_header. Business justification: Safety incidents occurring on a project site are linked to that project for reporting and trend analysis.',
     `area_code` STRING COMMENT 'Code for the specific area or zone within the plant.',
@@ -230,6 +267,7 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`compliance`.`safety_incident` (
     `corrective_action_status` STRING COMMENT 'Current status of the longer‑term corrective action plan.. Valid values are `planned|in_progress|completed`',
     `created_timestamp` TIMESTAMP COMMENT 'Timestamp when the incident record was first created in the system.',
     `days_away_from_work` STRING COMMENT 'Number of workdays the employee was unable to work due to the incident.',
+    `safety_incident_description` STRING COMMENT '',
     `equipment_name` STRING COMMENT 'Human‑readable name of the equipment involved.',
     `immediate_corrective_action` STRING COMMENT 'Actions taken immediately after the incident to mitigate impact.',
     `incident_description` STRING COMMENT 'Detailed narrative of what happened.',
@@ -239,12 +277,16 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`compliance`.`safety_incident` (
     `incident_status` STRING COMMENT 'Current lifecycle status of the incident.. Valid values are `open|investigating|closed|reopened`',
     `incident_timestamp` TIMESTAMP COMMENT 'Date and time when the incident occurred.',
     `incident_type` STRING COMMENT 'Classification of the incident according to regulatory definitions.. Valid values are `recordable|lost_time|near_miss|property_damage|first_aid`',
+    `injury_flag` BOOLEAN COMMENT '',
     `injury_type` STRING COMMENT 'Specific type of injury or illness sustained.. Valid values are `fracture|burn|laceration|sprain|concussion|other`',
     `investigation_completed_date` DATE COMMENT 'Date when the investigation was formally closed.',
     `investigation_status` STRING COMMENT 'Lifecycle status of the incident investigation.. Valid values are `not_started|in_progress|completed`',
     `is_repeat_incident` BOOLEAN COMMENT 'Indicates whether this incident is a repeat of a prior incident.',
+    `last_modified_timestamp` TIMESTAMP COMMENT '',
     `lost_time_flag` BOOLEAN COMMENT 'Indicates whether the incident resulted in lost work time.',
+    `lost_time_hours` DECIMAL(18,2) COMMENT '',
     `medical_treatment_required` BOOLEAN COMMENT 'True if medical treatment beyond first aid was required.',
+    `notes` STRING COMMENT '',
     `osha_300_log_classification` STRING COMMENT 'Classification of the incident for OSHA 300 reporting.. Valid values are `recordable|non_recordable`',
     `plant_code` STRING COMMENT 'Code identifying the manufacturing plant where the incident happened.',
     `regulatory_report_submission_date` DATE COMMENT 'Date the regulatory report was filed.',
@@ -252,14 +294,18 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`compliance`.`safety_incident` (
     `reportable_to_iso_flag` BOOLEAN COMMENT 'Indicates if the incident must be reported under ISO 45001.',
     `reportable_to_osha_flag` BOOLEAN COMMENT 'Indicates if the incident must be reported to OSHA.',
     `reported_by` STRING COMMENT 'Name of the person who reported the incident.',
+    `reported_by_name` STRING COMMENT '',
     `reported_timestamp` TIMESTAMP COMMENT 'Date and time when the incident was reported.',
     `risk_rating` STRING COMMENT 'Risk rating assigned during incident assessment.. Valid values are `low|medium|high|critical`',
     `root_cause` STRING COMMENT 'Narrative description of the underlying cause(s) of the incident.',
+    `severity` STRING COMMENT '',
     `severity_level` STRING COMMENT 'Overall severity rating of the incident.. Valid values are `minor|moderate|severe|critical`',
     `shift` STRING COMMENT 'Work shift during which the incident occurred.. Valid values are `day|swing|night`',
+    `safety_incident_status` STRING COMMENT '',
     `updated_timestamp` TIMESTAMP COMMENT 'Timestamp of the most recent modification to the incident record.',
     `witness_count` STRING COMMENT 'Number of witnesses to the incident.',
     `witness_names` STRING COMMENT 'Comma‑separated list of witness names.',
+    `created_by` STRING COMMENT '',
     CONSTRAINT pk_safety_incident PRIMARY KEY(`safety_incident_id`)
 ) COMMENT 'ISO 45001 and OSHA occupational health and safety incident record capturing workplace injuries, illnesses, near-misses, dangerous occurrences, and first-aid events. Records incident date/time, location, affected worker(s), incident type (OSHA recordable, lost-time, near-miss, property damage), injury/illness description, body part affected, days away from work, OSHA 300 log classification, root cause, and immediate corrective actions taken. Primary source for OSHA 300/300A/301 regulatory reporting.';
 
@@ -267,7 +313,7 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`compliance`.`safety_inspection`
     `safety_inspection_id` BIGINT COMMENT 'System-generated unique identifier for each safety inspection record.',
     `device_registry_id` BIGINT COMMENT 'Foreign key linking to automation.device_registry. Business justification: Safety inspections must record which automation device was inspected to satisfy OSHA safety compliance.',
     `employee_id` BIGINT COMMENT 'Unique identifier of the employee or contractor who performed the inspection.',
-    `node_id` BIGINT COMMENT 'Unique identifier of the plant, factory, or site where the inspection took place.',
+    `facility_id` BIGINT COMMENT '',
     `project_header_id` BIGINT COMMENT 'Foreign key linking to project.project_header. Business justification: Safety inspections are performed for each construction/upgrade project; required for safety compliance reports.',
     `regulatory_requirement_id` BIGINT COMMENT 'Foreign key linking to compliance.regulatory_requirement. Business justification: Safety inspections are performed to satisfy regulatory requirements; linking to regulatory_requirement provides context and eliminates need for separate regulatory reference fields.',
     `safety_checklist_id` BIGINT COMMENT 'Reference to the checklist template used for this inspection.',
@@ -277,37 +323,45 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`compliance`.`safety_inspection`
     `corrective_action_deadline` DATE COMMENT 'Final date by which all corrective actions must be closed.',
     `corrective_action_required` BOOLEAN COMMENT 'Indicates whether any immediate corrective actions are mandated.',
     `corrective_action_summary` STRING COMMENT 'Brief description of the corrective actions to be taken.',
-    `documents_attached` BOOLEAN COMMENT 'True if supporting photos, reports, or certificates are attached to the record.',
+    `created_timestamp` TIMESTAMP COMMENT '',
+    `safety_inspection_description` STRING COMMENT '',
+    `documents_attached` TIMESTAMP COMMENT 'True if supporting photos, reports, or certificates are attached to the record.',
     `emergency_exit_accessible` BOOLEAN COMMENT 'True if all emergency exits were clear and unobstructed.',
     `fire_extinguisher_checked` BOOLEAN COMMENT 'Indicates whether fire extinguishers were inspected and found serviceable.',
     `follow_up_date` DATE COMMENT 'Planned date by which corrective actions must be completed.',
     `hazards_identified` STRING COMMENT 'Number of distinct safety hazards observed during the inspection.',
-    `inspection_duration_minutes` STRING COMMENT 'Total time spent on the inspection, measured in minutes.',
+    `inspection_date` TIMESTAMP COMMENT '',
+    `inspection_duration_minutes` DECIMAL(18,2) COMMENT 'Total time spent on the inspection, measured in minutes.',
     `inspection_number` STRING COMMENT 'Human‑readable business identifier for the inspection, often used in reports and work orders.',
     `inspection_timestamp` TIMESTAMP COMMENT 'Date‑time when the inspection was actually performed on the facility/area.',
     `inspection_type` STRING COMMENT 'Classification of the inspection purpose or trigger.. Valid values are `routine|pre_startup|loto_verification|fire_safety|ergonomic|environmental`',
+    `inspector_name` STRING COMMENT '',
     `is_loto_verified` BOOLEAN COMMENT 'True if lock‑out/tag‑out procedures were verified during the inspection.',
     `items_failed` STRING COMMENT 'Count of checklist items that were non‑compliant or required corrective action.',
     `items_passed` STRING COMMENT 'Count of checklist items that met the required safety criteria.',
+    `last_modified_timestamp` TIMESTAMP COMMENT '',
     `notes` STRING COMMENT 'Free‑form observations, comments, or remarks recorded by the inspector.',
+    `pass_flag` BOOLEAN COMMENT '',
     `ppe_compliance` BOOLEAN COMMENT 'Indicates whether required PPE was observed being used by personnel.',
     `record_created_timestamp` TIMESTAMP COMMENT 'System timestamp when the inspection record was first created in the lakehouse.',
     `record_updated_timestamp` TIMESTAMP COMMENT 'System timestamp of the most recent modification to the inspection record.',
     `reported_by` STRING COMMENT 'Name of the person who reported the safety issue or initiated the inspection.',
     `reported_timestamp` TIMESTAMP COMMENT 'Date‑time when the inspection request or incident was logged.',
+    `result_rating` STRING COMMENT '',
     `risk_rating` STRING COMMENT 'Overall risk rating assigned based on identified hazards and severity.. Valid values are `low|medium|high|critical`',
     `root_cause_analysis` STRING COMMENT 'Narrative description of the underlying cause(s) of identified hazards.',
     `safety_inspection_status` STRING COMMENT 'Current lifecycle state of the inspection record.. Valid values are `scheduled|in_progress|completed|closed|cancelled`',
     `safety_score` DECIMAL(18,2) COMMENT 'Composite safety performance metric for the inspected area.',
-    `total_items_checked` STRING COMMENT 'Number of individual checklist items evaluated during the inspection.',
+    `total_items_checked` DECIMAL(18,2) COMMENT 'Number of individual checklist items evaluated during the inspection.',
     `training_due_date` DATE COMMENT 'Target date by which required safety training must be completed.',
     `training_required` BOOLEAN COMMENT 'True if the inspection identified a need for additional safety training.',
+    `created_by` STRING COMMENT '',
     CONSTRAINT pk_safety_inspection PRIMARY KEY(`safety_inspection_id`)
 ) COMMENT 'Workplace safety inspection record capturing scheduled and ad-hoc safety walkthroughs, hazard assessments, and safety audits conducted under ISO 45001 and OSHA requirements. Records inspection date, inspector, facility/area inspected, inspection type (routine, pre-startup, LOTO verification, fire safety, ergonomic), checklist items evaluated, hazards identified, risk rating, and immediate corrective actions. Distinct from audit_event which covers formal certification audits.';
 
 CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`compliance`.`environmental_aspect` (
     `environmental_aspect_id` BIGINT COMMENT 'Unique system-generated identifier for each environmental aspect record.',
-    `control_system_id` BIGINT COMMENT 'Foreign key linking to automation.control_system. Business justification: Environmental aspect monitoring is managed by a control system; linking provides traceability for regulatory reporting.',
+    `facility_id` BIGINT COMMENT '',
     `project_header_id` BIGINT COMMENT 'Foreign key linking to project.project_header. Business justification: Environmental aspects are assessed per project for regulatory reporting and impact tracking.',
     `regulatory_requirement_id` BIGINT COMMENT 'Foreign key linking to compliance.regulatory_requirement. Business justification: Environmental aspects are tracked against specific regulatory requirements; FK replaces duplicated legal requirement reference fields.',
     `employee_id` BIGINT COMMENT 'Foreign key linking to workforce.employee. Business justification: Assigns an employee responsible for each environmental aspect, required for environmental compliance reporting.',
@@ -315,16 +369,22 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`compliance`.`environmental_aspe
     `aspect_category` STRING COMMENT 'High‑level classification of the aspect (e.g., air emission, waste).. Valid values are `air_emission|water_effluent|waste|energy_use|noise|soil_contamination`',
     `aspect_code` STRING COMMENT 'Business identifier or code used to reference the aspect in reports and systems.',
     `aspect_name` STRING COMMENT 'Human‑readable name describing the environmental aspect (e.g., "CO2 Emissions from Furnace").',
+    `aspect_type` STRING COMMENT '',
     `baseline_value` DECIMAL(18,2) COMMENT 'Historical or reference value against which current performance is compared.',
     `compliance_status` STRING COMMENT 'Current compliance state of the aspect against legal requirements.. Valid values are `compliant|non_compliant|partial`',
     `control_measure_description` STRING COMMENT 'Description of the control or mitigation measure applied to the aspect.',
+    `control_measures` STRING COMMENT '',
     `corrective_action_description` STRING COMMENT 'Description of the corrective action to address non‑compliance.',
     `corrective_action_due_date` DATE COMMENT 'Target date for completion of the corrective action.',
     `corrective_action_required` BOOLEAN COMMENT 'Flag indicating if a corrective action is needed.',
+    `created_timestamp` TIMESTAMP COMMENT '',
     `data_source_system` STRING COMMENT 'Originating operational system (e.g., SAP S/4HANA, Aveva SCADA).',
+    `environmental_aspect_description` STRING COMMENT '',
     `effective_date` DATE COMMENT 'Date when the aspect record became effective.',
+    `environmental_impact` STRING COMMENT '',
     `impact_type` STRING COMMENT 'Primary environmental medium affected by the aspect.. Valid values are `air|water|soil|noise|energy`',
     `is_critical` BOOLEAN COMMENT 'Indicates whether the aspect is deemed critical to environmental compliance.',
+    `last_modified_timestamp` TIMESTAMP COMMENT '',
     `lifecycle_status` STRING COMMENT 'Current lifecycle state of the aspect record.. Valid values are `active|inactive|retired|pending`',
     `measurement_unit` STRING COMMENT 'Unit of measure for the aspect’s quantitative values.. Valid values are `kg_co2e|m3|kwh|db|kg|l`',
     `monitoring_frequency` STRING COMMENT 'How often the aspect is measured or reviewed.. Valid values are `daily|weekly|monthly|quarterly|annually`',
@@ -335,38 +395,48 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`compliance`.`environmental_aspe
     `responsible_department` STRING COMMENT 'Organizational department accountable for managing the aspect.',
     `review_date` DATE COMMENT 'Scheduled date for the next formal review of the aspect.',
     `significance_rating` STRING COMMENT 'Business‑defined importance of the aspect to the organization’s environmental impact.. Valid values are `high|medium|low`',
+    `environmental_aspect_status` STRING COMMENT '',
     `target_value` DECIMAL(18,2) COMMENT 'Regulatory or internal target for the aspect.',
     `variance` DECIMAL(18,2) COMMENT 'Difference between actual and target values (actual – target).',
+    `created_by` STRING COMMENT '',
     CONSTRAINT pk_environmental_aspect PRIMARY KEY(`environmental_aspect_id`)
 ) COMMENT 'ISO 14001 environmental aspect and impact register record identifying the environmental aspects of Manufacturing operations (emissions, effluents, waste, energy use, noise, land contamination) and their associated environmental impacts. Captures aspect description, activity or process generating the aspect, significance rating, applicable legal requirements, control measures in place, and monitoring obligations. Serves as the foundation for the ISO 14001 Environmental Management System (EMS).';
 
 CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`compliance`.`emissions_record` (
     `emissions_record_id` BIGINT COMMENT 'Unique identifier for the emissions record.',
     `device_registry_id` BIGINT COMMENT 'Identifier of the device that captured the measurement.',
+    `emission_source_id` BIGINT COMMENT '',
     `employee_id` BIGINT COMMENT 'Identifier of the employee who recorded or verified the measurement.',
+    `facility_id` BIGINT COMMENT '',
     `project_header_id` BIGINT COMMENT 'Foreign key linking to project.project_header. Business justification: Emissions measurements are tied to specific projects to monitor environmental impact and meet permits.',
     `regulatory_requirement_id` BIGINT COMMENT 'Foreign key linking to compliance.regulatory_requirement. Business justification: Emissions records are governed by regulatory limits; linking to the governing requirement removes the duplicated limit column.',
-    `emission_source_id` BIGINT COMMENT 'Identifier of the emission source (e.g., plant, stack, equipment).',
+    `source_emission_source_id` BIGINT COMMENT 'Identifier of the emission source (e.g., plant, stack, equipment).',
     `calibration_date` DATE COMMENT 'Date when the measurement device was last calibrated.',
-    `calibration_status` STRING COMMENT 'Current calibration status of the measurement device.. Valid values are `calibrated|due|overdue`',
+    `calibration_status` DECIMAL(18,2) COMMENT 'Current calibration status of the measurement device.',
     `carbon_intensity` DECIMAL(18,2) COMMENT 'Amount of CO₂e emitted per unit of production output.',
     `comments` STRING COMMENT 'Free‑form notes or remarks about the measurement.',
     `created_timestamp` TIMESTAMP COMMENT 'Timestamp when the emissions record was first created in the system.',
     `data_quality_score` DECIMAL(18,2) COMMENT 'Score (0‑100) indicating confidence in the measurement data.',
     `data_source_system` STRING COMMENT 'Source system that provided the emission measurement (e.g., SAP, SCADA).',
+    `emissions_record_description` STRING COMMENT '',
     `emission_factor` DECIMAL(18,2) COMMENT 'Factor used to convert activity data to emissions (e.g., kg CO2 per unit).',
+    `emission_quantity` DECIMAL(18,2) COMMENT '',
+    `emission_uom` STRING COMMENT '',
     `exceedance_flag` BOOLEAN COMMENT 'Indicates whether the measured value exceeds the regulatory limit.',
     `facility_address` STRING COMMENT 'Physical address of the facility.',
-    `facility_name` STRING COMMENT 'Name of the facility where the emission source is located.',
     `greenhouse_gas_equivalent` DECIMAL(18,2) COMMENT 'CO₂‑equivalent value of the measured pollutant.',
+    `last_modified_timestamp` TIMESTAMP COMMENT '',
     `latitude` DOUBLE COMMENT 'Geographic latitude of the facility.',
     `longitude` DOUBLE COMMENT 'Geographic longitude of the facility.',
     `measured_value` DECIMAL(18,2) COMMENT 'Numeric value of the measured emission.',
+    `measurement_date` TIMESTAMP COMMENT '',
     `measurement_device_type` STRING COMMENT 'Type or model of the measurement device.',
     `measurement_method` STRING COMMENT 'Method used to obtain the emission measurement.. Valid values are `continuous|periodic|calculated|modelled`',
     `measurement_status` STRING COMMENT 'Quality status of the measurement.. Valid values are `valid|invalid|pending|rejected`',
     `measurement_timestamp` TIMESTAMP COMMENT 'Date and time when the emission measurement was taken.',
-    `operational_shift` STRING COMMENT 'Shift during which the measurement was taken.. Valid values are `day|night|weekend`',
+    `notes` STRING COMMENT '',
+    `operational_shift` DECIMAL(18,2) COMMENT 'Shift during which the measurement was taken.',
+    `permit_limit_quantity` DECIMAL(18,2) COMMENT '',
     `pollutant_type` STRING COMMENT 'Type of pollutant measured.. Valid values are `CO2|NOx|SOx|VOC|PM2.5|PM10`',
     `report_status` STRING COMMENT 'Current status of the regulatory report.. Valid values are `submitted|approved|rejected|pending`',
     `report_submission_date` DATE COMMENT 'Date the emission report was submitted to the agency.',
@@ -376,8 +446,10 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`compliance`.`emissions_record` 
     `reporting_quarter` STRING COMMENT 'Quarter of the reporting period.. Valid values are `Q1|Q2|Q3|Q4`',
     `reporting_year` STRING COMMENT 'Calendar year of the reporting period.',
     `source_category` STRING COMMENT 'Category describing the nature of the emission source.. Valid values are `stationary|mobile|process|fugitive`',
+    `emissions_record_status` STRING COMMENT '',
     `unit_of_measure` STRING COMMENT 'Unit in which the measured value is expressed.. Valid values are `kg|ton|kgCO2e|lb|g|ppm`',
     `updated_timestamp` TIMESTAMP COMMENT 'Timestamp of the most recent update to the emissions record.',
+    `created_by` STRING COMMENT '',
     CONSTRAINT pk_emissions_record PRIMARY KEY(`emissions_record_id`)
 ) COMMENT 'EPA and ISO 14001 emissions monitoring record capturing measured air emissions, greenhouse gas (GHG) data, wastewater discharge, and hazardous waste generation at Manufacturing facilities. Records emission source, pollutant type (CO2, NOx, SOx, VOCs, particulates), measurement method (continuous monitoring, periodic sampling, calculated), measured value, unit of measure, regulatory limit, exceedance flag, and reporting period. Primary source for EPA regulatory filings and GHG inventory reporting.';
 
@@ -393,6 +465,7 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`compliance`.`compliance_product
     `certificate_number` STRING COMMENT 'Unique number assigned by the certifying body to this certification.',
     `certification_cost` DECIMAL(18,2) COMMENT 'Monetary cost incurred to obtain the certification.',
     `certification_name` STRING COMMENT 'Human‑readable name of the certification (e.g., CE Marking for Model X).',
+    `certification_number` STRING COMMENT '',
     `certification_status` STRING COMMENT 'Current lifecycle status of the certification.. Valid values are `active|expired|revoked|pending|suspended`',
     `certification_type` STRING COMMENT 'Category of certification indicating the standard or scheme applied.. Valid values are `CE|UL|IEC|RoHS|REACH|Other`',
     `certifying_body` STRING COMMENT 'Organization that issued the certification. [ENUM-REF-CANDIDATE: EU|US|UL|IEC|ISO|CE|Other — 7 candidates stripped; promote to reference product]',
@@ -402,15 +475,18 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`compliance`.`compliance_product
     `compliance_region` STRING COMMENT 'Geographic region for which the certification is valid.. Valid values are `USA|EU|APAC|MEA|LATAM|Other`',
     `compliance_risk_level` STRING COMMENT 'Risk rating associated with the certification status or upcoming expiry.. Valid values are `low|medium|high|critical`',
     `compliance_status_date` DATE COMMENT 'Date when the certification status was last updated.',
+    `created_timestamp` TIMESTAMP COMMENT '',
     `currency_code` STRING COMMENT 'Three‑letter ISO 4217 code of the currency used for certification cost.. Valid values are `USD|EUR|GBP|JPY|CNY|Other`',
+    `compliance_product_certification_description` STRING COMMENT '',
     `effective_from` DATE COMMENT 'Date from which the certification is considered effective.',
     `effective_until` DATE COMMENT 'Date until which the certification remains effective (may be null for open‑ended).',
     `expiry_date` DATE COMMENT 'Date the certification becomes invalid unless renewed.',
     `export_control_category` STRING COMMENT 'Classification of export control regime applicable to the product.. Valid values are `EAR|ITAR|None|Other`',
     `is_export_controlled` BOOLEAN COMMENT 'Indicates whether the product is subject to export control regulations.',
     `is_mandatory` BOOLEAN COMMENT 'Indicates whether the certification is mandatory for market entry or regulatory compliance.',
-    `issue_date` DATE COMMENT 'Date the certification was officially issued.',
+    `issue_date` TIMESTAMP COMMENT 'Date the certification was officially issued.',
     `last_inspection_date` DATE COMMENT 'Date of the most recent inspection that validated the certification.',
+    `last_modified_timestamp` TIMESTAMP COMMENT '',
     `next_inspection_due` DATE COMMENT 'Planned date for the next compliance inspection.',
     `notes` STRING COMMENT 'Free‑form comments or observations related to the certification.',
     `record_audit_created` TIMESTAMP COMMENT 'Timestamp when the certification record was first created in the system.',
@@ -418,8 +494,10 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`compliance`.`compliance_product
     `renewal_date` DATE COMMENT 'Planned date for renewal activities.',
     `renewal_required` BOOLEAN COMMENT 'Indicates whether the certification must be renewed before expiry.',
     `scope_description` STRING COMMENT 'Textual description of the product scope covered by the certification.',
+    `compliance_product_certification_status` STRING COMMENT '',
     `test_standard` STRING COMMENT 'Standard or test method used to achieve the certification.. Valid values are `IEC 61010|IEC 61508|ISO 9001|ISO 14001|ISO 45001|Other`',
     `version_number` STRING COMMENT 'Version identifier for the certification record (e.g., v1, v2).',
+    `created_by` STRING COMMENT '',
     CONSTRAINT pk_compliance_product_certification PRIMARY KEY(`compliance_product_certification_id`)
 ) COMMENT 'Product safety and regulatory certification master record tracking CE Marking, UL certification, IEC compliance, RoHS, REACH, and other product-level certifications for manufactured automation systems, electrification solutions, and smart infrastructure components. Captures certification type, certifying body, certificate number, issue date, expiry date, applicable product scope, test standard, and certification status. Distinct from asset.asset_certification which covers equipment/facility certifications.';
 
@@ -436,23 +514,31 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`compliance`.`regulatory_filing`
     `approval_date` DATE COMMENT 'Date the document received final approval.',
     `approval_status` STRING COMMENT 'Result of the formal approval workflow.. Valid values are `approved|rejected|under_review`',
     `attached_file_path` STRING COMMENT 'File system or storage location of the attached document.',
+    `authority_name` STRING COMMENT '',
     `comments` STRING COMMENT 'Free‑form notes or remarks about the filing.',
     `compliance_area` STRING COMMENT 'Domain of compliance addressed by the filing.. Valid values are `environmental|safety|quality|cybersecurity|product_safety`',
     `confidentiality_level` STRING COMMENT 'Classification of the documents sensitivity.. Valid values are `public|internal|confidential|restricted`',
     `created_timestamp` TIMESTAMP COMMENT 'Timestamp when the filing record was first created in the system.',
+    `regulatory_filing_description` STRING COMMENT '',
     `distribution_scope` STRING COMMENT 'Scope of distribution for the document.. Valid values are `internal|external|global|regional`',
     `document_description` STRING COMMENT 'Free‑text description of the documents purpose and scope.',
     `document_number` STRING COMMENT 'Business identifier assigned to the document (e.g., ISO‑9001‑DOC‑001).',
     `document_type` STRING COMMENT 'Classification of the document indicating its purpose within compliance.. Valid values are `external_submission|internal_procedure|work_instruction|plan|program|record`',
+    `due_date` TIMESTAMP COMMENT '',
     `effective_date` DATE COMMENT 'Date the document becomes effective for the organization.',
     `expiration_date` DATE COMMENT 'Date the document expires or is superseded, if applicable.',
     `file_checksum` STRING COMMENT 'Checksum (e.g., SHA‑256) for integrity verification of the attached file.',
     `file_size_bytes` BIGINT COMMENT 'Size of the attached file in bytes.',
+    `filing_date` TIMESTAMP COMMENT '',
+    `filing_number` STRING COMMENT '',
     `filing_period` STRING COMMENT 'Reporting period the filing covers.. Valid values are `annual|quarterly|monthly|biannual|ad_hoc`',
     `filing_status` STRING COMMENT 'Current processing status of the external filing.. Valid values are `submitted|accepted|rejected|pending|closed`',
+    `filing_type` STRING COMMENT '',
     `is_mandatory` BOOLEAN COMMENT 'Indicates whether the filing is required by law or regulation.',
+    `last_modified_timestamp` TIMESTAMP COMMENT '',
     `last_reviewed_timestamp` TIMESTAMP COMMENT 'Timestamp of the most recent review activity.',
     `next_review_timestamp` TIMESTAMP COMMENT 'Planned timestamp for the upcoming review.',
+    `notes` STRING COMMENT '',
     `regulatory_filing_status` STRING COMMENT 'Current lifecycle state of the document.. Valid values are `draft|pending|approved|rejected|archived`',
     `retention_period_days` STRING COMMENT 'Number of days the document must be retained according to policy.',
     `review_due_date` DATE COMMENT 'Scheduled date for the next mandatory review of the document.',
@@ -460,9 +546,11 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`compliance`.`regulatory_filing`
     `risk_level` STRING COMMENT 'Risk rating associated with non‑compliance.. Valid values are `low|medium|high`',
     `submission_date` DATE COMMENT 'Date the filing was submitted to the external regulatory agency.',
     `submission_method` STRING COMMENT 'Mechanism used to submit the filing.. Valid values are `electronic|paper|portal|email`',
+    `submission_status` STRING COMMENT '',
     `title` STRING COMMENT 'Human‑readable title of the filing or compliance document.',
     `updated_timestamp` TIMESTAMP COMMENT 'Timestamp of the most recent modification to the filing record.',
     `version_number` STRING COMMENT 'Sequential numeric version of the document.',
+    `created_by` STRING COMMENT '',
     CONSTRAINT pk_regulatory_filing PRIMARY KEY(`regulatory_filing_id`)
 ) COMMENT 'Unified compliance document and regulatory submission master record serving as the single source of truth for: (1) all mandatory regulatory filings, disclosures, and notifications submitted to external bodies including EPA, OSHA, ISO certification bodies, CE notified bodies, and government agencies; and (2) all controlled internal compliance documents including ISO management system procedures, work instructions, environmental management plans, safety programs, audit reports, and certification records. Captures document/filing type (external_submission, internal_procedure, work_instruction, plan, program, record), document number, revision level, applicable standard or regulation, document owner, approval workflow status, effective date, review due date, retention period, distribution scope, and for external filings: submission date, regulatory agency, filing period, submission method, acknowledgment reference, and filing status. Supports ISO 9001 Clause 7.5 document control requirements and serves as the compliance submission calendar and document audit trail.';
 
@@ -471,6 +559,7 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`compliance`.`permit` (
     `company_code_id` BIGINT COMMENT 'Identifier of the party (person or organization) that holds the permit.',
     `employee_id` BIGINT COMMENT 'Foreign key linking to workforce.employee. Business justification: Links permit oversight to a compliance officer employee, needed for permit compliance monitoring.',
     `device_registry_id` BIGINT COMMENT 'Foreign key linking to automation.device_registry. Business justification: Regulatory permits are often issued per automation device; linking ensures permit compliance tracking.',
+    `facility_id` BIGINT COMMENT '',
     `node_id` BIGINT COMMENT 'Identifier of the manufacturing facility to which the permit applies.',
     `project_header_id` BIGINT COMMENT 'Foreign key linking to project.project_header. Business justification: Permits are issued for individual projects (construction, operation) and must be linked for compliance tracking.',
     `regulatory_requirement_id` BIGINT COMMENT 'Foreign key linking to compliance.regulatory_requirement. Business justification: Permits are issued to satisfy regulatory requirements; linking provides direct association.',
@@ -481,26 +570,30 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`compliance`.`permit` (
     `compliance_status` STRING COMMENT 'Current compliance determination for the permit.. Valid values are `compliant|non_compliant|under_review`',
     `condition` STRING COMMENT 'Specific condition, limitation, or requirement imposed by the authority.',
     `created_timestamp` TIMESTAMP COMMENT 'Timestamp when the permit record was first created in the system.',
-    `expiration_notice_sent` BOOLEAN COMMENT 'Indicates whether a renewal/expiration notice has been sent to the responsible party.',
+    `permit_description` STRING COMMENT '',
+    `expiration_notice_sent` DECIMAL(18,2) COMMENT 'Indicates whether a renewal/expiration notice has been sent to the responsible party.',
     `expiry_date` DATE COMMENT 'Date the permit expires or becomes invalid unless renewed.',
     `fee_amount` DECIMAL(18,2) COMMENT 'Monetary fee associated with obtaining or renewing the permit.',
-    `fee_currency` STRING COMMENT 'Currency of the permit fee.. Valid values are `USD|EUR|GBP|CAD|JPY`',
-    `fee_due_date` DATE COMMENT 'Date by which the permit fee must be paid.',
+    `fee_currency` DECIMAL(18,2) COMMENT 'Currency of the permit fee.',
+    `fee_due_date` TIMESTAMP COMMENT 'Date by which the permit fee must be paid.',
     `inspection_outcome` STRING COMMENT 'Result of the last inspection.. Valid values are `pass|fail|conditional`',
-    `issue_date` DATE COMMENT 'Date the permit was officially issued by the authority.',
-    `issuing_authority` STRING COMMENT 'Regulatory body or agency that issued the permit.. Valid values are `EPA|OSHA|State|Local|Federal`',
+    `issue_date` TIMESTAMP COMMENT 'Date the permit was officially issued by the authority.',
+    `issuing_authority` BOOLEAN COMMENT 'Regulatory body or agency that issued the permit.',
     `last_inspection_date` DATE COMMENT 'Date of the most recent regulatory inspection related to the permit.',
+    `last_modified_timestamp` TIMESTAMP COMMENT '',
     `limit_unit` STRING COMMENT 'Unit of measure for the limit value.. Valid values are `tons_per_year|kg_per_day|cfm|lb_per_hour|gallons_per_day`',
     `limit_value` DECIMAL(18,2) COMMENT 'Numeric limit associated with the permit (e.g., emission limit).',
     `monitoring_frequency` STRING COMMENT 'How often compliance monitoring must be performed.. Valid values are `monthly|quarterly|annually|continuous`',
     `next_monitoring_date` DATE COMMENT 'Scheduled date for the next required monitoring activity.',
     `notes` STRING COMMENT 'Free‑form notes or comments about the permit.',
     `number` STRING COMMENT 'Official permit number or code assigned by the issuing authority.',
+    `permit_number` STRING COMMENT '',
     `permit_status` STRING COMMENT 'Current lifecycle status of the permit.. Valid values are `active|inactive|expired|suspended|pending|revoked`',
     `permit_type` STRING COMMENT 'Category of the permit (e.g., air emissions, wastewater discharge, hazardous waste, building, operating license).. Valid values are `air|water|hazardous|building|operating`',
     `renewal_deadline` DATE COMMENT 'Last date to submit renewal application before expiration.',
     `renewal_status` STRING COMMENT 'Renewal state indicating if renewal is due, completed, not required, or pending.. Valid values are `due|renewed|not_required|pending`',
     `updated_timestamp` TIMESTAMP COMMENT 'Timestamp of the most recent update to the permit record.',
+    `created_by` STRING COMMENT '',
     CONSTRAINT pk_permit PRIMARY KEY(`permit_id`)
 ) COMMENT 'Environmental and operational permit master record tracking all permits required for Manufacturing facility operations, including EPA air permits, wastewater discharge permits (NPDES), hazardous waste permits (RCRA), building permits, and operating licenses. Captures permit type, issuing authority, permit number, facility, permitted activity, conditions and limits, issue date, expiry date, renewal status, and associated monitoring obligations. Enables proactive permit renewal management.';
 
@@ -518,6 +611,7 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`compliance`.`cybersecurity_cont
     `control_cost` DECIMAL(18,2) COMMENT 'Estimated or actual cost associated with implementing the control.',
     `control_description` STRING COMMENT 'Detailed description of what the control does and its scope.',
     `control_evidence_reference` STRING COMMENT 'Link or reference to documentation/evidence proving control implementation.',
+    `control_family` STRING COMMENT '',
     `control_mechanism` STRING COMMENT 'Technical or procedural mechanism used to enforce the control.',
     `control_name` STRING COMMENT 'Human‑readable name of the security control.',
     `control_objective` STRING COMMENT 'Business or security objective that the control is intended to achieve.',
@@ -527,26 +621,34 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`compliance`.`cybersecurity_cont
     `control_type` STRING COMMENT 'Strategic type of the control: preventive, detective, or corrective.. Valid values are `preventive|detective|corrective`',
     `control_version` STRING COMMENT 'Version identifier of the control definition.',
     `created_timestamp` TIMESTAMP COMMENT 'Timestamp when the control record was first created in the system.',
+    `cybersecurity_control_description` STRING COMMENT '',
     `effective_date` DATE COMMENT 'Date when the control became effective.',
     `implementation_status` STRING COMMENT 'Current implementation phase of the control.. Valid values are `planned|in_progress|implemented|not_applicable|decommissioned`',
     `last_assessment_date` DATE COMMENT 'Date of the most recent security assessment for the control.',
     `last_maintenance_date` DATE COMMENT 'Date when the control was last maintained or verified.',
+    `last_modified_timestamp` TIMESTAMP COMMENT '',
+    `last_reviewed_date` TIMESTAMP COMMENT '',
     `lifecycle_status` STRING COMMENT 'Overall lifecycle state of the control.. Valid values are `active|inactive|retired|pending`',
     `maintenance_frequency_days` STRING COMMENT 'Number of days between required maintenance activities for the control.',
+    `maturity_level` STRING COMMENT '',
     `next_maintenance_date` DATE COMMENT 'Planned date for the next maintenance activity.',
     `next_review_date` DATE COMMENT 'Planned date for the next formal review of the control.',
+    `notes` STRING COMMENT '',
     `owner_department` STRING COMMENT 'Organizational department that the control owner belongs to.',
     `remediation_deadline` DATE COMMENT 'Latest date by which identified deficiencies must be remediated.',
     `retirement_date` DATE COMMENT 'Date when the control was retired or decommissioned, if applicable.',
     `risk_rating` STRING COMMENT 'Risk rating associated with the control based on its effectiveness and exposure.. Valid values are `low|medium|high|critical`',
     `security_level_achieved` STRING COMMENT 'Current IEC 62443 security level actually achieved by the control.. Valid values are `SL1|SL2|SL3|SL4|SL5`',
     `security_level_target` STRING COMMENT 'Targeted IEC 62443 security level the control aims to achieve.. Valid values are `SL1|SL2|SL3|SL4|SL5`',
+    `cybersecurity_control_status` STRING COMMENT '',
     `updated_timestamp` TIMESTAMP COMMENT 'Timestamp of the most recent update to the control record.',
+    `created_by` STRING COMMENT '',
     CONSTRAINT pk_cybersecurity_control PRIMARY KEY(`cybersecurity_control_id`)
 ) COMMENT 'IEC 62443 industrial cybersecurity control master record defining the security controls, countermeasures, and safeguards implemented across Manufacturings industrial automation and control systems (IACS), including PLCs, SCADA, DCS, HMI, and IIoT infrastructure. Captures control identifier, IEC 62443 security level target (SL-T), security level achieved (SL-A), control category (access control, network segmentation, patch management, incident response), implementation status, and responsible owner.';
 
 CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`compliance`.`cybersecurity_assessment` (
     `cybersecurity_assessment_id` BIGINT COMMENT 'Unique identifier for the cybersecurity assessment record.',
+    `cybersecurity_control_id` BIGINT COMMENT '',
     `device_registry_id` BIGINT COMMENT 'Foreign key linking to automation.device_registry. Business justification: Assessment evaluates security posture of a particular automation device; linking enables tracking of findings.',
     `employee_id` BIGINT COMMENT 'Identifier of the business owner responsible for the assessed system.',
     `equipment_register_id` BIGINT COMMENT 'Identifier of the asset (e.g., PLC, SCADA server) assessed.',
@@ -560,6 +662,7 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`compliance`.`cybersecurity_asse
     `assessment_number` STRING COMMENT 'Human-readable identifier for the assessment, often used in reports.',
     `assessment_scope` STRING COMMENT 'Scope description covering assets, processes, and boundaries evaluated.',
     `assessment_status` STRING COMMENT 'Current lifecycle status of the assessment.. Valid values are `draft|in_review|completed|approved|rejected`',
+    `assessment_type` STRING COMMENT '',
     `assessment_version` STRING COMMENT 'Version identifier of the assessment methodology or report.',
     `assessor_contact` STRING COMMENT 'Email address of the assessor for follow-up.. Valid values are `^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+.[a-zA-Z]{2,}$`',
     `assessor_name` STRING COMMENT 'Name of the individual or team conducting the assessment.',
@@ -567,22 +670,29 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`compliance`.`cybersecurity_asse
     `compliance_framework` STRING COMMENT 'Regulatory or standards framework applied.. Valid values are `IEC 62443|NIST CSF|ISO 27001`',
     `control_gap_summary` STRING COMMENT 'Summary of gaps between required and existing security controls.',
     `created_timestamp` TIMESTAMP COMMENT 'Timestamp when the assessment record was first created in the system.',
+    `cybersecurity_assessment_description` STRING COMMENT '',
     `document_link` STRING COMMENT 'URL or path to the detailed assessment report document.',
-    `evidence_attached` BOOLEAN COMMENT 'Indicates whether supporting evidence files are attached.',
+    `evidence_attached` TIMESTAMP COMMENT 'Indicates whether supporting evidence files are attached.',
     `external_auditor_contact` STRING COMMENT 'Contact email for the external auditor.. Valid values are `^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+.[a-zA-Z]{2,}$`',
     `external_auditor_name` STRING COMMENT 'Name of the external auditor organization or individual.',
+    `finding_count` STRING COMMENT '',
     `is_critical_asset` BOOLEAN COMMENT 'Indicates whether the assessed asset is classified as critical to operations.',
     `is_external_assessment` BOOLEAN COMMENT 'Indicates if the assessment was performed by an external third party.',
+    `last_modified_timestamp` TIMESTAMP COMMENT '',
     `last_reviewed_date` DATE COMMENT 'Date when the assessment was last reviewed for updates.',
+    `notes` STRING COMMENT '',
     `overall_risk_score` DECIMAL(18,2) COMMENT 'Numeric risk score calculated from assessment (0-100).',
     `recommended_remediation_actions` STRING COMMENT 'Suggested actions to mitigate identified vulnerabilities.',
     `remediation_due_date` DATE COMMENT 'Target date by which recommended remediation actions should be completed.',
     `remediation_status` STRING COMMENT 'Current status of remediation implementation.. Valid values are `not_started|in_progress|completed|deferred`',
     `risk_justification` STRING COMMENT 'Narrative justification for the assigned risk rating.',
     `risk_rating` STRING COMMENT 'Overall risk rating assigned based on identified vulnerabilities.. Valid values are `low|medium|high|critical`',
+    `risk_score` DECIMAL(18,2) COMMENT '',
     `security_level_gap` STRING COMMENT 'Difference between required and actual security level per IEC 62443.',
+    `cybersecurity_assessment_status` STRING COMMENT '',
     `updated_timestamp` TIMESTAMP COMMENT 'Timestamp of the most recent update to the assessment record.',
     `vulnerabilities_identified` STRING COMMENT 'List or description of vulnerabilities discovered during the assessment.',
+    `created_by` STRING COMMENT '',
     CONSTRAINT pk_cybersecurity_assessment PRIMARY KEY(`cybersecurity_assessment_id`)
 ) COMMENT 'IEC 62443 cybersecurity risk assessment and vulnerability assessment record for Manufacturings industrial control systems and OT networks. Captures assessment date, assessed system or zone, assessment methodology (IEC 62443-3-2 zone and conduit analysis, NIST CSF), identified vulnerabilities, risk rating, security level gap analysis, recommended remediation actions, and assessment outcome. Drives the cybersecurity CAPA and control improvement roadmap.';
 
@@ -594,11 +704,13 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`compliance`.`hazardous_substanc
     `chemical_family` STRING COMMENT 'Broad chemical family or class (e.g., halogenated, aromatic).',
     `comments` STRING COMMENT 'Free‑form notes or remarks about the substance.',
     `created_timestamp` TIMESTAMP COMMENT 'Date and time when the hazardous substance record was created.',
+    `hazardous_substance_description` STRING COMMENT '',
     `disposal_method` STRING COMMENT 'Approved method for disposing of the substance (e.g., incineration, landfill).',
     `emergency_contact_name` STRING COMMENT 'Name of the person or team to contact in case of an incident.',
     `emergency_contact_phone` STRING COMMENT 'Phone number for emergency response related to the substance.',
     `expiration_date` DATE COMMENT 'Date after which the substance is considered expired or unsuitable for use.',
     `handling_requirements` STRING COMMENT 'Specific handling instructions (e.g., temperature control, ventilation).',
+    `hazard_class` STRING COMMENT '',
     `hazard_classification` STRING COMMENT 'Primary GHS hazard class for the substance.. Valid values are `explosive|flammable|oxidizer|corrosive|toxic|environmental`',
     `hazard_statements` STRING COMMENT 'Standardized statements describing the nature of the hazards.',
     `hazardous_substance_status` STRING COMMENT 'Lifecycle status of the record (e.g., active, inactive, retired).. Valid values are `active|inactive|retired|pending`',
@@ -607,29 +719,38 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`compliance`.`hazardous_substanc
     `is_hazardous` BOOLEAN COMMENT 'Indicates whether the substance is classified as hazardous under GHS.',
     `is_reportable` BOOLEAN COMMENT 'True if the substance quantity exceeds reporting thresholds for EPA or OSHA.',
     `last_inventory_date` DATE COMMENT 'Date when the substance quantity was last physically verified.',
+    `last_modified_timestamp` TIMESTAMP COMMENT '',
     `molecular_formula` STRING COMMENT 'Standard chemical formula representing the composition of the substance.',
     `molecular_weight` DECIMAL(18,2) COMMENT 'Molecular weight of the substance expressed in grams per mole.',
     `hazardous_substance_name` STRING COMMENT 'Common or trade name of the hazardous chemical.',
     `next_review_date` DATE COMMENT 'Scheduled date for the next regulatory or safety review.',
+    `notes` STRING COMMENT '',
     `personal_protective_equipment` STRING COMMENT 'Recommended PPE for safe handling of the substance.',
     `precautionary_statements` STRING COMMENT 'Recommended safety measures and handling instructions.',
     `procurement_date` DATE COMMENT 'Date the substance was purchased or received.',
     `quantity_on_hand` DECIMAL(18,2) COMMENT 'Current inventory amount of the substance at the facility.',
     `reporting_threshold_exceeded` BOOLEAN COMMENT 'Indicates whether current quantity exceeds the regulatory threshold quantity.',
     `risk_score` DECIMAL(18,2) COMMENT 'Composite risk rating derived from hazard class, quantity, and exposure potential.',
+    `sds_reference` STRING COMMENT '',
     `sds_url` STRING COMMENT 'Link to the electronic Safety Data Sheet for the substance.',
     `signal_word` STRING COMMENT 'GHS signal word indicating the level of hazard (Danger or Warning).. Valid values are `Danger|Warning`',
     `storage_location` STRING COMMENT 'Physical location (e.g., warehouse, cabinet) where the substance is stored.',
+    `substance_code` STRING COMMENT '',
+    `substance_name` STRING COMMENT '',
     `threshold_quantity` DECIMAL(18,2) COMMENT 'Quantity that triggers regulatory reporting (e.g., TPQ, SARA 313 threshold).',
+    `un_number` STRING COMMENT '',
     `unit_of_measure` STRING COMMENT 'Unit used for quantity_on_hand and threshold_quantity (e.g., kg, L).. Valid values are `kg|g|lb|l|ml|mol`',
     `updated_timestamp` TIMESTAMP COMMENT 'Date and time of the most recent update to the record.',
     `waste_code` STRING COMMENT 'Regulatory waste code (e.g., D001) associated with the substance.',
+    `created_by` STRING COMMENT '',
     CONSTRAINT pk_hazardous_substance PRIMARY KEY(`hazardous_substance_id`)
 ) COMMENT 'Hazardous substance and chemical master record tracking all hazardous materials used, stored, or generated at Manufacturing facilities, supporting OSHA HazCom (GHS), EPA EPCRA Tier II, REACH, and RoHS compliance. Captures substance name, CAS number, chemical family, physical/chemical properties, GHS hazard classification, SDS reference, storage quantity, threshold planning quantity (TPQ), and applicable regulatory lists (SARA 313, SVHC). Serves as the chemical inventory for regulatory reporting.';
 
 CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`compliance`.`waste_record` (
     `waste_record_id` BIGINT COMMENT 'System-generated unique identifier for the waste record.',
     `employee_id` BIGINT COMMENT 'System identifier of the reporting employee.',
+    `facility_id` BIGINT COMMENT '',
+    `hazardous_substance_id` BIGINT COMMENT '',
     `project_header_id` BIGINT COMMENT 'Foreign key linking to project.project_header. Business justification: Waste generation is recorded per project to manage disposal compliance and reporting.',
     `regulatory_requirement_id` BIGINT COMMENT 'Foreign key linking to compliance.regulatory_requirement. Business justification: Waste records are subject to regulatory reporting; FK provides direct link to the governing requirement.',
     `family_id` BIGINT COMMENT 'Identifier of the product line associated with the waste.',
@@ -640,6 +761,7 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`compliance`.`waste_record` (
     `chain_of_custody_document` STRING COMMENT 'Reference (URL or file name) to the chain‑of‑custody record.',
     `compliance_status` STRING COMMENT 'Regulatory compliance status of the waste record.. Valid values are `compliant|non_compliant|pending`',
     `created_timestamp` TIMESTAMP COMMENT 'Timestamp when the waste record was first created in the system.',
+    `waste_record_description` STRING COMMENT '',
     `disposal_contractor` STRING COMMENT 'Licensed contractor responsible for waste disposal.',
     `disposal_date` DATE COMMENT 'Date the waste was disposed or transferred to a licensed contractor.',
     `disposal_method` STRING COMMENT 'Method used to dispose of the waste.. Valid values are `incineration|landfill|recycling|treatment|export`',
@@ -653,6 +775,7 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`compliance`.`waste_record` (
     `generation_date` DATE COMMENT 'Date the waste was generated on site.',
     `hazard_classification` STRING COMMENT 'Specific hazard class of the waste material.. Valid values are `flammable|corrosive|toxic|reactive|radioactive|other`',
     `is_hazardous` BOOLEAN COMMENT 'True if the waste is classified as hazardous under EPA/ISO standards.',
+    `last_modified_timestamp` TIMESTAMP COMMENT '',
     `manifest_number` STRING COMMENT 'EPA manifest number linking the waste to transportation documentation.. Valid values are `^[A-Z0-9]{8,12}$`',
     `notes` STRING COMMENT 'Free‑form comments or observations about the waste event.',
     `quantity` DECIMAL(18,2) COMMENT 'Amount of waste generated, expressed in the selected unit of measure.',
@@ -666,9 +789,13 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`compliance`.`waste_record` (
     `updated_timestamp` TIMESTAMP COMMENT 'Timestamp of the most recent modification to the waste record.',
     `waste_category` STRING COMMENT 'High‑level category describing the waste material.. Valid values are `chemical|metal|organic|radioactive|other`',
     `waste_identifier` STRING COMMENT 'Business identifier such as a manifest or tracking number assigned to the waste event.',
+    `waste_manifest_number` STRING COMMENT '',
     `waste_origin` STRING COMMENT 'Business process that generated the waste.. Valid values are `production|maintenance|R&D|cleanup`',
+    `waste_quantity` DECIMAL(18,2) COMMENT '',
     `waste_record_status` STRING COMMENT 'Current lifecycle status of the waste record.. Valid values are `generated|stored|disposed|closed`',
     `waste_type` STRING COMMENT 'Classification of waste by regulatory definition.. Valid values are `hazardous|non_hazardous|universal|special`',
+    `waste_uom` STRING COMMENT '',
+    `created_by` STRING COMMENT '',
     CONSTRAINT pk_waste_record PRIMARY KEY(`waste_record_id`)
 ) COMMENT 'Hazardous and non-hazardous waste generation, storage, and disposal record supporting EPA RCRA compliance and ISO 14001 waste management objectives. Captures waste generation date, waste type (hazardous, universal, non-hazardous), EPA waste code, quantity generated, storage location, disposal method, licensed disposal contractor, manifest number, disposal date, and chain-of-custody documentation. Primary source for EPA biennial hazardous waste report and waste minimization tracking.';
 
@@ -679,6 +806,7 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`compliance`.`periodic_evaluatio
     `location_id` BIGINT COMMENT 'Reference to the physical site or facility where the assessment was performed.',
     `org_unit_id` BIGINT COMMENT 'Identifier of the department accountable for the assessed obligation.',
     `project_header_id` BIGINT COMMENT 'Foreign key linking to project.project_header. Business justification: Periodic compliance evaluations are conducted per project to verify ongoing conformance.',
+    `regulatory_requirement_id` BIGINT COMMENT '',
     `assessment_code` STRING COMMENT 'Human‑readable code assigned to the evaluation for tracking and reference.',
     `assessment_date` DATE COMMENT 'Date on which the compliance assessment was performed.',
     `assessment_method` STRING COMMENT 'Technique used to conduct the evaluation.. Valid values are `document_review|interview|observation|testing`',
@@ -687,27 +815,37 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`compliance`.`periodic_evaluatio
     `conformance_rating` DECIMAL(18,2) COMMENT 'Numeric rating (0‑100) reflecting the degree of compliance.',
     `conformance_status` STRING COMMENT 'Overall result of the assessment against the regulation.. Valid values are `compliant|partially_compliant|non_compliant`',
     `created_timestamp` TIMESTAMP COMMENT 'Timestamp when the evaluation record was first created in the system.',
+    `periodic_evaluation_description` STRING COMMENT '',
+    `evaluation_code` STRING COMMENT '',
+    `evaluation_date` TIMESTAMP COMMENT '',
+    `evaluation_type` STRING COMMENT '',
     `evidence_documentation` STRING COMMENT 'Link or reference to the primary evidence supporting the assessment.',
+    `frequency_months` STRING COMMENT '',
     `gaps_identified` STRING COMMENT 'Summary of compliance gaps discovered during the evaluation.',
+    `last_modified_timestamp` TIMESTAMP COMMENT '',
     `next_assessment_due` DATE COMMENT 'Planned date for the subsequent periodic evaluation.',
+    `next_evaluation_date` TIMESTAMP COMMENT '',
     `notes` STRING COMMENT 'Free‑form comments or observations captured by the assessor.',
     `periodic_evaluation_status` STRING COMMENT 'Current processing state of the evaluation record.. Valid values are `draft|in_progress|completed|approved|rejected`',
     `recommended_actions` STRING COMMENT 'Suggested remediation steps to address identified gaps.',
     `regulation_code` STRING COMMENT 'Standardized code of the regulation or legal requirement (e.g., ISO14001‑9.1.2).',
     `regulation_name` STRING COMMENT 'Full name of the regulation or standard being assessed.',
+    `result_rating` STRING COMMENT '',
     `risk_score` DECIMAL(18,2) COMMENT 'Quantitative risk score derived from severity and likelihood.',
     `risk_severity` STRING COMMENT 'Severity level of the risk associated with the identified gaps.. Valid values are `low|medium|high|critical`',
     `updated_timestamp` TIMESTAMP COMMENT 'Timestamp of the most recent modification to the evaluation record.',
+    `created_by` STRING COMMENT '',
     CONSTRAINT pk_periodic_evaluation PRIMARY KEY(`periodic_evaluation_id`)
 ) COMMENT 'Periodic compliance evaluation record assessing Manufacturings conformance with specific legal register entries or regulatory requirements. Captures assessment date, assessor, assessed obligation or regulation, assessment method (document review, interview, observation, testing), conformance status (compliant, partially compliant, non-compliant), evidence reviewed, gaps identified, and recommended actions. Supports ISO 14001 Clause 9.1.2 and ISO 45001 Clause 9.1.2 compliance evaluation requirements.';
 
 CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`compliance`.`controlled_document` (
     `controlled_document_id` BIGINT COMMENT 'Primary key for controlled_document',
     `employee_id` BIGINT COMMENT 'Identifier of the individual who approved the document.',
+    `regulatory_requirement_id` BIGINT COMMENT '',
+    `controlled_related_regulation_regulatory_requirement_id` BIGINT COMMENT 'Reference to the regulatory requirement linked to this document.',
     `device_registry_id` BIGINT COMMENT 'Foreign key linking to automation.device_registry. Business justification: Controlled documents (SOPs, manuals) often reference a specific automation device; linking supports document control.',
     `primary_controlled_employee_id` BIGINT COMMENT 'Identifier of the internal party responsible for the document.',
     `project_header_id` BIGINT COMMENT 'Foreign key linking to project.project_header. Business justification: Controlled documents (SOPs, procedures) are associated with specific projects for compliance control.',
-    `regulatory_requirement_id` BIGINT COMMENT 'Reference to the regulatory requirement linked to this document.',
     `applicable_standard` STRING COMMENT 'Regulatory or industry standard to which the document applies. [ENUM-REF-CANDIDATE: ISO 9001|ISO 14001|ISO 45001|IEC 62443|OSHA|EPA|UL|CE — 8 candidates stripped; promote to reference product]',
     `approval_date` DATE COMMENT 'Date when the document was approved.',
     `approval_status` STRING COMMENT 'Current approval status of the document.. Valid values are `pending|approved|rejected`',
@@ -718,20 +856,27 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`compliance`.`controlled_documen
     `confidentiality_level` STRING COMMENT 'Data classification level of the document.. Valid values are `public|internal|confidential|restricted`',
     `controlled_document_status` STRING COMMENT 'Current lifecycle status of the document.. Valid values are `draft|review|approved|obsolete|retracted`',
     `created_timestamp` TIMESTAMP COMMENT 'Timestamp when the document record was created.',
+    `controlled_document_description` STRING COMMENT '',
     `distribution_scope` STRING COMMENT 'Scope of distribution for the document.. Valid values are `global|regional|site|department|external`',
     `document_language` STRING COMMENT 'Language in which the document is written.. Valid values are `en|es|de|fr|zh|ja`',
     `document_number` STRING COMMENT 'Unique identifier assigned to the document within the organization.',
+    `document_status` STRING COMMENT '',
+    `document_title` STRING COMMENT '',
     `document_type` STRING COMMENT 'Category of the controlled document. [ENUM-REF-CANDIDATE: procedure|work_instruction|policy|plan|form|specification|record — 7 candidates stripped; promote to reference product]',
     `effective_date` DATE COMMENT 'Date when the document becomes effective for use.',
     `expiration_date` DATE COMMENT 'Date after which the document is no longer valid.',
     `file_path` STRING COMMENT 'Path to the electronic file of the document.',
     `file_size_bytes` BIGINT COMMENT 'Size of the document file in bytes.',
     `is_active` BOOLEAN COMMENT 'Indicates whether the document is currently active.',
+    `last_modified_timestamp` TIMESTAMP COMMENT '',
     `last_reviewed_timestamp` TIMESTAMP COMMENT 'Timestamp of the most recent review of the document.',
+    `notes` STRING COMMENT '',
     `retention_end_date` DATE COMMENT 'Date when the documents retention period expires.',
     `retention_period_days` STRING COMMENT 'Number of days the document must be retained per policy.',
+    `review_date` TIMESTAMP COMMENT '',
     `review_due_date` DATE COMMENT 'Date by which the document must be reviewed for continued relevance.',
     `revision_date` DATE COMMENT 'Date when the current revision was released.',
+    `revision_level` STRING COMMENT '',
     `revision_number` STRING COMMENT 'Alphanumeric identifier of the document revision.',
     `title` STRING COMMENT 'Descriptive title of the controlled document.',
     `updated_by` BIGINT COMMENT 'Identifier of the user who performed the latest update.',
@@ -743,9 +888,8 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`compliance`.`controlled_documen
 
 CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`compliance`.`process_hazard` (
     `process_hazard_id` BIGINT COMMENT 'Primary key for process_hazard',
-    `equipment_register_id` BIGINT COMMENT 'add column equipment_register_id (BIGINT) with FK to asset.equipment_register.equipment_register_id - process hazards are associated with specific equipment',
+    `facility_id` BIGINT COMMENT '',
     `parent_process_hazard_id` BIGINT COMMENT 'Self-referencing FK on process_hazard (parent_process_hazard_id)',
-    `production_line_id` BIGINT COMMENT 'add column production_line_id (BIGINT) with FK to production.production_line.production_line_id - process hazards exist on specific production lines',
     `associated_processes` STRING COMMENT 'Comma‑separated list of business processes impacted by the hazard.',
     `compliance_status` STRING COMMENT 'Current compliance status of the hazard with relevant regulations.',
     `control_measures` STRING COMMENT 'Mitigation actions or engineering controls applied to reduce the hazard.',
@@ -758,24 +902,33 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`compliance`.`process_hazard` (
     `exposure_limit_value` DECIMAL(18,2) COMMENT 'Maximum allowable exposure level for the hazard.',
     `hazard_category` STRING COMMENT 'High‑level classification of the hazard type.',
     `hazard_code` STRING COMMENT 'Unique alphanumeric code assigned to the hazard for quick reference.',
+    `hazard_description` STRING COMMENT '',
     `hazard_name` STRING COMMENT 'Descriptive name of the hazard as used in safety documentation.',
     `hazard_owner` STRING COMMENT 'Department or individual responsible for managing the hazard.',
     `hazard_subcategory` STRING COMMENT 'More specific classification within the main hazard category.',
+    `hazard_type` STRING COMMENT '',
     `incident_history_flag` BOOLEAN COMMENT 'True if historical incidents have been recorded for this hazard.',
     `is_active` BOOLEAN COMMENT 'Indicates whether the hazard is currently active and applicable.',
+    `last_modified_timestamp` TIMESTAMP COMMENT '',
     `last_review_date` DATE COMMENT 'Date of the most recent formal review of the hazard.',
     `likelihood_level` STRING COMMENT 'Estimated probability of occurrence for the hazard.',
+    `likelihood_rating` STRING COMMENT '',
+    `mitigation_measures` STRING COMMENT '',
     `mitigation_plan` STRING COMMENT 'Detailed plan outlining steps to mitigate or eliminate the hazard.',
     `monitoring_method` STRING COMMENT 'Method used to monitor the hazard.',
     `monitoring_required` BOOLEAN COMMENT 'Indicates whether continuous monitoring is required for this hazard.',
     `notes` STRING COMMENT 'Free‑form field for any additional information or comments.',
     `regulatory_standard` STRING COMMENT 'Applicable regulatory or industry standards governing the hazard (e.g., ISO 14001, OSHA, EPA, IEC 62443).',
     `review_frequency_months` STRING COMMENT 'Planned interval in months between hazard reviews.',
+    `risk_priority_number` STRING COMMENT '',
     `risk_rating` STRING COMMENT 'Combined risk rating derived from severity and likelihood.',
     `severity_level` STRING COMMENT 'Potential impact severity if the hazard materializes.',
+    `severity_rating` STRING COMMENT '',
+    `process_hazard_status` STRING COMMENT '',
     `training_program` STRING COMMENT 'Name or identifier of the training program associated with the hazard.',
     `training_required` BOOLEAN COMMENT 'Indicates if specific training is required for personnel handling the hazard.',
     `updated_timestamp` TIMESTAMP COMMENT 'Timestamp of the most recent update to the hazard record.',
+    `created_by` STRING COMMENT '',
     CONSTRAINT pk_process_hazard PRIMARY KEY(`process_hazard_id`)
 ) COMMENT 'Master reference table for process_hazard. Referenced by process_hazard_id.';
 
@@ -787,33 +940,41 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`compliance`.`emission_source` (
     `emission_source_category` STRING COMMENT 'Broad environmental category of the emissions produced.',
     `compliance_certification_code` STRING COMMENT 'Code of any certification or permit associated with the source (e.g., EPA permit number).',
     `compliance_status` STRING COMMENT 'Regulatory compliance status of the emission source.',
+    `created_timestamp` TIMESTAMP COMMENT '',
     `decommission_date` DATE COMMENT 'Date on which the emission source was permanently shut down.',
     `emission_source_description` STRING COMMENT 'Detailed free‑text description of the source, its function, and any relevant notes.',
     `emission_factor` DECIMAL(18,2) COMMENT 'Quantitative factor representing emissions per unit of activity (e.g., kg CO₂e per MWh).',
+    `last_modified_timestamp` TIMESTAMP COMMENT '',
     `last_reported_timestamp` TIMESTAMP COMMENT 'Date‑time when the most recent emission report for this source was submitted.',
     `latitude` DOUBLE COMMENT 'Geographic latitude of the emission source (decimal degrees).',
     `longitude` DOUBLE COMMENT 'Geographic longitude of the emission source (decimal degrees).',
     `emission_source_name` STRING COMMENT 'Human‑readable name of the emission source (e.g., Boiler A, Paint Shop).',
     `next_report_due_date` DATE COMMENT 'Calendar date by which the next emission report must be filed.',
+    `notes` STRING COMMENT '',
+    `permitted_flag` BOOLEAN COMMENT '',
     `plant_location` STRING COMMENT 'Physical address or site name of the plant housing the source.',
+    `pollutant_types` STRING COMMENT '',
     `record_audit_created` TIMESTAMP COMMENT 'Timestamp when the emission source record was first created in the system.',
     `record_audit_updated` TIMESTAMP COMMENT 'Timestamp of the most recent update to the emission source record.',
     `regulatory_agency` STRING COMMENT 'Primary agency overseeing the sources emissions.',
     `reporting_frequency` STRING COMMENT 'How often emissions from this source are reported.',
     `source_code` STRING COMMENT 'Business‑assigned code used to reference the emission source in reports and regulatory filings.',
+    `source_name` STRING COMMENT '',
     `source_operating_company` STRING COMMENT 'External or internal company that operates the emission source.',
     `source_owner` STRING COMMENT 'Business unit or department responsible for the emission source.',
+    `source_type` STRING COMMENT '',
+    `stack_height_meters` DECIMAL(18,2) COMMENT '',
     `emission_source_status` STRING COMMENT 'Current operational status of the emission source.',
     `emission_source_type` STRING COMMENT 'Classification of the source based on its physical or operational characteristics.',
     `unit_of_measure` STRING COMMENT 'Unit used for the emission factor (e.g., kilograms CO₂e).',
+    `created_by` STRING COMMENT '',
     CONSTRAINT pk_emission_source PRIMARY KEY(`emission_source_id`)
 ) COMMENT 'Master reference table for emission_source. Referenced by source_id.';
 
 CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`compliance`.`facility` (
     `facility_id` BIGINT COMMENT 'Primary key for facility',
-    `asset_plant_id` BIGINT COMMENT 'add column asset_plant_id (BIGINT) with FK to asset.plant.plant_id - compliance facilities should map to the canonical plant definition',
-    `company_code_id` BIGINT COMMENT 'add column finance_company_code_id (BIGINT) with FK to finance.company_code.company_code_id - facilities must belong to a legal entity for regulatory filing',
     `parent_facility_id` BIGINT COMMENT 'Identifier of the parent facility in a hierarchical location structure, if applicable.',
+    `address_line` STRING COMMENT '',
     `address_line1` STRING COMMENT 'Primary street address of the facility.',
     `address_line2` STRING COMMENT 'Secondary address information (suite, building, etc.).',
     `audit_status` STRING COMMENT 'Current status of internal or external audits.',
@@ -824,8 +985,10 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`compliance`.`facility` (
     `compliance_iec_62443_certified` BOOLEAN COMMENT 'Indicates whether the facility meets IEC 62443 cybersecurity standards for industrial automation.',
     `compliance_iso_14001_certified` BOOLEAN COMMENT 'Indicates whether the facility is certified to ISO 14001 environmental management standards.',
     `compliance_iso_45001_certified` BOOLEAN COMMENT 'Indicates whether the facility is certified to ISO 45001 occupational health and safety standards.',
+    `country` STRING COMMENT '',
     `country_code` STRING COMMENT 'Three‑letter ISO country code where the facility resides. [ENUM-REF-CANDIDATE: USA|CAN|MEX|GBR|DEU|FRA|CHN|JPN|IND|BRA — promote to reference product]',
     `created_timestamp` TIMESTAMP COMMENT 'Timestamp when the facility record was first created in the system.',
+    `facility_description` STRING COMMENT '',
     `emergency_contact_phone` STRING COMMENT 'Phone number to use for emergency communications.',
     `emissions_co2_tons` DECIMAL(18,2) COMMENT 'Annual carbon dioxide emissions from the facility in metric tons.',
     `energy_consumption_mwh` DECIMAL(18,2) COMMENT 'Total electricity consumption of the facility measured in megawatt‑hours for the reporting period.',
@@ -839,10 +1002,13 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`compliance`.`facility` (
     `insurance_expiry_date` DATE COMMENT 'Date when the current insurance policy expires.',
     `insurance_policy_number` STRING COMMENT 'Reference number of the facilitys insurance coverage.',
     `last_inspection_date` DATE COMMENT 'Date of the most recent regulatory or safety inspection.',
+    `last_modified_timestamp` TIMESTAMP COMMENT '',
     `latitude` DECIMAL(18,2) COMMENT 'Geographic latitude of the facility (decimal degrees).',
     `longitude` DECIMAL(18,2) COMMENT 'Geographic longitude of the facility (decimal degrees).',
     `facility_name` STRING COMMENT 'Human‑readable name of the facility.',
     `next_inspection_due` DATE COMMENT 'Scheduled date for the next required inspection.',
+    `notes` STRING COMMENT '',
+    `operational_status` DECIMAL(18,2) COMMENT '',
     `postal_code` STRING COMMENT 'Postal/ZIP code for the facility address.',
     `power_source` STRING COMMENT 'Primary source of electrical power (e.g., grid, solar, generator).',
     `primary_contact_email` STRING COMMENT 'Email address for the primary facility contact.',
@@ -857,12 +1023,14 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`compliance`.`facility` (
     `updated_timestamp` TIMESTAMP COMMENT 'Timestamp of the most recent update to the facility record.',
     `waste_generated_tons` DECIMAL(18,2) COMMENT 'Total waste generated on site measured in metric tons.',
     `water_usage_m3` DECIMAL(18,2) COMMENT 'Volume of water consumed by the facility in cubic metres.',
+    `created_by` STRING COMMENT '',
     CONSTRAINT pk_facility PRIMARY KEY(`facility_id`)
 ) COMMENT 'Master reference table for facility. Referenced by related_facility_id.';
 
 CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`compliance`.`safety_checklist` (
     `safety_checklist_id` BIGINT COMMENT 'Primary key for safety_checklist',
     `parent_safety_checklist_id` BIGINT COMMENT 'Self-referencing FK on safety_checklist (parent_safety_checklist_id)',
+    `safety_inspection_id` BIGINT COMMENT '',
     `applicable_regulation` STRING COMMENT 'Regulatory framework(s) to which the checklist complies.',
     `approval_status` STRING COMMENT 'Current approval state of the checklist.',
     `approved_by` STRING COMMENT 'Identifier of the user who approved the checklist.',
@@ -870,7 +1038,9 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`compliance`.`safety_checklist` 
     `attachment_flag` BOOLEAN COMMENT 'True if supporting attachments (e.g., diagrams) are associated.',
     `audit_trail` STRING COMMENT 'Free‑text log of significant audit events for the checklist.',
     `safety_checklist_category` STRING COMMENT 'Higher‑level grouping of the checklist for reporting.',
+    `checklist_code` STRING COMMENT '',
     `checklist_items_count` STRING COMMENT 'Total count of individual items/questions in the checklist.',
+    `checklist_name` STRING COMMENT '',
     `checklist_type` STRING COMMENT 'Category that defines the nature of the checklist.',
     `safety_checklist_code` STRING COMMENT 'Business code used to reference the checklist in external systems.',
     `confidentiality_level` STRING COMMENT 'Data classification level for the checklist record.',
@@ -879,14 +1049,19 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`compliance`.`safety_checklist` 
     `document_url` STRING COMMENT 'Link to the electronic version of the checklist document.',
     `effective_date` DATE COMMENT 'Date when the checklist becomes applicable.',
     `expiration_date` DATE COMMENT 'Date when the checklist is no longer valid (nullable).',
+    `failed_items` STRING COMMENT '',
     `is_mandatory` BOOLEAN COMMENT 'True if the checklist must be completed for compliance.',
+    `last_modified_timestamp` TIMESTAMP COMMENT '',
     `last_review_date` DATE COMMENT 'Date when the checklist was last reviewed.',
     `safety_checklist_name` STRING COMMENT 'Human‑readable name of the checklist.',
     `next_review_date` DATE COMMENT 'Planned date for the next review.',
+    `notes` STRING COMMENT '',
+    `passed_items` STRING COMMENT '',
     `required_training` BOOLEAN COMMENT 'Indicates whether specific training is required to complete the checklist.',
     `review_frequency_days` STRING COMMENT 'Number of days between mandatory reviews of the checklist.',
     `risk_level` STRING COMMENT 'Assessed risk level associated with the checklist items.',
     `safety_checklist_status` STRING COMMENT 'Current lifecycle status of the checklist.',
+    `total_items` DECIMAL(18,2) COMMENT '',
     `updated_by` STRING COMMENT 'Identifier of the user who last updated the checklist record.',
     `updated_timestamp` TIMESTAMP COMMENT 'Timestamp of the most recent update to the checklist record.',
     `version_number` STRING COMMENT 'Version identifier of the checklist (e.g., 1.0, 2.1).',
@@ -897,32 +1072,47 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`compliance`.`safety_checklist` 
 -- ========= FOREIGN KEYS =========
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`obligation` ADD CONSTRAINT `fk_compliance_obligation_regulatory_requirement_id` FOREIGN KEY (`regulatory_requirement_id`) REFERENCES `vibe_manufacturing_v1`.`compliance`.`regulatory_requirement`(`regulatory_requirement_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`obligation` ADD CONSTRAINT `fk_compliance_obligation_facility_id` FOREIGN KEY (`facility_id`) REFERENCES `vibe_manufacturing_v1`.`compliance`.`facility`(`facility_id`);
+ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`audit_plan` ADD CONSTRAINT `fk_compliance_audit_plan_regulatory_requirement_id` FOREIGN KEY (`regulatory_requirement_id`) REFERENCES `vibe_manufacturing_v1`.`compliance`.`regulatory_requirement`(`regulatory_requirement_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`audit_event` ADD CONSTRAINT `fk_compliance_audit_event_audit_plan_id` FOREIGN KEY (`audit_plan_id`) REFERENCES `vibe_manufacturing_v1`.`compliance`.`audit_plan`(`audit_plan_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`audit_event` ADD CONSTRAINT `fk_compliance_audit_event_compliance_audit_finding_id` FOREIGN KEY (`compliance_audit_finding_id`) REFERENCES `vibe_manufacturing_v1`.`compliance`.`compliance_audit_finding`(`compliance_audit_finding_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`compliance_audit_finding` ADD CONSTRAINT `fk_compliance_compliance_audit_finding_controlled_document_id` FOREIGN KEY (`controlled_document_id`) REFERENCES `vibe_manufacturing_v1`.`compliance`.`controlled_document`(`controlled_document_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`compliance_audit_finding` ADD CONSTRAINT `fk_compliance_compliance_audit_finding_prior_finding_id` FOREIGN KEY (`prior_finding_id`) REFERENCES `vibe_manufacturing_v1`.`compliance`.`compliance_audit_finding`(`compliance_audit_finding_id`);
+ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`compliance_audit_finding` ADD CONSTRAINT `fk_compliance_compliance_audit_finding_audit_event_id` FOREIGN KEY (`audit_event_id`) REFERENCES `vibe_manufacturing_v1`.`compliance`.`audit_event`(`audit_event_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`compliance_capa_record` ADD CONSTRAINT `fk_compliance_compliance_capa_record_compliance_audit_finding_id` FOREIGN KEY (`compliance_audit_finding_id`) REFERENCES `vibe_manufacturing_v1`.`compliance`.`compliance_audit_finding`(`compliance_audit_finding_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`compliance_capa_record` ADD CONSTRAINT `fk_compliance_compliance_capa_record_regulatory_requirement_id` FOREIGN KEY (`regulatory_requirement_id`) REFERENCES `vibe_manufacturing_v1`.`compliance`.`regulatory_requirement`(`regulatory_requirement_id`);
+ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`safety_incident` ADD CONSTRAINT `fk_compliance_safety_incident_facility_id` FOREIGN KEY (`facility_id`) REFERENCES `vibe_manufacturing_v1`.`compliance`.`facility`(`facility_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`safety_incident` ADD CONSTRAINT `fk_compliance_safety_incident_previous_incident_safety_incident_id` FOREIGN KEY (`previous_incident_safety_incident_id`) REFERENCES `vibe_manufacturing_v1`.`compliance`.`safety_incident`(`safety_incident_id`);
+ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`safety_inspection` ADD CONSTRAINT `fk_compliance_safety_inspection_facility_id` FOREIGN KEY (`facility_id`) REFERENCES `vibe_manufacturing_v1`.`compliance`.`facility`(`facility_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`safety_inspection` ADD CONSTRAINT `fk_compliance_safety_inspection_regulatory_requirement_id` FOREIGN KEY (`regulatory_requirement_id`) REFERENCES `vibe_manufacturing_v1`.`compliance`.`regulatory_requirement`(`regulatory_requirement_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`safety_inspection` ADD CONSTRAINT `fk_compliance_safety_inspection_safety_checklist_id` FOREIGN KEY (`safety_checklist_id`) REFERENCES `vibe_manufacturing_v1`.`compliance`.`safety_checklist`(`safety_checklist_id`);
+ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`environmental_aspect` ADD CONSTRAINT `fk_compliance_environmental_aspect_facility_id` FOREIGN KEY (`facility_id`) REFERENCES `vibe_manufacturing_v1`.`compliance`.`facility`(`facility_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`environmental_aspect` ADD CONSTRAINT `fk_compliance_environmental_aspect_regulatory_requirement_id` FOREIGN KEY (`regulatory_requirement_id`) REFERENCES `vibe_manufacturing_v1`.`compliance`.`regulatory_requirement`(`regulatory_requirement_id`);
-ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`emissions_record` ADD CONSTRAINT `fk_compliance_emissions_record_regulatory_requirement_id` FOREIGN KEY (`regulatory_requirement_id`) REFERENCES `vibe_manufacturing_v1`.`compliance`.`regulatory_requirement`(`regulatory_requirement_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`emissions_record` ADD CONSTRAINT `fk_compliance_emissions_record_emission_source_id` FOREIGN KEY (`emission_source_id`) REFERENCES `vibe_manufacturing_v1`.`compliance`.`emission_source`(`emission_source_id`);
+ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`emissions_record` ADD CONSTRAINT `fk_compliance_emissions_record_facility_id` FOREIGN KEY (`facility_id`) REFERENCES `vibe_manufacturing_v1`.`compliance`.`facility`(`facility_id`);
+ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`emissions_record` ADD CONSTRAINT `fk_compliance_emissions_record_regulatory_requirement_id` FOREIGN KEY (`regulatory_requirement_id`) REFERENCES `vibe_manufacturing_v1`.`compliance`.`regulatory_requirement`(`regulatory_requirement_id`);
+ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`emissions_record` ADD CONSTRAINT `fk_compliance_emissions_record_source_emission_source_id` FOREIGN KEY (`source_emission_source_id`) REFERENCES `vibe_manufacturing_v1`.`compliance`.`emission_source`(`emission_source_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`compliance_product_certification` ADD CONSTRAINT `fk_compliance_compliance_product_certification_regulatory_requirement_id` FOREIGN KEY (`regulatory_requirement_id`) REFERENCES `vibe_manufacturing_v1`.`compliance`.`regulatory_requirement`(`regulatory_requirement_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`regulatory_filing` ADD CONSTRAINT `fk_compliance_regulatory_filing_regulatory_requirement_id` FOREIGN KEY (`regulatory_requirement_id`) REFERENCES `vibe_manufacturing_v1`.`compliance`.`regulatory_requirement`(`regulatory_requirement_id`);
+ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`permit` ADD CONSTRAINT `fk_compliance_permit_facility_id` FOREIGN KEY (`facility_id`) REFERENCES `vibe_manufacturing_v1`.`compliance`.`facility`(`facility_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`permit` ADD CONSTRAINT `fk_compliance_permit_regulatory_requirement_id` FOREIGN KEY (`regulatory_requirement_id`) REFERENCES `vibe_manufacturing_v1`.`compliance`.`regulatory_requirement`(`regulatory_requirement_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`cybersecurity_control` ADD CONSTRAINT `fk_compliance_cybersecurity_control_regulatory_requirement_id` FOREIGN KEY (`regulatory_requirement_id`) REFERENCES `vibe_manufacturing_v1`.`compliance`.`regulatory_requirement`(`regulatory_requirement_id`);
+ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`cybersecurity_assessment` ADD CONSTRAINT `fk_compliance_cybersecurity_assessment_cybersecurity_control_id` FOREIGN KEY (`cybersecurity_control_id`) REFERENCES `vibe_manufacturing_v1`.`compliance`.`cybersecurity_control`(`cybersecurity_control_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`cybersecurity_assessment` ADD CONSTRAINT `fk_compliance_cybersecurity_assessment_regulatory_requirement_id` FOREIGN KEY (`regulatory_requirement_id`) REFERENCES `vibe_manufacturing_v1`.`compliance`.`regulatory_requirement`(`regulatory_requirement_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`hazardous_substance` ADD CONSTRAINT `fk_compliance_hazardous_substance_regulatory_requirement_id` FOREIGN KEY (`regulatory_requirement_id`) REFERENCES `vibe_manufacturing_v1`.`compliance`.`regulatory_requirement`(`regulatory_requirement_id`);
+ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`waste_record` ADD CONSTRAINT `fk_compliance_waste_record_facility_id` FOREIGN KEY (`facility_id`) REFERENCES `vibe_manufacturing_v1`.`compliance`.`facility`(`facility_id`);
+ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`waste_record` ADD CONSTRAINT `fk_compliance_waste_record_hazardous_substance_id` FOREIGN KEY (`hazardous_substance_id`) REFERENCES `vibe_manufacturing_v1`.`compliance`.`hazardous_substance`(`hazardous_substance_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`waste_record` ADD CONSTRAINT `fk_compliance_waste_record_regulatory_requirement_id` FOREIGN KEY (`regulatory_requirement_id`) REFERENCES `vibe_manufacturing_v1`.`compliance`.`regulatory_requirement`(`regulatory_requirement_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`periodic_evaluation` ADD CONSTRAINT `fk_compliance_periodic_evaluation_obligation_id` FOREIGN KEY (`obligation_id`) REFERENCES `vibe_manufacturing_v1`.`compliance`.`obligation`(`obligation_id`);
+ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`periodic_evaluation` ADD CONSTRAINT `fk_compliance_periodic_evaluation_regulatory_requirement_id` FOREIGN KEY (`regulatory_requirement_id`) REFERENCES `vibe_manufacturing_v1`.`compliance`.`regulatory_requirement`(`regulatory_requirement_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`controlled_document` ADD CONSTRAINT `fk_compliance_controlled_document_regulatory_requirement_id` FOREIGN KEY (`regulatory_requirement_id`) REFERENCES `vibe_manufacturing_v1`.`compliance`.`regulatory_requirement`(`regulatory_requirement_id`);
+ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`controlled_document` ADD CONSTRAINT `fk_compliance_controlled_document_controlled_related_regulation_regulatory_requirement_id` FOREIGN KEY (`controlled_related_regulation_regulatory_requirement_id`) REFERENCES `vibe_manufacturing_v1`.`compliance`.`regulatory_requirement`(`regulatory_requirement_id`);
+ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`process_hazard` ADD CONSTRAINT `fk_compliance_process_hazard_facility_id` FOREIGN KEY (`facility_id`) REFERENCES `vibe_manufacturing_v1`.`compliance`.`facility`(`facility_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`process_hazard` ADD CONSTRAINT `fk_compliance_process_hazard_parent_process_hazard_id` FOREIGN KEY (`parent_process_hazard_id`) REFERENCES `vibe_manufacturing_v1`.`compliance`.`process_hazard`(`process_hazard_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`emission_source` ADD CONSTRAINT `fk_compliance_emission_source_facility_id` FOREIGN KEY (`facility_id`) REFERENCES `vibe_manufacturing_v1`.`compliance`.`facility`(`facility_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`emission_source` ADD CONSTRAINT `fk_compliance_emission_source_parent_emission_source_id` FOREIGN KEY (`parent_emission_source_id`) REFERENCES `vibe_manufacturing_v1`.`compliance`.`emission_source`(`emission_source_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`facility` ADD CONSTRAINT `fk_compliance_facility_parent_facility_id` FOREIGN KEY (`parent_facility_id`) REFERENCES `vibe_manufacturing_v1`.`compliance`.`facility`(`facility_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`safety_checklist` ADD CONSTRAINT `fk_compliance_safety_checklist_parent_safety_checklist_id` FOREIGN KEY (`parent_safety_checklist_id`) REFERENCES `vibe_manufacturing_v1`.`compliance`.`safety_checklist`(`safety_checklist_id`);
+ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`safety_checklist` ADD CONSTRAINT `fk_compliance_safety_checklist_safety_inspection_id` FOREIGN KEY (`safety_inspection_id`) REFERENCES `vibe_manufacturing_v1`.`compliance`.`safety_inspection`(`safety_inspection_id`);
 
 -- ========= TAGS =========
 ALTER SCHEMA `vibe_manufacturing_v1`.`compliance` SET TAGS ('dbx_division' = 'corporate');
@@ -936,6 +1126,8 @@ ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`regulatory_requirement` ALTER 
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`regulatory_requirement` ALTER COLUMN `audit_frequency_months` SET TAGS ('dbx_business_glossary_term' = 'Audit Frequency (Months)');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`regulatory_requirement` ALTER COLUMN `authority_code` SET TAGS ('dbx_business_glossary_term' = 'Issuing Authority Code');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`regulatory_requirement` ALTER COLUMN `authority_name` SET TAGS ('dbx_business_glossary_term' = 'Issuing Authority Name');
+ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`regulatory_requirement` ALTER COLUMN `authority_name` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`regulatory_requirement` ALTER COLUMN `authority_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`regulatory_requirement` ALTER COLUMN `compliance_category` SET TAGS ('dbx_business_glossary_term' = 'Compliance Category');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`regulatory_requirement` ALTER COLUMN `compliance_category` SET TAGS ('dbx_value_regex' = 'environmental|occupational|product|cybersecurity|financial|quality');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`regulatory_requirement` ALTER COLUMN `compliance_deadline` SET TAGS ('dbx_business_glossary_term' = 'Compliance Deadline');
@@ -944,7 +1136,6 @@ ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`regulatory_requirement` ALTER 
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`regulatory_requirement` ALTER COLUMN `compliance_status` SET TAGS ('dbx_business_glossary_term' = 'Compliance Status');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`regulatory_requirement` ALTER COLUMN `compliance_status` SET TAGS ('dbx_value_regex' = 'compliant|non_compliant|partial|unknown');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`regulatory_requirement` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
-ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`regulatory_requirement` ALTER COLUMN `regulatory_requirement_description` SET TAGS ('dbx_business_glossary_term' = 'Regulatory Requirement Description');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`regulatory_requirement` ALTER COLUMN `document_last_updated` SET TAGS ('dbx_business_glossary_term' = 'Document Last Updated Timestamp');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`regulatory_requirement` ALTER COLUMN `document_release_date` SET TAGS ('dbx_business_glossary_term' = 'Document Release Date');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`regulatory_requirement` ALTER COLUMN `document_version` SET TAGS ('dbx_business_glossary_term' = 'Document Version');
@@ -955,11 +1146,14 @@ ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`regulatory_requirement` ALTER 
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`regulatory_requirement` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Additional Notes');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`regulatory_requirement` ALTER COLUMN `penalty_amount` SET TAGS ('dbx_business_glossary_term' = 'Penalty Amount');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`regulatory_requirement` ALTER COLUMN `penalty_currency` SET TAGS ('dbx_business_glossary_term' = 'Penalty Currency');
+ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`regulatory_requirement` ALTER COLUMN `regulatory_requirement_description` SET TAGS ('dbx_business_glossary_term' = 'Regulatory Requirement Description');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`regulatory_requirement` ALTER COLUMN `regulatory_requirement_status` SET TAGS ('dbx_business_glossary_term' = 'Regulatory Requirement Status');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`regulatory_requirement` ALTER COLUMN `regulatory_requirement_status` SET TAGS ('dbx_value_regex' = 'active|inactive|pending|retired');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`regulatory_requirement` ALTER COLUMN `reporting_requirements` SET TAGS ('dbx_business_glossary_term' = 'Reporting Requirements');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`regulatory_requirement` ALTER COLUMN `requirement_code` SET TAGS ('dbx_business_glossary_term' = 'Regulatory Requirement Code');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`regulatory_requirement` ALTER COLUMN `requirement_name` SET TAGS ('dbx_business_glossary_term' = 'Regulatory Requirement Name');
+ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`regulatory_requirement` ALTER COLUMN `requirement_name` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`regulatory_requirement` ALTER COLUMN `requirement_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`regulatory_requirement` ALTER COLUMN `requirement_type` SET TAGS ('dbx_business_glossary_term' = 'Regulatory Requirement Type (TYPE)');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`regulatory_requirement` ALTER COLUMN `requirement_type` SET TAGS ('dbx_value_regex' = 'law|standard|regulation|directive|policy|guideline');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`regulatory_requirement` ALTER COLUMN `review_frequency_months` SET TAGS ('dbx_business_glossary_term' = 'Review Frequency (Months)');
@@ -1006,6 +1200,8 @@ ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`obligation` ALTER COLUMN `obli
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`obligation` ALTER COLUMN `obligation_status` SET TAGS ('dbx_value_regex' = 'active|inactive|pending|closed|expired');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`obligation` ALTER COLUMN `obligation_type` SET TAGS ('dbx_business_glossary_term' = 'Obligation Type (OT)');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`obligation` ALTER COLUMN `obligation_type` SET TAGS ('dbx_value_regex' = 'environmental|safety|cybersecurity|quality|financial');
+ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`obligation` ALTER COLUMN `owner_name` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`obligation` ALTER COLUMN `owner_name` SET TAGS ('dbx_mask' = 'nonprod');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`obligation` ALTER COLUMN `recurrence_schedule` SET TAGS ('dbx_business_glossary_term' = 'Recurrence Schedule (RS)');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`obligation` ALTER COLUMN `recurrence_schedule` SET TAGS ('dbx_value_regex' = 'annual|semi-annual|quarterly|monthly|one-time|ad-hoc');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`obligation` ALTER COLUMN `remediation_action` SET TAGS ('dbx_business_glossary_term' = 'Remediation Action (RA)');
@@ -1064,6 +1260,9 @@ ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`audit_event` ALTER COLUMN `aud
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`audit_event` ALTER COLUMN `auditor_name` SET TAGS ('dbx_business_glossary_term' = 'Auditor Full Name');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`audit_event` ALTER COLUMN `auditor_name` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`audit_event` ALTER COLUMN `auditor_name` SET TAGS ('dbx_pii_name' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`audit_event` ALTER COLUMN `auditor_name` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`audit_event` ALTER COLUMN `auditor_name` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`audit_event` ALTER COLUMN `auditor_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`audit_event` ALTER COLUMN `certification_body` SET TAGS ('dbx_business_glossary_term' = 'Certification Body');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`audit_event` ALTER COLUMN `corrective_action_due_date` SET TAGS ('dbx_business_glossary_term' = 'Corrective Action Due Date');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`audit_event` ALTER COLUMN `corrective_action_required` SET TAGS ('dbx_business_glossary_term' = 'Corrective Action Required');
@@ -1090,25 +1289,24 @@ ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`compliance_audit_finding` SET 
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`compliance_audit_finding` ALTER COLUMN `compliance_audit_finding_id` SET TAGS ('dbx_business_glossary_term' = 'Compliance Audit Finding ID');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`compliance_audit_finding` ALTER COLUMN `control_system_id` SET TAGS ('dbx_business_glossary_term' = 'Control System Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`compliance_audit_finding` ALTER COLUMN `controlled_document_id` SET TAGS ('dbx_business_glossary_term' = 'Evidence Document ID');
-ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`compliance_audit_finding` ALTER COLUMN `customer_account_id` SET TAGS ('dbx_business_glossary_term' = 'Customer Account Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`compliance_audit_finding` ALTER COLUMN `prior_finding_id` SET TAGS ('dbx_business_glossary_term' = 'Prior Finding ID');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`compliance_audit_finding` ALTER COLUMN `project_header_id` SET TAGS ('dbx_business_glossary_term' = 'Project Header Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`compliance_audit_finding` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Responsible Employee Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`compliance_audit_finding` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`compliance_audit_finding` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`compliance_audit_finding` ALTER COLUMN `audit_event_id` SET TAGS ('dbx_business_glossary_term' = 'Audit Event ID');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`compliance_audit_finding` ALTER COLUMN `actual_resolution_date` SET TAGS ('dbx_business_glossary_term' = 'Actual Resolution Date');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`compliance_audit_finding` ALTER COLUMN `affected_process` SET TAGS ('dbx_business_glossary_term' = 'Affected Process');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`compliance_audit_finding` ALTER COLUMN `affected_process` SET TAGS ('dbx_value_regex' = 'design|production|procurement|quality|maintenance|customer_service');
-ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`compliance_audit_finding` ALTER COLUMN `audit_event_id` SET TAGS ('dbx_business_glossary_term' = 'Audit Event ID');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`compliance_audit_finding` ALTER COLUMN `audit_finding_number` SET TAGS ('dbx_business_glossary_term' = 'Audit Finding Number');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`compliance_audit_finding` ALTER COLUMN `audit_finding_number` SET TAGS ('dbx_value_regex' = '^AF-d{6}$');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`compliance_audit_finding` ALTER COLUMN `clause_violated` SET TAGS ('dbx_business_glossary_term' = 'Violated Clause');
+ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`compliance_audit_finding` ALTER COLUMN `compliance_audit_finding_description` SET TAGS ('dbx_business_glossary_term' = 'Finding Description');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`compliance_audit_finding` ALTER COLUMN `compliance_audit_finding_status` SET TAGS ('dbx_business_glossary_term' = 'Finding Status');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`compliance_audit_finding` ALTER COLUMN `compliance_audit_finding_status` SET TAGS ('dbx_value_regex' = 'open|in_progress|closed|deferred|rejected');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`compliance_audit_finding` ALTER COLUMN `corrective_action_description` SET TAGS ('dbx_business_glossary_term' = 'Corrective Action Description');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`compliance_audit_finding` ALTER COLUMN `corrective_action_required` SET TAGS ('dbx_business_glossary_term' = 'Corrective Action Required');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`compliance_audit_finding` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
-ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`compliance_audit_finding` ALTER COLUMN `compliance_audit_finding_description` SET TAGS ('dbx_business_glossary_term' = 'Finding Description');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`compliance_audit_finding` ALTER COLUMN `discovery_date` SET TAGS ('dbx_business_glossary_term' = 'Discovery Date');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`compliance_audit_finding` ALTER COLUMN `finding_type` SET TAGS ('dbx_business_glossary_term' = 'Finding Type');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`compliance_audit_finding` ALTER COLUMN `finding_type` SET TAGS ('dbx_value_regex' = 'major_nonconformance|minor_nonconformance|observation|opportunity_for_improvement');
@@ -1182,7 +1380,7 @@ ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`compliance_capa_record` ALTER 
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`compliance_capa_record` ALTER COLUMN `verification_method` SET TAGS ('dbx_business_glossary_term' = 'Verification Method');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`compliance_capa_record` ALTER COLUMN `verification_method` SET TAGS ('dbx_value_regex' = 'inspection|test|audit|review|other');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`safety_incident` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`safety_incident` SET TAGS ('dbx_subdomain' = 'safety_environmental');
+ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`safety_incident` SET TAGS ('dbx_subdomain' = 'safety_health');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`safety_incident` ALTER COLUMN `safety_incident_id` SET TAGS ('dbx_business_glossary_term' = 'Safety Incident Identifier');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`safety_incident` ALTER COLUMN `account_site_id` SET TAGS ('dbx_business_glossary_term' = 'Account Site Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`safety_incident` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Employee ID (EMPLOYEE_ID)');
@@ -1200,6 +1398,8 @@ ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`safety_incident` ALTER COLUMN 
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`safety_incident` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Creation Timestamp (CREATED_TIMESTAMP)');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`safety_incident` ALTER COLUMN `days_away_from_work` SET TAGS ('dbx_business_glossary_term' = 'Days Away From Work (DAYS_AWAY_FROM_WORK)');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`safety_incident` ALTER COLUMN `equipment_name` SET TAGS ('dbx_business_glossary_term' = 'Equipment Name (EQUIPMENT_NAME)');
+ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`safety_incident` ALTER COLUMN `equipment_name` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`safety_incident` ALTER COLUMN `equipment_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`safety_incident` ALTER COLUMN `immediate_corrective_action` SET TAGS ('dbx_business_glossary_term' = 'Immediate Corrective Action (IMMEDIATE_CORRECTIVE_ACTION)');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`safety_incident` ALTER COLUMN `incident_description` SET TAGS ('dbx_business_glossary_term' = 'Incident Description (INCIDENT_DESCRIPTION)');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`safety_incident` ALTER COLUMN `incident_location` SET TAGS ('dbx_business_glossary_term' = 'Incident Location (INCIDENT_LOCATION)');
@@ -1230,6 +1430,8 @@ ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`safety_incident` ALTER COLUMN 
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`safety_incident` ALTER COLUMN `reported_by` SET TAGS ('dbx_business_glossary_term' = 'Reported By (REPORTED_BY)');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`safety_incident` ALTER COLUMN `reported_by` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`safety_incident` ALTER COLUMN `reported_by` SET TAGS ('dbx_pii_name' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`safety_incident` ALTER COLUMN `reported_by_name` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`safety_incident` ALTER COLUMN `reported_by_name` SET TAGS ('dbx_mask' = 'nonprod');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`safety_incident` ALTER COLUMN `reported_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Reported Timestamp (REPORTED_TIMESTAMP)');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`safety_incident` ALTER COLUMN `risk_rating` SET TAGS ('dbx_business_glossary_term' = 'Risk Rating (RISK_RATING)');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`safety_incident` ALTER COLUMN `risk_rating` SET TAGS ('dbx_value_regex' = 'low|medium|high|critical');
@@ -1243,14 +1445,14 @@ ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`safety_incident` ALTER COLUMN 
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`safety_incident` ALTER COLUMN `witness_names` SET TAGS ('dbx_business_glossary_term' = 'Witness Names (WITNESS_NAMES)');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`safety_incident` ALTER COLUMN `witness_names` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`safety_incident` ALTER COLUMN `witness_names` SET TAGS ('dbx_pii_name' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`safety_incident` ALTER COLUMN `witness_names` SET TAGS ('dbx_sensitivity' = 'pii');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`safety_inspection` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`safety_inspection` SET TAGS ('dbx_subdomain' = 'safety_environmental');
+ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`safety_inspection` SET TAGS ('dbx_subdomain' = 'safety_health');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`safety_inspection` ALTER COLUMN `safety_inspection_id` SET TAGS ('dbx_business_glossary_term' = 'Safety Inspection Identifier (SI_ID)');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`safety_inspection` ALTER COLUMN `device_registry_id` SET TAGS ('dbx_business_glossary_term' = 'Device Registry Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`safety_inspection` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Inspector Identifier (INS_ID)');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`safety_inspection` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`safety_inspection` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`safety_inspection` ALTER COLUMN `node_id` SET TAGS ('dbx_business_glossary_term' = 'Facility Identifier (FAC_ID)');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`safety_inspection` ALTER COLUMN `project_header_id` SET TAGS ('dbx_business_glossary_term' = 'Project Header Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`safety_inspection` ALTER COLUMN `regulatory_requirement_id` SET TAGS ('dbx_business_glossary_term' = 'Regulatory Requirement Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`safety_inspection` ALTER COLUMN `safety_checklist_id` SET TAGS ('dbx_business_glossary_term' = 'Checklist Identifier (CL_ID)');
@@ -1271,6 +1473,8 @@ ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`safety_inspection` ALTER COLUM
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`safety_inspection` ALTER COLUMN `inspection_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Inspection Event Timestamp (IET)');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`safety_inspection` ALTER COLUMN `inspection_type` SET TAGS ('dbx_business_glossary_term' = 'Inspection Type (IT)');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`safety_inspection` ALTER COLUMN `inspection_type` SET TAGS ('dbx_value_regex' = 'routine|pre_startup|loto_verification|fire_safety|ergonomic|environmental');
+ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`safety_inspection` ALTER COLUMN `inspector_name` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`safety_inspection` ALTER COLUMN `inspector_name` SET TAGS ('dbx_mask' = 'nonprod');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`safety_inspection` ALTER COLUMN `is_loto_verified` SET TAGS ('dbx_business_glossary_term' = 'LOTO Verification Flag (LVF)');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`safety_inspection` ALTER COLUMN `items_failed` SET TAGS ('dbx_business_glossary_term' = 'Items Failed (IF)');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`safety_inspection` ALTER COLUMN `items_passed` SET TAGS ('dbx_business_glossary_term' = 'Items Passed (IP)');
@@ -1290,9 +1494,8 @@ ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`safety_inspection` ALTER COLUM
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`safety_inspection` ALTER COLUMN `training_due_date` SET TAGS ('dbx_business_glossary_term' = 'Training Due Date (TDD)');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`safety_inspection` ALTER COLUMN `training_required` SET TAGS ('dbx_business_glossary_term' = 'Training Required Flag (TRF)');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`environmental_aspect` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`environmental_aspect` SET TAGS ('dbx_subdomain' = 'safety_environmental');
+ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`environmental_aspect` SET TAGS ('dbx_subdomain' = 'environmental_stewardship');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`environmental_aspect` ALTER COLUMN `environmental_aspect_id` SET TAGS ('dbx_business_glossary_term' = 'Environmental Aspect Identifier');
-ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`environmental_aspect` ALTER COLUMN `control_system_id` SET TAGS ('dbx_business_glossary_term' = 'Control System Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`environmental_aspect` ALTER COLUMN `project_header_id` SET TAGS ('dbx_business_glossary_term' = 'Project Header Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`environmental_aspect` ALTER COLUMN `regulatory_requirement_id` SET TAGS ('dbx_business_glossary_term' = 'Regulatory Requirement Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`environmental_aspect` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Responsible Employee Id (Foreign Key)');
@@ -1303,6 +1506,8 @@ ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`environmental_aspect` ALTER CO
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`environmental_aspect` ALTER COLUMN `aspect_category` SET TAGS ('dbx_value_regex' = 'air_emission|water_effluent|waste|energy_use|noise|soil_contamination');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`environmental_aspect` ALTER COLUMN `aspect_code` SET TAGS ('dbx_business_glossary_term' = 'Environmental Aspect Code');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`environmental_aspect` ALTER COLUMN `aspect_name` SET TAGS ('dbx_business_glossary_term' = 'Environmental Aspect Name');
+ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`environmental_aspect` ALTER COLUMN `aspect_name` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`environmental_aspect` ALTER COLUMN `aspect_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`environmental_aspect` ALTER COLUMN `baseline_value` SET TAGS ('dbx_business_glossary_term' = 'Baseline Value (BASE)');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`environmental_aspect` ALTER COLUMN `compliance_status` SET TAGS ('dbx_business_glossary_term' = 'Compliance Status (COMPLIANCE)');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`environmental_aspect` ALTER COLUMN `compliance_status` SET TAGS ('dbx_value_regex' = 'compliant|non_compliant|partial');
@@ -1332,7 +1537,7 @@ ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`environmental_aspect` ALTER CO
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`environmental_aspect` ALTER COLUMN `target_value` SET TAGS ('dbx_business_glossary_term' = 'Target Value (TARGET)');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`environmental_aspect` ALTER COLUMN `variance` SET TAGS ('dbx_business_glossary_term' = 'Variance (VAR)');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`emissions_record` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`emissions_record` SET TAGS ('dbx_subdomain' = 'safety_environmental');
+ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`emissions_record` SET TAGS ('dbx_subdomain' = 'environmental_stewardship');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`emissions_record` ALTER COLUMN `emissions_record_id` SET TAGS ('dbx_business_glossary_term' = 'Emissions Record ID');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`emissions_record` ALTER COLUMN `device_registry_id` SET TAGS ('dbx_business_glossary_term' = 'Measurement Device ID');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`emissions_record` ALTER COLUMN `device_registry_id` SET TAGS ('dbx_confidential' = 'true');
@@ -1342,10 +1547,9 @@ ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`emissions_record` ALTER COLUMN
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`emissions_record` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii_identifier' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`emissions_record` ALTER COLUMN `project_header_id` SET TAGS ('dbx_business_glossary_term' = 'Project Header Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`emissions_record` ALTER COLUMN `regulatory_requirement_id` SET TAGS ('dbx_business_glossary_term' = 'Regulatory Requirement Id (Foreign Key)');
-ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`emissions_record` ALTER COLUMN `emission_source_id` SET TAGS ('dbx_business_glossary_term' = 'Emission Source ID');
+ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`emissions_record` ALTER COLUMN `source_emission_source_id` SET TAGS ('dbx_business_glossary_term' = 'Emission Source ID');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`emissions_record` ALTER COLUMN `calibration_date` SET TAGS ('dbx_business_glossary_term' = 'Calibration Date');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`emissions_record` ALTER COLUMN `calibration_status` SET TAGS ('dbx_business_glossary_term' = 'Calibration Status');
-ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`emissions_record` ALTER COLUMN `calibration_status` SET TAGS ('dbx_value_regex' = 'calibrated|due|overdue');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`emissions_record` ALTER COLUMN `carbon_intensity` SET TAGS ('dbx_business_glossary_term' = 'Carbon Intensity');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`emissions_record` ALTER COLUMN `comments` SET TAGS ('dbx_business_glossary_term' = 'Comments');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`emissions_record` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Creation Timestamp');
@@ -1356,7 +1560,8 @@ ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`emissions_record` ALTER COLUMN
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`emissions_record` ALTER COLUMN `facility_address` SET TAGS ('dbx_business_glossary_term' = 'Facility Address');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`emissions_record` ALTER COLUMN `facility_address` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`emissions_record` ALTER COLUMN `facility_address` SET TAGS ('dbx_pii_address' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`emissions_record` ALTER COLUMN `facility_name` SET TAGS ('dbx_business_glossary_term' = 'Facility Name');
+ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`emissions_record` ALTER COLUMN `facility_address` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`emissions_record` ALTER COLUMN `facility_address` SET TAGS ('dbx_sensitivity' = 'pii');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`emissions_record` ALTER COLUMN `greenhouse_gas_equivalent` SET TAGS ('dbx_business_glossary_term' = 'Greenhouse Gas Equivalent');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`emissions_record` ALTER COLUMN `latitude` SET TAGS ('dbx_business_glossary_term' = 'Latitude');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`emissions_record` ALTER COLUMN `latitude` SET TAGS ('dbx_restricted' = 'true');
@@ -1372,7 +1577,6 @@ ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`emissions_record` ALTER COLUMN
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`emissions_record` ALTER COLUMN `measurement_status` SET TAGS ('dbx_value_regex' = 'valid|invalid|pending|rejected');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`emissions_record` ALTER COLUMN `measurement_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Measurement Timestamp');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`emissions_record` ALTER COLUMN `operational_shift` SET TAGS ('dbx_business_glossary_term' = 'Operational Shift');
-ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`emissions_record` ALTER COLUMN `operational_shift` SET TAGS ('dbx_value_regex' = 'day|night|weekend');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`emissions_record` ALTER COLUMN `pollutant_type` SET TAGS ('dbx_business_glossary_term' = 'Pollutant Type');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`emissions_record` ALTER COLUMN `pollutant_type` SET TAGS ('dbx_value_regex' = 'CO2|NOx|SOx|VOC|PM2.5|PM10');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`emissions_record` ALTER COLUMN `report_status` SET TAGS ('dbx_business_glossary_term' = 'Report Status');
@@ -1391,7 +1595,7 @@ ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`emissions_record` ALTER COLUMN
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`emissions_record` ALTER COLUMN `unit_of_measure` SET TAGS ('dbx_value_regex' = 'kg|ton|kgCO2e|lb|g|ppm');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`emissions_record` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Update Timestamp');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`compliance_product_certification` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`compliance_product_certification` SET TAGS ('dbx_subdomain' = 'cybersecurity_certification');
+ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`compliance_product_certification` SET TAGS ('dbx_subdomain' = 'regulatory_obligations');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`compliance_product_certification` ALTER COLUMN `compliance_product_certification_id` SET TAGS ('dbx_business_glossary_term' = 'Product Certification ID');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`compliance_product_certification` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Compliance Officer Employee Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`compliance_product_certification` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
@@ -1406,6 +1610,8 @@ ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`compliance_product_certificati
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`compliance_product_certification` ALTER COLUMN `certificate_number` SET TAGS ('dbx_business_glossary_term' = 'Certificate Number');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`compliance_product_certification` ALTER COLUMN `certification_cost` SET TAGS ('dbx_business_glossary_term' = 'Certification Cost');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`compliance_product_certification` ALTER COLUMN `certification_name` SET TAGS ('dbx_business_glossary_term' = 'Certification Name');
+ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`compliance_product_certification` ALTER COLUMN `certification_name` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`compliance_product_certification` ALTER COLUMN `certification_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`compliance_product_certification` ALTER COLUMN `certification_status` SET TAGS ('dbx_business_glossary_term' = 'Certification Status');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`compliance_product_certification` ALTER COLUMN `certification_status` SET TAGS ('dbx_value_regex' = 'active|expired|revoked|pending|suspended');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`compliance_product_certification` ALTER COLUMN `certification_type` SET TAGS ('dbx_business_glossary_term' = 'Certification Type');
@@ -1459,6 +1665,7 @@ ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`regulatory_filing` ALTER COLUM
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`regulatory_filing` ALTER COLUMN `approval_status` SET TAGS ('dbx_business_glossary_term' = 'Approval Status (APPROVAL_STATUS)');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`regulatory_filing` ALTER COLUMN `approval_status` SET TAGS ('dbx_value_regex' = 'approved|rejected|under_review');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`regulatory_filing` ALTER COLUMN `attached_file_path` SET TAGS ('dbx_business_glossary_term' = 'Attached File Path (FILE_PATH)');
+ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`regulatory_filing` ALTER COLUMN `authority_name` SET TAGS ('dbx_sensitivity' = 'pii');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`regulatory_filing` ALTER COLUMN `comments` SET TAGS ('dbx_business_glossary_term' = 'Comments (COMMENTS)');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`regulatory_filing` ALTER COLUMN `compliance_area` SET TAGS ('dbx_business_glossary_term' = 'Compliance Area (AREA)');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`regulatory_filing` ALTER COLUMN `compliance_area` SET TAGS ('dbx_value_regex' = 'environmental|safety|quality|cybersecurity|product_safety');
@@ -1518,13 +1725,11 @@ ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`permit` ALTER COLUMN `expirati
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`permit` ALTER COLUMN `expiry_date` SET TAGS ('dbx_business_glossary_term' = 'Permit Expiry Date');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`permit` ALTER COLUMN `fee_amount` SET TAGS ('dbx_business_glossary_term' = 'Permit Fee Amount');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`permit` ALTER COLUMN `fee_currency` SET TAGS ('dbx_business_glossary_term' = 'Permit Fee Currency');
-ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`permit` ALTER COLUMN `fee_currency` SET TAGS ('dbx_value_regex' = 'USD|EUR|GBP|CAD|JPY');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`permit` ALTER COLUMN `fee_due_date` SET TAGS ('dbx_business_glossary_term' = 'Permit Fee Due Date');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`permit` ALTER COLUMN `inspection_outcome` SET TAGS ('dbx_business_glossary_term' = 'Inspection Outcome');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`permit` ALTER COLUMN `inspection_outcome` SET TAGS ('dbx_value_regex' = 'pass|fail|conditional');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`permit` ALTER COLUMN `issue_date` SET TAGS ('dbx_business_glossary_term' = 'Permit Issue Date');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`permit` ALTER COLUMN `issuing_authority` SET TAGS ('dbx_business_glossary_term' = 'Issuing Authority');
-ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`permit` ALTER COLUMN `issuing_authority` SET TAGS ('dbx_value_regex' = 'EPA|OSHA|State|Local|Federal');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`permit` ALTER COLUMN `last_inspection_date` SET TAGS ('dbx_business_glossary_term' = 'Last Inspection Date');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`permit` ALTER COLUMN `limit_unit` SET TAGS ('dbx_business_glossary_term' = 'Permit Limit Unit');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`permit` ALTER COLUMN `limit_unit` SET TAGS ('dbx_value_regex' = 'tons_per_year|kg_per_day|cfm|lb_per_hour|gallons_per_day');
@@ -1543,7 +1748,7 @@ ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`permit` ALTER COLUMN `renewal_
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`permit` ALTER COLUMN `renewal_status` SET TAGS ('dbx_value_regex' = 'due|renewed|not_required|pending');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`permit` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Update Timestamp');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`cybersecurity_control` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`cybersecurity_control` SET TAGS ('dbx_subdomain' = 'cybersecurity_certification');
+ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`cybersecurity_control` SET TAGS ('dbx_subdomain' = 'cybersecurity_governance');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`cybersecurity_control` ALTER COLUMN `cybersecurity_control_id` SET TAGS ('dbx_business_glossary_term' = 'Cybersecurity Control ID');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`cybersecurity_control` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Control Owner Employee Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`cybersecurity_control` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
@@ -1563,6 +1768,8 @@ ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`cybersecurity_control` ALTER C
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`cybersecurity_control` ALTER COLUMN `control_evidence_reference` SET TAGS ('dbx_business_glossary_term' = 'Control Evidence Reference (CTRL_EVID_REF)');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`cybersecurity_control` ALTER COLUMN `control_mechanism` SET TAGS ('dbx_business_glossary_term' = 'Control Mechanism (CTRL_MECH)');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`cybersecurity_control` ALTER COLUMN `control_name` SET TAGS ('dbx_business_glossary_term' = 'Control Name (CTRL_NAME)');
+ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`cybersecurity_control` ALTER COLUMN `control_name` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`cybersecurity_control` ALTER COLUMN `control_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`cybersecurity_control` ALTER COLUMN `control_objective` SET TAGS ('dbx_business_glossary_term' = 'Control Objective (CTRL_OBJ)');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`cybersecurity_control` ALTER COLUMN `control_priority` SET TAGS ('dbx_business_glossary_term' = 'Control Priority (CTRL_PRIORITY)');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`cybersecurity_control` ALTER COLUMN `control_source` SET TAGS ('dbx_business_glossary_term' = 'Control Source (CTRL_SRC)');
@@ -1592,7 +1799,7 @@ ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`cybersecurity_control` ALTER C
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`cybersecurity_control` ALTER COLUMN `security_level_target` SET TAGS ('dbx_value_regex' = 'SL1|SL2|SL3|SL4|SL5');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`cybersecurity_control` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Update Timestamp (UPDATED_TS)');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`cybersecurity_assessment` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`cybersecurity_assessment` SET TAGS ('dbx_subdomain' = 'cybersecurity_certification');
+ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`cybersecurity_assessment` SET TAGS ('dbx_subdomain' = 'cybersecurity_governance');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`cybersecurity_assessment` ALTER COLUMN `cybersecurity_assessment_id` SET TAGS ('dbx_business_glossary_term' = 'Cybersecurity Assessment ID');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`cybersecurity_assessment` ALTER COLUMN `device_registry_id` SET TAGS ('dbx_business_glossary_term' = 'Device Registry Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`cybersecurity_assessment` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'System Owner ID');
@@ -1617,6 +1824,8 @@ ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`cybersecurity_assessment` ALTE
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`cybersecurity_assessment` ALTER COLUMN `assessor_contact` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`cybersecurity_assessment` ALTER COLUMN `assessor_contact` SET TAGS ('dbx_pii_email' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`cybersecurity_assessment` ALTER COLUMN `assessor_name` SET TAGS ('dbx_business_glossary_term' = 'Assessor Name');
+ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`cybersecurity_assessment` ALTER COLUMN `assessor_name` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`cybersecurity_assessment` ALTER COLUMN `assessor_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`cybersecurity_assessment` ALTER COLUMN `audit_trail_notes` SET TAGS ('dbx_business_glossary_term' = 'Audit Trail Notes');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`cybersecurity_assessment` ALTER COLUMN `compliance_framework` SET TAGS ('dbx_business_glossary_term' = 'Compliance Framework');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`cybersecurity_assessment` ALTER COLUMN `compliance_framework` SET TAGS ('dbx_value_regex' = 'IEC 62443|NIST CSF|ISO 27001');
@@ -1629,6 +1838,8 @@ ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`cybersecurity_assessment` ALTE
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`cybersecurity_assessment` ALTER COLUMN `external_auditor_contact` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`cybersecurity_assessment` ALTER COLUMN `external_auditor_contact` SET TAGS ('dbx_pii_email' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`cybersecurity_assessment` ALTER COLUMN `external_auditor_name` SET TAGS ('dbx_business_glossary_term' = 'External Auditor Name');
+ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`cybersecurity_assessment` ALTER COLUMN `external_auditor_name` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`cybersecurity_assessment` ALTER COLUMN `external_auditor_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`cybersecurity_assessment` ALTER COLUMN `is_critical_asset` SET TAGS ('dbx_business_glossary_term' = 'Critical Asset Flag');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`cybersecurity_assessment` ALTER COLUMN `is_external_assessment` SET TAGS ('dbx_business_glossary_term' = 'External Assessment Flag');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`cybersecurity_assessment` ALTER COLUMN `last_reviewed_date` SET TAGS ('dbx_business_glossary_term' = 'Last Reviewed Date');
@@ -1644,7 +1855,7 @@ ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`cybersecurity_assessment` ALTE
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`cybersecurity_assessment` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Update Timestamp');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`cybersecurity_assessment` ALTER COLUMN `vulnerabilities_identified` SET TAGS ('dbx_business_glossary_term' = 'Identified Vulnerabilities');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`hazardous_substance` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`hazardous_substance` SET TAGS ('dbx_subdomain' = 'cybersecurity_certification');
+ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`hazardous_substance` SET TAGS ('dbx_subdomain' = 'environmental_stewardship');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`hazardous_substance` ALTER COLUMN `hazardous_substance_id` SET TAGS ('dbx_business_glossary_term' = 'Hazardous Substance Identifier');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`hazardous_substance` ALTER COLUMN `supplier_id` SET TAGS ('dbx_business_glossary_term' = 'Supplier Identifier');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`hazardous_substance` ALTER COLUMN `regulatory_requirement_id` SET TAGS ('dbx_business_glossary_term' = 'Regulatory Requirement Id (Foreign Key)');
@@ -1656,9 +1867,15 @@ ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`hazardous_substance` ALTER COL
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`hazardous_substance` ALTER COLUMN `emergency_contact_name` SET TAGS ('dbx_business_glossary_term' = 'Emergency Contact Name');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`hazardous_substance` ALTER COLUMN `emergency_contact_name` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`hazardous_substance` ALTER COLUMN `emergency_contact_name` SET TAGS ('dbx_pii_identifier' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`hazardous_substance` ALTER COLUMN `emergency_contact_name` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`hazardous_substance` ALTER COLUMN `emergency_contact_name` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`hazardous_substance` ALTER COLUMN `emergency_contact_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`hazardous_substance` ALTER COLUMN `emergency_contact_phone` SET TAGS ('dbx_business_glossary_term' = 'Emergency Contact Phone');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`hazardous_substance` ALTER COLUMN `emergency_contact_phone` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`hazardous_substance` ALTER COLUMN `emergency_contact_phone` SET TAGS ('dbx_pii_phone' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`hazardous_substance` ALTER COLUMN `emergency_contact_phone` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`hazardous_substance` ALTER COLUMN `emergency_contact_phone` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`hazardous_substance` ALTER COLUMN `emergency_contact_phone` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`hazardous_substance` ALTER COLUMN `expiration_date` SET TAGS ('dbx_business_glossary_term' = 'Expiration Date');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`hazardous_substance` ALTER COLUMN `handling_requirements` SET TAGS ('dbx_business_glossary_term' = 'Handling Requirements');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`hazardous_substance` ALTER COLUMN `hazard_classification` SET TAGS ('dbx_business_glossary_term' = 'GHS Hazard Classification');
@@ -1674,6 +1891,8 @@ ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`hazardous_substance` ALTER COL
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`hazardous_substance` ALTER COLUMN `molecular_formula` SET TAGS ('dbx_business_glossary_term' = 'Molecular Formula');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`hazardous_substance` ALTER COLUMN `molecular_weight` SET TAGS ('dbx_business_glossary_term' = 'Molecular Weight (g/mol)');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`hazardous_substance` ALTER COLUMN `hazardous_substance_name` SET TAGS ('dbx_business_glossary_term' = 'Substance Name');
+ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`hazardous_substance` ALTER COLUMN `hazardous_substance_name` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`hazardous_substance` ALTER COLUMN `hazardous_substance_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`hazardous_substance` ALTER COLUMN `next_review_date` SET TAGS ('dbx_business_glossary_term' = 'Next Review Date');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`hazardous_substance` ALTER COLUMN `personal_protective_equipment` SET TAGS ('dbx_business_glossary_term' = 'Personal Protective Equipment (PPE)');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`hazardous_substance` ALTER COLUMN `precautionary_statements` SET TAGS ('dbx_business_glossary_term' = 'GHS Precautionary Statements');
@@ -1685,13 +1904,14 @@ ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`hazardous_substance` ALTER COL
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`hazardous_substance` ALTER COLUMN `signal_word` SET TAGS ('dbx_business_glossary_term' = 'GHS Signal Word');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`hazardous_substance` ALTER COLUMN `signal_word` SET TAGS ('dbx_value_regex' = 'Danger|Warning');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`hazardous_substance` ALTER COLUMN `storage_location` SET TAGS ('dbx_business_glossary_term' = 'Storage Location');
+ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`hazardous_substance` ALTER COLUMN `substance_name` SET TAGS ('dbx_sensitivity' = 'pii');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`hazardous_substance` ALTER COLUMN `threshold_quantity` SET TAGS ('dbx_business_glossary_term' = 'Regulatory Threshold Quantity');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`hazardous_substance` ALTER COLUMN `unit_of_measure` SET TAGS ('dbx_business_glossary_term' = 'Unit of Measure');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`hazardous_substance` ALTER COLUMN `unit_of_measure` SET TAGS ('dbx_value_regex' = 'kg|g|lb|l|ml|mol');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`hazardous_substance` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Update Timestamp');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`hazardous_substance` ALTER COLUMN `waste_code` SET TAGS ('dbx_business_glossary_term' = 'Hazardous Waste Code');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`waste_record` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`waste_record` SET TAGS ('dbx_subdomain' = 'safety_environmental');
+ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`waste_record` SET TAGS ('dbx_subdomain' = 'environmental_stewardship');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`waste_record` ALTER COLUMN `waste_record_id` SET TAGS ('dbx_business_glossary_term' = 'Waste Record ID');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`waste_record` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Reported By ID (REPORTER_ID)');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`waste_record` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
@@ -1715,6 +1935,8 @@ ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`waste_record` ALTER COLUMN `di
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`waste_record` ALTER COLUMN `disposal_site_address` SET TAGS ('dbx_business_glossary_term' = 'Disposal Site Address (SITE_ADDR)');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`waste_record` ALTER COLUMN `disposal_site_address` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`waste_record` ALTER COLUMN `disposal_site_address` SET TAGS ('dbx_pii_address' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`waste_record` ALTER COLUMN `disposal_site_address` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`waste_record` ALTER COLUMN `disposal_site_address` SET TAGS ('dbx_sensitivity' = 'pii');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`waste_record` ALTER COLUMN `disposal_site_city` SET TAGS ('dbx_business_glossary_term' = 'Disposal Site City (SITE_CITY)');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`waste_record` ALTER COLUMN `disposal_site_country` SET TAGS ('dbx_business_glossary_term' = 'Disposal Site Country (SITE_COUNTRY)');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`waste_record` ALTER COLUMN `disposal_site_state` SET TAGS ('dbx_business_glossary_term' = 'Disposal Site State (SITE_STATE)');
@@ -1766,6 +1988,8 @@ ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`periodic_evaluation` ALTER COL
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`periodic_evaluation` ALTER COLUMN `assessor_name` SET TAGS ('dbx_business_glossary_term' = 'Assessor Full Name (AFN)');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`periodic_evaluation` ALTER COLUMN `assessor_name` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`periodic_evaluation` ALTER COLUMN `assessor_name` SET TAGS ('dbx_pii_name' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`periodic_evaluation` ALTER COLUMN `assessor_name` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`periodic_evaluation` ALTER COLUMN `assessor_name` SET TAGS ('dbx_sensitivity' = 'pii');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`periodic_evaluation` ALTER COLUMN `conformance_rating` SET TAGS ('dbx_business_glossary_term' = 'Conformance Rating (CR)');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`periodic_evaluation` ALTER COLUMN `conformance_status` SET TAGS ('dbx_business_glossary_term' = 'Conformance Status');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`periodic_evaluation` ALTER COLUMN `conformance_status` SET TAGS ('dbx_value_regex' = 'compliant|partially_compliant|non_compliant');
@@ -1779,22 +2003,24 @@ ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`periodic_evaluation` ALTER COL
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`periodic_evaluation` ALTER COLUMN `recommended_actions` SET TAGS ('dbx_business_glossary_term' = 'Recommended Corrective Actions');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`periodic_evaluation` ALTER COLUMN `regulation_code` SET TAGS ('dbx_business_glossary_term' = 'Regulation Code (RC)');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`periodic_evaluation` ALTER COLUMN `regulation_name` SET TAGS ('dbx_business_glossary_term' = 'Regulation Name');
+ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`periodic_evaluation` ALTER COLUMN `regulation_name` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`periodic_evaluation` ALTER COLUMN `regulation_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`periodic_evaluation` ALTER COLUMN `risk_score` SET TAGS ('dbx_business_glossary_term' = 'Risk Score (RS)');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`periodic_evaluation` ALTER COLUMN `risk_severity` SET TAGS ('dbx_business_glossary_term' = 'Risk Severity');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`periodic_evaluation` ALTER COLUMN `risk_severity` SET TAGS ('dbx_value_regex' = 'low|medium|high|critical');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`periodic_evaluation` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Last Updated Timestamp');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`controlled_document` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`controlled_document` SET TAGS ('dbx_subdomain' = 'audit_management');
+ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`controlled_document` SET TAGS ('dbx_subdomain' = 'regulatory_obligations');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`controlled_document` ALTER COLUMN `controlled_document_id` SET TAGS ('dbx_business_glossary_term' = 'Controlled Document Identifier');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`controlled_document` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Document Approver ID (APPROVER_ID)');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`controlled_document` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`controlled_document` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`controlled_document` ALTER COLUMN `controlled_related_regulation_regulatory_requirement_id` SET TAGS ('dbx_business_glossary_term' = 'Related Regulation ID (REGUL_ID)');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`controlled_document` ALTER COLUMN `device_registry_id` SET TAGS ('dbx_business_glossary_term' = 'Device Registry Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`controlled_document` ALTER COLUMN `primary_controlled_employee_id` SET TAGS ('dbx_business_glossary_term' = 'Document Owner ID (OWNER_ID)');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`controlled_document` ALTER COLUMN `primary_controlled_employee_id` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`controlled_document` ALTER COLUMN `primary_controlled_employee_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`controlled_document` ALTER COLUMN `project_header_id` SET TAGS ('dbx_business_glossary_term' = 'Project Header Id (Foreign Key)');
-ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`controlled_document` ALTER COLUMN `regulatory_requirement_id` SET TAGS ('dbx_business_glossary_term' = 'Related Regulation ID (REGUL_ID)');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`controlled_document` ALTER COLUMN `applicable_standard` SET TAGS ('dbx_business_glossary_term' = 'Applicable Standard (STD)');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`controlled_document` ALTER COLUMN `approval_date` SET TAGS ('dbx_business_glossary_term' = 'Approval Date (APPROVAL_DATE)');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`controlled_document` ALTER COLUMN `approval_status` SET TAGS ('dbx_business_glossary_term' = 'Approval Status (APPROVAL_STATUS)');
@@ -1832,7 +2058,7 @@ ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`controlled_document` ALTER COL
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`controlled_document` ALTER COLUMN `version` SET TAGS ('dbx_business_glossary_term' = 'Document Version (VERSION)');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`controlled_document` ALTER COLUMN `created_by` SET TAGS ('dbx_business_glossary_term' = 'Created By (CREATED_BY)');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`process_hazard` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`process_hazard` SET TAGS ('dbx_subdomain' = 'safety_environmental');
+ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`process_hazard` SET TAGS ('dbx_subdomain' = 'safety_health');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`process_hazard` ALTER COLUMN `process_hazard_id` SET TAGS ('dbx_business_glossary_term' = 'Process Hazard Identifier');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`process_hazard` ALTER COLUMN `parent_process_hazard_id` SET TAGS ('dbx_business_glossary_term' = 'Parent Process Hazard Id');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`process_hazard` ALTER COLUMN `parent_process_hazard_id` SET TAGS ('dbx_self_ref_fk' = 'true');
@@ -1849,6 +2075,8 @@ ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`process_hazard` ALTER COLUMN `
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`process_hazard` ALTER COLUMN `hazard_category` SET TAGS ('dbx_business_glossary_term' = 'Hazard Category');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`process_hazard` ALTER COLUMN `hazard_code` SET TAGS ('dbx_business_glossary_term' = 'Hazard Code');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`process_hazard` ALTER COLUMN `hazard_name` SET TAGS ('dbx_business_glossary_term' = 'Hazard Name');
+ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`process_hazard` ALTER COLUMN `hazard_name` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`process_hazard` ALTER COLUMN `hazard_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`process_hazard` ALTER COLUMN `hazard_owner` SET TAGS ('dbx_business_glossary_term' = 'Hazard Owner');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`process_hazard` ALTER COLUMN `hazard_subcategory` SET TAGS ('dbx_business_glossary_term' = 'Hazard Subcategory');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`process_hazard` ALTER COLUMN `incident_history_flag` SET TAGS ('dbx_business_glossary_term' = 'Incident History Flag');
@@ -1867,7 +2095,7 @@ ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`process_hazard` ALTER COLUMN `
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`process_hazard` ALTER COLUMN `training_required` SET TAGS ('dbx_business_glossary_term' = 'Training Required');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`process_hazard` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Updated Timestamp');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`emission_source` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`emission_source` SET TAGS ('dbx_subdomain' = 'safety_environmental');
+ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`emission_source` SET TAGS ('dbx_subdomain' = 'environmental_stewardship');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`emission_source` ALTER COLUMN `emission_source_id` SET TAGS ('dbx_business_glossary_term' = 'Emission Source Identifier');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`emission_source` ALTER COLUMN `facility_id` SET TAGS ('dbx_business_glossary_term' = 'Facility Id');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`emission_source` ALTER COLUMN `parent_emission_source_id` SET TAGS ('dbx_business_glossary_term' = 'Parent Emission Source Id');
@@ -1887,6 +2115,8 @@ ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`emission_source` ALTER COLUMN 
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`emission_source` ALTER COLUMN `longitude` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`emission_source` ALTER COLUMN `longitude` SET TAGS ('dbx_pii_address' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`emission_source` ALTER COLUMN `emission_source_name` SET TAGS ('dbx_business_glossary_term' = 'Name');
+ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`emission_source` ALTER COLUMN `emission_source_name` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`emission_source` ALTER COLUMN `emission_source_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`emission_source` ALTER COLUMN `next_report_due_date` SET TAGS ('dbx_business_glossary_term' = 'Next Report Due Date');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`emission_source` ALTER COLUMN `plant_location` SET TAGS ('dbx_business_glossary_term' = 'Plant Location');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`emission_source` ALTER COLUMN `record_audit_created` SET TAGS ('dbx_business_glossary_term' = 'Record Audit Created');
@@ -1894,21 +2124,26 @@ ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`emission_source` ALTER COLUMN 
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`emission_source` ALTER COLUMN `regulatory_agency` SET TAGS ('dbx_business_glossary_term' = 'Regulatory Agency');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`emission_source` ALTER COLUMN `reporting_frequency` SET TAGS ('dbx_business_glossary_term' = 'Reporting Frequency');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`emission_source` ALTER COLUMN `source_code` SET TAGS ('dbx_business_glossary_term' = 'Source Code');
+ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`emission_source` ALTER COLUMN `source_name` SET TAGS ('dbx_sensitivity' = 'pii');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`emission_source` ALTER COLUMN `source_operating_company` SET TAGS ('dbx_business_glossary_term' = 'Source Operating Company');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`emission_source` ALTER COLUMN `source_owner` SET TAGS ('dbx_business_glossary_term' = 'Source Owner');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`emission_source` ALTER COLUMN `emission_source_status` SET TAGS ('dbx_business_glossary_term' = 'Status');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`emission_source` ALTER COLUMN `emission_source_type` SET TAGS ('dbx_business_glossary_term' = 'Type');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`emission_source` ALTER COLUMN `unit_of_measure` SET TAGS ('dbx_business_glossary_term' = 'Unit Of Measure');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`facility` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`facility` SET TAGS ('dbx_subdomain' = 'safety_environmental');
+ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`facility` SET TAGS ('dbx_subdomain' = 'environmental_stewardship');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`facility` ALTER COLUMN `facility_id` SET TAGS ('dbx_business_glossary_term' = 'Facility Identifier');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`facility` ALTER COLUMN `parent_facility_id` SET TAGS ('dbx_business_glossary_term' = 'Parent Facility Id');
+ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`facility` ALTER COLUMN `address_line` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`facility` ALTER COLUMN `address_line` SET TAGS ('dbx_mask' = 'nonprod');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`facility` ALTER COLUMN `address_line1` SET TAGS ('dbx_business_glossary_term' = 'Address Line1');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`facility` ALTER COLUMN `address_line1` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`facility` ALTER COLUMN `address_line1` SET TAGS ('dbx_pii_address' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`facility` ALTER COLUMN `address_line1` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`facility` ALTER COLUMN `address_line2` SET TAGS ('dbx_business_glossary_term' = 'Address Line2');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`facility` ALTER COLUMN `address_line2` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`facility` ALTER COLUMN `address_line2` SET TAGS ('dbx_pii_address' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`facility` ALTER COLUMN `address_line2` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`facility` ALTER COLUMN `audit_status` SET TAGS ('dbx_business_glossary_term' = 'Audit Status');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`facility` ALTER COLUMN `backup_generator_present` SET TAGS ('dbx_business_glossary_term' = 'Backup Generator Present');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`facility` ALTER COLUMN `capacity_units` SET TAGS ('dbx_business_glossary_term' = 'Capacity Units');
@@ -1924,6 +2159,9 @@ ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`facility` ALTER COLUMN `create
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`facility` ALTER COLUMN `emergency_contact_phone` SET TAGS ('dbx_business_glossary_term' = 'Emergency Contact Phone');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`facility` ALTER COLUMN `emergency_contact_phone` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`facility` ALTER COLUMN `emergency_contact_phone` SET TAGS ('dbx_pii_phone' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`facility` ALTER COLUMN `emergency_contact_phone` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`facility` ALTER COLUMN `emergency_contact_phone` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`facility` ALTER COLUMN `emergency_contact_phone` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`facility` ALTER COLUMN `emissions_co2_tons` SET TAGS ('dbx_business_glossary_term' = 'Emissions Co2 Tons');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`facility` ALTER COLUMN `energy_consumption_mwh` SET TAGS ('dbx_business_glossary_term' = 'Energy Consumption Mwh');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`facility` ALTER COLUMN `epa_permit_expiry` SET TAGS ('dbx_business_glossary_term' = 'Epa Permit Expiry');
@@ -1945,6 +2183,8 @@ ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`facility` ALTER COLUMN `longit
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`facility` ALTER COLUMN `longitude` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`facility` ALTER COLUMN `longitude` SET TAGS ('dbx_pii_address' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`facility` ALTER COLUMN `facility_name` SET TAGS ('dbx_business_glossary_term' = 'Name');
+ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`facility` ALTER COLUMN `facility_name` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`facility` ALTER COLUMN `facility_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`facility` ALTER COLUMN `next_inspection_due` SET TAGS ('dbx_business_glossary_term' = 'Next Inspection Due');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`facility` ALTER COLUMN `postal_code` SET TAGS ('dbx_business_glossary_term' = 'Postal Code');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`facility` ALTER COLUMN `postal_code` SET TAGS ('dbx_confidential' = 'true');
@@ -1953,12 +2193,19 @@ ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`facility` ALTER COLUMN `power_
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`facility` ALTER COLUMN `primary_contact_email` SET TAGS ('dbx_business_glossary_term' = 'Primary Contact Email');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`facility` ALTER COLUMN `primary_contact_email` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`facility` ALTER COLUMN `primary_contact_email` SET TAGS ('dbx_pii_email' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`facility` ALTER COLUMN `primary_contact_email` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`facility` ALTER COLUMN `primary_contact_email` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`facility` ALTER COLUMN `primary_contact_email` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`facility` ALTER COLUMN `primary_contact_name` SET TAGS ('dbx_business_glossary_term' = 'Primary Contact Name');
-ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`facility` ALTER COLUMN `primary_contact_name` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`facility` ALTER COLUMN `primary_contact_name` SET TAGS ('dbx_pii_identifier' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`facility` ALTER COLUMN `primary_contact_name` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`facility` ALTER COLUMN `primary_contact_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`facility` ALTER COLUMN `primary_contact_name` SET TAGS ('dbx_mask_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`facility` ALTER COLUMN `primary_contact_phone` SET TAGS ('dbx_business_glossary_term' = 'Primary Contact Phone');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`facility` ALTER COLUMN `primary_contact_phone` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`facility` ALTER COLUMN `primary_contact_phone` SET TAGS ('dbx_pii_phone' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`facility` ALTER COLUMN `primary_contact_phone` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`facility` ALTER COLUMN `primary_contact_phone` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`facility` ALTER COLUMN `primary_contact_phone` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`facility` ALTER COLUMN `risk_rating` SET TAGS ('dbx_business_glossary_term' = 'Risk Rating');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`facility` ALTER COLUMN `security_level` SET TAGS ('dbx_business_glossary_term' = 'Security Level');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`facility` ALTER COLUMN `size_sqft` SET TAGS ('dbx_business_glossary_term' = 'Size Sqft');
@@ -1969,11 +2216,14 @@ ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`facility` ALTER COLUMN `facili
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`facility` ALTER COLUMN `tax_id_number` SET TAGS ('dbx_business_glossary_term' = 'Tax Id Number');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`facility` ALTER COLUMN `tax_id_number` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`facility` ALTER COLUMN `tax_id_number` SET TAGS ('dbx_pii_identifier' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`facility` ALTER COLUMN `tax_id_number` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`facility` ALTER COLUMN `tax_id_number` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`facility` ALTER COLUMN `tax_id_number` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`facility` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Updated Timestamp');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`facility` ALTER COLUMN `waste_generated_tons` SET TAGS ('dbx_business_glossary_term' = 'Waste Generated Tons');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`facility` ALTER COLUMN `water_usage_m3` SET TAGS ('dbx_business_glossary_term' = 'Water Usage M3');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`safety_checklist` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`safety_checklist` SET TAGS ('dbx_subdomain' = 'safety_environmental');
+ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`safety_checklist` SET TAGS ('dbx_subdomain' = 'safety_health');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`safety_checklist` ALTER COLUMN `safety_checklist_id` SET TAGS ('dbx_business_glossary_term' = 'Safety Checklist Identifier');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`safety_checklist` ALTER COLUMN `parent_safety_checklist_id` SET TAGS ('dbx_business_glossary_term' = 'Parent Safety Checklist Id');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`safety_checklist` ALTER COLUMN `parent_safety_checklist_id` SET TAGS ('dbx_self_ref_fk' = 'true');
@@ -1985,6 +2235,7 @@ ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`safety_checklist` ALTER COLUMN
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`safety_checklist` ALTER COLUMN `audit_trail` SET TAGS ('dbx_business_glossary_term' = 'Audit Trail');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`safety_checklist` ALTER COLUMN `safety_checklist_category` SET TAGS ('dbx_business_glossary_term' = 'Category');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`safety_checklist` ALTER COLUMN `checklist_items_count` SET TAGS ('dbx_business_glossary_term' = 'Checklist Items Count');
+ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`safety_checklist` ALTER COLUMN `checklist_name` SET TAGS ('dbx_sensitivity' = 'pii');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`safety_checklist` ALTER COLUMN `checklist_type` SET TAGS ('dbx_business_glossary_term' = 'Checklist Type');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`safety_checklist` ALTER COLUMN `safety_checklist_code` SET TAGS ('dbx_business_glossary_term' = 'Code');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`safety_checklist` ALTER COLUMN `confidentiality_level` SET TAGS ('dbx_business_glossary_term' = 'Confidentiality Level');
@@ -1996,6 +2247,8 @@ ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`safety_checklist` ALTER COLUMN
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`safety_checklist` ALTER COLUMN `is_mandatory` SET TAGS ('dbx_business_glossary_term' = 'Is Mandatory');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`safety_checklist` ALTER COLUMN `last_review_date` SET TAGS ('dbx_business_glossary_term' = 'Last Review Date');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`safety_checklist` ALTER COLUMN `safety_checklist_name` SET TAGS ('dbx_business_glossary_term' = 'Name');
+ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`safety_checklist` ALTER COLUMN `safety_checklist_name` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`safety_checklist` ALTER COLUMN `safety_checklist_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`safety_checklist` ALTER COLUMN `next_review_date` SET TAGS ('dbx_business_glossary_term' = 'Next Review Date');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`safety_checklist` ALTER COLUMN `required_training` SET TAGS ('dbx_business_glossary_term' = 'Required Training');
 ALTER TABLE `vibe_manufacturing_v1`.`compliance`.`safety_checklist` ALTER COLUMN `review_frequency_days` SET TAGS ('dbx_business_glossary_term' = 'Review Frequency Days');

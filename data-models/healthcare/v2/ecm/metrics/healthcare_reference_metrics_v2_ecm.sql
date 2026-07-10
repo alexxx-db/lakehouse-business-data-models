@@ -1,100 +1,56 @@
--- Metric views for domain: reference | Business: Healthcare | Version: 2 | Generated on: 2026-07-10 14:53:25
+-- Metric views for domain: reference | Business: Healthcare | Version: 2 | Generated on: 2026-07-02 07:21:53
 
 CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`reference_code_set_version`
 WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Governance KPIs over reference code set versions (ICD, CPT, HCPCS, etc.) tracking load quality, validation, and HIPAA compliance posture of the terminology supply chain."
+  comment: "Governance and load-quality KPIs over reference code-set versions. Steers data-stewardship investment by surfacing validation failures, load errors, and HIPAA compliance gaps across terminology releases."
   source: "`vibe_healthcare_v1`.`reference`.`code_set_version`"
   dimensions:
     - name: "code_set_type"
       expr: code_set_type
-      comment: "Type of code set (e.g., ICD, CPT, HCPCS, LOINC) for portfolio segmentation."
+      comment: "Type of terminology (ICD, CPT, LOINC, etc.) for governance segmentation."
     - name: "version_status"
       expr: version_status
-      comment: "Lifecycle status of the code set version (active, superseded, deprecated)."
+      comment: "Lifecycle status of the code-set version (active, superseded, retired)."
     - name: "load_status"
       expr: load_status
-      comment: "Load pipeline outcome for the version, used to spot ingestion failures."
+      comment: "ETL load outcome status used to monitor pipeline reliability."
     - name: "validation_status"
       expr: validation_status
-      comment: "Validation outcome, used to flag versions unsafe for downstream coding."
+      comment: "Data-quality validation outcome for the loaded version."
     - name: "source_authority"
       expr: source_authority
-      comment: "Publishing authority of the code set (CMS, AMA, WHO) for source risk analysis."
+      comment: "Governing authority that publishes the code set (CMS, AMA, WHO, etc.)."
     - name: "compliance_year"
       expr: compliance_year
       comment: "Regulatory compliance year the version applies to."
     - name: "effective_month"
       expr: DATE_TRUNC('MONTH', effective_date)
-      comment: "Effective month for trending version rollouts over time."
+      comment: "Month the version becomes effective, for release-cadence trending."
   measures:
-    - name: "Version Count"
+    - name: "version_count"
       expr: COUNT(1)
-      comment: "Number of code set versions in scope; baseline for portfolio sizing."
-    - name: "Distinct Code Sets Managed"
+      comment: "Total number of code-set versions tracked; baseline governance volume."
+    - name: "distinct_code_set_count"
       expr: COUNT(DISTINCT code_set_name)
-      comment: "Count of distinct code sets governed; measures terminology coverage breadth."
-    - name: "HIPAA Compliant Version Count"
+      comment: "Number of distinct code sets under management; breadth of terminology governance."
+    - name: "hipaa_compliant_version_count"
       expr: COUNT(CASE WHEN is_hipaa_compliant = TRUE THEN 1 END)
-      comment: "Versions flagged HIPAA compliant; drives regulatory readiness monitoring."
-    - name: "Validated Version Count"
-      expr: COUNT(CASE WHEN validation_status = 'VALIDATED' THEN 1 END)
-      comment: "Versions passing validation; numerator for validation coverage rate."
-    - name: "Failed Load Count"
-      expr: COUNT(CASE WHEN load_status = 'FAILED' THEN 1 END)
-      comment: "Versions that failed to load; triggers data engineering intervention."
-    - name: "Total Records Loaded"
+      comment: "Count of HIPAA-compliant versions; the compliance numerator for coverage rate."
+    - name: "hipaa_compliance_rate_pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN is_hipaa_compliant = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percent of versions flagged HIPAA compliant; direct HIPAA risk indicator for leadership."
+    - name: "failed_load_rate_pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN load_status = 'FAILED' THEN 1 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percent of versions whose load failed; pipeline reliability KPI triggering remediation."
+    - name: "validation_failure_rate_pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN validation_status = 'FAILED' THEN 1 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percent of versions failing validation; data-quality risk KPI."
+    - name: "total_record_count"
       expr: SUM(CAST(record_count AS DOUBLE))
-      comment: "Aggregate reference records loaded across versions; indicates data volume steward burden."
-    - name: "Avg Records Per Version"
-      expr: AVG(CAST(record_count AS DOUBLE))
-      comment: "Average record count per version; helps size ingestion effort and anomalies."
-$$;
-
-CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`reference_drg`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "DRG reference KPIs supporting reimbursement analytics: relative weight distribution, expected length of stay, and quality/readmission program flag prevalence."
-  source: "`vibe_healthcare_v1`.`reference`.`drg`"
-  dimensions:
-    - name: "drg_type"
-      expr: drg_type
-      comment: "DRG type (surgical/medical) for reimbursement mix analysis."
-    - name: "complication_level"
-      expr: complication_level
-      comment: "Complication/comorbidity level driving payment tier differentiation."
-    - name: "grouper_system"
-      expr: grouper_system
-      comment: "Grouper system (MS-DRG, APR-DRG) used for the DRG definition."
-    - name: "clinical_family"
-      expr: clinical_family
-      comment: "Clinical family grouping for service line reimbursement views."
-  measures:
-    - name: "DRG Count"
-      expr: COUNT(1)
-      comment: "Number of DRG definitions in scope; baseline for grouper coverage."
-    - name: "Avg Relative Weight"
-      expr: AVG(CAST(relative_weight AS DOUBLE))
-      comment: "Average DRG relative weight; core driver of case-mix index and expected revenue."
-    - name: "Avg Geometric Mean LOS"
-      expr: AVG(CAST(geometric_mean_los AS DOUBLE))
-      comment: "Average geometric mean length of stay; benchmark for utilization management."
-    - name: "Avg National Payment"
-      expr: AVG(CAST(national_average_payment AS DOUBLE))
-      comment: "Average national payment amount; used for reimbursement benchmarking."
-    - name: "Readmission Penalty DRG Count"
-      expr: COUNT(CASE WHEN readmission_penalty_flag = TRUE THEN 1 END)
-      comment: "DRGs subject to readmission penalty; focuses quality improvement effort."
-    - name: "Quality Measure DRG Count"
-      expr: COUNT(CASE WHEN quality_measure_flag = TRUE THEN 1 END)
-      comment: "DRGs tied to quality measures; informs value-based care exposure."
-    - name: "Bundled Payment DRG Count"
-      expr: COUNT(CASE WHEN bundled_payment_flag = TRUE THEN 1 END)
-      comment: "DRGs eligible for bundled payment; sizes episode-of-care opportunity."
+      comment: "Total reference records loaded across all versions; scale of the terminology asset."
 $$;
 
 CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`reference_cpt_code`
@@ -102,78 +58,84 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "CPT reference KPIs supporting RVU-based cost and reimbursement modeling and telemedicine eligibility tracking."
+  comment: "RVU and reimbursement analytics over the CPT code master. Informs fee-schedule strategy, telemedicine coverage decisions, and identifies high-value procedure families by relative value units."
   source: "`vibe_healthcare_v1`.`reference`.`cpt_code`"
   dimensions:
     - name: "cpt_code_category"
       expr: cpt_code_category
-      comment: "CPT category for service line and modifier analysis."
-    - name: "section"
-      expr: section
-      comment: "CPT section grouping for procedure portfolio views."
-    - name: "cpt_code_status"
-      expr: cpt_code_status
-      comment: "Lifecycle status of the CPT code (active, deleted)."
+      comment: "High-level CPT category for grouping procedure economics."
     - name: "clinical_family"
       expr: clinical_family
-      comment: "Clinical family grouping for service line RVU analysis."
+      comment: "Clinical family grouping for service-line analysis."
+    - name: "section"
+      expr: section
+      comment: "CPT section (surgery, radiology, medicine, etc.)."
+    - name: "cpt_code_status"
+      expr: cpt_code_status
+      comment: "Active/deleted status of the CPT code."
+    - name: "global_period"
+      expr: global_period
+      comment: "Global surgical period classification affecting bundling economics."
   measures:
-    - name: "CPT Code Count"
+    - name: "cpt_code_count"
       expr: COUNT(1)
-      comment: "Number of CPT codes in scope; baseline coverage measure."
-    - name: "Avg Total RVU"
-      expr: AVG(CAST(total_rvu AS DOUBLE))
-      comment: "Average total RVU; core input to physician productivity and cost modeling."
-    - name: "Avg Work RVU"
-      expr: AVG(CAST(work_rvu AS DOUBLE))
-      comment: "Average work RVU; drives clinician compensation benchmarking."
-    - name: "Avg National Payment Amount"
-      expr: AVG(CAST(national_payment_amount AS DOUBLE))
-      comment: "Average national payment amount; supports reimbursement projection."
-    - name: "Telemedicine Eligible Count"
-      expr: COUNT(CASE WHEN telemedicine_eligible = TRUE THEN 1 END)
-      comment: "CPT codes eligible for telemedicine; sizes virtual care billing opportunity."
+      comment: "Number of CPT codes; baseline catalog size for coverage planning."
+    - name: "avg_total_rvu"
+      expr: ROUND(AVG(CAST(total_rvu AS DOUBLE)), 2)
+      comment: "Average total RVU per code; benchmarks procedure value density by family."
+    - name: "avg_work_rvu"
+      expr: ROUND(AVG(CAST(work_rvu AS DOUBLE)), 2)
+      comment: "Average physician work RVU; drives provider compensation modeling."
+    - name: "avg_national_payment_amount"
+      expr: ROUND(AVG(CAST(national_payment_amount AS DOUBLE)), 2)
+      comment: "Average national payment amount; benchmarks expected reimbursement per code."
+    - name: "avg_conversion_factor"
+      expr: ROUND(AVG(CAST(conversion_factor AS DOUBLE)), 4)
+      comment: "Average conversion factor applied; sensitivity input for fee-schedule modeling."
+    - name: "telemedicine_eligible_rate_pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN telemedicine_eligible = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percent of codes eligible for telemedicine; steers virtual-care service expansion."
 $$;
 
-CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`reference_crosswalk`
+CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`reference_drg`
 WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Terminology crosswalk KPIs measuring mapping quality, coverage, and usage across code systems for interoperability governance."
-  source: "`vibe_healthcare_v1`.`reference`.`crosswalk`"
+  comment: "DRG reimbursement and length-of-stay analytics. Steers inpatient case-mix strategy, payment benchmarking, and readmission-penalty exposure at the DRG level."
+  source: "`vibe_healthcare_v1`.`reference`.`drg`"
   dimensions:
-    - name: "mapping_type"
-      expr: mapping_type
-      comment: "Type of mapping (exact, approximate) for quality segmentation."
-    - name: "mapping_quality"
-      expr: mapping_quality
-      comment: "Assessed quality tier of the mapping; drives remediation prioritization."
-    - name: "source_code_system"
-      expr: source_code_system
-      comment: "Source code system in the crosswalk for coverage analysis."
-    - name: "target_code_system"
-      expr: target_code_system
-      comment: "Target code system in the crosswalk for coverage analysis."
-    - name: "mapping_authority"
-      expr: mapping_authority
-      comment: "Authority governing the mapping for source trust assessment."
+    - name: "drg_type"
+      expr: drg_type
+      comment: "Medical vs surgical DRG classification for case-mix analysis."
+    - name: "complication_level"
+      expr: complication_level
+      comment: "CC/MCC complication severity tier affecting payment weight."
+    - name: "clinical_family"
+      expr: clinical_family
+      comment: "Clinical family grouping for service-line reimbursement analysis."
+    - name: "grouper_system"
+      expr: grouper_system
+      comment: "DRG grouper system version (MS-DRG, APR-DRG)."
   measures:
-    - name: "Crosswalk Count"
+    - name: "drg_count"
       expr: COUNT(1)
-      comment: "Number of crosswalk mappings in scope; baseline coverage measure."
-    - name: "Approximate Mapping Count"
-      expr: COUNT(CASE WHEN approximate_flag = TRUE THEN 1 END)
-      comment: "Mappings flagged approximate; measures interoperability precision risk."
-    - name: "No Map Count"
-      expr: COUNT(CASE WHEN no_map_flag = TRUE THEN 1 END)
-      comment: "Entries with no available target map; highlights coverage gaps."
-    - name: "Total Mapping Usage"
-      expr: SUM(CAST(usage_count AS DOUBLE))
-      comment: "Aggregate usage across mappings; identifies high-value mappings to maintain."
-    - name: "Avg Mapping Usage"
-      expr: AVG(CAST(usage_count AS DOUBLE))
-      comment: "Average usage per mapping; supports prioritization of validation effort."
+      comment: "Number of DRGs; baseline case-mix catalog size."
+    - name: "avg_relative_weight"
+      expr: ROUND(AVG(CAST(relative_weight AS DOUBLE)), 4)
+      comment: "Average DRG relative weight; core case-mix-index driver for revenue planning."
+    - name: "avg_national_average_payment"
+      expr: ROUND(AVG(CAST(national_average_payment AS DOUBLE)), 2)
+      comment: "Average national payment per DRG; benchmarks expected inpatient reimbursement."
+    - name: "avg_geometric_mean_los"
+      expr: ROUND(AVG(CAST(geometric_mean_los AS DOUBLE)), 2)
+      comment: "Average geometric-mean length of stay; benchmark for utilization management."
+    - name: "readmission_penalty_rate_pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN readmission_penalty_flag = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percent of DRGs subject to readmission penalty; quantifies value-based-purchasing exposure."
+    - name: "bundled_payment_rate_pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN bundled_payment_flag = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percent of DRGs under bundled payment; steers bundled-care contracting strategy."
 $$;
 
 CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`reference_icd_code`
@@ -181,34 +143,37 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "ICD diagnosis code reference KPIs tracking billable coverage, HAC/CC/MCC severity flags, and coding validity for revenue integrity."
+  comment: "ICD diagnosis-code governance analytics. Surfaces billable-code coverage, HAC/CC/MCC composition, and code-lifecycle churn that drive documentation and coding-quality programs."
   source: "`vibe_healthcare_v1`.`reference`.`icd_code`"
   dimensions:
     - name: "icd_code_category"
       expr: icd_code_category
-      comment: "ICD category for diagnosis portfolio segmentation."
+      comment: "ICD category grouping for diagnosis-family analysis."
     - name: "chapter"
       expr: chapter
-      comment: "ICD chapter grouping for body-system analysis."
+      comment: "ICD chapter for body-system-level segmentation."
     - name: "code_type"
       expr: code_type
-      comment: "Code type (ICD-10-CM, ICD-10-PCS) for coding scope views."
+      comment: "Code type (ICD-10-CM, ICD-10-PCS) classification."
   measures:
-    - name: "ICD Code Count"
+    - name: "icd_code_count"
       expr: COUNT(1)
-      comment: "Number of ICD codes in scope; baseline coverage measure."
-    - name: "Billable Code Count"
-      expr: COUNT(CASE WHEN billable_flag = TRUE THEN 1 END)
-      comment: "Codes billable at full specificity; numerator for billable coverage rate."
-    - name: "HAC Flagged Count"
-      expr: COUNT(CASE WHEN hac_flag = TRUE THEN 1 END)
-      comment: "Hospital-acquired-condition codes; focuses patient safety and payment risk."
-    - name: "MCC Flagged Count"
+      comment: "Number of ICD codes; baseline diagnosis catalog size."
+    - name: "billable_rate_pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN billable_flag = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percent of codes that are billable; informs coding-completeness and claim-readiness."
+    - name: "mcc_code_count"
       expr: COUNT(CASE WHEN mcc_flag = TRUE THEN 1 END)
-      comment: "Major complication/comorbidity codes; drives case-mix and reimbursement uplift."
-    - name: "Valid For Coding Count"
-      expr: COUNT(CASE WHEN valid_for_coding_flag = TRUE THEN 1 END)
-      comment: "Codes valid for active coding; measures usable diagnosis inventory."
+      comment: "Count of major-complication/comorbidity codes; drives CDI targeting for revenue capture."
+    - name: "cc_code_count"
+      expr: COUNT(CASE WHEN cc_flag = TRUE THEN 1 END)
+      comment: "Count of complication/comorbidity codes; secondary CDI revenue-capture lever."
+    - name: "hac_code_count"
+      expr: COUNT(CASE WHEN hac_flag = TRUE THEN 1 END)
+      comment: "Count of hospital-acquired-condition codes; monitors patient-safety and penalty exposure."
+    - name: "valid_for_coding_rate_pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN valid_for_coding_flag = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percent of codes valid for coding; data-quality KPI for the reference asset."
 $$;
 
 CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`reference_ndc_drug`
@@ -216,40 +181,78 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "NDC drug reference KPIs supporting formulary and pharmacy safety governance: high-alert, black-box, controlled substance, and vaccine prevalence."
+  comment: "Drug reference analytics for formulary and safety governance. Surfaces high-alert, black-box, and controlled-substance composition that steer medication-safety and formulary-management programs."
   source: "`vibe_healthcare_v1`.`reference`.`ndc_drug`"
   dimensions:
     - name: "therapeutic_class"
       expr: therapeutic_class
-      comment: "Therapeutic class grouping for formulary analysis."
+      comment: "Therapeutic class for formulary and utilization segmentation."
     - name: "dosage_form"
       expr: dosage_form
-      comment: "Dosage form for dispensing and inventory segmentation."
+      comment: "Dosage form for dispensing and inventory analysis."
     - name: "dea_schedule"
       expr: dea_schedule
       comment: "DEA controlled-substance schedule for compliance monitoring."
     - name: "formulary_status"
       expr: formulary_status
-      comment: "Formulary status of the drug for coverage analysis."
-    - name: "marketing_category"
-      expr: marketing_category
-      comment: "Marketing category (brand, generic) for cost mix analysis."
+      comment: "Formulary inclusion status for coverage analysis."
+    - name: "route_of_administration"
+      expr: route_of_administration
+      comment: "Route of administration for clinical segmentation."
   measures:
-    - name: "NDC Drug Count"
+    - name: "ndc_drug_count"
       expr: COUNT(1)
-      comment: "Number of NDC drug records in scope; baseline coverage measure."
-    - name: "High Alert Medication Count"
+      comment: "Number of NDC drug records; baseline drug-catalog size."
+    - name: "distinct_active_ingredient_count"
+      expr: COUNT(DISTINCT active_ingredient)
+      comment: "Number of distinct active ingredients; breadth of the pharmacologic catalog."
+    - name: "high_alert_medication_count"
       expr: COUNT(CASE WHEN high_alert_medication_flag = TRUE THEN 1 END)
-      comment: "High-alert medications; prioritizes medication safety controls."
-    - name: "Black Box Warning Count"
-      expr: COUNT(CASE WHEN black_box_warning_flag = TRUE THEN 1 END)
-      comment: "Drugs carrying black-box warnings; informs clinical risk oversight."
-    - name: "Vaccine Count"
-      expr: COUNT(CASE WHEN vaccine_flag = TRUE THEN 1 END)
-      comment: "Vaccine products; supports immunization program inventory tracking."
-    - name: "Distinct Therapeutic Classes"
-      expr: COUNT(DISTINCT therapeutic_class)
-      comment: "Distinct therapeutic classes covered; measures formulary breadth."
+      comment: "Count of high-alert medications; drives medication-safety oversight."
+    - name: "black_box_warning_rate_pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN black_box_warning_flag = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percent of drugs with black-box warnings; risk-management indicator."
+    - name: "controlled_substance_count"
+      expr: COUNT(CASE WHEN dea_schedule IS NOT NULL AND dea_schedule <> '' THEN 1 END)
+      comment: "Count of controlled substances; scope of DEA-regulated inventory for compliance."
+$$;
+
+CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`reference_crosswalk`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Code-mapping quality analytics. Monitors mapping coverage, no-map gaps, and approximate-mapping risk that steer interoperability and terminology-mapping investment."
+  source: "`vibe_healthcare_v1`.`reference`.`crosswalk`"
+  dimensions:
+    - name: "mapping_type"
+      expr: mapping_type
+      comment: "Type of code mapping for interoperability segmentation."
+    - name: "source_code_system"
+      expr: source_code_system
+      comment: "Source terminology system in the crosswalk."
+    - name: "target_code_system"
+      expr: target_code_system
+      comment: "Target terminology system in the crosswalk."
+    - name: "mapping_quality"
+      expr: mapping_quality
+      comment: "Assessed quality tier of the mapping."
+    - name: "mapping_authority"
+      expr: mapping_authority
+      comment: "Authority that published the mapping."
+  measures:
+    - name: "crosswalk_count"
+      expr: COUNT(1)
+      comment: "Number of crosswalk mappings; baseline interoperability coverage."
+    - name: "no_map_rate_pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN no_map_flag = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percent of no-map entries; quantifies terminology gaps requiring remediation."
+    - name: "approximate_map_rate_pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN approximate_flag = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percent of approximate mappings; data-quality risk for automated coding."
+    - name: "total_usage_count"
+      expr: SUM(CAST(usage_count AS DOUBLE))
+      comment: "Total times mappings were used; prioritizes high-traffic mappings for validation."
 $$;
 
 CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`reference_geographic_region`
@@ -257,37 +260,142 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Geographic reference KPIs supporting market and health-equity analysis: population sizing, income, poverty, and uninsured rates by region."
+  comment: "Population and socioeconomic reference analytics by geography. Steers market prioritization, health-equity, and ACO service-area planning using population and SDOH indicators."
   source: "`vibe_healthcare_v1`.`reference`.`geographic_region`"
   dimensions:
     - name: "region_type"
       expr: region_type
-      comment: "Region type (state, CBSA, HRR) for geographic rollups."
-    - name: "census_region"
-      expr: census_region
-      comment: "Census region for macro-market segmentation."
+      comment: "Region granularity (CBSA, HRR, state, etc.)."
     - name: "state_abbreviation"
       expr: state_abbreviation
-      comment: "State abbreviation for state-level market analysis."
+      comment: "State for market and regulatory segmentation."
+    - name: "census_region"
+      expr: census_region
+      comment: "Census region for national roll-ups."
     - name: "urban_rural_classification"
       expr: urban_rural_classification
-      comment: "Urban/rural classification for access-to-care equity analysis."
+      comment: "Urban/rural classification for access-to-care analysis."
   measures:
-    - name: "Region Count"
+    - name: "region_count"
       expr: COUNT(1)
-      comment: "Number of geographic regions in scope; baseline coverage measure."
-    - name: "Total Population Estimate"
+      comment: "Number of geographic regions; baseline coverage of the market footprint."
+    - name: "total_population_estimate"
       expr: SUM(CAST(population_estimate AS DOUBLE))
-      comment: "Aggregate population across regions; sizes addressable market."
-    - name: "Avg Median Household Income"
-      expr: AVG(CAST(median_household_income AS DOUBLE))
-      comment: "Average median household income; informs payer mix and market strategy."
-    - name: "Avg Poverty Rate Pct"
-      expr: AVG(CAST(poverty_rate_percent AS DOUBLE))
-      comment: "Average poverty rate; drives health-equity and charity-care planning."
-    - name: "Avg Uninsured Rate Pct"
-      expr: AVG(CAST(uninsured_rate_percent AS DOUBLE))
-      comment: "Average uninsured rate; informs community benefit and bad-debt exposure."
+      comment: "Total estimated population across regions; addressable-market sizing."
+    - name: "avg_poverty_rate_pct"
+      expr: ROUND(AVG(CAST(poverty_rate_percent AS DOUBLE)), 2)
+      comment: "Average poverty rate; health-equity and SDOH investment indicator."
+    - name: "avg_uninsured_rate_pct"
+      expr: ROUND(AVG(CAST(uninsured_rate_percent AS DOUBLE)), 2)
+      comment: "Average uninsured rate; informs financial-assistance and coverage strategy."
+    - name: "avg_median_household_income"
+      expr: ROUND(AVG(CAST(median_household_income AS DOUBLE)), 2)
+      comment: "Average median household income; market economic-profile indicator."
+    - name: "aco_service_area_count"
+      expr: COUNT(CASE WHEN aco_service_area_flag = TRUE THEN 1 END)
+      comment: "Count of ACO service-area regions; value-based-care footprint sizing."
+$$;
+
+CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`reference_npi_registry`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "NPI registry analytics for provider-network reference data. Monitors active-provider coverage, entity mix, and deactivation churn feeding credentialing and network-adequacy programs."
+  source: "`vibe_healthcare_v1`.`reference`.`npi_registry`"
+  dimensions:
+    - name: "entity_type"
+      expr: entity_type
+      comment: "Individual vs organization NPI entity type."
+    - name: "practice_state"
+      expr: practice_state
+      comment: "Practice state for network-adequacy and geographic analysis."
+    - name: "primary_taxonomy_code"
+      expr: primary_taxonomy_code
+      comment: "Primary provider taxonomy for specialty segmentation."
+  measures:
+    - name: "npi_count"
+      expr: COUNT(1)
+      comment: "Number of NPI records; baseline provider-reference volume."
+    - name: "active_npi_rate_pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN is_active = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percent of active NPIs; data-freshness and network-integrity KPI."
+    - name: "deactivated_npi_count"
+      expr: COUNT(CASE WHEN deactivation_date IS NOT NULL THEN 1 END)
+      comment: "Count of deactivated NPIs; provider-churn indicator for network maintenance."
+    - name: "distinct_taxonomy_count"
+      expr: COUNT(DISTINCT primary_taxonomy_code)
+      comment: "Number of distinct taxonomies; specialty breadth of the reference registry."
+$$;
+
+CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`reference_loinc_code`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "LOINC observation-code governance analytics. Surfaces active-code coverage and orderable-observation mix supporting lab interoperability and result-mapping programs."
+  source: "`vibe_healthcare_v1`.`reference`.`loinc_code`"
+  dimensions:
+    - name: "class"
+      expr: class
+      comment: "LOINC class grouping for lab-domain segmentation."
+    - name: "scale_type"
+      expr: scale_type
+      comment: "Scale type (quantitative, ordinal, nominal) for result-handling analysis."
+    - name: "panel_type"
+      expr: panel_type
+      comment: "Panel vs single-observation classification."
+    - name: "system"
+      expr: system
+      comment: "Specimen/system component for clinical segmentation."
+  measures:
+    - name: "loinc_code_count"
+      expr: COUNT(1)
+      comment: "Number of LOINC codes; baseline observation-catalog size."
+    - name: "active_rate_pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN is_active = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percent of active LOINC codes; catalog-freshness KPI."
+    - name: "distinct_component_count"
+      expr: COUNT(DISTINCT component)
+      comment: "Number of distinct observation components; breadth of measurable concepts."
+    - name: "orderable_observation_count"
+      expr: COUNT(CASE WHEN order_observation_flag = TRUE THEN 1 END)
+      comment: "Count of orderable observations; scope of CPOE-mappable lab tests."
+$$;
+
+CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`reference_snomed_concept`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "SNOMED CT concept governance analytics. Monitors active-concept coverage, reportable/quality-measure inclusion, and mapping readiness feeding clinical-terminology and quality programs."
+  source: "`vibe_healthcare_v1`.`reference`.`snomed_concept`"
+  dimensions:
+    - name: "semantic_tag"
+      expr: semantic_tag
+      comment: "SNOMED semantic tag for concept-type segmentation."
+    - name: "top_level_hierarchy"
+      expr: top_level_hierarchy
+      comment: "Top-level SNOMED hierarchy for high-level grouping."
+    - name: "concept_status"
+      expr: concept_status
+      comment: "Concept lifecycle status."
+    - name: "hierarchy"
+      expr: hierarchy
+      comment: "Concept hierarchy classification."
+  measures:
+    - name: "concept_count"
+      expr: COUNT(1)
+      comment: "Number of SNOMED concepts; baseline clinical-terminology size."
+    - name: "active_concept_rate_pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN is_active = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percent of active concepts; terminology-freshness KPI."
+    - name: "reportable_concept_count"
+      expr: COUNT(CASE WHEN is_reportable = TRUE THEN 1 END)
+      comment: "Count of reportable concepts; scope of surveillance/regulatory reporting."
+    - name: "ehr_preferred_rate_pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN is_ehr_preferred = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percent of EHR-preferred concepts; documentation-standardization indicator."
 $$;
 
 CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`reference_condition_code`
@@ -314,27 +422,4 @@ AS $$
     - name: "ama_indicator_count"
       expr: SUM(CASE WHEN ama_indicator THEN 1 ELSE 0 END)
       comment: "Count of condition codes with AMA indicator set"
-$$;
-
-CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`reference_npi_registry`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Provider workforce metrics from NPI registry"
-  source: "`vibe_healthcare_v1`.`reference`.`npi_registry`"
-  dimensions:
-    - name: "provider_gender_code"
-      expr: provider_gender_code
-      comment: "Gender code of the provider"
-    - name: "primary_taxonomy_code"
-      expr: primary_taxonomy_code
-      comment: "Primary taxonomy classification of the provider"
-  measures:
-    - name: "provider_count"
-      expr: COUNT(1)
-      comment: "Total number of provider registry entries"
-    - name: "active_provider_count"
-      expr: SUM(CASE WHEN deactivation_date IS NULL THEN 1 ELSE 0 END)
-      comment: "Count of currently active providers (no deactivation date)"
 $$;

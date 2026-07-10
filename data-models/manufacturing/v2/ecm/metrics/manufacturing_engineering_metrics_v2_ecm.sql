@@ -1,86 +1,74 @@
--- Metric views for domain: engineering | Business: Manufacturing | Version: 2 | Generated on: 2026-07-10 11:52:40
+-- Metric views for domain: engineering | Business: Manufacturing | Version: 2 | Generated on: 2026-07-03 05:35:52
 
 CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`engineering_project`
 WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Strategic KPIs for engineering project portfolio management — tracks budget performance, schedule adherence, and project health across the engineering program."
+  comment: "Strategic KPIs for engineering project portfolio management: budget utilization, schedule adherence, and project health indicators used by engineering leadership to steer R&D investment and resource allocation."
   source: "`vibe_manufacturing_v1`.`engineering`.`engineering_project`"
   dimensions:
     - name: "project_status"
       expr: project_status
-      comment: "Current lifecycle status of the engineering project (e.g. Active, On Hold, Completed) for portfolio segmentation."
+      comment: "Current lifecycle status of the engineering project (e.g., Active, On Hold, Completed) for portfolio segmentation."
     - name: "project_type"
       expr: project_type
-      comment: "Classification of the engineering project type (e.g. New Product Development, Cost Reduction, Platform) for strategic grouping."
+      comment: "Classification of the project (e.g., New Product Development, Cost Reduction, Platform) for investment mix analysis."
     - name: "priority_level"
       expr: priority_level
-      comment: "Business priority tier assigned to the project for resource allocation analysis."
+      comment: "Business priority assigned to the project (e.g., Critical, High, Medium) for resource prioritization."
     - name: "program_phase"
       expr: program_phase
-      comment: "Current APQP/development phase of the project (e.g. Concept, Design, Validation, Launch)."
+      comment: "Current APQP/development phase (e.g., Concept, Design, Validation, Launch) for stage-gate tracking."
     - name: "capex_opex_classification"
       expr: capex_opex_classification
-      comment: "Financial classification of the project spend as CapEx or OpEx for financial reporting."
+      comment: "Financial classification of the project spend (CapEx vs. OpEx) for finance reporting."
     - name: "risk_level"
       expr: risk_level
-      comment: "Assessed risk level of the project for executive risk management dashboards."
-    - name: "target_market_segment"
-      expr: target_market_segment
-      comment: "Market segment the project is targeting, enabling revenue-linked portfolio analysis."
+      comment: "Assessed risk level of the project for risk-weighted portfolio analysis."
     - name: "technology_platform"
       expr: technology_platform
-      comment: "Technology platform underpinning the project for platform investment analysis."
+      comment: "Technology platform or product family the project belongs to for platform investment tracking."
+    - name: "target_market_segment"
+      expr: target_market_segment
+      comment: "Target market segment for the project output, enabling market-aligned investment analysis."
     - name: "start_date_month"
       expr: DATE_TRUNC('MONTH', start_date)
-      comment: "Month the project started, for cohort and trend analysis."
-    - name: "target_launch_date_month"
-      expr: DATE_TRUNC('MONTH', target_launch_date)
-      comment: "Planned launch month for schedule pipeline analysis."
+      comment: "Month the project started, for cohort and trend analysis of project launches."
+    - name: "target_launch_date_quarter"
+      expr: DATE_TRUNC('QUARTER', target_launch_date)
+      comment: "Quarter of the planned product launch, for pipeline and launch cadence planning."
   measures:
-    - name: "total_projects"
+    - name: "active_project_count"
       expr: COUNT(1)
-      comment: "Total number of engineering projects in the portfolio. Baseline KPI for portfolio size and capacity planning."
+      comment: "Total number of engineering projects in the portfolio. Executives use this to assess R&D pipeline size and capacity loading."
     - name: "total_budget_allocated"
       expr: SUM(CAST(budget_allocated_amount AS DOUBLE))
-      comment: "Total capital committed across all engineering projects. Drives investment portfolio decisions and budget governance."
+      comment: "Total engineering budget committed across all projects. Drives investment governance and CapEx/OpEx planning decisions."
     - name: "total_budget_spent"
       expr: SUM(CAST(budget_spent_amount AS DOUBLE))
-      comment: "Total actual spend across all engineering projects. Compared against allocated budget to assess burn rate."
-    - name: "avg_budget_allocated_per_project"
-      expr: AVG(CAST(budget_allocated_amount AS DOUBLE))
-      comment: "Average budget allocated per engineering project. Benchmarks investment intensity per initiative."
-    - name: "avg_budget_spent_per_project"
-      expr: AVG(CAST(budget_spent_amount AS DOUBLE))
-      comment: "Average actual spend per engineering project. Identifies over- or under-spending patterns across the portfolio."
-    - name: "projects_with_dfmea_completed"
-      expr: COUNT(CASE WHEN dfmea_completed = TRUE THEN 1 END)
-      comment: "Number of projects where DFMEA has been completed. Measures design quality process compliance — a leading indicator of product reliability."
-    - name: "projects_with_pfmea_completed"
-      expr: COUNT(CASE WHEN pfmea_completed = TRUE THEN 1 END)
-      comment: "Number of projects where PFMEA has been completed. Measures manufacturing process risk analysis compliance."
-    - name: "projects_requiring_ppap"
-      expr: COUNT(CASE WHEN ppap_required = TRUE THEN 1 END)
-      comment: "Number of projects requiring PPAP submission. Indicates customer-facing quality gate workload for launch readiness planning."
-    - name: "projects_with_dfm_completed"
-      expr: COUNT(CASE WHEN dfm_analysis_completed = TRUE THEN 1 END)
-      comment: "Number of projects where Design for Manufacturability analysis is complete. Tracks manufacturing readiness across the portfolio."
+      comment: "Total engineering spend to date across all projects. Compared against allocated budget to identify over/under-runs."
+    - name: "avg_budget_utilization_pct"
+      expr: ROUND(100.0 * AVG(CAST(budget_spent_amount AS DOUBLE) / NULLIF(CAST(budget_allocated_amount AS DOUBLE), 0)), 2)
+      comment: "Average budget utilization percentage per project. A key efficiency KPI — projects consistently above 100% signal cost overrun risk requiring executive intervention."
     - name: "avg_team_size"
       expr: AVG(CAST(team_size_count AS DOUBLE))
-      comment: "Average team size across engineering projects. Informs resource capacity planning and project staffing benchmarks."
+      comment: "Average engineering headcount per project. Used by workforce planning to assess resource intensity and staffing adequacy."
+    - name: "ppap_required_project_count"
+      expr: SUM(CASE WHEN ppap_required = TRUE THEN 1 ELSE 0 END)
+      comment: "Number of projects requiring PPAP submission. Drives quality planning workload and supplier readiness scheduling."
+    - name: "dfmea_completed_project_count"
+      expr: SUM(CASE WHEN dfmea_completed = TRUE THEN 1 ELSE 0 END)
+      comment: "Number of projects with DFMEA completed. A gate-readiness indicator — low completion rates signal design risk exposure."
+    - name: "dfmea_completion_rate_pct"
+      expr: ROUND(100.0 * SUM(CASE WHEN dfmea_completed = TRUE THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percentage of projects with DFMEA completed. Executives use this to assess design risk management maturity across the portfolio."
     - name: "avg_eco_count_per_project"
       expr: AVG(CAST(eco_count AS DOUBLE))
-      comment: "Average number of Engineering Change Orders per project. High ECO counts signal design instability and rework cost risk."
+      comment: "Average number of Engineering Change Orders per project. High ECO counts indicate design instability and rework cost risk."
     - name: "avg_design_review_count"
       expr: AVG(CAST(design_review_count AS DOUBLE))
-      comment: "Average number of design reviews conducted per project. Measures design governance rigor."
-    - name: "avg_prototype_count"
-      expr: AVG(CAST(prototype_count AS DOUBLE))
-      comment: "Average number of prototypes built per project. Higher counts may indicate design iteration challenges or complexity."
-    - name: "avg_patent_applications"
-      expr: AVG(CAST(patent_application_count AS DOUBLE))
-      comment: "Average patent applications per project. Measures innovation output and IP generation rate across the engineering portfolio."
+      comment: "Average number of design reviews conducted per project. Reflects design governance rigor and stage-gate discipline."
 $$;
 
 CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`engineering_eco`
@@ -88,61 +76,61 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Engineering Change Order (ECO) metrics tracking change volume, cost impact, and cycle time — critical for managing design stability and change governance."
+  comment: "Engineering Change Order (ECO) performance metrics tracking change velocity, cost impact, and approval cycle times. Used by engineering and operations leadership to manage design change risk and ERP/PLM synchronization."
   source: "`vibe_manufacturing_v1`.`engineering`.`eco`"
   dimensions:
     - name: "lifecycle_status"
       expr: lifecycle_status
-      comment: "Current workflow status of the ECO (e.g. Draft, Submitted, Approved, Implemented, Closed) for pipeline visibility."
+      comment: "Current status of the ECO (e.g., Draft, Submitted, Approved, Implemented, Closed) for pipeline visibility."
     - name: "change_type"
       expr: change_type
-      comment: "Category of engineering change (e.g. Design, Process, Material, Regulatory) for root cause analysis."
+      comment: "Type of engineering change (e.g., Design, Process, Material, Documentation) for change category analysis."
     - name: "change_priority"
       expr: change_priority
-      comment: "Business priority of the change order for triage and resource allocation."
+      comment: "Priority of the change (e.g., Critical, High, Medium, Low) for urgency-based triage."
     - name: "reason_code"
       expr: reason_code
-      comment: "Coded reason driving the engineering change. Identifies systemic design or process issues."
+      comment: "Root cause category driving the change (e.g., Customer Request, Quality Issue, Cost Reduction) for Pareto analysis."
     - name: "effectivity_type"
       expr: effectivity_type
-      comment: "How the change takes effect (e.g. Date-based, Serial-number-based) for production planning impact."
+      comment: "How the change takes effect (e.g., Immediate, Serial Number, Date-based) for production planning impact."
     - name: "requires_customer_approval"
       expr: requires_customer_approval
-      comment: "Flag indicating whether the change requires customer sign-off — affects lead time and customer relationship management."
+      comment: "Flag indicating whether customer sign-off is required, for tracking approval bottlenecks."
     - name: "initiated_date_month"
       expr: DATE_TRUNC('MONTH', initiated_date)
-      comment: "Month the ECO was initiated, for trend analysis of change volume over time."
-    - name: "effectivity_date_month"
-      expr: DATE_TRUNC('MONTH', effectivity_date)
-      comment: "Month the change becomes effective, for production planning and supply chain impact scheduling."
+      comment: "Month the ECO was initiated, for change volume trend analysis."
+    - name: "effectivity_date_quarter"
+      expr: DATE_TRUNC('QUARTER', effectivity_date)
+      comment: "Quarter the change becomes effective, for production readiness planning."
   measures:
-    - name: "total_ecos"
+    - name: "total_eco_count"
       expr: COUNT(1)
-      comment: "Total number of Engineering Change Orders. Baseline measure of design change activity volume."
+      comment: "Total number of Engineering Change Orders. High volumes signal design instability or active product improvement programs."
+    - name: "total_cost_impact"
+      expr: SUM(CAST(actual_cost_impact AS DOUBLE))
+      comment: "Total actual cost impact of all ECOs. A direct measure of engineering change cost burden on the business."
     - name: "total_estimated_cost_impact"
       expr: SUM(CAST(estimated_cost_impact AS DOUBLE))
-      comment: "Total estimated financial impact of all ECOs. Quantifies the cost burden of engineering changes on the business."
-    - name: "total_actual_cost_impact"
-      expr: SUM(CAST(actual_cost_impact AS DOUBLE))
-      comment: "Total actual financial impact of implemented ECOs. Compared against estimates to assess change cost accuracy."
-    - name: "avg_estimated_cost_impact"
-      expr: AVG(CAST(estimated_cost_impact AS DOUBLE))
-      comment: "Average estimated cost per ECO. Benchmarks the typical financial weight of a change order."
+      comment: "Total estimated cost impact at ECO initiation. Compared against actual to assess change cost estimation accuracy."
     - name: "avg_actual_cost_impact"
       expr: AVG(CAST(actual_cost_impact AS DOUBLE))
-      comment: "Average actual cost per ECO. Identifies whether change costs are systematically under- or over-estimated."
-    - name: "ecos_requiring_customer_approval"
-      expr: COUNT(CASE WHEN requires_customer_approval = TRUE THEN 1 END)
-      comment: "Number of ECOs requiring customer approval. High counts signal customer relationship and schedule risk."
-    - name: "ecos_with_customer_approval_received"
-      expr: COUNT(CASE WHEN customer_approval_received = TRUE THEN 1 END)
-      comment: "Number of ECOs where customer approval has been obtained. Measures approval pipeline throughput."
-    - name: "ecos_requiring_supplier_notification"
-      expr: COUNT(CASE WHEN requires_supplier_notification = TRUE THEN 1 END)
-      comment: "Number of ECOs requiring supplier notification. Quantifies supply chain disruption risk from engineering changes."
-    - name: "avg_affected_items_count"
-      expr: AVG(CAST(affected_items_count AS DOUBLE))
-      comment: "Average number of BOM items affected per ECO. Higher values indicate broader change scope and greater implementation complexity."
+      comment: "Average cost impact per ECO. Executives use this to benchmark change cost and identify high-impact change categories."
+    - name: "customer_approval_required_count"
+      expr: SUM(CASE WHEN requires_customer_approval = TRUE THEN 1 ELSE 0 END)
+      comment: "Number of ECOs requiring customer approval. High counts indicate customer-facing change risk and potential delivery delays."
+    - name: "customer_approval_received_count"
+      expr: SUM(CASE WHEN customer_approval_received = TRUE THEN 1 ELSE 0 END)
+      comment: "Number of ECOs where customer approval has been received. Tracks approval pipeline clearance rate."
+    - name: "customer_approval_rate_pct"
+      expr: ROUND(100.0 * SUM(CASE WHEN customer_approval_received = TRUE THEN 1 ELSE 0 END) / NULLIF(SUM(CASE WHEN requires_customer_approval = TRUE THEN 1 ELSE 0 END), 0), 2)
+      comment: "Percentage of customer-approval-required ECOs that have received approval. Low rates signal customer relationship or change management issues."
+    - name: "avg_schedule_impact_days"
+      expr: AVG(CAST(actual_schedule_impact_days AS DOUBLE))
+      comment: "Average schedule impact in days per ECO. Directly informs program managers of change-driven schedule risk."
+    - name: "supplier_notification_required_count"
+      expr: SUM(CASE WHEN requires_supplier_notification = TRUE THEN 1 ELSE 0 END)
+      comment: "Number of ECOs requiring supplier notification. Drives supply chain change management workload and supplier readiness risk."
 $$;
 
 CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`engineering_ecn`
@@ -150,215 +138,58 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Engineering Change Notice (ECN) metrics tracking notification effectiveness, BOM/routing impact, and ERP/MES synchronization status — measures change communication governance."
+  comment: "Engineering Change Notice (ECN) distribution and implementation metrics. Tracks change propagation across BOMs, drawings, and ERP/MES systems — critical for ensuring manufacturing executes to the latest engineering intent."
   source: "`vibe_manufacturing_v1`.`engineering`.`ecn`"
   dimensions:
     - name: "ecn_status"
       expr: ecn_status
-      comment: "Current status of the ECN (e.g. Draft, Released, Acknowledged, Closed) for pipeline management."
+      comment: "Current status of the ECN (e.g., Issued, Acknowledged, Implemented, Closed) for implementation pipeline tracking."
     - name: "ecn_type"
       expr: ecn_type
-      comment: "Type of engineering change notice for categorization and routing analysis."
+      comment: "Type of engineering change notice (e.g., Mandatory, Advisory, Informational) for prioritization."
     - name: "change_category"
       expr: change_category
-      comment: "Business category of the change (e.g. Safety, Cost, Quality, Regulatory) for impact classification."
+      comment: "Category of the change (e.g., Safety, Quality, Cost, Performance) for impact classification."
     - name: "priority"
       expr: priority
-      comment: "Priority level of the ECN for triage and escalation management."
+      comment: "Implementation priority of the ECN for triage and scheduling."
+    - name: "bom_impact_flag"
+      expr: bom_impact_flag
+      comment: "Whether the ECN impacts the Bill of Materials, for production planning risk assessment."
+    - name: "regulatory_impact_flag"
+      expr: regulatory_impact_flag
+      comment: "Whether the ECN has regulatory compliance implications, for compliance risk tracking."
     - name: "erp_sync_status"
       expr: erp_sync_status
-      comment: "ERP system synchronization status — unsynced ECNs represent data integrity risk in production."
-    - name: "mes_sync_status"
-      expr: mes_sync_status
-      comment: "MES system synchronization status — unsynced ECNs risk production executing against obsolete designs."
+      comment: "ERP synchronization status of the ECN, for identifying changes not yet reflected in production systems."
     - name: "effective_date_month"
       expr: DATE_TRUNC('MONTH', effective_date)
-      comment: "Month the ECN becomes effective, for production planning and supply chain scheduling."
-    - name: "release_date_month"
-      expr: DATE_TRUNC('MONTH', release_date)
-      comment: "Month the ECN was released, for change velocity trend analysis."
+      comment: "Month the ECN becomes effective, for change implementation scheduling."
   measures:
-    - name: "total_ecns"
+    - name: "total_ecn_count"
       expr: COUNT(1)
-      comment: "Total number of Engineering Change Notices issued. Baseline measure of change communication volume."
-    - name: "total_estimated_cost_impact"
+      comment: "Total number of Engineering Change Notices issued. Tracks change communication volume and manufacturing update burden."
+    - name: "total_cost_impact"
       expr: SUM(CAST(cost_impact_estimate AS DOUBLE))
-      comment: "Total estimated cost impact across all ECNs. Quantifies the financial exposure from pending engineering changes."
+      comment: "Total estimated cost impact across all ECNs. Quantifies the financial burden of engineering changes on manufacturing."
     - name: "avg_cost_impact_per_ecn"
       expr: AVG(CAST(cost_impact_estimate AS DOUBLE))
-      comment: "Average estimated cost impact per ECN. Benchmarks the typical financial weight of a change notice."
-    - name: "ecns_with_bom_impact"
-      expr: COUNT(CASE WHEN bom_impact_flag = TRUE THEN 1 END)
-      comment: "Number of ECNs with BOM impact. High counts signal significant supply chain and procurement disruption risk."
-    - name: "ecns_with_routing_impact"
-      expr: COUNT(CASE WHEN routing_impact_flag = TRUE THEN 1 END)
-      comment: "Number of ECNs affecting production routing. Indicates manufacturing process change workload."
-    - name: "ecns_with_inventory_impact"
-      expr: COUNT(CASE WHEN inventory_impact_flag = TRUE THEN 1 END)
-      comment: "Number of ECNs with inventory impact. Drives obsolescence write-off risk assessment."
-    - name: "ecns_with_regulatory_impact"
-      expr: COUNT(CASE WHEN regulatory_impact_flag = TRUE THEN 1 END)
-      comment: "Number of ECNs with regulatory compliance impact. Critical for compliance risk management and regulatory filing planning."
-    - name: "ecns_requiring_customer_notification"
-      expr: COUNT(CASE WHEN customer_notification_required = TRUE THEN 1 END)
-      comment: "Number of ECNs requiring customer notification. Measures customer communication workload and relationship risk."
-    - name: "ecns_not_synced_to_erp"
-      expr: COUNT(CASE WHEN erp_sync_status <> 'SYNCED' THEN 1 END)
-      comment: "Number of ECNs not yet synchronized to ERP. Represents data integrity risk — production may execute against outdated BOMs."
-    - name: "avg_affected_part_count"
+      comment: "Average cost impact per ECN. Benchmarks change cost intensity and identifies high-cost change categories."
+    - name: "bom_impacting_ecn_count"
+      expr: SUM(CASE WHEN bom_impact_flag = TRUE THEN 1 ELSE 0 END)
+      comment: "Number of ECNs that impact the BOM. BOM changes require production line updates and are the highest-risk change type."
+    - name: "regulatory_impacting_ecn_count"
+      expr: SUM(CASE WHEN regulatory_impact_flag = TRUE THEN 1 ELSE 0 END)
+      comment: "Number of ECNs with regulatory compliance impact. These require expedited implementation to avoid compliance exposure."
+    - name: "acknowledgement_completion_rate_pct"
+      expr: ROUND(100.0 * SUM(CAST(acknowledgement_count AS DOUBLE)) / NULLIF(SUM(CAST(acknowledgement_target_count AS DOUBLE)), 0), 2)
+      comment: "Percentage of required ECN acknowledgements received. Low rates indicate change communication gaps that risk manufacturing executing to obsolete designs."
+    - name: "avg_affected_parts_per_ecn"
       expr: AVG(CAST(affected_part_count AS DOUBLE))
-      comment: "Average number of parts affected per ECN. Higher values indicate broader change scope and greater supply chain disruption."
-    - name: "avg_affected_drawing_count"
+      comment: "Average number of parts affected per ECN. High values indicate broad-impact changes requiring extensive production updates."
+    - name: "avg_affected_drawings_per_ecn"
       expr: AVG(CAST(affected_drawing_count AS DOUBLE))
-      comment: "Average number of drawings affected per ECN. Measures documentation update workload per change."
-    - name: "acknowledgement_completion_rate"
-      expr: ROUND(100.0 * COUNT(CASE WHEN CAST(acknowledgement_count AS DOUBLE) >= CAST(acknowledgement_target_count AS DOUBLE) AND acknowledgement_target_count <> '0' THEN 1 END) / NULLIF(COUNT(CASE WHEN acknowledgement_required = TRUE THEN 1 END), 0), 2)
-      comment: "Percentage of ECNs requiring acknowledgement where target acknowledgement count has been met. Measures change communication effectiveness."
-$$;
-
-CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`engineering_component`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Component master data quality and portfolio metrics — tracks component lifecycle, compliance status, cost, and make/buy strategy for engineering and procurement decisions."
-  source: "`vibe_manufacturing_v1`.`engineering`.`component`"
-  dimensions:
-    - name: "component_type"
-      expr: component_type
-      comment: "Classification of the component type (e.g. Mechanical, Electrical, Software) for portfolio analysis."
-    - name: "lifecycle_phase"
-      expr: lifecycle_phase
-      comment: "Current lifecycle phase of the component (e.g. Active, Obsolete, Phase-Out) for obsolescence management."
-    - name: "make_or_buy"
-      expr: make_or_buy
-      comment: "Make vs. Buy designation for strategic sourcing and manufacturing capacity analysis."
-    - name: "release_status"
-      expr: release_status
-      comment: "Engineering release status of the component for design governance tracking."
-    - name: "abc_classification"
-      expr: abc_classification
-      comment: "ABC inventory classification of the component for prioritized management focus."
-    - name: "technology_family"
-      expr: technology_family
-      comment: "Technology family grouping for platform and technology investment analysis."
-    - name: "hazardous_material_flag"
-      expr: hazardous_material_flag
-      comment: "Indicates whether the component contains hazardous materials — critical for regulatory compliance and EHS reporting."
-    - name: "rohs_compliant_flag"
-      expr: rohs_compliant_flag
-      comment: "RoHS compliance status — mandatory for EU market access and regulatory reporting."
-    - name: "reach_compliant_flag"
-      expr: reach_compliant_flag
-      comment: "REACH compliance status — mandatory for EU chemical regulation compliance."
-    - name: "effective_date_month"
-      expr: DATE_TRUNC('MONTH', effective_date)
-      comment: "Month the component became effective, for new component introduction trend analysis."
-  measures:
-    - name: "total_components"
-      expr: COUNT(1)
-      comment: "Total number of components in the engineering master. Baseline for portfolio size and complexity management."
-    - name: "total_standard_cost"
-      expr: SUM(CAST(standard_cost AS DOUBLE))
-      comment: "Total standard cost across all components. Drives product cost rollup and margin analysis."
-    - name: "avg_standard_cost"
-      expr: AVG(CAST(standard_cost AS DOUBLE))
-      comment: "Average standard cost per component. Benchmarks component cost levels for cost reduction targeting."
-    - name: "avg_dfm_score"
-      expr: AVG(CAST(dfm_score AS DOUBLE))
-      comment: "Average Design for Manufacturability score across components. Low scores indicate manufacturing complexity risk and cost drivers."
-    - name: "avg_lead_time_days"
-      expr: AVG(CAST(lead_time_days AS DOUBLE))
-      comment: "Average procurement lead time across components. Critical for supply chain planning and new product launch scheduling."
-    - name: "avg_weight_kg"
-      expr: AVG(CAST(weight_kg AS DOUBLE))
-      comment: "Average component weight in kilograms. Supports product weight targets and logistics cost analysis."
-    - name: "components_rohs_compliant"
-      expr: COUNT(CASE WHEN rohs_compliant_flag = TRUE THEN 1 END)
-      comment: "Number of RoHS-compliant components. Measures regulatory compliance coverage for EU market access."
-    - name: "components_reach_compliant"
-      expr: COUNT(CASE WHEN reach_compliant_flag = TRUE THEN 1 END)
-      comment: "Number of REACH-compliant components. Measures chemical regulation compliance coverage."
-    - name: "components_hazardous"
-      expr: COUNT(CASE WHEN hazardous_material_flag = TRUE THEN 1 END)
-      comment: "Number of components containing hazardous materials. Drives EHS risk management and regulatory reporting workload."
-    - name: "components_obsolete"
-      expr: COUNT(CASE WHEN lifecycle_phase = 'Obsolete' THEN 1 END)
-      comment: "Number of obsolete components. High counts indicate BOM hygiene risk and potential production disruption."
-    - name: "avg_safety_stock_quantity"
-      expr: AVG(CAST(safety_stock_quantity AS DOUBLE))
-      comment: "Average safety stock quantity across components. Informs inventory investment and supply risk mitigation strategy."
-    - name: "avg_minimum_order_quantity"
-      expr: AVG(CAST(minimum_order_quantity AS DOUBLE))
-      comment: "Average minimum order quantity across components. Impacts procurement cost and inventory carrying cost planning."
-$$;
-
-CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`engineering_test_result`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Engineering test result metrics tracking test pass rates, measurement accuracy, and validation coverage — key quality gate KPIs for product development and regulatory submission."
-  source: "`vibe_manufacturing_v1`.`engineering`.`test_result`"
-  dimensions:
-    - name: "test_type"
-      expr: test_type
-      comment: "Type of engineering test (e.g. DVP&R, Environmental, Functional, Regulatory) for test program analysis."
-    - name: "test_outcome"
-      expr: test_outcome
-      comment: "Result of the test (e.g. Pass, Fail, Inconclusive) for quality gate performance tracking."
-    - name: "test_status"
-      expr: test_status
-      comment: "Current status of the test record (e.g. Planned, In Progress, Complete) for test pipeline management."
-    - name: "prototype_phase"
-      expr: prototype_phase
-      comment: "Development phase during which the test was conducted (e.g. Alpha, Beta, Pre-Production) for phase-gate analysis."
-    - name: "regulatory_submission_flag"
-      expr: regulatory_submission_flag
-      comment: "Indicates whether the test result is required for regulatory submission — critical for compliance milestone tracking."
-    - name: "retest_flag"
-      expr: retest_flag
-      comment: "Indicates whether this is a retest. High retest rates signal design or process quality issues."
-    - name: "test_date_month"
-      expr: DATE_TRUNC('MONTH', test_date)
-      comment: "Month the test was conducted, for test velocity and quality trend analysis."
-    - name: "test_facility"
-      expr: test_facility
-      comment: "Facility where the test was conducted, for test capacity and geographic analysis."
-  measures:
-    - name: "total_tests"
-      expr: COUNT(1)
-      comment: "Total number of engineering test records. Baseline measure of test program activity and validation coverage."
-    - name: "tests_passed"
-      expr: COUNT(CASE WHEN test_outcome = 'Pass' THEN 1 END)
-      comment: "Number of tests with a passing outcome. Measures product validation success rate."
-    - name: "tests_failed"
-      expr: COUNT(CASE WHEN test_outcome = 'Fail' THEN 1 END)
-      comment: "Number of failed tests. Drives root cause analysis prioritization and design rework decisions."
-    - name: "first_pass_yield_pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN test_outcome = 'Pass' AND retest_flag = FALSE THEN 1 END) / NULLIF(COUNT(CASE WHEN retest_flag = FALSE THEN 1 END), 0), 2)
-      comment: "Percentage of first-attempt tests that pass. Core quality KPI — low first-pass yield signals design or process deficiencies requiring executive intervention."
-    - name: "retest_rate_pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN retest_flag = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percentage of tests that are retests. High retest rates indicate design instability and inflate validation cost and schedule."
-    - name: "regulatory_submission_tests"
-      expr: COUNT(CASE WHEN regulatory_submission_flag = TRUE THEN 1 END)
-      comment: "Number of tests required for regulatory submission. Tracks compliance validation coverage for market authorization."
-    - name: "avg_measured_value"
-      expr: AVG(CAST(measured_value AS DOUBLE))
-      comment: "Average measured test value across all test records. Provides baseline for process capability and specification conformance analysis."
-    - name: "avg_measurement_uncertainty"
-      expr: AVG(CAST(measurement_uncertainty AS DOUBLE))
-      comment: "Average measurement uncertainty across tests. High uncertainty values indicate test equipment calibration or methodology issues."
-    - name: "avg_test_duration_hours"
-      expr: AVG(CAST(test_duration_hours AS DOUBLE))
-      comment: "Average test duration in hours. Drives test lab capacity planning and critical path schedule analysis."
-    - name: "total_test_duration_hours"
-      expr: SUM(CAST(test_duration_hours AS DOUBLE))
-      comment: "Total test hours consumed. Quantifies test lab resource utilization and validation program cost."
-    - name: "tests_requiring_rca"
-      expr: COUNT(CASE WHEN root_cause_analysis_required = TRUE THEN 1 END)
-      comment: "Number of tests requiring root cause analysis. Measures the volume of quality investigations triggered by test failures."
+      comment: "Average number of drawings affected per ECN. Drives documentation update workload estimation for engineering teams."
 $$;
 
 CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`engineering_dfmea`
@@ -366,49 +197,117 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Design Failure Mode and Effects Analysis (DFMEA) metrics tracking risk priority, action completion, and safety-critical failure modes — core product reliability and safety governance KPIs."
+  comment: "Design Failure Mode and Effects Analysis (DFMEA) risk metrics. Tracks failure mode severity, RPN distribution, and action completion rates — essential for product safety governance and design risk reduction."
   source: "`vibe_manufacturing_v1`.`engineering`.`dfmea`"
   dimensions:
     - name: "dfmea_status"
       expr: dfmea_status
-      comment: "Current status of the DFMEA record (e.g. In Progress, Approved, Closed) for governance tracking."
-    - name: "action_status"
-      expr: action_status
-      comment: "Status of corrective actions defined in the DFMEA for action closure rate analysis."
+      comment: "Current status of the DFMEA record (e.g., In Progress, Approved, Closed) for governance tracking."
     - name: "design_phase"
       expr: design_phase
-      comment: "Design phase during which the DFMEA was conducted for phase-gate quality analysis."
+      comment: "Design phase when the DFMEA was conducted (e.g., Concept, Detailed Design, Validation) for phase-gate risk assessment."
+    - name: "action_status"
+      expr: action_status
+      comment: "Status of corrective actions (e.g., Open, In Progress, Completed) for action closure tracking."
+    - name: "scope_level"
+      expr: scope_level
+      comment: "Level of the DFMEA scope (e.g., System, Subsystem, Component) for risk hierarchy analysis."
     - name: "safety_related_flag"
       expr: safety_related_flag
-      comment: "Indicates safety-critical failure modes — mandatory for product liability and regulatory compliance reporting."
+      comment: "Whether the failure mode is safety-related, for prioritizing safety-critical risk reduction actions."
     - name: "regulatory_impact_flag"
       expr: regulatory_impact_flag
-      comment: "Indicates whether the failure mode has regulatory compliance implications."
-    - name: "special_characteristics_flag"
-      expr: special_characteristics_flag
-      comment: "Indicates special product characteristics requiring enhanced control — critical for IATF/APQP compliance."
+      comment: "Whether the failure mode has regulatory compliance implications, for compliance risk management."
     - name: "analysis_date_month"
       expr: DATE_TRUNC('MONTH', analysis_date)
-      comment: "Month the DFMEA analysis was conducted, for quality program trend analysis."
+      comment: "Month the DFMEA analysis was conducted, for risk assessment activity trending."
   measures:
     - name: "total_dfmea_records"
       expr: COUNT(1)
-      comment: "Total number of DFMEA records. Baseline measure of design risk analysis coverage."
-    - name: "safety_related_failure_modes"
-      expr: COUNT(CASE WHEN safety_related_flag = TRUE THEN 1 END)
-      comment: "Number of safety-critical failure modes identified. Drives product liability risk management and regulatory compliance decisions."
-    - name: "open_action_items"
-      expr: COUNT(CASE WHEN action_status NOT IN ('Closed', 'Complete', 'Completed') THEN 1 END)
-      comment: "Number of DFMEA records with open corrective actions. Measures design risk mitigation backlog requiring management attention."
+      comment: "Total number of DFMEA failure mode records. Tracks design risk analysis coverage across the product portfolio."
+    - name: "safety_related_failure_mode_count"
+      expr: SUM(CASE WHEN safety_related_flag = TRUE THEN 1 ELSE 0 END)
+      comment: "Number of safety-related failure modes identified. A critical product safety KPI — executives must ensure all safety FMs have completed corrective actions."
+    - name: "open_action_count"
+      expr: SUM(CASE WHEN action_status NOT IN ('Completed', 'Closed') THEN 1 ELSE 0 END)
+      comment: "Number of DFMEA records with open corrective actions. Open actions represent unmitigated design risk — a key gate-readiness indicator."
     - name: "action_closure_rate_pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN action_status IN ('Closed', 'Complete', 'Completed') THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percentage of DFMEA action items that have been closed. Measures design risk mitigation effectiveness — a key APQP gate metric."
-    - name: "dfmeas_with_regulatory_impact"
-      expr: COUNT(CASE WHEN regulatory_impact_flag = TRUE THEN 1 END)
-      comment: "Number of DFMEAs with regulatory compliance impact. Quantifies regulatory risk exposure in the product design portfolio."
-    - name: "dfmeas_with_special_characteristics"
-      expr: COUNT(CASE WHEN special_characteristics_flag = TRUE THEN 1 END)
-      comment: "Number of DFMEAs identifying special product characteristics. Drives enhanced control plan requirements and manufacturing process design."
+      expr: ROUND(100.0 * SUM(CASE WHEN action_status IN ('Completed', 'Closed') THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percentage of DFMEA actions that have been closed. Low closure rates block design release and PPAP approval."
+    - name: "avg_severity_rating"
+      expr: AVG(CAST(severity_rating AS DOUBLE))
+      comment: "Average severity rating across all failure modes. Tracks overall design risk severity profile — high averages require design architecture review."
+    - name: "avg_occurrence_rating"
+      expr: AVG(CAST(occurrence_rating AS DOUBLE))
+      comment: "Average occurrence rating across all failure modes. Indicates how frequently failure modes are expected to occur without prevention controls."
+    - name: "avg_detection_rating"
+      expr: AVG(CAST(detection_rating AS DOUBLE))
+      comment: "Average detection rating across all failure modes. High detection ratings mean failures are hard to catch — drives investment in detection controls."
+    - name: "avg_revised_rpn"
+      expr: AVG(CAST(revised_rpn AS DOUBLE))
+      comment: "Average revised Risk Priority Number after corrective actions. Measures effectiveness of design risk reduction — declining RPN confirms action effectiveness."
+$$;
+
+CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`engineering_test_result`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Engineering test result performance metrics tracking pass rates, test coverage, and measurement quality. Used by engineering and quality leadership to assess design validation completeness and product readiness for launch."
+  source: "`vibe_manufacturing_v1`.`engineering`.`test_result`"
+  dimensions:
+    - name: "test_outcome"
+      expr: test_outcome
+      comment: "Result of the test (e.g., Pass, Fail, Conditional Pass) for pass/fail rate analysis."
+    - name: "test_type"
+      expr: test_type
+      comment: "Type of test conducted (e.g., Functional, Environmental, Durability, Safety) for test coverage analysis."
+    - name: "test_status"
+      expr: test_status
+      comment: "Current status of the test record (e.g., Planned, In Progress, Complete) for test pipeline tracking."
+    - name: "prototype_phase"
+      expr: prototype_phase
+      comment: "Development phase during which the test was conducted (e.g., Alpha, Beta, Pre-Production) for phase-gate readiness."
+    - name: "regulatory_submission_flag"
+      expr: regulatory_submission_flag
+      comment: "Whether the test result is required for regulatory submission, for compliance readiness tracking."
+    - name: "retest_flag"
+      expr: retest_flag
+      comment: "Whether this is a retest of a previously failed test, for first-pass yield analysis."
+    - name: "test_date_month"
+      expr: DATE_TRUNC('MONTH', test_date)
+      comment: "Month the test was conducted, for test activity volume trending."
+    - name: "test_facility"
+      expr: test_facility
+      comment: "Facility where the test was conducted, for test lab capacity and utilization analysis."
+  measures:
+    - name: "total_test_count"
+      expr: COUNT(1)
+      comment: "Total number of engineering tests conducted. Tracks design validation activity volume and test lab throughput."
+    - name: "pass_count"
+      expr: SUM(CASE WHEN test_outcome = 'Pass' THEN 1 ELSE 0 END)
+      comment: "Number of tests that passed. Baseline for first-pass yield and design validation completeness."
+    - name: "fail_count"
+      expr: SUM(CASE WHEN test_outcome = 'Fail' THEN 1 ELSE 0 END)
+      comment: "Number of tests that failed. High failure counts signal design issues requiring engineering intervention before launch."
+    - name: "first_pass_yield_pct"
+      expr: ROUND(100.0 * SUM(CASE WHEN test_outcome = 'Pass' AND retest_flag = FALSE THEN 1 ELSE 0 END) / NULLIF(SUM(CASE WHEN retest_flag = FALSE THEN 1 ELSE 0 END), 0), 2)
+      comment: "Percentage of tests passed on the first attempt (excluding retests). A key design quality KPI — low FPY indicates design immaturity and drives rework cost."
+    - name: "avg_test_duration_hours"
+      expr: AVG(CAST(test_duration_hours AS DOUBLE))
+      comment: "Average test duration in hours. Used for test lab capacity planning and identifying unusually long tests that may indicate test execution issues."
+    - name: "total_test_duration_hours"
+      expr: SUM(CAST(test_duration_hours AS DOUBLE))
+      comment: "Total test lab hours consumed. Drives test facility capacity planning and cost allocation."
+    - name: "regulatory_submission_test_count"
+      expr: SUM(CASE WHEN regulatory_submission_flag = TRUE THEN 1 ELSE 0 END)
+      comment: "Number of tests required for regulatory submission. Tracks compliance test completion status — incomplete regulatory tests block product launch."
+    - name: "avg_measured_value"
+      expr: AVG(CAST(measured_value AS DOUBLE))
+      comment: "Average measured test value across all test records. Used to assess whether test results are trending toward specification limits."
+    - name: "avg_measurement_uncertainty"
+      expr: AVG(CAST(measurement_uncertainty AS DOUBLE))
+      comment: "Average measurement uncertainty across tests. High uncertainty values indicate measurement system adequacy issues that may invalidate test results."
 $$;
 
 CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`engineering_certification_requirement`
@@ -416,126 +315,58 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Product and component certification requirement metrics tracking compliance status, cost, and schedule adherence — critical for market access and regulatory approval governance."
+  comment: "Product and component certification tracking metrics. Monitors certification completion rates, cost, and compliance status across target markets — critical for market access and regulatory compliance governance."
   source: "`vibe_manufacturing_v1`.`engineering`.`certification_requirement`"
   dimensions:
     - name: "certification_type"
       expr: certification_type
-      comment: "Type of certification required (e.g. CE, UL, FCC, ISO) for regulatory portfolio analysis."
+      comment: "Type of certification required (e.g., CE, UL, FCC, ISO) for certification portfolio analysis."
     - name: "compliance_status"
       expr: compliance_status
-      comment: "Current compliance status of the certification requirement for regulatory risk tracking."
-    - name: "risk_level"
-      expr: risk_level
-      comment: "Risk level associated with non-compliance for executive risk management prioritization."
+      comment: "Current compliance status (e.g., Compliant, Non-Compliant, In Progress, Waived) for market access risk tracking."
     - name: "certification_priority"
       expr: certification_priority
-      comment: "Business priority of the certification for resource allocation and schedule management."
-    - name: "mandatory_flag"
-      expr: mandatory_flag
-      comment: "Indicates whether the certification is mandatory for market access — non-compliant mandatory certs block product launch."
+      comment: "Business priority of the certification requirement for resource allocation decisions."
     - name: "target_market"
       expr: target_market
-      comment: "Target market for the certification (e.g. EU, US, Japan) for geographic compliance portfolio analysis."
+      comment: "Target market or region for the certification (e.g., EU, North America, Asia-Pacific) for market entry planning."
     - name: "target_country_code"
       expr: target_country_code
-      comment: "Target country code for country-level regulatory compliance tracking."
+      comment: "Specific country code for the certification requirement, for country-level compliance tracking."
+    - name: "mandatory_flag"
+      expr: mandatory_flag
+      comment: "Whether the certification is mandatory for market access, for prioritizing critical compliance activities."
     - name: "renewal_required_flag"
       expr: renewal_required_flag
-      comment: "Indicates whether the certification requires periodic renewal — drives compliance maintenance planning."
-    - name: "planned_completion_date_month"
-      expr: DATE_TRUNC('MONTH', planned_completion_date)
-      comment: "Planned completion month for certification milestone pipeline analysis."
+      comment: "Whether the certification requires periodic renewal, for proactive renewal planning."
+    - name: "planned_completion_date_quarter"
+      expr: DATE_TRUNC('QUARTER', planned_completion_date)
+      comment: "Quarter the certification is planned to be completed, for launch readiness planning."
   measures:
     - name: "total_certification_requirements"
       expr: COUNT(1)
-      comment: "Total number of certification requirements across the product portfolio. Baseline for compliance program scope."
-    - name: "mandatory_certifications"
-      expr: COUNT(CASE WHEN mandatory_flag = TRUE THEN 1 END)
-      comment: "Number of mandatory certification requirements. Non-compliance with mandatory certs blocks market access — critical executive KPI."
-    - name: "certifications_compliant"
-      expr: COUNT(CASE WHEN compliance_status = 'Compliant' THEN 1 END)
-      comment: "Number of certification requirements in compliant status. Measures regulatory compliance achievement rate."
-    - name: "certifications_non_compliant"
-      expr: COUNT(CASE WHEN compliance_status = 'Non-Compliant' THEN 1 END)
-      comment: "Number of non-compliant certification requirements. Directly represents market access risk and potential regulatory penalty exposure."
+      comment: "Total number of certification requirements across the product portfolio. Tracks compliance workload and market access complexity."
+    - name: "compliant_count"
+      expr: SUM(CASE WHEN compliance_status = 'Compliant' THEN 1 ELSE 0 END)
+      comment: "Number of certification requirements with compliant status. Baseline for market access readiness."
+    - name: "non_compliant_count"
+      expr: SUM(CASE WHEN compliance_status = 'Non-Compliant' THEN 1 ELSE 0 END)
+      comment: "Number of non-compliant certification requirements. Non-compliance blocks market access and creates regulatory liability."
     - name: "compliance_rate_pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN compliance_status = 'Compliant' THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percentage of certification requirements in compliant status. Top-level regulatory health KPI for executive and board reporting."
-    - name: "total_actual_cost"
+      expr: ROUND(100.0 * SUM(CASE WHEN compliance_status = 'Compliant' THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percentage of certification requirements in compliant status. A key market access KPI — below-target rates signal product launch risk."
+    - name: "mandatory_non_compliant_count"
+      expr: SUM(CASE WHEN mandatory_flag = TRUE AND compliance_status = 'Non-Compliant' THEN 1 ELSE 0 END)
+      comment: "Number of mandatory certifications that are non-compliant. These represent hard blockers to product launch and require immediate executive escalation."
+    - name: "total_actual_certification_cost"
       expr: SUM(CAST(actual_cost_amount AS DOUBLE))
-      comment: "Total actual cost incurred for certification activities. Tracks regulatory compliance spend against budget."
-    - name: "total_estimated_cost"
+      comment: "Total actual cost incurred for certification activities. Tracks certification spend against budget for R&D cost management."
+    - name: "total_estimated_certification_cost"
       expr: SUM(CAST(estimated_cost_amount AS DOUBLE))
-      comment: "Total estimated cost for all certification requirements. Drives compliance budget planning."
+      comment: "Total estimated certification cost. Used for launch budget planning and cost-to-market analysis."
     - name: "avg_actual_cost_per_certification"
       expr: AVG(CAST(actual_cost_amount AS DOUBLE))
-      comment: "Average actual cost per certification requirement. Benchmarks certification investment and identifies cost outliers."
-    - name: "certifications_requiring_renewal"
-      expr: COUNT(CASE WHEN renewal_required_flag = TRUE THEN 1 END)
-      comment: "Number of certifications requiring periodic renewal. Drives compliance maintenance workload and budget planning."
-$$;
-
-CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`engineering_revision`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Engineering revision metrics tracking design change velocity, compliance readiness, and lifecycle state — measures design maturity and change management effectiveness."
-  source: "`vibe_manufacturing_v1`.`engineering`.`engineering_revision`"
-  dimensions:
-    - name: "lifecycle_state"
-      expr: lifecycle_state
-      comment: "Current lifecycle state of the revision (e.g. In Development, Released, Obsolete) for design maturity analysis."
-    - name: "revision_type"
-      expr: revision_type
-      comment: "Type of revision (e.g. Major, Minor, Administrative) for change impact classification."
-    - name: "change_impact_level"
-      expr: change_impact_level
-      comment: "Assessed impact level of the revision for change governance and resource prioritization."
-    - name: "change_category"
-      expr: change_category
-      comment: "Business category of the change driving the revision for root cause analysis."
-    - name: "ppap_required"
-      expr: ppap_required
-      comment: "Indicates whether PPAP is required for this revision — affects customer approval and launch schedule."
-    - name: "mass_production_approved"
-      expr: mass_production_approved
-      comment: "Indicates whether the revision is approved for mass production — key launch readiness gate."
-    - name: "rohs_compliant"
-      expr: rohs_compliant
-      comment: "RoHS compliance status of the revision for regulatory market access tracking."
-    - name: "reach_compliant"
-      expr: reach_compliant
-      comment: "REACH compliance status of the revision for EU chemical regulation compliance."
-    - name: "release_date_month"
-      expr: DATE_TRUNC('MONTH', release_date)
-      comment: "Month the revision was released, for design change velocity trend analysis."
-  measures:
-    - name: "total_revisions"
-      expr: COUNT(1)
-      comment: "Total number of engineering revisions. Baseline measure of design change activity and product complexity."
-    - name: "revisions_mass_production_approved"
-      expr: COUNT(CASE WHEN mass_production_approved = TRUE THEN 1 END)
-      comment: "Number of revisions approved for mass production. Measures design release throughput and launch readiness."
-    - name: "revisions_requiring_ppap"
-      expr: COUNT(CASE WHEN ppap_required = TRUE THEN 1 END)
-      comment: "Number of revisions requiring PPAP submission. Quantifies customer approval workload and schedule risk."
-    - name: "revisions_with_dfmea_completed"
-      expr: COUNT(CASE WHEN dfmea_completed = TRUE THEN 1 END)
-      comment: "Number of revisions with completed DFMEA. Measures design quality process compliance rate."
-    - name: "revisions_with_pfmea_completed"
-      expr: COUNT(CASE WHEN pfmea_completed = TRUE THEN 1 END)
-      comment: "Number of revisions with completed PFMEA. Measures manufacturing process risk analysis compliance."
-    - name: "revisions_rohs_compliant"
-      expr: COUNT(CASE WHEN rohs_compliant = TRUE THEN 1 END)
-      comment: "Number of revisions with RoHS compliance confirmed. Tracks regulatory compliance coverage for EU market access."
-    - name: "ppap_completion_rate_pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN ppap_required = FALSE OR ppap_required IS NULL THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percentage of revisions where PPAP is not required or has been waived. Complements the PPAP-required count for launch readiness assessment."
-    - name: "prototype_tested_rate_pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN prototype_tested = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percentage of revisions where prototype testing has been completed. Measures validation coverage across the revision portfolio."
+      comment: "Average actual cost per certification requirement. Benchmarks certification cost efficiency across certification types and markets."
 $$;
 
 CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`engineering_bom`
@@ -543,112 +374,218 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Engineering BOM metrics tracking BOM portfolio health, cost estimates, and configuration complexity — drives product cost management and BOM governance decisions."
+  comment: "Bill of Materials governance metrics tracking BOM completeness, cost estimates, and approval status. Used by engineering and operations leadership to ensure manufacturing-ready BOMs and accurate product cost visibility."
   source: "`vibe_manufacturing_v1`.`engineering`.`bom`"
   dimensions:
     - name: "bom_status"
       expr: bom_status
-      comment: "Current status of the BOM (e.g. Draft, Released, Obsolete) for BOM governance tracking."
+      comment: "Current status of the BOM (e.g., Draft, Released, Obsolete) for BOM lifecycle governance."
     - name: "bom_type"
       expr: bom_type
-      comment: "Type of BOM (e.g. Engineering, Manufacturing, Sales) for BOM portfolio segmentation."
+      comment: "Type of BOM (e.g., Engineering, Manufacturing, Sales) for BOM category analysis."
     - name: "bom_category"
       expr: bom_category
-      comment: "Business category of the BOM for product line and platform analysis."
+      comment: "Business category of the BOM for portfolio segmentation."
     - name: "approval_status"
       expr: approval_status
-      comment: "Approval status of the BOM for release governance tracking."
+      comment: "Approval status of the BOM (e.g., Pending, Approved, Rejected) for release governance tracking."
     - name: "is_configurable"
       expr: is_configurable
-      comment: "Indicates whether the BOM supports product configuration — drives variant management complexity analysis."
+      comment: "Whether the BOM supports product configuration variants, for configure-to-order complexity analysis."
     - name: "is_critical_bom"
       expr: is_critical_bom
-      comment: "Indicates whether the BOM is designated as critical — drives prioritized governance and change control."
-    - name: "explosion_type"
-      expr: explosion_type
-      comment: "BOM explosion type (e.g. Single-level, Multi-level) for BOM complexity analysis."
-    - name: "approved_date_month"
-      expr: DATE_TRUNC('MONTH', approved_date)
-      comment: "Month the BOM was approved, for BOM release velocity trend analysis."
+      comment: "Whether the BOM is flagged as critical (e.g., safety-critical product), for prioritized governance."
+    - name: "effective_from_date_month"
+      expr: DATE_TRUNC('MONTH', effective_from_date)
+      comment: "Month the BOM becomes effective, for BOM release cadence analysis."
   measures:
-    - name: "total_boms"
+    - name: "total_bom_count"
       expr: COUNT(1)
-      comment: "Total number of engineering BOMs. Baseline measure of product portfolio complexity."
+      comment: "Total number of BOMs in the engineering repository. Tracks BOM portfolio size and governance workload."
+    - name: "approved_bom_count"
+      expr: SUM(CASE WHEN approval_status = 'Approved' THEN 1 ELSE 0 END)
+      comment: "Number of approved BOMs. Only approved BOMs can be used for production — low approval rates signal release bottlenecks."
+    - name: "bom_approval_rate_pct"
+      expr: ROUND(100.0 * SUM(CASE WHEN approval_status = 'Approved' THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percentage of BOMs that are approved. A release readiness KPI — below-target rates indicate engineering release process bottlenecks."
     - name: "total_cost_estimate"
       expr: SUM(CAST(cost_estimate_total AS DOUBLE))
-      comment: "Total estimated cost across all BOMs. Drives product cost portfolio analysis and margin planning."
+      comment: "Total BOM cost estimate across all products. Drives product cost management and margin planning decisions."
     - name: "avg_cost_estimate_per_bom"
       expr: AVG(CAST(cost_estimate_total AS DOUBLE))
-      comment: "Average estimated cost per BOM. Benchmarks product cost levels for cost reduction targeting."
+      comment: "Average BOM cost estimate. Benchmarks product cost complexity and identifies outliers requiring cost reduction focus."
     - name: "avg_scrap_percentage"
       expr: AVG(CAST(scrap_percentage AS DOUBLE))
-      comment: "Average scrap percentage across BOMs. High scrap rates drive material cost and yield improvement initiatives."
-    - name: "avg_weight_total"
-      expr: AVG(CAST(weight_total AS DOUBLE))
-      comment: "Average total BOM weight. Supports product weight targets, logistics cost analysis, and sustainability reporting."
-    - name: "configurable_boms"
-      expr: COUNT(CASE WHEN is_configurable = TRUE THEN 1 END)
-      comment: "Number of configurable BOMs. Measures product variant complexity and configure-to-order capability."
-    - name: "critical_boms"
-      expr: COUNT(CASE WHEN is_critical_bom = TRUE THEN 1 END)
-      comment: "Number of critical BOMs requiring enhanced governance. Drives prioritized change control and supply chain risk management."
-    - name: "avg_lot_size"
-      expr: AVG(CAST(lot_size AS DOUBLE))
-      comment: "Average lot size across BOMs. Informs production planning and procurement batch sizing decisions."
+      comment: "Average scrap percentage across all BOMs. High scrap rates inflate material costs — a key target for manufacturing efficiency improvement."
+    - name: "critical_bom_count"
+      expr: SUM(CASE WHEN is_critical_bom = TRUE THEN 1 ELSE 0 END)
+      comment: "Number of critical BOMs requiring heightened governance. Executives use this to ensure critical product BOMs receive priority review and approval."
 $$;
 
-CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`engineering_design_review`
+CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`engineering_revision`
 WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Design review gate metrics tracking review outcomes, action item closure, and compliance status — measures design governance effectiveness and product development quality."
-  source: "`vibe_manufacturing_v1`.`engineering`.`design_review`"
+  comment: "Engineering revision lifecycle metrics tracking revision velocity, compliance readiness, and PPAP status. Used by engineering and quality leadership to manage design maturity and regulatory compliance across product revisions."
+  source: "`vibe_manufacturing_v1`.`engineering`.`engineering_revision`"
   dimensions:
-    - name: "review_type"
-      expr: review_type
-      comment: "Type of design review (e.g. PDR, CDR, PRR, Gate Review) for phase-gate analysis."
-    - name: "review_status"
-      expr: review_status
-      comment: "Current status of the design review (e.g. Scheduled, Completed, Deferred) for pipeline management."
-    - name: "gate_decision"
-      expr: gate_decision
-      comment: "Gate decision outcome (e.g. Pass, Conditional Pass, Fail) — the primary quality gate KPI for design governance."
-    - name: "apqp_phase"
-      expr: apqp_phase
-      comment: "APQP phase associated with the design review for product development lifecycle analysis."
-    - name: "design_maturity_level"
-      expr: design_maturity_level
-      comment: "Assessed design maturity level at time of review for readiness tracking."
-    - name: "compliance_status"
-      expr: compliance_status
-      comment: "Compliance status assessed during the design review for regulatory risk tracking."
+    - name: "lifecycle_state"
+      expr: lifecycle_state
+      comment: "Current lifecycle state of the revision (e.g., In Development, Released, Obsolete) for revision pipeline tracking."
+    - name: "revision_type"
+      expr: revision_type
+      comment: "Type of revision (e.g., Major, Minor, Administrative) for change impact classification."
+    - name: "change_impact_level"
+      expr: change_impact_level
+      comment: "Assessed impact level of the revision change for risk-based review prioritization."
+    - name: "ppap_required"
+      expr: ppap_required
+      comment: "Whether PPAP is required for this revision, for quality planning workload assessment."
+    - name: "mass_production_approved"
+      expr: mass_production_approved
+      comment: "Whether the revision is approved for mass production, for launch readiness tracking."
+    - name: "reach_compliant"
+      expr: reach_compliant
+      comment: "REACH compliance status of the revision, for environmental regulatory compliance tracking."
+    - name: "rohs_compliant"
+      expr: rohs_compliant
+      comment: "RoHS compliance status of the revision, for hazardous substance regulatory compliance tracking."
+    - name: "release_date_month"
+      expr: DATE_TRUNC('MONTH', release_date)
+      comment: "Month the revision was released, for release cadence and engineering velocity analysis."
+  measures:
+    - name: "total_revision_count"
+      expr: COUNT(1)
+      comment: "Total number of engineering revisions. High revision counts may indicate design instability or active product improvement programs."
+    - name: "mass_production_approved_count"
+      expr: SUM(CASE WHEN mass_production_approved = TRUE THEN 1 ELSE 0 END)
+      comment: "Number of revisions approved for mass production. Tracks design maturity and production readiness across the product portfolio."
+    - name: "production_approval_rate_pct"
+      expr: ROUND(100.0 * SUM(CASE WHEN mass_production_approved = TRUE THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percentage of revisions approved for mass production. A launch readiness KPI — low rates indicate design maturity gaps blocking production."
+    - name: "ppap_required_count"
+      expr: SUM(CASE WHEN ppap_required = TRUE THEN 1 ELSE 0 END)
+      comment: "Number of revisions requiring PPAP. Drives quality planning resource allocation for supplier and process qualification."
+    - name: "reach_compliant_count"
+      expr: SUM(CASE WHEN reach_compliant = TRUE THEN 1 ELSE 0 END)
+      comment: "Number of revisions with confirmed REACH compliance. Tracks environmental regulatory compliance coverage across the product portfolio."
+    - name: "rohs_compliant_count"
+      expr: SUM(CASE WHEN rohs_compliant = TRUE THEN 1 ELSE 0 END)
+      comment: "Number of revisions with confirmed RoHS compliance. Tracks hazardous substance compliance — non-compliance blocks EU market access."
+    - name: "environmental_compliance_rate_pct"
+      expr: ROUND(100.0 * SUM(CASE WHEN reach_compliant = TRUE AND rohs_compliant = TRUE THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percentage of revisions compliant with both REACH and RoHS. A combined environmental compliance KPI for EU market access readiness."
+$$;
+
+CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`engineering_component`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Component portfolio health metrics tracking lifecycle status, compliance, cost, and make-or-buy distribution. Used by engineering and supply chain leadership to manage component risk, obsolescence, and sourcing strategy."
+  source: "`vibe_manufacturing_v1`.`engineering`.`component`"
+  dimensions:
+    - name: "lifecycle_phase"
+      expr: lifecycle_phase
+      comment: "Current lifecycle phase of the component (e.g., Active, Mature, End-of-Life, Obsolete) for obsolescence risk management."
+    - name: "make_or_buy"
+      expr: make_or_buy
+      comment: "Make-or-buy classification of the component for sourcing strategy analysis."
+    - name: "component_type"
+      expr: component_type
+      comment: "Type of component (e.g., Mechanical, Electronic, Software, Raw Material) for portfolio composition analysis."
+    - name: "release_status"
+      expr: release_status
+      comment: "Release status of the component (e.g., Prototype, Released, Obsolete) for design release governance."
+    - name: "rohs_compliant_flag"
+      expr: rohs_compliant_flag
+      comment: "RoHS compliance status for environmental regulatory risk tracking."
+    - name: "reach_compliant_flag"
+      expr: reach_compliant_flag
+      comment: "REACH compliance status for environmental regulatory risk tracking."
+    - name: "hazardous_material_flag"
+      expr: hazardous_material_flag
+      comment: "Whether the component contains hazardous materials, for EHS risk management."
+    - name: "abc_classification"
+      expr: abc_classification
+      comment: "ABC inventory classification of the component for inventory management prioritization."
+    - name: "technology_family"
+      expr: technology_family
+      comment: "Technology family of the component for platform and technology roadmap analysis."
+  measures:
+    - name: "total_component_count"
+      expr: COUNT(1)
+      comment: "Total number of components in the engineering master data. Tracks portfolio size and complexity."
+    - name: "active_component_count"
+      expr: SUM(CASE WHEN lifecycle_phase = 'Active' THEN 1 ELSE 0 END)
+      comment: "Number of active components. Baseline for portfolio health — declining active counts may indicate product line rationalization."
+    - name: "obsolete_component_count"
+      expr: SUM(CASE WHEN lifecycle_phase = 'Obsolete' THEN 1 ELSE 0 END)
+      comment: "Number of obsolete components. High counts indicate BOM cleanup backlog and potential production risk from obsolete part usage."
+    - name: "avg_standard_cost"
+      expr: AVG(CAST(standard_cost AS DOUBLE))
+      comment: "Average standard cost per component. Benchmarks component cost levels and identifies high-cost components for cost reduction focus."
+    - name: "total_standard_cost"
+      expr: SUM(CAST(standard_cost AS DOUBLE))
+      comment: "Total standard cost across all components. Provides a portfolio-level view of component cost base for cost management."
+    - name: "rohs_compliant_rate_pct"
+      expr: ROUND(100.0 * SUM(CASE WHEN rohs_compliant_flag = TRUE THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percentage of components that are RoHS compliant. Non-compliant components block EU market access — a critical regulatory KPI."
+    - name: "avg_dfm_score"
+      expr: AVG(CAST(dfm_score AS DOUBLE))
+      comment: "Average Design for Manufacturability score across components. Low DFM scores predict high manufacturing cost and quality issues — drives design improvement priorities."
+    - name: "avg_lead_time_days"
+      expr: AVG(CAST(lead_time_days AS DOUBLE))
+      comment: "Average component lead time in days. Long lead times create supply chain risk and constrain production scheduling flexibility."
+$$;
+
+CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`engineering_dfm_analysis`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Design for Manufacturability (DFM) analysis metrics tracking issue resolution rates, cost savings, and supplier feedback. Used by engineering and manufacturing leadership to reduce production cost and improve design-to-manufacture transition quality."
+  source: "`vibe_manufacturing_v1`.`engineering`.`dfm_analysis`"
+  dimensions:
+    - name: "disposition_status"
+      expr: disposition_status
+      comment: "Current disposition of the DFM issue (e.g., Open, Accepted, Rejected, Resolved) for issue pipeline management."
+    - name: "priority"
+      expr: priority
+      comment: "Priority of the DFM issue for triage and resource allocation."
+    - name: "severity_classification"
+      expr: severity_classification
+      comment: "Severity of the DFM issue (e.g., Critical, Major, Minor) for impact-based prioritization."
+    - name: "manufacturing_process_scope"
+      expr: manufacturing_process_scope
+      comment: "Manufacturing process affected by the DFM issue (e.g., Machining, Assembly, Welding) for process-level analysis."
+    - name: "eco_initiated"
+      expr: eco_initiated
+      comment: "Whether an ECO was initiated to address the DFM issue, for change management tracking."
     - name: "review_date_month"
       expr: DATE_TRUNC('MONTH', review_date)
-      comment: "Month the design review was conducted, for review cadence and quality trend analysis."
+      comment: "Month the DFM analysis was reviewed, for analysis activity trending."
   measures:
-    - name: "total_design_reviews"
+    - name: "total_dfm_issues"
       expr: COUNT(1)
-      comment: "Total number of design reviews conducted. Baseline measure of design governance activity."
-    - name: "gate_pass_rate_pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN gate_decision = 'Pass' THEN 1 END) / NULLIF(COUNT(CASE WHEN gate_decision IS NOT NULL THEN 1 END), 0), 2)
-      comment: "Percentage of design reviews with a passing gate decision. Core design quality KPI — low pass rates signal systemic design readiness issues."
-    - name: "avg_open_action_items"
-      expr: AVG(CAST(open_action_item_count AS DOUBLE))
-      comment: "Average number of open action items per design review. High values indicate design maturity gaps requiring management intervention."
-    - name: "total_action_items"
-      expr: SUM(CAST(action_item_count AS DOUBLE))
-      comment: "Total action items generated across all design reviews. Measures design review rigor and issue identification effectiveness."
-    - name: "avg_criteria_pass_count"
-      expr: AVG(CAST(criteria_pass_count AS DOUBLE))
-      comment: "Average number of gate criteria passed per review. Measures design completeness at each review stage."
-    - name: "avg_criteria_fail_count"
-      expr: AVG(CAST(criteria_fail_count AS DOUBLE))
-      comment: "Average number of gate criteria failed per review. Identifies systemic design gaps requiring targeted improvement."
-    - name: "avg_meeting_duration_minutes"
-      expr: AVG(CAST(meeting_duration_minutes AS DOUBLE))
-      comment: "Average design review meeting duration in minutes. Informs review process efficiency and scheduling optimization."
-    - name: "reviews_requiring_approval"
-      expr: COUNT(CASE WHEN approval_required_flag = TRUE THEN 1 END)
-      comment: "Number of design reviews requiring formal approval. Measures governance workload and approval pipeline."
+      comment: "Total number of DFM issues identified. Tracks design-to-manufacture gap analysis activity and issue volume."
+    - name: "resolved_issue_count"
+      expr: SUM(CASE WHEN disposition_status = 'Resolved' THEN 1 ELSE 0 END)
+      comment: "Number of DFM issues resolved. Tracks design improvement progress and manufacturing readiness."
+    - name: "issue_resolution_rate_pct"
+      expr: ROUND(100.0 * SUM(CASE WHEN disposition_status = 'Resolved' THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percentage of DFM issues resolved. Low resolution rates indicate manufacturing readiness risk and potential production launch delays."
+    - name: "total_estimated_cost_impact"
+      expr: SUM(CAST(estimated_cost_impact AS DOUBLE))
+      comment: "Total estimated cost impact of all DFM issues. Quantifies the manufacturing cost risk from unresolved design issues."
+    - name: "total_estimated_cost_savings"
+      expr: SUM(CAST(estimated_cost_savings AS DOUBLE))
+      comment: "Total estimated cost savings from DFM improvements. Demonstrates the ROI of DFM analysis investment to engineering and finance leadership."
+    - name: "avg_cost_savings_per_issue"
+      expr: AVG(CAST(estimated_cost_savings AS DOUBLE))
+      comment: "Average cost savings per DFM issue resolved. Benchmarks DFM program value and prioritizes high-savings improvement opportunities."
+    - name: "eco_initiated_count"
+      expr: SUM(CASE WHEN eco_initiated = TRUE THEN 1 ELSE 0 END)
+      comment: "Number of DFM issues that triggered an Engineering Change Order. Tracks the downstream design change burden from DFM findings."
 $$;

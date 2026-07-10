@@ -1,1304 +1,1790 @@
 -- Schema for Domain: quality | Business:  | Version: v2_ecm
--- Generated on: 2026-07-10 14:11:18
+-- Generated on: 2026-07-02 06:46:14
 
 -- ========= DATABASE =========
 CREATE DATABASE IF NOT EXISTS `vibe_healthcare_v1`.`quality` COMMENT 'Quality measurement, patient safety, regulatory reporting, and clinical compliance. Owns HEDIS measures, CAHPS surveys, CMS quality programs (VBP - Value-Based Purchasing, MIPS, APM), HAI tracking (CLABSI, CAUTI, SSI), patient safety events, mortality reviews, CDI metrics, TJC survey readiness, CMS Conditions of Participation compliance, and accreditation management. Supports Healthy Planet population health analytics.';
 
 -- ========= TABLES =========
 CREATE OR REPLACE TABLE `vibe_healthcare_v1`.`quality`.`hedis_measure` (
-    `hedis_measure_id` BIGINT COMMENT 'Unique surrogate identifier for each HEDIS measure record in the master catalog. Primary key for the hedis_measure data product.',
-    `code_set_version_id` BIGINT COMMENT 'Foreign key linking to reference.code_set_version. Business justification: HEDIS measures reference specific versions of CPT, LOINC, and ICD code sets. Quality measure definitions must be tied to code set versions to ensure accurate measure calculation across reporting perio',
-    `compliance_policy_id` BIGINT COMMENT 'Foreign key linking to compliance.policy. Business justification: HEDIS measures require documented policies for implementation procedures, data collection methods, and compliance with NCQA specifications. Healthcare organizations must maintain policy documentation ',
-    `cpt_code_id` BIGINT COMMENT 'Foreign key linking to reference.cpt_code. Business justification: HEDIS measures reference CPT code lists in cpt_code_list attribute for procedure-based quality metrics (e.g., preventive screenings, immunizations). Quality systems must validate CPT codes against ref',
-    `health_plan_id` BIGINT COMMENT 'Foreign key linking to insurance.health_plan. Business justification: HEDIS measures are plan-specific; health plans define which measures apply for NCQA accreditation and CMS Star Ratings. Plans report measure performance annually to NCQA by product line.',
-    `icd_code_id` BIGINT COMMENT 'Foreign key linking to reference.icd_code. Business justification: HEDIS measures reference ICD-10 code lists in icd10_code_list attribute for denominator/numerator definitions. Quality reporting systems must validate codes against reference tables for NCQA submissio',
-    `loinc_code_id` BIGINT COMMENT 'Foreign key linking to reference.loinc_code. Business justification: HEDIS measures reference LOINC code lists in loinc_code_list attribute for lab-based quality metrics (e.g., HbA1c control, cholesterol screening). Quality systems must validate LOINC codes against ref',
-    `age_range_max` STRING COMMENT 'Maximum patient age (in years) for inclusion in the eligible population for this measure. A null value indicates no upper age limit. Used in conjunction with age_range_min to define the eligible cohort.',
-    `age_range_min` STRING COMMENT 'Minimum patient age (in years) for inclusion in the eligible population for this measure. Used to filter patient cohorts in Epic Healthy Planet and population health analytics queries.',
-    `allowable_gap_days` STRING COMMENT 'Maximum number of days of enrollment gap permitted during the continuous enrollment period without disqualifying the patient from the eligible population. Defined per NCQA specifications (e.g., 45 days for most measures).',
-    `clinical_area` STRING COMMENT 'Clinical or programmatic area the measure addresses (e.g., Diabetes, Cardiovascular, Cancer Screening, Behavioral Health, Maternal Health, Pediatric Care). Supports clinical program alignment and population health segmentation in Epic Healthy Planet.',
-    `collection_method` STRING COMMENT 'Method used to collect data for the measure: administrative (claims-based), hybrid (claims + medical record review), survey (CAHPS), or electronic clinical data (EHR-based via eCQM). Determines data extraction approach from Epic, Cerner, or claims systems.. Valid values are `hybrid|administrative|survey|electronic clinical data`',
-    `continuous_enrollment_days` STRING COMMENT 'Number of days of continuous enrollment required for a patient to be included in the eligible population for this measure (e.g., 365 days). Reflects NCQA continuous enrollment specifications used in payer and ACO reporting.',
-    `cpt_code_list` STRING COMMENT 'Comma-delimited list of CPT procedure codes used to identify qualifying services in the numerator or denominator for this measure. Sourced from NCQA Value Sets and AMA CPT coding standards. Used in administrative and hybrid data collection.',
-    `created_timestamp` TIMESTAMP COMMENT 'Timestamp when this HEDIS measure record was first created in the master catalog. Supports data lineage, audit trail, and Silver layer ingestion tracking per HIPAA audit control requirements.',
-    `denominator_definition` STRING COMMENT 'Formal definition of the denominator population for this measure — the subset of the eligible population that meets all inclusion criteria and is not excluded. Specifies the patient cohort against which numerator compliance is measured.',
-    `domain_category` STRING COMMENT 'NCQA-defined domain category grouping the measure (e.g., Effectiveness of Care, Access and Availability of Care). Used for domain-level performance aggregation and regulatory reporting to CMS and NCQA. [ENUM-REF-CANDIDATE: Effectiveness of Care|Access and Availability of Care|Experience of Care|Utilization and Risk Adjusted Utilization|Health Plan Descriptive Information|Measures Collected Using Electronic Clinical Data Systems — promote to reference product]. Valid values are `Effectiveness of Care|Access and Availability of Care|Experience of Care|Utilization and Risk Adjusted Utilization|Health Plan Descriptive Information|Measures Collected Using Electronic Clinical Data Systems`',
-    `effective_end_date` DATE COMMENT 'Date on which this version of the HEDIS measure specification was retired or superseded. Null for currently active specifications. Enables point-in-time querying of the measure catalog for historical reporting and audit purposes.',
-    `effective_start_date` DATE COMMENT 'Date from which this version of the HEDIS measure specification became effective and applicable for data collection and reporting. Used to manage specification versioning and ensure correct logic is applied to the appropriate measurement year.',
-    `eligible_population_description` STRING COMMENT 'Narrative description of the eligible population (initial patient population) for this measure, including age range, diagnosis criteria, enrollment requirements, and continuous enrollment specifications as defined in the NCQA technical specification.',
-    `exception_criteria` STRING COMMENT 'Description of denominator exceptions — patients who are excluded from the denominator based on medical reasons, patient refusal, or system limitations that are not captured as standard exclusions. Distinct from exclusions in NCQA methodology.',
-    `exclusion_criteria` STRING COMMENT 'Description of denominator exclusions — patients who meet the eligible population criteria but are excluded from the denominator due to medical, patient, or system reasons (e.g., hospice enrollment, contraindications, prior procedures). Critical for accurate rate calculation.',
-    `hedis_ecqm_code` STRING COMMENT 'CMS-assigned eCQM identifier (e.g., CMS122v12) when this HEDIS measure has a corresponding electronic clinical quality measure specification. Enables FHIR-based data extraction from Epic and Cerner for digital quality reporting to CMS.. Valid values are `^CMS[0-9]+v[0-9]+$`',
-    `hybrid_medical_record_required` BOOLEAN COMMENT 'Indicates whether this measure requires medical record review as part of the hybrid data collection method. True when administrative data alone is insufficient to satisfy numerator criteria and chart abstraction is required from Epic ClinDoc or Cerner PowerChart.',
-    `icd10_code_list` STRING COMMENT 'Comma-delimited list of ICD-10 diagnosis codes used to identify eligible patients or define the denominator/numerator for this measure. Sourced from NCQA Value Sets and aligned with WHO ICD-10 classification. Used in claims-based and hybrid data extraction.',
-    `loinc_code_list` STRING COMMENT 'Comma-delimited list of LOINC codes for laboratory tests, clinical observations, or assessments used to satisfy numerator criteria for this measure (e.g., HbA1c test codes for CDC measure). Supports EHR-based eCQM data extraction from Beaker LIS and Cerner PathNet.',
-    `measure_code` STRING COMMENT 'Official NCQA-assigned alphanumeric code uniquely identifying the HEDIS measure (e.g., CDC, CBP, COL, BCS, AWC). Used as the externally-known business identifier across payer reporting, population health platforms, and Epic Healthy Planet.. Valid values are `^[A-Z]{2,8}[0-9]{0,4}$`',
-    `measure_name` STRING COMMENT 'Full official name of the HEDIS measure as published by NCQA (e.g., Comprehensive Diabetes Care, Controlling High Blood Pressure, Colorectal Cancer Screening). Human-readable label used in dashboards, regulatory submissions, and quality reports.',
-    `measure_short_name` STRING COMMENT 'Abbreviated or commonly used short name for the HEDIS measure (e.g., CDC, CBP). Used in operational reporting, Tableau dashboards, and Power BI tiles where space is limited.',
-    `measure_status` STRING COMMENT 'Current lifecycle status of this HEDIS measure specification record: active (in use for current measurement year), retired (no longer reported), suspended (temporarily paused by NCQA), under review (specification being revised), or new (newly introduced measure). Drives inclusion in reporting workflows.. Valid values are `active|retired|suspended|under review|new`',
-    `measure_type` STRING COMMENT 'Classification of the measure by its quality measurement type: process (was a service delivered), outcome (did the patients health improve), patient experience, access, utilization, or structure. Drives interpretation of performance results and benchmarking methodology.. Valid values are `process|outcome|patient experience|access|utilization|structure`',
-    `measure_version` STRING COMMENT 'Version identifier of the NCQA measure specification (e.g., 2024.1). Tracks specification changes across measurement years to ensure correct logic is applied during data extraction and reporting.. Valid values are `^[0-9]{4}.[0-9]{1,2}$`',
-    `measurement_year` STRING COMMENT 'The calendar year for which the HEDIS measure is being evaluated and reported (e.g., 2024). Defines the performance period used by NCQA, CMS, and payers for quality benchmarking and value-based contracting.',
-    `minimum_performance_threshold` DECIMAL(18,2) COMMENT 'Minimum acceptable performance rate for this measure below which the organization may face regulatory penalties, payer contract adjustments, or accreditation risk. May reflect CMS floor thresholds, payer contract minimums, or internal quality targets.',
-    `mips_eligible` BOOLEAN COMMENT 'Indicates whether this HEDIS measure is also reportable under the CMS MIPS quality category for eligible clinicians. True when the measure maps to a MIPS quality measure, enabling dual-reporting workflows and avoiding redundant data collection.',
-    `national_average_rate` DECIMAL(18,2) COMMENT 'NCQA-published national average (mean) performance rate for this measure and measurement year, expressed as a decimal proportion. Used as a baseline comparison for organizational performance assessment and gap analysis reporting.',
-    `national_benchmark_rate` DECIMAL(18,2) COMMENT 'NCQA-published national benchmark performance rate for this measure and measurement year, expressed as a decimal proportion (e.g., 0.8250 = 82.50%). Represents the 90th percentile or mean threshold used for health plan accreditation and VBP incentive calculations.',
-    `ncqa_program` STRING COMMENT 'NCQA quality program under which this measure is reported (e.g., HEDIS, HEDIS MY for Medicare/Medicaid, CAHPS, HOS, PCMH, ACO HEDIS). Determines submission pathway, benchmark set, and accreditation implications.. Valid values are `HEDIS|HEDIS MY|CAHPS|HOS|PCMH|ACO HEDIS`',
-    `ncqa_specification_url` STRING COMMENT 'URL link to the official NCQA HEDIS technical specification document for this measure and measurement year. Provides direct access to the authoritative specification for CDI analysts, quality abstractors, and data engineers configuring extraction logic.. Valid values are `^https?://.+$`',
-    `notes` STRING COMMENT 'Free-text field for additional operational notes, clarifications, or implementation guidance specific to this measure (e.g., known data quality issues, Epic Healthy Planet configuration notes, payer-specific reporting variations, or CDI workflow instructions).',
-    `numerator_definition` STRING COMMENT 'Formal definition of the numerator for this measure — the subset of the denominator population that received the required service, met the outcome threshold, or satisfied the measure criteria. Defines what constitutes a compliant event.',
-    `performance_rate_direction` STRING COMMENT 'Indicates whether a higher or lower performance rate represents better quality for this measure. Higher is better applies to most preventive care measures; lower is better applies to utilization and adverse event measures (e.g., avoidable ED visits). Critical for correct benchmarking logic.. Valid values are `higher is better|lower is better`',
-    `product_line` STRING COMMENT 'Health plan product line for which this measure applies: commercial, Medicaid, Medicare, Exchange (ACA Marketplace), or CHIP. NCQA publishes separate technical specifications and benchmarks by product line; this field drives correct specification selection.. Valid values are `commercial|medicaid|medicare|exchange|chip`',
-    `reporting_period_end_date` DATE COMMENT 'End date of the official HEDIS measurement and reporting period for this measure and measurement year. Services occurring after this date are excluded from the current measurement year calculation.',
-    `reporting_period_start_date` DATE COMMENT 'Start date of the official HEDIS measurement and reporting period for this measure and measurement year. Defines the window during which eligible services must occur to count toward numerator compliance.',
-    `reporting_submission_deadline` DATE COMMENT 'Deadline date by which HEDIS measure results must be submitted to NCQA, CMS, or the applicable payer for this measurement year. Drives quality reporting project timelines and SLA management for the Quality and Compliance department.',
-    `responsible_program` STRING COMMENT 'Name of the internal quality program or department responsible for owning, monitoring, and improving performance on this measure (e.g., Population Health, Diabetes Disease Management, Preventive Care, Behavioral Health Integration). Used for accountability assignment in quality governance.',
-    `stratification_criteria` STRING COMMENT 'Description of the stratification dimensions required for this measure (e.g., Age 18-64 / Age 65+, Race/Ethnicity per OMB categories, Gender). Populated only when stratification_required is True. Supports health equity analytics and SDOH reporting.',
-    `stratification_required` BOOLEAN COMMENT 'Indicates whether NCQA requires this measure to be reported with stratified results (e.g., by age group, race/ethnicity, or gender). True when stratification is mandatory for NCQA submission or CMS health equity reporting under SDOH initiatives.',
-    `target_performance_rate` DECIMAL(18,2) COMMENT 'Organization-defined internal target performance rate for this measure and measurement year, expressed as a decimal proportion. Set by the Quality department as a stretch goal above the minimum threshold, used for internal KPI tracking and quality improvement planning.',
-    `updated_timestamp` TIMESTAMP COMMENT 'Timestamp when this HEDIS measure record was most recently modified in the master catalog. Used to detect specification changes, trigger downstream recalculation workflows, and maintain data lineage in the Databricks Silver layer.',
-    `value_set_oid` STRING COMMENT 'Object Identifier (OID) referencing the NCQA-published value set associated with this measure. Used to retrieve the authoritative code lists from the NCQA Value Set Directory and align with HL7 FHIR value set resources for interoperability.. Valid values are `^[0-9]+(.[0-9]+)+$`',
+    `hedis_measure_id` BIGINT COMMENT 'Primary key',
+    `code_set_version_id` BIGINT COMMENT 'FK to code set version',
+    `compliance_policy_id` BIGINT COMMENT 'FK to compliance policy',
+    `cpt_code_id` BIGINT COMMENT 'FK to CPT code',
+    `icd_code_id` BIGINT COMMENT 'FK to ICD code',
+    `loinc_code_id` BIGINT COMMENT 'FK to LOINC code',
+    `age_range_max` STRING COMMENT 'Maximum age for measure eligibility',
+    `age_range_min` STRING COMMENT 'Minimum age for measure eligibility',
+    `allowable_gap_days` STRING COMMENT 'Allowable gap in continuous enrollment',
+    `clinical_area` STRING COMMENT 'Clinical domain (e.g. diabetes, cardiovascular)',
+    `collection_method` STRING COMMENT 'Administrative, hybrid, or survey',
+    `continuous_enrollment_days` STRING COMMENT 'Required continuous enrollment period',
+    `cpt_code_list` STRING COMMENT 'Comma-separated CPT codes',
+    `created_timestamp` TIMESTAMP COMMENT 'Record creation timestamp',
+    `denominator_definition` STRING COMMENT 'Denominator logic',
+    `domain_category` STRING COMMENT 'HEDIS domain (e.g. Effectiveness of Care)',
+    `dummy_extra` STRING COMMENT 'The dummy extra of the quality hedis measure record.',
+    `effective_end_date` DATE COMMENT 'Measure version end date',
+    `effective_start_date` DATE COMMENT 'Measure version start date',
+    `eligible_population_description` STRING COMMENT 'Eligible population narrative',
+    `exception_criteria` STRING COMMENT 'Denominator exception logic',
+    `exclusion_criteria` STRING COMMENT 'Denominator exclusion logic',
+    `hedis_ecqm_code` STRING COMMENT 'eCQM identifier if applicable',
+    `hybrid_medical_record_required` BOOLEAN COMMENT 'Hybrid methodology flag',
+    `icd10_code_list` STRING COMMENT 'Comma-separated ICD-10 codes',
+    `loinc_code_list` STRING COMMENT 'Comma-separated LOINC codes',
+    `measure_code` STRING COMMENT 'HEDIS measure code (e.g. CBP, CDC)',
+    `measure_name` STRING COMMENT 'Full measure name',
+    `measure_short_name` STRING COMMENT 'Abbreviated name',
+    `measure_status` STRING COMMENT 'Active, retired, or draft',
+    `measure_type` STRING COMMENT 'Process, outcome, or structure',
+    `measure_version` STRING COMMENT 'NCQA version year',
+    `measurement_year` STRING COMMENT 'Reporting year',
+    `minimum_performance_threshold` DECIMAL(18,2) COMMENT 'Minimum acceptable rate',
+    `mips_eligible` BOOLEAN COMMENT 'MIPS reporting eligible flag',
+    `national_average_rate` DECIMAL(18,2) COMMENT 'National average performance',
+    `national_benchmark_rate` DECIMAL(18,2) COMMENT 'National benchmark',
+    `ncqa_program` STRING COMMENT 'HEDIS, PCMH, etc.',
+    `ncqa_specification_url` STRING COMMENT 'Link to NCQA spec',
+    `notes` STRING COMMENT 'Implementation notes',
+    `numerator_definition` STRING COMMENT 'Numerator logic',
+    `performance_rate_direction` STRING COMMENT 'Higher or lower is better',
+    `product_line` STRING COMMENT 'Commercial, Medicaid, Medicare',
+    `reporting_period_end_date` DATE COMMENT 'Measurement period end',
+    `reporting_period_start_date` DATE COMMENT 'Measurement period start',
+    `reporting_submission_deadline` DATE COMMENT 'NCQA submission deadline',
+    `responsible_program` STRING COMMENT 'Owning quality program',
+    `stratification_criteria` STRING COMMENT 'Stratification logic',
+    `stratification_required` BOOLEAN COMMENT 'Stratification required flag',
+    `target_performance_rate` DECIMAL(18,2) COMMENT 'Internal target rate',
+    `updated_timestamp` TIMESTAMP COMMENT 'Last update timestamp',
+    `value_set_oid` STRING COMMENT 'VSAC value set OID',
+    `vibe_structure_marker` STRING COMMENT 'Structure enforcement marker for 22-domain/541-product superset.',
     CONSTRAINT pk_hedis_measure PRIMARY KEY(`hedis_measure_id`)
-) COMMENT 'Master catalog of HEDIS (Healthcare Effectiveness Data and Information Set) measures as defined by NCQA. Stores measure specifications, measurement year, eligible population criteria, numerator/denominator definitions, benchmark thresholds, and reporting periods. SSOT for all HEDIS measure definitions used in population health and payer reporting.';
+) COMMENT 'NCQA HEDIS quality measure definitions for managed care performance measurement. Supports Medicare Advantage Star Ratings, Medicaid quality reporting, and commercial health plan accreditation. Business justification: Required for CMS quality reporting, payer contract compliance, and NCQA accreditation.';
 
 CREATE OR REPLACE TABLE `vibe_healthcare_v1`.`quality`.`hedis_result` (
-    `hedis_result_id` BIGINT COMMENT 'Unique surrogate identifier for each HEDIS measure performance result record in the silver layer lakehouse. Primary key for this transactional entity.',
-    `billing_coverage_id` BIGINT COMMENT 'Foreign key linking to billing.coverage. Business justification: HEDIS measures are calculated and reported by health plan and product line. Results must link to specific coverage to attribute performance rates to payer contracts, enable product-line stratification',
-    `care_site_id` BIGINT COMMENT 'Reference to the facility, clinic, or care site for which this HEDIS measure result is calculated. Supports site-level performance stratification and benchmarking.',
-    `claim_id` BIGINT COMMENT 'Foreign key linking to claim.claim. Business justification: HEDIS results aggregate claim-level data for numerator compliance. Healthcare NCQA audit processes require tracing HEDIS results to source claims for medical record validation and hybrid methodology r',
-    `compliance_regulatory_submission_id` BIGINT COMMENT 'Foreign key linking to compliance.regulatory_submission. Business justification: HEDIS results must be submitted to NCQA and health plans annually. Compliance system tracks submission status, deadlines, audit requirements, and acceptance for Stars ratings, accreditation, and healt',
-    `cost_center_id` BIGINT COMMENT 'Foreign key linking to finance.cost_center. Business justification: HEDIS performance results directly impact value-based payment adjustments and Medicare Star Ratings, which drive cost center financial performance. Finance teams analyze quality measure results by cos',
-    `drg_id` BIGINT COMMENT 'Foreign key linking to reference.drg. Business justification: HEDIS results are stratified by DRG for risk adjustment and case mix analysis in hospital quality reporting. VBP and star rating calculations require DRG-level stratification to ensure fair performanc',
-    `fiscal_period_id` BIGINT COMMENT 'Reference to the reporting period definition record that defines the measurement year and period boundaries for this HEDIS result calculation.',
-    `health_plan_id` BIGINT COMMENT 'Reference to the health plan (HMO, PPO, POS) for which this HEDIS measure result is reported. Supports payer-level performance stratification and NCQA plan accreditation submissions.',
-    `hedis_measure_id` BIGINT COMMENT 'Reference to the HEDIS measure definition record identifying which specific HEDIS measure (e.g., CDC, CBP, BCS, COL) this result is calculated for.',
-    `interface_channel_id` BIGINT COMMENT 'Foreign key linking to interoperability.interface_channel. Business justification: HEDIS results are electronically submitted to NCQA and health plans via specific interface channels. Tracking which channel transmitted each result is essential for submission audit trails, troublesho',
-    `org_provider_id` BIGINT COMMENT 'Foreign key linking to provider.org_provider. Business justification: HEDIS results are reported by organizational providers (hospitals, health systems) to NCQA and CMS for quality measurement programs. VBP and Star Ratings require organizational-level performance track',
-    `audit_status` STRING COMMENT 'Status of the NCQA-required HEDIS Compliance Audit for this measure result. NCQA mandates an annual compliance audit by a licensed HEDIS auditor for health plan submissions. Tracks audit readiness and outcomes.. Valid values are `not_audited|audit_in_progress|audit_passed|audit_failed|corrective_action`',
-    `auditor_organization` STRING COMMENT 'Name of the NCQA-licensed organization that performed or is performing the HEDIS Compliance Audit for this measure result (e.g., Cotiviti, Inovalon, Optum). Required for NCQA accreditation submissions.',
-    `benchmark_comparison_result` STRING COMMENT 'Categorical result of comparing the organizations performance rate against NCQA national benchmarks. Indicates whether performance is above the 90th percentile, between the 50th and 90th percentile, or below the 50th percentile. Used for accreditation status determination and quality improvement prioritization.. Valid values are `above_90th|between_50th_90th|below_50th|not_available`',
-    `calculation_run_timestamp` TIMESTAMP COMMENT 'The date and time when the HEDIS measure calculation was executed to produce this result record. Represents the principal business event timestamp for this transactional record. Used for audit trails and recalculation tracking.',
-    `created_timestamp` TIMESTAMP COMMENT 'The date and time when this HEDIS result record was first created and persisted in the silver layer lakehouse. Used for data lineage, audit compliance, and record management.',
-    `data_source_type` STRING COMMENT 'Primary data source type used to calculate this HEDIS measure result. Indicates whether the result was derived from administrative claims, EHR clinical data (Epic/Cerner), laboratory data (Beaker/PathNet), pharmacy data (Willow/PharmNet), external registry, or a hybrid combination.. Valid values are `claims|ehr|lab|pharmacy|registry|hybrid`',
-    `denominator_count` STRING COMMENT 'Total count of eligible members or patients who meet the HEDIS measure denominator criteria (initial patient population minus exclusions) for the reporting period. Represents the population at risk for the measure.',
-    `exception_count` STRING COMMENT 'Count of members or patients who qualify for a medical or patient exception to the measure numerator requirement (e.g., patient refusal, medical contraindication documented by clinician). Distinct from exclusions; exceptions are included in the denominator but not penalized.',
-    `exclusion_count` STRING COMMENT 'Count of members or patients removed from the initial patient population due to valid NCQA-defined exclusion criteria (e.g., hospice enrollment, contraindications, prior procedures). Reduces the denominator.',
-    `gap_count` STRING COMMENT 'Count of members or patients in the denominator who did NOT meet the numerator criteria and have an open care gap. Calculated as denominator_count minus numerator_count minus exception_count. Drives care gap closure outreach and population health interventions.',
-    `hybrid_sample_size` STRING COMMENT 'For hybrid methodology measures, the number of medical records sampled for manual review as part of the HEDIS hybrid data collection process. Null for administrative-only measures. NCQA specifies minimum sample sizes.',
-    `hybrid_supplemental_data_used` BOOLEAN COMMENT 'Indicates whether supplemental data sources (e.g., EHR data from Epic Healthy Planet, lab data from Beaker, pharmacy data from Willow) were used to supplement administrative claims data in the hybrid measure calculation. True if supplemental data was incorporated.',
-    `initial_population_count` STRING COMMENT 'Total count of members or patients who meet the initial patient population criteria for the HEDIS measure before applying exclusions. Provides the starting universe for denominator calculation.',
-    `is_reportable` BOOLEAN COMMENT 'Indicates whether this HEDIS measure result meets NCQA minimum denominator size requirements (typically n≥30) and is eligible for external reporting and submission. False if the denominator is too small for reportable results.',
-    `is_starred_measure` BOOLEAN COMMENT 'Indicates whether this HEDIS measure is included in the CMS Medicare Advantage Star Ratings program. True if the measure contributes to the plans overall Star Rating score, which affects CMS bonus payments and plan marketing.',
-    `measurement_year` STRING COMMENT 'The four-digit calendar year for which HEDIS performance is being measured and reported (e.g., 2024). Aligns with NCQA annual measurement year definitions.',
-    `methodology_type` STRING COMMENT 'Indicates the HEDIS measurement methodology used to calculate this result: administrative (claims-based), hybrid (claims plus medical record review), survey (CAHPS-based), or ECDS (Electronic Clinical Data Systems). Drives data collection and audit requirements.. Valid values are `administrative|hybrid|survey|ecds`',
-    `mips_quality_category` STRING COMMENT 'Indicates the MIPS performance category this HEDIS measure contributes to under the CMS MACRA/MIPS program. Supports provider-level MIPS quality score calculation and APM reporting.. Valid values are `quality|promoting_interoperability|improvement_activities|cost|not_applicable`',
-    `ncqa_benchmark_percentile_50` DECIMAL(18,2) COMMENT 'NCQA-published national 50th percentile benchmark rate for this HEDIS measure and measurement year. Used to assess whether the organizations performance is at or above the national median.',
-    `ncqa_benchmark_percentile_90` DECIMAL(18,2) COMMENT 'NCQA-published national 90th percentile benchmark rate for this HEDIS measure and measurement year. Represents the high-performance threshold used for NCQA accreditation and CMS Star Rating top-box scoring.',
-    `numerator_count` STRING COMMENT 'Count of eligible members or patients in the denominator who met the HEDIS measure numerator criteria (i.e., received the required service, achieved the clinical threshold, or had the desired outcome) during the measurement period.',
-    `performance_rate` DECIMAL(18,2) COMMENT 'Calculated HEDIS measure performance rate expressed as a decimal proportion (numerator_count / denominator_count). Stored as a decimal (e.g., 0.7823 = 78.23%). Used for benchmarking, VBP scoring, and NCQA accreditation.',
-    `prior_year_performance_rate` DECIMAL(18,2) COMMENT 'The organizations HEDIS performance rate for this same measure from the immediately preceding measurement year. Enables year-over-year trend analysis and improvement tracking.',
-    `product_line` STRING COMMENT 'The insurance product line or line of business for which this HEDIS result is calculated (e.g., Commercial, Medicaid, Medicare, Exchange/Marketplace, CHIP). NCQA publishes separate benchmarks by product line.. Valid values are `commercial|medicaid|medicare|exchange|chip`',
-    `rate_change_from_prior_year` DECIMAL(18,2) COMMENT 'Difference between the current year performance rate and the prior year performance rate (current minus prior). Positive values indicate improvement; negative values indicate decline. Supports trend reporting and VBP improvement scoring.',
-    `reporting_period_end_date` DATE COMMENT 'The last date of the HEDIS measurement period for this result, typically December 31 of the measurement year. Defines the inclusive end boundary for eligible member identification and event capture.',
-    `reporting_period_start_date` DATE COMMENT 'The first date of the HEDIS measurement period for this result, typically January 1 of the measurement year. Defines the inclusive start boundary for eligible member identification and event capture.',
-    `result_identifier` STRING COMMENT 'Externally-known alphanumeric identifier for this HEDIS result record, used in NCQA submissions, payer reporting, and audit trails. Format: HEDIS-{YEAR}-{MEASURE_CODE}-{SITE_CODE}-{SEQUENCE}.. Valid values are `^HEDIS-[0-9]{4}-[A-Z0-9]{2,10}-[A-Z0-9]{3,20}-[0-9]{6}$`',
-    `result_notes` STRING COMMENT 'Free-text field for quality analysts and HIM staff to document relevant notes about this HEDIS result, such as data quality issues, audit findings, corrective action plans, or explanations for performance outliers.',
-    `result_version` STRING COMMENT 'Incrementing version number for this HEDIS result record, supporting recalculation scenarios where the measure is rerun due to data corrections, supplemental data additions, or audit findings. Version 1 is the initial calculation.',
-    `star_rating_weight` DECIMAL(18,2) COMMENT 'The CMS-assigned weight factor for this HEDIS measure in the Medicare Advantage Star Ratings composite score calculation. Higher weights indicate greater impact on the overall Star Rating. Null for non-Star measures.',
-    `stratification_category` STRING COMMENT 'Population stratification dimension applied to this result record (e.g., age band, gender, race/ethnicity, geographic region, payer mix). Supports health equity analysis and NCQA stratified reporting requirements. [ENUM-REF-CANDIDATE: overall|age_18_64|age_65_plus|male|female|race_white|race_black|race_hispanic|geographic_urban|geographic_rural — promote to reference product]',
-    `submission_date` DATE COMMENT 'The date on which this HEDIS measure result was formally submitted to NCQA or the applicable payer. Used for compliance tracking against NCQA submission deadlines.',
-    `submission_status` STRING COMMENT 'Current workflow status of this HEDIS result record in the submission lifecycle to NCQA or the applicable payer. Tracks progression from internal draft through validation, submission, and acceptance or rejection.. Valid values are `draft|validated|submitted|accepted|rejected|resubmitted`',
-    `submission_target` STRING COMMENT 'Identifies the recipient organization or program to which this HEDIS result is being submitted (e.g., NCQA for accreditation, CMS for Medicare Advantage Star Ratings, state Medicaid agency, commercial payer, or internal quality reporting only).. Valid values are `ncqa|cms_star|medicaid|commercial_payer|internal`',
-    `updated_timestamp` TIMESTAMP COMMENT 'The date and time when this HEDIS result record was most recently modified (e.g., recalculation, status update, audit finding correction). Used for change tracking and data freshness monitoring.',
+    `hedis_result_id` BIGINT COMMENT 'Primary key',
+    `care_site_id` BIGINT COMMENT 'FK to care site',
+    `compliance_regulatory_submission_id` BIGINT COMMENT 'FK to regulatory submission',
+    `fiscal_period_id` BIGINT COMMENT 'FK to fiscal period',
+    `health_plan_id` BIGINT COMMENT 'FK to health plan',
+    `hedis_measure_id` BIGINT COMMENT 'FK to HEDIS measure',
+    `interface_channel_id` BIGINT COMMENT 'FK to interface channel',
+    `org_provider_id` BIGINT COMMENT 'FK to org provider',
+    `research_study_id` BIGINT COMMENT 'FK to research study',
+    `audit_status` STRING COMMENT 'The audit status value classifying the quality hedis result record.',
+    `auditor_organization` STRING COMMENT 'External auditor name',
+    `benchmark_comparison_result` STRING COMMENT 'Above, at, or below benchmark',
+    `calculation_run_timestamp` TIMESTAMP COMMENT 'Calculation timestamp',
+    `created_timestamp` TIMESTAMP COMMENT 'Record creation timestamp',
+    `data_source_type` STRING COMMENT 'Administrative, hybrid, or survey',
+    `denominator_count` STRING COMMENT 'The denominator count of the quality hedis result record.',
+    `exception_count` STRING COMMENT 'The exception count of the quality hedis result record.',
+    `exclusion_count` STRING COMMENT 'The exclusion count of the quality hedis result record.',
+    `gap_count` STRING COMMENT 'Care gap count',
+    `hybrid_sample_size` STRING COMMENT 'The hybrid sample size of the quality hedis result record.',
+    `hybrid_supplemental_data_used` BOOLEAN COMMENT 'Hybrid supplemental data flag',
+    `initial_population_count` STRING COMMENT 'The initial population count of the quality hedis result record.',
+    `is_reportable` BOOLEAN COMMENT 'Reportable flag',
+    `is_starred_measure` BOOLEAN COMMENT 'Star rating measure flag',
+    `measurement_year` STRING COMMENT 'The measurement year of the quality hedis result record.',
+    `methodology_type` STRING COMMENT 'Administrative, hybrid, or survey',
+    `mips_quality_category` STRING COMMENT 'The mips quality category of the quality hedis result record.',
+    `ncqa_benchmark_percentile_50` DECIMAL(18,2) COMMENT 'NCQA 50th percentile',
+    `ncqa_benchmark_percentile_90` DECIMAL(18,2) COMMENT 'NCQA 90th percentile',
+    `numerator_count` STRING COMMENT 'The numerator count of the quality hedis result record.',
+    `performance_rate` DECIMAL(18,2) COMMENT 'The performance rate of the quality hedis result record.',
+    `prior_year_performance_rate` DECIMAL(18,2) COMMENT 'Prior year rate',
+    `product_line` STRING COMMENT 'Commercial, Medicaid, Medicare',
+    `rate_change_from_prior_year` DECIMAL(18,2) COMMENT 'Year-over-year change',
+    `reporting_period_end_date` DATE COMMENT 'Reporting period end',
+    `reporting_period_start_date` DATE COMMENT 'Reporting period start',
+    `result_identifier` STRING COMMENT 'The result identifier of the quality hedis result record.',
+    `result_notes` STRING COMMENT 'The result notes of the quality hedis result record.',
+    `result_version` STRING COMMENT 'The result version of the quality hedis result record.',
+    `star_rating_weight` DECIMAL(18,2) COMMENT 'The star rating weight of the quality hedis result record.',
+    `stratification_category` STRING COMMENT 'The stratification category of the quality hedis result record.',
+    `submission_date` DATE COMMENT 'Timestamp capturing the submission date associated with the quality hedis result record.',
+    `submission_status` STRING COMMENT 'The submission status value classifying the quality hedis result record.',
+    `submission_target` STRING COMMENT 'Submission target (NCQA, CMS)',
+    `updated_timestamp` TIMESTAMP COMMENT 'Last update timestamp',
+    `vibe_structure_marker` STRING COMMENT 'Structure enforcement marker for 22-domain/541-product superset.',
     CONSTRAINT pk_hedis_result PRIMARY KEY(`hedis_result_id`)
-) COMMENT 'Transactional records capturing the calculated HEDIS measure performance results for each reporting period and care site or health plan. Stores numerator count, denominator count, exclusion count, rate achieved, benchmark comparison, gap count, and submission status to NCQA or payer. Supports HEDIS hybrid and administrative measure methodologies.';
+) COMMENT 'Calculated HEDIS measure results by reporting period, health plan, and care site. Tracks numerator/denominator counts, performance rates, and benchmark comparisons. Business justification: Drives VBP incentive payments, Star Rating calculations, and quality improvement initiatives.';
 
 CREATE OR REPLACE TABLE `vibe_healthcare_v1`.`quality`.`cahps_survey` (
-    `cahps_survey_id` BIGINT COMMENT 'Unique system-generated identifier for each CAHPS survey program definition or patient response record in the master and transactional entity.',
-    `audit_id` BIGINT COMMENT 'Foreign key linking to compliance.audit. Business justification: CAHPS surveys are audited for methodology compliance, sampling adequacy, vendor certification, and data integrity by CMS and accrediting bodies. Audit findings impact VBP scores and public reporting. ',
-    `care_site_id` BIGINT COMMENT 'Reference to the hospital, clinic, or care facility associated with the survey. Used for facility-level CAHPS performance reporting and CMS Value-Based Purchasing (VBP) scoring.',
-    `clinician_id` BIGINT COMMENT 'Reference to the clinician or provider group associated with the survey, applicable for Clinician and Group CAHPS (CG-CAHPS) programs.',
-    `health_plan_id` BIGINT COMMENT 'Foreign key linking to insurance.health_plan. Business justification: CAHPS surveys measure patient experience for specific health plans. CMS requires plan-level HCAHPS reporting for Hospital VBP and Star Ratings. Survey vendor administers by plan contract.',
-    `interface_channel_id` BIGINT COMMENT 'Foreign key linking to interoperability.interface_channel. Business justification: CAHPS survey data is transmitted to CMS and survey vendors via interface channels for VBP and Star Ratings programs. Linking enables tracking of submission status, resolving transmission failures, and',
-    `mpi_record_id` BIGINT COMMENT 'Reference to the patient who received and responded to the CAHPS survey. Links to the patient master record for demographic and encounter context.',
-    `consent_record_id` BIGINT COMMENT 'Foreign key linking to consent.consent_record. Business justification: CMS HCAHPS and CAHPS programs require documented patient consent before survey administration. Survey vendors must maintain consent records for certification. Links survey administration to regulatory',
-    `subject_enrollment_id` BIGINT COMMENT 'Foreign key linking to research.subject_enrollment. Business justification: Patient experience surveys for research subjects require linkage to track whether trial participation affects satisfaction scores and to comply with research-specific CAHPS requirements. AHRQ mandates',
-    `unit_id` BIGINT COMMENT 'Foreign key linking to facility.unit. Business justification: HCAHPS patient experience surveys analyzed at nursing unit level for unit-specific improvement initiatives. Nurse managers review unit-level communication scores, responsiveness ratings, and quietness',
-    `visit_id` BIGINT COMMENT 'Reference to the clinical encounter (inpatient stay, outpatient visit, or home health episode) that triggered the CAHPS survey administration.',
-    `administration_mode` STRING COMMENT 'Method used to administer the CAHPS survey to the patient. CMS-approved modes include mail, telephone, mixed (mail with telephone follow-up), active interactive voice response (IVR), and web. Affects response rate calculations and mode adjustment factors.. Valid values are `mail|telephone|mixed|active_interactive_voice_response|web`',
-    `cms_certification_number` STRING COMMENT 'CMS Certification Number (CCN) of the hospital or facility submitting HCAHPS data. Used to link survey results to CMS facility records and Value-Based Purchasing (VBP) calculations.',
-    `cms_submission_date` DATE COMMENT 'Date the CAHPS survey data was submitted to CMS for the reporting period. Used to verify timely submission compliance with CMS quality reporting deadlines.',
-    `cms_submission_status` STRING COMMENT 'Status of the CAHPS data submission to CMS for the reporting period. Tracks whether data has been submitted, accepted, or requires resubmission for quality reporting compliance.. Valid values are `not_submitted|submitted|accepted|rejected|resubmitted`',
-    `created_timestamp` TIMESTAMP COMMENT 'Timestamp when the CAHPS survey record was first created in the system. Used for audit trail and data lineage tracking.',
-    `discharge_date` DATE COMMENT 'Date the patient was discharged from the facility. HCAHPS surveys must be administered between 48 hours and 6 weeks post-discharge. Used to validate survey timing compliance.',
-    `eligible_discharges` STRING COMMENT 'Total number of patient discharges or encounters eligible for CAHPS survey sampling during the reporting period, prior to exclusion criteria application.',
-    `exclusion_reason` STRING COMMENT 'Reason a patient was excluded from CAHPS survey sampling per CMS eligibility criteria. Includes deceased, no valid address, court-ordered, non-English speaking (if no translated instrument), psychiatric, under 18, or hospice patients. [ENUM-REF-CANDIDATE: deceased|no_address|court_ordered|non_english|psychiatric|under_18|hospice|other — promote to reference product]',
-    `hcahps_linear_mean_score` DECIMAL(18,2) COMMENT 'CMS-calculated linear mean score for the HCAHPS survey submission, used in VBP achievement and improvement scoring. Derived from the HCAHPS Summary Star Rating methodology.',
-    `minimum_case_threshold_met` BOOLEAN COMMENT 'Indicates whether the facility met the CMS minimum case threshold (typically 100 completed surveys) required for public reporting and VBP scoring eligibility.',
-    `mode_adjustment_applied` BOOLEAN COMMENT 'Indicates whether a CMS-approved mode adjustment factor was applied to the survey scores to account for differences in response patterns across administration modes (mail, telephone, mixed).',
-    `overall_hospital_rating` STRING COMMENT 'Patients overall rating of the hospital on a 0-10 numeric scale. Top-box score (9-10) is a key CMS VBP Patient Experience domain metric and publicly reported on Hospital Compare.',
-    `patient_mix_adjustment_applied` BOOLEAN COMMENT 'Indicates whether patient-mix adjustment (case-mix adjustment) was applied to HCAHPS scores to account for patient demographic and health status differences across facilities, enabling fair comparisons.',
-    `publicly_reported` BOOLEAN COMMENT 'Indicates whether the CAHPS survey results for this facility and reporting period are publicly reported on CMS Care Compare (formerly Hospital Compare). Facilities must meet minimum case thresholds for public reporting.',
-    `recommend_hospital` STRING COMMENT 'Patients response to whether they would recommend the hospital to friends and family. Four-point scale: definitely yes, probably yes, probably no, definitely no. Top-box (definitely yes) is publicly reported on Hospital Compare.. Valid values are `definitely_yes|probably_yes|probably_no|definitely_no`',
-    `reporting_period_end` DATE COMMENT 'End date of the CAHPS data collection and reporting period. Used to aggregate results for CMS submission and VBP scoring.',
-    `reporting_period_start` DATE COMMENT 'Start date of the CAHPS data collection and reporting period (typically quarterly or annual). Used to aggregate results for CMS submission and VBP scoring.',
-    `response_date` DATE COMMENT 'Date the patient completed and returned the CAHPS survey. Used to calculate response lag from discharge and to validate response within the CMS-required window.',
-    `response_language` STRING COMMENT 'Language in which the patient completed the CAHPS survey (e.g., English, Spanish, Chinese). CMS provides translated HCAHPS instruments for approved languages. ISO 639-1 two-letter language code.',
-    `response_received` BOOLEAN COMMENT 'Indicates whether a completed survey response was received from the patient. Used in response rate calculations and non-response tracking.',
-    `sample_size` STRING COMMENT 'Number of patients sampled for the CAHPS survey administration period. Used in statistical reliability calculations and CMS reporting.',
-    `sampling_methodology` STRING COMMENT 'Statistical sampling approach used to select patients for CAHPS survey administration. CMS allows census (all eligible patients), random sample, or stratified random sample. Affects weighting and representativeness of results.. Valid values are `census|random_sample|stratified_random`',
-    `score_care_transition` DECIMAL(18,2) COMMENT 'Patient-reported composite score for the Care Transition domain of HCAHPS. Measures whether patients understood their care responsibilities and had a clear plan post-discharge. Expressed as a percentage (0-100) of top-box responses.',
-    `score_cleanliness` DECIMAL(18,2) COMMENT 'Patient-reported score for the Cleanliness of Hospital Environment item of HCAHPS. Measures how often the patients room and bathroom were kept clean. Expressed as a percentage (0-100) of top-box responses.',
-    `score_communication_doctors` DECIMAL(18,2) COMMENT 'Patient-reported composite score for the Communication with Doctors domain of HCAHPS. Derived from questions about how often doctors communicated well. Expressed as a percentage (0-100) of top-box responses. Key input to CMS VBP Patient Experience domain.',
-    `score_communication_medicines` DECIMAL(18,2) COMMENT 'Patient-reported composite score for the Communication About Medicines domain of HCAHPS. Measures how often staff explained medications and side effects. Expressed as a percentage (0-100) of top-box responses.',
-    `score_communication_nurses` DECIMAL(18,2) COMMENT 'Patient-reported composite score for the Communication with Nurses domain of HCAHPS. Derived from questions about how often nurses communicated well. Expressed as a percentage (0-100) of top-box responses.',
-    `score_discharge_information` DECIMAL(18,2) COMMENT 'Patient-reported composite score for the Discharge Information domain of HCAHPS. Measures whether patients received adequate information about recovery and follow-up care at discharge. Expressed as a percentage (0-100) of top-box responses.',
-    `score_pain_management` DECIMAL(18,2) COMMENT 'Patient-reported composite score for the Pain Management domain of HCAHPS. Measures how well hospital staff helped manage patient pain. Expressed as a percentage (0-100) of top-box responses.',
-    `score_quietness` DECIMAL(18,2) COMMENT 'Patient-reported score for the Quietness of Hospital Environment item of HCAHPS. Measures how often the area around the patients room was quiet at night. Expressed as a percentage (0-100) of top-box responses.',
-    `score_responsiveness_staff` DECIMAL(18,2) COMMENT 'Patient-reported composite score for the Responsiveness of Hospital Staff domain of HCAHPS. Measures how often staff responded promptly to patient needs. Expressed as a percentage (0-100) of top-box responses.',
-    `star_rating` STRING COMMENT 'CMS HCAHPS Summary Star Rating (1-5 stars) assigned to the facility based on HCAHPS composite and global item scores. Publicly reported on CMS Care Compare website.',
-    `survey_followup_date` DATE COMMENT 'Date of the follow-up contact attempt (second mailing or telephone follow-up) for non-responding patients in mixed-mode administration.',
-    `survey_mailed_date` DATE COMMENT 'Date the CAHPS survey was first mailed or initiated to the patient. Used to calculate response windows and follow-up timing per CMS protocols.',
-    `survey_program_code` STRING COMMENT 'Standardized code identifying the specific CAHPS survey program. HCAHPS = Hospital CAHPS, CG-CAHPS = Clinician and Group CAHPS, HH-CAHPS = Home Health CAHPS, OAS-CAHPS = Outpatient and Ambulatory Surgery CAHPS, ICH-CAHPS = In-Center Hemodialysis CAHPS, PCMH-CAHPS = Patient-Centered Medical Home CAHPS. [ENUM-REF-CANDIDATE: HCAHPS|CG-CAHPS|HH-CAHPS|OAS-CAHPS|ICH-CAHPS|PCMH-CAHPS — promote to reference product]. Valid values are `HCAHPS|CG-CAHPS|HH-CAHPS|OAS-CAHPS|ICH-CAHPS|PCMH-CAHPS`',
-    `survey_status` STRING COMMENT 'Current lifecycle status of the survey administration for a given patient. Tracks progression from sampling through completion or non-response determination per CMS HCAHPS protocols.. Valid values are `sampled|mailed|completed|non_response|ineligible|excluded`',
-    `survey_type` STRING COMMENT 'Categorical classification of the CAHPS survey type indicating the care setting or program type. Drives composite domain scoring logic and CMS reporting requirements.. Valid values are `hospital|clinician_group|home_health|outpatient_surgery|hemodialysis|pcmh`',
-    `survey_version` STRING COMMENT 'Version number or label of the CAHPS survey instrument used (e.g., HCAHPS v15.0, CG-CAHPS 3.0). Ensures responses are interpreted against the correct question set and scoring methodology.',
-    `updated_timestamp` TIMESTAMP COMMENT 'Timestamp when the CAHPS survey record was last modified. Used for audit trail, change tracking, and incremental data pipeline processing.',
-    `vbp_patient_experience_score` DECIMAL(18,2) COMMENT 'Calculated CMS Value-Based Purchasing (VBP) patient experience domain score derived from HCAHPS composite and global item scores. Used in VBP Total Performance Score (TPS) calculation affecting Medicare reimbursement.',
-    `vendor_certification_number` STRING COMMENT 'CMS-issued certification number for the approved CAHPS survey vendor. Required for HCAHPS data submission validation and CMS audit purposes.',
-    `vendor_name` STRING COMMENT 'Name of the CMS-approved survey vendor contracted to administer the CAHPS survey on behalf of the facility. CMS requires use of an approved vendor for HCAHPS submission.',
+    `cahps_survey_id` BIGINT COMMENT 'Primary key',
+    `audit_id` BIGINT COMMENT 'FK to audit',
+    `billing_coverage_id` BIGINT COMMENT 'FK to billing coverage',
+    `care_site_id` BIGINT COMMENT 'FK to care site',
+    `clinician_id` BIGINT COMMENT 'FK to clinician',
+    `health_plan_id` BIGINT COMMENT 'FK to health plan',
+    `mpi_record_id` BIGINT COMMENT 'FK to MPI record',
+    `unit_id` BIGINT COMMENT 'FK to unit',
+    `visit_id` BIGINT COMMENT 'FK to visit',
+    `administration_mode` STRING COMMENT 'Mail, phone, or web',
+    `cms_certification_number` STRING COMMENT 'The cms certification number of the quality cahps survey record.',
+    `cms_submission_date` DATE COMMENT 'Timestamp capturing the cms submission date associated with the quality cahps survey record.',
+    `cms_submission_status` STRING COMMENT 'The cms submission status value classifying the quality cahps survey record.',
+    `created_timestamp` TIMESTAMP COMMENT 'Record creation timestamp',
+    `discharge_date` DATE COMMENT 'Timestamp capturing the discharge date associated with the quality cahps survey record.',
+    `eligible_discharges` STRING COMMENT 'Eligible discharge count',
+    `exclusion_reason` STRING COMMENT 'The exclusion reason of the quality cahps survey record.',
+    `hcahps_linear_mean_score` DECIMAL(18,2) COMMENT 'The hcahps linear mean score of the quality cahps survey record.',
+    `minimum_case_threshold_met` BOOLEAN COMMENT 'Minimum case threshold met flag',
+    `mode_adjustment_applied` BOOLEAN COMMENT 'Mode adjustment applied flag',
+    `overall_hospital_rating` STRING COMMENT 'Overall hospital rating (0-10)',
+    `patient_mix_adjustment_applied` BOOLEAN COMMENT 'Patient mix adjustment applied flag',
+    `publicly_reported` BOOLEAN COMMENT 'Publicly reported flag',
+    `recommend_hospital` STRING COMMENT 'Recommend hospital (Yes/No/Maybe)',
+    `record_number` BIGINT COMMENT 'FK to consent record',
+    `reporting_period_end` DATE COMMENT 'The reporting period end of the quality cahps survey record.',
+    `reporting_period_start` DATE COMMENT 'The reporting period start of the quality cahps survey record.',
+    `response_date` DATE COMMENT 'Timestamp capturing the response date associated with the quality cahps survey record.',
+    `response_language` STRING COMMENT 'The response language of the quality cahps survey record.',
+    `response_received` BOOLEAN COMMENT 'Response received flag',
+    `sample_size` STRING COMMENT 'The sample size of the quality cahps survey record.',
+    `sampling_methodology` STRING COMMENT 'The sampling methodology of the quality cahps survey record.',
+    `score_care_transition` DECIMAL(18,2) COMMENT 'Care transition score',
+    `score_cleanliness` DECIMAL(18,2) COMMENT 'Cleanliness score',
+    `score_communication_doctors` DECIMAL(18,2) COMMENT 'Communication with doctors score',
+    `score_communication_medicines` DECIMAL(18,2) COMMENT 'Communication about medicines score',
+    `score_communication_nurses` DECIMAL(18,2) COMMENT 'Communication with nurses score',
+    `score_discharge_information` DECIMAL(18,2) COMMENT 'Discharge information score',
+    `score_pain_management` DECIMAL(18,2) COMMENT 'Pain management score',
+    `score_quietness` DECIMAL(18,2) COMMENT 'Quietness score',
+    `score_responsiveness_staff` DECIMAL(18,2) COMMENT 'Staff responsiveness score',
+    `star_rating` STRING COMMENT 'Star rating (1-5)',
+    `survey_followup_date` DATE COMMENT 'Timestamp capturing the survey followup date associated with the quality cahps survey record.',
+    `survey_mailed_date` DATE COMMENT 'Timestamp capturing the survey mailed date associated with the quality cahps survey record.',
+    `survey_program_code` STRING COMMENT 'The survey program code value classifying the quality cahps survey record.',
+    `survey_status` STRING COMMENT 'The survey status value classifying the quality cahps survey record.',
+    `survey_type` STRING COMMENT 'Survey type (HCAHPS, CAHPS Clinician & Group)',
+    `survey_version` STRING COMMENT 'The survey version of the quality cahps survey record.',
+    `updated_timestamp` TIMESTAMP COMMENT 'Last update timestamp',
+    `vbp_patient_experience_score` DECIMAL(18,2) COMMENT 'The vbp patient experience score of the quality cahps survey record.',
+    `vendor_certification_number` STRING COMMENT 'The vendor certification number of the quality cahps survey record.',
+    `vendor_name` STRING COMMENT 'Survey vendor name',
+    `vibe_structure_marker` STRING COMMENT 'Structure enforcement marker for 22-domain/541-product superset.',
     CONSTRAINT pk_cahps_survey PRIMARY KEY(`cahps_survey_id`)
-) COMMENT 'Master and transactional entity for CAHPS (Consumer Assessment of Healthcare Providers and Systems) survey programs and patient responses. Stores program-level data: survey type (Hospital CAHPS, Clinician and Group CAHPS, Home Health CAHPS), survey version, administration mode (mail, phone, mixed), sampling methodology, CMS certification status, and vendor information. Stores response-level data: patient-level survey responses, composite domain scores (communication with doctors, responsiveness of staff, pain management, communication about medicines, discharge information, overall hospital rating), response date, administration mode, and non-response tracking. SSOT for CAHPS survey program definitions and patient experience measurement data. Supports CMS VBP HCAHPS domain scoring and patient experience reporting.';
+) COMMENT 'CAHPS patient experience survey administration and aggregate results. Includes HCAHPS for hospitals and CG-CAHPS for clinician groups. Business justification: CMS-mandated for Hospital VBP, Medicare Advantage Star Ratings, and public reporting on Hospital Compare.';
 
 CREATE OR REPLACE TABLE `vibe_healthcare_v1`.`quality`.`cahps_response` (
-    `cahps_response_id` BIGINT COMMENT 'Unique surrogate identifier for each individual CAHPS survey response record in the silver layer lakehouse. Primary key for this transactional entity.',
-    `billing_coverage_id` BIGINT COMMENT 'Foreign key linking to billing.coverage. Business justification: Individual survey responses must tie to patients active coverage at service time for accurate payer-specific satisfaction scoring. Replaces denormalized payer_type with proper FK to coverage, enablin',
-    `cahps_survey_id` BIGINT COMMENT 'Reference to the specific CAHPS survey instrument version administered to the patient. Links to the survey definition including question set, version, and CMS program year.',
-    `care_site_id` BIGINT COMMENT 'Reference to the hospital or care facility where the patient received care. Used for facility-level HCAHPS reporting to CMS and internal benchmarking.',
-    `health_plan_id` BIGINT COMMENT 'Foreign key linking to insurance.health_plan. Business justification: Individual CAHPS responses roll up to plan-level scores for CMS Star Ratings and public reporting. Payer type on response determines applicable measure set and benchmarks.',
-    `mpi_record_id` BIGINT COMMENT 'Reference to the patient who completed or was sampled for the CAHPS survey. Links to the patient master record. Protected Health Information (PHI) under HIPAA.',
-    `consent_record_id` BIGINT COMMENT 'Foreign key linking to consent.consent_record. Business justification: Individual survey responses must be traceable to consent documentation for vendor certification and regulatory audits. CMS requires consent verification at response level for publicly reported HCAHPS ',
-    `visit_id` BIGINT COMMENT 'Reference to the inpatient or outpatient encounter that triggered the CAHPS survey sampling. Used to link survey responses back to the clinical episode for Value-Based Purchasing (VBP) reporting.',
-    `adjusted_composite_score` DECIMAL(18,2) COMMENT 'The overall case-mix and mode-adjusted HCAHPS composite score for this response, calculated per CMS linear mean scoring methodology. Adjusts for patient mix differences (age, education, health status, service category, language) to enable fair hospital comparisons.',
-    `administration_mode` STRING COMMENT 'The method used to administer the CAHPS survey to the patient. CMS-approved modes include mail, telephone, mail with telephone follow-up, active interactive voice response (IVR), and web. Affects response rate benchmarking and mode adjustment factors.. Valid values are `mail|telephone|mail_telephone_mixed|active_interactive_voice_response|web`',
-    `care_transition_score` STRING COMMENT 'Patient-reported composite score for the Care Transition domain. Derived from questions about whether staff took patient preferences into account, understood the purpose of medications, and knew what to do if concerned after discharge. Scored on a 0–100 scale.',
-    `cms_certification_number` STRING COMMENT 'The six-digit CMS Certification Number (CCN) identifying the hospital for HCAHPS submission to the CMS Quality Net portal. Required for regulatory reporting.. Valid values are `^[0-9]{6}$`',
-    `contact_attempt_count` STRING COMMENT 'The total number of contact attempts made to the patient by the survey vendor (mailings sent, telephone calls placed). Used to document vendor compliance with CMS minimum contact attempt requirements.',
-    `created_timestamp` TIMESTAMP COMMENT 'The timestamp when this CAHPS response record was first created in the silver layer lakehouse. Supports audit trail and data lineage requirements per HIPAA and HITRUST CSF.',
-    `discharge_date` DATE COMMENT 'The date the patient was discharged from the inpatient encounter that triggered the CAHPS survey. CMS requires surveys to be administered between 48 hours and 6 weeks post-discharge.',
-    `discharge_information_score` STRING COMMENT 'Patient-reported composite score for the Discharge Information domain. Derived from questions about whether patients received written information about symptoms to watch for and understood their care responsibilities after discharge. Scored on a 0–100 scale.',
-    `doctor_communication_score` STRING COMMENT 'Patient-reported composite score for the Communication with Doctors domain of the HCAHPS survey. Derived from questions about how often doctors communicated clearly, listened carefully, and explained things in an understandable way. Scored on a 0–100 scale per CMS methodology.',
-    `education_level` STRING COMMENT 'Patients self-reported highest level of education completed as captured on the CAHPS survey. Used as a case-mix adjustment covariate in CMS HCAHPS linear mean score methodology. [ENUM-REF-CANDIDATE: 8th_grade_or_less|some_high_school|high_school_graduate|some_college|4_year_college_graduate|more_than_4_year_college — promote to reference product]. Valid values are `8th_grade_or_less|some_high_school|high_school_graduate|some_college|4_year_college_graduate|more_than_4_year_college`',
-    `first_contact_date` DATE COMMENT 'The date of the first survey contact attempt (initial mailing or first telephone call) made to the patient. Used to track the survey administration timeline and compliance with CMS contact windows.',
-    `hospital_environment_score` STRING COMMENT 'Patient-reported composite score for the Hospital Environment domain covering cleanliness and quietness of the hospital environment. Scored on a 0–100 scale per CMS HCAHPS methodology.',
-    `ineligibility_reason` STRING COMMENT 'The specific reason a patient was excluded from the HCAHPS survey sampling frame. Populated only when is_eligible is False. Used for sampling frame documentation and CMS audit compliance.. Valid values are `age_under_18|psychiatric_admission|excluded_drg|no_overnight_stay|court_ordered|other`',
-    `is_eligible` BOOLEAN COMMENT 'Indicates whether the patient met all CMS eligibility criteria for HCAHPS survey inclusion (e.g., age 18+, non-psychiatric admission, non-excluded diagnosis, minimum one-night stay). Ineligible patients are excluded from the sampling frame.',
-    `is_sampled` BOOLEAN COMMENT 'Indicates whether the eligible patient was selected into the HCAHPS survey sample for the reporting period. Hospitals may use census or random sampling per CMS guidelines.',
-    `language_of_response` STRING COMMENT 'The ISO 639-2 three-letter language code indicating the language in which the patient completed the CAHPS survey. CMS requires survey vendors to offer surveys in multiple languages. Used for language-stratified response rate analysis.. Valid values are `^[A-Z]{3}$`',
-    `length_of_stay_days` STRING COMMENT 'The number of inpatient days for the encounter associated with this survey. Used as a case-mix adjustment covariate in HCAHPS linear mean score calculations per CMS methodology.',
-    `medicine_communication_score` STRING COMMENT 'Patient-reported composite score for the Communication About Medicines domain. Derived from questions about how often staff explained the purpose of new medications and described possible side effects. Scored on a 0–100 scale per CMS methodology.',
-    `mrn` STRING COMMENT 'The Medical Record Number assigned to the patient in the source Electronic Health Record (EHR) system. Used for survey sampling frame construction and de-duplication. PHI under HIPAA.',
-    `nurse_communication_score` STRING COMMENT 'Patient-reported composite score for the Communication with Nurses domain of the HCAHPS survey. Derived from questions about how often nurses communicated clearly, listened carefully, and explained things in an understandable way. Scored on a 0–100 scale per CMS methodology.',
-    `overall_hospital_rating` STRING COMMENT 'Patients overall rating of the hospital on a 0–10 numeric scale as reported on the HCAHPS survey. A key individual measure used in CMS VBP Patient Experience of Care domain scoring.',
-    `pain_management_score` STRING COMMENT 'Patient-reported composite score for the Pain Management domain. Derived from questions about how often staff did everything they could to help with pain and how often pain was well controlled. Scored on a 0–100 scale. Note: CMS removed this domain from VBP scoring in 2018 due to opioid concerns; retained for historical trending.',
-    `patient_service_line` STRING COMMENT 'The clinical service line associated with the patients inpatient stay (e.g., cardiology, orthopedics, oncology, obstetrics). Used for service-line-level HCAHPS performance stratification and internal benchmarking.',
-    `program_year` STRING COMMENT 'The CMS fiscal year for which this CAHPS response contributes to Value-Based Purchasing (VBP) performance scoring and MIPS quality reporting.',
-    `recommend_hospital` STRING COMMENT 'Patients response to the HCAHPS question asking whether they would recommend the hospital to friends and family. One of four ordinal response options. Used in CMS VBP Patient Experience of Care domain.. Valid values are `definitely_yes|probably_yes|probably_no|definitely_no`',
-    `reporting_quarter` STRING COMMENT 'The CMS reporting quarter in which this survey response is included for HCAHPS public reporting and Value-Based Purchasing (VBP) scoring. Format: YYYYQn (e.g., 2024Q1).. Valid values are `^[0-9]{4}Q[1-4]$`',
-    `response_date` DATE COMMENT 'The date on which the patient completed and returned the CAHPS survey. Used to determine the survey reporting period and CMS submission quarter.',
-    `response_status` STRING COMMENT 'The disposition of the survey attempt indicating whether the patient completed the survey or the reason for non-response. Used for response rate calculation and CMS non-response bias analysis.. Valid values are `completed|non_response|ineligible|deceased|bad_address|language_barrier`',
-    `sampling_date` DATE COMMENT 'The date the patient was selected into the CAHPS survey sample from the eligible discharge population. Used for sampling frame documentation and CMS audit trail.',
-    `self_reported_health_status` STRING COMMENT 'Patients self-reported general health status as captured on the CAHPS survey. Used as a case-mix adjustment covariate in CMS HCAHPS linear mean score methodology to account for patient mix differences across hospitals.. Valid values are `excellent|very_good|good|fair|poor`',
-    `service_category` STRING COMMENT 'The CMS-defined patient service category for the inpatient stay: Medical, Surgical, or Maternity. Used as a case-mix adjustment variable in HCAHPS scoring and for CMS VBP stratified reporting.. Valid values are `medical|surgical|maternity`',
-    `staff_responsiveness_score` STRING COMMENT 'Patient-reported composite score for the Responsiveness of Hospital Staff domain. Derived from questions about how often patients received help as soon as they wanted when using the call button or needing to use the bathroom. Scored on a 0–100 scale.',
-    `survey_type` STRING COMMENT 'The specific CAHPS instrument type administered. HCAHPS is the Hospital Consumer Assessment of Healthcare Providers and Systems used for CMS VBP reporting. Other types support outpatient and specialty settings. [ENUM-REF-CANDIDATE: HCAHPS|CGCAHPS|PCMH_CAHPS|ED_CAHPS|OAS_CAHPS|ICH_CAHPS — promote to reference product]. Valid values are `HCAHPS|CGCAHPS|PCMH_CAHPS|ED_CAHPS|OAS_CAHPS`',
-    `top_box_doctor_communication` BOOLEAN COMMENT 'Indicates whether the patient provided the most favorable (top-box) response for the Communication with Doctors composite domain. CMS VBP scoring uses top-box percentage rates across the patient population.',
-    `top_box_nurse_communication` BOOLEAN COMMENT 'Indicates whether the patient provided the most favorable (top-box) response for the Communication with Nurses composite domain. Used in CMS VBP Patient Experience of Care domain top-box rate calculation.',
-    `top_box_overall_rating` BOOLEAN COMMENT 'Indicates whether the patient gave an overall hospital rating of 9 or 10 (top-box threshold per CMS methodology). Used in CMS VBP Patient Experience of Care domain scoring.',
-    `top_box_recommend` BOOLEAN COMMENT 'Indicates whether the patient responded Definitely Yes to the hospital recommendation question (top-box threshold per CMS methodology). Used in CMS VBP Patient Experience of Care domain scoring.',
-    `updated_timestamp` TIMESTAMP COMMENT 'The timestamp when this CAHPS response record was last modified in the silver layer lakehouse. Used for incremental load processing and audit trail compliance.',
-    `vbp_patient_experience_score` DECIMAL(18,2) COMMENT 'The individual patient-level contribution score to the CMS Value-Based Purchasing (VBP) Patient Experience of Care domain, calculated from HCAHPS composite and global measures per CMS scoring methodology.',
+    `cahps_response_id` BIGINT COMMENT 'Primary key',
+    `billing_coverage_id` BIGINT COMMENT 'FK to billing coverage',
+    `cahps_survey_id` BIGINT COMMENT 'FK to CAHPS survey',
+    `care_site_id` BIGINT COMMENT 'FK to care site',
+    `health_plan_id` BIGINT COMMENT 'FK to health plan',
+    `mpi_record_id` BIGINT COMMENT 'FK to MPI record',
+    `visit_id` BIGINT COMMENT 'FK to visit',
+    `adjusted_composite_score` DECIMAL(18,2) COMMENT 'The adjusted composite score of the quality cahps response record.',
+    `administration_mode` STRING COMMENT 'Mail, phone, or web',
+    `care_transition_score` STRING COMMENT 'The care transition score of the quality cahps response record.',
+    `cms_certification_number` STRING COMMENT 'The cms certification number of the quality cahps response record.',
+    `contact_attempt_count` STRING COMMENT 'The contact attempt count of the quality cahps response record.',
+    `created_timestamp` TIMESTAMP COMMENT 'Record creation timestamp',
+    `discharge_date` DATE COMMENT 'Timestamp capturing the discharge date associated with the quality cahps response record.',
+    `discharge_information_score` STRING COMMENT 'The discharge information score of the quality cahps response record.',
+    `doctor_communication_score` STRING COMMENT 'The doctor communication score of the quality cahps response record.',
+    `education_level` STRING COMMENT 'The education level of the quality cahps response record.',
+    `first_contact_date` DATE COMMENT 'Timestamp capturing the first contact date associated with the quality cahps response record.',
+    `hospital_environment_score` STRING COMMENT 'The hospital environment score of the quality cahps response record.',
+    `ineligibility_reason` STRING COMMENT 'The ineligibility reason of the quality cahps response record.',
+    `is_eligible` BOOLEAN COMMENT 'Eligible flag',
+    `is_sampled` BOOLEAN COMMENT 'Sampled flag',
+    `language_of_response` STRING COMMENT 'The language of response of the quality cahps response record.',
+    `length_of_stay_days` STRING COMMENT 'Length of stay in days',
+    `medicine_communication_score` STRING COMMENT 'The medicine communication score of the quality cahps response record.',
+    `mrn` STRING COMMENT 'The mrn of the quality cahps response record.',
+    `nurse_communication_score` STRING COMMENT 'The nurse communication score of the quality cahps response record.',
+    `overall_hospital_rating` STRING COMMENT 'Overall hospital rating (0-10)',
+    `pain_management_score` STRING COMMENT 'The pain management score of the quality cahps response record.',
+    `patient_service_line` STRING COMMENT 'The patient service line of the quality cahps response record.',
+    `program_year` STRING COMMENT 'The program year of the quality cahps response record.',
+    `recommend_hospital` STRING COMMENT 'Recommend hospital (Yes/No/Maybe)',
+    `record_number` BIGINT COMMENT 'FK to consent record',
+    `reporting_quarter` STRING COMMENT 'The reporting quarter of the quality cahps response record.',
+    `response_date` DATE COMMENT 'Timestamp capturing the response date associated with the quality cahps response record.',
+    `response_status` STRING COMMENT 'The response status value classifying the quality cahps response record.',
+    `sampling_date` DATE COMMENT 'Timestamp capturing the sampling date associated with the quality cahps response record.',
+    `self_reported_health_status` STRING COMMENT 'The self reported health status value classifying the quality cahps response record.',
+    `service_category` STRING COMMENT 'The service category of the quality cahps response record.',
+    `staff_responsiveness_score` STRING COMMENT 'The staff responsiveness score of the quality cahps response record.',
+    `survey_type` STRING COMMENT 'The survey type value classifying the quality cahps response record.',
+    `top_box_doctor_communication` BOOLEAN COMMENT 'Top box doctor communication flag',
+    `top_box_nurse_communication` BOOLEAN COMMENT 'Top box nurse communication flag',
+    `top_box_overall_rating` BOOLEAN COMMENT 'Top box overall rating flag',
+    `top_box_recommend` BOOLEAN COMMENT 'Top box recommend flag',
+    `updated_timestamp` TIMESTAMP COMMENT 'Last update timestamp',
+    `vbp_patient_experience_score` DECIMAL(18,2) COMMENT 'The vbp patient experience score of the quality cahps response record.',
+    `vibe_structure_marker` STRING COMMENT 'Structure enforcement marker for 22-domain/541-product superset.',
     CONSTRAINT pk_cahps_response PRIMARY KEY(`cahps_response_id`)
-) COMMENT 'Transactional records of individual patient responses to CAHPS surveys. Captures patient-level survey responses, composite domain scores (communication with doctors, responsiveness of staff, pain management, communication about medicines, discharge information, overall hospital rating), response date, administration mode, and non-response tracking. Supports CMS VBP HCAHPS reporting.';
+) COMMENT 'Individual CAHPS survey responses with composite scores by domain. Links to patient encounters for service recovery and quality improvement. Business justification: Enables patient-level experience analysis, service recovery workflows, and provider feedback.';
 
 CREATE OR REPLACE TABLE `vibe_healthcare_v1`.`quality`.`patient_safety_event` (
-    `patient_safety_event_id` BIGINT COMMENT 'Unique surrogate identifier for the patient safety event record. Primary key for this data product.',
-    `bed_assignment_id` BIGINT COMMENT 'Foreign key linking to encounter.bed_assignment. Business justification: Safety events (falls, pressure ulcers, HAIs, medication errors) are location-specific and tied to bed assignments. Real business process: Safety investigations document which bed/unit was active when ',
-    `bed_id` BIGINT COMMENT 'Foreign key linking to facility.bed. Business justification: Bed-level tracking essential for falls (bed type, low-bed status), pressure injuries (bariatric capability, air-fluidized beds), and patient identification errors. Risk management and quality teams an',
-    `care_site_id` BIGINT COMMENT 'Reference to the facility (hospital, clinic, outpatient center) where the patient safety event occurred. Supports multi-facility enterprise reporting and CMS Conditions of Participation compliance.',
-    `clinician_id` BIGINT COMMENT 'Reference to the clinician or staff member who initially reported the patient safety event. Used for follow-up and reporter acknowledgment workflows.',
-    `contrast_admin_id` BIGINT COMMENT 'Foreign key linking to radiology.contrast_admin. Business justification: Contrast administration adverse reactions (extravasation, anaphylaxis, contrast-induced nephropathy) are reportable safety events. Event investigation requires linking to the administration record for',
-    `critical_result_id` BIGINT COMMENT 'Foreign key linking to radiology.critical_result. Business justification: Critical finding notification failures are sentinel events under TJC standards. Safety event tracking must link to the specific critical result notification to measure compliance with read-back and ac',
-    `consent_record_id` BIGINT COMMENT 'Foreign key linking to consent.consent_record. Business justification: TJC sentinel event standards require documented patient/family consent before disclosure of safety event details. Disclosure_status field indicates when consent is needed; this links to the actual con',
-    `employee_id` BIGINT COMMENT 'add column workforce_employee_involved_id (BIGINT) with FK to workforce.employee.employee_id - safety events already have a reporting employee FK but need a separate FK for the involved/affected employee',
-    `environmental_service_request_id` BIGINT COMMENT 'Foreign key linking to facility.environmental_service_request. Business justification: Healthcare-acquired infections linked to environmental cleaning failures require EVS request tracking. Infection prevention teams investigate cleaning protocol compliance, disinfectant product used, a',
-    `equipment_asset_id` BIGINT COMMENT 'Foreign key linking to facility.equipment_asset. Business justification: Device-related adverse events (infusion pump programming errors, ventilator malfunctions, defibrillator failures) require equipment asset linkage for FDA MedWatch reporting, manufacturer recall tracki',
-    `hazardous_material_id` BIGINT COMMENT 'Foreign key linking to facility.hazardous_material. Business justification: Hazardous material exposure events (chemotherapy spills, radioactive material incidents, chemical burns) require hazmat inventory linkage for OSHA reporting, EPA notification, and SDS documentation. S',
-    `hotline_report_id` BIGINT COMMENT 'Foreign key linking to compliance.hotline_report. Business justification: Patient safety events are frequently reported through compliance hotlines by staff, patients, or families. Linking events to originating hotline reports enables tracking of allegation investigation, r',
-    `imaging_order_id` BIGINT COMMENT 'Foreign key linking to radiology.imaging_order. Business justification: Imaging orders trigger safety events (wrong-site imaging, contrast reactions, radiation overexposure). TJC and CMS require linking safety events to originating orders for root cause analysis and corre',
-    `investigation_id` BIGINT COMMENT 'Foreign key linking to compliance.investigation. Business justification: Patient safety events trigger formal compliance investigations to determine regulatory violations, root causes, disclosure requirements, and potential sanctions. Investigations assess whether events c',
-    `maintenance_order_id` BIGINT COMMENT 'Foreign key linking to facility.maintenance_order. Business justification: Equipment failure-related adverse events (HVAC failures causing temperature excursions, medical gas system failures, emergency generator failures during procedures) require maintenance work order link',
-    `material_master_id` BIGINT COMMENT 'Foreign key linking to supply.material_master. Business justification: Patient safety events frequently involve specific medical devices or supplies (defective equipment, wrong item administered). FDA adverse event reporting and root cause analysis require tracking which',
-    `mpi_record_id` BIGINT COMMENT 'Reference to the patient involved in the safety event. Links to the Master Patient Index (MPI) record. Protected Health Information (PHI) under HIPAA.',
-    `or_suite_id` BIGINT COMMENT 'Foreign key linking to facility.or_suite. Business justification: Surgical safety events (retained foreign objects, wrong-site surgery, surgical site infections) require OR suite linkage for environmental factor analysis (laminar airflow failures, sterilization issu',
-    `primary_patient_employee_id` BIGINT COMMENT 'Reference to the risk management staff member assigned to oversee this patient safety event, coordinate disclosure, and manage potential liability. Supports risk management workflow and accountability.',
-    `dose_record_id` BIGINT COMMENT 'Foreign key linking to radiology.dose_record. Business justification: Radiation overexposure incidents (dose alert threshold breaches, cumulative dose concerns) are patient safety events requiring investigation. Safety event reporting must link to the dose record for ph',
-    `radiology_study_id` BIGINT COMMENT 'Foreign key linking to radiology.study. Business justification: Imaging studies are direct sources of safety events (equipment malfunction, patient falls during scan, adverse reactions). Safety event investigation and regulatory reporting require study-level trace',
-    `room_id` BIGINT COMMENT 'Foreign key linking to facility.room. Business justification: Room-level precision critical for healthcare-acquired infection tracking, environmental hazard analysis (negative pressure room failures), and room-specific safety interventions. Infection prevention ',
-    `subject_enrollment_id` BIGINT COMMENT 'Foreign key linking to research.subject_enrollment. Business justification: Safety events in research subjects trigger dual reporting: institutional patient safety system AND research adverse event reporting to IRB/sponsor/FDA. Linkage enables proper classification, expedited',
-    `triage_assessment_id` BIGINT COMMENT 'Foreign key linking to encounter.triage_assessment. Business justification: Safety events (treatment delays, missed diagnoses, deterioration) often originate in ED triage. Real business process: Safety event investigations trace back to triage assessment for root cause analys',
-    `udi_record_id` BIGINT COMMENT 'Foreign key linking to supply.udi_record. Business justification: When safety events involve implantable devices, linking to the specific UDI record provides complete device traceability required by FDA MedWatch reporting and enables correlation with manufacturer re',
-    `visit_id` BIGINT COMMENT 'Reference to the clinical encounter (Admit-Discharge-Transfer event) during which the patient safety event occurred. Supports linkage to Admit Discharge Transfer (ADT) data for context.',
-    `action_plan_completion_date` DATE COMMENT 'Actual date on which all corrective action plan items were completed and implemented. Used to confirm closure of the safety event lifecycle.',
-    `action_plan_due_date` DATE COMMENT 'Target date by which all corrective action plan items must be completed. Submitted to TJC as part of the sentinel event response package.',
-    `action_plan_status` STRING COMMENT 'Current completion status of the corrective action plan. Tracks progress from initiation through implementation and effectiveness verification. Drives quality management follow-up workflows.. Valid values are `not_started|in_progress|completed|overdue|verified`',
-    `action_plan_summary` STRING COMMENT 'Narrative summary of the corrective action plan developed in response to the root cause analysis findings. Describes systemic changes, process improvements, and preventive measures to be implemented.',
-    `confidentiality_indicator` BOOLEAN COMMENT 'Indicates whether this safety event record is protected under peer review or quality assurance confidentiality statutes, which may restrict discoverability in legal proceedings. Varies by state law.',
-    `contributing_factors_summary` STRING COMMENT 'Narrative summary of the contributing factors identified at the time of initial event report, prior to formal Root Cause Analysis (RCA). May be updated as investigation progresses. Supports early causal analysis.',
-    `created_timestamp` TIMESTAMP COMMENT 'Timestamp when this patient safety event record was first created in the data system. Audit trail field for data governance and HIPAA compliance.',
-    `disclosure_date` DATE COMMENT 'Date on which the patient and/or family were formally informed of the safety event and its circumstances. Required for TJC accreditation and CMS Conditions of Participation compliance.',
-    `disclosure_status` STRING COMMENT 'Status of the patient and/or family disclosure process for this safety event. Tracks whether disclosure has been completed per TJC and CMS requirements for transparent communication of unanticipated outcomes.. Valid values are `not_required|pending|disclosed|declined_by_patient`',
-    `effectiveness_verification_date` DATE COMMENT 'Date on which the effectiveness of the corrective action plan was formally verified and documented. Confirms that implemented changes achieved the intended safety improvement. Required for TJC sentinel event closure.',
-    `effectiveness_verified` BOOLEAN COMMENT 'Indicates whether the corrective action plan has been formally verified as effective in preventing recurrence of the safety event. Required for TJC sentinel event final closure.',
-    `event_category` STRING COMMENT 'Standardized category of the safety event per AHRQ Common Formats taxonomy (e.g., medication or other substance, fall, pressure ulcer, surgery or anesthesia, healthcare-associated infection, perinatal, device or medical/surgical supply, blood or blood product, environment or infrastructure). [ENUM-REF-CANDIDATE: medication_or_substance|fall|pressure_ulcer|surgery_or_anesthesia|healthcare_associated_infection|perinatal|device_or_supply|blood_or_blood_product|environment_or_infrastructure|other — promote to reference product]',
-    `event_description` STRING COMMENT 'Free-text narrative description of what occurred during the patient safety event, including the sequence of events, conditions at the time, and immediate context. Contains Protected Health Information (PHI). Used in Root Cause Analysis (RCA) and regulatory reporting.',
-    `event_number` STRING COMMENT 'Externally-known, human-readable identifier assigned to the safety event at time of report (e.g., PSE-2024-00342). Used for cross-system reference, regulatory submissions, and communication with TJC or CMS.',
-    `event_status` STRING COMMENT 'Current lifecycle status of the patient safety event from initial report through investigation closure. Drives workflow routing in the safety event management system.. Valid values are `reported|under_review|rca_in_progress|action_plan_active|closed|voided`',
-    `event_timestamp` TIMESTAMP COMMENT 'Date and time when the patient safety event actually occurred (real-world event time). Distinct from the report timestamp. Critical for timeline reconstruction during Root Cause Analysis (RCA).',
-    `event_type` STRING COMMENT 'Classification of the safety event by severity tier. Sentinel events require TJC review and root cause analysis (RCA). Near misses and unsafe conditions support proactive safety culture. [ENUM-REF-CANDIDATE: sentinel_event|serious_safety_event|near_miss|unsafe_condition|no_harm_event — promote to reference product if additional types are needed]. Valid values are `sentinel_event|serious_safety_event|near_miss|unsafe_condition|no_harm_event`',
-    `hai_event_type` STRING COMMENT 'If the safety event involves a Healthcare-Associated Infection (HAI), specifies the HAI type: Central Line-Associated Bloodstream Infection (CLABSI), Catheter-Associated Urinary Tract Infection (CAUTI), Surgical Site Infection (SSI), Ventilator-Associated Pneumonia (VAP), C. difficile (CDIFF), or none. Supports CDC NHSN reporting.. Valid values are `CLABSI|CAUTI|SSI|VAP|CDIFF|none`',
-    `harm_level_code` STRING COMMENT 'Harm level assigned to the event using the National Coordinating Council for Medication Error Reporting and Prevention (NCC MERP) index or equivalent Severity of Harm scale. Categories A–I represent no harm through death. Values A–F shown; full scale: [ENUM-REF-CANDIDATE: A|B|C|D|E|F|G|H|I — promote to reference product]. Valid values are `A|B|C|D|E|F`',
-    `harm_level_description` STRING COMMENT 'Human-readable description of the harm level assigned (e.g., Reached the patient and required intervention to preclude harm, Contributed to or resulted in permanent patient harm). Complements the NCC MERP code for reporting and disclosure.',
-    `immediate_actions_taken` STRING COMMENT 'Free-text description of the immediate clinical and administrative actions taken at the time of the event to mitigate harm (e.g., medication reversal, code response, physician notification, patient transfer). Captured at time of initial report.',
-    `is_cms_reportable` BOOLEAN COMMENT 'Indicates whether this event must be reported to the Centers for Medicare and Medicaid Services (CMS) under Conditions of Participation or Value-Based Purchasing (VBP) quality reporting requirements.',
-    `is_sentinel_event` BOOLEAN COMMENT 'Indicates whether this patient safety event meets The Joint Commission (TJC) definition of a sentinel event requiring formal review and root cause analysis submission. Drives TJC reporting workflow.',
-    `is_state_reportable` BOOLEAN COMMENT 'Indicates whether this event must be reported to the applicable State Department of Health under mandatory adverse event reporting laws. State reporting requirements vary by jurisdiction.',
-    `location_unit` STRING COMMENT 'Clinical unit or department where the patient safety event occurred (e.g., ICU, ED, OR, Medical-Surgical Unit, Pharmacy). Supports unit-level safety performance analysis and TJC survey readiness.',
-    `patient_outcome` STRING COMMENT 'Clinical outcome experienced by the patient as a result of the safety event. Drives regulatory reporting obligations and sentinel event classification. Contains Protected Health Information (PHI).. Valid values are `no_harm|temporary_harm|permanent_harm|required_intervention|death|unknown`',
-    `report_timestamp` TIMESTAMP COMMENT 'Date and time when the patient safety event was formally reported into the safety event management system. Used to calculate reporting lag and compliance with internal reporting windows.',
-    `review_completion_date` DATE COMMENT 'Actual date on which the formal investigation review was completed and findings were finalized. Used to calculate compliance with TJC 45-day RCA completion requirement.',
-    `review_due_date` DATE COMMENT 'Target completion date for the formal investigation review. For TJC sentinel events, this is typically 45 days from event identification. Drives escalation and compliance tracking.',
-    `review_start_date` DATE COMMENT 'Date on which the formal investigation review (RCA, ACA, or peer review) was initiated. TJC requires RCA completion within 45 days of sentinel event identification.',
-    `review_team_members` STRING COMMENT 'Comma-separated list of names or role titles of individuals who participated in the formal investigation review team (RCA or ACA). Supports accountability tracking and TJC documentation requirements.',
-    `review_type` STRING COMMENT 'Type of formal investigation review conducted for this event. Root Cause Analysis (RCA) is required for TJC sentinel events. Apparent Cause Analysis (ACA) is used for less severe events. Apparent Cause Analysis is a lighter-weight structured review.. Valid values are `RCA|ACA|apparent_cause|peer_review|no_review_required`',
-    `root_causes_identified` STRING COMMENT 'Narrative summary of the root causes identified through the formal Root Cause Analysis (RCA) or Apparent Cause Analysis (ACA). Documents the fundamental systemic factors that allowed the event to occur. Supports action plan development.',
-    `source_event_reference` STRING COMMENT 'Original identifier of the patient safety event in the source operational system (e.g., Epic incident report ID, RL Solutions event number). Enables traceability back to the system of record.',
-    `tjc_acknowledgment_date` DATE COMMENT 'Date on which The Joint Commission (TJC) formally acknowledged receipt and acceptance of the sentinel event RCA submission. Marks completion of the TJC reporting obligation.',
-    `tjc_submission_date` DATE COMMENT 'Date on which the sentinel event report and Root Cause Analysis (RCA) action plan were formally submitted to The Joint Commission (TJC). Required for TJC accreditation compliance.',
-    `updated_timestamp` TIMESTAMP COMMENT 'Timestamp when this patient safety event record was most recently modified. Supports audit trail, change tracking, and incremental ETL processing.',
+    `patient_safety_event_id` BIGINT COMMENT 'Primary key',
+    `bed_assignment_id` BIGINT COMMENT 'FK to bed assignment',
+    `bed_id` BIGINT COMMENT 'Unique identifier for the bed within the quality patient safety event record.',
+    `care_site_id` BIGINT COMMENT 'FK to care site',
+    `clinician_id` BIGINT COMMENT 'FK to clinician',
+    `environmental_service_request_id` BIGINT COMMENT 'FK to environmental service request',
+    `equipment_asset_id` BIGINT COMMENT 'FK to equipment asset',
+    `hazardous_material_id` BIGINT COMMENT 'FK to hazardous material',
+    `hotline_report_id` BIGINT COMMENT 'FK to hotline report',
+    `investigation_id` BIGINT COMMENT 'FK to investigation',
+    `maintenance_order_id` BIGINT COMMENT 'FK to maintenance order',
+    `material_master_id` BIGINT COMMENT 'FK to material master',
+    `mpi_record_id` BIGINT COMMENT 'FK to MPI record',
+    `or_suite_id` BIGINT COMMENT 'FK to OR suite',
+    `employee_id` BIGINT COMMENT 'FK to employee',
+    `radiology_study_id` BIGINT COMMENT 'FK to radiology study',
+    `room_id` BIGINT COMMENT 'FK to room',
+    `triage_assessment_id` BIGINT COMMENT 'FK to triage assessment',
+    `udi_record_id` BIGINT COMMENT 'FK to UDI record',
+    `visit_id` BIGINT COMMENT 'FK to visit',
+    `action_plan_completion_date` DATE COMMENT 'Timestamp capturing the action plan completion date associated with the quality patient safety event record.',
+    `action_plan_due_date` DATE COMMENT 'Timestamp capturing the action plan due date associated with the quality patient safety event record.',
+    `action_plan_status` STRING COMMENT 'The action plan status value classifying the quality patient safety event record.',
+    `action_plan_summary` STRING COMMENT 'The action plan summary of the quality patient safety event record.',
+    `confidentiality_indicator` BOOLEAN COMMENT 'The confidentiality indicator of the quality patient safety event record.',
+    `contributing_factors_summary` STRING COMMENT 'The contributing factors summary of the quality patient safety event record.',
+    `created_timestamp` TIMESTAMP COMMENT 'Record creation timestamp',
+    `disclosure_date` DATE COMMENT 'Timestamp capturing the disclosure date associated with the quality patient safety event record.',
+    `disclosure_status` STRING COMMENT 'The disclosure status value classifying the quality patient safety event record.',
+    `effectiveness_verification_date` DATE COMMENT 'Timestamp capturing the effectiveness verification date associated with the quality patient safety event record.',
+    `effectiveness_verified` BOOLEAN COMMENT 'Effectiveness verified flag',
+    `event_category` STRING COMMENT 'The event category of the quality patient safety event record.',
+    `event_description` STRING COMMENT 'The event description of the quality patient safety event record.',
+    `event_number` STRING COMMENT 'The event number of the quality patient safety event record.',
+    `event_status` STRING COMMENT 'The event status value classifying the quality patient safety event record.',
+    `event_timestamp` TIMESTAMP COMMENT 'The event timestamp of the quality patient safety event record.',
+    `event_type` STRING COMMENT 'The event type value classifying the quality patient safety event record.',
+    `hai_event_type` STRING COMMENT 'The hai event type value classifying the quality patient safety event record.',
+    `harm_level_code` STRING COMMENT 'The harm level code value classifying the quality patient safety event record.',
+    `harm_level_description` STRING COMMENT 'The harm level description of the quality patient safety event record.',
+    `immediate_actions_taken` STRING COMMENT 'The immediate actions taken of the quality patient safety event record.',
+    `is_cms_reportable` BOOLEAN COMMENT 'CMS reportable flag',
+    `is_sentinel_event` BOOLEAN COMMENT 'Sentinel event flag',
+    `is_state_reportable` BOOLEAN COMMENT 'State reportable flag',
+    `location_unit` STRING COMMENT 'The location unit of the quality patient safety event record.',
+    `patient_outcome` STRING COMMENT 'The patient outcome of the quality patient safety event record.',
+    `report_timestamp` TIMESTAMP COMMENT 'The report timestamp of the quality patient safety event record.',
+    `review_completion_date` DATE COMMENT 'Timestamp capturing the review completion date associated with the quality patient safety event record.',
+    `review_due_date` DATE COMMENT 'Timestamp capturing the review due date associated with the quality patient safety event record.',
+    `review_start_date` DATE COMMENT 'Timestamp capturing the review start date associated with the quality patient safety event record.',
+    `review_team_members` STRING COMMENT 'The review team members of the quality patient safety event record.',
+    `review_type` STRING COMMENT 'The review type value classifying the quality patient safety event record.',
+    `root_causes_identified` STRING COMMENT 'The root causes identified of the quality patient safety event record.',
+    `source_event_reference` STRING COMMENT 'The source event reference of the quality patient safety event record.',
+    `tjc_acknowledgment_date` DATE COMMENT 'Timestamp capturing the tjc acknowledgment date associated with the quality patient safety event record.',
+    `tjc_submission_date` DATE COMMENT 'Timestamp capturing the tjc submission date associated with the quality patient safety event record.',
+    `updated_timestamp` TIMESTAMP COMMENT 'Last update timestamp',
+    `vibe_structure_marker` STRING COMMENT 'Structure enforcement marker for 22-domain/541-product superset.',
     CONSTRAINT pk_patient_safety_event PRIMARY KEY(`patient_safety_event_id`)
-) COMMENT 'Transactional record of patient safety events and their formal investigations. Captures event data: event type, harm level (NCC MERP or Severity of Harm scale), event description, contributing factors, immediate actions taken, patient outcome, disclosure status, and regulatory reporting obligations (TJC sentinel event, CMS). Captures investigation data: review type (RCA, ACA, apparent cause), review team members, root causes identified, contributing factors analysis, action plan items, corrective action due dates, completion status, and effectiveness verification. SSOT for the full patient safety event lifecycle from initial report through root cause analysis to action plan completion. Supports TJC sentinel event review, CMS Conditions of Participation compliance, and organizational patient safety culture.';
+) COMMENT 'Patient safety incident reports including near misses, adverse events, and sentinel events. Supports root cause analysis and corrective action tracking. Business justification: Required for TJC accreditation, state mandatory reporting, and PSO participation.';
 
 CREATE OR REPLACE TABLE `vibe_healthcare_v1`.`quality`.`safety_event_review` (
-    `safety_event_review_id` BIGINT COMMENT 'Unique surrogate identifier for the safety event review record. Primary key for the safety_event_review data product in the quality domain.',
-    `care_site_id` BIGINT COMMENT 'Identifier of the healthcare facility (hospital, clinic, outpatient center) where the safety event and subsequent review occurred.',
-    `quality_committee_id` BIGINT COMMENT 'Foreign key linking to quality.committee. Business justification: Safety event reviews (RCA/ACA) are conducted by or presented to committees (e.g., Patient Safety Committee, Risk Management Committee). This FK enables tracking which committee conducted or reviewed t',
-    `corrective_action_plan_id` BIGINT COMMENT 'Foreign key linking to compliance.corrective_action_plan. Business justification: Safety event reviews generate corrective action plans that must be tracked in the compliance system for regulatory submission to CMS, TJC, and state agencies. CAPs require verification, monitoring, an',
-    `employee_id` BIGINT COMMENT 'Identifier of the primary clinician, quality officer, or patient safety professional leading the RCA/ACA review team. Typically a physician, risk manager, or patient safety officer.',
-    `mpi_record_id` BIGINT COMMENT 'Identifier of the patient involved in the safety event under review. Protected Health Information (PHI) per HIPAA. Links to the patient master record.',
-    `patient_safety_event_id` BIGINT COMMENT 'Reference to the originating patient safety event that triggered this review. Links the review record back to the reported safety event.',
-    `prior_review_safety_event_review_id` BIGINT COMMENT 'Reference to a previous safety event review of the same event type, populated when recurrence_flag is True. Enables longitudinal tracking of recurring safety issues and effectiveness of prior corrective actions.',
-    `visit_id` BIGINT COMMENT 'Reference to the clinical encounter (inpatient admission, ED visit, outpatient visit) during which the safety event occurred.',
-    `action_plan_completed_date` DATE COMMENT 'Actual date on which all corrective action plan items were fully implemented. Used to measure timeliness of corrective action completion against the action_plan_due_date.',
-    `action_plan_due_date` DATE COMMENT 'Target completion date for the overall corrective action plan. TJC requires action plan submission within 45 days of sentinel event determination. Drives compliance monitoring and escalation.',
-    `action_plan_status` STRING COMMENT 'Current implementation status of the corrective action plan. Tracks whether corrective actions are on track, completed, or overdue relative to the action_plan_due_date.. Valid values are `Not Started|In Progress|Completed|Overdue|Cancelled`',
-    `action_plan_summary` STRING COMMENT 'Narrative summary of the corrective action plan developed in response to the identified root causes. Describes systemic improvements, process changes, and preventive measures to reduce recurrence risk.',
-    `care_setting` STRING COMMENT 'Clinical care setting where the safety event occurred (e.g., Inpatient unit, Emergency Department (ED), Intensive Care Unit (ICU), Operating Room (OR), Outpatient). Used for stratified safety analytics and benchmarking. [ENUM-REF-CANDIDATE: Inpatient|Emergency Department|ICU|Operating Room|Outpatient|Ambulatory|Long-Term Care — promote to reference product]',
-    `cms_reportable_flag` BOOLEAN COMMENT 'Indicates whether this safety event requires reporting to the Centers for Medicare and Medicaid Services (CMS) under Conditions of Participation or Hospital-Acquired Condition (HAC) reduction program requirements.',
-    `contributing_factors_summary` STRING COMMENT 'Narrative description of contributing factors identified during the review, including human factors, communication failures, equipment issues, environmental conditions, and organizational/system factors per TJC RCA framework.',
-    `created_timestamp` TIMESTAMP COMMENT 'Timestamp when this safety event review record was first created in the system. Supports audit trail and data lineage requirements.',
-    `department_unit` STRING COMMENT 'Name of the specific clinical department or nursing unit where the safety event occurred (e.g., 4 North Med/Surg, MICU, OR Suite 3). Supports unit-level safety performance reporting.',
-    `disclosure_date` DATE COMMENT 'Date on which the safety event was disclosed to the patient and/or family. Populated when disclosure_to_patient_flag is True. Supports compliance with CMS and TJC patient rights requirements.',
-    `disclosure_to_patient_flag` BOOLEAN COMMENT 'Indicates whether the safety event and its findings were disclosed to the patient and/or family per CMS Conditions of Participation and TJC patient rights standards. True = disclosure completed.',
-    `effectiveness_verification_date` DATE COMMENT 'Date on which the effectiveness of the implemented corrective actions was formally assessed and documented. Supports TJC follow-up review requirements.',
-    `effectiveness_verification_notes` STRING COMMENT 'Narrative documentation of the effectiveness verification findings, including metrics used, data reviewed, and conclusions drawn about whether corrective actions achieved the intended risk reduction.',
-    `effectiveness_verification_status` STRING COMMENT 'Status of the post-implementation effectiveness check confirming whether corrective actions successfully reduced or eliminated the identified risk. TJC requires evidence of effectiveness measurement for sentinel event action plans.. Valid values are `Pending|In Progress|Verified Effective|Verified Ineffective|Inconclusive`',
-    `event_category` STRING COMMENT 'Severity classification of the patient safety event under review per TJC and AHRQ taxonomy. Sentinel Events require mandatory RCA and TJC reporting. Drives review type selection and regulatory notification obligations.. Valid values are `Sentinel Event|Serious Safety Event|Near Miss|Precursor|No Harm Event`',
-    `event_date` DATE COMMENT 'Calendar date on which the patient safety event occurred. Used as the principal real-world event date for regulatory reporting timelines and trending analysis.',
-    `event_type_code` STRING COMMENT 'Standardized code classifying the type of patient safety event (e.g., medication error, fall, wrong-site surgery, HAI, pressure injury) per AHRQ Common Formats or NQF Serious Reportable Events taxonomy.',
-    `event_type_description` STRING COMMENT 'Human-readable description of the safety event type corresponding to the event_type_code. Provides narrative context for reporting and analytics.',
-    `hai_event_type` STRING COMMENT 'If the safety event involves a Healthcare-Associated Infection (HAI), specifies the HAI type: Central Line-Associated Bloodstream Infection (CLABSI), Catheter-Associated Urinary Tract Infection (CAUTI), Surgical Site Infection (SSI), Ventilator-Associated Pneumonia (VAP), C. difficile (CDIFF), MRSA, or None. Supports CDC NHSN reporting. [ENUM-REF-CANDIDATE: CLABSI|CAUTI|SSI|VAP|CDIFF|MRSA|None — 7 candidates stripped; promote to reference product]',
-    `harm_level` STRING COMMENT 'Severity of harm to the patient using the National Coordinating Council for Medication Error Reporting and Prevention (NCC MERP) Index or equivalent harm scale (E through I for harm-causing events). Drives regulatory reporting thresholds and review intensity. [ENUM-REF-CANDIDATE: E - Temporary Harm|F - Temporary Harm with Intervention|G - Permanent Harm|H - Life-Sustaining Intervention|I - Death — promote to reference product]. Valid values are `E - Temporary Harm|F - Temporary Harm with Intervention|G - Permanent Harm|H - Life-Sustaining Intervention|I - Death`',
-    `icd10_diagnosis_code` STRING COMMENT 'ICD-10-CM diagnosis code most closely associated with the patient safety event or resulting harm. Used for clinical coding, regulatory reporting, and linkage to claims data for HAC identification.. Valid values are `^[A-Z][0-9]{2}(.[A-Z0-9]{1,4})?$`',
-    `patient_safety_indicator_code` STRING COMMENT 'AHRQ Patient Safety Indicator (PSI) code associated with this safety event, if applicable (e.g., PSI-03 Pressure Ulcer, PSI-06 Iatrogenic Pneumothorax, PSI-90 Composite). Used for CMS VBP and MIPS quality reporting.',
-    `quality_committee_review_flag` BOOLEAN COMMENT 'Indicates whether this safety event review was escalated to and reviewed by the hospital Quality Improvement Committee or Patient Safety Committee. Required for TJC governance and CMS QAPI program compliance.',
-    `recurrence_flag` BOOLEAN COMMENT 'Indicates whether this safety event represents a recurrence of a previously reviewed event type within the same department or facility. True = recurrence detected. Triggers escalated review and pattern analysis.',
-    `review_approved_date` DATE COMMENT 'Date on which the completed review findings and action plan were formally approved by the quality committee, patient safety officer, or governing body.',
-    `review_completed_date` DATE COMMENT 'Date on which the safety event review (RCA/ACA) was formally completed and all findings documented. Used to measure compliance with TJC 45-day completion requirement.',
-    `review_initiated_date` DATE COMMENT 'Date on which the formal Root Cause Analysis (RCA) or Apparent Cause Analysis (ACA) review process was officially initiated. TJC requires RCA initiation within 45 days of a sentinel event.',
-    `review_number` STRING COMMENT 'Externally-known, human-readable business identifier for this safety event review (e.g., RCA-2024-00123). Used for tracking, reporting, and regulatory correspondence with TJC and CMS.',
-    `review_status` STRING COMMENT 'Current lifecycle state of the safety event review workflow. Tracks progression from initiation through completion and closure for TJC survey readiness and CMS reporting.. Valid values are `Initiated|In Progress|Pending Approval|Completed|Closed|Cancelled`',
-    `review_team_composition` STRING COMMENT 'Narrative description of the multidisciplinary review team members and their roles (e.g., physician, nurse, pharmacist, risk manager, quality officer, department director). TJC requires interdisciplinary team participation in RCA.',
-    `review_team_size` STRING COMMENT 'Total number of individuals who participated in the formal safety event review team. Supports TJC interdisciplinary team composition compliance verification.',
-    `review_type` STRING COMMENT 'Classification of the formal review methodology applied: Root Cause Analysis (RCA) for serious/sentinel events, Apparent Cause Analysis (ACA) for less severe events, Failure Mode and Effects Analysis (FMEA) for proactive risk, Peer Review for clinical quality, Mortality Review for unexpected deaths, or Near Miss Review. [ENUM-REF-CANDIDATE: RCA|ACA|FMEA|Peer Review|Mortality Review|Near Miss Review — promote to reference product]. Valid values are `RCA|ACA|FMEA|Peer Review|Mortality Review|Near Miss Review`',
-    `risk_score` STRING COMMENT 'Numeric risk priority score assigned to the safety event, typically calculated as Severity × Probability × Detectability (e.g., Risk Priority Number from FMEA methodology). Ranges typically 1–1000. Drives prioritization of corrective actions.',
-    `root_cause_category` STRING COMMENT 'Primary categorical classification of the root cause per TJC RCA framework (e.g., Human Factors, Communication, Training, Environment/Equipment, Rules/Policies/Procedures, Fatigue, Assessment). [ENUM-REF-CANDIDATE: Human Factors|Communication|Training|Environment|Equipment|Rules/Policies|Fatigue|Assessment — promote to reference product]',
-    `root_cause_summary` STRING COMMENT 'Narrative summary of the primary root cause(s) identified through the Root Cause Analysis (RCA) or Apparent Cause Analysis (ACA) process. Documents the fundamental system or process failures that contributed to the event.',
-    `source_system_code` STRING COMMENT 'Identifies the operational system of record from which this safety event review record originated (e.g., Epic EHR, Cerner Millennium, RL Solutions patient safety event reporting system). Supports data lineage and ETL traceability. [ENUM-REF-CANDIDATE: Epic|Cerner|MEDITECH|RL Solutions|Quantros|Origami|Manual — 7 candidates stripped; promote to reference product]',
-    `state_reportable_flag` BOOLEAN COMMENT 'Indicates whether this safety event meets state Department of Health mandatory adverse event reporting requirements. Reporting thresholds vary by state jurisdiction.',
-    `tjc_reportable_flag` BOOLEAN COMMENT 'Indicates whether this safety event meets The Joint Commission (TJC) criteria for mandatory sentinel event reporting. True = TJC notification required within 5 business days of event determination.',
-    `tjc_reported_date` DATE COMMENT 'Date on which the sentinel event was formally reported to The Joint Commission (TJC). Required for TJC accreditation compliance tracking. Null if tjc_reportable_flag is False.',
-    `updated_timestamp` TIMESTAMP COMMENT 'Timestamp when this safety event review record was last modified. Supports audit trail, change tracking, and data lineage requirements.',
+    `safety_event_review_id` BIGINT COMMENT 'Primary key',
+    `care_site_id` BIGINT COMMENT 'FK to care site',
+    `quality_committee_id` BIGINT COMMENT 'FK to committee',
+    `corrective_action_plan_id` BIGINT COMMENT 'FK to corrective action plan',
+    `employee_id` BIGINT COMMENT 'FK to employee',
+    `mpi_record_id` BIGINT COMMENT 'FK to MPI record',
+    `patient_safety_event_id` BIGINT COMMENT 'FK to patient safety event',
+    `prior_review_safety_event_review_id` BIGINT COMMENT 'FK to prior review',
+    `visit_id` BIGINT COMMENT 'FK to visit',
+    `action_plan_completed_date` DATE COMMENT 'Timestamp capturing the action plan completed date associated with the quality safety event review record.',
+    `action_plan_due_date` DATE COMMENT 'Timestamp capturing the action plan due date associated with the quality safety event review record.',
+    `action_plan_status` STRING COMMENT 'The action plan status value classifying the quality safety event review record.',
+    `action_plan_summary` STRING COMMENT 'The action plan summary of the quality safety event review record.',
+    `care_setting` STRING COMMENT 'The care setting of the quality safety event review record.',
+    `cms_reportable_flag` BOOLEAN COMMENT 'The cms reportable flag of the quality safety event review record.',
+    `contributing_factors_summary` STRING COMMENT 'The contributing factors summary of the quality safety event review record.',
+    `created_timestamp` TIMESTAMP COMMENT 'Record creation timestamp',
+    `department_unit` STRING COMMENT 'The department unit of the quality safety event review record.',
+    `disclosure_date` DATE COMMENT 'Timestamp capturing the disclosure date associated with the quality safety event review record.',
+    `disclosure_to_patient_flag` BOOLEAN COMMENT 'The disclosure to patient flag of the quality safety event review record.',
+    `effectiveness_verification_date` DATE COMMENT 'Timestamp capturing the effectiveness verification date associated with the quality safety event review record.',
+    `effectiveness_verification_notes` STRING COMMENT 'The effectiveness verification notes of the quality safety event review record.',
+    `effectiveness_verification_status` STRING COMMENT 'The effectiveness verification status value classifying the quality safety event review record.',
+    `event_category` STRING COMMENT 'The event category of the quality safety event review record.',
+    `event_date` DATE COMMENT 'Timestamp capturing the event date associated with the quality safety event review record.',
+    `event_type_code` STRING COMMENT 'The event type code value classifying the quality safety event review record.',
+    `event_type_description` STRING COMMENT 'The event type description of the quality safety event review record.',
+    `hai_event_type` STRING COMMENT 'The hai event type value classifying the quality safety event review record.',
+    `harm_level` STRING COMMENT 'The harm level of the quality safety event review record.',
+    `icd10_diagnosis_code` STRING COMMENT 'The icd10 diagnosis code value classifying the quality safety event review record.',
+    `patient_safety_indicator_code` STRING COMMENT 'The patient safety indicator code value classifying the quality safety event review record.',
+    `quality_committee_review_flag` BOOLEAN COMMENT 'The quality committee review flag of the quality safety event review record.',
+    `recurrence_flag` BOOLEAN COMMENT 'The recurrence flag of the quality safety event review record.',
+    `review_approved_date` DATE COMMENT 'Timestamp capturing the review approved date associated with the quality safety event review record.',
+    `review_completed_date` DATE COMMENT 'Timestamp capturing the review completed date associated with the quality safety event review record.',
+    `review_initiated_date` DATE COMMENT 'Timestamp capturing the review initiated date associated with the quality safety event review record.',
+    `review_number` STRING COMMENT 'The review number of the quality safety event review record.',
+    `review_status` STRING COMMENT 'The review status value classifying the quality safety event review record.',
+    `review_team_composition` STRING COMMENT 'The review team composition of the quality safety event review record.',
+    `review_team_size` STRING COMMENT 'The review team size of the quality safety event review record.',
+    `review_type` STRING COMMENT 'The review type value classifying the quality safety event review record.',
+    `risk_score` STRING COMMENT 'The risk score of the quality safety event review record.',
+    `root_cause_category` STRING COMMENT 'The root cause category of the quality safety event review record.',
+    `root_cause_summary` STRING COMMENT 'The root cause summary of the quality safety event review record.',
+    `source_system_code` STRING COMMENT 'The source system code value classifying the quality safety event review record.',
+    `state_reportable_flag` BOOLEAN COMMENT 'The state reportable flag of the quality safety event review record.',
+    `tjc_reportable_flag` BOOLEAN COMMENT 'The tjc reportable flag of the quality safety event review record.',
+    `tjc_reported_date` DATE COMMENT 'Timestamp capturing the tjc reported date associated with the quality safety event review record.',
+    `updated_timestamp` TIMESTAMP COMMENT 'Last update timestamp',
+    `vibe_structure_marker` STRING COMMENT 'Structure enforcement marker for 22-domain/541-product superset.',
     CONSTRAINT pk_safety_event_review PRIMARY KEY(`safety_event_review_id`)
-) COMMENT 'Transactional record of the formal root cause analysis (RCA) or apparent cause analysis (ACA) conducted following a patient safety event. Captures review type, review team members, root causes identified, contributing factors, action plan items, corrective action due dates, completion status, and effectiveness verification. Supports TJC accreditation and CMS quality improvement requirements.';
+) COMMENT 'Peer review and root cause analysis documentation for patient safety events. Protected under state peer review statutes. Business justification: Supports quality improvement, risk management, and accreditation compliance.';
 
 CREATE OR REPLACE TABLE `vibe_healthcare_v1`.`quality`.`mortality_review` (
-    `mortality_review_id` BIGINT COMMENT 'Unique surrogate identifier for each inpatient mortality review case record in the quality and peer review system. Primary key for the mortality_review data product.',
-    `care_site_id` BIGINT COMMENT 'Reference to the facility (hospital or care site) where the patient death occurred. Supports multi-facility enterprise mortality reporting and CMS facility-level quality measure submission.',
-    `quality_committee_id` BIGINT COMMENT 'Reference to the peer review or quality committee responsible for conducting this mortality review. Supports committee-level workload tracking and governance reporting.',
-    `drg_id` BIGINT COMMENT 'Foreign key linking to reference.drg. Business justification: Mortality reviews analyze DRG assignments to assess case mix impact on mortality rates and identify CMI documentation opportunities. Quality committees require DRG reference data for risk-adjusted mor',
-    `investigation_id` BIGINT COMMENT 'Foreign key linking to compliance.investigation. Business justification: Mortality reviews identifying care quality issues, policy violations, or potential regulatory non-compliance trigger formal compliance investigations. Investigations assess whether deaths involve repo',
-    `invoice_id` BIGINT COMMENT 'Foreign key linking to billing.invoice. Business justification: Mortality reviews assess care quality and may identify billing/coding issues affecting CMI and expected reimbursement. Linking supports DRG validation, CMI impact analysis, and correlation of clinical',
-    `mpi_record_id` BIGINT COMMENT 'Reference to the patient who is the subject of this mortality review. Links to the Master Patient Index (MPI) record for demographic and identity context. Protected Health Information (PHI) under HIPAA.',
-    `clinician_id` BIGINT COMMENT 'Reference to the attending physician of record at the time of the patients death. Used to associate the mortality event with the responsible clinician for peer review and quality reporting purposes.',
-    `consent_record_id` BIGINT COMMENT 'Foreign key linking to consent.consent_record. Business justification: Mortality review committees requiring family interviews or extended record access beyond treatment scope need documented consent. Quality improvement activities involving patient/family contact requir',
-    `reviewer_provider_clinician_id` BIGINT COMMENT 'Reference to the physician or clinical reviewer assigned as the primary reviewer for this mortality case. Supports peer review workload distribution and conflict-of-interest tracking.',
-    `specialty_id` BIGINT COMMENT 'Foreign key linking to provider.specialty. Business justification: Mortality reviews analyze death patterns by specialty to identify specialty-specific quality improvement opportunities. CMS mortality measures and AHRQ PSIs are stratified by specialty for benchmarkin',
-    `subject_enrollment_id` BIGINT COMMENT 'Foreign key linking to research.subject_enrollment. Business justification: Deaths of research subjects require mandatory mortality review with research-specific considerations: investigational product causality assessment, protocol adherence evaluation, and expedited reporti',
-    `udi_record_id` BIGINT COMMENT 'Foreign key linking to supply.udi_record. Business justification: Mortality reviews involving implanted devices must trace the specific device for root cause analysis, correlation with known device issues, and potential recall investigation. Required for sentinel ev',
-    `unit_id` BIGINT COMMENT 'Foreign key linking to facility.unit. Business justification: Mortality review committees analyze deaths by nursing unit to identify unit-specific care quality issues (ICU staffing, rapid response team effectiveness, palliative care access). Unit-level mortality',
-    `visit_id` BIGINT COMMENT 'Reference to the inpatient encounter during which the patient death occurred. Links the mortality review to the originating clinical encounter for clinical context, LOS, and DRG data.',
-    `action_plan_due_date` DATE COMMENT 'Target date by which the corrective action plan resulting from this mortality review must be submitted and implemented. Populated only when action_plan_required_flag is true.',
-    `action_plan_required_flag` BOOLEAN COMMENT 'Indicates whether the peer review committee determined that a formal corrective action plan is required as a result of this mortality review. Triggers downstream quality improvement workflow and follow-up tracking.',
-    `care_quality_rating` STRING COMMENT 'Peer review committees overall rating of the quality of care provided during the encounter leading to death. Supports identification of systemic care delivery issues and drives Clinical Documentation Improvement (CDI) initiatives.. Valid values are `optimal|suboptimal|poor|not_applicable`',
-    `cdi_query_initiated_flag` BOOLEAN COMMENT 'Indicates whether a Clinical Documentation Improvement (CDI) query was initiated as a result of this mortality review to clarify or improve clinical documentation for accurate ICD-10 coding and DRG assignment.',
-    `cmi_impact_flag` BOOLEAN COMMENT 'Indicates whether this mortality case was identified as having a potential impact on the facilitys Case Mix Index (CMI) due to coding gaps or Clinical Documentation Improvement (CDI) opportunities. Supports CDI program prioritization.',
-    `cms_mortality_measure_code` STRING COMMENT 'Specific CMS mortality outcome measure identifier (e.g., MORT-30-AMI, MORT-30-HF, MORT-30-PN, MORT-30-COPD, MORT-30-STK) applicable to this mortality case. Populated when cms_mortality_measure_flag is true.',
-    `cms_mortality_measure_flag` BOOLEAN COMMENT 'Indicates whether this mortality case is included in a CMS Hospital Inpatient Quality Reporting (IQR) mortality outcome measure (e.g., AMI-30-day, HF-30-day, PN-30-day mortality). Supports CMS quality program reporting and VBP scoring.',
-    `committee_findings_summary` STRING COMMENT 'Narrative summary of the peer review committees findings regarding the mortality case, including clinical assessment, care quality observations, and determination rationale. Protected under peer review privilege in most jurisdictions. Confidential business data.',
-    `committee_review_date` DATE COMMENT 'Date on which the peer review committee formally convened to review this mortality case. Supports compliance tracking against medical staff bylaws and TJC peer review timeliness requirements.',
-    `confidentiality_protection_flag` BOOLEAN COMMENT 'Indicates whether this mortality review record is protected under state peer review privilege statutes, restricting discoverability in legal proceedings. Critical for legal and compliance governance of peer review documentation.',
-    `contributing_factor_1` STRING COMMENT 'Primary contributing clinical factor identified by the peer review committee as having contributed to the patients death (e.g., delayed diagnosis, medication error, communication failure, system failure). Supports root cause analysis and quality improvement planning.',
-    `contributing_factor_2` STRING COMMENT 'Secondary contributing clinical factor identified by the peer review committee. Captures additional systemic or clinical issues beyond the primary factor that contributed to the mortality outcome.',
-    `contributing_factor_3` STRING COMMENT 'Tertiary contributing clinical factor identified by the peer review committee. Supports comprehensive root cause analysis when multiple systemic issues are identified.',
-    `created_timestamp` TIMESTAMP COMMENT 'Date and time when this mortality review record was first created in the quality management system. Supports audit trail, data lineage, and Silver layer ingestion tracking.',
-    `days_from_admission_to_death` STRING COMMENT 'Number of days elapsed between the patients admission date and the date of death. Supports Length of Stay (LOS) analysis, early mortality detection (death within 24-48 hours), and CMS mortality outcome measure stratification.',
-    `death_classification` STRING COMMENT 'Clinical classification of the death as expected (consistent with terminal prognosis or end-of-life care plan) or unexpected (unanticipated given the patients clinical condition). Core field for CMS mortality outcome measures and peer review triage.. Valid values are `expected|unexpected|indeterminate`',
-    `death_date` DATE COMMENT 'Calendar date on which the patient death occurred. Principal real-world event date for the mortality review. Used in CMS mortality outcome measure calculations and TJC accreditation reporting. PHI under HIPAA.',
-    `death_location_type` STRING COMMENT 'Clinical care setting within the facility where the patient death occurred (e.g., ICU, ED, OR, inpatient unit). Supports unit-level mortality analysis and identification of high-risk care areas. [ENUM-REF-CANDIDATE: inpatient_unit|icu|ed|or|pacu|step_down|other — promote to reference product]',
-    `death_timestamp` TIMESTAMP COMMENT 'Precise date and time of patient death as documented in the Electronic Health Record (EHR). Used for time-of-day analysis, shift-level mortality reporting, and clinical event sequencing. PHI under HIPAA.',
-    `dnr_status_at_death` STRING COMMENT 'Patients resuscitation code status at the time of death as documented in the EHR. Informs the expected vs. unexpected death classification and supports advance directive compliance review. Relevant to EMTALA and CMS Patient Rights Conditions of Participation.. Valid values are `full_code|dnr|dni|dnr_dni|comfort_care`',
-    `hai_related_flag` BOOLEAN COMMENT 'Indicates whether a Healthcare-Associated Infection (HAI) — such as CLABSI, CAUTI, or SSI — was identified as a contributing factor to the patients death. Supports HAI mortality linkage reporting to CMS and CDC National Healthcare Safety Network (NHSN).',
-    `hai_type` STRING COMMENT 'Specific type of Healthcare-Associated Infection (HAI) linked to this mortality case when hai_related_flag is true. Values include CLABSI (Central Line-Associated Bloodstream Infection), CAUTI (Catheter-Associated Urinary Tract Infection), SSI (Surgical Site Infection), C. diff, VAP, MRSA. [ENUM-REF-CANDIDATE: clabsi|cauti|ssi|cdiff|vap|mrsa|other — promote to reference product]',
-    `hospice_enrolled_flag` BOOLEAN COMMENT 'Indicates whether the patient was enrolled in a hospice program at the time of or prior to the encounter. Supports expected death classification and CMS hospice quality reporting.',
-    `improvement_recommendation` STRING COMMENT 'Narrative description of quality improvement recommendations issued by the peer review committee as a result of this mortality review. Drives performance improvement plans and TJC survey readiness activities. Protected under peer review privilege.',
-    `mips_reportable_flag` BOOLEAN COMMENT 'Indicates whether this mortality case is reportable under the Merit-Based Incentive Payment System (MIPS) quality performance category for the attending provider. Supports MACRA/MIPS compliance tracking.',
-    `palliative_care_involved_flag` BOOLEAN COMMENT 'Indicates whether the palliative care team was involved in the patients care during the encounter. Supports expected death classification validation and end-of-life care quality metrics.',
-    `preventability_determination` STRING COMMENT 'Peer review committees determination of whether the death was preventable, potentially preventable, not preventable, or indeterminate based on clinical evidence review. Core outcome field for quality improvement and CMS Value-Based Purchasing (VBP) reporting.. Valid values are `preventable|potentially_preventable|not_preventable|indeterminate`',
-    `primary_cause_of_death_description` STRING COMMENT 'Plain-language description of the primary underlying cause of death corresponding to the ICD-10 code. Supports readability in committee reports and regulatory submissions without requiring code lookup.',
-    `primary_icd10_cause_of_death` STRING COMMENT 'International Classification of Diseases 10th Revision (ICD-10) code representing the primary underlying cause of death as coded by Health Information Management (HIM). Used for mortality statistics, DRG grouping, and CMS quality measure reporting.. Valid values are `^[A-Z][0-9A-Z]{2,6}$`',
-    `readmission_related_flag` BOOLEAN COMMENT 'Indicates whether the patient was readmitted within 30 days of a prior discharge and died during the readmission encounter. Supports CMS Hospital Readmissions Reduction Program (HRRP) mortality linkage analysis.',
-    `review_case_number` STRING COMMENT 'Externally-known alphanumeric case number assigned by the quality department or peer review committee to uniquely identify and track this mortality review case across systems and correspondence.',
-    `review_completed_date` DATE COMMENT 'Date on which the mortality review was formally completed and findings were finalized by the peer review committee. Used to calculate review cycle time and SLA compliance.',
-    `review_initiated_date` DATE COMMENT 'Date on which the formal mortality review process was initiated by the quality department. Used to measure timeliness of review initiation against TJC and internal SLA standards.',
-    `review_status` STRING COMMENT 'Current workflow lifecycle state of the mortality review case. Tracks progression from initial case opening through committee review to final closure. Drives quality dashboard reporting and SLA compliance.. Valid values are `initiated|in_review|pending_committee|completed|closed|voided`',
-    `review_trigger_type` STRING COMMENT 'Criterion or event that triggered the formal mortality review (e.g., unexpected death, post-surgical death, death within 24 hours of admission, Against Medical Advice (AMA) discharge followed by death, readmission death). Determines review pathway and committee assignment. [ENUM-REF-CANDIDATE: unexpected_death|surgical_death|icu_death|ed_death|readmission_death|ama_death|other — promote to reference product]',
-    `root_cause_analysis_required_flag` BOOLEAN COMMENT 'Indicates whether a formal Root Cause Analysis (RCA) has been mandated for this mortality case, either due to sentinel event classification or internal quality policy. Triggers RCA workflow in the quality management system.',
-    `sentinel_event_flag` BOOLEAN COMMENT 'Indicates whether this mortality case has been classified as a TJC Sentinel Event requiring a formal Root Cause Analysis (RCA) and corrective action plan submission to The Joint Commission.',
-    `surgical_case_flag` BOOLEAN COMMENT 'Indicates whether the patient underwent a surgical procedure during the encounter associated with this mortality review. Triggers AHRQ PSI-04 (Death Among Surgical Inpatients) measure inclusion and surgical mortality peer review pathway.',
-    `updated_timestamp` TIMESTAMP COMMENT 'Date and time when this mortality review record was most recently modified. Supports change tracking, audit compliance, and incremental data pipeline processing in the Databricks Silver layer.',
+    `mortality_review_id` BIGINT COMMENT 'Primary key',
+    `care_site_id` BIGINT COMMENT 'Unique identifier for the care site within the quality mortality review record.',
+    `quality_committee_id` BIGINT COMMENT 'Unique identifier for the committee within the quality mortality review record.',
+    `drg_id` BIGINT COMMENT 'Unique identifier for the drg within the quality mortality review record.',
+    `investigation_id` BIGINT COMMENT 'Unique identifier for the investigation within the quality mortality review record.',
+    `invoice_id` BIGINT COMMENT 'Unique identifier for the invoice within the quality mortality review record.',
+    `mpi_record_id` BIGINT COMMENT 'Unique identifier for the mpi record within the quality mortality review record.',
+    `clinician_id` BIGINT COMMENT 'Unique identifier for the primary mortality clinician within the quality mortality review record.',
+    `reviewer_provider_clinician_id` BIGINT COMMENT 'Unique identifier for the reviewer provider clinician within the quality mortality review record.',
+    `specialty_id` BIGINT COMMENT 'Unique identifier for the specialty within the quality mortality review record.',
+    `subject_enrollment_id` BIGINT COMMENT 'Unique identifier for the subject enrollment within the quality mortality review record.',
+    `unit_id` BIGINT COMMENT 'Unique identifier for the unit within the quality mortality review record.',
+    `visit_id` BIGINT COMMENT 'Unique identifier for the visit within the quality mortality review record.',
+    `action_plan_due_date` DATE COMMENT 'Timestamp capturing the action plan due date associated with the quality mortality review record.',
+    `action_plan_required_flag` BOOLEAN COMMENT 'The action plan required flag of the quality mortality review record.',
+    `care_quality_rating` STRING COMMENT 'The care quality rating of the quality mortality review record.',
+    `cdi_query_initiated_flag` BOOLEAN COMMENT 'The cdi query initiated flag of the quality mortality review record.',
+    `cmi_impact_flag` BOOLEAN COMMENT 'The cmi impact flag of the quality mortality review record.',
+    `cms_mortality_measure_code` STRING COMMENT 'The cms mortality measure code value classifying the quality mortality review record.',
+    `cms_mortality_measure_flag` BOOLEAN COMMENT 'The cms mortality measure flag of the quality mortality review record.',
+    `committee_findings_summary` STRING COMMENT 'The committee findings summary of the quality mortality review record.',
+    `committee_review_date` DATE COMMENT 'Timestamp capturing the committee review date associated with the quality mortality review record.',
+    `confidentiality_protection_flag` BOOLEAN COMMENT 'The confidentiality protection flag of the quality mortality review record.',
+    `contributing_factor_1` STRING COMMENT 'The contributing factor 1 of the quality mortality review record.',
+    `contributing_factor_2` STRING COMMENT 'The contributing factor 2 of the quality mortality review record.',
+    `contributing_factor_3` STRING COMMENT 'The contributing factor 3 of the quality mortality review record.',
+    `created_timestamp` TIMESTAMP COMMENT 'Record creation timestamp',
+    `days_from_admission_to_death` STRING COMMENT 'The days from admission to death of the quality mortality review record.',
+    `death_classification` STRING COMMENT 'The death classification of the quality mortality review record.',
+    `death_date` DATE COMMENT 'Timestamp capturing the death date associated with the quality mortality review record.',
+    `death_location_type` STRING COMMENT 'The death location type value classifying the quality mortality review record.',
+    `death_timestamp` TIMESTAMP COMMENT 'The death timestamp of the quality mortality review record.',
+    `dnr_status_at_death` STRING COMMENT 'The dnr status at death of the quality mortality review record.',
+    `hai_related_flag` BOOLEAN COMMENT 'The hai related flag of the quality mortality review record.',
+    `hai_type` STRING COMMENT 'The hai type value classifying the quality mortality review record.',
+    `hospice_enrolled_flag` BOOLEAN COMMENT 'The hospice enrolled flag of the quality mortality review record.',
+    `improvement_recommendation` STRING COMMENT 'The improvement recommendation of the quality mortality review record.',
+    `mips_reportable_flag` BOOLEAN COMMENT 'The mips reportable flag of the quality mortality review record.',
+    `palliative_care_involved_flag` BOOLEAN COMMENT 'The palliative care involved flag of the quality mortality review record.',
+    `preventability_determination` STRING COMMENT 'The preventability determination of the quality mortality review record.',
+    `primary_cause_of_death_description` STRING COMMENT 'The primary cause of death description of the quality mortality review record.',
+    `primary_icd10_cause_of_death` STRING COMMENT 'The primary icd10 cause of death of the quality mortality review record.',
+    `readmission_related_flag` BOOLEAN COMMENT 'The readmission related flag of the quality mortality review record.',
+    `review_case_number` STRING COMMENT 'The review case number of the quality mortality review record.',
+    `review_completed_date` DATE COMMENT 'Timestamp capturing the review completed date associated with the quality mortality review record.',
+    `review_initiated_date` DATE COMMENT 'Timestamp capturing the review initiated date associated with the quality mortality review record.',
+    `review_status` STRING COMMENT 'The review status value classifying the quality mortality review record.',
+    `review_trigger_type` STRING COMMENT 'The review trigger type value classifying the quality mortality review record.',
+    `root_cause_analysis_required_flag` BOOLEAN COMMENT 'The root cause analysis required flag of the quality mortality review record.',
+    `sentinel_event_flag` BOOLEAN COMMENT 'The sentinel event flag of the quality mortality review record.',
+    `surgical_case_flag` BOOLEAN COMMENT 'The surgical case flag of the quality mortality review record.',
+    `updated_timestamp` TIMESTAMP COMMENT 'Last update timestamp',
+    `vibe_structure_marker` STRING COMMENT 'Structure enforcement marker for 22-domain/541-product superset.',
     CONSTRAINT pk_mortality_review PRIMARY KEY(`mortality_review_id`)
-) COMMENT 'Transactional record of inpatient mortality review cases conducted by the quality and peer review committee. Captures patient encounter reference, death classification (expected vs. unexpected), review trigger criteria, preventability determination, contributing clinical factors, peer review committee findings, and improvement recommendations. Supports CMI (Case Mix Index) analysis and CMS mortality outcome measures.';
+) COMMENT 'Mortality case review for quality assurance and peer review purposes. Tracks preventability determination and contributing factors. Business justification: Required for CMS mortality measures, TJC standards, and medical staff peer review.';
 
 CREATE OR REPLACE TABLE `vibe_healthcare_v1`.`quality`.`vbp_program` (
-    `vbp_program_id` BIGINT COMMENT 'Unique surrogate identifier for a CMS Value-Based Purchasing (VBP) program record. Primary key for this master configuration entity.',
-    `budget_id` BIGINT COMMENT 'Foreign key linking to finance.budget. Business justification: VBP programs define withhold rates (1-2% of Medicare payments) and payment adjustment factors that directly impact annual operating budgets. Finance teams budget specifically for VBP penalties/incenti',
-    `compliance_regulatory_submission_id` BIGINT COMMENT 'Foreign key linking to compliance.regulatory_submission. Business justification: VBP programs require regulatory submissions to CMS for performance data, quality measure results, attestations, and payment adjustment calculations. Compliance system tracks submission status, deadlin',
-    `payer_id` BIGINT COMMENT 'Foreign key linking to insurance.payer. Business justification: VBP programs are payer-sponsored quality initiatives. Each program is administered by a specific payer for their contracted providers. Payer defines measure set, payment methodology, and performance t',
-    `promoting_interoperability_id` BIGINT COMMENT 'Foreign key linking to interoperability.promoting_interoperability. Business justification: VBP programs include Promoting Interoperability (formerly Meaningful Use) as a scored domain with defined weight. This link connects VBP program configuration to PI measure attestations, enabling calc',
-    `quality_program_id` BIGINT COMMENT 'Foreign key linking to quality.quality_program. Business justification: vbp_program represents specific VBP (Value-Based Purchasing) program instances, while quality_program is the master portfolio entity for all quality programs. This FK connects VBP programs to the broa',
-    `achievement_benchmark_percentile` DECIMAL(18,2) COMMENT 'National performance percentile representing the benchmark (top performance) for achievement scoring. Typically set at the 95th percentile of baseline period national performance.',
-    `achievement_threshold_percentile` DECIMAL(18,2) COMMENT 'National performance percentile that a hospital must exceed to earn achievement points for a given measure. Typically set at the 50th percentile of baseline period national performance.',
-    `applicable_provider_type` STRING COMMENT 'Type of healthcare provider or facility to which this VBP program configuration applies. Determines eligibility rules, measure sets, and payment adjustment calculations. [ENUM-REF-CANDIDATE: acute_care_hospital|critical_access_hospital|psychiatric_hospital|long_term_care|skilled_nursing_facility|home_health_agency — promote to reference product]. Valid values are `acute_care_hospital|critical_access_hospital|psychiatric_hospital|long_term_care|skilled_nursing_facility|home_health_agency`',
-    `approved_by` STRING COMMENT 'Name or identifier of the quality leadership role (e.g., Chief Quality Officer, VP Quality) who approved this VBP program configuration for use in performance tracking and reporting.',
-    `approved_date` DATE COMMENT 'Date on which the VBP program configuration was formally approved by quality leadership for operational use. Supports governance and audit trail requirements.',
-    `baseline_period_end` DATE COMMENT 'End date of the baseline period used to establish benchmark performance scores for achievement scoring calculations.',
-    `baseline_period_start` DATE COMMENT 'Start date of the baseline period used to establish benchmark performance scores against which the performance period is compared for achievement scoring.',
-    `cahps_survey_vendor_required` BOOLEAN COMMENT 'Indicates whether hospitals must use a CMS-approved CAHPS survey vendor to collect patient experience data for the Person and Community Engagement domain. True for HVBP programs.',
-    `clinical_outcomes_domain_weight` DECIMAL(18,2) COMMENT 'Proportional weight assigned to the Clinical Outcomes domain in the Total Performance Score (TPS) calculation, expressed as a decimal (e.g., 0.25 = 25%). Includes mortality, complications, and readmission measures.',
-    `cms_program_code` STRING COMMENT 'Official CMS-assigned program identifier used in federal regulatory filings, CMS Quality Reporting systems, and QualityNet submissions. Serves as the external reference key for CMS correspondence.. Valid values are `^CMS-VBP-[0-9]{4}-[A-Z0-9]+$`',
-    `correction_window_end` DATE COMMENT 'Deadline by which hospitals must submit data corrections or reconsideration requests following the preview report release. After this date, scores are finalized for payment adjustment calculation.',
-    `created_timestamp` TIMESTAMP COMMENT 'Timestamp when this VBP program configuration record was first created in the system. Supports audit trail and data lineage requirements.',
-    `efficiency_cost_reduction_weight` DECIMAL(18,2) COMMENT 'Proportional weight assigned to the Efficiency and Cost Reduction domain in the TPS calculation, expressed as a decimal (e.g., 0.25 = 25%). Includes Medicare Spending Per Beneficiary (MSPB) measure.',
-    `federal_register_notice` STRING COMMENT 'Federal Register citation (volume, page, and date) for the CMS IPPS Final Rule that established this program years VBP parameters (e.g., 88 FR 49000, July 31, 2023). Supports regulatory audit trail.',
-    `final_score_publication_date` DATE COMMENT 'Date on which CMS publicly releases final Total Performance Scores (TPS) and payment adjustment factors for all participating hospitals. Triggers the payment adjustment application in the payment year.',
-    `fiscal_year` STRING COMMENT 'Federal fiscal year (October 1 – September 30) to which this VBP program configuration applies (e.g., 2024 for FY2024). Drives payment adjustment calculations and performance period alignment.',
-    `is_new_measure_set` BOOLEAN COMMENT 'Indicates whether this program year introduces a new or substantially revised measure set compared to the prior fiscal year. Triggers additional staff education, CDI workflow updates, and quality committee review.',
-    `max_achievement_points` STRING COMMENT 'Maximum number of achievement points a hospital can earn per measure under the VBP scoring methodology (typically 10 points).',
-    `max_domain_score` STRING COMMENT 'Maximum possible score achievable within any single domain before weighting is applied. Used to normalize domain scores to a common scale for TPS calculation.',
-    `max_improvement_points` STRING COMMENT 'Maximum number of improvement points a hospital can earn per measure under the VBP scoring methodology (typically 9 points).',
-    `max_payment_adjustment_factor` DECIMAL(18,2) COMMENT 'Maximum payment adjustment factor (multiplier) that can be applied to a hospitals Medicare IPPS payments under this program year. Values above 1.0000 represent a net payment bonus.',
-    `max_tps` STRING COMMENT 'Maximum possible Total Performance Score (TPS) a hospital can achieve under this program year configuration. Defines the upper bound for payment adjustment factor calculations.',
-    `measure_set_version` STRING COMMENT 'Version identifier of the CMS-published measure set applicable to this program year (e.g., FY2024-v1.2). Tracks changes in included measures, specifications, and exclusion criteria across program years.',
-    `min_case_volume_required` STRING COMMENT 'Minimum number of eligible cases required for a measure to be scored for a hospital. Measures with case volumes below this threshold are suppressed from scoring to ensure statistical reliability.',
-    `min_measure_count_required` STRING COMMENT 'Minimum number of measures a hospital must have reportable data for in order to receive a domain score and be included in VBP payment adjustment calculations. Hospitals below this threshold are excluded from VBP.',
-    `min_payment_adjustment_factor` DECIMAL(18,2) COMMENT 'Minimum payment adjustment factor (multiplier) that can be applied to a hospitals Medicare IPPS payments under this program year. Values below 1.0000 represent a net payment reduction.',
-    `nqf_alignment_flag` BOOLEAN COMMENT 'Indicates whether all measures in this program years measure set are endorsed by the National Quality Forum (NQF). NQF endorsement is a CMS requirement for VBP measure inclusion.',
-    `payment_adjustment_formula` STRING COMMENT 'Narrative or coded description of the formula used to translate the Total Performance Score (TPS) into a payment adjustment factor. Documents the linear exchange function parameters published in the CMS IPPS Final Rule.',
-    `payment_year` STRING COMMENT 'Federal fiscal year in which the VBP payment adjustment (bonus or penalty) is applied to Medicare IPPS payments. Typically lags the performance period by approximately two years.',
-    `performance_period_end` DATE COMMENT 'End date of the performance period during which hospital quality data is collected and measured for VBP scoring.',
-    `performance_period_start` DATE COMMENT 'Start date of the performance period during which hospital quality data is collected and measured for VBP scoring. Distinct from the baseline period.',
-    `person_community_engagement_weight` DECIMAL(18,2) COMMENT 'Proportional weight assigned to the Person and Community Engagement domain (formerly Patient Experience / CAHPS) in the TPS calculation, expressed as a decimal (e.g., 0.25 = 25%).',
-    `preview_report_release_date` DATE COMMENT 'Date on which CMS releases preliminary VBP performance scores to hospitals for review and correction prior to final score publication. Hospitals have a defined review and correction window following this date.',
-    `program_code` STRING COMMENT 'Externally-known CMS-assigned alphanumeric code uniquely identifying this VBP program configuration (e.g., VBP-IPPS-2024). Used in CMS reporting submissions and regulatory correspondence.. Valid values are `^VBP-[A-Z0-9]{3,20}$`',
-    `program_description` STRING COMMENT 'Free-text narrative description of the VBP program year configuration, including key policy changes from the prior year, new measures added, measures removed, and notable methodology updates.',
-    `program_name` STRING COMMENT 'Official CMS-designated name of the VBP program (e.g., Hospital Value-Based Purchasing Program FY2024). Used in regulatory reports, dashboards, and executive communications.',
-    `program_status` STRING COMMENT 'Current lifecycle state of the VBP program configuration. active indicates the program is in effect for the current fiscal year; pending indicates approved but not yet effective; archived indicates a prior program year record retained for historical reference.. Valid values are `active|inactive|pending|suspended|archived`',
-    `program_type` STRING COMMENT 'Classification of the VBP program variant: HVBP (Hospital VBP), PVBP (Physician VBP), ESRD_QIP (End-Stage Renal Disease Quality Incentive Program), SNF_VBP (Skilled Nursing Facility VBP), HH_VBP (Home Health VBP). Determines applicable domain weights and scoring methodology.. Valid values are `HVBP|PVBP|ESRD_QIP|SNF_VBP|HH_VBP`',
-    `qualitynet_program_code` STRING COMMENT 'Program code used within the CMS QualityNet reporting portal for data submission, preview reports, and final VBP scoring. Required for electronic data interchange with CMS.',
-    `regulatory_rule_citation` STRING COMMENT 'Primary federal regulatory citation governing this VBP program year (e.g., 42 CFR Part 412 Subpart O). Used for compliance documentation, audit support, and regulatory reporting.',
-    `safety_domain_weight` DECIMAL(18,2) COMMENT 'Proportional weight assigned to the Safety domain in the TPS calculation, expressed as a decimal (e.g., 0.25 = 25%). Includes HAI measures such as CLABSI, CAUTI, SSI, and MRSA.',
-    `total_domain_weight_check` DECIMAL(18,2) COMMENT 'Sum of all four domain weights (clinical outcomes + person and community engagement + safety + efficiency and cost reduction). Must equal 1.0000 (100%) for a valid program configuration. Used for data quality validation and audit.',
-    `tps_methodology` STRING COMMENT 'Scoring methodology used to calculate the Total Performance Score (TPS). achievement_improvement_higher selects the higher of achievement or improvement scores per measure; achievement_only uses only achievement; improvement_only uses only improvement.. Valid values are `achievement_improvement_higher|achievement_only|improvement_only`',
-    `updated_timestamp` TIMESTAMP COMMENT 'Timestamp when this VBP program configuration record was most recently modified. Supports change tracking, audit trail, and data lineage requirements.',
-    `withhold_rate` DECIMAL(18,2) COMMENT 'Percentage of Medicare IPPS base operating DRG payments withheld from all participating hospitals to fund the VBP incentive pool, expressed as a decimal (e.g., 0.0200 = 2.0%). Established annually by CMS per ACA mandate.',
+    `vbp_program_id` BIGINT COMMENT 'Primary key',
+    `compliance_regulatory_submission_id` BIGINT COMMENT 'Unique identifier for the compliance regulatory submission within the quality vbp program record.',
+    `payer_id` BIGINT COMMENT 'Unique identifier for the payer within the quality vbp program record.',
+    `promoting_interoperability_id` BIGINT COMMENT 'Unique identifier for the promoting interoperability within the quality vbp program record.',
+    `quality_program_id` BIGINT COMMENT 'Unique identifier for the quality program within the quality vbp program record.',
+    `achievement_benchmark_percentile` DECIMAL(18,2) COMMENT 'The achievement benchmark percentile of the quality vbp program record.',
+    `achievement_threshold_percentile` DECIMAL(18,2) COMMENT 'The achievement threshold percentile of the quality vbp program record.',
+    `applicable_provider_type` STRING COMMENT 'The applicable provider type value classifying the quality vbp program record.',
+    `approved_by` STRING COMMENT 'The approved by of the quality vbp program record.',
+    `approved_date` DATE COMMENT 'Timestamp capturing the approved date associated with the quality vbp program record.',
+    `baseline_period_end` DATE COMMENT 'The baseline period end of the quality vbp program record.',
+    `baseline_period_start` DATE COMMENT 'The baseline period start of the quality vbp program record.',
+    `cahps_survey_vendor_required` BOOLEAN COMMENT 'The cahps survey vendor required of the quality vbp program record.',
+    `clinical_outcomes_domain_weight` DECIMAL(18,2) COMMENT 'The clinical outcomes domain weight of the quality vbp program record.',
+    `cms_program_code` STRING COMMENT 'The cms program code value classifying the quality vbp program record.',
+    `correction_window_end` DATE COMMENT 'The correction window end of the quality vbp program record.',
+    `created_timestamp` TIMESTAMP COMMENT 'Record creation timestamp',
+    `efficiency_cost_reduction_weight` DECIMAL(18,2) COMMENT 'The efficiency cost reduction weight of the quality vbp program record.',
+    `federal_register_notice` STRING COMMENT 'The federal register notice of the quality vbp program record.',
+    `final_score_publication_date` DATE COMMENT 'Timestamp capturing the final score publication date associated with the quality vbp program record.',
+    `fiscal_year` STRING COMMENT 'The fiscal year of the quality vbp program record.',
+    `is_new_measure_set` BOOLEAN COMMENT 'Boolean flag indicating the is new measure set status of the quality vbp program record.',
+    `max_achievement_points` STRING COMMENT 'The max achievement points of the quality vbp program record.',
+    `max_domain_score` STRING COMMENT 'The max domain score of the quality vbp program record.',
+    `max_improvement_points` STRING COMMENT 'The max improvement points of the quality vbp program record.',
+    `max_payment_adjustment_factor` DECIMAL(18,2) COMMENT 'The max payment adjustment factor of the quality vbp program record.',
+    `max_tps` STRING COMMENT 'The max tps of the quality vbp program record.',
+    `measure_set_version` STRING COMMENT 'The measure set version of the quality vbp program record.',
+    `min_case_volume_required` STRING COMMENT 'The min case volume required of the quality vbp program record.',
+    `min_measure_count_required` STRING COMMENT 'The min measure count required of the quality vbp program record.',
+    `min_payment_adjustment_factor` DECIMAL(18,2) COMMENT 'The min payment adjustment factor of the quality vbp program record.',
+    `nqf_alignment_flag` BOOLEAN COMMENT 'The nqf alignment flag of the quality vbp program record.',
+    `payment_adjustment_formula` STRING COMMENT 'The payment adjustment formula of the quality vbp program record.',
+    `payment_year` STRING COMMENT 'The payment year of the quality vbp program record.',
+    `performance_period_end` DATE COMMENT 'The performance period end of the quality vbp program record.',
+    `performance_period_start` DATE COMMENT 'The performance period start of the quality vbp program record.',
+    `person_community_engagement_weight` DECIMAL(18,2) COMMENT 'The person community engagement weight of the quality vbp program record.',
+    `preview_report_release_date` DATE COMMENT 'Timestamp capturing the preview report release date associated with the quality vbp program record.',
+    `program_code` STRING COMMENT 'The program code value classifying the quality vbp program record.',
+    `program_description` STRING COMMENT 'The program description of the quality vbp program record.',
+    `program_name` STRING COMMENT 'The program name of the quality vbp program record.',
+    `program_status` STRING COMMENT 'The program status value classifying the quality vbp program record.',
+    `program_type` STRING COMMENT 'The program type value classifying the quality vbp program record.',
+    `qualitynet_program_code` STRING COMMENT 'The qualitynet program code value classifying the quality vbp program record.',
+    `regulatory_rule_citation` STRING COMMENT 'The regulatory rule citation of the quality vbp program record.',
+    `safety_domain_weight` DECIMAL(18,2) COMMENT 'The safety domain weight of the quality vbp program record.',
+    `total_domain_weight_check` DECIMAL(18,2) COMMENT 'The total domain weight check of the quality vbp program record.',
+    `tps_methodology` STRING COMMENT 'The tps methodology of the quality vbp program record.',
+    `updated_timestamp` TIMESTAMP COMMENT 'Last update timestamp',
+    `vibe_structure_marker` STRING COMMENT 'Structure enforcement marker for 22-domain/541-product superset.',
+    `withhold_rate` DECIMAL(18,2) COMMENT 'The withhold rate of the quality vbp program record.',
     CONSTRAINT pk_vbp_program PRIMARY KEY(`vbp_program_id`)
-) COMMENT 'Master entity for CMS Value-Based Purchasing (VBP) program participation and performance tracking. Stores program year, domain weights (clinical outcomes, person and community engagement, safety, efficiency and cost reduction), baseline and performance period definitions, total performance score methodology, and payment adjustment factor. SSOT for VBP program configuration.';
+) COMMENT 'Value-based purchasing program definitions including CMS Hospital VBP, MIPS, and commercial payer programs. Tracks domain weights and payment adjustment factors. Business justification: Drives reimbursement optimization and quality strategy alignment.';
 
 CREATE OR REPLACE TABLE `vibe_healthcare_v1`.`quality`.`measure` (
-    `measure_id` BIGINT COMMENT 'Primary key for measure',
-    `compliance_policy_id` BIGINT COMMENT 'Foreign key linking to compliance.policy. Business justification: Quality measures require policy documentation for implementation, data collection procedures, numerator/denominator definitions, and compliance with regulatory specifications. Policies govern how meas',
-    `cpt_code_id` BIGINT COMMENT 'Foreign key linking to reference.cpt_code. Business justification: Quality measures reference CPT code sets in cpt_code_set attribute for procedure-based numerator/denominator definitions. MIPS quality category scoring and VBP clinical outcomes domain require validat',
-    `drg_id` BIGINT COMMENT 'Foreign key linking to reference.drg. Business justification: Quality measures are stratified by DRG for risk adjustment in hospital quality reporting. CMS Hospital Compare and VBP programs require DRG-level risk adjustment to ensure fair performance comparisons',
-    `health_plan_id` BIGINT COMMENT 'Foreign key linking to insurance.health_plan. Business justification: Quality measures are often plan-specific (HEDIS measures vary by product line: Commercial, Medicare, Medicaid). Plans report measure performance to NCQA and CMS for accreditation and Star Ratings.',
-    `hedis_measure_id` BIGINT COMMENT 'NCQA-assigned HEDIS measure identifier (e.g., CDC, CBP, W34). Populated only for measures that are part of the HEDIS measure set. Supports NCQA accreditation and health plan reporting.',
-    `icd_code_id` BIGINT COMMENT 'Foreign key linking to reference.icd_code. Business justification: Quality measures reference ICD-10 code sets in icd10_code_set attribute for eligible population and exclusion criteria definitions. CMS, MIPS, and TJC quality reporting require validated ICD code refe',
-    `loinc_code_id` BIGINT COMMENT 'Foreign key linking to reference.loinc_code. Business justification: Quality measures reference LOINC code sets in loinc_code_set attribute for lab-based quality metrics (e.g., diabetes control, lipid management). eCQM reporting and clinical quality improvement initiat',
-    `active_status` STRING COMMENT 'Current lifecycle status of the measure in the enterprise catalog: active (currently tracked and reported), inactive (temporarily suspended), retired (no longer in use), draft (under development), or under_review (specification being updated).. Valid values are `active|inactive|retired|draft|under_review`',
-    `benchmark_percentile` DECIMAL(18,2) COMMENT 'National percentile rank corresponding to the benchmark threshold (e.g., 75.00 for the 75th percentile). Used to contextualize organizational performance against national peer comparisons in VBP and MIPS scoring.',
-    `benchmark_threshold` DECIMAL(18,2) COMMENT 'National or program-defined benchmark performance rate (expressed as a percentage, 0.00–100.00) that the organization targets or must meet for this measure (e.g., 75.00 for 75%). Used in Value-Based Purchasing (VBP) and MIPS scoring.',
-    `care_setting` STRING COMMENT 'Clinical care setting to which the measure applies (e.g., inpatient, outpatient, ED, ambulatory, post-acute, home health, hospice, or all settings). Drives measure applicability filtering in reporting. [ENUM-REF-CANDIDATE: inpatient|outpatient|ED|ambulatory|post_acute|home_health|hospice|all — 8 candidates stripped; promote to reference product]',
-    `clinical_domain` STRING COMMENT 'Clinical or programmatic domain the measure belongs to (e.g., Cardiovascular, Diabetes, Infection Control, Maternal Health, Behavioral Health, Patient Safety, Preventive Care). Used for grouping and filtering in quality dashboards. [ENUM-REF-CANDIDATE: cardiovascular|diabetes|infection_control|maternal_health|behavioral_health|patient_safety|preventive_care|oncology|respiratory|orthopedics — promote to reference product]',
-    `cms_ecqm_code` STRING COMMENT 'CMS-assigned electronic Clinical Quality Measure (eCQM) identifier (e.g., CMS122v11). Used for electronic submission to CMS quality reporting programs including MIPS and IQR.. Valid values are `^CMS[0-9]{1,5}v[0-9]{1,3}$`',
-    `measure_code` STRING COMMENT 'Internally assigned alphanumeric code uniquely identifying the measure within the enterprise catalog. Used as the business-facing key across reporting systems and dashboards.. Valid values are `^[A-Z0-9_-]{2,30}$`',
-    `cpt_code_set` STRING COMMENT 'Comma-separated list or value set reference of CPT procedure codes used in the measure logic (e.g., qualifying visit codes, procedure codes for numerator events). References the official value set OID where applicable.',
-    `created_timestamp` TIMESTAMP COMMENT 'Timestamp when this measure record was first created in the enterprise quality catalog. Supports audit trail and data governance requirements.',
-    `data_source` STRING COMMENT 'Primary source system or data type used to calculate the measure (e.g., EHR, claims, registry, survey, ADT, lab, pharmacy, manual abstraction, hybrid). Informs ETL pipeline design and data lineage. [ENUM-REF-CANDIDATE: EHR|claims|registry|survey|ADT|lab|pharmacy|manual|hybrid — 9 candidates stripped; promote to reference product]',
-    `denominator_definition` STRING COMMENT 'Formal definition of the denominator population — the eligible patient or encounter population to which the measure applies (e.g., All patients aged 65+ with at least one qualifying visit during the measurement period).',
-    `denominator_exception` STRING COMMENT 'Criteria allowing removal of patients from the denominator for clinical or patient-choice reasons that do not constitute exclusions (e.g., Patient declined vaccination — documented medical reason). Distinct from exclusions; applies to process measures only.',
-    `denominator_exclusion` STRING COMMENT 'Criteria for excluding patients or encounters from the denominator (e.g., Patients with documented allergy to influenza vaccine). Null if no exclusions apply. Critical for accurate measure calculation.',
-    `effective_end_date` DATE COMMENT 'Date on which this measure was retired or deactivated in the enterprise quality catalog. Null for currently active measures. Enables point-in-time historical reporting.',
-    `effective_start_date` DATE COMMENT 'Date on which this measure became effective and active in the enterprise quality catalog. Supports historical trending and measure lifecycle management.',
-    `eligible_population_criteria` STRING COMMENT 'Initial patient population criteria defining who is eligible to be included in the measure calculation (age range, diagnosis codes, encounter types, payer types, etc.). Serves as the outermost filter before denominator logic is applied.',
-    `floor_threshold` DECIMAL(18,2) COMMENT 'Minimum acceptable performance rate (as a percentage) below which the organization is subject to payment penalties or accreditation risk. Distinct from the benchmark target; represents the regulatory floor.',
-    `hai_category` STRING COMMENT 'For HAI-related measures, identifies the specific infection type tracked: CLABSI (Central Line-Associated Bloodstream Infection), CAUTI (Catheter-Associated Urinary Tract Infection), SSI (Surgical Site Infection), MRSA, CDI (C. difficile), VAE (Ventilator-Associated Event), or NONE for non-HAI measures. [ENUM-REF-CANDIDATE: CLABSI|CAUTI|SSI|MRSA|CDI|VAE|NONE — 7 candidates stripped; promote to reference product]',
-    `higher_is_better` BOOLEAN COMMENT 'Indicates whether a higher measure rate represents better performance (True) or worse performance (False). For example, vaccination rates are higher-is-better; readmission rates are lower-is-better. Critical for correct performance scoring logic.',
-    `icd10_code_set` STRING COMMENT 'Comma-separated list or value set reference of ICD-10 diagnosis codes used in the measures eligible population, numerator, or denominator logic (e.g., E11.9, E11.65). References the official value set OID where applicable.',
-    `loinc_code_set` STRING COMMENT 'Comma-separated list or value set reference of LOINC codes used in the measure logic for laboratory results, clinical observations, or survey instruments (e.g., HbA1c result codes for diabetes measures).',
-    `measurement_methodology` STRING COMMENT 'Data collection and calculation methodology used for the measure: administrative (claims/ADT data), hybrid (claims + chart review), chart_abstracted (manual chart review), ecqm (electronic clinical quality measure via EHR), survey (patient-reported, e.g., CAHPS), or registry.. Valid values are `administrative|hybrid|chart_abstracted|ecqm|survey|registry`',
-    `measurement_year` STRING COMMENT 'Calendar year for which the measure is being tracked and reported (e.g., 2024). Used to version measure performance results and align with annual reporting cycles.',
-    `minimum_sample_size` STRING COMMENT 'Minimum number of eligible patients or encounters required for the measure result to be reportable and statistically valid. Results below this threshold are typically suppressed in public reporting.',
-    `mips_category` STRING COMMENT 'MIPS performance category to which this measure contributes: quality, promoting_interoperability, improvement_activities, cost, or NONE if not applicable to MIPS. Supports MACRA/MIPS composite score calculation for eligible clinicians.. Valid values are `quality|promoting_interoperability|improvement_activities|cost|NONE`',
-    `nqf_number` STRING COMMENT 'National Quality Forum (NQF) endorsement number assigned to the measure (e.g., NQF-0028). Null if the measure is not NQF-endorsed. Used for regulatory alignment and cross-program mapping.. Valid values are `^NQF-?[0-9]{4}[A-Za-z]?$`',
-    `numerator_definition` STRING COMMENT 'Formal definition of the numerator population for the measure — the subset of the denominator that meets the quality criterion (e.g., Patients who received a flu vaccination during the measurement period). Derived from the official measure specification.',
-    `reporting_period_end` DATE COMMENT 'Last date of the measurement/reporting period during which patient encounters and events are evaluated for this measure (e.g., 2024-12-31 for an annual measure).',
-    `reporting_period_start` DATE COMMENT 'First date of the measurement/reporting period during which patient encounters and events are evaluated for this measure (e.g., 2024-01-01 for an annual measure).',
-    `reporting_program` STRING COMMENT 'Name of the regulatory or accreditation program under which this measure is reported (e.g., CMS IQR, CMS OQR, VBP, MIPS, HEDIS, TJC ORYX, State Medicaid, Internal). A measure may belong to multiple programs; this field captures the primary program. [ENUM-REF-CANDIDATE: CMS_IQR|CMS_OQR|VBP|MIPS|APM|HEDIS|TJC_ORYX|STATE|INTERNAL|PCMH — promote to reference product]',
-    `risk_adjustment_flag` BOOLEAN COMMENT 'Indicates whether the measure requires risk adjustment to account for patient case mix before performance comparison (True = risk-adjusted). Applies to outcome measures such as mortality and readmission rates.',
-    `risk_adjustment_model` STRING COMMENT 'Name or identifier of the risk adjustment model applied to this measure when risk_adjustment_flag is True (e.g., CMS Hierarchical Condition Category (HCC), AHRQ Elixhauser Comorbidity Index). Null if not risk-adjusted.',
-    `short_name` STRING COMMENT 'Abbreviated or commonly used name for the measure used in dashboards, scorecards, and internal communications (e.g., Flu Vax — Elderly).',
-    `snomed_code_set` STRING COMMENT 'Comma-separated list or value set reference of SNOMED CT codes used in the measure logic for clinical findings, conditions, or procedures. Supports eCQM value set alignment.',
-    `specification_url` STRING COMMENT 'URL link to the official published measure specification document or web page maintained by the measure steward (e.g., CMS eCQM library URL, NCQA HEDIS specification page). Enables direct reference to authoritative source.',
-    `steward` STRING COMMENT 'Organization responsible for developing, maintaining, and publishing the measure specification (e.g., CMS, NCQA, TJC, NQF, AMA). Determines the authoritative source for measure updates and versioning. [ENUM-REF-CANDIDATE: CMS|NCQA|TJC|NQF|AMA|AHRQ|STATE|INTERNAL|OTHER — promote to reference product]',
-    `stratification_criteria` STRING COMMENT 'Defines how the measure is stratified for sub- (e.g., by race/ethnicity, payer type, age group, facility). Supports health equity reporting requirements and SDOH analytics per CMS health equity frameworks.',
-    `submission_deadline` DATE COMMENT 'Date by which the measure results must be submitted to the applicable regulatory or accreditation body (e.g., CMS IQR submission deadline). Drives quality reporting workflow and compliance tracking.',
-    `title` STRING COMMENT 'Official full title of the quality measure as published by the measure steward (e.g., Pneumonia Vaccination Status for Older Adults). Used in regulatory submissions and performance reports.',
-    `tjc_measure_set` STRING COMMENT 'Name of The Joint Commission (TJC) ORYX measure set this measure belongs to (e.g., Perinatal Care, Stroke, Venous Thromboembolism). Null if not a TJC measure. Supports TJC accreditation survey readiness.',
-    `measure_type` STRING COMMENT 'Classification of the measure by its methodological type per NQF/CMS taxonomy: process (care delivery steps), outcome (patient results), structural (organizational capacity), patient experience (CAHPS-based), efficiency (resource use), or intermediate outcome.. Valid values are `process|outcome|structural|patient_experience|efficiency|intermediate_outcome`',
-    `updated_timestamp` TIMESTAMP COMMENT 'Timestamp when this measure record was last modified in the enterprise quality catalog. Tracks specification updates, benchmark changes, and status transitions.',
-    `vbp_domain` STRING COMMENT 'CMS Hospital Value-Based Purchasing (VBP) program domain to which this measure is assigned: clinical_care, safety, efficiency (cost reduction), patient_experience (CAHPS), or NONE if not part of VBP. Drives VBP Total Performance Score calculation.. Valid values are `clinical_care|safety|efficiency|patient_experience|NONE`',
-    `version` STRING COMMENT 'Version number of the measure specification as published by the steward (e.g., 11.0, 2024.1). Tracks specification changes year-over-year and ensures the correct logic version is applied during calculation.. Valid values are `^[0-9]+.[0-9]+(.[0-9]+)?$`',
+    `measure_id` BIGINT COMMENT 'Primary key',
+    `compliance_policy_id` BIGINT COMMENT 'Unique identifier for the compliance policy within the quality measure record.',
+    `cpt_code_id` BIGINT COMMENT 'Unique identifier for the cpt code within the quality measure record.',
+    `drg_id` BIGINT COMMENT 'Unique identifier for the drg within the quality measure record.',
+    `hedis_measure_id` BIGINT COMMENT 'Unique identifier for the hedis measure within the quality measure record.',
+    `icd_code_id` BIGINT COMMENT 'Unique identifier for the icd code within the quality measure record.',
+    `loinc_code_id` BIGINT COMMENT 'Unique identifier for the loinc code within the quality measure record.',
+    `active_status` STRING COMMENT 'The active status value classifying the quality measure record.',
+    `benchmark_percentile` DECIMAL(18,2) COMMENT 'The benchmark percentile of the quality measure record.',
+    `benchmark_threshold` DECIMAL(18,2) COMMENT 'The benchmark threshold of the quality measure record.',
+    `care_gap_relevant_flag` BOOLEAN COMMENT 'The care gap relevant flag of the quality measure record.',
+    `care_setting` STRING COMMENT 'The care setting of the quality measure record.',
+    `clinical_ai_integration_marker` STRING COMMENT 'The clinical ai integration marker of the quality measure record.',
+    `clinical_domain` STRING COMMENT 'The clinical domain of the quality measure record.',
+    `cms_ecqm_code` STRING COMMENT 'The cms ecqm code value classifying the quality measure record.',
+    `measure_code` STRING COMMENT 'The measure code value classifying the quality measure record.',
+    `cpt_code_set` STRING COMMENT 'The cpt code set of the quality measure record.',
+    `created_timestamp` TIMESTAMP COMMENT 'Record creation timestamp',
+    `data_source` STRING COMMENT 'The data source of the quality measure record.',
+    `denominator_definition` STRING COMMENT 'The denominator definition of the quality measure record.',
+    `denominator_exception` STRING COMMENT 'The denominator exception of the quality measure record.',
+    `denominator_exclusion` STRING COMMENT 'The denominator exclusion of the quality measure record.',
+    `effective_end_date` DATE COMMENT 'Timestamp capturing the effective end date associated with the quality measure record.',
+    `effective_start_date` DATE COMMENT 'Timestamp capturing the effective start date associated with the quality measure record.',
+    `eligible_population_criteria` STRING COMMENT 'The eligible population criteria of the quality measure record.',
+    `floor_threshold` DECIMAL(18,2) COMMENT 'The floor threshold of the quality measure record.',
+    `hai_category` STRING COMMENT 'The hai category of the quality measure record.',
+    `higher_is_better` BOOLEAN COMMENT 'The higher is better of the quality measure record.',
+    `icd10_code_set` STRING COMMENT 'The icd10 code set of the quality measure record.',
+    `loinc_code_set` STRING COMMENT 'The loinc code set of the quality measure record.',
+    `measure_type` STRING COMMENT 'The measure type value classifying the quality measure record.',
+    `measurement_methodology` STRING COMMENT 'The measurement methodology of the quality measure record.',
+    `measurement_year` STRING COMMENT 'The measurement year of the quality measure record.',
+    `minimum_sample_size` STRING COMMENT 'The minimum sample size of the quality measure record.',
+    `mips_category` STRING COMMENT 'The mips category of the quality measure record.',
+    `nqf_number` STRING COMMENT 'The nqf number of the quality measure record.',
+    `numerator_definition` STRING COMMENT 'The numerator definition of the quality measure record.',
+    `reporting_period_end` DATE COMMENT 'The reporting period end of the quality measure record.',
+    `reporting_period_start` DATE COMMENT 'The reporting period start of the quality measure record.',
+    `reporting_program` STRING COMMENT 'The reporting program of the quality measure record.',
+    `risk_adjustment_flag` BOOLEAN COMMENT 'The risk adjustment flag of the quality measure record.',
+    `risk_adjustment_model` STRING COMMENT 'The risk adjustment model of the quality measure record.',
+    `short_name` STRING COMMENT 'The short name of the quality measure record.',
+    `snomed_code_set` STRING COMMENT 'The snomed code set of the quality measure record.',
+    `specification_url` STRING COMMENT 'The specification url of the quality measure record.',
+    `steward` STRING COMMENT 'The steward of the quality measure record.',
+    `stratification_criteria` STRING COMMENT 'The stratification criteria of the quality measure record.',
+    `submission_deadline` DATE COMMENT 'The submission deadline of the quality measure record.',
+    `title` STRING COMMENT 'The title of the quality measure record.',
+    `tjc_measure_set` STRING COMMENT 'The tjc measure set of the quality measure record.',
+    `updated_timestamp` TIMESTAMP COMMENT 'Last update timestamp',
+    `vbp_domain` STRING COMMENT 'The vbp domain of the quality measure record.',
+    `version` STRING COMMENT 'The version of the quality measure record.',
+    `vibe_structure_marker` STRING COMMENT 'Structure enforcement marker for 22-domain/541-product superset.',
     CONSTRAINT pk_measure PRIMARY KEY(`measure_id`)
-) COMMENT 'Master catalog of all quality measures tracked by the organization across programs (CMS IQR, OQR, VBP, MIPS, TJC, NCQA HEDIS, state-specific, internal). Stores measure ID, measure title, measure steward (CMS, NCQA, TJC, NQF), measure type (process, outcome, structural, patient experience), data source, reporting program, NQF number, CMS eCQM identifier, NCQA HEDIS measure specifications, eligible population criteria, numerator/denominator definitions, benchmark thresholds, measurement methodology (administrative, hybrid, chart-abstracted), measurement year, reporting period, and active status. Consolidates all measure definitions including HEDIS measures formerly tracked separately. SSOT for all enterprise quality measure definitions.';
+) COMMENT 'Generic quality measure definitions supporting multiple reporting programs (CMS, TJC, state, payer). Includes measure specifications, value sets, and reporting requirements. Business justification: Centralizes measure management across diverse quality programs.';
 
 CREATE OR REPLACE TABLE `vibe_healthcare_v1`.`quality`.`measure_result` (
-    `measure_result_id` BIGINT COMMENT 'Unique surrogate identifier for each quality measure performance result record. Primary key for the measure_result data product.',
-    `audit_id` BIGINT COMMENT 'Foreign key linking to compliance.audit. Business justification: Quality measure results are subject to external audits by CMS, NCQA, TJC, and state agencies. Auditors validate data accuracy, methodology compliance, and calculation correctness. Linking results to a',
-    `billing_coverage_id` BIGINT COMMENT 'Foreign key linking to billing.coverage. Business justification: Quality measure results are reported by payer and product line for value-based contracts. Linking enables payer-specific performance tracking, supports ACO and bundled payment reporting, and facilitat',
-    `care_site_id` BIGINT COMMENT 'Reference to the facility (hospital, clinic, outpatient center) for which this measure result is reported.',
-    `claim_id` BIGINT COMMENT 'Foreign key linking to claim.claim. Business justification: Quality measure results are calculated from underlying claims data. Healthcare audit and validation processes require tracing measure results back to source claims for numerator/denominator verificati',
-    `clinician_id` BIGINT COMMENT 'Reference to the clinician or provider for whom this measure result is reported, applicable when measurement_level is provider (e.g., for MIPS individual reporting).',
-    `compliance_regulatory_submission_id` BIGINT COMMENT 'Foreign key linking to compliance.regulatory_submission. Business justification: Quality measure results require regulatory submission to CMS (MIPS, HVBP), state agencies, TJC, and accrediting bodies. Compliance system tracks submission deadlines, attestations, acceptance status, ',
-    `drg_id` BIGINT COMMENT 'Foreign key linking to reference.drg. Business justification: Measure results are stratified by DRG for case mix adjustment and comparative analysis in quality reporting. VBP payment adjustment calculations and Hospital Compare public reporting require DRG-level',
-    `health_plan_id` BIGINT COMMENT 'Foreign key linking to insurance.health_plan. Business justification: Measure results are calculated at health plan level for Star Ratings, HEDIS reporting, and regulatory submissions. Plan-level results determine quality bonus payments and public ratings.',
-    `interface_channel_id` BIGINT COMMENT 'Foreign key linking to interoperability.interface_channel. Business justification: Quality measure results (MIPS, VBP, HEDIS) are submitted electronically to CMS, NCQA, and payers via interface channels. Tracking the submission channel is required for audit compliance, resubmission ',
-    `measure_id` BIGINT COMMENT 'Reference to the quality measure definition (e.g., HEDIS, CMS IQR, MIPS measure) for which this result is recorded.',
-    `org_provider_id` BIGINT COMMENT 'Foreign key linking to provider.org_provider. Business justification: Quality measure results are reported at organizational provider level for MIPS, VBP, and ACO programs. CMS requires organizational NPI for quality reporting submissions, distinct from facility-level c',
-    `payer_id` BIGINT COMMENT 'Reference to the health plan or payer for which this measure result is reported, applicable when measurement_level is health_plan (e.g., HEDIS submission to a specific payer).',
-    `radiology_appointment_id` BIGINT COMMENT 'Foreign key linking to radiology.appointment. Business justification: Imaging appointment no-show rates, wait times, and scheduling efficiency are access quality measures. Measure results must link to appointments for operational improvement and patient satisfaction tra',
-    `report_id` BIGINT COMMENT 'Foreign key linking to radiology.report. Business justification: Report turnaround time, addendum rates, and critical finding communication timeliness are CMS and ACR quality measures. Measure results must link to reports for performance validation and peer compari',
-    `radiology_study_id` BIGINT COMMENT 'Foreign key linking to radiology.study. Business justification: Quality measures for imaging appropriateness, turnaround time, and critical result notification are calculated from imaging studies. Measure results must trace to the studies included in numerator/den',
-    `reader_assignment_id` BIGINT COMMENT 'Foreign key linking to radiology.reader_assignment. Business justification: Radiologist productivity, turnaround time, and peer review scores are quality measures for OPPE/FPPE and privileging. Measure results must link to reader assignments for individual provider performanc',
-    `research_study_id` BIGINT COMMENT 'Foreign key linking to research.research_study. Business justification: Quality measure results must exclude or separately report research subjects to prevent investigational interventions from skewing standard care performance metrics. CMS, NCQA, and TJC require research',
-    `facility_service_id` BIGINT COMMENT 'Foreign key linking to facility.facility_service. Business justification: Quality measure results reported at service line level (trauma, stroke, cardiac, oncology) for program-specific accreditation and CMS quality reporting. Service line leaders track program-specific mea',
-    `unit_id` BIGINT COMMENT 'Reference to the clinical unit (e.g., ICU, ED, surgical unit) for which this measure result is reported, applicable when measurement_level is unit.',
-    `visit_procedure_id` BIGINT COMMENT 'Foreign key linking to encounter.visit_procedure. Business justification: Quality measures require specific procedures for numerator compliance (colonoscopy for colorectal screening, HbA1c testing for diabetes control, mammography for breast cancer screening). Real business',
-    `benchmark_comparison_result` STRING COMMENT 'Categorical comparison of this facilitys performance rate against the national benchmark rate (above, at, or below benchmark). Supports executive dashboards and regulatory reporting summaries.. Valid values are `above_benchmark|at_benchmark|below_benchmark|no_benchmark`',
-    `cms_submission_date` DATE COMMENT 'The date on which this measure result was submitted to the Centers for Medicare and Medicaid Services (CMS) via the applicable quality reporting portal (e.g., QualityNet, MIPS submission system).',
-    `created_timestamp` TIMESTAMP COMMENT 'The date and time when this measure result record was first created in the system.',
-    `data_completeness_rate` DECIMAL(18,2) COMMENT 'The proportion of eligible cases for which complete data was available for measure calculation. CMS requires a minimum data completeness threshold (typically 75%) for measure results to be publicly reported.',
-    `denominator_count` STRING COMMENT 'The total number of eligible patients, encounters, or events in the initial patient population that meet the denominator criteria for this quality measure during the measurement period.',
-    `exception_count` STRING COMMENT 'The number of patients or events meeting denominator exception criteria (e.g., patient declined, medical reason documented), distinct from exclusions. Applicable for MIPS and certain CMS measures.',
-    `exclusion_count` STRING COMMENT 'The number of patients or events excluded from the denominator based on measure-defined exclusion criteria (e.g., medical contraindications, patient refusals, hospice enrollment).',
-    `gap_count` STRING COMMENT 'The estimated number of additional patients or events that would need to meet the numerator criteria to achieve the target rate. Used for care gap closure prioritization in population health programs.',
-    `gap_to_target_rate` DECIMAL(18,2) COMMENT 'The arithmetic difference between the target_rate and the actual performance_rate (target_rate minus performance_rate). Positive values indicate underperformance; negative values indicate the target has been exceeded.',
-    `hai_event_type` STRING COMMENT 'For HAI-related quality measures, specifies the type of healthcare-associated infection being tracked (Central Line-Associated Bloodstream Infection (CLABSI), Catheter-Associated Urinary Tract Infection (CAUTI), Surgical Site Infection (SSI), MRSA bacteremia, Clostridioides difficile (CDI)). Not applicable for non-HAI measures.. Valid values are `CLABSI|CAUTI|SSI|MRSA|CDI|not_applicable`',
-    `hedis_methodology_indicator` STRING COMMENT 'For HEDIS measures, specifies whether the administrative or hybrid methodology was used for this result. The hybrid methodology supplements administrative data with medical record review to improve accuracy. Not applicable for non-HEDIS measures.. Valid values are `administrative|hybrid|not_applicable`',
-    `is_publicly_reported` BOOLEAN COMMENT 'Indicates whether this measure result has been or is eligible to be publicly reported on CMS Care Compare, NCQA Health Plan Ratings, or other public transparency platforms.',
-    `measure_domain` STRING COMMENT 'The clinical or operational domain to which the measure belongs (e.g., Patient Safety, Effectiveness of Care, Efficiency, Patient Experience, Care Coordination). [ENUM-REF-CANDIDATE: patient_safety|effectiveness|efficiency|patient_experience|care_coordination|timeliness|equity — promote to reference product]',
-    `measurement_level` STRING COMMENT 'The organizational level at which this measure result is reported (facility, unit, provider, health plan, or population). Determines the granularity of the performance result.. Valid values are `facility|unit|provider|health_plan|population`',
-    `measurement_methodology` STRING COMMENT 'The data collection methodology used to calculate this measure result (administrative claims-based, hybrid combining claims and medical record review, chart-abstracted from medical records, registry-based, or direct EHR extraction). Impacts data completeness and comparability.. Valid values are `administrative|hybrid|chart_abstracted|registry|ehr_direct`',
-    `measurement_period_end_date` DATE COMMENT 'The last date of the reporting/measurement period for which this quality measure result applies (e.g., December 31 of the performance year).',
-    `measurement_period_start_date` DATE COMMENT 'The first date of the reporting/measurement period for which this quality measure result applies (e.g., January 1 of the performance year).',
-    `meets_reporting_threshold` BOOLEAN COMMENT 'Indicates whether this measure result meets the minimum case volume and data completeness thresholds required for public reporting by CMS or the applicable program. Results not meeting thresholds are suppressed from public display.',
-    `mips_measure_category` STRING COMMENT 'For MIPS-reported measures, the performance category under which this measure is reported (Quality, Promoting Interoperability, Improvement Activities, or Cost). Null for non-MIPS measures.. Valid values are `quality|promoting_interoperability|improvement_activities|cost`',
-    `mips_points_earned` DECIMAL(18,2) COMMENT 'The number of MIPS performance points earned for this measure in the reporting period, used to calculate the composite MIPS performance score. Null for non-MIPS measures.',
-    `national_benchmark_rate` DECIMAL(18,2) COMMENT 'The national benchmark performance rate for this measure as published by the measure steward or CMS (e.g., HEDIS 90th percentile, CMS national average). Used for comparative performance analysis.',
-    `ncqa_submission_status` STRING COMMENT 'The submission status of this measure result to the National Committee for Quality Assurance (NCQA) for HEDIS reporting and health plan accreditation purposes. Null for non-HEDIS measures.. Valid values are `not_submitted|submitted|accepted|rejected|pending`',
-    `nqf_number` STRING COMMENT 'The National Quality Forum (NQF) endorsement number for this quality measure (e.g., NQF-0059 for Diabetes HbA1c Poor Control). Null if the measure is not NQF-endorsed.. Valid values are `^NQF-[0-9]{4}$`',
-    `numerator_count` STRING COMMENT 'The number of patients, encounters, or events in the denominator that met the numerator criteria (i.e., received the desired care or outcome) for this quality measure.',
-    `payer_submission_status` STRING COMMENT 'The submission status of this measure result to the applicable health plan or payer (e.g., commercial payer, Medicaid managed care organization). Tracks whether the result has been transmitted and acknowledged.. Valid values are `not_submitted|submitted|accepted|rejected|pending`',
-    `percentile_rank` DECIMAL(18,2) COMMENT 'The percentile rank of this facilitys or providers performance rate relative to national or peer benchmarks for this measure (e.g., 75.00 = 75th percentile nationally).',
-    `performance_rate` DECIMAL(18,2) COMMENT 'The calculated performance rate for this quality measure, expressed as a decimal proportion (numerator / adjusted denominator). For example, 0.8750 represents 87.50% compliance.',
-    `performance_year` STRING COMMENT 'The calendar or fiscal year for which this quality measure result is being reported (e.g., 2024). Used for year-over-year trending and regulatory submission alignment.',
-    `reporting_program` STRING COMMENT 'The quality reporting program under which this measure result is submitted (e.g., CMS Inpatient Quality Reporting (IQR), Outpatient Quality Reporting (OQR), Value-Based Purchasing (VBP), Merit-based Incentive Payment System (MIPS), HEDIS, state program, Alternative Payment Model (APM), CAHPS). [ENUM-REF-CANDIDATE: CMS_IQR|CMS_OQR|VBP|MIPS|HEDIS|STATE|APM|CAHPS — promote to reference product]',
-    `reporting_quarter` STRING COMMENT 'The calendar quarter (1–4) within the performance year for which this measure result is reported, applicable for measures with quarterly reporting cycles (e.g., CMS OQR quarterly submissions).',
-    `result_calculated_timestamp` TIMESTAMP COMMENT 'The date and time when this quality measure result was calculated or generated by the analytics or quality measurement system.',
-    `result_status` STRING COMMENT 'Current lifecycle status of this measure result record (e.g., draft during calculation, final after internal validation, submitted to payer/CMS, accepted or rejected by the receiving entity, under_review for audit).. Valid values are `draft|final|submitted|accepted|rejected|under_review`',
-    `sir_value` DECIMAL(18,2) COMMENT 'The Standardized Infection Ratio (SIR) for HAI measures, calculated as observed infections divided by predicted infections based on national baseline data. A SIR below 1.0 indicates better-than-expected performance. Null for non-HAI measures.',
-    `target_rate` DECIMAL(18,2) COMMENT 'The internally established or externally mandated performance target rate for this measure in the given reporting period (e.g., organizational goal of 0.9000 for 90% compliance).',
-    `updated_timestamp` TIMESTAMP COMMENT 'The date and time when this measure result record was last modified.',
-    `vbp_achievement_score` DECIMAL(18,2) COMMENT 'The CMS VBP domain-level achievement score for this measure, reflecting performance relative to national achievement thresholds and benchmarks. Null for non-VBP measures.',
-    `vbp_domain` STRING COMMENT 'The CMS Value-Based Purchasing (VBP) program domain to which this measure belongs (e.g., Clinical Outcomes, Safety, Person and Community Engagement, Efficiency and Cost Reduction). Applicable only for VBP-reported measures. [ENUM-REF-CANDIDATE: clinical_outcomes|safety|person_community_engagement|efficiency_cost_reduction — promote to reference product]',
-    `vbp_improvement_score` DECIMAL(18,2) COMMENT 'The CMS VBP domain-level improvement score for this measure, reflecting performance improvement relative to the facilitys own baseline performance. Null for non-VBP measures.',
+    `measure_result_id` BIGINT COMMENT 'Primary key',
+    `audit_id` BIGINT COMMENT 'Unique identifier for the audit within the quality measure result record.',
+    `billing_coverage_id` BIGINT COMMENT 'Unique identifier for the billing coverage within the quality measure result record.',
+    `care_site_id` BIGINT COMMENT 'Unique identifier for the care site within the quality measure result record.',
+    `claim_id` BIGINT COMMENT 'Unique identifier for the claim within the quality measure result record.',
+    `clinician_id` BIGINT COMMENT 'Unique identifier for the clinician within the quality measure result record.',
+    `compliance_regulatory_submission_id` BIGINT COMMENT 'Unique identifier for the compliance regulatory submission within the quality measure result record.',
+    `drg_id` BIGINT COMMENT 'Unique identifier for the drg within the quality measure result record.',
+    `health_plan_id` BIGINT COMMENT 'Unique identifier for the health plan within the quality measure result record.',
+    `interface_channel_id` BIGINT COMMENT 'Unique identifier for the interface channel within the quality measure result record.',
+    `measure_id` BIGINT COMMENT 'Unique identifier for the measure within the quality measure result record.',
+    `org_provider_id` BIGINT COMMENT 'Unique identifier for the org provider within the quality measure result record.',
+    `payer_id` BIGINT COMMENT 'Unique identifier for the payer within the quality measure result record.',
+    `radiology_appointment_id` BIGINT COMMENT 'Unique identifier for the radiology appointment within the quality measure result record.',
+    `report_id` BIGINT COMMENT 'Unique identifier for the radiology report within the quality measure result record.',
+    `service_id` BIGINT COMMENT 'Unique identifier for the service within the quality measure result record.',
+    `unit_id` BIGINT COMMENT 'Unique identifier for the unit within the quality measure result record.',
+    `benchmark_comparison_result` STRING COMMENT 'The benchmark comparison result of the quality measure result record.',
+    `cms_submission_date` DATE COMMENT 'Timestamp capturing the cms submission date associated with the quality measure result record.',
+    `created_timestamp` TIMESTAMP COMMENT 'Record creation timestamp',
+    `data_completeness_rate` DECIMAL(18,2) COMMENT 'The data completeness rate of the quality measure result record.',
+    `denominator_count` STRING COMMENT 'The denominator count of the quality measure result record.',
+    `exception_count` STRING COMMENT 'The exception count of the quality measure result record.',
+    `exclusion_count` STRING COMMENT 'The exclusion count of the quality measure result record.',
+    `gap_count` STRING COMMENT 'The gap count of the quality measure result record.',
+    `gap_to_target_rate` DECIMAL(18,2) COMMENT 'The gap to target rate of the quality measure result record.',
+    `hai_event_type` STRING COMMENT 'The hai event type value classifying the quality measure result record.',
+    `hedis_methodology_indicator` STRING COMMENT 'The hedis methodology indicator of the quality measure result record.',
+    `is_publicly_reported` BOOLEAN COMMENT 'Boolean flag indicating the is publicly reported status of the quality measure result record.',
+    `measure_domain` STRING COMMENT 'The measure domain of the quality measure result record.',
+    `measurement_level` STRING COMMENT 'The measurement level of the quality measure result record.',
+    `measurement_methodology` STRING COMMENT 'The measurement methodology of the quality measure result record.',
+    `measurement_period_end_date` DATE COMMENT 'Timestamp capturing the measurement period end date associated with the quality measure result record.',
+    `measurement_period_start_date` DATE COMMENT 'Timestamp capturing the measurement period start date associated with the quality measure result record.',
+    `meets_reporting_threshold` BOOLEAN COMMENT 'The meets reporting threshold of the quality measure result record.',
+    `mips_measure_category` STRING COMMENT 'The mips measure category of the quality measure result record.',
+    `mips_points_earned` DECIMAL(18,2) COMMENT 'The mips points earned of the quality measure result record.',
+    `national_benchmark_rate` DECIMAL(18,2) COMMENT 'The national benchmark rate of the quality measure result record.',
+    `ncqa_submission_status` STRING COMMENT 'The ncqa submission status value classifying the quality measure result record.',
+    `nqf_number` STRING COMMENT 'The nqf number of the quality measure result record.',
+    `numerator_count` STRING COMMENT 'The numerator count of the quality measure result record.',
+    `payer_submission_status` STRING COMMENT 'The payer submission status value classifying the quality measure result record.',
+    `percentile_rank` DECIMAL(18,2) COMMENT 'The percentile rank of the quality measure result record.',
+    `performance_rate` DECIMAL(18,2) COMMENT 'The performance rate of the quality measure result record.',
+    `performance_year` STRING COMMENT 'The performance year of the quality measure result record.',
+    `reporting_program` STRING COMMENT 'The reporting program of the quality measure result record.',
+    `reporting_quarter` STRING COMMENT 'The reporting quarter of the quality measure result record.',
+    `result_calculated_timestamp` TIMESTAMP COMMENT 'The result calculated timestamp of the quality measure result record.',
+    `result_status` STRING COMMENT 'The result status value classifying the quality measure result record.',
+    `sir_value` DECIMAL(18,2) COMMENT 'The sir value of the quality measure result record.',
+    `target_rate` DECIMAL(18,2) COMMENT 'The target rate of the quality measure result record.',
+    `updated_timestamp` TIMESTAMP COMMENT 'Last update timestamp',
+    `vbp_achievement_score` DECIMAL(18,2) COMMENT 'The vbp achievement score of the quality measure result record.',
+    `vbp_domain` STRING COMMENT 'The vbp domain of the quality measure result record.',
+    `vbp_improvement_score` DECIMAL(18,2) COMMENT 'The vbp improvement score of the quality measure result record.',
+    `vibe_structure_marker` STRING COMMENT 'Structure enforcement marker for 22-domain/541-product superset.',
     CONSTRAINT pk_measure_result PRIMARY KEY(`measure_result_id`)
-) COMMENT 'Transactional records of quality measure performance results at the facility, unit, provider, or health plan level for a given reporting period. Captures numerator, denominator, exclusion count, performance rate, national benchmark, percentile rank, target rate, gap to target, gap count, measurement methodology (administrative, hybrid, chart-abstracted), reporting program (CMS IQR, OQR, VBP, MIPS, HEDIS, state), NCQA or payer submission status, benchmark comparison, VBP domain-level achievement/improvement scores, and HEDIS hybrid/administrative methodology indicators. Consolidates all measure results including HEDIS results formerly tracked separately. SSOT for all quality measure performance data across all programs.';
+) COMMENT 'Calculated quality measure results at facility, provider, and payer levels. Supports trending, benchmarking, and regulatory submission. Business justification: Enables performance monitoring, incentive tracking, and public reporting compliance.';
 
 CREATE OR REPLACE TABLE `vibe_healthcare_v1`.`quality`.`cdi_review` (
-    `cdi_review_id` BIGINT COMMENT 'Unique surrogate identifier for each CDI concurrent or retrospective chart review record. Primary key for the cdi_review data product.',
-    `audit_id` BIGINT COMMENT 'Foreign key linking to compliance.audit. Business justification: CDI reviews are subject to compliance audits for documentation integrity, query appropriateness, physician response rates, and DRG assignment accuracy. Audits by RACs, MACs, and OIG assess compliance ',
-    `care_site_id` BIGINT COMMENT 'Reference to the hospital or care facility where the encounter and CDI review occurred.',
-    `cdi_worksheet_id` BIGINT COMMENT 'Reference to the CDI worksheet record in the clinical.cdi_worksheet product used to document the structured review findings for this encounter.',
-    `clinician_id` BIGINT COMMENT 'Reference to the attending physician responsible for the patient encounter being reviewed. Used for physician query response rate monitoring.',
-    `drg_assignment_id` BIGINT COMMENT 'Foreign key linking to encounter.drg_assignment. Business justification: CDI reviews analyze specific DRG assignments to validate coding accuracy, identify documentation gaps, and track DRG changes. Real business process: CDI specialists review assigned DRGs, initiate quer',
-    `employee_id` BIGINT COMMENT 'Reference to the CDI specialist or clinician who performed the chart review. Used for productivity tracking and reviewer credentialing.',
-    `invoice_id` BIGINT COMMENT 'Foreign key linking to billing.invoice. Business justification: CDI reviews directly impact final billing through DRG optimization and CC/MCC capture. The invoice reflects the financial outcome of CDI findings. Linking enables tracking of CDI program ROI, DRG chan',
-    `mpi_record_id` BIGINT COMMENT 'Reference to the patient whose medical record is under CDI review. Protected Health Information (PHI) per HIPAA.',
-    `specialty_id` BIGINT COMMENT 'Foreign key linking to provider.specialty. Business justification: CDI reviews target specialty-specific documentation patterns for DRG optimization. Cardiology, orthopedics, and other specialties have distinct documentation requirements for CC/MCC capture and CMI im',
-    `subject_enrollment_id` BIGINT COMMENT 'Foreign key linking to research.subject_enrollment. Business justification: CDI reviews for research subjects require special handling because research protocols drive diagnoses, procedures, and documentation patterns that differ from standard care. Linkage prevents inappropr',
-    `unit_id` BIGINT COMMENT 'Foreign key linking to facility.unit. Business justification: Clinical documentation improvement reviews analyzed by unit to identify unit-specific documentation gaps and physician education needs. CDI specialists target units with low CC/MCC capture rates and h',
-    `visit_id` BIGINT COMMENT 'Reference to the inpatient or outpatient encounter being reviewed. Links the CDI review to the clinical encounter record.',
-    `drg_id` BIGINT COMMENT 'Foreign key linking to reference.drg. Business justification: CDI reviews evaluate working DRG assignments during concurrent review to identify documentation improvement opportunities. CDI specialists must reference DRG definitions, relative weights, and CC/MCC ',
-    `admit_date` DATE COMMENT 'Date the patient was admitted to the facility. Used to calculate review lag (days from admission to first CDI review) and concurrent review timeliness.',
-    `cc_mcc_opportunity_flag` BOOLEAN COMMENT 'Indicates whether the CDI reviewer identified a potential CC or MCC capture opportunity requiring physician query or documentation clarification.',
-    `cc_mcc_status` STRING COMMENT 'Indicates whether a Complication and Comorbidity (CC) or Major Complication and Comorbidity (MCC) was captured in the documentation at the time of review. Critical CDI metric driving DRG assignment and reimbursement.. Valid values are `no_cc_mcc|cc|mcc|not_applicable`',
-    `clinical_indicator_summary` STRING COMMENT 'Free-text summary of the clinical indicators identified in the medical record that support the CDI review finding or physician query. Documents the clinical basis for the query per AHIMA/ACDIS compliant query guidelines.',
-    `cmi_impact` DECIMAL(18,2) COMMENT 'Calculated difference in DRG relative weight between the working DRG and the potential or final DRG resulting from CDI review activity. Quantifies the CMI optimization contribution of this review.',
-    `created_timestamp` TIMESTAMP COMMENT 'Date and time this CDI review record was first created in the data platform. Supports audit trail and data lineage requirements.',
-    `discharge_date` DATE COMMENT 'Date the patient was discharged from the facility. Populated for post-discharge retrospective reviews. Used to calculate Length of Stay (LOS) context for CDI review.',
-    `documentation_impact` STRING COMMENT 'Category of documentation improvement resulting from the CDI review and query: DRG change, CC/MCC capture, POA status change, or no impact. Used for CDI program ROI and quality reporting.. Valid values are `drg_change|cc_mcc_capture|poa_change|no_impact|multiple`',
-    `drg_change_flag` BOOLEAN COMMENT 'Indicates whether the CDI review and associated query activity resulted in a change to the DRG assignment. Key CDI program outcome metric.',
-    `poa_status` STRING COMMENT 'Present on Admission (POA) indicator status for the principal diagnosis at the time of CDI review. Affects HAI reporting, quality metrics, and CMS payment adjustments.. Valid values are `yes|no|unknown|exempt|clinically_undetermined`',
-    `principal_diagnosis_code` STRING COMMENT 'ICD-10-CM code for the principal diagnosis at the time of CDI review. Used to assess documentation specificity and identify query opportunities.',
-    `query_initiated_flag` BOOLEAN COMMENT 'Indicates whether a physician query was initiated as a result of this CDI review. Used to calculate query rate and CDI program activity metrics.',
-    `query_method` STRING COMMENT 'Method by which the physician query was communicated: verbal, written paper-based, or electronic (e.g., via Epic In-Basket or Cerner PowerChart message). Supports CDI workflow analysis and compliance documentation.. Valid values are `verbal|written|electronic|concurrent_electronic`',
-    `query_outcome` STRING COMMENT 'Outcome of the physician query: whether the physician agreed with the CDI suggestion, disagreed, amended documentation, or indicated clinical undetermination. Core CDI program outcome metric.. Valid values are `agree|disagree|amended|no_change|clinically_undetermined`',
-    `query_response_date` DATE COMMENT 'Date the attending physician responded to the CDI query. Used to calculate query response turnaround time and physician engagement metrics.',
-    `query_response_status` STRING COMMENT 'Current status of the physician query response. Used to monitor physician query response rates, a key CDI program KPI.. Valid values are `pending|responded|no_response|withdrawn`',
-    `query_type` STRING COMMENT 'Classification of the physician query as compliant (meets AHIMA/ACDIS standards), leading (directs physician to a specific answer), or non-compliant. Supports CDI compliance monitoring and OIG audit readiness.. Valid values are `compliant|leading|non_compliant`',
-    `review_completion_timestamp` TIMESTAMP COMMENT 'Date and time the CDI review was marked complete. Used to calculate review turnaround time and CDI specialist productivity.',
-    `review_date` DATE COMMENT 'Calendar date on which the CDI specialist performed the chart review. Principal business event date for the review record.',
-    `review_finding_type` STRING COMMENT 'Classification of the CDI reviewers primary finding from the chart review. Drives query initiation workflow and CDI program productivity reporting.. Valid values are `query_opportunity|no_opportunity|documentation_complete|unable_to_review`',
-    `review_lag_days` STRING COMMENT 'Number of days elapsed between the patient admission date and the date of this CDI review. Used to measure concurrent review timeliness; a key CDI program performance indicator.',
-    `review_number` STRING COMMENT 'Externally visible, human-readable business identifier for the CDI review record. Used for cross-system reference and audit trail. Format: CDI-YYYY-NNNNNNN.. Valid values are `^CDI-[0-9]{4}-[0-9]{7}$`',
-    `review_sequence_number` STRING COMMENT 'Sequential number of this review within the encounter (1 = initial review, 2 = first follow-up, etc.). Used to track review frequency per encounter and CDI program throughput.',
-    `review_status` STRING COMMENT 'Current workflow state of the CDI chart review. Drives CDI program productivity dashboards and workqueue management.. Valid values are `open|pending_query|pending_response|completed|cancelled`',
-    `review_timestamp` TIMESTAMP COMMENT 'Precise date and time the CDI review was initiated in the CDI system. Used for concurrent review timeliness measurement and SLA tracking.',
-    `review_type` STRING COMMENT 'Classification of the CDI review by timing and purpose: initial concurrent review, follow-up concurrent review, or post-discharge retrospective review. Drives CDI workflow routing and productivity metrics.. Valid values are `initial|follow_up|post_discharge|concurrent|retrospective`',
-    `reviewer_credential` STRING COMMENT 'Professional credential of the CDI reviewer performing the review (e.g., CCDS, CDIP, RN, MD). Used for CDI program staffing analytics and credential-based productivity reporting.',
-    `reviewer_role` STRING COMMENT 'Functional role of the individual performing the CDI review. Distinguishes between CDI specialists, physician advisors, coders, and supervisors for productivity and workflow analysis.. Valid values are `cdi_specialist|cdi_physician_advisor|coder|supervisor`',
-    `source_review_reference` STRING COMMENT 'Native identifier of the CDI review record in the originating operational system (e.g., 3M CDI internal review ID, Epic CDI activity ID). Supports cross-system traceability and ETL reconciliation.',
-    `updated_timestamp` TIMESTAMP COMMENT 'Date and time this CDI review record was last modified in the data platform. Supports change tracking, audit trail, and incremental ETL processing.',
+    `cdi_review_id` BIGINT COMMENT 'Primary key',
+    `care_site_id` BIGINT COMMENT 'Unique identifier for the care site within the quality cdi review record.',
+    `cdi_worksheet_id` BIGINT COMMENT 'Unique identifier for the cdi worksheet within the quality cdi review record.',
+    `clinician_id` BIGINT COMMENT 'Unique identifier for the clinician within the quality cdi review record.',
+    `drg_assignment_id` BIGINT COMMENT 'Unique identifier for the drg assignment within the quality cdi review record.',
+    `employee_id` BIGINT COMMENT 'Unique identifier for the employee within the quality cdi review record.',
+    `invoice_id` BIGINT COMMENT 'Unique identifier for the invoice within the quality cdi review record.',
+    `mpi_record_id` BIGINT COMMENT 'Unique identifier for the mpi record within the quality cdi review record.',
+    `specialty_id` BIGINT COMMENT 'Unique identifier for the specialty within the quality cdi review record.',
+    `subject_enrollment_id` BIGINT COMMENT 'Unique identifier for the subject enrollment within the quality cdi review record.',
+    `unit_id` BIGINT COMMENT 'Unique identifier for the unit within the quality cdi review record.',
+    `visit_id` BIGINT COMMENT 'Unique identifier for the visit within the quality cdi review record.',
+    `drg_id` BIGINT COMMENT 'Unique identifier for the working drg within the quality cdi review record.',
+    `admit_date` DATE COMMENT 'Timestamp capturing the admit date associated with the quality cdi review record.',
+    `cc_mcc_opportunity_flag` BOOLEAN COMMENT 'The cc mcc opportunity flag of the quality cdi review record.',
+    `cc_mcc_status` STRING COMMENT 'The cc mcc status value classifying the quality cdi review record.',
+    `clinical_indicator_summary` STRING COMMENT 'The clinical indicator summary of the quality cdi review record.',
+    `cmi_impact` DECIMAL(18,2) COMMENT 'The cmi impact of the quality cdi review record.',
+    `created_timestamp` TIMESTAMP COMMENT 'Record creation timestamp',
+    `discharge_date` DATE COMMENT 'Timestamp capturing the discharge date associated with the quality cdi review record.',
+    `documentation_impact` STRING COMMENT 'The documentation impact of the quality cdi review record.',
+    `drg_change_flag` BOOLEAN COMMENT 'The drg change flag of the quality cdi review record.',
+    `poa_status` STRING COMMENT 'The poa status value classifying the quality cdi review record.',
+    `principal_diagnosis_code` STRING COMMENT 'The principal diagnosis code value classifying the quality cdi review record.',
+    `query_initiated_flag` BOOLEAN COMMENT 'The query initiated flag of the quality cdi review record.',
+    `query_method` STRING COMMENT 'The query method of the quality cdi review record.',
+    `query_outcome` STRING COMMENT 'The query outcome of the quality cdi review record.',
+    `query_response_date` DATE COMMENT 'Timestamp capturing the query response date associated with the quality cdi review record.',
+    `query_response_status` STRING COMMENT 'The query response status value classifying the quality cdi review record.',
+    `query_type` STRING COMMENT 'The query type value classifying the quality cdi review record.',
+    `review_completion_timestamp` TIMESTAMP COMMENT 'The review completion timestamp of the quality cdi review record.',
+    `review_date` DATE COMMENT 'Timestamp capturing the review date associated with the quality cdi review record.',
+    `review_finding_type` STRING COMMENT 'The review finding type value classifying the quality cdi review record.',
+    `review_lag_days` STRING COMMENT 'The review lag days of the quality cdi review record.',
+    `review_number` STRING COMMENT 'The review number of the quality cdi review record.',
+    `review_sequence_number` STRING COMMENT 'The review sequence number of the quality cdi review record.',
+    `review_status` STRING COMMENT 'The review status value classifying the quality cdi review record.',
+    `review_timestamp` TIMESTAMP COMMENT 'The review timestamp of the quality cdi review record.',
+    `review_type` STRING COMMENT 'The review type value classifying the quality cdi review record.',
+    `reviewer_credential` STRING COMMENT 'The reviewer credential of the quality cdi review record.',
+    `reviewer_role` STRING COMMENT 'The reviewer role of the quality cdi review record.',
+    `source_review_reference` STRING COMMENT 'The source review reference of the quality cdi review record.',
+    `updated_timestamp` TIMESTAMP COMMENT 'Last update timestamp',
+    `vibe_structure_marker` STRING COMMENT 'Structure enforcement marker for 22-domain/541-product superset.',
     CONSTRAINT pk_cdi_review PRIMARY KEY(`cdi_review_id`)
-) COMMENT 'Transactional record of Clinical Documentation Improvement (CDI) concurrent and retrospective chart reviews and all associated physician queries. Captures review data: review date, review type (initial, follow-up, post-discharge), working DRG, final DRG, CC/MCC capture status, POA assignment, CMI impact, and reviewer credentials. Captures query data: query type (compliant vs. leading), query method (verbal, written, electronic), clinical indicator supporting query, physician response, documentation impact (DRG change, CC/MCC capture, POA status), and query outcome. SSOT for CDI program activity encompassing both review and query workflows. Supports CDI program productivity tracking, CMI optimization, physician query response rate monitoring, and quality documentation integrity.';
+) COMMENT 'Clinical documentation improvement review tracking for inpatient encounters. Captures query outcomes and DRG/CMI impact. Business justification: Optimizes revenue integrity, supports accurate severity capture, and improves quality measure accuracy.';
 
 CREATE OR REPLACE TABLE `vibe_healthcare_v1`.`quality`.`accreditation_program` (
-    `accreditation_program_id` BIGINT COMMENT 'Unique surrogate identifier for the accreditation program record. Primary key for the accreditation_program data product in the quality domain.',
-    `accreditation_status_id` BIGINT COMMENT 'Foreign key linking to compliance.accreditation_status. Business justification: Quality accreditation programs (TJC, DNV, HFAP) must link to compliance tracking of accreditation status, deemed status for CMS certification, survey cycles, and findings resolution. Compliance system',
-    `care_site_id` BIGINT COMMENT 'Reference to the facility or organizational entity to which this accreditation program applies.',
-    `payer_id` BIGINT COMMENT 'Foreign key linking to insurance.payer. Business justification: Accreditation programs (NCQA, URAC) are often payer-sponsored for contracted facilities. Payers track facility accreditation status for network adequacy requirements and quality assurance. Payer contr',
-    `quality_program_id` BIGINT COMMENT 'Foreign key linking to quality.quality_program. Business justification: Accreditation programs are a specialized type of quality program. This FK establishes the parent-child relationship, enabling accreditation programs to inherit program-level attributes and be included',
-    `accreditation_coordinator_name` STRING COMMENT 'Name of the internal staff member or manager responsible for coordinating the accreditation program, managing survey logistics, and tracking compliance activities.',
-    `accreditation_cycle_years` STRING COMMENT 'The standard duration in years of the accreditation cycle for this program (e.g., 3 years for TJC hospital accreditation, 2 years for some disease-specific certifications). Drives renewal scheduling and survey planning.',
-    `accreditation_decision` STRING COMMENT 'The formal accreditation decision issued by the accrediting body following the most recent survey or review cycle (e.g., accredited, accredited_with_follow_up, conditional, preliminary_denial, denial, not_accredited). Distinct from program_status which reflects the current operational state.. Valid values are `accredited|accredited_with_follow_up|conditional|preliminary_denial|denial|not_accredited`',
-    `accrediting_body` STRING COMMENT 'The external organization responsible for granting and maintaining the accreditation or certification (e.g., TJC = The Joint Commission, CMS = Centers for Medicare and Medicaid Services, NCQA = National Committee for Quality Assurance, DNV = DNV Healthcare, HFAP = Healthcare Facilities Accreditation Program, URAC = Utilization Review Accreditation Commission).. Valid values are `TJC|CMS|NCQA|DNV|HFAP|URAC`',
-    `cms_acceptance_status` STRING COMMENT 'Status of CMS review and acceptance of the submitted Plan of Correction. accepted = CMS approved the PoC; rejected = CMS rejected and requires revision; pending = under CMS review; not_applicable = no CMS PoC required for this program.. Valid values are `accepted|rejected|pending|not_applicable`',
-    `cms_certification_number` STRING COMMENT 'The six-digit CMS Certification Number (CCN), formerly known as the Medicare Provider Number, assigned by CMS to identify the certified provider or supplier. Required for Medicare and Medicaid participation and regulatory reporting.. Valid values are `^[0-9]{6}$`',
-    `complaint_survey_indicator` BOOLEAN COMMENT 'Indicates whether the most recent survey was triggered by a complaint or adverse event report filed with the accrediting body or CMS. True = complaint-triggered survey; False = routine or scheduled survey.',
-    `condition_level_deficiency_count` STRING COMMENT 'Number of findings classified as Condition-Level Deficiencies (CLDs) identified during the survey. Condition-level deficiencies indicate substantial non-compliance with a CMS Condition of Participation and require a Plan of Correction.',
-    `created_timestamp` TIMESTAMP COMMENT 'Timestamp when this accreditation program record was first created in the system. Supports audit trail, data lineage, and compliance record-keeping requirements.',
-    `deemed_status` BOOLEAN COMMENT 'Indicates whether the organization holds CMS Deemed Status through this accreditation program, meaning the accrediting bodys standards are recognized by CMS as meeting or exceeding CMS Conditions of Participation. True = deemed status granted; False = not deemed.',
-    `effective_date` DATE COMMENT 'The date on which the current accreditation or certification became effective and binding. Marks the start of the accreditation cycle.',
-    `expiration_date` DATE COMMENT 'The date on which the current accreditation or certification expires and must be renewed. Used for renewal tracking, compliance monitoring, and regulatory reporting.',
-    `finding_compliance_status` STRING COMMENT 'Current compliance status of the primary finding from the most recent survey. Tracks whether the organization has achieved compliance with the cited standard or condition.. Valid values are `compliant|non_compliant|partial|resolved|pending_review`',
-    `finding_evidence` STRING COMMENT 'Narrative description of the evidence observed or documented by surveyors that supports the primary finding or deficiency citation. Used for Plan of Correction development and compliance tracking.',
-    `finding_resolution_date` DATE COMMENT 'The date on which the primary accreditation finding was resolved and verified as compliant by the accrediting body or internal quality team.',
-    `finding_resolution_status` STRING COMMENT 'Current resolution status of the primary accreditation finding. Tracks the lifecycle from identification through corrective action to verified closure.. Valid values are `open|in_progress|resolved|verified|closed`',
-    `finding_standard_reference` STRING COMMENT 'The specific accreditation standard, National Patient Safety Goal (NPSG), CMS Condition of Participation (CoP) condition, or state regulation citation associated with the primary or most significant finding from the survey (e.g., TJC NPSG.07.01.01, CMS CoP 482.13, State Health Code §405.1). For multi-finding surveys, this captures the lead citation.',
-    `finding_type` STRING COMMENT 'Classification of the primary or most significant finding type from the survey. RFI = Requirement for Improvement (TJC); immediate_threat = Immediate Threat to Health and Safety; condition_level_deficiency = CMS Condition-Level Deficiency; standard_level_deficiency = CMS Standard-Level Deficiency; observation = non-scored observation.. Valid values are `RFI|immediate_threat|condition_level_deficiency|standard_level_deficiency|observation`',
-    `follow_up_required` BOOLEAN COMMENT 'Indicates whether a follow-up survey or focused review is required following the most recent survey due to unresolved findings or conditional accreditation status. True = follow-up required; False = no follow-up required.',
-    `follow_up_survey_date` DATE COMMENT 'Scheduled or actual date of the follow-up survey or focused review required to verify correction of findings from the primary survey. Populated only when follow_up_required is True.',
-    `immediate_threat_count` STRING COMMENT 'Number of findings classified as Immediate Threat to Health and Safety (ITHS) identified during the survey. These are the most severe findings requiring immediate corrective action and may trigger CMS termination proceedings.',
-    `is_cms_cop_applicable` BOOLEAN COMMENT 'Indicates whether CMS Conditions of Participation apply to this accreditation program. True = CMS CoP requirements govern this program; False = program is not subject to CMS CoP (e.g., voluntary certification programs).',
-    `last_cms_validation_date` DATE COMMENT 'Date of the most recent CMS validation survey conducted to verify that the accrediting bodys survey process meets CMS standards for deemed status programs. CMS conducts validation surveys on a sample of accredited organizations.',
-    `next_survey_due_date` DATE COMMENT 'The projected or scheduled date by which the next accreditation survey must occur to maintain continuous accreditation. Calculated from the accreditation cycle and effective date. Used for survey readiness planning.',
-    `plan_of_correction` STRING COMMENT 'Narrative description of the organizations Plan of Correction (PoC) submitted to the accrediting body or CMS in response to identified findings or deficiencies. Describes corrective actions, responsible parties, and timelines.',
-    `poc_due_date` DATE COMMENT 'The regulatory deadline by which the Plan of Correction must be submitted to the accrediting body or CMS. Drives compliance workflow and escalation management.',
-    `poc_submission_date` DATE COMMENT 'The date on which the Plan of Correction was submitted to the accrediting body or CMS. CMS requires PoC submission within 10 calendar days of receipt of the Statement of Deficiencies (Form CMS-2567).',
-    `program_name` STRING COMMENT 'Human-readable name of the accreditation or certification program (e.g., Hospital Accreditation, Primary Stroke Center Certification, Chest Pain Center Certification, NCQA Health Plan Accreditation).',
-    `program_number` STRING COMMENT 'Externally assigned or internally tracked unique program identifier issued by the accrediting body (e.g., TJC organization ID, CMS certification number, NCQA organization ID). Used for cross-referencing with accrediting body portals and regulatory submissions.',
-    `program_status` STRING COMMENT 'Current lifecycle status of the accreditation program. active = currently accredited; pending = application submitted, awaiting decision; suspended = accreditation temporarily suspended; withdrawn = organization voluntarily withdrew; expired = accreditation lapsed without renewal; denied = accreditation application denied.. Valid values are `active|pending|suspended|withdrawn|expired|denied`',
-    `program_type` STRING COMMENT 'Classification of the accreditation or certification program by scope and purpose (e.g., hospital_accreditation, disease_specific_certification, primary_stroke_center, chest_pain_center, ambulatory_care, behavioral_health, home_care, laboratory, long_term_care). [ENUM-REF-CANDIDATE: hospital_accreditation|disease_specific_certification|primary_stroke_center|chest_pain_center|ambulatory_care|behavioral_health|home_care|laboratory|long_term_care — promote to reference product]',
-    `readiness_assessment_date` DATE COMMENT 'The date of the most recent internal mock survey, readiness tracer, or formal readiness assessment conducted in preparation for the accreditation survey. Supports TJC survey readiness and continuous compliance programs.',
-    `readiness_score` DECIMAL(18,2) COMMENT 'Numeric score (0.00–100.00) from the most recent internal readiness assessment or mock survey, representing the organizations estimated compliance percentage with accreditation standards. Used for gap analysis and improvement prioritization.',
-    `regulatory_body_contact` STRING COMMENT 'Name and contact information for the primary liaison or account representative at the accrediting body (e.g., TJC account executive, CMS regional office contact). Used for survey coordination and issue escalation.',
-    `standard_level_deficiency_count` STRING COMMENT 'Number of findings classified as Standard-Level Deficiencies identified during the survey. These represent non-compliance at the individual standard level within a Condition of Participation.',
-    `standards_chapters_reviewed` STRING COMMENT 'Comma-separated list or description of the accreditation standards chapters or domains reviewed during the survey (e.g., NPSG, EC, IC, HR, LD, MM, PC, RC, RI, TS for TJC; or CMS CoP conditions reviewed). Supports gap analysis and compliance tracking.',
-    `state_license_number` STRING COMMENT 'State-issued facility license number associated with this accreditation program. Required for state regulatory reporting and cross-referencing with state department of health records.',
-    `state_survey_agency` STRING COMMENT 'Name of the state survey agency responsible for conducting CMS validation surveys or state licensure surveys for this program (e.g., state department of health). Required for CMS deemed status programs.',
-    `survey_date` DATE COMMENT 'The date on which the most recent accreditation survey or on-site review was conducted by the accrediting body. For multi-day surveys, this is the start date.',
-    `survey_end_date` DATE COMMENT 'The date on which the most recent accreditation survey concluded. For single-day surveys, this equals survey_date. Used to calculate survey duration and schedule post-survey activities.',
-    `survey_scope` STRING COMMENT 'Description of the scope of the survey including methodology applied (e.g., tracer methodology, environment of care review, life safety code survey, full organization survey, focused standards review). Free-text or structured description of areas covered.',
-    `survey_type` STRING COMMENT 'Classification of the accreditation survey by its purpose and scheduling method. triennial = standard scheduled full survey; unannounced = surprise survey without advance notice; for_cause = triggered by complaint or adverse event; validation = CMS validation of deemed status; internal_mock = internal readiness simulation; readiness_tracer = internal tracer methodology readiness assessment.. Valid values are `triennial|unannounced|for_cause|validation|internal_mock|readiness_tracer`',
-    `surveyor_team` STRING COMMENT 'Names or identifiers of the surveyors assigned to conduct the accreditation survey. May include lead surveyor and team members from the accrediting body.',
-    `total_findings_count` STRING COMMENT 'Total number of accreditation findings, deficiencies, or Requirements for Improvement (RFIs) identified during the most recent survey. Used for benchmarking, trend analysis, and quality improvement prioritization.',
-    `updated_timestamp` TIMESTAMP COMMENT 'Timestamp when this accreditation program record was most recently modified. Supports change tracking, audit trail, and data quality monitoring.',
+    `accreditation_program_id` BIGINT COMMENT 'Primary key',
+    `accreditation_status_id` BIGINT COMMENT 'Unique identifier for the accreditation status within the quality accreditation program record.',
+    `care_site_id` BIGINT COMMENT 'Unique identifier for the care site within the quality accreditation program record.',
+    `payer_id` BIGINT COMMENT 'Unique identifier for the payer within the quality accreditation program record.',
+    `quality_program_id` BIGINT COMMENT 'Unique identifier for the quality program within the quality accreditation program record.',
+    `accreditation_coordinator_name` STRING COMMENT 'The accreditation coordinator name of the quality accreditation program record.',
+    `accreditation_cycle_years` STRING COMMENT 'The accreditation cycle years of the quality accreditation program record.',
+    `accreditation_decision` STRING COMMENT 'The accreditation decision of the quality accreditation program record.',
+    `accrediting_body` STRING COMMENT 'The accrediting body of the quality accreditation program record.',
+    `cms_acceptance_status` STRING COMMENT 'The cms acceptance status value classifying the quality accreditation program record.',
+    `cms_certification_number` STRING COMMENT 'The cms certification number of the quality accreditation program record.',
+    `complaint_survey_indicator` BOOLEAN COMMENT 'The complaint survey indicator of the quality accreditation program record.',
+    `condition_level_deficiency_count` STRING COMMENT 'The condition level deficiency count of the quality accreditation program record.',
+    `created_timestamp` TIMESTAMP COMMENT 'Record creation timestamp',
+    `deemed_status` BOOLEAN COMMENT 'The deemed status value classifying the quality accreditation program record.',
+    `effective_date` DATE COMMENT 'Timestamp capturing the effective date associated with the quality accreditation program record.',
+    `expiration_date` DATE COMMENT 'Timestamp capturing the expiration date associated with the quality accreditation program record.',
+    `finding_compliance_status` STRING COMMENT 'The finding compliance status value classifying the quality accreditation program record.',
+    `finding_evidence` STRING COMMENT 'The finding evidence of the quality accreditation program record.',
+    `finding_resolution_date` DATE COMMENT 'Timestamp capturing the finding resolution date associated with the quality accreditation program record.',
+    `finding_resolution_status` STRING COMMENT 'The finding resolution status value classifying the quality accreditation program record.',
+    `finding_standard_reference` STRING COMMENT 'The finding standard reference of the quality accreditation program record.',
+    `finding_type` STRING COMMENT 'The finding type value classifying the quality accreditation program record.',
+    `follow_up_required` BOOLEAN COMMENT 'The follow up required of the quality accreditation program record.',
+    `follow_up_survey_date` DATE COMMENT 'Timestamp capturing the follow up survey date associated with the quality accreditation program record.',
+    `immediate_threat_count` STRING COMMENT 'The immediate threat count of the quality accreditation program record.',
+    `is_cms_cop_applicable` BOOLEAN COMMENT 'Boolean flag indicating the is cms cop applicable status of the quality accreditation program record.',
+    `last_cms_validation_date` DATE COMMENT 'Timestamp capturing the last cms validation date associated with the quality accreditation program record.',
+    `next_survey_due_date` DATE COMMENT 'Timestamp capturing the next survey due date associated with the quality accreditation program record.',
+    `plan_of_correction` STRING COMMENT 'The plan of correction of the quality accreditation program record.',
+    `poc_due_date` DATE COMMENT 'Timestamp capturing the poc due date associated with the quality accreditation program record.',
+    `poc_submission_date` DATE COMMENT 'Timestamp capturing the poc submission date associated with the quality accreditation program record.',
+    `program_name` STRING COMMENT 'The program name of the quality accreditation program record.',
+    `program_number` STRING COMMENT 'The program number of the quality accreditation program record.',
+    `program_status` STRING COMMENT 'The program status value classifying the quality accreditation program record.',
+    `program_type` STRING COMMENT 'The program type value classifying the quality accreditation program record.',
+    `readiness_assessment_date` DATE COMMENT 'Timestamp capturing the readiness assessment date associated with the quality accreditation program record.',
+    `readiness_score` DECIMAL(18,2) COMMENT 'The readiness score of the quality accreditation program record.',
+    `regulatory_body_contact` STRING COMMENT 'The regulatory body contact of the quality accreditation program record.',
+    `standard_level_deficiency_count` STRING COMMENT 'The standard level deficiency count of the quality accreditation program record.',
+    `standards_chapters_reviewed` STRING COMMENT 'The standards chapters reviewed of the quality accreditation program record.',
+    `state_license_number` STRING COMMENT 'The state license number of the quality accreditation program record.',
+    `state_survey_agency` STRING COMMENT 'The state survey agency of the quality accreditation program record.',
+    `survey_date` DATE COMMENT 'Timestamp capturing the survey date associated with the quality accreditation program record.',
+    `survey_end_date` DATE COMMENT 'Timestamp capturing the survey end date associated with the quality accreditation program record.',
+    `survey_scope` STRING COMMENT 'The survey scope of the quality accreditation program record.',
+    `survey_type` STRING COMMENT 'The survey type value classifying the quality accreditation program record.',
+    `surveyor_team` STRING COMMENT 'The surveyor team of the quality accreditation program record.',
+    `total_findings_count` STRING COMMENT 'The total findings count of the quality accreditation program record.',
+    `updated_timestamp` TIMESTAMP COMMENT 'Last update timestamp',
+    `vibe_structure_marker` STRING COMMENT 'Structure enforcement marker for 22-domain/541-product superset.',
     CONSTRAINT pk_accreditation_program PRIMARY KEY(`accreditation_program_id`)
-) COMMENT 'Master and transactional entity for accreditation, certification, and regulatory compliance programs. Stores program-level data: accrediting body (TJC, DNV, HFAP, NCQA, URAC, CMS), program type (hospital accreditation, disease-specific certification, primary stroke center, chest pain center), accreditation cycle, current status, and expiration date. Stores survey-level data: survey date, survey type (triennial, unannounced, for-cause, validation, internal mock, readiness tracer), surveyor team, survey scope (tracer methodology, environment of care, life safety), standards chapters reviewed, findings count, and accreditation decision. Stores finding-level data: standard reference (TJC NPSG, CMS CoP condition, state regulation), finding type (RFI, Immediate Threat, Condition-Level Deficiency, Standard-Level Deficiency), compliance status, evidence, plan of correction, CMS acceptance status, and resolution status. SSOT for organizational accreditation portfolio, survey history, and compliance findings.';
+) COMMENT 'Accreditation program enrollment and status tracking for TJC, DNV, AAAHC, and state licensure. Business justification: Required for Medicare participation, deemed status, and payer credentialing.';
 
 CREATE OR REPLACE TABLE `vibe_healthcare_v1`.`quality`.`accreditation_survey` (
-    `accreditation_survey_id` BIGINT COMMENT 'Unique system-generated identifier for each accreditation survey or readiness assessment record. Serves as the primary key for this entity.',
-    `accreditation_program_id` BIGINT COMMENT 'FK to quality.accreditation_program',
-    `care_site_id` BIGINT COMMENT 'Reference to the facility or care site that is the subject of this accreditation survey.',
-    `quality_committee_id` BIGINT COMMENT 'Foreign key linking to quality.committee. Business justification: Accreditation survey findings and corrective action plans are reviewed by committees (e.g., Accreditation Readiness Committee, Quality Council). This FK enables tracking which committee has oversight ',
-    `audit_id` BIGINT COMMENT 'Foreign key linking to compliance.audit. Business justification: Accreditation surveys are formal external audits conducted by TJC, DNV, or other accrediting bodies. Findings must be tracked in the compliance audit system for corrective action planning, regulatory ',
-    `cost_center_id` BIGINT COMMENT 'Foreign key linking to finance.cost_center. Business justification: Accreditation survey costs (surveyor fees, staff time, corrective action implementation) are allocated to specific cost centers. Survey findings often require departmental budget adjustments for compl',
-    `employee_id` BIGINT COMMENT 'Reference to the internal staff member (typically from the Quality or Accreditation department) designated as the primary coordinator and liaison for this survey event.',
-    `payer_id` BIGINT COMMENT 'Foreign key linking to insurance.payer. Business justification: Accreditation surveys may be payer-initiated or payer-tracked for network quality assurance. Payers receive survey results to assess facility compliance with network quality standards and regulatory r',
-    `research_study_id` BIGINT COMMENT 'Foreign key linking to research.research_study. Business justification: Accreditation surveys (TJC, CAP, AABB) include research-specific standards: human subjects protection (RI chapter), investigational product management, research laboratory operations, and informed con',
-    `accreditation_decision` STRING COMMENT 'Final accreditation decision issued by the accrediting body following the survey and review of any corrective action submissions. Values include Accredited (full compliance), Conditional (compliance with corrective action required), Preliminary Denial, Denial, or Not Applicable for internal assessments.. Valid values are `accredited|conditional|preliminary_denial|denial|not_applicable`',
-    `accreditation_decision_date` DATE COMMENT 'Date on which the accrediting body issued the official accreditation decision. Used to track decision timelines and accreditation cycle management.',
-    `accreditation_expiration_date` DATE COMMENT 'Date on which the accreditation award resulting from this survey expires, typically three years from the decision date for TJC triennial surveys. Drives scheduling of the next survey cycle.',
-    `accreditation_standards_edition` STRING COMMENT 'Version or edition year of the accreditation standards manual applied during this survey (e.g., TJC Comprehensive Accreditation Manual for Hospitals 2024 edition). Ensures findings are evaluated against the correct standards version.',
-    `accrediting_body` STRING COMMENT 'Name or code of the organization conducting the accreditation survey. Examples include The Joint Commission (TJC), Centers for Medicare and Medicaid Services (CMS), DNV Healthcare, Healthcare Facilities Accreditation Program (HFAP), Center for Improvement in Healthcare Quality (CIHQ), National Committee for Quality Assurance (NCQA), or INTERNAL for mock/readiness surveys. [ENUM-REF-CANDIDATE: TJC|CMS|DNV|HFAP|CIHQ|NCQA|INTERNAL — 7 candidates stripped; promote to reference product]',
-    `cms_certification_number` STRING COMMENT 'The six-digit CMS Certification Number (CCN), formerly known as the Medicare Provider Number, assigned to the facility by the Centers for Medicare and Medicaid Services. Used to link survey records to CMS certification and reimbursement records.. Valid values are `^[0-9]{6}$`',
-    `condition_level_deficiency` BOOLEAN COMMENT 'Indicates whether any Condition-Level deficiency (as opposed to Standard-Level) was cited during a CMS survey. Condition-Level deficiencies represent systemic non-compliance with a Condition of Participation and carry the most severe regulatory consequences.',
-    `cop_deficiencies_cited` STRING COMMENT 'Number of CMS Conditions of Participation (CoP) deficiencies cited during the survey. CoP deficiencies are the most serious CMS findings and may jeopardize Medicare and Medicaid participation if not corrected.',
-    `corrective_action_plan_status` STRING COMMENT 'Current status of the facilitys Corrective Action Plan (CAP) or Plan of Correction (PoC) developed in response to survey findings. Tracks whether corrective actions are required, in progress, submitted to the accrediting body, accepted, or overdue.. Valid values are `not_required|in_progress|submitted|accepted|overdue`',
-    `created_timestamp` TIMESTAMP COMMENT 'Timestamp when this accreditation survey record was first created in the system. Supports audit trail and data lineage requirements.',
-    `environment_of_care_included` BOOLEAN COMMENT 'Indicates whether the Environment of Care (EC) standards chapter was included in the scope of this survey, covering safety management, security, hazardous materials, fire safety, medical equipment, and utilities.',
-    `esc_acceptance_status` STRING COMMENT 'Status of the accrediting bodys review of the submitted Evidence of Standards Compliance (ESC). Indicates whether the corrective action evidence was accepted, rejected, partially accepted, or is still pending review.. Valid values are `accepted|rejected|pending|partial`',
-    `esc_submission_date` DATE COMMENT 'Actual date on which the facility submitted its Evidence of Standards Compliance (ESC) to the accrediting body. Compared against the due date to assess timeliness of corrective action response.',
-    `esc_submission_due_date` DATE COMMENT 'Deadline by which the facility must submit its Evidence of Standards Compliance (ESC) to the accrediting body addressing all Requirements for Improvement (RFI) identified during the survey.',
-    `findings_count_immediate_threat` STRING COMMENT 'Number of findings classified at the highest priority level representing an Immediate Threat to Health or Safety (ITHS). These require urgent corrective action and may trigger conditional accreditation or denial.',
-    `findings_count_observation` STRING COMMENT 'Number of lower-priority findings or observations noted during the survey that do not rise to the level of a formal Requirement for Improvement but are documented for quality improvement awareness.',
-    `findings_count_requirement_improvement` STRING COMMENT 'Number of findings classified as Requirements for Improvement (RFI) — standards elements that were not fully compliant but do not represent an immediate threat. Must be addressed in the Evidence of Standards Compliance (ESC) submission.',
-    `findings_count_total` STRING COMMENT 'Total number of all findings across all priority levels identified during the survey. Equals the sum of immediate threat, requirement for improvement, and observation findings.',
-    `follow_up_survey_date` DATE COMMENT 'Scheduled or actual date of the follow-up or revisit survey required to verify correction of findings from this survey. Null if no follow-up survey is required.',
-    `follow_up_survey_required` BOOLEAN COMMENT 'Indicates whether the accrediting body has required a follow-up or revisit survey to verify correction of findings. Typically triggered by Immediate Threat to Health or Safety findings or Condition-Level CMS deficiencies.',
-    `infection_prevention_included` BOOLEAN COMMENT 'Indicates whether Infection Prevention and Control (IC) standards were included in the survey scope. Relevant for tracking Healthcare-Associated Infection (HAI) compliance including CLABSI, CAUTI, and SSI prevention standards.',
-    `is_unannounced` BOOLEAN COMMENT 'Indicates whether this survey was conducted without prior notification to the facility. Unannounced surveys are standard for TJC triennial surveys and all CMS surveys, providing an unfiltered view of day-to-day operations.',
-    `lead_surveyor_name` STRING COMMENT 'Full name of the primary surveyor or lead assessor assigned by the accrediting body or internal quality team to conduct this survey. Used for accountability and follow-up communications.',
-    `life_safety_module_included` BOOLEAN COMMENT 'Indicates whether the Life Safety Code (LSC) module was included in the scope of this survey. TJC surveys may include a dedicated Life Safety specialist reviewing NFPA 101 compliance.',
-    `national_patient_safety_goals_reviewed` BOOLEAN COMMENT 'Indicates whether the TJC National Patient Safety Goals (NPSG) were specifically reviewed during this survey. NPSGs address critical safety areas including patient identification, medication safety, infection prevention, and fall reduction.',
-    `next_survey_target_date` DATE COMMENT 'Projected or scheduled date for the next accreditation survey cycle. Used for continuous survey readiness planning and resource allocation.',
-    `notification_date` DATE COMMENT 'Date on which the facility received official notification of the upcoming survey. Null for unannounced surveys. Used to calculate preparation lead time.',
-    `overall_readiness_score` DECIMAL(18,2) COMMENT 'Numeric score (typically expressed as a percentage 0.00–100.00) representing the facilitys overall compliance or readiness level as assessed during the survey. For internal mock surveys, this reflects the percentage of standards elements found compliant.',
-    `preliminary_findings_summary` STRING COMMENT 'Narrative summary of preliminary findings communicated to facility leadership at the survey exit conference before the formal report is issued. Captures key themes, high-priority concerns, and commendations noted by surveyors.',
-    `standards_chapters_reviewed` STRING COMMENT 'Comma-delimited list or narrative description of the accreditation standards chapters or domains reviewed during the survey (e.g., Environment of Care, Life Safety, Infection Prevention, Medication Management, National Patient Safety Goals, Human Resources, Leadership).',
-    `survey_duration_days` STRING COMMENT 'Total number of calendar days the survey spanned from start to end date. Used for resource planning and benchmarking survey scope.',
-    `survey_end_date` DATE COMMENT 'The date on which the on-site survey or assessment concluded. Multi-day surveys will have an end date later than the start date.',
-    `survey_number` STRING COMMENT 'Externally-known alphanumeric identifier assigned by the accrediting body or internal quality department to uniquely reference this survey event (e.g., TJC survey tracking number, CMS survey ID, or internal mock survey reference number).',
-    `survey_report_received_date` DATE COMMENT 'Date on which the facility received the official written survey report from the accrediting body. Triggers the formal corrective action response timeline.',
-    `survey_scope` STRING COMMENT 'Description of the scope of the survey including which care settings, service lines, or departments were included (e.g., inpatient, emergency department, surgical services, behavioral health, ambulatory). May reference tracer methodology, environment of care, or life safety module scope.',
-    `survey_start_date` DATE COMMENT 'The date on which the on-site survey or assessment officially commenced. For unannounced surveys, this is the date surveyors arrived on-site.',
-    `survey_status` STRING COMMENT 'Current lifecycle state of the accreditation survey record, tracking progression from scheduling through completion and accreditation decision.. Valid values are `scheduled|in_progress|completed|cancelled|pending_decision`',
-    `survey_type` STRING COMMENT 'Classification of the survey by its purpose and scheduling basis. Triennial surveys are scheduled full accreditation reviews; unannounced surveys occur without prior notice; for-cause surveys are triggered by complaints or adverse events; validation surveys verify prior findings; mock surveys are internal simulations; readiness tracers are targeted internal assessments of specific standards chapters.. Valid values are `triennial|unannounced|for_cause|validation|mock|readiness_tracer`',
-    `surveyor_team_composition` STRING COMMENT 'Description of the full surveyor or assessor team including roles and specialties (e.g., physician surveyor, nurse surveyor, life safety specialist, behavioral health surveyor). Captures team size and expertise mix for survey context.',
-    `system_tracer_topics` STRING COMMENT 'Comma-delimited list of system tracer topics evaluated during the survey (e.g., Medication Management, Infection Control, Data Use, Emergency Management). System tracers evaluate organization-wide processes rather than individual patient care.',
-    `tjc_organization_code` STRING COMMENT 'Unique identifier assigned by The Joint Commission to the healthcare organization in the TJC Connect portal. Used to cross-reference survey records with TJCs accreditation management system.',
-    `tracer_methodology_used` BOOLEAN COMMENT 'Indicates whether the TJC tracer methodology was employed during this survey, where surveyors follow individual patient care experiences across departments and care transitions to evaluate standards compliance in real-world context.',
-    `updated_timestamp` TIMESTAMP COMMENT 'Timestamp when this accreditation survey record was most recently modified. Supports change tracking, audit trail, and incremental data pipeline processing.',
+    `accreditation_survey_id` BIGINT COMMENT 'Primary key',
+    `accreditation_program_id` BIGINT COMMENT 'Unique identifier for the accreditation program within the quality accreditation survey record.',
+    `care_site_id` BIGINT COMMENT 'Unique identifier for the care site within the quality accreditation survey record.',
+    `quality_committee_id` BIGINT COMMENT 'Unique identifier for the committee within the quality accreditation survey record.',
+    `audit_id` BIGINT COMMENT 'Unique identifier for the compliance audit within the quality accreditation survey record.',
+    `cost_center_id` BIGINT COMMENT 'Unique identifier for the cost center within the quality accreditation survey record.',
+    `employee_id` BIGINT COMMENT 'Unique identifier for the employee within the quality accreditation survey record.',
+    `accreditation_decision` STRING COMMENT 'The accreditation decision of the quality accreditation survey record.',
+    `accreditation_decision_date` DATE COMMENT 'Timestamp capturing the accreditation decision date associated with the quality accreditation survey record.',
+    `accreditation_expiration_date` DATE COMMENT 'Timestamp capturing the accreditation expiration date associated with the quality accreditation survey record.',
+    `accreditation_standards_edition` STRING COMMENT 'The accreditation standards edition of the quality accreditation survey record.',
+    `accrediting_body` STRING COMMENT 'The accrediting body of the quality accreditation survey record.',
+    `cms_certification_number` STRING COMMENT 'The cms certification number of the quality accreditation survey record.',
+    `condition_level_deficiency` BOOLEAN COMMENT 'The condition level deficiency of the quality accreditation survey record.',
+    `cop_deficiencies_cited` STRING COMMENT 'The cop deficiencies cited of the quality accreditation survey record.',
+    `corrective_action_plan_status` STRING COMMENT 'The corrective action plan status value classifying the quality accreditation survey record.',
+    `created_timestamp` TIMESTAMP COMMENT 'Record creation timestamp',
+    `environment_of_care_included` BOOLEAN COMMENT 'The environment of care included of the quality accreditation survey record.',
+    `esc_acceptance_status` STRING COMMENT 'The esc acceptance status value classifying the quality accreditation survey record.',
+    `esc_submission_date` DATE COMMENT 'Timestamp capturing the esc submission date associated with the quality accreditation survey record.',
+    `esc_submission_due_date` DATE COMMENT 'Timestamp capturing the esc submission due date associated with the quality accreditation survey record.',
+    `findings_count_immediate_threat` STRING COMMENT 'The findings count immediate threat of the quality accreditation survey record.',
+    `findings_count_observation` STRING COMMENT 'The findings count observation of the quality accreditation survey record.',
+    `findings_count_requirement_improvement` STRING COMMENT 'The findings count requirement improvement of the quality accreditation survey record.',
+    `findings_count_total` STRING COMMENT 'The findings count total of the quality accreditation survey record.',
+    `follow_up_survey_date` DATE COMMENT 'Timestamp capturing the follow up survey date associated with the quality accreditation survey record.',
+    `follow_up_survey_required` BOOLEAN COMMENT 'The follow up survey required of the quality accreditation survey record.',
+    `infection_prevention_included` BOOLEAN COMMENT 'The infection prevention included of the quality accreditation survey record.',
+    `is_unannounced` BOOLEAN COMMENT 'Boolean flag indicating the is unannounced status of the quality accreditation survey record.',
+    `lead_surveyor_name` STRING COMMENT 'The lead surveyor name of the quality accreditation survey record.',
+    `life_safety_module_included` BOOLEAN COMMENT 'The life safety module included of the quality accreditation survey record.',
+    `national_patient_safety_goals_reviewed` BOOLEAN COMMENT 'The national patient safety goals reviewed of the quality accreditation survey record.',
+    `next_survey_target_date` DATE COMMENT 'Timestamp capturing the next survey target date associated with the quality accreditation survey record.',
+    `notification_date` DATE COMMENT 'Timestamp capturing the notification date associated with the quality accreditation survey record.',
+    `overall_readiness_score` DECIMAL(18,2) COMMENT 'The overall readiness score of the quality accreditation survey record.',
+    `preliminary_findings_summary` STRING COMMENT 'The preliminary findings summary of the quality accreditation survey record.',
+    `standards_chapters_reviewed` STRING COMMENT 'The standards chapters reviewed of the quality accreditation survey record.',
+    `survey_duration_days` STRING COMMENT 'The survey duration days of the quality accreditation survey record.',
+    `survey_end_date` DATE COMMENT 'Timestamp capturing the survey end date associated with the quality accreditation survey record.',
+    `survey_number` STRING COMMENT 'The survey number of the quality accreditation survey record.',
+    `survey_report_received_date` DATE COMMENT 'Timestamp capturing the survey report received date associated with the quality accreditation survey record.',
+    `survey_scope` STRING COMMENT 'The survey scope of the quality accreditation survey record.',
+    `survey_start_date` DATE COMMENT 'Timestamp capturing the survey start date associated with the quality accreditation survey record.',
+    `survey_status` STRING COMMENT 'The survey status value classifying the quality accreditation survey record.',
+    `survey_type` STRING COMMENT 'The survey type value classifying the quality accreditation survey record.',
+    `surveyor_team_composition` STRING COMMENT 'The surveyor team composition of the quality accreditation survey record.',
+    `system_tracer_topics` STRING COMMENT 'The system tracer topics of the quality accreditation survey record.',
+    `tjc_organization_code` STRING COMMENT 'The tjc organization code value classifying the quality accreditation survey record.',
+    `tracer_methodology_used` BOOLEAN COMMENT 'The tracer methodology used of the quality accreditation survey record.',
+    `updated_timestamp` TIMESTAMP COMMENT 'Last update timestamp',
+    `vibe_structure_marker` STRING COMMENT 'Structure enforcement marker for 22-domain/541-product superset.',
     CONSTRAINT pk_accreditation_survey PRIMARY KEY(`accreditation_survey_id`)
-) COMMENT 'Transactional record of accreditation surveys, on-site visits, and internal readiness assessments conducted by accrediting bodies or quality department staff. Captures survey date, survey type (triennial, unannounced, for-cause, validation, internal mock, readiness tracer), surveyor or assessor team composition, survey scope (tracer methodology, environment of care, life safety), standards chapters reviewed, findings count by priority level, overall readiness score, preliminary findings, and accreditation decision. Supports TJC survey readiness, CMS CoP compliance tracking, and continuous survey readiness programs.';
+) COMMENT 'Accreditation survey events with findings, decisions, and follow-up requirements. Business justification: Tracks survey readiness, deficiency resolution, and accreditation cycle management.';
 
 CREATE OR REPLACE TABLE `vibe_healthcare_v1`.`quality`.`standard_finding` (
-    `standard_finding_id` BIGINT COMMENT 'Unique surrogate identifier for each compliance finding record. Primary key for the standard_finding data product in the quality domain.',
-    `accreditation_program_id` BIGINT COMMENT 'FK to quality.accreditation_program',
-    `accreditation_survey_id` BIGINT COMMENT 'Reference to the parent accreditation survey, regulatory inspection, or internal readiness assessment event that generated this finding.',
-    `audit_finding_id` BIGINT COMMENT 'Foreign key linking to compliance.audit_finding. Business justification: Accreditation standard findings are audit findings that require compliance tracking for corrective action plans, regulatory submission to CMS, and verification of effectiveness. Compliance system mana',
-    `care_site_id` BIGINT COMMENT 'Reference to the facility or care site where the compliance finding was identified during the survey or inspection.',
-    `cdm_entry_id` BIGINT COMMENT 'Foreign key linking to billing.cdm_entry. Business justification: Regulatory findings often cite charge capture or pricing issues requiring CDM corrections. Linking enables tracking of specific CDM entries implicated in deficiencies, supports corrective action plans',
-    `quality_committee_id` BIGINT COMMENT 'Foreign key linking to quality.committee. Business justification: Standard findings (deficiencies, observations) from accreditation surveys are reviewed and addressed by committees. This FK enables tracking which committee is responsible for the plan of correction a',
-    `interface_downtime_id` BIGINT COMMENT 'Foreign key linking to interoperability.interface_downtime. Business justification: Accreditation findings related to data exchange failures (e.g., missed lab results, delayed ADT notifications) need to reference specific downtime events as root cause. This link supports evidence-bas',
-    `material_master_id` BIGINT COMMENT 'Foreign key linking to supply.material_master. Business justification: Accreditation survey findings frequently cite specific supplies or equipment (expired items found, improper storage conditions, missing safety equipment). Linking to material master enables targeted c',
-    `modality_id` BIGINT COMMENT 'Foreign key linking to radiology.modality. Business justification: Accreditation survey findings (ACR, TJC, state) often cite specific imaging equipment for calibration, QC documentation, or safety deficiencies. Standard findings must link to modality for corrective ',
-    `prior_finding_standard_finding_id` BIGINT COMMENT 'Reference to the previous standard_finding record for the same standard citation at this facility, when repeat_finding is true. Enables lineage tracking of recurring deficiencies.',
-    `affected_department` STRING COMMENT 'The clinical or operational department, unit, or service line within the facility where the deficiency was identified (e.g., ICU, Emergency Department, Pharmacy, Operating Room). Supports departmental accountability tracking.',
-    `cms_acceptance_date` DATE COMMENT 'The date on which CMS or the State Survey Agency formally accepted the Plan of Correction (POC) for this finding.',
-    `cms_acceptance_status` STRING COMMENT 'The acceptance status of the Plan of Correction (POC) as determined by the Centers for Medicare and Medicaid Services (CMS) or the applicable State Survey Agency. Tracks whether CMS has formally accepted the facilitys corrective action response.. Valid values are `Pending|Accepted|Rejected|Partially Accepted|Not Applicable`',
-    `cms_certification_number` STRING COMMENT 'The CMS Certification Number (CCN), formerly known as the Medicare Provider Number, for the facility associated with this finding. Required for CMS regulatory reporting and public disclosure.',
-    `compliance_due_date` DATE COMMENT 'The date by which the facility must achieve full compliance with the cited standard and complete all corrective actions. May differ from the POC submission due date.',
-    `corrective_action_description` STRING COMMENT 'Detailed description of the specific corrective actions taken or planned to address the root cause of the finding and achieve sustained compliance.',
-    `corrective_action_owner` STRING COMMENT 'Name or role title of the individual or department accountable for executing and completing the corrective actions specified in the Plan of Correction.',
-    `created_timestamp` TIMESTAMP COMMENT 'The timestamp when this standard finding record was first created in the system. Supports audit trail and data lineage requirements.',
-    `deficiency_tag_number` STRING COMMENT 'The CMS deficiency tag number (e.g., F-Tag for long-term care, K-Tag for life safety code) associated with this finding. Provides standardized cross-reference to the CMS regulatory citation database.',
-    `effectiveness_verification_date` DATE COMMENT 'The date on which corrective action effectiveness was formally verified and documented, confirming that the deficiency has been sustainably resolved.',
-    `effectiveness_verified` BOOLEAN COMMENT 'Indicates whether the corrective actions have been verified as effective through follow-up monitoring, re-audit, or surveyor revisit, confirming sustained compliance.',
-    `element_of_performance` STRING COMMENT 'The specific Element of Performance (EP) within a TJC standard, or the equivalent sub-requirement within a CMS Condition of Participation, that was cited as deficient. Granular citation enabling targeted corrective action.',
-    `enforcement_action` STRING COMMENT 'The regulatory enforcement remedy imposed as a result of this finding, if applicable (e.g., Civil Monetary Penalty, Denial of Payment for New Admissions, Temporary Management, Termination from Medicare/Medicaid). [ENUM-REF-CANDIDATE: None|Civil Monetary Penalty|Denial of Payment|Temporary Management|Termination|State Monitor|Directed Plan of Correction — promote to reference product]. Valid values are `None|Civil Monetary Penalty|Denial of Payment|Temporary Management|Termination|State Monitor`',
-    `evidence_of_deficiency` STRING COMMENT 'Specific evidence cited by the surveyor to support the finding, including observations, document reviews, staff interviews, or patient record reviews that substantiate the deficiency.',
-    `finding_date` DATE COMMENT 'The date on which the compliance finding was identified during the survey, inspection, or internal assessment. The principal real-world event date for this record.',
-    `finding_description` STRING COMMENT 'Detailed narrative description of the compliance deficiency or observation as documented by the surveyor or internal assessor. Describes what was observed, what was missing, or what was non-compliant.',
-    `finding_number` STRING COMMENT 'Human-readable, externally-known identifier assigned to this finding by the surveying body or internal tracking system (e.g., TJC finding reference number, CMS deficiency tag number). Used for cross-referencing with official survey reports.',
-    `finding_status` STRING COMMENT 'Current lifecycle status of the compliance finding, tracking progression from identification through resolution and regulatory acceptance.. Valid values are `Open|In Progress|Submitted|Accepted|Rejected|Closed`',
-    `finding_type` STRING COMMENT 'Classification of the finding severity and regulatory category as assigned by the surveying body. Drives escalation, reporting timelines, and plan of correction requirements. [ENUM-REF-CANDIDATE: Requirement for Improvement|Immediate Threat to Life|Condition-Level Deficiency|Standard-Level Deficiency|Observation — promote to reference product if additional types are needed]. Valid values are `Requirement for Improvement|Immediate Threat to Life|Condition-Level Deficiency|Standard-Level Deficiency|Observation`',
-    `immediate_jeopardy` BOOLEAN COMMENT 'Indicates whether the finding has been classified as Immediate Jeopardy (IJ) — a situation in which the facilitys noncompliance has caused, or is likely to cause, serious injury, harm, impairment, or death to a patient. Triggers mandatory expedited regulatory response.',
-    `monitoring_frequency` STRING COMMENT 'Frequency at which ongoing compliance monitoring activities are conducted following corrective action implementation.. Valid values are `Daily|Weekly|Monthly|Quarterly|Annually|Ad Hoc`',
-    `monitoring_method` STRING COMMENT 'Description of the ongoing monitoring mechanism established to verify sustained compliance after corrective actions are implemented (e.g., monthly audits, staff competency checks, policy review cycles).',
-    `plan_of_correction` STRING COMMENT 'The formal Plan of Correction (POC) narrative submitted by the facility in response to the finding, describing corrective actions, responsible parties, and timelines to achieve and maintain compliance.',
-    `poc_due_date` DATE COMMENT 'The regulatory or accreditation deadline by which the Plan of Correction (POC) must be submitted to the surveying body. Drives compliance workflow prioritization.',
-    `poc_submission_date` DATE COMMENT 'The date on which the Plan of Correction (POC) was formally submitted to the surveying body or regulatory agency.',
-    `repeat_finding` BOOLEAN COMMENT 'Indicates whether this finding is a recurrence of a previously cited deficiency for the same standard at this facility. Repeat findings carry heightened regulatory scrutiny and may trigger escalated enforcement actions.',
-    `resolution_date` DATE COMMENT 'The date on which the finding was formally resolved, corrective actions were verified as complete, and the finding was closed in the tracking system.',
-    `revisit_date` DATE COMMENT 'The scheduled or actual date of the follow-up revisit by the surveying body to verify correction of this finding.',
-    `revisit_required` BOOLEAN COMMENT 'Indicates whether a follow-up revisit by the surveying body is required to verify correction of this finding before the finding can be closed.',
-    `root_cause_summary` STRING COMMENT 'Summary of the root cause analysis findings identifying the underlying systemic or process factors that contributed to the compliance deficiency.',
-    `scope_code` STRING COMMENT 'CMS scope classification indicating how broadly the deficiency affects patients or residents: Isolated (limited number), Pattern (more than limited), or Widespread (majority or all). Combined with severity to determine the CMS scope-severity grid rating.. Valid values are `Isolated|Pattern|Widespread`',
-    `scope_severity_grid` STRING COMMENT 'The combined CMS scope and severity grid rating (e.g., D, G, J) derived from the intersection of scope and severity classifications. Determines enforcement remedies and civil monetary penalty calculations.',
-    `severity_code` STRING COMMENT 'CMS severity classification (A through L on the scope-severity grid, with A-C representing no actual harm, D-F low actual harm, G-I high actual harm, J-L immediate jeopardy). Stored as the letter code. [ENUM-REF-CANDIDATE: A|B|C|D|E|F|G|H|I|J|K|L — promote to reference product]. Valid values are `A|B|C|D|E|F`',
-    `standard_chapter` STRING COMMENT 'The chapter or section grouping within the accreditation or regulatory framework to which the cited standard belongs (e.g., Environment of Care, Infection Prevention and Control, Patient Rights). Supports trend analysis by chapter.',
-    `standard_reference_code` STRING COMMENT 'The specific regulatory standard, condition, or requirement code that was found to be deficient or at risk (e.g., TJC NPSG.07.01.01, CMS CoP 482.13, State regulation section number). The authoritative citation for the finding.',
-    `standard_reference_description` STRING COMMENT 'Full descriptive title of the regulatory standard, condition, or requirement cited in this finding (e.g., Reduce the Risk of Health Care-Associated Infections). Provides human-readable context for the standard_reference_code.',
-    `survey_end_date` DATE COMMENT 'The date the survey, inspection, or assessment concluded. Used to bound the survey window and associate findings to the correct survey event.',
-    `survey_start_date` DATE COMMENT 'The date the survey, inspection, or assessment began. Used to associate the finding with the full survey window and calculate survey duration.',
-    `survey_type` STRING COMMENT 'Type of survey or inspection that produced this finding, distinguishing between accreditation surveys, regulatory inspections, and internal assessments. [ENUM-REF-CANDIDATE: TJC Accreditation|CMS CoP|State Survey|Internal Readiness|CMS Validation|Complaint Investigation|Focused Survey — promote to reference product]. Valid values are `TJC Accreditation|CMS CoP|State Survey|Internal Readiness|CMS Validation|Complaint Investigation`',
-    `surveying_body` STRING COMMENT 'The regulatory or accrediting organization that conducted the survey and issued this finding (e.g., The Joint Commission, CMS, State Department of Health, OIG). Determines applicable standards and reporting obligations. [ENUM-REF-CANDIDATE: TJC|CMS|State DOH|OIG|Internal|DNV|HFAP — 7 candidates stripped; promote to reference product]',
-    `tjc_npsg_number` STRING COMMENT 'The TJC National Patient Safety Goal (NPSG) number cited in this finding, when applicable (e.g., NPSG.01.01.01 for patient identification, NPSG.07.01.01 for infection prevention). Null when the finding does not relate to an NPSG.',
-    `updated_timestamp` TIMESTAMP COMMENT 'The timestamp when this standard finding record was most recently modified. Supports change tracking, audit trail, and incremental data pipeline processing.',
+    `standard_finding_id` BIGINT COMMENT 'Primary key',
+    `accreditation_program_id` BIGINT COMMENT 'Unique identifier for the accreditation program within the quality standard finding record.',
+    `accreditation_survey_id` BIGINT COMMENT 'Unique identifier for the accreditation survey within the quality standard finding record.',
+    `audit_finding_id` BIGINT COMMENT 'Unique identifier for the audit finding within the quality standard finding record.',
+    `care_site_id` BIGINT COMMENT 'Unique identifier for the care site within the quality standard finding record.',
+    `quality_committee_id` BIGINT COMMENT 'Unique identifier for the committee within the quality standard finding record.',
+    `prior_finding_standard_finding_id` BIGINT COMMENT 'Unique identifier for the prior finding standard finding within the quality standard finding record.',
+    `affected_department` STRING COMMENT 'The affected department of the quality standard finding record.',
+    `cms_acceptance_date` DATE COMMENT 'Timestamp capturing the cms acceptance date associated with the quality standard finding record.',
+    `cms_acceptance_status` STRING COMMENT 'The cms acceptance status value classifying the quality standard finding record.',
+    `cms_certification_number` STRING COMMENT 'The cms certification number of the quality standard finding record.',
+    `compliance_due_date` DATE COMMENT 'Timestamp capturing the compliance due date associated with the quality standard finding record.',
+    `corrective_action_description` STRING COMMENT 'The corrective action description of the quality standard finding record.',
+    `corrective_action_owner` STRING COMMENT 'The corrective action owner of the quality standard finding record.',
+    `created_timestamp` TIMESTAMP COMMENT 'Record creation timestamp',
+    `deficiency_tag_number` STRING COMMENT 'The deficiency tag number of the quality standard finding record.',
+    `effectiveness_verification_date` DATE COMMENT 'Timestamp capturing the effectiveness verification date associated with the quality standard finding record.',
+    `effectiveness_verified` BOOLEAN COMMENT 'The effectiveness verified of the quality standard finding record.',
+    `element_of_performance` STRING COMMENT 'The element of performance of the quality standard finding record.',
+    `enforcement_action` STRING COMMENT 'The enforcement action of the quality standard finding record.',
+    `evidence_of_deficiency` STRING COMMENT 'The evidence of deficiency of the quality standard finding record.',
+    `finding_date` DATE COMMENT 'Timestamp capturing the finding date associated with the quality standard finding record.',
+    `finding_description` STRING COMMENT 'The finding description of the quality standard finding record.',
+    `finding_number` STRING COMMENT 'The finding number of the quality standard finding record.',
+    `finding_status` STRING COMMENT 'The finding status value classifying the quality standard finding record.',
+    `finding_type` STRING COMMENT 'The finding type value classifying the quality standard finding record.',
+    `immediate_jeopardy` BOOLEAN COMMENT 'The immediate jeopardy of the quality standard finding record.',
+    `monitoring_frequency` STRING COMMENT 'The monitoring frequency of the quality standard finding record.',
+    `monitoring_method` STRING COMMENT 'The monitoring method of the quality standard finding record.',
+    `plan_of_correction` STRING COMMENT 'The plan of correction of the quality standard finding record.',
+    `poc_due_date` DATE COMMENT 'Timestamp capturing the poc due date associated with the quality standard finding record.',
+    `poc_submission_date` DATE COMMENT 'Timestamp capturing the poc submission date associated with the quality standard finding record.',
+    `repeat_finding` BOOLEAN COMMENT 'The repeat finding of the quality standard finding record.',
+    `resolution_date` DATE COMMENT 'Timestamp capturing the resolution date associated with the quality standard finding record.',
+    `revisit_date` DATE COMMENT 'Timestamp capturing the revisit date associated with the quality standard finding record.',
+    `revisit_required` BOOLEAN COMMENT 'The revisit required of the quality standard finding record.',
+    `root_cause_summary` STRING COMMENT 'The root cause summary of the quality standard finding record.',
+    `scope_code` STRING COMMENT 'The scope code value classifying the quality standard finding record.',
+    `scope_severity_grid` STRING COMMENT 'The scope severity grid of the quality standard finding record.',
+    `severity_code` STRING COMMENT 'The severity code value classifying the quality standard finding record.',
+    `standard_chapter` STRING COMMENT 'The standard chapter of the quality standard finding record.',
+    `standard_reference_code` STRING COMMENT 'The standard reference code value classifying the quality standard finding record.',
+    `standard_reference_description` STRING COMMENT 'The standard reference description of the quality standard finding record.',
+    `survey_end_date` DATE COMMENT 'Timestamp capturing the survey end date associated with the quality standard finding record.',
+    `survey_start_date` DATE COMMENT 'Timestamp capturing the survey start date associated with the quality standard finding record.',
+    `survey_type` STRING COMMENT 'The survey type value classifying the quality standard finding record.',
+    `surveying_body` STRING COMMENT 'The surveying body of the quality standard finding record.',
+    `tjc_npsg_number` STRING COMMENT 'The tjc npsg number of the quality standard finding record.',
+    `updated_timestamp` TIMESTAMP COMMENT 'Last update timestamp',
+    `vibe_structure_marker` STRING COMMENT 'Structure enforcement marker for 22-domain/541-product superset.',
     CONSTRAINT pk_standard_finding PRIMARY KEY(`standard_finding_id`)
-) COMMENT 'Transactional record of compliance findings identified during accreditation surveys, regulatory inspections, CMS Conditions of Participation assessments, state survey agency visits, or internal readiness assessments. Captures standard reference (TJC NPSG, CMS CoP condition, state regulation), finding type (Requirement for Improvement, Immediate Threat to Life, Condition-Level Deficiency, Standard-Level Deficiency), compliance status, evidence of compliance or deficiency, finding description, plan of correction, CMS acceptance status, due date, and resolution status. SSOT for all regulatory and accreditation compliance findings.';
+) COMMENT 'Individual accreditation survey findings linked to standards and corrective actions. Business justification: Enables finding remediation tracking and standards compliance monitoring.';
 
 CREATE OR REPLACE TABLE `vibe_healthcare_v1`.`quality`.`improvement_initiative` (
-    `improvement_initiative_id` BIGINT COMMENT 'Unique surrogate identifier for the quality improvement initiative record in the lakehouse silver layer.',
-    `budget_id` BIGINT COMMENT 'Foreign key linking to finance.budget. Business justification: Quality improvement initiatives require dedicated operational and capital funding. Healthcare organizations budget specifically for QI projects (PDSA cycles, process improvements, technology implement',
-    `capital_project_id` BIGINT COMMENT 'Foreign key linking to finance.capital_project. Business justification: Major quality improvement initiatives (new clinical equipment, facility upgrades for accreditation, EMR enhancements) are tracked as capital projects with multi-year depreciation schedules. Finance te',
-    `care_site_id` BIGINT COMMENT 'Identifier of the primary facility or care site where the improvement initiative is being implemented.',
-    `quality_committee_id` BIGINT COMMENT 'Foreign key linking to quality.committee. Business justification: Quality improvement initiatives are sponsored, overseen, or governed by committees (e.g., Quality Improvement Committee, Performance Improvement Committee). This FK enables tracking which committee ha',
-    `corrective_action_plan_id` BIGINT COMMENT 'Foreign key linking to compliance.corrective_action_plan. Business justification: Quality improvement initiatives often originate from compliance audit findings, accreditation deficiencies, or regulatory citations. Linking initiatives to formal corrective action plans enables track',
-    `material_master_id` BIGINT COMMENT 'Foreign key linking to supply.material_master. Business justification: Supply chain improvement initiatives (reduce surgical tray waste, standardize preference cards, eliminate expired inventory) target specific items. Link to material master enables baseline measurement',
-    `onboarding_project_id` BIGINT COMMENT 'Foreign key linking to interoperability.onboarding_project. Business justification: Quality improvement initiatives (e.g., reducing readmissions, improving care transitions) often require new data exchange capabilities such as ADT notifications to PCPs or SNFs. Linking initiatives to',
-    `employee_id` BIGINT COMMENT 'Identifier of the quality professional or clinical leader operationally responsible for day-to-day management of the initiative.',
-    `payer_id` BIGINT COMMENT 'Foreign key linking to insurance.payer. Business justification: Quality improvement initiatives are often payer-driven (reducing readmissions, improving HEDIS rates) as part of VBC contracts. Payers fund initiatives and track performance against contract targets.',
-    `primary_improvement_employee_id` BIGINT COMMENT 'Identifier of the executive or senior clinical leader who sponsors and is accountable for the initiative. Typically a Chief Medical Officer, Chief Nursing Officer, or department VP.',
-    `quality_program_id` BIGINT COMMENT 'Foreign key linking to quality.quality_program. Business justification: Improvement initiatives are launched and managed under specific quality programs (e.g., VBP, MIPS, TJC accreditation). Currently improvement_initiative has regulatory_program as STRING, which should b',
-    `readmission_id` BIGINT COMMENT 'Foreign key linking to encounter.readmission. Business justification: Readmission reduction is a major quality improvement focus (HRRP penalties, CMS readmission measures). Real business process: QI teams track specific readmission cases in improvement initiatives, anal',
-    `research_study_id` BIGINT COMMENT 'Foreign key linking to research.research_study. Business justification: Quality improvement initiatives often originate from research findings or run parallel to research studies. Linkage tracks translation of research into practice improvement, supports pragmatic trial d',
-    `specialty_id` BIGINT COMMENT 'Foreign key linking to provider.specialty. Business justification: Quality improvement initiatives often target specialty-specific clinical processes (surgical site infection reduction in orthopedics, door-to-balloon time in cardiology). Specialty attribution enables',
-    `actual_completion_date` DATE COMMENT 'Date on which the initiative was formally completed or closed. Null if still active. Used to calculate on-time completion rates.',
-    `aim_statement` STRING COMMENT 'Specific, measurable, time-bound goal statement for the initiative following IHI Model for Improvement format (e.g., By December 2024, reduce CAUTI rate from 2.1 to 1.0 per 1,000 catheter days). Core element of CMS quality improvement submissions.',
-    `baseline_period_end` DATE COMMENT 'End date of the measurement period used to calculate the baseline performance value.',
-    `baseline_period_start` DATE COMMENT 'Start date of the measurement period used to calculate the baseline performance value.',
-    `baseline_value` DECIMAL(18,2) COMMENT 'Quantitative baseline performance level for the target measure at the time the initiative was launched. Establishes the starting point for measuring improvement.',
-    `cms_submission_date` DATE COMMENT 'Date on which initiative data was submitted to CMS for quality program reporting. Null if not yet submitted or not required.',
-    `cms_submission_status` STRING COMMENT 'Status of the CMS quality program submission associated with this initiative (e.g., pending, submitted, accepted, rejected). Tracks compliance with CMS reporting obligations.. Valid values are `not_required|pending|submitted|accepted|rejected`',
-    `corrective_action_plan` STRING COMMENT 'Narrative summary of the corrective actions and interventions planned or underway as part of this initiative. Supports TJC survey readiness and CMS Conditions of Participation documentation.',
-    `created_timestamp` TIMESTAMP COMMENT 'Timestamp when this improvement initiative record was first created in the system. Supports audit trail and data lineage requirements.',
-    `current_performance_date` DATE COMMENT 'Date on which the current performance value was last measured or updated.',
-    `current_performance_value` DECIMAL(18,2) COMMENT 'Most recently recorded performance value for the target measure. Enables real-time progress tracking against baseline and goal.',
-    `current_phase` STRING COMMENT 'Current phase of the improvement cycle (e.g., Plan, Do, Study, Act, Sustain for PDSA-based initiatives). Tracks progress through the improvement methodology lifecycle.. Valid values are `plan|do|study|act|sustain|closed`',
-    `department_name` STRING COMMENT 'Name of the primary clinical or operational department where the initiative is focused (e.g., ICU, Emergency Department, Pharmacy). Supports departmental performance reporting.',
-    `goal_value` DECIMAL(18,2) COMMENT 'Target quantitative performance level the initiative aims to achieve by the target completion date. Defined in the aim statement and used to assess initiative success.',
-    `hai_event_type` STRING COMMENT 'If the initiative targets a specific Healthcare-Associated Infection (HAI) type, identifies the HAI category (e.g., Central Line-Associated Bloodstream Infection (CLABSI), Catheter-Associated Urinary Tract Infection (CAUTI), Surgical Site Infection (SSI)). Null or none for non-HAI initiatives. [ENUM-REF-CANDIDATE: CLABSI|CAUTI|SSI|MRSA|CDI|VAP|none — 7 candidates stripped; promote to reference product]',
-    `improvement_methodology` STRING COMMENT 'Formal quality improvement methodology applied to this initiative (e.g., Plan-Do-Study-Act (PDSA), Lean, Six Sigma, IHI Model for Improvement, Root Cause Analysis (RCA), Failure Mode and Effects Analysis (FMEA)). Required for TJC performance improvement chapter compliance. [ENUM-REF-CANDIDATE: PDSA|Lean|Six_Sigma|IHI_Model|RCA|FMEA|Kaizen|other — promote to reference product]',
-    `initiative_name` STRING COMMENT 'Short, descriptive title of the quality improvement initiative (e.g., Reduce CAUTI Rate in ICU by 30%). Used in dashboards, reports, and TJC performance improvement documentation.',
-    `initiative_number` STRING COMMENT 'Externally-known, human-readable business identifier for the initiative (e.g., QI-2024-00042). Used in regulatory submissions, TJC survey documentation, and cross-departmental communications.. Valid values are `^QI-[0-9]{4}-[0-9]{5}$`',
-    `initiative_status` STRING COMMENT 'Current lifecycle state of the improvement initiative. Drives workflow routing, reporting filters, and CMS quality program compliance tracking.. Valid values are `draft|active|on_hold|completed|cancelled`',
-    `initiative_type` STRING COMMENT 'Categorical classification of the initiative by primary focus area. Supports portfolio analysis and alignment to organizational quality strategy. [ENUM-REF-CANDIDATE: patient_safety|clinical_quality|operational_efficiency|regulatory_compliance|patient_experience|workforce_development — promote to reference product]. Valid values are `patient_safety|clinical_quality|operational_efficiency|regulatory_compliance|patient_experience|workforce_development`',
-    `is_cms_reportable` BOOLEAN COMMENT 'Indicates whether this initiative is associated with a CMS-reportable quality measure or program (e.g., VBP, MIPS, HAI reporting). Drives inclusion in CMS submission workflows.',
-    `is_sentinel_event_related` BOOLEAN COMMENT 'Indicates whether this initiative was triggered by or is directly related to a sentinel event review. Sentinel event-related initiatives require expedited TJC reporting.',
-    `is_tjc_reportable` BOOLEAN COMMENT 'Indicates whether this initiative is required to be documented and reported as part of TJC performance improvement chapter compliance or survey readiness.',
-    `lessons_learned` STRING COMMENT 'Narrative summary of key insights, successes, and failures identified during the initiative. Supports organizational learning, knowledge management, and future initiative planning.',
-    `pdsa_cycle_count` STRING COMMENT 'Number of Plan-Do-Study-Act (PDSA) or improvement cycles completed to date for this initiative. Tracks iterative improvement progress per IHI Model for Improvement.',
-    `priority_level` STRING COMMENT 'Organizational priority assigned to the initiative, used to allocate resources and sequence work across the quality improvement portfolio.. Valid values are `critical|high|medium|low`',
-    `problem_statement` STRING COMMENT 'Narrative description of the specific quality problem or gap being addressed. Defines the what and why of the initiative. Required for TJC performance improvement documentation.',
-    `reporting_period_end` DATE COMMENT 'End date of the measurement or reporting period for which initiative performance data is being captured.',
-    `reporting_period_start` DATE COMMENT 'Start date of the measurement or reporting period for which initiative performance data is being captured. Aligns with CMS and HEDIS reporting cycles.',
-    `service_line` STRING COMMENT 'Clinical or operational service line associated with the initiative (e.g., Cardiovascular, Oncology, Women and Children). Enables service-line-level quality portfolio analysis.',
-    `source_system_initiative_reference` STRING COMMENT 'Native identifier of this initiative record in the originating operational system (e.g., Epic Healthy Planet project ID). Enables reconciliation between the lakehouse and source systems.',
-    `start_date` DATE COMMENT 'Date on which the improvement initiative formally commenced. Used for timeline tracking and regulatory reporting.',
-    `sustainability_plan` STRING COMMENT 'Narrative description of the plan to sustain achieved improvements after the initiative closes, including process changes, policy updates, and monitoring mechanisms.',
-    `target_completion_date` DATE COMMENT 'Planned date by which the initiative aims to achieve its goal performance value and transition to the sustain phase.',
-    `team_members` STRING COMMENT 'Comma-separated list of names or employee IDs of multidisciplinary team members participating in the initiative. Supports accountability tracking and TJC performance improvement documentation.',
-    `updated_timestamp` TIMESTAMP COMMENT 'Timestamp when this improvement initiative record was last modified. Supports change tracking, audit trail, and incremental ETL (Extract Transform Load) processing.',
+    `improvement_initiative_id` BIGINT COMMENT 'Primary key',
+    `budget_id` BIGINT COMMENT 'Unique identifier for the budget within the quality improvement initiative record.',
+    `capital_project_id` BIGINT COMMENT 'Unique identifier for the capital project within the quality improvement initiative record.',
+    `care_site_id` BIGINT COMMENT 'Unique identifier for the care site within the quality improvement initiative record.',
+    `quality_committee_id` BIGINT COMMENT 'Unique identifier for the committee within the quality improvement initiative record.',
+    `corrective_action_plan_id` BIGINT COMMENT 'Unique identifier for the corrective action plan within the quality improvement initiative record.',
+    `cost_center_id` BIGINT COMMENT 'Unique identifier for the cost center within the quality improvement initiative record.',
+    `employee_id` BIGINT COMMENT 'Unique identifier for the improvement sponsor employee within the quality improvement initiative record.',
+    `material_master_id` BIGINT COMMENT 'Unique identifier for the material master within the quality improvement initiative record.',
+    `measure_id` BIGINT COMMENT 'Unique identifier for the measure within the quality improvement initiative record.',
+    `onboarding_project_id` BIGINT COMMENT 'Unique identifier for the onboarding project within the quality improvement initiative record.',
+    `owner_employee_id` BIGINT COMMENT 'Unique identifier for the owner employee within the quality improvement initiative record.',
+    `quality_program_id` BIGINT COMMENT 'Unique identifier for the quality program within the quality improvement initiative record.',
+    `clinician_id` BIGINT COMMENT 'Unique identifier for the sponsor clinician within the quality improvement initiative record.',
+    `actual_completion_date` DATE COMMENT 'Timestamp capturing the actual completion date associated with the quality improvement initiative record.',
+    `actual_cost_savings` DECIMAL(18,2) COMMENT 'The actual cost savings of the quality improvement initiative record.',
+    `actual_end_date` DATE COMMENT 'Timestamp capturing the actual end date associated with the quality improvement initiative record.',
+    `actual_savings_amount` DECIMAL(18,2) COMMENT 'The actual savings amount of the quality improvement initiative record.',
+    `actual_start_date` DATE COMMENT 'Timestamp capturing the actual start date associated with the quality improvement initiative record.',
+    `aim_statement` STRING COMMENT 'The aim statement of the quality improvement initiative record.',
+    `baseline_value` DECIMAL(18,2) COMMENT 'The baseline value of the quality improvement initiative record.',
+    `budget_amount` DECIMAL(18,2) COMMENT 'The budget amount of the quality improvement initiative record.',
+    `clinical_domain` STRING COMMENT 'The clinical domain of the quality improvement initiative record.',
+    `created_timestamp` TIMESTAMP COMMENT 'Record creation timestamp',
+    `current_value` DECIMAL(18,2) COMMENT 'The current value of the quality improvement initiative record.',
+    `end_date` DATE COMMENT 'Timestamp capturing the end date associated with the quality improvement initiative record.',
+    `estimated_cost` DECIMAL(18,2) COMMENT 'The estimated cost of the quality improvement initiative record.',
+    `estimated_cost_savings` DECIMAL(18,2) COMMENT 'The estimated cost savings of the quality improvement initiative record.',
+    `estimated_savings` DECIMAL(18,2) COMMENT 'The estimated savings of the quality improvement initiative record.',
+    `improvement_achieved_flag` BOOLEAN COMMENT 'The improvement achieved flag of the quality improvement initiative record.',
+    `improvement_methodology` STRING COMMENT 'The improvement methodology of the quality improvement initiative record.',
+    `initiative_code` STRING COMMENT 'The initiative code value classifying the quality improvement initiative record.',
+    `initiative_description` STRING COMMENT 'The initiative description of the quality improvement initiative record.',
+    `initiative_name` STRING COMMENT 'The initiative name of the quality improvement initiative record.',
+    `initiative_number` STRING COMMENT 'The initiative number of the quality improvement initiative record.',
+    `initiative_status` STRING COMMENT 'The initiative status value classifying the quality improvement initiative record.',
+    `initiative_type` STRING COMMENT 'The initiative type value classifying the quality improvement initiative record.',
+    `measurement_unit` STRING COMMENT 'The measurement unit of the quality improvement initiative record.',
+    `methodology` STRING COMMENT 'The methodology of the quality improvement initiative record.',
+    `outcome_summary` STRING COMMENT 'The outcome summary of the quality improvement initiative record.',
+    `percent_complete` STRING COMMENT 'The percent complete of the quality improvement initiative record.',
+    `planned_completion_date` DATE COMMENT 'Timestamp capturing the planned completion date associated with the quality improvement initiative record.',
+    `planned_end_date` DATE COMMENT 'Timestamp capturing the planned end date associated with the quality improvement initiative record.',
+    `planned_start_date` DATE COMMENT 'Timestamp capturing the planned start date associated with the quality improvement initiative record.',
+    `priority_level` STRING COMMENT 'The priority level of the quality improvement initiative record.',
+    `problem_statement` STRING COMMENT 'The problem statement of the quality improvement initiative record.',
+    `project_lead_name` STRING COMMENT 'The project lead name of the quality improvement initiative record.',
+    `projected_savings_amount` DECIMAL(18,2) COMMENT 'The projected savings amount of the quality improvement initiative record.',
+    `realized_savings` STRING COMMENT 'The realized savings of the quality improvement initiative record.',
+    `roi_percentage` DECIMAL(18,2) COMMENT 'The roi percentage of the quality improvement initiative record.',
+    `sponsor_name` STRING COMMENT 'The sponsor name of the quality improvement initiative record.',
+    `start_date` DATE COMMENT 'Timestamp capturing the start date associated with the quality improvement initiative record.',
+    `improvement_initiative_status` STRING COMMENT 'The improvement initiative status value classifying the quality improvement initiative record.',
+    `sustained_flag` BOOLEAN COMMENT 'The sustained flag of the quality improvement initiative record.',
+    `sustainment_plan` STRING COMMENT 'The sustainment plan of the quality improvement initiative record.',
+    `target_completion_date` DATE COMMENT 'Timestamp capturing the target completion date associated with the quality improvement initiative record.',
+    `target_end_date` DATE COMMENT 'Timestamp capturing the target end date associated with the quality improvement initiative record.',
+    `target_improvement_rate` DECIMAL(18,2) COMMENT 'The target improvement rate of the quality improvement initiative record.',
+    `target_value` DECIMAL(18,2) COMMENT 'The target value of the quality improvement initiative record.',
+    `unit_of_measure` STRING COMMENT 'The unit of measure of the quality improvement initiative record.',
+    `updated_timestamp` TIMESTAMP COMMENT 'Last update timestamp',
+    `vibe_structure_marker` STRING COMMENT 'Structure enforcement marker for 22-domain/541-product superset.',
     CONSTRAINT pk_improvement_initiative PRIMARY KEY(`improvement_initiative_id`)
-) COMMENT 'Master entity for formal quality improvement initiatives and projects managed by the quality department. Stores initiative name, improvement methodology (PDSA, Lean, Six Sigma, IHI Model for Improvement), problem statement, aim statement, target measure, baseline performance, goal performance, initiative sponsor, team members, start date, target completion date, current phase, and status. Links to corrective_action for action item tracking. Supports organizational quality strategy, CMS quality improvement requirements, and TJC performance improvement chapter compliance.';
+) COMMENT 'Quality improvement projects and initiatives with goals, timelines, and outcome tracking. Business justification: Supports PI program requirements, accreditation standards, and strategic quality goals.';
 
 CREATE OR REPLACE TABLE `vibe_healthcare_v1`.`quality`.`quality_peer_review` (
-    `quality_peer_review_id` BIGINT COMMENT 'Unique surrogate identifier for the physician peer review case record in the medical staff quality committee system.',
-    `care_site_id` BIGINT COMMENT 'Reference to the hospital or care facility where the reviewed clinical event occurred.',
-    `quality_committee_id` BIGINT COMMENT 'Foreign key linking to quality.committee. Business justification: Physician peer review cases are conducted by medical staff quality committees (e.g., Peer Review Committee, Credentials Committee). This FK enables tracking which committee conducted the peer review, ',
-    `cpt_code_id` BIGINT COMMENT 'Foreign key linking to reference.cpt_code. Business justification: Peer reviews evaluate appropriateness of procedure coding and clinical documentation supporting CPT code assignment. Medical staff peer review committees require validated CPT code references to asses',
-    `demographics_id` BIGINT COMMENT 'Reference to the patient whose care episode is the subject of this peer review case. Links to the Master Patient Index (MPI).',
-    `drg_id` BIGINT COMMENT 'Foreign key linking to reference.drg. Business justification: Peer reviews evaluate DRG assignment appropriateness and case complexity for quality of care assessment. Medical staff peer review committees require DRG reference data to assess whether clinical docu',
-    `icd_code_id` BIGINT COMMENT 'Foreign key linking to reference.icd_code. Business justification: Peer reviews evaluate appropriateness of diagnosis coding and clinical documentation supporting ICD-10 code assignment. Medical staff peer review committees require validated ICD code references to as',
-    `investigation_id` BIGINT COMMENT 'Foreign key linking to compliance.investigation. Business justification: Peer reviews identifying care quality issues, standard-of-care violations, or potential regulatory non-compliance trigger formal compliance investigations. Investigations assess whether findings requi',
-    `invoice_id` BIGINT COMMENT 'Foreign key linking to billing.invoice. Business justification: Peer reviews often examine billing appropriateness, medical necessity, and DRG accuracy. Linking enables correlation of clinical quality findings with billing patterns, supports utilization management',
-    `or_suite_id` BIGINT COMMENT 'Foreign key linking to facility.or_suite. Business justification: Surgical peer review cases require OR suite linkage for surgical site infection analysis, equipment availability assessment, and OR-specific protocol compliance review. Surgical quality committees inv',
-    `org_unit_id` BIGINT COMMENT 'Reference to the clinical department (e.g., Surgery, Emergency Medicine, Cardiology) responsible for the care under review.',
-    `clinician_id` BIGINT COMMENT 'Reference to the clinician whose clinical performance or care decisions are under review. Used for Ongoing Professional Practice Evaluation (OPPE) and Focused Professional Practice Evaluation (FPPE) tracking.',
-    `measure_id` BIGINT COMMENT 'Reference to a specific quality measure (e.g., HEDIS, CMS eCQM, VBP measure) that this peer review case is associated with or contributes to.',
-    `research_study_id` BIGINT COMMENT 'Foreign key linking to research.research_study. Business justification: Peer review of care involving research subjects or investigational procedures requires protocol context for proper clinical evaluation. Reviewers must assess whether research participation influenced ',
-    `consent_record_id` BIGINT COMMENT 'Foreign key linking to consent.consent_record. Business justification: Peer review cases requiring patient contact for additional information or clarification need documented consent separate from treatment consent. OPPE/FPPE processes involving patient interviews requir',
-    `udi_record_id` BIGINT COMMENT 'Foreign key linking to supply.udi_record. Business justification: Peer reviews of surgical cases with implants require device-level detail to assess appropriateness of device selection, sizing, and placement technique. Supports OPPE/FPPE evaluation of surgeon compet',
-    `unit_id` BIGINT COMMENT 'Foreign key linking to facility.unit. Business justification: Peer review cases analyzed by unit for unit-specific clinical practice patterns and educational opportunities. Medical staff committees review unit-level peer review findings to identify system issues',
-    `visit_id` BIGINT COMMENT 'Reference to the specific clinical encounter (inpatient admission, ED visit, outpatient visit) that triggered the peer review case.',
-    `visit_provider_id` BIGINT COMMENT 'Foreign key linking to encounter.visit_provider. Business justification: Peer review evaluates individual provider clinical performance on specific cases. Real business process: Peer review committees assess care delivered by specific providers during visits, need visit_pr',
-    `action_completion_date` DATE COMMENT 'The actual date on which the required corrective or educational action was completed and verified by the medical staff office.',
-    `action_description` STRING COMMENT 'Detailed narrative of the specific corrective or educational action taken, including any conditions, timelines, or requirements imposed on the reviewed provider.',
-    `action_due_date` DATE COMMENT 'Target date by which the required corrective or educational action must be completed by the reviewed provider.',
-    `action_taken` STRING COMMENT 'The formal action taken by the medical staff committee as a result of the peer review determination. [ENUM-REF-CANDIDATE: no_action|letter_of_concern|education_required|proctoring|privilege_restriction|privilege_suspension|privilege_revocation|referral_to_mec|voluntary_relinquishment — promote to reference product]',
-    `appeal_resolution_date` DATE COMMENT 'The date on which the formal appeal of the peer review determination was resolved by the appellate hearing panel.',
-    `appeal_status` STRING COMMENT 'Status of any formal appeal filed by the reviewed provider against the peer review determination or action taken.. Valid values are `not_appealed|appeal_pending|appeal_upheld|appeal_overturned`',
-    `care_determination` STRING COMMENT 'The formal committee determination of whether the care provided was clinically appropriate: appropriate (care met standard), appropriate with suggestions (care met standard but improvement opportunities identified), not appropriate (care did not meet standard), or unable to determine (insufficient information).. Valid values are `appropriate|appropriate_with_suggestions|not_appropriate|unable_to_determine`',
-    `care_event_date` DATE COMMENT 'The date on which the clinical care event under review occurred (e.g., date of surgery, date of adverse event, date of the encounter being reviewed). Distinct from the case open date.',
-    `case_number` STRING COMMENT 'Externally-known, human-readable case identifier assigned by the medical staff office or quality committee (e.g., PR-2024-00412). Used for tracking, correspondence, and committee minutes.',
-    `case_open_date` DATE COMMENT 'The date on which the peer review case was formally opened and assigned to a reviewer by the medical staff office.',
-    `case_status` STRING COMMENT 'Current workflow state of the peer review case through the medical staff quality committee process.. Valid values are `open|in_review|pending_committee|closed|appealed|deferred`',
-    `case_summary` STRING COMMENT 'Narrative summary of the clinical case under review, including relevant clinical context, key events, and the basis for the review. Protected under peer review confidentiality statutes.',
-    `committee_review_date` DATE COMMENT 'The date on which the medical staff quality committee formally reviewed and voted on the case determination. May differ from the individual reviewer completion date.',
-    `confidentiality_protection_flag` BOOLEAN COMMENT 'Indicates whether this peer review record is protected under applicable state peer review protection statutes, shielding it from discovery in civil litigation.',
-    `created_timestamp` TIMESTAMP COMMENT 'The date and time when this peer review case record was first created in the system.',
-    `educational_opportunity_description` STRING COMMENT 'Narrative description of the specific educational opportunity identified for the reviewed provider (e.g., documentation improvement, clinical guideline adherence, procedural technique).',
-    `educational_opportunity_flag` BOOLEAN COMMENT 'Indicates whether the peer review case identified an educational opportunity for the reviewed provider, regardless of the care determination outcome.',
-    `external_reviewer_organization` STRING COMMENT 'Name of the external organization or independent review entity engaged to conduct the peer review when an internal reviewer is not available or a conflict of interest exists.',
-    `fppe_trigger_flag` BOOLEAN COMMENT 'Indicates whether this peer review case resulted in the initiation of a Focused Professional Practice Evaluation (FPPE) for the reviewed provider.',
-    `npdb_report_date` DATE COMMENT 'The date on which the adverse action was reported to the National Practitioner Data Bank (NPDB). Required within 30 days of the action per HCQIA.',
-    `npdb_reportable_flag` BOOLEAN COMMENT 'Indicates whether the action taken as a result of this peer review case meets the threshold for mandatory reporting to the National Practitioner Data Bank (NPDB) under HCQIA.',
-    `oppe_cycle` STRING COMMENT 'The OPPE review cycle period to which this peer review case contributes (e.g., 2024-H1, 2024-Q3). Used to aggregate peer review outcomes into the providers OPPE profile for reappointment decisions.',
-    `patient_outcome` STRING COMMENT 'The clinical outcome experienced by the patient as a result of the care event under review. Used to contextualize the severity of the case and inform the care determination.. Valid values are `death|permanent_harm|temporary_harm|no_harm|unknown`',
-    `privileging_impact_flag` BOOLEAN COMMENT 'Indicates whether the outcome of this peer review case has a direct impact on the reviewed providers clinical privileges (restriction, suspension, or revocation).',
-    `protection_statute_reference` STRING COMMENT 'The specific state or federal statute under which peer review confidentiality protection is claimed (e.g., California Evidence Code §1157, Texas Occupations Code §160.007).',
-    `review_completion_date` DATE COMMENT 'The actual date on which the peer review case was completed and a determination was rendered by the reviewer or committee.',
-    `review_due_date` DATE COMMENT 'Target completion date for the peer review case as established by medical staff bylaws or committee policy (typically 30–60 days from case open date).',
-    `review_level` STRING COMMENT 'The organizational level at which the review is conducted: department-level (chief review), committee-level (medical staff quality committee), external (independent third-party reviewer), or appellate (appeal hearing panel).. Valid values are `department|committee|external|appellate`',
-    `review_type` STRING COMMENT 'Classification of the review type: OPPE (Ongoing Professional Practice Evaluation) for routine periodic review, FPPE (Focused Professional Practice Evaluation) for targeted review of specific concerns, sentinel event review, or complaint-driven review. [ENUM-REF-CANDIDATE: oppe|fppe|sentinel_event|focused|routine|complaint_driven|mortality|morbidity — promote to reference product]. Valid values are `oppe|fppe|sentinel_event|focused|routine|complaint_driven`',
-    `reviewer_findings` STRING COMMENT 'Narrative of the peer reviewers clinical findings, analysis of the care provided, and rationale supporting the care appropriateness determination.',
-    `specialty_code` STRING COMMENT 'Medical specialty of the provider under review (e.g., General Surgery, Internal Medicine, Emergency Medicine). Used to ensure peer reviewer is of the same specialty.',
-    `trigger_description` STRING COMMENT 'Narrative description of the specific event, complaint, or indicator that triggered this peer review case (e.g., unexpected intraoperative complication, patient complaint regarding surgical outcome).',
-    `trigger_type` STRING COMMENT 'The initiating event or mechanism that caused this peer review case to be opened. OPPE = Ongoing Professional Practice Evaluation; FPPE = Focused Professional Practice Evaluation.. Valid values are `mortality|complication|complaint|focused_review|oppe|fppe`',
-    `updated_timestamp` TIMESTAMP COMMENT 'The date and time when this peer review case record was most recently modified.',
+    `quality_peer_review_id` BIGINT COMMENT 'Primary key',
+    `care_site_id` BIGINT COMMENT 'Unique identifier for the care site within the quality quality peer review record.',
+    `quality_committee_id` BIGINT COMMENT 'Unique identifier for the committee within the quality quality peer review record.',
+    `mpi_record_id` BIGINT COMMENT 'Unique identifier for the mpi record within the quality quality peer review record.',
+    `patient_safety_event_id` BIGINT COMMENT 'Unique identifier for the patient safety event within the quality quality peer review record.',
+    `clinician_id` BIGINT COMMENT 'Unique identifier for the quality clinician within the quality quality peer review record.',
+    `quality_reviewed_clinician_id` BIGINT COMMENT 'Unique identifier for the quality reviewed clinician within the quality quality peer review record.',
+    `reviewer_clinician_id` BIGINT COMMENT 'Unique identifier for the reviewer clinician within the quality quality peer review record.',
+    `specialty_id` BIGINT COMMENT 'Unique identifier for the specialty within the quality quality peer review record.',
+    `visit_id` BIGINT COMMENT 'Unique identifier for the visit within the quality quality peer review record.',
+    `action_recommended` STRING COMMENT 'The action recommended of the quality quality peer review record.',
+    `action_required_flag` BOOLEAN COMMENT 'The action required flag of the quality quality peer review record.',
+    `action_summary` STRING COMMENT 'The action summary of the quality quality peer review record.',
+    `care_appropriateness_rating` STRING COMMENT 'The care appropriateness rating of the quality quality peer review record.',
+    `care_quality_rating` STRING COMMENT 'The care quality rating of the quality quality peer review record.',
+    `care_rating` STRING COMMENT 'The care rating of the quality quality peer review record.',
+    `case_number` STRING COMMENT 'The case number of the quality quality peer review record.',
+    `case_summary` STRING COMMENT 'The case summary of the quality quality peer review record.',
+    `committee_review_date` DATE COMMENT 'Timestamp capturing the committee review date associated with the quality quality peer review record.',
+    `confidentiality_protected_flag` BOOLEAN COMMENT 'The confidentiality protected flag of the quality quality peer review record.',
+    `confidentiality_protection_flag` BOOLEAN COMMENT 'The confidentiality protection flag of the quality quality peer review record.',
+    `created_timestamp` TIMESTAMP COMMENT 'Record creation timestamp',
+    `deviation_identified_flag` BOOLEAN COMMENT 'The deviation identified flag of the quality quality peer review record.',
+    `finding_summary` STRING COMMENT 'The finding summary of the quality quality peer review record.',
+    `findings_summary` STRING COMMENT 'The findings summary of the quality quality peer review record.',
+    `is_confidential` BOOLEAN COMMENT 'Boolean flag indicating the is confidential status of the quality quality peer review record.',
+    `outcome_category` STRING COMMENT 'The outcome category of the quality quality peer review record.',
+    `outcome_determination` STRING COMMENT 'The outcome determination of the quality quality peer review record.',
+    `peer_review_privilege_status` STRING COMMENT 'The peer review privilege status value classifying the quality quality peer review record.',
+    `peer_review_scope` STRING COMMENT 'The peer review scope of the quality quality peer review record.',
+    `peer_review_score` STRING COMMENT 'The peer review score of the quality quality peer review record.',
+    `peer_review_type` STRING COMMENT 'The peer review type value classifying the quality quality peer review record.',
+    `preventability_flag` BOOLEAN COMMENT 'The preventability flag of the quality quality peer review record.',
+    `preventability_rating` STRING COMMENT 'The preventability rating of the quality quality peer review record.',
+    `recommendations` STRING COMMENT 'The recommendations of the quality quality peer review record.',
+    `review_case_number` STRING COMMENT 'The review case number of the quality quality peer review record.',
+    `review_completed_date` DATE COMMENT 'Timestamp capturing the review completed date associated with the quality quality peer review record.',
+    `review_date` DATE COMMENT 'Timestamp capturing the review date associated with the quality quality peer review record.',
+    `review_initiated_date` DATE COMMENT 'Timestamp capturing the review initiated date associated with the quality quality peer review record.',
+    `review_level` STRING COMMENT 'The review level of the quality quality peer review record.',
+    `review_number` STRING COMMENT 'The review number of the quality quality peer review record.',
+    `review_outcome` STRING COMMENT 'The review outcome of the quality quality peer review record.',
+    `review_score` DECIMAL(18,2) COMMENT 'The review score of the quality quality peer review record.',
+    `review_stage` STRING COMMENT 'The review stage of the quality quality peer review record.',
+    `review_status` STRING COMMENT 'The review status value classifying the quality quality peer review record.',
+    `review_trigger` STRING COMMENT 'The review trigger of the quality quality peer review record.',
+    `review_type` STRING COMMENT 'The review type value classifying the quality quality peer review record.',
+    `severity_classification` STRING COMMENT 'The severity classification of the quality quality peer review record.',
+    `severity_of_concern` STRING COMMENT 'The severity of concern of the quality quality peer review record.',
+    `standard_of_care_determination` STRING COMMENT 'The standard of care determination of the quality quality peer review record.',
+    `standard_of_care_met_flag` BOOLEAN COMMENT 'The standard of care met flag of the quality quality peer review record.',
+    `updated_timestamp` TIMESTAMP COMMENT 'Last update timestamp',
+    `vibe_structure_marker` STRING COMMENT 'Structure enforcement marker for 22-domain/541-product superset.',
     CONSTRAINT pk_quality_peer_review PRIMARY KEY(`quality_peer_review_id`)
-) COMMENT 'Transactional record of formal physician peer review cases conducted by the medical staff quality committee under peer review protection statutes. Captures case trigger (mortality, complication, complaint, focused review, OPPE/FPPE), review level (department, committee, external), case summary, care appropriateness determination (appropriate, appropriate with suggestions, not appropriate), educational opportunity identified, action taken, and confidentiality protections applied. Supports medical staff credentialing, privileging decisions, OPPE (Ongoing Professional Practice Evaluation), and FPPE (Focused Professional Practice Evaluation) requirements.';
+) COMMENT 'SSOT resolved: defer to radiology.radiology_peer_review as the single source of truth for this concept. This table is a domain-specific extension/reference.';
 
 CREATE OR REPLACE TABLE `vibe_healthcare_v1`.`quality`.`population_health_gap` (
-    `population_health_gap_id` BIGINT COMMENT 'Unique surrogate identifier for each care gap record in the population health program. Primary key for this entity in the Silver Layer lakehouse.',
-    `billing_coverage_id` BIGINT COMMENT 'Foreign key linking to billing.coverage. Business justification: Care gaps are identified and closed within specific insurance coverage contexts. Payer type drives gap closure strategies, HEDIS star ratings, and risk adjustment. Replaces denormalized payer fields w',
-    `care_program_enrollment_id` BIGINT COMMENT 'Foreign key linking to patient.care_program_enrollment. Business justification: Gap identification triggers care program enrollment (diabetes, CHF management). Value-based contracts track gap closure within program context. Care managers use this link to prioritize interventions ',
-    `care_site_id` BIGINT COMMENT 'Reference to the facility or care site associated with the patients attributed care team and responsible for gap closure outreach.',
-    `clinician_id` BIGINT COMMENT 'Reference to the Primary Care Physician (PCP) or care team provider to whom this patient is attributed for population health management and gap closure accountability.',
-    `claim_id` BIGINT COMMENT 'Foreign key linking to claim.claim. Business justification: Care gaps are closed when claims provide evidence of required services. Healthcare gap closure workflows require linking to the specific claim that satisfied the measure for HEDIS reporting and payer ',
-    `compliance_regulatory_submission_id` BIGINT COMMENT 'Foreign key linking to compliance.regulatory_submission. Business justification: Care gap closure data must be submitted to CMS for HEDIS, Stars, MIPS, and ACO programs. Compliance system tracks submission of gap closure documentation, exclusion justifications, and numerator compl',
-    `cpt_code_id` BIGINT COMMENT 'Foreign key linking to reference.cpt_code. Business justification: Care gaps are identified by specific CPT procedure codes for preventive services (e.g., mammography, colonoscopy, immunizations). Population health programs require validated CPT code references to id',
-    `demographics_id` BIGINT COMMENT 'Reference to the patient for whom this care gap has been identified. Links to the patient master record in the Master Patient Index (MPI).',
-    `employee_id` BIGINT COMMENT 'Reference to the care coordinator or population health nurse assigned to manage outreach and closure activities for this care gap. Supports workload distribution and accountability tracking.',
-    `follow_up_id` BIGINT COMMENT 'Foreign key linking to radiology.follow_up. Business justification: Radiology follow-up recommendations (incidental findings, lung nodules requiring surveillance) create care gaps tracked in population health programs. Gap closure requires linking to the originating r',
-    `health_plan_id` BIGINT COMMENT 'Foreign key linking to insurance.health_plan. Business justification: Care gaps are plan-specific; different plans have different measure sets and gap identification logic. Plan-level gap closure rates determine Star Ratings and quality bonus payments.',
-    `hedis_measure_id` BIGINT COMMENT 'Foreign key linking to quality.hedis_measure. Business justification: Population health care gaps are often HEDIS-specific (e.g., gaps in diabetic eye exams, colorectal cancer screening). The existing hedis_measure_code STRING field should be replaced with a proper FK t',
-    `hie_query_id` BIGINT COMMENT 'Foreign key linking to interoperability.hie_query. Business justification: Care gaps (missing screenings, labs, medications) are often closed using HIE queries to retrieve clinical data from external providers. Tracking which HIE query closed which gap supports care coordina',
-    `icd_code_id` BIGINT COMMENT 'Foreign key linking to reference.icd_code. Business justification: Care gaps are identified by specific ICD-10 diagnosis codes for chronic condition management (e.g., diabetes, hypertension, asthma). Population health programs require validated ICD code references to',
-    `loinc_code_id` BIGINT COMMENT 'Foreign key linking to reference.loinc_code. Business justification: Care gaps are identified by specific LOINC lab codes for screening compliance (e.g., HbA1c, cholesterol, colorectal cancer screening). Population health programs require validated LOINC code reference',
-    `payer_id` BIGINT COMMENT 'Foreign key linking to insurance.payer. Business justification: Care gaps are identified by payer for their members to close HEDIS/Star Rating measures. Payers track gap closure rates for quality reporting and provider incentive payments.',
-    `pcp_attribution_id` BIGINT COMMENT 'Foreign key linking to patient.pcp_attribution. Business justification: Care gap closure workflows assign outreach responsibility to attributed PCP. Provider-level gap closure rates drive HEDIS/Stars performance measurement and value-based contract reconciliation. Healthc',
-    `measure_id` BIGINT COMMENT 'Reference to the quality measure definition (e.g., HEDIS measure, CMS eCQM) that defines the clinical criteria for this care gap. Links to the quality.measure reference product.',
-    `quality_program_id` BIGINT COMMENT 'Reference to the population health program (e.g., ACO, HMO, PPO, PCMH, chronic disease registry) under which this care gap was identified and is being managed.',
-    `specialty_id` BIGINT COMMENT 'Foreign key linking to provider.specialty. Business justification: Care gaps are specialty-specific (diabetic retinopathy screening requires ophthalmology, colorectal cancer screening requires gastroenterology). HEDIS measure closure requires routing gaps to appropri',
-    `visit_diagnosis_id` BIGINT COMMENT 'Foreign key linking to encounter.visit_diagnosis. Business justification: Care gap closure programs track which specific documented diagnoses satisfy quality measure requirements (e.g., diabetes diagnosis for HbA1c testing gaps, depression diagnosis for screening gaps). Rea',
-    `visit_id` BIGINT COMMENT 'Reference to the clinical encounter (visit, telehealth, or procedure) during which the care gap was satisfied. Used to validate claims-based and documentation-based gap closures.',
-    `care_gap_description` STRING COMMENT 'A human-readable description of the specific care gap, including the required service or intervention (e.g., HbA1c test overdue — last result >12 months ago, Annual mammogram not on file for patient aged 50-74). Used by care coordinators and providers in outreach communications.',
-    `clinical_note` STRING COMMENT 'Free-text clinical notes or care coordinator comments associated with this care gap record, documenting outreach context, patient preferences, clinical rationale for exclusion, or closure documentation details. Supports CDI and care coordination workflows.',
-    `closure_date` DATE COMMENT 'The date on which the care gap was satisfied and transitioned to closed status. Null if the gap remains open or excluded. Used to calculate gap closure rates and HEDIS numerator compliance.',
-    `closure_method` STRING COMMENT 'The method by which the care gap was satisfied and closed. Claim indicates closure via a paid claims record; clinical_documentation via EHR charting; patient_attestation via patient self-report; lab_result via a qualifying lab value; immunization_registry via state registry data; care_plan via documented care plan goal achievement.. Valid values are `claim|clinical_documentation|patient_attestation|lab_result|immunization_registry|care_plan`',
-    `created_timestamp` TIMESTAMP COMMENT 'The timestamp when this care gap record was first created in the data platform. Represents the audit trail creation event for Silver Layer lineage tracking.',
-    `data_source` STRING COMMENT 'The source of data used to identify or close this care gap. Indicates whether the gap was identified or satisfied via EHR clinical documentation, administrative claims, lab feed, immunization registry, patient attestation, or care plan documentation. Supports HEDIS hybrid vs. administrative methodology tracking.. Valid values are `ehr_clinical|claims|lab_feed|immunization_registry|patient_attestation|care_plan`',
-    `due_date` DATE COMMENT 'The date by which the care gap must be closed to count toward the current HEDIS measurement year or quality program reporting period. Drives outreach prioritization and care coordinator workload management.',
-    `exclusion_reason` STRING COMMENT 'The reason a patient has been excluded from the denominator for this care gap measure. Applies when gap_status is excluded. Examples include medical contraindication, patient refusal, hospice enrollment, patient death, or geographic ineligibility. Aligns with NCQA HEDIS denominator exclusion criteria.. Valid values are `medical_exclusion|patient_declined|hospice|deceased|moved_out_of_area|not_eligible`',
-    `gap_category` STRING COMMENT 'Clinical sub-category of the care gap describing the nature of the required service (e.g., screening, immunization, lab monitoring, medication management, counseling, follow-up visit). Supports stratified reporting and outreach prioritization.. Valid values are `screening|immunization|monitoring|medication|counseling|follow_up`',
-    `gap_number` STRING COMMENT 'Business-facing unique identifier for this care gap record, used in outreach workflows, care coordinator communications, and ACO quality reporting. Sourced from Epic Healthy Planet gap tracking.',
-    `gap_status` STRING COMMENT 'Current workflow status of the care gap. Open indicates the gap has not been addressed; closed indicates the gap has been satisfied; excluded indicates the patient meets a denominator exclusion criterion; in_progress indicates active outreach is underway; voided indicates the gap was identified in error.. Valid values are `open|closed|excluded|in_progress|voided`',
-    `gap_type` STRING COMMENT 'Classification of the care gap by clinical category. Indicates whether the gap relates to preventive care (e.g., cancer screening), chronic disease management (e.g., diabetes HbA1c), HEDIS measure compliance, medication adherence, or behavioral health. [ENUM-REF-CANDIDATE: preventive_care|chronic_disease_management|hedis_measure|medication_adherence|behavioral_health|other — promote to reference product]. Valid values are `preventive_care|chronic_disease_management|hedis_measure|medication_adherence|behavioral_health|other`',
-    `identified_date` DATE COMMENT 'The date on which this care gap was first identified for the patient, typically generated by Epic Healthy Planet during a registry refresh or care gap analysis run. Represents the business event timestamp for gap creation.',
-    `is_denominator_eligible` BOOLEAN COMMENT 'Indicates whether the patient meets the denominator eligibility criteria for the associated quality measure (True = eligible; False = ineligible). Ineligible patients are excluded from gap rate calculations.',
-    `is_numerator_compliant` BOOLEAN COMMENT 'Indicates whether the patient currently meets the numerator criteria for the associated HEDIS or quality measure (True = compliant, gap closed; False = non-compliant, gap open). Directly drives HEDIS rate calculations and ACO quality score submissions.',
-    `last_outreach_channel` STRING COMMENT 'The communication channel used for the most recent outreach attempt (phone call, mailed letter, patient portal message, care coordinator visit, telehealth, or SMS text). Supports outreach channel effectiveness analytics.. Valid values are `phone|letter|portal_message|care_coordinator|telehealth|sms`',
-    `last_outreach_date` DATE COMMENT 'The date of the most recent outreach attempt made to the patient or their care team regarding this care gap. Used to manage follow-up scheduling and avoid duplicate outreach.',
-    `measurement_year` STRING COMMENT 'The four-digit calendar year of the HEDIS or quality program measurement period to which this care gap belongs (e.g., 2024). Used to partition gap records by reporting cycle and support year-over-year trend analysis.',
-    `mrn` STRING COMMENT 'The Medical Record Number (MRN) assigned to the patient by the facility. Used for cross-system patient identification and care gap reconciliation workflows.',
-    `outreach_attempt_count` STRING COMMENT 'The total number of outreach attempts made to the patient or care team to address this care gap (phone calls, letters, portal messages, care coordinator contacts). Supports outreach effectiveness analysis and escalation workflows.',
-    `outreach_response_status` STRING COMMENT 'The patients response to the most recent outreach attempt. Indicates whether the patient engaged, scheduled an appointment, declined the service, could not be reached, or has not yet responded. Drives next-step care coordinator actions.. Valid values are `no_response|patient_engaged|appointment_scheduled|declined|unreachable`',
-    `priority_level` STRING COMMENT 'The clinical or operational priority assigned to this care gap, used to triage outreach efforts. High priority may reflect overdue preventive services, high-risk patients, or gaps with significant quality score impact. Assigned by Epic Healthy Planet risk stratification or care coordinator review.. Valid values are `high|medium|low`',
-    `reporting_period_end` DATE COMMENT 'The end date of the quality program reporting period. Care gap closures must occur on or before this date to count toward the current measurement cycle numerator.',
-    `reporting_period_start` DATE COMMENT 'The start date of the quality program reporting period during which this care gap is eligible for closure and numerator credit. Aligns with HEDIS measurement year or CMS program-specific reporting windows.',
-    `reporting_program` STRING COMMENT 'The quality reporting program under which this care gap is tracked and submitted. Examples include HEDIS (NCQA), MIPS (Merit-based Incentive Payment System), ACO MSSP (Medicare Shared Savings Program), VBP (Value-Based Purchasing), PCMH (Patient-Centered Medical Home), CMS Star Ratings, or APM (Alternative Payment Model). [ENUM-REF-CANDIDATE: HEDIS|MIPS|ACO_MSSP|VBP|PCMH|CMS_STAR|APM — 7 candidates stripped; promote to reference product]',
-    `risk_score` DECIMAL(18,2) COMMENT 'The patients risk stratification score at the time this care gap was identified, derived from Epic Healthy Planet or a population health risk model (e.g., HCC risk score, ACG score). Used to prioritize high-risk patients for gap closure outreach.',
-    `scheduled_appointment_date` DATE COMMENT 'The date of a scheduled appointment intended to address and close this care gap. Populated when outreach_response_status is appointment_scheduled. Sourced from Epic Cadence scheduling module.',
-    `snomed_code` STRING COMMENT 'The SNOMED CT concept code representing the clinical finding, procedure, or condition associated with this care gap. Supports semantic interoperability with HL7 FHIR-based population health platforms.. Valid values are `^[0-9]{6,18}$`',
-    `source_gap_reference` STRING COMMENT 'The native identifier for this care gap record in the originating source system (e.g., Epic Healthy Planet internal gap ID). Supports ETL reconciliation, deduplication, and upstream system traceability.',
-    `updated_timestamp` TIMESTAMP COMMENT 'The timestamp when this care gap record was most recently modified in the data platform, including status changes, outreach updates, or closure events. Supports incremental ETL processing and audit compliance.',
+    `population_health_gap_id` BIGINT COMMENT 'Primary key',
+    `care_site_id` BIGINT COMMENT 'Unique identifier for the care site within the quality population health gap record.',
+    `health_plan_id` BIGINT COMMENT 'Unique identifier for the health plan within the quality population health gap record.',
+    `hedis_measure_id` BIGINT COMMENT 'Unique identifier for the hedis measure within the quality population health gap record.',
+    `measure_id` BIGINT COMMENT 'Unique identifier for the measure within the quality population health gap record.',
+    `mpi_record_id` BIGINT COMMENT 'Unique identifier for the mpi record within the quality population health gap record.',
+    `org_provider_id` BIGINT COMMENT 'Unique identifier for the org provider within the quality population health gap record.',
+    `payer_id` BIGINT COMMENT 'Unique identifier for the payer within the quality population health gap record.',
+    `clinician_id` BIGINT COMMENT 'Unique identifier for the population clinician within the quality population health gap record.',
+    `population_pcp_clinician_id` BIGINT COMMENT 'Unique identifier for the population pcp clinician within the quality population health gap record.',
+    `clinical_domain` STRING COMMENT 'The clinical domain of the quality population health gap record.',
+    `closed_date` DATE COMMENT 'Timestamp capturing the closed date associated with the quality population health gap record.',
+    `closure_date` DATE COMMENT 'Timestamp capturing the closure date associated with the quality population health gap record.',
+    `closure_method` STRING COMMENT 'The closure method of the quality population health gap record.',
+    `closure_source` STRING COMMENT 'The closure source of the quality population health gap record.',
+    `created_timestamp` TIMESTAMP COMMENT 'Record creation timestamp',
+    `due_date` DATE COMMENT 'Timestamp capturing the due date associated with the quality population health gap record.',
+    `gap_category` STRING COMMENT 'The gap category of the quality population health gap record.',
+    `gap_closed_date` DATE COMMENT 'Timestamp capturing the gap closed date associated with the quality population health gap record.',
+    `gap_description` STRING COMMENT 'The gap description of the quality population health gap record.',
+    `gap_due_date` DATE COMMENT 'Timestamp capturing the gap due date associated with the quality population health gap record.',
+    `gap_identified_date` DATE COMMENT 'Timestamp capturing the gap identified date associated with the quality population health gap record.',
+    `gap_identifier` STRING COMMENT 'The gap identifier of the quality population health gap record.',
+    `gap_status` STRING COMMENT 'The gap status value classifying the quality population health gap record.',
+    `gap_type` STRING COMMENT 'The gap type value classifying the quality population health gap record.',
+    `identified_date` DATE COMMENT 'Timestamp capturing the identified date associated with the quality population health gap record.',
+    `is_closed` BOOLEAN COMMENT 'Boolean flag indicating the is closed status of the quality population health gap record.',
+    `is_open` BOOLEAN COMMENT 'Boolean flag indicating the is open status of the quality population health gap record.',
+    `last_outreach_date` DATE COMMENT 'Timestamp capturing the last outreach date associated with the quality population health gap record.',
+    `measurement_year` STRING COMMENT 'The measurement year of the quality population health gap record.',
+    `outreach_attempt_count` STRING COMMENT 'The outreach attempt count of the quality population health gap record.',
+    `outreach_status` STRING COMMENT 'The outreach status value classifying the quality population health gap record.',
+    `priority_level` STRING COMMENT 'The priority level of the quality population health gap record.',
+    `priority_score` DECIMAL(18,2) COMMENT 'The priority score of the quality population health gap record.',
+    `recommended_action` STRING COMMENT 'The recommended action of the quality population health gap record.',
+    `risk_score` STRING COMMENT 'The risk score of the quality population health gap record.',
+    `target_close_date` DATE COMMENT 'Timestamp capturing the target close date associated with the quality population health gap record.',
+    `target_closure_date` DATE COMMENT 'Timestamp capturing the target closure date associated with the quality population health gap record.',
+    `updated_timestamp` TIMESTAMP COMMENT 'Last update timestamp',
+    `vibe_structure_marker` STRING COMMENT 'Structure enforcement marker for 22-domain/541-product superset.',
     CONSTRAINT pk_population_health_gap PRIMARY KEY(`population_health_gap_id`)
-) COMMENT 'Transactional record of identified care gaps for patients in population health programs managed through Epic Healthy Planet. Captures gap type (preventive care, chronic disease management, HEDIS measure gap), gap status (open, closed, excluded), outreach attempts, closure method (claim, clinical documentation, patient attestation), closure date, and attributed provider. Supports ACO quality reporting and HEDIS gap closure workflows.';
+) COMMENT 'Patient-level care gaps for population health management and quality measure closure. Business justification: Drives outreach campaigns, care coordination, and VBP performance improvement.';
 
 CREATE OR REPLACE TABLE `vibe_healthcare_v1`.`quality`.`sdoh_screening` (
-    `sdoh_screening_id` BIGINT COMMENT 'Primary key for sdoh_screening',
-    `care_site_id` BIGINT COMMENT 'Reference to the facility or care site where the SDOH screening was administered. Supports site-level quality reporting and CMS facility-based measure stratification.',
-    `clinician_id` BIGINT COMMENT 'Reference to the clinician or care team member who administered the SDOH screening tool. Used for provider-level quality attribution and MIPS reporting.',
-    `compliance_regulatory_submission_id` BIGINT COMMENT 'Foreign key linking to compliance.regulatory_submission. Business justification: SDOH screening data must be submitted for CMS health equity measures, HEDIS social needs screening measures, and ACO health equity reporting. Compliance system tracks submission of screening rates, po',
-    `health_plan_id` BIGINT COMMENT 'Foreign key linking to insurance.health_plan. Business justification: SDOH screening requirements vary by plan. Plans report screening rates to CMS and state regulators for health equity measures and social determinants quality reporting.',
-    `loinc_code_id` BIGINT COMMENT 'Foreign key linking to reference.loinc_code. Business justification: SDOH screenings use standardized LOINC codes for interoperability and quality reporting (e.g., food insecurity, housing instability, transportation needs). CMS quality measures and health equity repor',
-    `mpi_record_id` BIGINT COMMENT 'Reference to the patient who received the SDOH screening. Links to the patient master record. Satisfies TRANSACTION_HEADER PARTY_REFERENCE minimum category.',
-    `demographics_id` BIGINT COMMENT 'add column patient_demographics_id (BIGINT) with FK to patient.demographics.demographics_id - SDOH screenings need demographics for population stratification but only link to mpi_record',
-    `payer_id` BIGINT COMMENT 'Foreign key linking to insurance.payer. Business justification: SDOH screenings are increasingly required by payers for health equity reporting and VBC contracts. Payers track screening rates and positive screen follow-up for quality measure compliance.',
-    `measure_id` BIGINT COMMENT 'Foreign key linking to quality.measure. Business justification: SDOH screenings are tracked for quality measure compliance (CMS quality programs require SDOH screening documentation). Currently sdoh_screening has cms_measure_code as STRING, which should be normali',
-    `consent_record_id` BIGINT COMMENT 'Foreign key linking to consent.consent_record. Business justification: SDOH screening programs require patient consent before sharing information with community resources or external agencies. CMS quality measures for social needs screening require documented consent for',
-    `sdoh_assessment_id` BIGINT COMMENT 'Foreign key linking to patient.sdoh_assessment. Business justification: Quality SDOH screening tracks measure compliance (CMS eCQMs, HEDIS). Patient SDOH assessment captures clinical interventions and referrals. Linking validates screening completion against clinical docu',
-    `snomed_concept_id` BIGINT COMMENT 'Foreign key linking to reference.snomed_concept. Business justification: SDOH screenings use SNOMED codes for structured clinical documentation and problem list integration in EHR systems. Quality reporting and health equity stratification require validated SNOMED concept ',
-    `unit_id` BIGINT COMMENT 'Foreign key linking to facility.unit. Business justification: Social determinants of health screening programs deployed at unit level (ED, inpatient units, outpatient clinics) with unit-specific workflows and community resource referral processes. Quality teams ',
-    `visit_id` BIGINT COMMENT 'Reference to the clinical encounter during which the SDOH screening was administered. Supports linkage to visit context for quality reporting and population health analytics.',
-    `administration_mode` STRING COMMENT 'Method by which the SDOH screening was administered to the patient. Supports stratification of screening completion rates by modality and equity analysis.. Valid values are `in_person|telephone|patient_portal|paper|proxy`',
-    `community_resource_connected` BOOLEAN COMMENT 'Indicates whether the patient was successfully connected to a community resource following a positive SDOH screen and referral. Supports close-the-loop tracking for CMS SDOH quality measures.',
-    `community_resource_name` STRING COMMENT 'Name of the community-based organization or resource connected to the patient following a positive SDOH screen. Supports community partnership tracking and health equity reporting.',
-    `created_timestamp` TIMESTAMP COMMENT 'Timestamp when the SDOH screening record was first created in the source system. Used for audit trail and data lineage. Satisfies TRANSACTION_HEADER RECORD_AUDIT_CREATED minimum category.',
-    `health_equity_stratifier` STRING COMMENT 'Stratification category used for health equity reporting (e.g., race/ethnicity group, payer type, geographic area). Supports CMS health equity reporting requirements and SDOH disparity analysis. Value is a non-PHI aggregate category, not individual patient data.',
-    `interpreter_used` BOOLEAN COMMENT 'Indicates whether a professional interpreter was used during the SDOH screening administration. Supports language access compliance reporting and health equity analytics.',
-    `is_denominator_eligible` BOOLEAN COMMENT 'Indicates whether this patient-screening record meets the denominator eligibility criteria for the associated CMS SDOH quality measure. Supports automated measure calculation in the Silver layer.',
-    `is_numerator_compliant` BOOLEAN COMMENT 'Indicates whether this screening record satisfies the numerator criteria for the associated CMS SDOH quality measure (i.e., screening was completed). Supports automated measure rate calculation.',
-    `is_positive_screen` BOOLEAN COMMENT 'Indicates whether the patient screened positive for a social need in this SDOH domain. A positive screen triggers referral workflows and community resource connection. Core flag for CMS SDOH quality measure numerator identification.',
-    `is_referral_generated` BOOLEAN COMMENT 'Indicates whether a community resource or social services referral was generated as a result of a positive SDOH screen. Key metric for CMS SDOH quality measure numerator tracking and health equity reporting.',
-    `language_of_administration` STRING COMMENT 'ISO 639-1 two-letter language code indicating the language in which the SDOH screening was administered. Supports health equity reporting and language access compliance under Title VI of the Civil Rights Act.',
-    `need_resolution_date` DATE COMMENT 'Date on which the patients social need was confirmed resolved. Supports longitudinal outcomes measurement and population health program effectiveness reporting.',
-    `need_resolved` BOOLEAN COMMENT 'Indicates whether the identified social need was resolved following intervention and community resource connection. Supports longitudinal population health outcomes tracking.',
-    `positive_screen_reason` STRING COMMENT 'Clinical or administrative reason code or description explaining why the patient screened positive for this SDOH domain. Supports CDI and population health care management workflows.',
-    `program_year` STRING COMMENT 'Calendar year of the quality measurement program to which this SDOH screening record is attributed. Used for annual CMS quality measure reporting, HEDIS measurement year alignment, and MIPS performance period tracking.',
-    `question_text` STRING COMMENT 'Verbatim text of the SDOH screening question as presented to the patient. Supports audit, quality review, and longitudinal tracking of question wording across tool versions.',
-    `referral_date` DATE COMMENT 'Date on which the community resource or social services referral was generated following a positive SDOH screen. Used to measure timeliness of referral and close-the-loop quality metrics.',
-    `referral_type` STRING COMMENT 'Category of referral generated in response to a positive SDOH screen. Supports population health program tracking and community partnership analytics.. Valid values are `community_resource|social_work|care_management|food_bank|housing_agency|other`',
-    `refusal_reason` STRING COMMENT 'Reason the patient declined or was unable to complete the SDOH screening. Required for denominator exclusion logic in CMS SDOH quality measures and equity reporting.. Valid values are `patient_declined|language_barrier|cognitive_impairment|time_constraint|not_applicable|other`',
-    `reporting_period_end` DATE COMMENT 'End date of the quality reporting period to which this SDOH screening is attributed. Supports CMS quality measure submission windows and HEDIS measurement period alignment.',
-    `reporting_period_start` DATE COMMENT 'Start date of the quality reporting period to which this SDOH screening is attributed. Supports CMS quality measure submission windows and HEDIS measurement period alignment.',
-    `resource_connection_date` DATE COMMENT 'Date on which the patient was confirmed connected to the community resource. Used to calculate time-to-connection metrics and close-the-loop quality measure compliance.',
-    `response_code` STRING COMMENT 'Standardized code (e.g., LOINC answer code, SNOMED CT) representing the patients response to the SDOH screening question. Enables structured analytics and interoperability distinct from the free-text response value.',
-    `response_value` DECIMAL(18,2) COMMENT 'Patients verbatim or coded response to the SDOH screening question. Contains Protected Health Information (PHI) as it reflects the patients social needs. Satisfies TRANSACTION_HEADER QUANTITATIVE_RESULT minimum category for non-monetary clinical transactions.',
-    `screening_date` DATE COMMENT 'Calendar date on which the SDOH screening was administered to the patient. Used as the principal event date for quality measure denominator and numerator identification. Satisfies TRANSACTION_HEADER BUSINESS_EVENT_TIMESTAMP minimum category.',
-    `screening_number` STRING COMMENT 'Externally visible business identifier for the SDOH screening event, typically sourced from the EHR (Epic Healthy Planet or Cerner Millennium). Used for cross-system reconciliation and audit trail. Satisfies TRANSACTION_HEADER BUSINESS_IDENTIFIER minimum category.',
-    `screening_setting` STRING COMMENT 'Clinical care setting in which the SDOH screening was administered. Supports stratification of screening rates by care setting for CMS quality reporting and health equity analytics.. Valid values are `inpatient|outpatient|emergency_department|telehealth|community`',
-    `screening_status` STRING COMMENT 'Current workflow status of the SDOH screening record. Indicates whether the screening was fully completed, partially administered, refused by the patient, or voided. Satisfies TRANSACTION_HEADER LIFECYCLE_STATUS minimum category.. Valid values are `completed|in_progress|refused|not_eligible|voided`',
-    `screening_timestamp` TIMESTAMP COMMENT 'Precise date and time the SDOH screening was administered, including timezone offset. Supports time-of-day analytics and HL7 FHIR Observation.effectiveDateTime mapping.',
-    `screening_tool_code` STRING COMMENT 'Standardized code identifying the validated SDOH screening instrument used. Common tools include AHC HRSN (Accountable Health Communities Health-Related Social Needs), PRAPARE (Protocol for Responding to and Assessing Patients Assets, Risks, and Experiences), and Hunger Vital Sign. [ENUM-REF-CANDIDATE: AHC_HRSN|PRAPARE|HUNGER_VITAL_SIGN|WELLCARE|ISCREEN|WE_CARE|NACHC_SDOH|EPIC_SDOH — promote to reference product]. Valid values are `AHC_HRSN|PRAPARE|HUNGER_VITAL_SIGN|WELLCARE|ISCREEN|WE_CARE`',
-    `screening_tool_name` STRING COMMENT 'Human-readable name of the SDOH screening instrument administered (e.g., Accountable Health Communities Health-Related Social Needs Screening Tool, PRAPARE, Hunger Vital Sign). Supports display in clinical dashboards and quality reports.',
-    `screening_tool_version` STRING COMMENT 'Version number or edition of the SDOH screening tool used. Important for longitudinal comparability and measure specification alignment as tools are updated.',
-    `sdoh_domain` STRING COMMENT 'Primary SDOH domain assessed by this screening record. Each domain represents a distinct social need category per CMS and AHRQ SDOH frameworks. A single screening encounter may generate multiple domain-level records. [ENUM-REF-CANDIDATE: food_insecurity|housing_instability|transportation|interpersonal_safety|financial_strain|utilities|childcare|education|employment|social_isolation — promote to reference product]. Valid values are `food_insecurity|housing_instability|transportation|interpersonal_safety|financial_strain`',
-    `source_system_record_reference` STRING COMMENT 'Native identifier of the SDOH screening record in the originating operational system (e.g., Epic SmartData element ID, Cerner PowerForm instance ID). Supports cross-system reconciliation and ETL audit.',
-    `updated_timestamp` TIMESTAMP COMMENT 'Timestamp when the SDOH screening record was last modified in the source system. Supports incremental ETL processing and change data capture. Satisfies TRANSACTION_HEADER RECORD_AUDIT_UPDATED minimum category.',
+    `sdoh_screening_id` BIGINT COMMENT 'Primary key',
+    `care_site_id` BIGINT COMMENT 'Unique identifier for the care site within the quality sdoh screening record.',
+    `clinician_id` BIGINT COMMENT 'Unique identifier for the clinician within the quality sdoh screening record.',
+    `community_resource_id` BIGINT COMMENT 'Community resource identified during screening.',
+    `demographics_id` BIGINT COMMENT 'Unique identifier for the demographics within the quality sdoh screening record.',
+    `measure_id` BIGINT COMMENT 'Unique identifier for the measure within the quality sdoh screening record.',
+    `mpi_record_id` BIGINT COMMENT 'Unique identifier for the mpi record within the quality sdoh screening record.',
+    `population_health_gap_id` BIGINT COMMENT 'Unique identifier for the population health gap within the quality sdoh screening record.',
+    `employee_id` BIGINT COMMENT 'Unique identifier for the screener employee within the quality sdoh screening record.',
+    `sdoh_risk_stratification_id` BIGINT COMMENT 'Risk stratification associated with this screening.',
+    `visit_id` BIGINT COMMENT 'Unique identifier for the visit within the quality sdoh screening record.',
+    `sdoh_need_closure_id` BIGINT COMMENT 'Unique identifier for the sdoh need closure within the quality sdoh screening record.',
+    `community_resource_referred` STRING COMMENT 'The community resource referred of the quality sdoh screening record.',
+    `created_timestamp` TIMESTAMP COMMENT 'Record creation timestamp',
+    `education_need_flag` BOOLEAN COMMENT 'The education need flag of the quality sdoh screening record.',
+    `employment_need_flag` BOOLEAN COMMENT 'The employment need flag of the quality sdoh screening record.',
+    `financial_strain_flag` BOOLEAN COMMENT 'The financial strain flag of the quality sdoh screening record.',
+    `food_insecurity_flag` BOOLEAN COMMENT 'The food insecurity flag of the quality sdoh screening record.',
+    `housing_instability_flag` BOOLEAN COMMENT 'The housing instability flag of the quality sdoh screening record.',
+    `icd10_z_code` STRING COMMENT 'The icd10 z code value classifying the quality sdoh screening record.',
+    `interpersonal_safety_flag` BOOLEAN COMMENT 'The interpersonal safety flag of the quality sdoh screening record.',
+    `measurement_period` STRING COMMENT 'The measurement period of the quality sdoh screening record.',
+    `need_closed_date` DATE COMMENT 'Timestamp capturing the need closed date associated with the quality sdoh screening record.',
+    `need_closed_flag` BOOLEAN COMMENT 'The need closed flag of the quality sdoh screening record.',
+    `need_closure_date` DATE COMMENT 'Timestamp capturing the need closure date associated with the quality sdoh screening record.',
+    `need_closure_status` STRING COMMENT 'The need closure status value classifying the quality sdoh screening record.',
+    `overall_risk_score` DECIMAL(18,2) COMMENT 'The overall risk score of the quality sdoh screening record.',
+    `positive_domain_count` STRING COMMENT 'The positive domain count of the quality sdoh screening record.',
+    `positive_screen_flag` BOOLEAN COMMENT 'The positive screen flag of the quality sdoh screening record.',
+    `primary_z_code` STRING COMMENT 'The primary z code value classifying the quality sdoh screening record.',
+    `priority_score` STRING COMMENT 'The priority score of the quality sdoh screening record.',
+    `referral_date` DATE COMMENT 'Timestamp capturing the referral date associated with the quality sdoh screening record.',
+    `referral_generated_flag` BOOLEAN COMMENT 'The referral generated flag of the quality sdoh screening record.',
+    `referral_made_flag` BOOLEAN COMMENT 'The referral made flag of the quality sdoh screening record.',
+    `referral_status` STRING COMMENT 'The referral status value classifying the quality sdoh screening record.',
+    `risk_priority_score` DECIMAL(18,2) COMMENT 'The risk priority score of the quality sdoh screening record.',
+    `risk_stratification` STRING COMMENT 'The risk stratification of the quality sdoh screening record.',
+    `risk_stratification_level` STRING COMMENT 'The risk stratification level of the quality sdoh screening record.',
+    `risk_tier` STRING COMMENT 'The risk tier of the quality sdoh screening record.',
+    `screener_role` STRING COMMENT 'The screener role of the quality sdoh screening record.',
+    `screening_date` DATE COMMENT 'Timestamp capturing the screening date associated with the quality sdoh screening record.',
+    `screening_instrument` STRING COMMENT 'The screening instrument of the quality sdoh screening record.',
+    `screening_number` STRING COMMENT 'The screening number of the quality sdoh screening record.',
+    `screening_setting` STRING COMMENT 'The screening setting of the quality sdoh screening record.',
+    `screening_status` STRING COMMENT 'The screening status value classifying the quality sdoh screening record.',
+    `screening_tool` STRING COMMENT 'The screening tool of the quality sdoh screening record.',
+    `sdoh_category` STRING COMMENT 'The sdoh category of the quality sdoh screening record.',
+    `social_isolation_flag` BOOLEAN COMMENT 'The social isolation flag of the quality sdoh screening record.',
+    `total_positive_domains` STRING COMMENT 'The total positive domains of the quality sdoh screening record.',
+    `total_risk_score` STRING COMMENT 'The total risk score of the quality sdoh screening record.',
+    `transportation_barrier_flag` BOOLEAN COMMENT 'The transportation barrier flag of the quality sdoh screening record.',
+    `transportation_need_flag` BOOLEAN COMMENT 'The transportation need flag of the quality sdoh screening record.',
+    `updated_timestamp` TIMESTAMP COMMENT 'Last update timestamp',
+    `utility_need_flag` BOOLEAN COMMENT 'The utility need flag of the quality sdoh screening record.',
+    `utility_needs_flag` BOOLEAN COMMENT 'The utility needs flag of the quality sdoh screening record.',
+    `vibe_structure_marker` STRING COMMENT 'Structure enforcement marker for 22-domain/541-product superset.',
+    `z_code_assigned` STRING COMMENT 'The z code assigned of the quality sdoh screening record.',
+    `z_code_category` STRING COMMENT 'The z code category of the quality sdoh screening record.',
+    `z_code_list` STRING COMMENT 'The z code list of the quality sdoh screening record.',
+    `z_code_mapping` STRING COMMENT 'The z code mapping of the quality sdoh screening record.',
+    `zcode_category` STRING COMMENT 'The zcode category of the quality sdoh screening record.',
     CONSTRAINT pk_sdoh_screening PRIMARY KEY(`sdoh_screening_id`)
-) COMMENT 'Transactional record of Social Determinants of Health (SDOH) screenings administered to patients as part of population health and quality programs. Captures screening tool used (AHC HRSN, PRAPARE, Hunger Vital Sign), screening date, domain assessed (food insecurity, housing instability, transportation, interpersonal safety, financial strain), positive screen flags, referral generated, and community resource connected. Supports CMS SDOH quality measures and health equity reporting.';
-
-CREATE OR REPLACE TABLE `vibe_healthcare_v1`.`quality`.`quality_program` (
-    `quality_program_id` BIGINT COMMENT 'Unique surrogate identifier for the quality program record. Primary key for the quality_program entity in the Silver Layer lakehouse.',
-    `employee_id` BIGINT COMMENT 'Reference to the workforce or provider record of the staff member designated as the quality program manager. Enables linkage to HR and credentialing systems for contact and accountability tracking.',
-    `accreditation_standard_version` STRING COMMENT 'Version or edition of the accreditation standards applicable to this program (e.g., TJC 2024 Comprehensive Accreditation Manual for Hospitals, NCQA 2024-2025 Standards). Ensures the organization is evaluated against the correct standard set.',
-    `accreditation_status` STRING COMMENT 'Current accreditation or certification status awarded by the sponsoring body (TJC, NCQA, CMS). Drives regulatory compliance standing, payer contracting eligibility, and public reporting. Not applicable for non-accreditation programs.. Valid values are `accredited|conditional|provisional|denied|not-applicable`',
-    `apm_model_name` STRING COMMENT 'Name of the CMS Alternative Payment Model (APM) or Advanced APM under which the organization participates (e.g., MSSP ACO, Bundled Payments for Care Improvement, Comprehensive Care for Joint Replacement). Null for non-APM programs.',
-    `baseline_period_end` DATE COMMENT 'End date of the baseline measurement period. Defines the historical window used to calculate baseline performance scores for achievement scoring in pay-for-performance programs.',
-    `baseline_period_start` DATE COMMENT 'Start date of the baseline measurement period used to establish benchmark performance levels against which the performance period is compared. Critical for VBP achievement and improvement scoring methodology.',
-    `care_setting` STRING COMMENT 'Clinical care setting to which this quality program applies. Determines which facilities, encounter types, and patient populations are in scope for program measurement and reporting.. Valid values are `inpatient|outpatient|ambulatory|post-acute|home-health|all`',
-    `cms_certification_number` STRING COMMENT 'Six-digit CMS Certification Number (CCN) identifying the participating facility or provider organization in CMS quality programs. Required for IQR, OQR, VBP, and HAI reporting submissions to CMS.. Valid values are `^[0-9]{6}$`',
-    `created_timestamp` TIMESTAMP COMMENT 'Timestamp when this quality program record was first created in the system. Supports audit trail, data lineage, and Silver Layer ingestion tracking per HIPAA audit control requirements.',
-    `data_submission_method` STRING COMMENT 'Mechanism used to submit quality data to the sponsoring body. Determines technical integration requirements and data validation workflows. Examples: QualityNet portal (CMS), NCQA IDSS (HEDIS), direct EHR submission (eCQM), registry submission (MIPS), claims-based, or attestation.. Valid values are `QualityNet|NCQA-IDSS|direct-EHR|registry|claims|attestation`',
-    `effective_end_date` DATE COMMENT 'Date on which this quality program configuration expires or the organizations participation ends. Null for ongoing programs. Used for historical program tracking and configuration versioning.',
-    `effective_start_date` DATE COMMENT 'Date on which this quality program configuration became effective for the organization. Marks the beginning of the organizations binding participation in the program for the specified program year.',
-    `executive_sponsor_name` STRING COMMENT 'Name of the senior organizational leader (e.g., Chief Quality Officer, CMO, CNO) who holds executive accountability for this quality programs performance and strategic outcomes.',
-    `incentive_amount` DECIMAL(18,2) COMMENT 'Total dollar amount of financial incentive or bonus at risk for this program year. Represents the maximum potential positive payment adjustment or bonus available to the organization for achieving top performance.',
-    `last_survey_date` DATE COMMENT 'Date of the most recently completed accreditation survey, audit, or review for this program. Used to track accreditation currency and calculate time to next survey.',
-    `measure_count` STRING COMMENT 'Total number of quality measures included in this programs measure set for the program year. Provides a quick indicator of program scope and data collection burden.',
-    `mips_quality_category_weight` DECIMAL(18,2) COMMENT 'Percentage weight of the Quality performance category in the MIPS composite performance score (e.g., 30.0 for 30%). Weights across all MIPS categories (Quality, Promoting Interoperability, Improvement Activities, Cost) must sum to 100.',
-    `mips_submission_type` STRING COMMENT 'Defines how the organization submits MIPS performance data to CMS. Determines the eligible clinician population, scoring methodology, and payment adjustment calculation. Not applicable for non-MIPS programs.. Valid values are `individual|group|apm-entity|virtual-group|not-applicable`',
-    `next_survey_date` DATE COMMENT 'Anticipated or scheduled date of the next accreditation survey, audit, or review for this program. Used for TJC survey readiness planning, NCQA renewal, and CMS Conditions of Participation reviews.',
-    `participating_facility_count` STRING COMMENT 'Number of organizational facilities enrolled and actively participating in this quality program. Supports program scope management, resource allocation, and multi-facility performance aggregation.',
-    `payment_adjustment_factor` DECIMAL(18,2) COMMENT 'Multiplicative factor applied to Medicare base operating DRG payments as a result of program performance (e.g., 1.0175 for a positive adjustment, 0.9800 for a penalty). Specific to CMS VBP and similar pay-for-performance programs. Expressed as a decimal multiplier.',
-    `penalty_amount` DECIMAL(18,2) COMMENT 'Total dollar amount of financial penalty or payment reduction at risk for this program year. Represents the maximum potential negative payment adjustment if performance thresholds are not met.',
-    `performance_period_end` DATE COMMENT 'End date of the performance measurement period. Data collected through this date are used to calculate performance scores and determine payment adjustments.',
-    `performance_period_start` DATE COMMENT 'Start date of the performance measurement period during which clinical and quality data are collected and evaluated for program scoring. Distinct from the baseline period. Aligns with CMS-defined performance period windows.',
-    `program_category` STRING COMMENT 'High-level strategic category grouping quality programs for portfolio management and executive reporting. Enables cross-program analytics and resource allocation decisions.. Valid values are `value-based-care|patient-safety|accreditation|population-health|regulatory-reporting|internal`',
-    `program_code` STRING COMMENT 'Externally-known alphanumeric code uniquely identifying the quality program (e.g., VBP-2024, MIPS-2024, IQR-2024, TJC-ACCRED). Used as the business-facing identifier across reporting systems and CMS submissions.. Valid values are `^[A-Z0-9_-]{2,30}$`',
-    `program_description` STRING COMMENT 'Detailed narrative description of the quality programs purpose, scope, regulatory basis, and organizational objectives. Provides context for staff, auditors, and governance committees reviewing the program portfolio.',
-    `program_name` STRING COMMENT 'Full descriptive name of the quality program (e.g., Hospital Value-Based Purchasing Program, Merit-based Incentive Payment System, Inpatient Quality Reporting Program). Human-readable label used in dashboards and regulatory submissions.',
-    `program_status` STRING COMMENT 'Current lifecycle status of the quality program within the organization. Drives whether the program is actively tracked, reported, and financially adjudicated. Active programs require ongoing data collection and submission.. Valid values are `active|inactive|pending|suspended|retired`',
-    `program_type` STRING COMMENT 'Categorical classification of the quality program by its primary purpose and mechanism. Drives financial incentive logic, reporting workflows, and compliance tracking. Values: pay-for-performance (VBP, MIPS), accreditation (TJC, NCQA), improvement (QI initiatives), reporting (IQR, OQR), certification (specialty certification programs).. Valid values are `pay-for-performance|accreditation|improvement|reporting|certification`',
-    `public_reporting_flag` BOOLEAN COMMENT 'Indicates whether performance results for this program are publicly reported on CMS Hospital Compare, Physician Compare, or other public-facing transparency platforms. Drives reputational risk management and patient choice analytics.',
-    `regulatory_authority` STRING COMMENT 'Name of the primary regulatory or accrediting authority that mandates or governs this quality program (e.g., Centers for Medicare and Medicaid Services, The Joint Commission, NCQA, State Department of Health). Distinct from program_sponsor which may be an internal entity.',
-    `reporting_frequency` STRING COMMENT 'Frequency at which performance data must be collected, calculated, and reported for this quality program. Drives data pipeline scheduling, dashboard refresh cadence, and internal review meeting frequency.. Valid values are `monthly|quarterly|semi-annual|annual|continuous`',
-    `risk_adjustment_applied` BOOLEAN COMMENT 'Indicates whether risk adjustment methodology is applied to performance scores in this program to account for patient complexity and socioeconomic factors. True for programs using CMS risk adjustment models (e.g., mortality, readmission measures).',
-    `sdoh_adjustment_applied` BOOLEAN COMMENT 'Indicates whether Social Determinants of Health (SDOH) stratification or adjustment is applied in this programs scoring methodology. Reflects CMS equity-focused quality reporting initiatives and NCQA health equity accreditation requirements.',
-    `short_name` STRING COMMENT 'Abbreviated or commonly used name for the quality program (e.g., VBP, MIPS, IQR, OQR, APM, HEDIS). Used in reports, dashboards, and internal communications where space is limited.',
-    `sponsor` STRING COMMENT 'Governing body or organization that owns and administers the quality program. Determines regulatory authority, submission requirements, and financial implications. [ENUM-REF-CANDIDATE: CMS|TJC|NCQA|AMA|State|Internal|AHRQ|NQF|HHS|HRSA — promote to reference product]',
-    `submission_deadline` DATE COMMENT 'Regulatory or program-defined deadline by which quality data, measures, or attestations must be submitted to the sponsoring body (CMS, TJC, NCQA). Missed deadlines may result in penalties or payment adjustments.',
-    `survey_cycle_months` STRING COMMENT 'Duration in months of the accreditation or certification survey cycle (e.g., 36 months for TJC triennial survey, 12 months for annual NCQA review). Drives survey readiness planning and accreditation renewal workflows.',
-    `total_performance_score_methodology` STRING COMMENT 'Description of the scoring methodology used to calculate the Total Performance Score (TPS) for this program. Includes achievement vs. improvement scoring approach, domain weighting logic, and floor score rules. Specific to CMS VBP and MIPS programs.',
-    `updated_timestamp` TIMESTAMP COMMENT 'Timestamp when this quality program record was most recently modified. Supports change detection, incremental ETL processing, and audit trail requirements for regulatory compliance.',
-    `url` STRING COMMENT 'Official URL linking to the programs regulatory specifications, technical manuals, or sponsoring bodys program page (e.g., CMS VBP program page, TJC accreditation manual). Supports staff access to authoritative program documentation.',
-    `vbp_clinical_outcomes_weight` DECIMAL(18,2) COMMENT 'Percentage weight assigned to the Clinical Outcomes domain within the VBP Total Performance Score calculation (e.g., 40.0 for 40%). Includes mortality, complications, and readmission measures. Weights must sum to 100 across all VBP domains.',
-    `vbp_efficiency_cost_weight` DECIMAL(18,2) COMMENT 'Percentage weight assigned to the Efficiency and Cost Reduction domain within the VBP Total Performance Score calculation. Includes Medicare Spending Per Beneficiary (MSPB) measure.',
-    `vbp_person_community_weight` DECIMAL(18,2) COMMENT 'Percentage weight assigned to the Person and Community Engagement domain (HCAHPS patient experience) within the VBP Total Performance Score calculation. Reflects patient satisfaction and experience of care measures.',
-    `vbp_safety_weight` DECIMAL(18,2) COMMENT 'Percentage weight assigned to the Safety domain within the VBP Total Performance Score calculation. Includes HAI measures (CLABSI, CAUTI, SSI, MRSA, C. diff) and PSI-90 composite.',
-    `withhold_percentage` DECIMAL(18,2) COMMENT 'Percentage of Medicare base operating payments withheld by CMS to fund the VBP incentive pool (e.g., 2.0% for FY2024). Withheld funds are redistributed based on Total Performance Score. Applicable to CMS VBP program.',
-    `year` STRING COMMENT 'Calendar or fiscal year for which this quality program configuration applies (e.g., 2024). Each program year may have distinct measure sets, weights, benchmarks, and payment adjustment factors. Aligns with CMS program year definitions.',
-    CONSTRAINT pk_quality_program PRIMARY KEY(`quality_program_id`)
-) COMMENT 'Master entity for the organizations quality program portfolio including CMS Value-Based Purchasing (VBP), MIPS, IQR, OQR, APM, TJC accreditation, NCQA, state-specific, and internal quality programs. Stores program name, program sponsor (CMS, TJC, NCQA, internal), program type (pay-for-performance, accreditation, improvement, reporting), program year, participating facilities, financial incentive or penalty at risk, program manager, and program-specific configuration including VBP domain weights (clinical outcomes, person and community engagement, safety, efficiency and cost reduction), baseline and performance period definitions, total performance score methodology, payment adjustment factor, and MIPS submission requirements. Consolidates all program configuration including VBP program data formerly tracked separately. SSOT for quality program governance and configuration.';
+) COMMENT 'Social determinants of health screening results using standardized instruments (AHC-HRSN, PRAPARE). Business justification: Required by CMS for ACO quality, TJC standards, and health equity initiatives.';
 
 CREATE OR REPLACE TABLE `vibe_healthcare_v1`.`quality`.`corrective_action` (
-    `corrective_action_id` BIGINT COMMENT 'Unique identifier for the corrective action record. Primary key for the corrective action entity.',
-    `accreditation_survey_id` BIGINT COMMENT 'Reference to the accreditation survey that identified the deficiency requiring this corrective action, if applicable.',
-    `budget_id` BIGINT COMMENT 'Foreign key linking to finance.budget. Business justification: Corrective actions from safety events, accreditation findings, or peer reviews require budget allocation for implementation (staff training, process redesign, monitoring systems). Finance teams track ',
-    `capital_expenditure_id` BIGINT COMMENT 'Foreign key linking to finance.capital_expenditure. Business justification: Some corrective actions require capital purchases (equipment replacement for safety compliance, facility modifications for accreditation standards, technology upgrades for infection control). These ar',
-    `care_site_id` BIGINT COMMENT 'Reference to the healthcare facility where the corrective action is being implemented.',
-    `quality_committee_id` BIGINT COMMENT 'Foreign key linking to quality.committee. Business justification: Corrective actions are often reviewed, approved, or monitored by quality committees (e.g., Patient Safety Committee, Quality Improvement Committee). This FK enables tracking which committee has oversi',
-    `corrective_action_plan_id` BIGINT COMMENT 'Foreign key linking to compliance.corrective_action_plan. Business justification: Quality corrective actions originating from safety events, accreditation findings, or peer reviews must link to compliance CAP system for regulatory tracking, submission to CMS/TJC, verification of ef',
-    `employee_id` BIGINT COMMENT 'Reference to the provider, staff member, or leader assigned primary accountability for completing the corrective action.',
-    `improvement_initiative_id` BIGINT COMMENT 'Reference to the broader quality improvement initiative that this corrective action supports, if applicable.',
-    `interface_downtime_id` BIGINT COMMENT 'Foreign key linking to interoperability.interface_downtime. Business justification: Corrective actions for interface failures (e.g., missed lab results causing patient safety events) reference specific downtime events as the originating incident. This link supports action plan tracki',
-    `material_master_id` BIGINT COMMENT 'Foreign key linking to supply.material_master. Business justification: Corrective actions frequently target specific supply items (remove from formulary, change par levels, implement new storage protocol, restrict usage). Direct link to material master supports action im',
-    `mortality_review_id` BIGINT COMMENT 'Reference to the mortality review case that identified the need for this corrective action, if applicable.',
-    `parent_corrective_action_id` BIGINT COMMENT 'Self-referencing FK on corrective_action (parent_corrective_action_id)',
-    `patient_safety_event_id` BIGINT COMMENT 'Reference to the patient safety event that triggered this corrective action, if applicable.',
-    `quality_peer_review_id` BIGINT COMMENT 'Reference to the peer review case that identified the need for this corrective action, if applicable.',
-    `recall_notice_id` BIGINT COMMENT 'Foreign key linking to supply.recall_notice. Business justification: Many corrective actions originate from product recalls (quarantine affected lots, notify patients with implants, update preference cards). Linking to recall notice enables tracking of recall-driven qu',
-    `standard_finding_id` BIGINT COMMENT 'Reference to the specific accreditation or regulatory standard finding that requires this corrective action, if applicable.',
-    `acceptance_date` DATE COMMENT 'Date when the regulatory or accreditation body formally accepted the corrective action plan or evidence of completion.',
-    `acceptance_status` STRING COMMENT 'Status of the corrective action plan or evidence as reviewed and accepted by the regulatory or accreditation body.. Valid values are `pending|accepted|rejected|revision_requested`',
-    `action_description` STRING COMMENT 'Detailed narrative description of the corrective or preventive action to be taken, including specific steps, interventions, and expected outcomes.',
-    `action_number` STRING COMMENT 'Business-facing unique identifier or tracking number for the corrective action, used for external reference and communication with regulatory bodies and accreditation organizations.',
-    `action_status` STRING COMMENT 'Current lifecycle status of the corrective action indicating progress through the action workflow from initiation to closure.. Valid values are `open|in_progress|completed|verified|closed|overdue`',
-    `action_type` STRING COMMENT 'Classification of the action as corrective (addressing an existing deficiency), preventive (preventing future occurrence), or both.. Valid values are `corrective|preventive|both`',
-    `assigned_date` DATE COMMENT 'Date when the corrective action was formally assigned to the responsible party.',
-    `completion_date` DATE COMMENT 'Actual date when the corrective action was completed and implemented.',
-    `created_timestamp` TIMESTAMP COMMENT 'Date and time when the corrective action record was first created in the system.',
-    `days_to_complete` STRING COMMENT 'Number of calendar days elapsed from action assignment to completion, used for performance monitoring and accountability tracking.',
-    `department_name` STRING COMMENT 'Name of the clinical or operational department responsible for implementing the corrective action.',
-    `due_date` DATE COMMENT 'Target completion date for the corrective action, often driven by regulatory deadlines or accreditation requirements.',
-    `effectiveness_verification_date` DATE COMMENT 'Date when the effectiveness of the corrective action was formally verified and documented.',
-    `effectiveness_verification_method` STRING COMMENT 'Description of the method or process used to verify that the corrective action achieved its intended outcome and prevented recurrence (e.g., audits, chart reviews, process observations, outcome measurement).',
-    `effectiveness_verified` BOOLEAN COMMENT 'Flag indicating whether the corrective action has been verified as effective in addressing the root cause and preventing recurrence.',
-    `is_cms_reportable` BOOLEAN COMMENT 'Flag indicating whether this corrective action is required to be reported to CMS as part of a plan of correction or quality program submission.',
-    `is_overdue` BOOLEAN COMMENT 'Flag indicating whether the corrective action has passed its due date without completion.',
-    `is_state_reportable` BOOLEAN COMMENT 'Flag indicating whether this corrective action is required to be reported to state health department or licensing authority.',
-    `is_tjc_reportable` BOOLEAN COMMENT 'Flag indicating whether this corrective action is required to be reported to The Joint Commission as part of accreditation survey response or sentinel event follow-up.',
-    `monitoring_frequency` STRING COMMENT 'Frequency at which the corrective action and its sustained effectiveness will be monitored (e.g., weekly, monthly, quarterly, annually).',
-    `monitoring_method` STRING COMMENT 'Description of the ongoing monitoring process or mechanism used to ensure sustained compliance and effectiveness of the corrective action.',
-    `originating_event_type` STRING COMMENT 'Classification of the source event or finding that triggered the need for this corrective action. [ENUM-REF-CANDIDATE: patient_safety_event|accreditation_finding|regulatory_deficiency|peer_review|mortality_review|quality_measure_gap|complaint|audit_finding — 8 candidates stripped; promote to reference product]',
-    `priority_level` STRING COMMENT 'Priority classification indicating the urgency and importance of completing the corrective action based on risk severity and regulatory requirements.. Valid values are `critical|high|medium|low`',
-    `regulatory_program` STRING COMMENT 'Name of the regulatory or quality program that requires or monitors this corrective action (e.g., CMS Conditions of Participation, TJC Accreditation, State Licensure, MIPS, VBP).',
-    `responsible_party_name` STRING COMMENT 'Full name of the individual or role accountable for executing and completing the corrective action.',
-    `responsible_party_role` STRING COMMENT 'Job title or functional role of the individual assigned responsibility for the corrective action (e.g., Nurse Manager, Quality Director, Department Chair).',
-    `root_cause_category` STRING COMMENT 'High-level classification of the root cause type that the corrective action addresses, used for trending and systemic improvement. [ENUM-REF-CANDIDATE: human_factors|communication|process_design|equipment|environment|training|policy_procedure — 7 candidates stripped; promote to reference product]',
-    `root_cause_summary` STRING COMMENT 'Summary of the root cause analysis findings that informed the design of this corrective action, linking the action to underlying system or process failures.',
-    `service_line` STRING COMMENT 'Clinical service line or specialty area affected by or responsible for the corrective action (e.g., cardiology, surgery, emergency medicine).',
-    `source_system_action_reference` STRING COMMENT 'Unique identifier for the corrective action in the originating source system, used for data lineage and reconciliation.',
-    `submission_date` DATE COMMENT 'Date when the corrective action plan or evidence of completion was submitted to the regulatory or accreditation body.',
-    `updated_timestamp` TIMESTAMP COMMENT 'Date and time when the corrective action record was last modified in the system.',
-    `verification_notes` STRING COMMENT 'Detailed notes and findings from the effectiveness verification process, including evidence of sustained improvement or identification of additional actions needed.',
-    `verification_result` STRING COMMENT 'Outcome of the effectiveness verification assessment, indicating whether the corrective action successfully resolved the issue.. Valid values are `effective|partially_effective|ineffective|pending`',
+    `corrective_action_id` BIGINT COMMENT 'Primary key',
+    `accreditation_survey_id` BIGINT COMMENT 'Unique identifier for the accreditation survey within the quality corrective action record.',
+    `care_site_id` BIGINT COMMENT 'Unique identifier for the care site within the quality corrective action record.',
+    `quality_committee_id` BIGINT COMMENT 'Unique identifier for the committee within the quality corrective action record.',
+    `corrective_action_plan_id` BIGINT COMMENT 'Unique identifier for the corrective action plan within the quality corrective action record.',
+    `employee_id` BIGINT COMMENT 'Unique identifier for the corrective employee within the quality corrective action record.',
+    `improvement_initiative_id` BIGINT COMMENT 'Unique identifier for the improvement initiative within the quality corrective action record.',
+    `owner_employee_id` BIGINT COMMENT 'Unique identifier for the owner employee within the quality corrective action record.',
+    `patient_safety_event_id` BIGINT COMMENT 'Unique identifier for the patient safety event within the quality corrective action record.',
+    `standard_finding_id` BIGINT COMMENT 'Unique identifier for the standard finding within the quality corrective action record.',
+    `action_description` STRING COMMENT 'The action description of the quality corrective action record.',
+    `action_number` STRING COMMENT 'The action number of the quality corrective action record.',
+    `action_status` STRING COMMENT 'The action status value classifying the quality corrective action record.',
+    `action_type` STRING COMMENT 'The action type value classifying the quality corrective action record.',
+    `actual_completion_date` DATE COMMENT 'Timestamp capturing the actual completion date associated with the quality corrective action record.',
+    `assigned_department` STRING COMMENT 'The assigned department of the quality corrective action record.',
+    `completed_date` DATE COMMENT 'Timestamp capturing the completed date associated with the quality corrective action record.',
+    `completion_date` DATE COMMENT 'Timestamp capturing the completion date associated with the quality corrective action record.',
+    `created_timestamp` TIMESTAMP COMMENT 'Record creation timestamp',
+    `due_date` DATE COMMENT 'Timestamp capturing the due date associated with the quality corrective action record.',
+    `effectiveness_verification_date` DATE COMMENT 'Timestamp capturing the effectiveness verification date associated with the quality corrective action record.',
+    `effectiveness_verified` BOOLEAN COMMENT 'The effectiveness verified of the quality corrective action record.',
+    `effectiveness_verified_date` DATE COMMENT 'Timestamp capturing the effectiveness verified date associated with the quality corrective action record.',
+    `effectiveness_verified_flag` BOOLEAN COMMENT 'The effectiveness verified flag of the quality corrective action record.',
+    `identified_date` DATE COMMENT 'Timestamp capturing the identified date associated with the quality corrective action record.',
+    `initiated_date` DATE COMMENT 'Timestamp capturing the initiated date associated with the quality corrective action record.',
+    `monitoring_frequency` STRING COMMENT 'The monitoring frequency of the quality corrective action record.',
+    `monitoring_method` STRING COMMENT 'The monitoring method of the quality corrective action record.',
+    `outcome_summary` STRING COMMENT 'The outcome summary of the quality corrective action record.',
+    `owner_name` STRING COMMENT 'The owner name of the quality corrective action record.',
+    `percent_complete` STRING COMMENT 'The percent complete of the quality corrective action record.',
+    `priority_level` STRING COMMENT 'The priority level of the quality corrective action record.',
+    `recurrence_flag` BOOLEAN COMMENT 'The recurrence flag of the quality corrective action record.',
+    `responsible_department` STRING COMMENT 'The responsible department of the quality corrective action record.',
+    `responsible_party` STRING COMMENT 'The responsible party of the quality corrective action record.',
+    `responsible_party_name` STRING COMMENT 'The responsible party name of the quality corrective action record.',
+    `root_cause` STRING COMMENT 'The root cause of the quality corrective action record.',
+    `root_cause_summary` STRING COMMENT 'The root cause summary of the quality corrective action record.',
+    `target_completion_date` DATE COMMENT 'Timestamp capturing the target completion date associated with the quality corrective action record.',
+    `updated_timestamp` TIMESTAMP COMMENT 'Last update timestamp',
+    `verification_date` DATE COMMENT 'Timestamp capturing the verification date associated with the quality corrective action record.',
+    `verification_method` STRING COMMENT 'The verification method of the quality corrective action record.',
+    `verification_status` STRING COMMENT 'The verification status value classifying the quality corrective action record.',
+    `vibe_structure_marker` STRING COMMENT 'Structure enforcement marker for 22-domain/541-product superset.',
     CONSTRAINT pk_corrective_action PRIMARY KEY(`corrective_action_id`)
-) COMMENT 'Transactional record of corrective and preventive actions (CAPA) arising from patient safety events, accreditation findings, regulatory deficiencies, peer review cases, and quality improvement initiatives. Captures action description, responsible party, due date, completion date, effectiveness verification method, verification result, and linkage to the originating event or finding. Serves as the unified action tracking entity across all quality workstreams, supporting TJC survey readiness, CMS plan of correction requirements, and organizational accountability.';
+) COMMENT 'Corrective action tracking for quality findings, audit deficiencies, and improvement opportunities. Business justification: Ensures timely remediation and compliance with accreditation requirements.';
 
 CREATE OR REPLACE TABLE `vibe_healthcare_v1`.`quality`.`program_measure_assignment` (
-    `program_measure_assignment_id` BIGINT COMMENT 'Unique surrogate identifier for the program-measure assignment record. Primary key.',
-    `measure_id` BIGINT COMMENT 'Foreign key linking to the quality measure. Part of the composite business key (quality_program_id, quality_measure_id, measure_inclusion_start_date).',
-    `quality_program_id` BIGINT COMMENT 'Foreign key linking to the quality program. Part of the composite business key (quality_program_id, quality_measure_id, measure_inclusion_start_date).',
-    `achievement_threshold` DECIMAL(18,2) COMMENT 'Program-specific performance threshold for this measure that defines achievement level or benchmark attainment. Thresholds vary by program even for the same measure (e.g., CMS VBP vs. internal quality program).',
-    `assigned_by` STRING COMMENT 'User ID or name of the quality team member who assigned this measure to this program. Supports audit and accountability.',
-    `assigned_date` TIMESTAMP COMMENT 'Timestamp when this measure was assigned to this program in the system. Supports audit trail.',
-    `improvement_threshold` DECIMAL(18,2) COMMENT 'Program-specific improvement threshold for this measure used in improvement scoring methodologies. Defines the performance improvement required to earn improvement points.',
-    `is_mandatory` BOOLEAN COMMENT 'Indicates whether this measure is mandatory or optional within this program. Some programs allow measure selection from a menu; others require all measures.',
-    `last_modified_by` STRING COMMENT 'User ID or name of the quality team member who last modified this program-measure assignment configuration.',
-    `last_modified_date` TIMESTAMP COMMENT 'Timestamp of the last modification to this program-measure assignment record.',
-    `measure_domain_assignment` STRING COMMENT 'Program-specific domain or category assignment for this measure (e.g., Clinical Outcomes, Safety, Efficiency for VBP; Quality, Cost, Improvement Activities for MIPS). A measure may be assigned to different domains in different programs.',
-    `measure_inclusion_end_date` DATE COMMENT 'Date on which this measure was removed or became inactive within this quality program. Null indicates the measure is currently active in the program.',
-    `measure_inclusion_start_date` DATE COMMENT 'Date on which this measure became active within this quality program. Supports temporal tracking of program measure composition changes across program years.',
-    `measure_points_available` DECIMAL(18,2) COMMENT 'Total points available for this measure within this programs scoring methodology. Used in point-based programs like MIPS.',
-    `measure_reporting_frequency` STRING COMMENT 'Frequency at which this measure must be reported or calculated for this specific program. A measure may be reported quarterly for one program and annually for another.',
-    `measure_status_in_program` STRING COMMENT 'Current lifecycle status of this measure within this specific program. A measure may be active in one program and inactive in another. Drives reporting and calculation logic.',
-    `measure_weight` DECIMAL(18,2) COMMENT 'Percentage weight or point value assigned to this measure within the quality programs total performance score calculation. Used in VBP, MIPS, and other pay-for-performance programs where measures contribute differentially to overall program score.',
-    `notes` STRING COMMENT 'Free-text notes documenting rationale for measure inclusion, exclusion, or configuration decisions for this program-measure combination.',
+    `program_measure_assignment_id` BIGINT COMMENT 'Primary key',
+    `hedis_measure_id` BIGINT COMMENT 'Unique identifier for the hedis measure within the quality program measure assignment record.',
+    `measure_id` BIGINT COMMENT 'Unique identifier for the measure within the quality program measure assignment record.',
+    `quality_program_id` BIGINT COMMENT 'Unique identifier for the quality program within the quality program measure assignment record.',
+    `vbp_program_id` BIGINT COMMENT 'Unique identifier for the vbp program within the quality program measure assignment record.',
+    `assignment_status` STRING COMMENT 'The assignment status value classifying the quality program measure assignment record.',
+    `benchmark_rate` DECIMAL(18,2) COMMENT 'The benchmark rate of the quality program measure assignment record.',
+    `created_timestamp` TIMESTAMP COMMENT 'Record creation timestamp',
+    `display_order` STRING COMMENT 'The display order of the quality program measure assignment record.',
+    `effective_end_date` DATE COMMENT 'Timestamp capturing the effective end date associated with the quality program measure assignment record.',
+    `effective_start_date` DATE COMMENT 'Timestamp capturing the effective start date associated with the quality program measure assignment record.',
+    `is_required` BOOLEAN COMMENT 'Boolean flag indicating the is required status of the quality program measure assignment record.',
+    `is_scored` BOOLEAN COMMENT 'Boolean flag indicating the is scored status of the quality program measure assignment record.',
+    `measure_domain` STRING COMMENT 'The measure domain of the quality program measure assignment record.',
+    `measure_weight` DECIMAL(18,2) COMMENT 'The measure weight of the quality program measure assignment record.',
+    `measurement_year` STRING COMMENT 'The measurement year of the quality program measure assignment record.',
+    `performance_target_rate` DECIMAL(18,2) COMMENT 'The performance target rate of the quality program measure assignment record.',
+    `performance_threshold` STRING COMMENT 'The performance threshold of the quality program measure assignment record.',
+    `performance_year` STRING COMMENT 'The performance year of the quality program measure assignment record.',
+    `program_year` STRING COMMENT 'The program year of the quality program measure assignment record.',
+    `reporting_end_date` DATE COMMENT 'Timestamp capturing the reporting end date associated with the quality program measure assignment record.',
+    `reporting_frequency` STRING COMMENT 'The reporting frequency of the quality program measure assignment record.',
+    `reporting_priority` STRING COMMENT 'The reporting priority of the quality program measure assignment record.',
+    `reporting_start_date` DATE COMMENT 'Timestamp capturing the reporting start date associated with the quality program measure assignment record.',
+    `target_rate` DECIMAL(18,2) COMMENT 'The target rate of the quality program measure assignment record.',
+    `updated_timestamp` TIMESTAMP COMMENT 'Last update timestamp',
+    `vibe_structure_marker` STRING COMMENT 'Structure enforcement marker for 22-domain/541-product superset.',
+    `weight` DECIMAL(18,2) COMMENT 'The weight of the quality program measure assignment record.',
     CONSTRAINT pk_program_measure_assignment PRIMARY KEY(`program_measure_assignment_id`)
-) COMMENT 'This association product represents the assignment of quality measures to quality programs. It captures the operational configuration of which measures are included in which programs, along with program-specific measure parameters such as weights, thresholds, and reporting requirements. Each record links one quality program to one measure with attributes that exist only in the context of this program-measure relationship. This is the SSOT for program measure configuration and is actively managed by quality teams during program setup and annual reconfiguration.. Existence Justification: Quality program measure assignment is a core operational business process in healthcare quality management. Quality teams actively configure which measures are included in which programs during annual program setup and reconfiguration cycles. A single quality measure (e.g., MORT-30-AMI) is included in multiple programs (VBP, IQR, internal quality program) with different weights, thresholds, and reporting requirements per program. Conversely, a single quality program (e.g., VBP 2024) includes dozens of measures across multiple domains. This is not a reference lookup—it is a managed relationship with program-specific configuration data.';
+) COMMENT 'Assignment of quality measures to reporting programs with effective dates and targets. Business justification: Manages measure portfolio across multiple quality programs.';
 
 CREATE OR REPLACE TABLE `vibe_healthcare_v1`.`quality`.`initiative_measure_target` (
-    `initiative_measure_target_id` BIGINT COMMENT 'Unique surrogate identifier for this initiative-measure targeting relationship',
-    `improvement_initiative_id` BIGINT COMMENT 'Foreign key linking to the improvement initiative that is targeting this measure',
-    `measure_id` BIGINT COMMENT 'Foreign key linking to the quality measure being targeted by this initiative',
-    `baseline_period_end` DATE COMMENT 'End date of the measurement period used to calculate the baseline performance for this specific measure within this initiative',
-    `baseline_period_start` DATE COMMENT 'Start date of the measurement period used to calculate the baseline performance for this specific measure within this initiative',
-    `baseline_value` DECIMAL(18,2) COMMENT 'Quantitative baseline performance level for this specific measure at the time the initiative commenced. This is measure-specific and belongs to the relationship, not to the initiative alone (which may target multiple measures with different baselines).',
-    `current_performance_date` DATE COMMENT 'Date on which the current performance value was last measured or updated for this measure within this initiative',
-    `current_performance_value` DECIMAL(18,2) COMMENT 'Most recently recorded performance value for this specific measure within this initiative. Enables real-time tracking of progress toward the goal for each measure.',
-    `goal_value` DECIMAL(18,2) COMMENT 'Target quantitative performance level the initiative aims to achieve for this specific measure. Each measure targeted by an initiative may have different goal values.',
-    `is_primary_measure` BOOLEAN COMMENT 'Indicates whether this is the primary/lead measure for the initiative (true) or a secondary/balancing measure (false). An initiative typically has one primary measure and may have multiple secondary measures.',
-    `measure_role_in_initiative` STRING COMMENT 'Categorical role this measure plays within the improvement initiative (e.g., Primary outcome measure, Balancing measure, Process measure). Supports IHI Model for Improvement methodology which requires tracking multiple measure types.',
-    `measure_unit` STRING COMMENT 'Unit of measurement for the target measure (e.g., per 1,000 catheter days, percentage, rate per 100 admissions). Required for accurate baseline and goal comparison. [Moved from improvement_initiative: This attribute stores the unit of measurement for the target measure. However, if an initiative targets multiple measures, each measure may have different units. This should come from the measure table or be stored per initiative-measure relationship, not on the initiative itself.]',
-    `measurement_end_date` DATE COMMENT 'Date when measurement and tracking of this specific measure concluded for this initiative. Null if still actively tracked.',
-    `measurement_start_date` DATE COMMENT 'Date when active measurement and tracking of this specific measure began for this initiative. May differ from initiative start date if measures are added during the initiative lifecycle.',
-    `target_measure_code` STRING COMMENT 'Standardized code for the primary quality measure (e.g., CMS measure ID, HEDIS measure code, NQF number). Enables linkage to national quality reporting programs. [Moved from improvement_initiative: This attribute stores the code for the primary quality measure. However, an initiative targets multiple measures, not just one. The measure code should come from the measure table via this association, not be stored redundantly on the initiative.]',
-    `target_measure_name` STRING COMMENT 'Name of the primary quality measure or Key Performance Indicator (KPI) being tracked by this initiative (e.g., CAUTI Rate per 1,000 Catheter Days, HEDIS Diabetes HbA1c Control Rate). [Moved from improvement_initiative: This attribute stores the name of the primary quality measure being tracked. However, an initiative can target MULTIPLE measures (primary, secondary, balancing). This attribute should not exist on improvement_initiative - instead, the measure name comes from joining to the measure table via this association.]',
-    `target_status` STRING COMMENT 'Current status of progress toward the goal for this specific measure (e.g., On Track, At Risk, Behind, Goal Met, Suspended). Enables status tracking per measure within an initiative.',
+    `initiative_measure_target_id` BIGINT COMMENT 'Primary key',
+    `improvement_initiative_id` BIGINT COMMENT 'Unique identifier for the improvement initiative within the quality initiative measure target record.',
+    `measure_id` BIGINT COMMENT 'Unique identifier for the measure within the quality initiative measure target record.',
+    `measure_result_id` BIGINT COMMENT 'Unique identifier for the measure result within the quality initiative measure target record.',
+    `achieved_date` DATE COMMENT 'Timestamp capturing the achieved date associated with the quality initiative measure target record.',
+    `baseline_date` DATE COMMENT 'Timestamp capturing the baseline date associated with the quality initiative measure target record.',
+    `baseline_rate` DECIMAL(18,2) COMMENT 'The baseline rate of the quality initiative measure target record.',
+    `baseline_value` DECIMAL(18,2) COMMENT 'The baseline value of the quality initiative measure target record.',
+    `created_timestamp` TIMESTAMP COMMENT 'Record creation timestamp',
+    `current_rate` DECIMAL(18,2) COMMENT 'The current rate of the quality initiative measure target record.',
+    `current_value` DECIMAL(18,2) COMMENT 'The current value of the quality initiative measure target record.',
+    `direction_of_improvement` STRING COMMENT 'The direction of improvement of the quality initiative measure target record.',
+    `is_achieved` BOOLEAN COMMENT 'Boolean flag indicating the is achieved status of the quality initiative measure target record.',
+    `measurement_period` STRING COMMENT 'The measurement period of the quality initiative measure target record.',
+    `measurement_period_end` STRING COMMENT 'The measurement period end of the quality initiative measure target record.',
+    `measurement_period_start` STRING COMMENT 'The measurement period start of the quality initiative measure target record.',
+    `measurement_unit` STRING COMMENT 'The measurement unit of the quality initiative measure target record.',
+    `measurement_year` STRING COMMENT 'The measurement year of the quality initiative measure target record.',
+    `initiative_measure_target_status` STRING COMMENT 'The initiative measure target status value classifying the quality initiative measure target record.',
+    `stretch_target_value` DECIMAL(18,2) COMMENT 'The stretch target value of the quality initiative measure target record.',
+    `target_achievement_date` DATE COMMENT 'Timestamp capturing the target achievement date associated with the quality initiative measure target record.',
+    `target_date` DATE COMMENT 'Timestamp capturing the target date associated with the quality initiative measure target record.',
+    `target_direction` STRING COMMENT 'The target direction of the quality initiative measure target record.',
+    `target_met_flag` BOOLEAN COMMENT 'The target met flag of the quality initiative measure target record.',
+    `target_rate` DECIMAL(18,2) COMMENT 'The target rate of the quality initiative measure target record.',
+    `target_status` STRING COMMENT 'The target status value classifying the quality initiative measure target record.',
+    `target_value` DECIMAL(18,2) COMMENT 'The target value of the quality initiative measure target record.',
+    `threshold_value` DECIMAL(18,2) COMMENT 'The threshold value of the quality initiative measure target record.',
+    `updated_timestamp` TIMESTAMP COMMENT 'Last update timestamp',
+    `variance` DECIMAL(18,2) COMMENT 'The variance of the quality initiative measure target record.',
+    `vibe_structure_marker` STRING COMMENT 'Structure enforcement marker for 22-domain/541-product superset.',
+    `weight` STRING COMMENT 'The weight of the quality initiative measure target record.',
     CONSTRAINT pk_initiative_measure_target PRIMARY KEY(`initiative_measure_target_id`)
-) COMMENT 'This association product represents the targeting relationship between improvement_initiative and measure. It captures the specific performance targets, baselines, and tracking data for each quality measure that an improvement initiative aims to impact. Each record links one improvement_initiative to one measure with baseline performance, goal targets, current performance values, and measurement periods that exist only in the context of this initiative-measure relationship. This is a core operational entity in quality improvement methodology - quality teams actively create, monitor, and update these targets throughout the initiative lifecycle.. Existence Justification: In healthcare quality improvement operations, initiatives routinely target multiple quality measures simultaneously (e.g., a sepsis initiative may target mortality rate, time-to-antibiotics, and lactate measurement compliance), and quality measures are targeted by multiple improvement initiatives over time (e.g., hand hygiene compliance may be targeted by infection prevention initiatives, surgical site infection initiatives, and CAUTI reduction initiatives). Quality teams actively create, monitor, and update initiative-measure targets as a core operational activity, tracking baseline performance, goal targets, and current performance for each measure within each initiative.';
+) COMMENT 'Performance targets for measures within quality improvement initiatives. Business justification: Tracks goal attainment and initiative effectiveness.';
 
 CREATE OR REPLACE TABLE `vibe_healthcare_v1`.`quality`.`contract_initiative` (
-    `contract_initiative_id` BIGINT COMMENT 'Unique surrogate identifier for this contract-initiative linkage record. Primary key.',
-    `employee_id` BIGINT COMMENT 'Identifier of the employee who created this contract-initiative linkage record, typically a contract administrator or quality program manager.',
-    `contract_last_updated_by_employee_id` BIGINT COMMENT 'Identifier of the employee who most recently updated this contract-initiative linkage record.',
-    `improvement_initiative_id` BIGINT COMMENT 'Foreign key linking to the quality improvement initiative that is contractually required or incentivized by the payer contract',
-    `payer_contract_id` BIGINT COMMENT 'Foreign key linking to the payer contract that requires or incentivizes this quality improvement initiative',
-    `contract_measure_code` STRING COMMENT 'The specific quality measure code or identifier used in this payer contract to reference this initiative. May differ from the initiatives internal measure code if the payer uses a different coding system.',
-    `created_date` TIMESTAMP COMMENT 'Timestamp when this contract-initiative linkage record was created in the system.',
-    `end_date` DATE COMMENT 'Date on which this contract-initiative linkage ended or is scheduled to end. May be driven by contract termination, initiative completion, or contractual requirement sunset.',
-    `incentive_amount` DECIMAL(18,2) COMMENT 'Dollar amount of quality bonus or incentive payment available from this payer contract if the initiative achieves the contract-specific performance target.',
-    `incentive_earned_to_date` DECIMAL(18,2) COMMENT 'Cumulative dollar amount of quality incentive payments earned from this payer contract for this initiative as of the current date.',
-    `is_mandatory` BOOLEAN COMMENT 'Indicates whether this initiative is contractually mandatory (required by the payer contract) or voluntary (eligible for incentive but not required).',
-    `last_reported_date` DATE COMMENT 'Date on which performance for this contract-initiative linkage was most recently reported to the payer.',
-    `last_updated_date` TIMESTAMP COMMENT 'Timestamp when this contract-initiative linkage record was most recently updated.',
-    `next_reporting_due_date` DATE COMMENT 'Date by which the next performance report for this contract-initiative linkage is due to the payer per contractual obligations.',
-    `penalty_amount` DECIMAL(18,2) COMMENT 'Dollar amount of financial penalty or withheld payment from this payer contract if the initiative fails to meet the contract-specific performance target.',
-    `penalty_incurred_to_date` DECIMAL(18,2) COMMENT 'Cumulative dollar amount of quality penalties or withheld payments incurred from this payer contract for this initiative as of the current date.',
-    `performance_target` DECIMAL(18,2) COMMENT 'The specific quantitative performance target for this initiative as defined in this payer contract. May differ from the initiatives overall goal if the contract specifies a different threshold for incentive eligibility.',
-    `reporting_frequency` STRING COMMENT 'Frequency at which performance on this initiative must be reported to this payer per contractual requirements.',
-    `start_date` DATE COMMENT 'Date on which this initiative became contractually linked to this payer contract. May differ from the initiatives overall start date if the contract was signed after initiative launch.',
-    `contract_initiative_status` STRING COMMENT 'Current lifecycle status of this contract-initiative linkage. Tracks whether the initiative is actively being pursued for this specific contracts requirements.',
+    `contract_initiative_id` BIGINT COMMENT 'Primary key',
+    `improvement_initiative_id` BIGINT COMMENT 'Unique identifier for the improvement initiative within the quality contract initiative record.',
+    `payer_contract_id` BIGINT COMMENT 'Unique identifier for the payer contract within the quality contract initiative record.',
+    `payer_id` BIGINT COMMENT 'Unique identifier for the payer within the quality contract initiative record.',
+    `quality_program_id` BIGINT COMMENT 'Unique identifier for the quality program within the quality contract initiative record.',
+    `contract_year` STRING COMMENT 'The contract year of the quality contract initiative record.',
+    `contractual_metric` STRING COMMENT 'The contractual metric of the quality contract initiative record.',
+    `contractual_target` STRING COMMENT 'The contractual target of the quality contract initiative record.',
+    `created_timestamp` TIMESTAMP COMMENT 'Record creation timestamp',
+    `effective_date` DATE COMMENT 'Timestamp capturing the effective date associated with the quality contract initiative record.',
+    `effective_end_date` DATE COMMENT 'Timestamp capturing the effective end date associated with the quality contract initiative record.',
+    `effective_start_date` DATE COMMENT 'Timestamp capturing the effective start date associated with the quality contract initiative record.',
+    `incentive_amount` DECIMAL(18,2) COMMENT 'The incentive amount of the quality contract initiative record.',
+    `is_active` BOOLEAN COMMENT 'Boolean flag indicating the is active status of the quality contract initiative record.',
+    `link_status` STRING COMMENT 'The link status value classifying the quality contract initiative record.',
+    `link_type` STRING COMMENT 'The link type value classifying the quality contract initiative record.',
+    `linkage_status` STRING COMMENT 'The linkage status value classifying the quality contract initiative record.',
+    `linkage_type` STRING COMMENT 'The linkage type value classifying the quality contract initiative record.',
+    `measurement_period_end` STRING COMMENT 'The measurement period end of the quality contract initiative record.',
+    `measurement_period_start` STRING COMMENT 'The measurement period start of the quality contract initiative record.',
+    `payment_at_risk_pct` DECIMAL(18,2) COMMENT 'The payment at risk pct of the quality contract initiative record.',
+    `penalty_amount` DECIMAL(18,2) COMMENT 'The penalty amount of the quality contract initiative record.',
+    `performance_period` STRING COMMENT 'The performance period of the quality contract initiative record.',
+    `performance_status` STRING COMMENT 'The performance status value classifying the quality contract initiative record.',
+    `shared_savings_rate` DECIMAL(18,2) COMMENT 'The shared savings rate of the quality contract initiative record.',
+    `updated_timestamp` TIMESTAMP COMMENT 'Last update timestamp',
+    `vibe_structure_marker` STRING COMMENT 'Structure enforcement marker for 22-domain/541-product superset.',
     CONSTRAINT pk_contract_initiative PRIMARY KEY(`contract_initiative_id`)
-) COMMENT 'This association product represents the contractual linkage between quality improvement initiatives and payer contracts that require or incentivize those initiatives. It captures contract-specific performance targets, financial incentives/penalties, and reporting obligations that exist only when a specific initiative is tied to a specific payer contracts value-based care or pay-for-performance provisions.. Existence Justification: In healthcare value-based care arrangements, a single quality improvement initiative (e.g., reducing hospital-acquired infections) can be contractually required or incentivized by multiple payer contracts simultaneously, each with different performance targets, incentive amounts, and reporting requirements. Conversely, a single payer contract (especially comprehensive VBC or P4P contracts) typically requires or incentivizes multiple quality improvement initiatives across different clinical domains. This is an operational relationship actively managed by contract administrators and quality program managers.';
-
-CREATE OR REPLACE TABLE `vibe_healthcare_v1`.`quality`.`quality_program_participation` (
-    `quality_program_participation_id` BIGINT COMMENT 'Primary key for quality_program_participation',
-    `health_plan_id` BIGINT COMMENT 'Foreign key linking to the health plan that participates in the quality program',
-    `quality_program_id` BIGINT COMMENT 'Foreign key linking to the quality program in which the health plan participates',
-    `compliance_status` STRING COMMENT 'Indicates whether this health plan is meeting all reporting and performance requirements for this quality program. Drives penalty assessment and program standing.',
-    `created_date` TIMESTAMP COMMENT 'Timestamp when this program participation record was created in the system.',
-    `effective_date` DATE COMMENT 'Date on which the health plans participation in this quality program became active. Defines the start of the measurement and reporting obligations.',
-    `enrollment_count_at_participation` STRING COMMENT 'The number of members enrolled in this health plan at the time of program participation. Used for risk stratification and measure applicability determination.',
-    `last_submission_date` DATE COMMENT 'The most recent date on which this health plan submitted quality data or performance reports for this program. Used to track compliance with reporting requirements.',
-    `measure_set_version` STRING COMMENT 'The specific version or subset of quality measures applicable to this health plan within this program. Plans may have different measure sets based on plan type (MA vs Medicaid), enrollment size, or voluntary vs mandatory participation.',
-    `participation_type` STRING COMMENT 'Indicates whether this health plans participation in this quality program is mandatory (regulatory requirement), voluntary (elective participation), or part of a pilot program.',
-    `performance_score` DECIMAL(18,2) COMMENT 'The calculated performance score for this specific health plan within this quality program for the program year. Methodology defined in quality_program.total_performance_score_methodology. Used to determine payment adjustments or star ratings.',
-    `reporting_frequency` STRING COMMENT 'The cadence at which this health plan must submit quality data or performance reports for this program. May vary by plan based on program requirements and plan characteristics.',
-    `quality_program_participation_status` STRING COMMENT 'Current lifecycle status of the health plans participation in this quality program. Drives eligibility for performance measurement and payment adjustments.',
-    `submission_method` STRING COMMENT 'The technical method by which this health plan submits quality data for this program. May vary by plan based on plan size, technical capabilities, or program-specific requirements.',
-    `termination_date` DATE COMMENT 'Date on which the health plans participation in this quality program ended or is scheduled to end. Null for ongoing participation.',
-    `updated_date` TIMESTAMP COMMENT 'Timestamp when this program participation record was last modified.',
-    CONSTRAINT pk_quality_program_participation PRIMARY KEY(`quality_program_participation_id`)
-) COMMENT 'This association product represents the participation contract between quality_program and health_plan. It captures the formal enrollment of a health plan in a quality program, including plan-specific performance tracking, reporting requirements, and participation lifecycle management. Each record links one quality_program to one health_plan with attributes that exist only in the context of this participation relationship.. Existence Justification: In healthcare operations, health plans routinely participate in multiple quality programs simultaneously (e.g., a Medicare Advantage plan participates in Star Ratings, VBP, and HEDIS concurrently), and each quality program has multiple participating health plans across different payers and plan types. The participation relationship is actively managed by quality teams who track plan-specific performance scores, reporting compliance, submission methods, and participation lifecycle (enrollment, active monitoring, termination). This is not an analytical correlation but an operational business process where participation records are created, updated with performance data, and terminated based on program requirements and plan eligibility.';
+) COMMENT 'Links quality initiatives to payer contracts for VBP and shared savings programs. Business justification: Aligns quality improvement with financial incentives.';
 
 CREATE OR REPLACE TABLE `vibe_healthcare_v1`.`quality`.`program_study_participation` (
-    `program_study_participation_id` BIGINT COMMENT 'Unique surrogate identifier for this program-study participation record. Primary key.',
-    `quality_program_id` BIGINT COMMENT 'Foreign key to quality_program. Identifies which quality program is affected by the research study.',
-    `research_study_id` BIGINT COMMENT 'Foreign key to research_study. Identifies which research study impacts quality program measures.',
-    `program_study_research_study_id` BIGINT COMMENT 'Foreign key linking to the research study that impacts quality program measures',
-    `affected_measure_ids` STRING COMMENT 'Comma-separated list of specific quality measure IDs within the program that are affected by this research study participation. Enables targeted exclusion/stratification logic application.',
-    `cms_reporting_flag` BOOLEAN COMMENT 'Indicates whether this program-study relationship must be reported to CMS as part of regulatory quality data submission. Drives compliance workflow.',
-    `created_date` TIMESTAMP COMMENT 'Timestamp when this program-study participation record was created in the system.',
-    `end_date` DATE COMMENT 'The date on which this research study stopped impacting the quality programs measure calculation, or null if ongoing. Defines the end of the period during which exclusion/stratification rules apply. Explicitly identified in detection phase.',
-    `enrollment_impact_on_measures` STRING COMMENT 'Detailed description of how patient enrollment in this research study impacts specific quality measures within the program. Documents which measures are affected and the nature of the impact. Explicitly identified in detection phase.',
-    `last_updated_by` STRING COMMENT 'User or system identifier that last updated this program-study participation record.',
-    `last_updated_date` TIMESTAMP COMMENT 'Timestamp of the most recent update to this program-study participation record.',
-    `measure_stratification_required` BOOLEAN COMMENT 'Indicates whether CMS or the program sponsor requires separate stratified reporting of quality measures for patients enrolled in this research study versus non-enrolled patients. Drives reporting workflow and data submission requirements. Explicitly identified in detection phase.',
-    `participation_status` STRING COMMENT 'Current operational status of this program-study participation relationship. Determines whether exclusion/stratification rules are currently being applied in measure calculation.',
-    `program_participation_type` STRING COMMENT 'Categorical classification of how the research study participation affects quality program measure calculation. Determines the operational impact on performance scoring and reporting. Explicitly identified in detection phase.',
-    `reporting_exclusion_rules` STRING COMMENT 'Specific exclusion logic and rules to be applied when calculating quality measures for patients enrolled in this research study. Defines how study participants are handled in numerator/denominator calculations. Explicitly identified in detection phase.',
-    `start_date` DATE COMMENT 'The date on which this research study began impacting the quality programs measure calculation and reporting. Defines the beginning of the period during which exclusion/stratification rules apply. Explicitly identified in detection phase.',
-    `created_by` STRING COMMENT 'User or system identifier that created this program-study participation record.',
+    `program_study_participation_id` BIGINT COMMENT 'Primary key',
+    `care_site_id` BIGINT COMMENT 'Unique identifier for the care site within the quality program study participation record.',
+    `quality_program_id` BIGINT COMMENT 'Unique identifier for the quality program within the quality program study participation record.',
+    `research_study_id` BIGINT COMMENT 'Unique identifier for the research study within the quality program study participation record.',
+    `study_site_id` BIGINT COMMENT 'Unique identifier for the study site within the quality program study participation record.',
+    `completion_date` DATE COMMENT 'Timestamp capturing the completion date associated with the quality program study participation record.',
+    `created_timestamp` TIMESTAMP COMMENT 'Record creation timestamp',
+    `effective_end_date` DATE COMMENT 'Timestamp capturing the effective end date associated with the quality program study participation record.',
+    `effective_start_date` DATE COMMENT 'Timestamp capturing the effective start date associated with the quality program study participation record.',
+    `end_date` DATE COMMENT 'Timestamp capturing the end date associated with the quality program study participation record.',
+    `enrollment_date` DATE COMMENT 'Timestamp capturing the enrollment date associated with the quality program study participation record.',
+    `irb_reference` STRING COMMENT 'The irb reference of the quality program study participation record.',
+    `is_active` BOOLEAN COMMENT 'Boolean flag indicating the is active status of the quality program study participation record.',
+    `linkage_purpose` STRING COMMENT 'The linkage purpose of the quality program study participation record.',
+    `participation_role` STRING COMMENT 'The participation role of the quality program study participation record.',
+    `participation_status` STRING COMMENT 'The participation status value classifying the quality program study participation record.',
+    `participation_type` STRING COMMENT 'The participation type value classifying the quality program study participation record.',
+    `start_date` DATE COMMENT 'Timestamp capturing the start date associated with the quality program study participation record.',
+    `updated_timestamp` TIMESTAMP COMMENT 'Last update timestamp',
+    `vibe_structure_marker` STRING COMMENT 'Structure enforcement marker for 22-domain/541-product superset.',
     CONSTRAINT pk_program_study_participation PRIMARY KEY(`program_study_participation_id`)
-) COMMENT 'This association product represents the participation relationship between quality programs and research studies. It captures the operational tracking required when research studies impact quality program measure calculation, exclusion logic, and public reporting. Each record links one quality program to one research study with CMS-mandated tracking attributes that exist only in the context of this regulatory relationship.. Existence Justification: In healthcare quality operations, a single quality program (e.g., Hospital VBP) must track multiple research studies simultaneously because each study may affect different measures or patient populations within that program. Conversely, a single research study (e.g., an oncology trial) simultaneously impacts multiple quality programs (MIPS, OCM, Hospital VBP) because the same enrolled patients appear in multiple program denominators. CMS requires bidirectional tracking of these relationships with specific exclusion rules, stratification requirements, and reporting adjustments that vary by program-study combination.';
+) COMMENT 'Links quality programs to research studies for quality improvement research. Business justification: Supports QI research, learning health system initiatives, and grant compliance.';
 
 CREATE OR REPLACE TABLE `vibe_healthcare_v1`.`quality`.`measure_budget_allocation` (
-    `measure_budget_allocation_id` BIGINT COMMENT 'Unique surrogate identifier for each measure-budget allocation record. Primary key.',
-    `budget_line_id` BIGINT COMMENT 'Foreign key linking to the budget line providing funding for this quality measure',
-    `measure_id` BIGINT COMMENT 'Foreign key linking to the quality measure being funded by this budget allocation',
-    `allocation_notes` STRING COMMENT 'Free-text notes explaining the rationale for this budget allocation, assumptions about improvement activities, or justification for the funding level.',
-    `allocation_percentage` DECIMAL(18,2) COMMENT 'Percentage of the budget line amount allocated to this specific quality measure. Enables proportional cost allocation when a single budget line funds multiple measures.',
-    `allocation_status` STRING COMMENT 'Current status of this budget allocation in the budget approval and execution lifecycle.',
-    `budgeted_improvement_cost` DECIMAL(18,2) COMMENT 'Dollar amount budgeted specifically for improvement activities related to this quality measure (e.g., staff training, process redesign, technology enhancements). Represents the investment expected to improve measure performance.',
-    `created_timestamp` TIMESTAMP COMMENT 'Timestamp when this allocation record was first created in the system. Audit trail field.',
-    `effective_end_date` DATE COMMENT 'Date on which this budget allocation ceases to be effective. Null for ongoing allocations.',
-    `effective_start_date` DATE COMMENT 'Date from which this budget allocation becomes effective for this measure-budget line combination.',
-    `fiscal_year` STRING COMMENT 'The fiscal year for which this budget allocation applies to this quality measure. Enables year-over-year tracking of measure funding.',
-    `measure_target_value` DECIMAL(18,2) COMMENT 'The performance target or goal set for this quality measure for this fiscal year and budget allocation. Expressed as a rate, percentage, or score depending on measure type. Links financial investment to expected performance outcome.',
-    `modified_by` STRING COMMENT 'User identifier or name of the individual who last modified this allocation record. Audit trail field.',
-    `modified_timestamp` TIMESTAMP COMMENT 'Timestamp when this allocation record was last modified. Audit trail field.',
-    `performance_incentive_amount` DECIMAL(18,2) COMMENT 'Expected financial return or incentive payment associated with achieving the measure target (e.g., VBP bonus, MIPS positive payment adjustment, shared savings). Enables ROI calculation for quality measure investments.',
-    `created_by` STRING COMMENT 'User identifier or name of the individual who created this allocation record. Audit trail field.',
+    `measure_budget_allocation_id` BIGINT COMMENT 'Primary key',
+    `budget_id` BIGINT COMMENT 'Unique identifier for the budget within the quality measure budget allocation record.',
+    `budget_line_id` BIGINT COMMENT 'Unique identifier for the budget line within the quality measure budget allocation record.',
+    `cost_center_id` BIGINT COMMENT 'Unique identifier for the cost center within the quality measure budget allocation record.',
+    `measure_id` BIGINT COMMENT 'Unique identifier for the measure within the quality measure budget allocation record.',
+    `quality_program_id` BIGINT COMMENT 'Unique identifier for the quality program within the quality measure budget allocation record.',
+    `allocated_amount` DECIMAL(18,2) COMMENT 'The allocated amount of the quality measure budget allocation record.',
+    `allocation_basis` STRING COMMENT 'The allocation basis of the quality measure budget allocation record.',
+    `allocation_pct` DECIMAL(18,2) COMMENT 'The allocation pct of the quality measure budget allocation record.',
+    `allocation_percent` DECIMAL(18,2) COMMENT 'The allocation percent of the quality measure budget allocation record.',
+    `allocation_period` STRING COMMENT 'The allocation period of the quality measure budget allocation record.',
+    `allocation_status` STRING COMMENT 'The allocation status value classifying the quality measure budget allocation record.',
+    `committed_amount` DECIMAL(18,2) COMMENT 'The committed amount of the quality measure budget allocation record.',
+    `created_timestamp` TIMESTAMP COMMENT 'Record creation timestamp',
+    `effective_end_date` DATE COMMENT 'Timestamp capturing the effective end date associated with the quality measure budget allocation record.',
+    `effective_start_date` DATE COMMENT 'Timestamp capturing the effective start date associated with the quality measure budget allocation record.',
+    `fiscal_year` STRING COMMENT 'The fiscal year of the quality measure budget allocation record.',
+    `remaining_amount` DECIMAL(18,2) COMMENT 'The remaining amount of the quality measure budget allocation record.',
+    `spent_amount` DECIMAL(18,2) COMMENT 'The spent amount of the quality measure budget allocation record.',
+    `updated_timestamp` TIMESTAMP COMMENT 'Last update timestamp',
+    `vibe_structure_marker` STRING COMMENT 'Structure enforcement marker for 22-domain/541-product superset.',
     CONSTRAINT pk_measure_budget_allocation PRIMARY KEY(`measure_budget_allocation_id`)
-) COMMENT 'This association product represents the financial allocation relationship between quality measures and budget lines. It captures the budgeted funding, expected performance targets, and financial returns associated with implementing and tracking specific quality measures. Each record links one quality measure to one budget line with fiscal year context, allocation percentages, improvement costs, and performance incentive amounts that exist only in the context of this funding relationship.. Existence Justification: In healthcare quality program management, a single quality measure (e.g., HEDIS Diabetes Care) is typically funded through multiple budget lines across different cost centers (quality department operations, clinical staff training, IT system enhancements, data abstraction services). Conversely, a single budget line (e.g., Quality Improvement Initiatives - Cardiology) often funds multiple related quality measures within that clinical domain. The relationship itself carries fiscal-year-specific data including allocation percentages, improvement costs, performance targets, and expected incentive returns that belong to neither the measure definition nor the budget line alone.';
+) COMMENT 'Budget allocation for quality measure improvement activities. Business justification: Tracks quality investment and ROI for improvement initiatives.';
+
+CREATE OR REPLACE TABLE `vibe_healthcare_v1`.`quality`.`measure_attribution` (
+    `measure_attribution_id` BIGINT COMMENT 'Primary key for measure attribution record',
+    `attribution_panel_id` BIGINT COMMENT 'Unique identifier for the attribution panel within the quality measure attribution record.',
+    `care_site_id` BIGINT COMMENT 'FK to attributed care site',
+    `demographics_id` BIGINT COMMENT 'Unique identifier for the demographics within the quality measure attribution record.',
+    `group_id` BIGINT COMMENT 'Unique identifier for the group within the quality measure attribution record.',
+    `health_plan_id` BIGINT COMMENT 'Unique identifier for the health plan within the quality measure attribution record.',
+    `hedis_measure_id` BIGINT COMMENT 'Unique identifier for the hedis measure within the quality measure attribution record.',
+    `clinician_id` BIGINT COMMENT 'Unique identifier for the measure attributed clinician within the quality measure attribution record.',
+    `org_provider_id` BIGINT COMMENT 'Unique identifier for the measure attributed org provider within the quality measure attribution record.',
+    `measure_clinician_id` BIGINT COMMENT 'FK to attributed clinician',
+    `measure_id` BIGINT COMMENT 'FK to quality measure definition',
+    `measure_org_provider_id` BIGINT COMMENT 'Unique identifier for the measure org provider within the quality measure attribution record.',
+    `mpi_record_id` BIGINT COMMENT 'FK to patient MPI record',
+    `organization_id` BIGINT COMMENT 'FK to attributed organization',
+    `payer_contract_id` BIGINT COMMENT 'FK to payer contract',
+    `payer_id` BIGINT COMMENT 'Unique identifier for the payer within the quality measure attribution record.',
+    `quality_program_id` BIGINT COMMENT 'Unique identifier for the quality program within the quality measure attribution record.',
+    `vbp_program_id` BIGINT COMMENT 'FK to value-based program',
+    `assignment_basis` STRING COMMENT 'The assignment basis of the quality measure attribution record.',
+    `attributed_date` DATE COMMENT 'Timestamp capturing the attributed date associated with the quality measure attribution record.',
+    `attributed_npi` STRING COMMENT 'The attributed npi of the quality measure attribution record.',
+    `attribution_basis` STRING COMMENT 'The attribution basis of the quality measure attribution record.',
+    `attribution_confidence_score` DECIMAL(18,2) COMMENT 'The attribution confidence score of the quality measure attribution record.',
+    `attribution_effective_date` DATE COMMENT 'Timestamp capturing the attribution effective date associated with the quality measure attribution record.',
+    `attribution_end_date` DATE COMMENT 'End date of attribution period',
+    `attribution_logic` STRING COMMENT 'The attribution logic of the quality measure attribution record.',
+    `attribution_method` STRING COMMENT 'Method used for attribution (e.g., plurality, prospective)',
+    `attribution_model` STRING COMMENT 'The attribution model of the quality measure attribution record.',
+    `attribution_period_end` DATE COMMENT 'The attribution period end of the quality measure attribution record.',
+    `attribution_period_end_date` DATE COMMENT 'Timestamp capturing the attribution period end date associated with the quality measure attribution record.',
+    `attribution_period_start` DATE COMMENT 'The attribution period start of the quality measure attribution record.',
+    `attribution_period_start_date` DATE COMMENT 'Timestamp capturing the attribution period start date associated with the quality measure attribution record.',
+    `attribution_reason` STRING COMMENT 'Reason for attribution assignment',
+    `attribution_score` STRING COMMENT 'The attribution score of the quality measure attribution record.',
+    `attribution_source` STRING COMMENT 'The attribution source of the quality measure attribution record.',
+    `attribution_start_date` DATE COMMENT 'Start date of attribution period',
+    `attribution_status` STRING COMMENT 'Current attribution status',
+    `attribution_type` STRING COMMENT 'Type of attribution: Primary, Secondary, Shared',
+    `attribution_weight` DECIMAL(18,2) COMMENT 'Weight factor for shared attribution',
+    `clinical_ai_integration_marker` STRING COMMENT 'The clinical ai integration marker of the quality measure attribution record.',
+    `created_timestamp` TIMESTAMP COMMENT 'Record creation timestamp',
+    `denominator_eligible_flag` BOOLEAN COMMENT 'The denominator eligible flag of the quality measure attribution record.',
+    `denominator_flag` BOOLEAN COMMENT 'The denominator flag of the quality measure attribution record.',
+    `effective_date` DATE COMMENT 'Timestamp capturing the effective date associated with the quality measure attribution record.',
+    `effective_end_date` DATE COMMENT 'Timestamp capturing the effective end date associated with the quality measure attribution record.',
+    `effective_start_date` DATE COMMENT 'Timestamp capturing the effective start date associated with the quality measure attribution record.',
+    `eligible_flag` BOOLEAN COMMENT 'The eligible flag of the quality measure attribution record.',
+    `eligible_population_flag` BOOLEAN COMMENT 'The eligible population flag of the quality measure attribution record.',
+    `exception_flag` BOOLEAN COMMENT 'The exception flag of the quality measure attribution record.',
+    `exclusion_flag` BOOLEAN COMMENT 'The exclusion flag of the quality measure attribution record.',
+    `is_active` BOOLEAN COMMENT 'Boolean flag indicating the is active status of the quality measure attribution record.',
+    `is_attributed` BOOLEAN COMMENT 'Boolean flag indicating the is attributed status of the quality measure attribution record.',
+    `is_eligible_for_measure` BOOLEAN COMMENT 'Boolean flag indicating the is eligible for measure status of the quality measure attribution record.',
+    `is_primary_attribution` BOOLEAN COMMENT 'Boolean flag indicating the is primary attribution status of the quality measure attribution record.',
+    `is_prospective` BOOLEAN COMMENT 'Boolean flag indicating the is prospective status of the quality measure attribution record.',
+    `last_visit_date` DATE COMMENT 'Date of most recent visit',
+    `lookback_period_months` STRING COMMENT 'The lookback period months of the quality measure attribution record.',
+    `measurement_period` STRING COMMENT 'The measurement period of the quality measure attribution record.',
+    `measurement_period_end` DATE COMMENT 'The measurement period end of the quality measure attribution record.',
+    `measurement_period_end_date` DATE COMMENT 'Timestamp capturing the measurement period end date associated with the quality measure attribution record.',
+    `measurement_period_start` DATE COMMENT 'The measurement period start of the quality measure attribution record.',
+    `measurement_period_start_date` DATE COMMENT 'Timestamp capturing the measurement period start date associated with the quality measure attribution record.',
+    `measurement_year` STRING COMMENT 'The measurement year of the quality measure attribution record.',
+    `numerator_compliant_flag` BOOLEAN COMMENT 'The numerator compliant flag of the quality measure attribution record.',
+    `numerator_eligible_flag` BOOLEAN COMMENT 'The numerator eligible flag of the quality measure attribution record.',
+    `numerator_flag` BOOLEAN COMMENT 'The numerator flag of the quality measure attribution record.',
+    `numerator_met_flag` BOOLEAN COMMENT 'The numerator met flag of the quality measure attribution record.',
+    `override_by` STRING COMMENT 'User who performed override',
+    `override_flag` BOOLEAN COMMENT 'Whether attribution was manually overridden',
+    `override_reason` STRING COMMENT 'Reason for manual override',
+    `performance_year` STRING COMMENT 'The performance year of the quality measure attribution record.',
+    `plurality_provider_flag` BOOLEAN COMMENT 'The plurality provider flag of the quality measure attribution record.',
+    `primary_attribution_flag` BOOLEAN COMMENT 'The primary attribution flag of the quality measure attribution record.',
+    `primary_care_visit_count` STRING COMMENT 'Number of primary care visits',
+    `specialty_visit_count` STRING COMMENT 'Number of specialty visits',
+    `termination_date` DATE COMMENT 'Timestamp capturing the termination date associated with the quality measure attribution record.',
+    `updated_timestamp` TIMESTAMP COMMENT 'Record last update timestamp',
+    `vibe_mutation_marker` STRING COMMENT 'The vibe mutation marker of the quality measure attribution record.',
+    `vibe_structure_marker` STRING COMMENT 'Structure enforcement marker for 22-domain/541-product superset.',
+    `visit_count` STRING COMMENT 'Number of visits driving attribution',
+    CONSTRAINT pk_measure_attribution PRIMARY KEY(`measure_attribution_id`)
+) COMMENT 'Quality measure attribution linking patient to measure/clinician/contract.';
+
+CREATE OR REPLACE TABLE `vibe_healthcare_v1`.`quality`.`care_gap_closure` (
+    `care_gap_closure_id` BIGINT COMMENT 'Primary key for care gap closure record',
+    `clinician_id` BIGINT COMMENT 'Unique identifier for the care attributed clinician within the quality care gap closure record.',
+    `care_clinician_id` BIGINT COMMENT 'FK to attributed clinician',
+    `care_closed_by_clinician_id` BIGINT COMMENT 'Unique identifier for the care closed by clinician within the quality care gap closure record.',
+    `care_gap_id` BIGINT COMMENT 'Unique identifier for the care gap within the quality care gap closure record.',
+    `care_site_id` BIGINT COMMENT 'FK to care site',
+    `clinical_order_id` BIGINT COMMENT 'Unique identifier for the clinical order within the quality care gap closure record.',
+    `employee_id` BIGINT COMMENT 'Unique identifier for the closed by employee within the quality care gap closure record.',
+    `demographics_id` BIGINT COMMENT 'Unique identifier for the demographics within the quality care gap closure record.',
+    `health_plan_id` BIGINT COMMENT 'Unique identifier for the health plan within the quality care gap closure record.',
+    `hedis_measure_id` BIGINT COMMENT 'Unique identifier for the hedis measure within the quality care gap closure record.',
+    `measure_attribution_id` BIGINT COMMENT 'Unique identifier for the measure attribution within the quality care gap closure record.',
+    `measure_id` BIGINT COMMENT 'FK to quality measure definition',
+    `mpi_record_id` BIGINT COMMENT 'FK to patient MPI record',
+    `payer_contract_id` BIGINT COMMENT 'FK to payer contract',
+    `payer_id` BIGINT COMMENT 'Unique identifier for the payer within the quality care gap closure record.',
+    `population_health_gap_id` BIGINT COMMENT 'Unique identifier for the population health gap within the quality care gap closure record.',
+    `sdoh_referral_id` BIGINT COMMENT 'Unique identifier for the sdoh referral within the quality care gap closure record.',
+    `visit_id` BIGINT COMMENT 'FK to visit that closed the gap',
+    `attribution_basis` STRING COMMENT 'The attribution basis of the quality care gap closure record.',
+    `clinical_ai_integration_marker` STRING COMMENT 'The clinical ai integration marker of the quality care gap closure record.',
+    `closed_by` STRING COMMENT 'The closed by of the quality care gap closure record.',
+    `closed_flag` BOOLEAN COMMENT 'The closed flag of the quality care gap closure record.',
+    `closure_code` STRING COMMENT 'CPT/HCPCS code that closed the gap',
+    `closure_date` DATE COMMENT 'Timestamp capturing the closure date associated with the quality care gap closure record.',
+    `closure_documented_flag` BOOLEAN COMMENT 'The closure documented flag of the quality care gap closure record.',
+    `closure_evidence` STRING COMMENT 'The closure evidence of the quality care gap closure record.',
+    `closure_evidence_source` STRING COMMENT 'The closure evidence source of the quality care gap closure record.',
+    `closure_evidence_type` STRING COMMENT 'Type of evidence for closure',
+    `closure_method` STRING COMMENT 'Method of closure: Clinical, Administrative, Supplemental',
+    `closure_service_code` STRING COMMENT 'The closure service code value classifying the quality care gap closure record.',
+    `closure_source` STRING COMMENT 'The closure source of the quality care gap closure record.',
+    `closure_source_system` STRING COMMENT 'The closure source system of the quality care gap closure record.',
+    `closure_status` STRING COMMENT 'The closure status value classifying the quality care gap closure record.',
+    `closure_verified_by` STRING COMMENT 'The closure verified by of the quality care gap closure record.',
+    `closure_verified_flag` BOOLEAN COMMENT 'The closure verified flag of the quality care gap closure record.',
+    `compliant_flag` BOOLEAN COMMENT 'The compliant flag of the quality care gap closure record.',
+    `created_timestamp` TIMESTAMP COMMENT 'Record creation timestamp',
+    `days_open` STRING COMMENT 'The days open of the quality care gap closure record.',
+    `days_to_close` STRING COMMENT 'The days to close of the quality care gap closure record.',
+    `days_to_closure` STRING COMMENT 'The days to closure of the quality care gap closure record.',
+    `due_date` DATE COMMENT 'Timestamp capturing the due date associated with the quality care gap closure record.',
+    `evidence_source` STRING COMMENT 'The evidence source of the quality care gap closure record.',
+    `exception_reason` STRING COMMENT 'Reason for exception if applicable',
+    `excluded_flag` BOOLEAN COMMENT 'The excluded flag of the quality care gap closure record.',
+    `exclusion_flag` BOOLEAN COMMENT 'The exclusion flag of the quality care gap closure record.',
+    `exclusion_reason` STRING COMMENT 'Reason for exclusion if applicable',
+    `financial_impact_amount` DECIMAL(18,2) COMMENT 'Estimated financial impact of gap',
+    `gap_closed_date` DATE COMMENT 'Timestamp capturing the gap closed date associated with the quality care gap closure record.',
+    `gap_closure_date` DATE COMMENT 'Date gap was closed',
+    `gap_due_date` DATE COMMENT 'Timestamp capturing the gap due date associated with the quality care gap closure record.',
+    `gap_identified_date` DATE COMMENT 'Date gap was identified',
+    `gap_open_date` DATE COMMENT 'Timestamp capturing the gap open date associated with the quality care gap closure record.',
+    `gap_status` STRING COMMENT 'Current gap status: Open, Closed, Excluded, Pending',
+    `gap_type` STRING COMMENT 'The gap type value classifying the quality care gap closure record.',
+    `icd10_code` STRING COMMENT 'The icd10 code value classifying the quality care gap closure record.',
+    `intervention_count` STRING COMMENT 'The intervention count of the quality care gap closure record.',
+    `is_closed` BOOLEAN COMMENT 'Boolean flag indicating the is closed status of the quality care gap closure record.',
+    `is_closed_flag` BOOLEAN COMMENT 'Boolean flag indicating the is closed flag status of the quality care gap closure record.',
+    `is_excluded` BOOLEAN COMMENT 'Boolean flag indicating the is excluded status of the quality care gap closure record.',
+    `is_supplemental_data` BOOLEAN COMMENT 'Boolean flag indicating the is supplemental data status of the quality care gap closure record.',
+    `last_outreach_date` DATE COMMENT 'Date of last outreach attempt',
+    `measure_compliant_flag` BOOLEAN COMMENT 'The measure compliant flag of the quality care gap closure record.',
+    `measurement_period` STRING COMMENT 'The measurement period of the quality care gap closure record.',
+    `measurement_period_end` DATE COMMENT 'The measurement period end of the quality care gap closure record.',
+    `measurement_period_end_date` DATE COMMENT 'End of measurement period',
+    `measurement_period_start` DATE COMMENT 'The measurement period start of the quality care gap closure record.',
+    `measurement_period_start_date` DATE COMMENT 'Start of measurement period',
+    `measurement_year` STRING COMMENT 'Measurement year for the gap',
+    `mrn` STRING COMMENT 'The mrn of the quality care gap closure record.',
+    `next_action_due_date` DATE COMMENT 'Timestamp capturing the next action due date associated with the quality care gap closure record.',
+    `next_outreach_date` DATE COMMENT 'Scheduled next outreach date',
+    `outreach_attempt_count` STRING COMMENT 'The outreach attempt count of the quality care gap closure record.',
+    `outreach_attempts` STRING COMMENT 'The outreach attempts of the quality care gap closure record.',
+    `outreach_count` STRING COMMENT 'Number of outreach attempts',
+    `performance_year` STRING COMMENT 'The performance year of the quality care gap closure record.',
+    `priority_score` STRING COMMENT 'Priority score for gap closure',
+    `responsible_clinician_npi` STRING COMMENT 'The responsible clinician npi of the quality care gap closure record.',
+    `responsible_owner` STRING COMMENT 'The responsible owner of the quality care gap closure record.',
+    `responsible_provider_name` STRING COMMENT 'The responsible provider name of the quality care gap closure record.',
+    `sdoh_barrier_flag` BOOLEAN COMMENT 'The sdoh barrier flag of the quality care gap closure record.',
+    `supplemental_data_flag` BOOLEAN COMMENT 'The supplemental data flag of the quality care gap closure record.',
+    `supplemental_data_source` STRING COMMENT 'Source of supplemental data if used',
+    `supplemental_data_used_flag` BOOLEAN COMMENT 'The supplemental data used flag of the quality care gap closure record.',
+    `updated_timestamp` TIMESTAMP COMMENT 'Record last update timestamp',
+    `verification_source` STRING COMMENT 'The verification source of the quality care gap closure record.',
+    `verified_by` STRING COMMENT 'User who verified closure',
+    `verified_flag` BOOLEAN COMMENT 'Whether closure has been verified',
+    `verified_timestamp` TIMESTAMP COMMENT 'Timestamp of verification',
+    `vibe_mutation_marker` STRING COMMENT 'The vibe mutation marker of the quality care gap closure record.',
+    `vibe_structure_marker` STRING COMMENT 'Structure enforcement marker for 22-domain/541-product superset.',
+    CONSTRAINT pk_care_gap_closure PRIMARY KEY(`care_gap_closure_id`)
+) COMMENT 'Care gap closure tracking per patient per payer contract per measurement period.';
+
+CREATE OR REPLACE TABLE `vibe_healthcare_v1`.`quality`.`raf_score` (
+    `raf_score_id` BIGINT COMMENT 'Primary key for RAF score record',
+    `demographics_id` BIGINT COMMENT 'Unique identifier for the demographics within the quality raf score record.',
+    `health_plan_id` BIGINT COMMENT 'FK to health plan',
+    `member_enrollment_id` BIGINT COMMENT 'Unique identifier for the enrolled member enrollment within the quality raf score record.',
+    `member_member_enrollment_id` BIGINT COMMENT 'Unique identifier for the member member enrollment within the quality raf score record.',
+    `payer_contract_id` BIGINT COMMENT 'Unique identifier for the payer contract within the quality raf score record.',
+    `payer_id` BIGINT COMMENT 'FK to payer',
+    `quality_program_id` BIGINT COMMENT 'Unique identifier for the quality program within the quality raf score record.',
+    `clinician_id` BIGINT COMMENT 'Unique identifier for the raf attributed clinician within the quality raf score record.',
+    `raf_clinician_id` BIGINT COMMENT 'FK to attributed clinician',
+    `mpi_record_id` BIGINT COMMENT 'FK to patient MPI record',
+    `raf_pcp_clinician_id` BIGINT COMMENT 'Unique identifier for the raf pcp clinician within the quality raf score record.',
+    `calculation_date` DATE COMMENT 'Date RAF score was calculated',
+    `change` DECIMAL(18,2) COMMENT 'Change in RAF score from prior year',
+    `clinical_ai_integration_marker` STRING COMMENT 'The clinical ai integration marker of the quality raf score record.',
+    `coding_completeness_pct` DECIMAL(18,2) COMMENT 'The coding completeness pct of the quality raf score record.',
+    `coding_gap_count` STRING COMMENT 'The coding gap count of the quality raf score record.',
+    `coding_gap_flag` BOOLEAN COMMENT 'The coding gap flag of the quality raf score record.',
+    `coding_intensity_adjustment` DECIMAL(18,2) COMMENT 'The coding intensity adjustment of the quality raf score record.',
+    `coding_intensity_factor` DECIMAL(18,2) COMMENT 'The coding intensity factor of the quality raf score record.',
+    `created_timestamp` TIMESTAMP COMMENT 'Record creation timestamp',
+    `data_collection_year` STRING COMMENT 'The data collection year of the quality raf score record.',
+    `data_source` STRING COMMENT 'The data source of the quality raf score record.',
+    `date_of_birth` DATE COMMENT 'The date of birth of the quality raf score record.',
+    `date_of_service_year` STRING COMMENT 'The date of service year of the quality raf score record.',
+    `delta` DECIMAL(18,2) COMMENT 'The delta of the quality raf score record.',
+    `demographic_raf` DECIMAL(18,2) COMMENT 'The demographic raf of the quality raf score record.',
+    `demographic_raf_component` DECIMAL(18,2) COMMENT 'The demographic raf component of the quality raf score record.',
+    `demographic_score` DECIMAL(18,2) COMMENT 'Demographic component of RAF score',
+    `disability_status_flag` BOOLEAN COMMENT 'The disability status flag of the quality raf score record.',
+    `disabled_flag` BOOLEAN COMMENT 'Whether member has disabled status',
+    `disease_raf` DECIMAL(18,2) COMMENT 'The disease raf of the quality raf score record.',
+    `disease_raf_component` DECIMAL(18,2) COMMENT 'The disease raf component of the quality raf score record.',
+    `disease_score` DECIMAL(18,2) COMMENT 'Disease/HCC component of RAF score',
+    `documented_hcc_list` STRING COMMENT 'The documented hcc list of the quality raf score record.',
+    `dos_year` STRING COMMENT 'Date of service year',
+    `dual_eligible_flag` BOOLEAN COMMENT 'The dual eligible flag of the quality raf score record.',
+    `dual_eligible_status` STRING COMMENT 'The dual eligible status value classifying the quality raf score record.',
+    `enrollment_months` STRING COMMENT 'The enrollment months of the quality raf score record.',
+    `esrd_flag` BOOLEAN COMMENT 'Whether member has ESRD status',
+    `esrd_status_flag` BOOLEAN COMMENT 'The esrd status flag of the quality raf score record.',
+    `hcc_code_list` STRING COMMENT 'The hcc code list of the quality raf score record.',
+    `hcc_count` STRING COMMENT 'Number of HCCs captured',
+    `hcc_list` STRING COMMENT 'Comma-separated list of HCC codes',
+    `hcc_model_type` STRING COMMENT 'The hcc model type value classifying the quality raf score record.',
+    `hcc_model_version` STRING COMMENT 'The hcc model version of the quality raf score record.',
+    `hospice_flag` BOOLEAN COMMENT 'The hospice flag of the quality raf score record.',
+    `institutional_flag` BOOLEAN COMMENT 'Whether member is institutionalized',
+    `institutional_status_flag` BOOLEAN COMMENT 'The institutional status flag of the quality raf score record.',
+    `interaction_raf` DECIMAL(18,2) COMMENT 'The interaction raf of the quality raf score record.',
+    `interaction_raf_component` DECIMAL(18,2) COMMENT 'The interaction raf component of the quality raf score record.',
+    `interaction_score` DECIMAL(18,2) COMMENT 'Interaction component of RAF score',
+    `is_disabled` BOOLEAN COMMENT 'Boolean flag indicating the is disabled status of the quality raf score record.',
+    `is_esrd` BOOLEAN COMMENT 'Boolean flag indicating the is esrd status of the quality raf score record.',
+    `is_final` BOOLEAN COMMENT 'Boolean flag indicating the is final status of the quality raf score record.',
+    `measurement_period_end` DATE COMMENT 'The measurement period end of the quality raf score record.',
+    `measurement_period_start` DATE COMMENT 'The measurement period start of the quality raf score record.',
+    `measurement_year` STRING COMMENT 'The measurement year of the quality raf score record.',
+    `medicare_beneficiary_number` STRING COMMENT 'The medicare beneficiary number of the quality raf score record.',
+    `member_months` STRING COMMENT 'The member months of the quality raf score record.',
+    `member_year` STRING COMMENT 'The member year of the quality raf score record.',
+    `model_type` STRING COMMENT 'The model type value classifying the quality raf score record.',
+    `model_version` STRING COMMENT 'The model version of the quality raf score record.',
+    `new_enrollee_flag` BOOLEAN COMMENT 'Whether member is new enrollee',
+    `normalization_factor` DECIMAL(18,2) COMMENT 'The normalization factor of the quality raf score record.',
+    `normalized_raf_score` DECIMAL(18,2) COMMENT 'Normalized RAF score after CMS adjustment',
+    `open_hcc_count` STRING COMMENT 'The open hcc count of the quality raf score record.',
+    `open_hcc_gap_count` STRING COMMENT 'The open hcc gap count of the quality raf score record.',
+    `payment_year` STRING COMMENT 'Payment year for RAF score',
+    `performance_year` STRING COMMENT 'The performance year of the quality raf score record.',
+    `prior_year_raf` DECIMAL(18,2) COMMENT 'The prior year raf of the quality raf score record.',
+    `prior_year_raf_score` DECIMAL(18,2) COMMENT 'RAF score from prior year',
+    `raf_change` STRING COMMENT 'The raf change of the quality raf score record.',
+    `raf_delta` DECIMAL(18,2) COMMENT 'The raf delta of the quality raf score record.',
+    `raf_gap_amount` DECIMAL(18,2) COMMENT 'Potential RAF score from suspected HCCs',
+    `raf_model` STRING COMMENT 'The raf model of the quality raf score record.',
+    `raf_model_type` STRING COMMENT 'Model type: CNA, CND, CFA, CFD, CPA, CPD, INS',
+    `raf_model_version` STRING COMMENT 'CMS-HCC model version (e.g., V24, V28)',
+    `raf_score` DECIMAL(18,2) COMMENT 'The raf score of the quality raf score record.',
+    `raf_status` STRING COMMENT 'The raf status value classifying the quality raf score record.',
+    `raf_value` DECIMAL(18,2) COMMENT 'The raf value of the quality raf score record.',
+    `recapture_gap_count` STRING COMMENT 'The recapture gap count of the quality raf score record.',
+    `recapture_opportunity_flag` BOOLEAN COMMENT 'The recapture opportunity flag of the quality raf score record.',
+    `recapture_rate` DECIMAL(18,2) COMMENT 'The recapture rate of the quality raf score record.',
+    `recaptured_hcc_count` STRING COMMENT 'The recaptured hcc count of the quality raf score record.',
+    `revenue_impact_amount` DECIMAL(18,2) COMMENT 'Estimated revenue impact of RAF score',
+    `risk_adjustment_model` STRING COMMENT 'The risk adjustment model of the quality raf score record.',
+    `risk_model` STRING COMMENT 'The risk model of the quality raf score record.',
+    `risk_model_version` STRING COMMENT 'The risk model version of the quality raf score record.',
+    `risk_segment` STRING COMMENT 'The risk segment of the quality raf score record.',
+    `score_calculated_date` DATE COMMENT 'Timestamp capturing the score calculated date associated with the quality raf score record.',
+    `score_calculation_date` DATE COMMENT 'Timestamp capturing the score calculation date associated with the quality raf score record.',
+    `score_source` STRING COMMENT 'The score source of the quality raf score record.',
+    `score_status` STRING COMMENT 'The score status value classifying the quality raf score record.',
+    `submission_date` DATE COMMENT 'Timestamp capturing the submission date associated with the quality raf score record.',
+    `submission_status` STRING COMMENT 'Status of RAPS/EDPS submission',
+    `suspected_hcc_count` STRING COMMENT 'Number of suspected but uncaptured HCCs',
+    `suspected_hcc_list` STRING COMMENT 'Comma-separated list of suspected HCCs',
+    `total_hcc_count` STRING COMMENT 'The total hcc count of the quality raf score record.',
+    `total_raf_score` DECIMAL(18,2) COMMENT 'The total raf score of the quality raf score record.',
+    `updated_timestamp` TIMESTAMP COMMENT 'Record last update timestamp',
+    `value` DECIMAL(18,2) COMMENT 'The value of the quality raf score record.',
+    `vibe_mutation_marker` STRING COMMENT 'The vibe mutation marker of the quality raf score record.',
+    `vibe_structure_marker` STRING COMMENT 'Structure enforcement marker for 22-domain/541-product superset.',
+    CONSTRAINT pk_raf_score PRIMARY KEY(`raf_score_id`)
+) COMMENT 'Risk Adjustment Factor (RAF) score per member per year.';
+
+CREATE OR REPLACE TABLE `vibe_healthcare_v1`.`quality`.`mips_measure_reporting` (
+    `mips_measure_reporting_id` BIGINT COMMENT 'Primary key for MIPS measure reporting record',
+    `care_site_id` BIGINT COMMENT 'FK to the care site where services rendered',
+    `clinician_id` BIGINT COMMENT 'FK to the clinician being measured',
+    `group_id` BIGINT COMMENT 'Unique identifier for the group within the quality mips measure reporting record.',
+    `measure_id` BIGINT COMMENT 'FK to the quality measure definition',
+    `measure_result_id` BIGINT COMMENT 'Unique identifier for the measure result within the quality mips measure reporting record.',
+    `org_provider_id` BIGINT COMMENT 'Unique identifier for the org provider within the quality mips measure reporting record.',
+    `quality_program_id` BIGINT COMMENT 'Unique identifier for the quality program within the quality mips measure reporting record.',
+    `achievement_points` DECIMAL(18,2) COMMENT 'The achievement points of the quality mips measure reporting record.',
+    `benchmark_decile` STRING COMMENT 'National benchmark decile for comparison',
+    `benchmark_percentile` DECIMAL(18,2) COMMENT 'The benchmark percentile of the quality mips measure reporting record.',
+    `benchmark_rate` DECIMAL(18,2) COMMENT 'The benchmark rate of the quality mips measure reporting record.',
+    `bonus_eligible_flag` BOOLEAN COMMENT 'The bonus eligible flag of the quality mips measure reporting record.',
+    `bonus_points` DECIMAL(18,2) COMMENT 'The bonus points of the quality mips measure reporting record.',
+    `mips_measure_reporting_category` STRING COMMENT 'The mips measure reporting category of the quality mips measure reporting record.',
+    `category_weight_pct` DECIMAL(18,2) COMMENT 'The category weight pct of the quality mips measure reporting record.',
+    `clinical_ai_integration_marker` STRING COMMENT 'The clinical ai integration marker of the quality mips measure reporting record.',
+    `collection_type` STRING COMMENT 'The collection type value classifying the quality mips measure reporting record.',
+    `created_timestamp` TIMESTAMP COMMENT 'Record creation timestamp',
+    `data_completeness_pct` DECIMAL(18,2) COMMENT 'The data completeness pct of the quality mips measure reporting record.',
+    `data_completeness_rate` DECIMAL(18,2) COMMENT 'Data completeness percentage for the measure',
+    `decile_rank` STRING COMMENT 'The decile rank of the quality mips measure reporting record.',
+    `decile_score` DECIMAL(18,2) COMMENT 'The decile score of the quality mips measure reporting record.',
+    `denominator` STRING COMMENT 'The denominator of the quality mips measure reporting record.',
+    `denominator_count` STRING COMMENT 'Count of eligible patients in denominator',
+    `eligible_population_count` STRING COMMENT 'The eligible population count of the quality mips measure reporting record.',
+    `exception_count` STRING COMMENT 'Count of patients with valid exceptions',
+    `exceptions` STRING COMMENT 'The exceptions of the quality mips measure reporting record.',
+    `exclusion_count` STRING COMMENT 'Count of patients excluded from measure',
+    `exclusions` STRING COMMENT 'The exclusions of the quality mips measure reporting record.',
+    `final_mips_score` DECIMAL(18,2) COMMENT 'The final mips score of the quality mips measure reporting record.',
+    `high_priority_flag` BOOLEAN COMMENT 'Whether this is a high-priority measure',
+    `improvement_points` DECIMAL(18,2) COMMENT 'The improvement points of the quality mips measure reporting record.',
+    `is_high_priority_measure` BOOLEAN COMMENT 'Boolean flag indicating the is high priority measure status of the quality mips measure reporting record.',
+    `is_outcome_measure` BOOLEAN COMMENT 'Boolean flag indicating the is outcome measure status of the quality mips measure reporting record.',
+    `is_submitted` BOOLEAN COMMENT 'Boolean flag indicating the is submitted status of the quality mips measure reporting record.',
+    `is_topped_out` BOOLEAN COMMENT 'Boolean flag indicating the is topped out status of the quality mips measure reporting record.',
+    `is_topped_out_flag` BOOLEAN COMMENT 'Boolean flag indicating the is topped out flag status of the quality mips measure reporting record.',
+    `max_points_possible` DECIMAL(18,2) COMMENT 'Maximum possible points for this measure',
+    `measure_cms_code` STRING COMMENT 'The measure cms code value classifying the quality mips measure reporting record.',
+    `measure_points` DECIMAL(18,2) COMMENT 'The measure points of the quality mips measure reporting record.',
+    `measure_points_earned` STRING COMMENT 'The measure points earned of the quality mips measure reporting record.',
+    `measure_score` DECIMAL(18,2) COMMENT 'The measure score of the quality mips measure reporting record.',
+    `measure_title` STRING COMMENT 'Title of the MIPS measure',
+    `measurement_period_end` DATE COMMENT 'The measurement period end of the quality mips measure reporting record.',
+    `measurement_period_end_date` DATE COMMENT 'Timestamp capturing the measurement period end date associated with the quality mips measure reporting record.',
+    `measurement_period_start` DATE COMMENT 'The measurement period start of the quality mips measure reporting record.',
+    `measurement_period_start_date` DATE COMMENT 'Timestamp capturing the measurement period start date associated with the quality mips measure reporting record.',
+    `meets_case_minimum_flag` BOOLEAN COMMENT 'Whether minimum case threshold is met',
+    `mips_category` STRING COMMENT 'MIPS category: Quality, Promoting Interoperability, Improvement Activities, Cost',
+    `mips_measure_number` STRING COMMENT 'The mips measure number of the quality mips measure reporting record.',
+    `npi` STRING COMMENT 'The npi of the quality mips measure reporting record.',
+    `npi_number` STRING COMMENT 'The npi number of the quality mips measure reporting record.',
+    `numerator` STRING COMMENT 'The numerator of the quality mips measure reporting record.',
+    `numerator_count` STRING COMMENT 'Count of patients meeting measure criteria',
+    `outcome_measure_flag` BOOLEAN COMMENT 'Whether this is an outcome measure',
+    `payment_adjustment_pct` DECIMAL(18,2) COMMENT 'The payment adjustment pct of the quality mips measure reporting record.',
+    `performance_met_count` STRING COMMENT 'The performance met count of the quality mips measure reporting record.',
+    `performance_not_met_count` STRING COMMENT 'The performance not met count of the quality mips measure reporting record.',
+    `performance_period_end` DATE COMMENT 'The performance period end of the quality mips measure reporting record.',
+    `performance_period_start` DATE COMMENT 'The performance period start of the quality mips measure reporting record.',
+    `performance_rate` DECIMAL(18,2) COMMENT 'Calculated performance rate (numerator/denominator)',
+    `performance_year` STRING COMMENT 'MIPS performance year (e.g., 2024)',
+    `points_earned` DECIMAL(18,2) COMMENT 'MIPS points earned for this measure',
+    `reporting_period_end_date` DATE COMMENT 'End date of the reporting period',
+    `reporting_period_start_date` DATE COMMENT 'Start date of the reporting period',
+    `reporting_rate` DECIMAL(18,2) COMMENT 'The reporting rate of the quality mips measure reporting record.',
+    `reporting_status` STRING COMMENT 'The reporting status value classifying the quality mips measure reporting record.',
+    `submission_date` DATE COMMENT 'Timestamp capturing the submission date associated with the quality mips measure reporting record.',
+    `submission_method` STRING COMMENT 'Method of submission: EHR, Registry, QCDR, Claims',
+    `submission_status` STRING COMMENT 'Status of measure submission to CMS',
+    `submission_timestamp` TIMESTAMP COMMENT 'Timestamp when measure was submitted',
+    `submitted_timestamp` TIMESTAMP COMMENT 'The submitted timestamp of the quality mips measure reporting record.',
+    `tin` STRING COMMENT 'The tin of the quality mips measure reporting record.',
+    `tin_number` STRING COMMENT 'The tin number of the quality mips measure reporting record.',
+    `topped_out_flag` BOOLEAN COMMENT 'The topped out flag of the quality mips measure reporting record.',
+    `updated_timestamp` TIMESTAMP COMMENT 'Record last update timestamp',
+    `vibe_structure_marker` STRING COMMENT 'Structure enforcement marker for 22-domain/541-product superset.',
+    CONSTRAINT pk_mips_measure_reporting PRIMARY KEY(`mips_measure_reporting_id`)
+) COMMENT 'MIPS clinician-level quality measure reporting per performance year.';
+
+CREATE OR REPLACE TABLE `vibe_healthcare_v1`.`quality`.`apm_enrollment` (
+    `apm_enrollment_id` BIGINT COMMENT 'Primary key for APM enrollment record',
+    `accountable_care_organization_id` BIGINT COMMENT 'Unique identifier for the accountable care organization within the quality apm enrollment record.',
+    `care_site_id` BIGINT COMMENT 'FK to participating care site',
+    `clinician_id` BIGINT COMMENT 'FK to enrolled clinician',
+    `group_id` BIGINT COMMENT 'Unique identifier for the group within the quality apm enrollment record.',
+    `org_provider_id` BIGINT COMMENT 'Unique identifier for the org provider within the quality apm enrollment record.',
+    `organization_id` BIGINT COMMENT 'FK to participating organization',
+    `payer_contract_id` BIGINT COMMENT 'Unique identifier for the payer contract within the quality apm enrollment record.',
+    `payer_id` BIGINT COMMENT 'Unique identifier for the payer within the quality apm enrollment record.',
+    `quality_program_id` BIGINT COMMENT 'Unique identifier for the quality program within the quality apm enrollment record.',
+    `vbp_program_id` BIGINT COMMENT 'FK to value-based program definition',
+    `advanced_apm_flag` BOOLEAN COMMENT 'The advanced apm flag of the quality apm enrollment record.',
+    `apm_entity_code` STRING COMMENT 'CMS APM Entity identifier',
+    `apm_entity_identifier` STRING COMMENT 'The apm entity identifier of the quality apm enrollment record.',
+    `apm_entity_name` STRING COMMENT 'Name of the APM Entity',
+    `apm_identifier` STRING COMMENT 'The apm identifier of the quality apm enrollment record.',
+    `apm_model_code` STRING COMMENT 'APM model code (e.g., MSSP, BPCI-A, PCF)',
+    `apm_model_name` STRING COMMENT 'Full name of the APM model',
+    `apm_name` STRING COMMENT 'The apm name of the quality apm enrollment record.',
+    `apm_participant_registry_number` BIGINT COMMENT 'The apm participant registry number of the quality apm enrollment record.',
+    `apm_program_name` STRING COMMENT 'The apm program name of the quality apm enrollment record.',
+    `apm_program_type` STRING COMMENT 'The apm program type value classifying the quality apm enrollment record.',
+    `apm_track` STRING COMMENT 'The apm track of the quality apm enrollment record.',
+    `apm_type` STRING COMMENT 'The apm type value classifying the quality apm enrollment record.',
+    `attestation_date` DATE COMMENT 'Date of APM participation attestation',
+    `attributed_beneficiary_count` STRING COMMENT 'The attributed beneficiary count of the quality apm enrollment record.',
+    `benchmark_amount` DECIMAL(18,2) COMMENT 'The benchmark amount of the quality apm enrollment record.',
+    `benchmark_expenditure` DECIMAL(18,2) COMMENT 'The benchmark expenditure of the quality apm enrollment record.',
+    `clinical_ai_integration_marker` STRING COMMENT 'The clinical ai integration marker of the quality apm enrollment record.',
+    `created_timestamp` TIMESTAMP COMMENT 'Record creation timestamp',
+    `disenrollment_date` DATE COMMENT 'Timestamp capturing the disenrollment date associated with the quality apm enrollment record.',
+    `effective_end_date` DATE COMMENT 'Timestamp capturing the effective end date associated with the quality apm enrollment record.',
+    `effective_start_date` DATE COMMENT 'Timestamp capturing the effective start date associated with the quality apm enrollment record.',
+    `enrollment_date` DATE COMMENT 'Timestamp capturing the enrollment date associated with the quality apm enrollment record.',
+    `enrollment_end_date` DATE COMMENT 'End date of APM enrollment',
+    `enrollment_start_date` DATE COMMENT 'Start date of APM enrollment',
+    `enrollment_status` STRING COMMENT 'Current enrollment status',
+    `is_advanced_apm` BOOLEAN COMMENT 'Boolean flag indicating the is advanced apm status of the quality apm enrollment record.',
+    `is_mips_apm` BOOLEAN COMMENT 'Boolean flag indicating the is mips apm status of the quality apm enrollment record.',
+    `mips_apm_flag` BOOLEAN COMMENT 'The mips apm flag of the quality apm enrollment record.',
+    `npi` STRING COMMENT 'National Provider Identifier',
+    `partial_qp_flag` BOOLEAN COMMENT 'Whether participant is partial QP',
+    `participant_npi` STRING COMMENT 'The participant npi of the quality apm enrollment record.',
+    `participant_tin` STRING COMMENT 'The participant tin of the quality apm enrollment record.',
+    `participation_option` STRING COMMENT 'The participation option of the quality apm enrollment record.',
+    `participation_status` STRING COMMENT 'The participation status value classifying the quality apm enrollment record.',
+    `participation_track` STRING COMMENT 'Participation track within the APM',
+    `patient_count_threshold` STRING COMMENT 'Patient count threshold for QP status',
+    `payment_amount_threshold` DECIMAL(18,2) COMMENT 'Payment amount threshold for QP status',
+    `performance_year` STRING COMMENT 'APM performance year',
+    `qp_status` STRING COMMENT 'The qp status value classifying the quality apm enrollment record.',
+    `qp_status_flag` BOOLEAN COMMENT 'The qp status flag of the quality apm enrollment record.',
+    `qp_threshold_score` STRING COMMENT 'The qp threshold score of the quality apm enrollment record.',
+    `qualifying_apm_participant_flag` BOOLEAN COMMENT 'Whether participant qualifies as QP',
+    `risk_arrangement` STRING COMMENT 'The risk arrangement of the quality apm enrollment record.',
+    `risk_arrangement_type` STRING COMMENT 'Type of risk arrangement (one-sided, two-sided)',
+    `risk_bearing_flag` BOOLEAN COMMENT 'The risk bearing flag of the quality apm enrollment record.',
+    `risk_track` STRING COMMENT 'The risk track of the quality apm enrollment record.',
+    `shared_loss_amount` DECIMAL(18,2) COMMENT 'The shared loss amount of the quality apm enrollment record.',
+    `shared_loss_rate` DECIMAL(18,2) COMMENT 'Shared loss rate percentage',
+    `shared_savings_amount` DECIMAL(18,2) COMMENT 'The shared savings amount of the quality apm enrollment record.',
+    `shared_savings_rate` DECIMAL(18,2) COMMENT 'Shared savings rate percentage',
+    `termination_date` DATE COMMENT 'Timestamp capturing the termination date associated with the quality apm enrollment record.',
+    `threshold_score` DECIMAL(18,2) COMMENT 'APM threshold score achieved',
+    `tin` STRING COMMENT 'Tax Identification Number',
+    `tin_number` STRING COMMENT 'The tin number of the quality apm enrollment record.',
+    `total_cost_of_care` DECIMAL(18,2) COMMENT 'The total cost of care of the quality apm enrollment record.',
+    `total_risk_percent` DECIMAL(18,2) COMMENT 'The total risk percent of the quality apm enrollment record.',
+    `two_sided_risk_flag` BOOLEAN COMMENT 'The two sided risk flag of the quality apm enrollment record.',
+    `updated_timestamp` TIMESTAMP COMMENT 'Record last update timestamp',
+    `vibe_structure_marker` STRING COMMENT 'Structure enforcement marker for 22-domain/541-product superset.',
+    CONSTRAINT pk_apm_enrollment PRIMARY KEY(`apm_enrollment_id`)
+) COMMENT 'APM program enrollment per participant per performance year.';
+
+CREATE OR REPLACE TABLE `vibe_healthcare_v1`.`quality`.`quality_program_participation` (
+    `quality_program_participation_id` BIGINT COMMENT 'Primary key',
+    `care_site_id` BIGINT COMMENT 'Unique identifier for the care site within the quality quality program participation record.',
+    `clinician_id` BIGINT COMMENT 'Unique identifier for the clinician within the quality quality program participation record.',
+    `network_contract_id` BIGINT COMMENT 'Unique identifier for the network contract within the quality quality program participation record.',
+    `org_provider_id` BIGINT COMMENT 'Unique identifier for the org provider within the quality quality program participation record.',
+    `payer_id` BIGINT COMMENT 'Unique identifier for the payer within the quality quality program participation record.',
+    `quality_program_id` BIGINT COMMENT 'Unique identifier for the quality program within the quality quality program participation record.',
+    `apm_entity_identifier` STRING COMMENT 'The apm entity identifier of the quality quality program participation record.',
+    `attestation_date` DATE COMMENT 'Timestamp capturing the attestation date associated with the quality quality program participation record.',
+    `attestation_status` STRING COMMENT 'The attestation status value classifying the quality quality program participation record.',
+    `attributed_beneficiary_count` STRING COMMENT 'The attributed beneficiary count of the quality quality program participation record.',
+    `attributed_member_count` STRING COMMENT 'The attributed member count of the quality quality program participation record.',
+    `attribution_method` STRING COMMENT 'The attribution method of the quality quality program participation record.',
+    `contract_reference` STRING COMMENT 'The contract reference of the quality quality program participation record.',
+    `created_timestamp` TIMESTAMP COMMENT 'Record creation timestamp',
+    `effective_end_date` DATE COMMENT 'Timestamp capturing the effective end date associated with the quality quality program participation record.',
+    `effective_start_date` DATE COMMENT 'Timestamp capturing the effective start date associated with the quality quality program participation record.',
+    `enrollment_date` DATE COMMENT 'Timestamp capturing the enrollment date associated with the quality quality program participation record.',
+    `enrollment_status` STRING COMMENT 'The enrollment status value classifying the quality quality program participation record.',
+    `group_npi` STRING COMMENT 'The group npi of the quality quality program participation record.',
+    `is_active` BOOLEAN COMMENT 'Boolean flag indicating the is active status of the quality quality program participation record.',
+    `participant_type` STRING COMMENT 'The participant type value classifying the quality quality program participation record.',
+    `participation_role` STRING COMMENT 'The participation role of the quality quality program participation record.',
+    `participation_scope` STRING COMMENT 'The participation scope of the quality quality program participation record.',
+    `participation_status` STRING COMMENT 'The participation status value classifying the quality quality program participation record.',
+    `performance_year` STRING COMMENT 'The performance year of the quality quality program participation record.',
+    `program_year` STRING COMMENT 'The program year of the quality quality program participation record.',
+    `reporting_option` STRING COMMENT 'The reporting option of the quality quality program participation record.',
+    `ssot_canonical_reference` STRING COMMENT 'SSOT canonical: facility.facility_program_participation (duplicate reconciled to canonical)',
+    `submission_status` STRING COMMENT 'The submission status value classifying the quality quality program participation record.',
+    `termination_date` DATE COMMENT 'Timestamp capturing the termination date associated with the quality quality program participation record.',
+    `tin` STRING COMMENT 'The tin of the quality quality program participation record.',
+    `tin_number` STRING COMMENT 'The tin number of the quality quality program participation record.',
+    `updated_timestamp` TIMESTAMP COMMENT 'Last update timestamp',
+    `vibe_structure_marker` STRING COMMENT 'Structure enforcement marker for 22-domain/541-product superset.',
+    CONSTRAINT pk_quality_program_participation PRIMARY KEY(`quality_program_participation_id`)
+) COMMENT 'Facility and provider participation in quality programs with enrollment dates and status. Business justification: Tracks program eligibility and reporting obligations.';
 
 CREATE OR REPLACE TABLE `vibe_healthcare_v1`.`quality`.`quality_committee` (
-    `quality_committee_id` BIGINT COMMENT 'Primary key for committee',
-    `accreditation_program_id` BIGINT COMMENT 'Foreign key linking to quality.accreditation_program. Business justification: Committees may oversee specific accreditation programs (e.g., TJC readiness committee, CMS certification committee). This FK enables tracking which accreditation program a committee is responsible for',
-    `care_site_id` BIGINT COMMENT 'Identifier of the healthcare facility where the committee is primarily based or has jurisdiction.',
-    `employee_id` BIGINT COMMENT 'Identifier of the user who last modified this committee record.',
-    `financial_entity_id` BIGINT COMMENT 'Identifier of the organizational entity or governing body to which this committee reports findings and recommendations.',
-    `org_unit_id` BIGINT COMMENT 'Identifier of the primary department or division responsible for administrative support of this committee.',
-    `parent_committee_id` BIGINT COMMENT 'Identifier of the parent committee if this committee is a subcommittee or task force reporting to a higher-level committee.',
-    `quality_program_id` BIGINT COMMENT 'Foreign key linking to quality.quality_program. Business justification: Committees oversee and align with specific quality programs. The existing quality_program_alignment STRING field should be replaced with a proper FK to quality_program. This enables tracking which qua',
-    `accreditation_relevant_flag` BOOLEAN COMMENT 'Indicates whether this committees activities are directly relevant to organizational accreditation requirements and surveys.',
-    `active_flag` BOOLEAN COMMENT 'Indicates whether the committee is currently active and operational.',
-    `annual_report_required_flag` BOOLEAN COMMENT 'Indicates whether the committee is required to produce an annual report of activities and outcomes.',
-    `budget_allocated_amount` DECIMAL(18,2) COMMENT 'Annual budget amount allocated to the committee for operational expenses and initiatives.',
-    `budget_currency_code` STRING COMMENT 'Three-letter ISO 4217 currency code for the budget allocated amount.',
-    `bylaws_document_url` STRING COMMENT 'URL or file path to the committee bylaws document defining operating procedures and governance rules.',
-    `chair_name` STRING COMMENT 'Full name of the individual serving as the committee chair or chairperson.',
-    `charter_document_url` STRING COMMENT 'URL or file path to the official committee charter document.',
-    `charter_effective_date` DATE COMMENT 'Date when the committee charter became effective and the committee was officially established.',
-    `charter_expiration_date` DATE COMMENT 'Date when the committee charter expires and requires renewal or dissolution. Null for committees with indefinite charters.',
-    `quality_committee_code` STRING COMMENT 'Short alphanumeric code used to identify the committee in operational systems and reports.',
-    `confidentiality_level` STRING COMMENT 'Classification level for committee proceedings and documentation based on sensitivity of information discussed.',
-    `contact_email` STRING COMMENT 'Primary email address for committee correspondence and inquiries.',
-    `contact_phone` STRING COMMENT 'Primary phone number for committee administrative contact.',
-    `created_timestamp` TIMESTAMP COMMENT 'Timestamp when this committee record was first created in the system.',
-    `dissolution_reason` STRING COMMENT 'Explanation of why the committee was dissolved, if applicable.',
-    `dissolved_date` DATE COMMENT 'Date when the committee was officially dissolved or disbanded. Null for active committees.',
-    `established_date` DATE COMMENT 'Date when the committee was originally established or formed within the organization.',
-    `last_meeting_date` DATE COMMENT 'Date of the most recent committee meeting held.',
-    `last_modified_timestamp` TIMESTAMP COMMENT 'Timestamp when this committee record was last updated or modified.',
-    `meeting_frequency` STRING COMMENT 'Scheduled frequency at which the committee convenes for regular meetings.',
-    `meeting_location` STRING COMMENT 'Primary physical or virtual location where committee meetings are held.',
-    `member_count` STRING COMMENT 'Current total number of active members serving on the committee.',
-    `mission_statement` STRING COMMENT 'Official mission statement defining the committees purpose and strategic objectives.',
-    `quality_committee_name` STRING COMMENT 'Official name of the committee as registered with the organization.',
-    `next_meeting_date` DATE COMMENT 'Scheduled date of the next upcoming committee meeting.',
-    `notes` STRING COMMENT 'Additional free-text notes or comments about the committee for administrative reference.',
-    `quorum_requirement` STRING COMMENT 'Minimum number of members required to be present for the committee to conduct official business and make binding decisions.',
-    `regulatory_oversight_flag` BOOLEAN COMMENT 'Indicates whether this committee has regulatory oversight responsibilities requiring compliance with external standards.',
-    `scope_description` STRING COMMENT 'Detailed description of the committees scope of authority, responsibilities, and areas of oversight.',
-    `secretary_name` STRING COMMENT 'Full name of the individual serving as the committee secretary responsible for minutes and documentation.',
-    `quality_committee_status` STRING COMMENT 'Current operational status of the committee in its lifecycle.',
-    `quality_committee_type` STRING COMMENT 'Classification of the committee based on its primary function and scope of responsibility.',
-    `vice_chair_name` STRING COMMENT 'Full name of the individual serving as the committee vice chair or co-chair.',
-    `voting_member_count` STRING COMMENT 'Number of committee members with voting privileges on committee decisions.',
+    `quality_committee_id` BIGINT COMMENT 'Primary key',
+    `care_site_id` BIGINT COMMENT 'Unique identifier for the care site within the quality quality committee record.',
+    `clinician_id` BIGINT COMMENT 'Unique identifier for the chair clinician within the quality quality committee record.',
+    `employee_id` BIGINT COMMENT 'Unique identifier for the chair employee within the quality quality committee record.',
+    `parent_committee_id` BIGINT COMMENT 'Unique identifier for the parent committee within the quality quality committee record.',
+    `quality_program_id` BIGINT COMMENT 'Unique identifier for the quality program within the quality quality committee record.',
+    `chair_name` STRING COMMENT 'The chair name of the quality quality committee record.',
+    `chairperson_name` STRING COMMENT 'The chairperson name of the quality quality committee record.',
+    `charter_reference` STRING COMMENT 'The charter reference of the quality quality committee record.',
+    `charter_summary` STRING COMMENT 'The charter summary of the quality quality committee record.',
+    `committee_charter` STRING COMMENT 'The committee charter of the quality quality committee record.',
+    `committee_code` STRING COMMENT 'The committee code value classifying the quality quality committee record.',
+    `committee_name` STRING COMMENT 'The committee name of the quality quality committee record.',
+    `committee_number` STRING COMMENT 'The committee number of the quality quality committee record.',
+    `committee_scope` STRING COMMENT 'The committee scope of the quality quality committee record.',
+    `committee_status` STRING COMMENT 'The committee status value classifying the quality quality committee record.',
+    `committee_type` STRING COMMENT 'The committee type value classifying the quality quality committee record.',
+    `confidentiality_protected_flag` BOOLEAN COMMENT 'The confidentiality protected flag of the quality quality committee record.',
+    `created_timestamp` TIMESTAMP COMMENT 'Record creation timestamp',
+    `effective_end_date` DATE COMMENT 'Timestamp capturing the effective end date associated with the quality quality committee record.',
+    `effective_start_date` DATE COMMENT 'Timestamp capturing the effective start date associated with the quality quality committee record.',
+    `established_date` DATE COMMENT 'Timestamp capturing the established date associated with the quality quality committee record.',
+    `is_active` BOOLEAN COMMENT 'Boolean flag indicating the is active status of the quality quality committee record.',
+    `is_peer_review_protected` BOOLEAN COMMENT 'Boolean flag indicating the is peer review protected status of the quality quality committee record.',
+    `last_meeting_date` DATE COMMENT 'Timestamp capturing the last meeting date associated with the quality quality committee record.',
+    `meeting_frequency` STRING COMMENT 'The meeting frequency of the quality quality committee record.',
+    `member_count` STRING COMMENT 'The member count of the quality quality committee record.',
+    `next_meeting_date` DATE COMMENT 'Timestamp capturing the next meeting date associated with the quality quality committee record.',
+    `quorum_count` STRING COMMENT 'The quorum count of the quality quality committee record.',
+    `quorum_requirement` STRING COMMENT 'The quorum requirement of the quality quality committee record.',
+    `reporting_authority` STRING COMMENT 'The reporting authority of the quality quality committee record.',
+    `reporting_body` STRING COMMENT 'The reporting body of the quality quality committee record.',
+    `reporting_relationship` STRING COMMENT 'The reporting relationship of the quality quality committee record.',
+    `reporting_structure` STRING COMMENT 'The reporting structure of the quality quality committee record.',
+    `scope_description` STRING COMMENT 'The scope description of the quality quality committee record.',
+    `ssot_canonical_reference` STRING COMMENT 'SSOT canonical: provider.committee (duplicate reconciled to canonical)',
+    `ssot_reference` STRING COMMENT 'The ssot reference of the quality quality committee record.',
+    `quality_committee_status` STRING COMMENT 'The quality committee status value classifying the quality quality committee record.',
+    `updated_timestamp` TIMESTAMP COMMENT 'Last update timestamp',
+    `vibe_structure_marker` STRING COMMENT 'Structure enforcement marker for 22-domain/541-product superset.',
     CONSTRAINT pk_quality_committee PRIMARY KEY(`quality_committee_id`)
-) COMMENT 'Master reference table for committee. Referenced by committee_id.';
+) COMMENT 'Quality committee definitions for governance, peer review, and quality oversight. Business justification: Supports medical staff governance, accreditation requirements, and quality program structure.';
 
-CREATE OR REPLACE TABLE `vibe_healthcare_v1`.`quality`.`committee` (
-    `committee_id` BIGINT COMMENT '',
-    CONSTRAINT pk_committee PRIMARY KEY(`committee_id`)
-) COMMENT '';
+CREATE OR REPLACE TABLE `vibe_healthcare_v1`.`quality`.`quality_program` (
+    `quality_program_id` BIGINT COMMENT 'Primary key',
+    `budget_id` BIGINT COMMENT 'Unique identifier for the budget within the quality quality program record.',
+    `care_site_id` BIGINT COMMENT 'Unique identifier for the care site within the quality quality program record.',
+    `compliance_program_id` BIGINT COMMENT 'SSOT cross-reference to canonical compliance.compliance_program',
+    `cost_center_id` BIGINT COMMENT 'Unique identifier for the cost center within the quality quality program record.',
+    `employee_id` BIGINT COMMENT 'Unique identifier for the owner employee within the quality quality program record.',
+    `payer_id` BIGINT COMMENT 'Unique identifier for the payer within the quality quality program record.',
+    `committee_id` BIGINT COMMENT 'Unique identifier for the committee within the quality quality program record.',
+    `budget_amount` DECIMAL(18,2) COMMENT 'The budget amount of the quality quality program record.',
+    `created_timestamp` TIMESTAMP COMMENT 'Record creation timestamp',
+    `quality_program_description` STRING COMMENT 'The quality program description of the quality quality program record.',
+    `effective_end_date` DATE COMMENT 'Timestamp capturing the effective end date associated with the quality quality program record.',
+    `effective_start_date` DATE COMMENT 'Timestamp capturing the effective start date associated with the quality quality program record.',
+    `goal_statement` STRING COMMENT 'The goal statement of the quality quality program record.',
+    `governing_committee` STRING COMMENT 'The governing committee of the quality quality program record.',
+    `is_mandatory` BOOLEAN COMMENT 'Boolean flag indicating the is mandatory status of the quality quality program record.',
+    `is_pay_for_performance` BOOLEAN COMMENT 'Boolean flag indicating the is pay for performance status of the quality quality program record.',
+    `measurement_year` STRING COMMENT 'The measurement year of the quality quality program record.',
+    `payment_at_risk_amount` DECIMAL(18,2) COMMENT 'The payment at risk amount of the quality quality program record.',
+    `payment_at_risk_flag` BOOLEAN COMMENT 'The payment at risk flag of the quality quality program record.',
+    `program_category` STRING COMMENT 'The program category of the quality quality program record.',
+    `program_code` STRING COMMENT 'The program code value classifying the quality quality program record.',
+    `program_description` STRING COMMENT 'The program description of the quality quality program record.',
+    `program_name` STRING COMMENT 'The program name of the quality quality program record.',
+    `program_owner_name` STRING COMMENT 'The program owner name of the quality quality program record.',
+    `program_owner_role` STRING COMMENT 'The program owner role of the quality quality program record.',
+    `program_scope` STRING COMMENT 'The program scope of the quality quality program record.',
+    `program_status` STRING COMMENT 'The program status value classifying the quality quality program record.',
+    `program_type` STRING COMMENT 'The program type value classifying the quality quality program record.',
+    `program_year` STRING COMMENT 'The program year of the quality quality program record.',
+    `regulatory_authority` STRING COMMENT 'The regulatory authority of the quality quality program record.',
+    `regulatory_basis` STRING COMMENT 'The regulatory basis of the quality quality program record.',
+    `regulatory_body` STRING COMMENT 'The regulatory body of the quality quality program record.',
+    `regulatory_driver` STRING COMMENT 'The regulatory driver of the quality quality program record.',
+    `reporting_framework` STRING COMMENT 'The reporting framework of the quality quality program record.',
+    `reporting_frequency` STRING COMMENT 'The reporting frequency of the quality quality program record.',
+    `reporting_period_end` STRING COMMENT 'The reporting period end of the quality quality program record.',
+    `reporting_period_start` STRING COMMENT 'The reporting period start of the quality quality program record.',
+    `reporting_year` STRING COMMENT 'The reporting year of the quality quality program record.',
+    `responsible_department` STRING COMMENT 'The responsible department of the quality quality program record.',
+    `sponsoring_body` STRING COMMENT 'The sponsoring body of the quality quality program record.',
+    `ssot_canonical_reference` STRING COMMENT 'SSOT canonical: compliance.compliance_program (duplicate reconciled to canonical)',
+    `submission_deadline` DATE COMMENT 'The submission deadline of the quality quality program record.',
+    `submission_method` STRING COMMENT 'The submission method of the quality quality program record.',
+    `target_population_description` STRING COMMENT 'The target population description of the quality quality program record.',
+    `total_program_budget` DECIMAL(18,2) COMMENT 'The total program budget of the quality quality program record.',
+    `updated_timestamp` TIMESTAMP COMMENT 'Last update timestamp',
+    `vibe_structure_marker` STRING COMMENT 'Structure enforcement marker for 22-domain/541-product superset.',
+    CONSTRAINT pk_quality_program PRIMARY KEY(`quality_program_id`)
+) COMMENT 'SSOT resolved: defer to compliance.compliance_program as the single source of truth for this concept. This table is a domain-specific extension/reference.';
 
 -- ========= FOREIGN KEYS =========
 ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_result` ADD CONSTRAINT `fk_quality_hedis_result_hedis_measure_id` FOREIGN KEY (`hedis_measure_id`) REFERENCES `vibe_healthcare_v1`.`quality`.`hedis_measure`(`hedis_measure_id`);
@@ -1318,1622 +1804,1506 @@ ALTER TABLE `vibe_healthcare_v1`.`quality`.`standard_finding` ADD CONSTRAINT `fk
 ALTER TABLE `vibe_healthcare_v1`.`quality`.`standard_finding` ADD CONSTRAINT `fk_quality_standard_finding_quality_committee_id` FOREIGN KEY (`quality_committee_id`) REFERENCES `vibe_healthcare_v1`.`quality`.`quality_committee`(`quality_committee_id`);
 ALTER TABLE `vibe_healthcare_v1`.`quality`.`standard_finding` ADD CONSTRAINT `fk_quality_standard_finding_prior_finding_standard_finding_id` FOREIGN KEY (`prior_finding_standard_finding_id`) REFERENCES `vibe_healthcare_v1`.`quality`.`standard_finding`(`standard_finding_id`);
 ALTER TABLE `vibe_healthcare_v1`.`quality`.`improvement_initiative` ADD CONSTRAINT `fk_quality_improvement_initiative_quality_committee_id` FOREIGN KEY (`quality_committee_id`) REFERENCES `vibe_healthcare_v1`.`quality`.`quality_committee`(`quality_committee_id`);
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`improvement_initiative` ADD CONSTRAINT `fk_quality_improvement_initiative_measure_id` FOREIGN KEY (`measure_id`) REFERENCES `vibe_healthcare_v1`.`quality`.`measure`(`measure_id`);
 ALTER TABLE `vibe_healthcare_v1`.`quality`.`improvement_initiative` ADD CONSTRAINT `fk_quality_improvement_initiative_quality_program_id` FOREIGN KEY (`quality_program_id`) REFERENCES `vibe_healthcare_v1`.`quality`.`quality_program`(`quality_program_id`);
 ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_peer_review` ADD CONSTRAINT `fk_quality_quality_peer_review_quality_committee_id` FOREIGN KEY (`quality_committee_id`) REFERENCES `vibe_healthcare_v1`.`quality`.`quality_committee`(`quality_committee_id`);
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_peer_review` ADD CONSTRAINT `fk_quality_quality_peer_review_measure_id` FOREIGN KEY (`measure_id`) REFERENCES `vibe_healthcare_v1`.`quality`.`measure`(`measure_id`);
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_peer_review` ADD CONSTRAINT `fk_quality_quality_peer_review_patient_safety_event_id` FOREIGN KEY (`patient_safety_event_id`) REFERENCES `vibe_healthcare_v1`.`quality`.`patient_safety_event`(`patient_safety_event_id`);
 ALTER TABLE `vibe_healthcare_v1`.`quality`.`population_health_gap` ADD CONSTRAINT `fk_quality_population_health_gap_hedis_measure_id` FOREIGN KEY (`hedis_measure_id`) REFERENCES `vibe_healthcare_v1`.`quality`.`hedis_measure`(`hedis_measure_id`);
 ALTER TABLE `vibe_healthcare_v1`.`quality`.`population_health_gap` ADD CONSTRAINT `fk_quality_population_health_gap_measure_id` FOREIGN KEY (`measure_id`) REFERENCES `vibe_healthcare_v1`.`quality`.`measure`(`measure_id`);
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`population_health_gap` ADD CONSTRAINT `fk_quality_population_health_gap_quality_program_id` FOREIGN KEY (`quality_program_id`) REFERENCES `vibe_healthcare_v1`.`quality`.`quality_program`(`quality_program_id`);
 ALTER TABLE `vibe_healthcare_v1`.`quality`.`sdoh_screening` ADD CONSTRAINT `fk_quality_sdoh_screening_measure_id` FOREIGN KEY (`measure_id`) REFERENCES `vibe_healthcare_v1`.`quality`.`measure`(`measure_id`);
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`sdoh_screening` ADD CONSTRAINT `fk_quality_sdoh_screening_population_health_gap_id` FOREIGN KEY (`population_health_gap_id`) REFERENCES `vibe_healthcare_v1`.`quality`.`population_health_gap`(`population_health_gap_id`);
 ALTER TABLE `vibe_healthcare_v1`.`quality`.`corrective_action` ADD CONSTRAINT `fk_quality_corrective_action_accreditation_survey_id` FOREIGN KEY (`accreditation_survey_id`) REFERENCES `vibe_healthcare_v1`.`quality`.`accreditation_survey`(`accreditation_survey_id`);
 ALTER TABLE `vibe_healthcare_v1`.`quality`.`corrective_action` ADD CONSTRAINT `fk_quality_corrective_action_quality_committee_id` FOREIGN KEY (`quality_committee_id`) REFERENCES `vibe_healthcare_v1`.`quality`.`quality_committee`(`quality_committee_id`);
 ALTER TABLE `vibe_healthcare_v1`.`quality`.`corrective_action` ADD CONSTRAINT `fk_quality_corrective_action_improvement_initiative_id` FOREIGN KEY (`improvement_initiative_id`) REFERENCES `vibe_healthcare_v1`.`quality`.`improvement_initiative`(`improvement_initiative_id`);
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`corrective_action` ADD CONSTRAINT `fk_quality_corrective_action_mortality_review_id` FOREIGN KEY (`mortality_review_id`) REFERENCES `vibe_healthcare_v1`.`quality`.`mortality_review`(`mortality_review_id`);
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`corrective_action` ADD CONSTRAINT `fk_quality_corrective_action_parent_corrective_action_id` FOREIGN KEY (`parent_corrective_action_id`) REFERENCES `vibe_healthcare_v1`.`quality`.`corrective_action`(`corrective_action_id`);
 ALTER TABLE `vibe_healthcare_v1`.`quality`.`corrective_action` ADD CONSTRAINT `fk_quality_corrective_action_patient_safety_event_id` FOREIGN KEY (`patient_safety_event_id`) REFERENCES `vibe_healthcare_v1`.`quality`.`patient_safety_event`(`patient_safety_event_id`);
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`corrective_action` ADD CONSTRAINT `fk_quality_corrective_action_quality_peer_review_id` FOREIGN KEY (`quality_peer_review_id`) REFERENCES `vibe_healthcare_v1`.`quality`.`quality_peer_review`(`quality_peer_review_id`);
 ALTER TABLE `vibe_healthcare_v1`.`quality`.`corrective_action` ADD CONSTRAINT `fk_quality_corrective_action_standard_finding_id` FOREIGN KEY (`standard_finding_id`) REFERENCES `vibe_healthcare_v1`.`quality`.`standard_finding`(`standard_finding_id`);
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`program_measure_assignment` ADD CONSTRAINT `fk_quality_program_measure_assignment_hedis_measure_id` FOREIGN KEY (`hedis_measure_id`) REFERENCES `vibe_healthcare_v1`.`quality`.`hedis_measure`(`hedis_measure_id`);
 ALTER TABLE `vibe_healthcare_v1`.`quality`.`program_measure_assignment` ADD CONSTRAINT `fk_quality_program_measure_assignment_measure_id` FOREIGN KEY (`measure_id`) REFERENCES `vibe_healthcare_v1`.`quality`.`measure`(`measure_id`);
 ALTER TABLE `vibe_healthcare_v1`.`quality`.`program_measure_assignment` ADD CONSTRAINT `fk_quality_program_measure_assignment_quality_program_id` FOREIGN KEY (`quality_program_id`) REFERENCES `vibe_healthcare_v1`.`quality`.`quality_program`(`quality_program_id`);
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`program_measure_assignment` ADD CONSTRAINT `fk_quality_program_measure_assignment_vbp_program_id` FOREIGN KEY (`vbp_program_id`) REFERENCES `vibe_healthcare_v1`.`quality`.`vbp_program`(`vbp_program_id`);
 ALTER TABLE `vibe_healthcare_v1`.`quality`.`initiative_measure_target` ADD CONSTRAINT `fk_quality_initiative_measure_target_improvement_initiative_id` FOREIGN KEY (`improvement_initiative_id`) REFERENCES `vibe_healthcare_v1`.`quality`.`improvement_initiative`(`improvement_initiative_id`);
 ALTER TABLE `vibe_healthcare_v1`.`quality`.`initiative_measure_target` ADD CONSTRAINT `fk_quality_initiative_measure_target_measure_id` FOREIGN KEY (`measure_id`) REFERENCES `vibe_healthcare_v1`.`quality`.`measure`(`measure_id`);
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`initiative_measure_target` ADD CONSTRAINT `fk_quality_initiative_measure_target_measure_result_id` FOREIGN KEY (`measure_result_id`) REFERENCES `vibe_healthcare_v1`.`quality`.`measure_result`(`measure_result_id`);
 ALTER TABLE `vibe_healthcare_v1`.`quality`.`contract_initiative` ADD CONSTRAINT `fk_quality_contract_initiative_improvement_initiative_id` FOREIGN KEY (`improvement_initiative_id`) REFERENCES `vibe_healthcare_v1`.`quality`.`improvement_initiative`(`improvement_initiative_id`);
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program_participation` ADD CONSTRAINT `fk_quality_quality_program_participation_quality_program_id` FOREIGN KEY (`quality_program_id`) REFERENCES `vibe_healthcare_v1`.`quality`.`quality_program`(`quality_program_id`);
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`contract_initiative` ADD CONSTRAINT `fk_quality_contract_initiative_quality_program_id` FOREIGN KEY (`quality_program_id`) REFERENCES `vibe_healthcare_v1`.`quality`.`quality_program`(`quality_program_id`);
 ALTER TABLE `vibe_healthcare_v1`.`quality`.`program_study_participation` ADD CONSTRAINT `fk_quality_program_study_participation_quality_program_id` FOREIGN KEY (`quality_program_id`) REFERENCES `vibe_healthcare_v1`.`quality`.`quality_program`(`quality_program_id`);
 ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure_budget_allocation` ADD CONSTRAINT `fk_quality_measure_budget_allocation_measure_id` FOREIGN KEY (`measure_id`) REFERENCES `vibe_healthcare_v1`.`quality`.`measure`(`measure_id`);
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_committee` ADD CONSTRAINT `fk_quality_quality_committee_accreditation_program_id` FOREIGN KEY (`accreditation_program_id`) REFERENCES `vibe_healthcare_v1`.`quality`.`accreditation_program`(`accreditation_program_id`);
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure_budget_allocation` ADD CONSTRAINT `fk_quality_measure_budget_allocation_quality_program_id` FOREIGN KEY (`quality_program_id`) REFERENCES `vibe_healthcare_v1`.`quality`.`quality_program`(`quality_program_id`);
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure_attribution` ADD CONSTRAINT `fk_quality_measure_attribution_hedis_measure_id` FOREIGN KEY (`hedis_measure_id`) REFERENCES `vibe_healthcare_v1`.`quality`.`hedis_measure`(`hedis_measure_id`);
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure_attribution` ADD CONSTRAINT `fk_quality_measure_attribution_measure_id` FOREIGN KEY (`measure_id`) REFERENCES `vibe_healthcare_v1`.`quality`.`measure`(`measure_id`);
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure_attribution` ADD CONSTRAINT `fk_quality_measure_attribution_quality_program_id` FOREIGN KEY (`quality_program_id`) REFERENCES `vibe_healthcare_v1`.`quality`.`quality_program`(`quality_program_id`);
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure_attribution` ADD CONSTRAINT `fk_quality_measure_attribution_vbp_program_id` FOREIGN KEY (`vbp_program_id`) REFERENCES `vibe_healthcare_v1`.`quality`.`vbp_program`(`vbp_program_id`);
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`care_gap_closure` ADD CONSTRAINT `fk_quality_care_gap_closure_hedis_measure_id` FOREIGN KEY (`hedis_measure_id`) REFERENCES `vibe_healthcare_v1`.`quality`.`hedis_measure`(`hedis_measure_id`);
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`care_gap_closure` ADD CONSTRAINT `fk_quality_care_gap_closure_measure_attribution_id` FOREIGN KEY (`measure_attribution_id`) REFERENCES `vibe_healthcare_v1`.`quality`.`measure_attribution`(`measure_attribution_id`);
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`care_gap_closure` ADD CONSTRAINT `fk_quality_care_gap_closure_measure_id` FOREIGN KEY (`measure_id`) REFERENCES `vibe_healthcare_v1`.`quality`.`measure`(`measure_id`);
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`care_gap_closure` ADD CONSTRAINT `fk_quality_care_gap_closure_population_health_gap_id` FOREIGN KEY (`population_health_gap_id`) REFERENCES `vibe_healthcare_v1`.`quality`.`population_health_gap`(`population_health_gap_id`);
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`raf_score` ADD CONSTRAINT `fk_quality_raf_score_quality_program_id` FOREIGN KEY (`quality_program_id`) REFERENCES `vibe_healthcare_v1`.`quality`.`quality_program`(`quality_program_id`);
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mips_measure_reporting` ADD CONSTRAINT `fk_quality_mips_measure_reporting_measure_id` FOREIGN KEY (`measure_id`) REFERENCES `vibe_healthcare_v1`.`quality`.`measure`(`measure_id`);
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mips_measure_reporting` ADD CONSTRAINT `fk_quality_mips_measure_reporting_measure_result_id` FOREIGN KEY (`measure_result_id`) REFERENCES `vibe_healthcare_v1`.`quality`.`measure_result`(`measure_result_id`);
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mips_measure_reporting` ADD CONSTRAINT `fk_quality_mips_measure_reporting_quality_program_id` FOREIGN KEY (`quality_program_id`) REFERENCES `vibe_healthcare_v1`.`quality`.`quality_program`(`quality_program_id`);
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`apm_enrollment` ADD CONSTRAINT `fk_quality_apm_enrollment_quality_program_id` FOREIGN KEY (`quality_program_id`) REFERENCES `vibe_healthcare_v1`.`quality`.`quality_program`(`quality_program_id`);
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`apm_enrollment` ADD CONSTRAINT `fk_quality_apm_enrollment_vbp_program_id` FOREIGN KEY (`vbp_program_id`) REFERENCES `vibe_healthcare_v1`.`quality`.`vbp_program`(`vbp_program_id`);
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program_participation` ADD CONSTRAINT `fk_quality_quality_program_participation_quality_program_id` FOREIGN KEY (`quality_program_id`) REFERENCES `vibe_healthcare_v1`.`quality`.`quality_program`(`quality_program_id`);
 ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_committee` ADD CONSTRAINT `fk_quality_quality_committee_parent_committee_id` FOREIGN KEY (`parent_committee_id`) REFERENCES `vibe_healthcare_v1`.`quality`.`quality_committee`(`quality_committee_id`);
 ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_committee` ADD CONSTRAINT `fk_quality_quality_committee_quality_program_id` FOREIGN KEY (`quality_program_id`) REFERENCES `vibe_healthcare_v1`.`quality`.`quality_program`(`quality_program_id`);
 
 -- ========= TAGS =========
-ALTER SCHEMA `vibe_healthcare_v1`.`quality` SET TAGS ('dbx_division' = 'corporate');
-ALTER SCHEMA `vibe_healthcare_v1`.`quality` SET TAGS ('dbx_domain' = 'quality');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_measure` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_measure` SET TAGS ('dbx_subdomain' = 'measure_performance');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_measure` ALTER COLUMN `hedis_measure_id` SET TAGS ('dbx_business_glossary_term' = 'Healthcare Effectiveness Data and Information Set (HEDIS) Measure ID');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_measure` ALTER COLUMN `code_set_version_id` SET TAGS ('dbx_business_glossary_term' = 'Code Set Version Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_measure` ALTER COLUMN `compliance_policy_id` SET TAGS ('dbx_business_glossary_term' = 'Policy Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_measure` ALTER COLUMN `cpt_code_id` SET TAGS ('dbx_business_glossary_term' = 'Cpt Code Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_measure` ALTER COLUMN `health_plan_id` SET TAGS ('dbx_business_glossary_term' = 'Health Plan Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_measure` ALTER COLUMN `health_plan_id` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_measure` ALTER COLUMN `health_plan_id` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_measure` ALTER COLUMN `icd_code_id` SET TAGS ('dbx_business_glossary_term' = 'Icd Code Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_measure` ALTER COLUMN `loinc_code_id` SET TAGS ('dbx_business_glossary_term' = 'Loinc Code Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_measure` ALTER COLUMN `age_range_max` SET TAGS ('dbx_business_glossary_term' = 'HEDIS Eligible Age Range Maximum');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_measure` ALTER COLUMN `age_range_max` SET TAGS ('dbx_pii_category' = 'person_data');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_measure` ALTER COLUMN `age_range_min` SET TAGS ('dbx_business_glossary_term' = 'HEDIS Eligible Age Range Minimum');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_measure` ALTER COLUMN `age_range_min` SET TAGS ('dbx_pii_category' = 'person_data');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_measure` ALTER COLUMN `allowable_gap_days` SET TAGS ('dbx_business_glossary_term' = 'HEDIS Allowable Enrollment Gap (Days)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_measure` ALTER COLUMN `clinical_area` SET TAGS ('dbx_business_glossary_term' = 'HEDIS Clinical Area');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_measure` ALTER COLUMN `collection_method` SET TAGS ('dbx_business_glossary_term' = 'HEDIS Data Collection Method');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_measure` ALTER COLUMN `collection_method` SET TAGS ('dbx_value_regex' = 'hybrid|administrative|survey|electronic clinical data');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_measure` ALTER COLUMN `continuous_enrollment_days` SET TAGS ('dbx_business_glossary_term' = 'HEDIS Continuous Enrollment Requirement (Days)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_measure` ALTER COLUMN `cpt_code_list` SET TAGS ('dbx_business_glossary_term' = 'Current Procedural Terminology (CPT) Code List');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_measure` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_measure` ALTER COLUMN `denominator_definition` SET TAGS ('dbx_business_glossary_term' = 'HEDIS Denominator Definition');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_measure` ALTER COLUMN `domain_category` SET TAGS ('dbx_business_glossary_term' = 'HEDIS Domain Category');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_measure` ALTER COLUMN `domain_category` SET TAGS ('dbx_value_regex' = 'Effectiveness of Care|Access and Availability of Care|Experience of Care|Utilization and Risk Adjusted Utilization|Health Plan Descriptive Information|Measures Collected Using Electronic Clinical Data Systems');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_measure` ALTER COLUMN `effective_end_date` SET TAGS ('dbx_business_glossary_term' = 'HEDIS Measure Specification Effective End Date');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_measure` ALTER COLUMN `effective_start_date` SET TAGS ('dbx_business_glossary_term' = 'HEDIS Measure Specification Effective Start Date');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_measure` ALTER COLUMN `eligible_population_description` SET TAGS ('dbx_business_glossary_term' = 'HEDIS Eligible Population Description');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_measure` ALTER COLUMN `exception_criteria` SET TAGS ('dbx_business_glossary_term' = 'HEDIS Exception Criteria');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_measure` ALTER COLUMN `exclusion_criteria` SET TAGS ('dbx_business_glossary_term' = 'HEDIS Exclusion Criteria');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_measure` ALTER COLUMN `hedis_ecqm_code` SET TAGS ('dbx_business_glossary_term' = 'HEDIS Electronic Clinical Quality Measure (eCQM) Identifier');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_measure` ALTER COLUMN `hedis_ecqm_code` SET TAGS ('dbx_value_regex' = '^CMS[0-9]+v[0-9]+$');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_measure` ALTER COLUMN `hybrid_medical_record_required` SET TAGS ('dbx_business_glossary_term' = 'HEDIS Hybrid Medical Record Review Required Indicator');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_measure` ALTER COLUMN `hybrid_medical_record_required` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_measure` ALTER COLUMN `hybrid_medical_record_required` SET TAGS ('dbx_pii_health' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_measure` ALTER COLUMN `icd10_code_list` SET TAGS ('dbx_business_glossary_term' = 'International Classification of Diseases 10th Revision (ICD-10) Code List');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_measure` ALTER COLUMN `loinc_code_list` SET TAGS ('dbx_business_glossary_term' = 'Logical Observation Identifiers Names and Codes (LOINC) Code List');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_measure` ALTER COLUMN `measure_code` SET TAGS ('dbx_business_glossary_term' = 'HEDIS Measure Code');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_measure` ALTER COLUMN `measure_code` SET TAGS ('dbx_value_regex' = '^[A-Z]{2,8}[0-9]{0,4}$');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_measure` ALTER COLUMN `measure_name` SET TAGS ('dbx_business_glossary_term' = 'HEDIS Measure Name');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_measure` ALTER COLUMN `measure_short_name` SET TAGS ('dbx_business_glossary_term' = 'HEDIS Measure Short Name');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_measure` ALTER COLUMN `measure_status` SET TAGS ('dbx_business_glossary_term' = 'HEDIS Measure Lifecycle Status');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_measure` ALTER COLUMN `measure_status` SET TAGS ('dbx_value_regex' = 'active|retired|suspended|under review|new');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_measure` ALTER COLUMN `measure_type` SET TAGS ('dbx_business_glossary_term' = 'HEDIS Measure Type');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_measure` ALTER COLUMN `measure_type` SET TAGS ('dbx_value_regex' = 'process|outcome|patient experience|access|utilization|structure');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_measure` ALTER COLUMN `measure_version` SET TAGS ('dbx_business_glossary_term' = 'HEDIS Measure Version');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_measure` ALTER COLUMN `measure_version` SET TAGS ('dbx_value_regex' = '^[0-9]{4}.[0-9]{1,2}$');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_measure` ALTER COLUMN `measurement_year` SET TAGS ('dbx_business_glossary_term' = 'HEDIS Measurement Year');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_measure` ALTER COLUMN `minimum_performance_threshold` SET TAGS ('dbx_business_glossary_term' = 'HEDIS Minimum Performance Threshold Rate');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_measure` ALTER COLUMN `mips_eligible` SET TAGS ('dbx_business_glossary_term' = 'Merit-based Incentive Payment System (MIPS) Eligible Indicator');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_measure` ALTER COLUMN `national_average_rate` SET TAGS ('dbx_business_glossary_term' = 'HEDIS National Average Rate');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_measure` ALTER COLUMN `national_average_rate` SET TAGS ('dbx_pii_category' = 'person_data');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_measure` ALTER COLUMN `national_benchmark_rate` SET TAGS ('dbx_business_glossary_term' = 'HEDIS National Benchmark Rate');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_measure` ALTER COLUMN `ncqa_program` SET TAGS ('dbx_business_glossary_term' = 'NCQA Quality Program');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_measure` ALTER COLUMN `ncqa_program` SET TAGS ('dbx_value_regex' = 'HEDIS|HEDIS MY|CAHPS|HOS|PCMH|ACO HEDIS');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_measure` ALTER COLUMN `ncqa_specification_url` SET TAGS ('dbx_business_glossary_term' = 'NCQA Measure Specification URL');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_measure` ALTER COLUMN `ncqa_specification_url` SET TAGS ('dbx_value_regex' = '^https?://.+$');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_measure` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'HEDIS Measure Notes');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_measure` ALTER COLUMN `numerator_definition` SET TAGS ('dbx_business_glossary_term' = 'HEDIS Numerator Definition');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_measure` ALTER COLUMN `performance_rate_direction` SET TAGS ('dbx_business_glossary_term' = 'HEDIS Performance Rate Direction');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_measure` ALTER COLUMN `performance_rate_direction` SET TAGS ('dbx_value_regex' = 'higher is better|lower is better');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_measure` ALTER COLUMN `product_line` SET TAGS ('dbx_business_glossary_term' = 'HEDIS Health Plan Product Line');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_measure` ALTER COLUMN `product_line` SET TAGS ('dbx_value_regex' = 'commercial|medicaid|medicare|exchange|chip');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_measure` ALTER COLUMN `reporting_period_end_date` SET TAGS ('dbx_business_glossary_term' = 'HEDIS Reporting Period End Date');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_measure` ALTER COLUMN `reporting_period_start_date` SET TAGS ('dbx_business_glossary_term' = 'HEDIS Reporting Period Start Date');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_measure` ALTER COLUMN `reporting_submission_deadline` SET TAGS ('dbx_business_glossary_term' = 'HEDIS Reporting Submission Deadline');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_measure` ALTER COLUMN `responsible_program` SET TAGS ('dbx_business_glossary_term' = 'HEDIS Responsible Quality Program');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_measure` ALTER COLUMN `stratification_criteria` SET TAGS ('dbx_business_glossary_term' = 'HEDIS Stratification Criteria');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_measure` ALTER COLUMN `stratification_required` SET TAGS ('dbx_business_glossary_term' = 'HEDIS Stratification Required Indicator');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_measure` ALTER COLUMN `target_performance_rate` SET TAGS ('dbx_business_glossary_term' = 'HEDIS Internal Target Performance Rate');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_measure` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Last Updated Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_measure` ALTER COLUMN `value_set_oid` SET TAGS ('dbx_business_glossary_term' = 'NCQA Value Set Object Identifier (OID)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_measure` ALTER COLUMN `value_set_oid` SET TAGS ('dbx_value_regex' = '^[0-9]+(.[0-9]+)+$');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_result` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_result` SET TAGS ('dbx_subdomain' = 'measure_performance');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_result` ALTER COLUMN `hedis_result_id` SET TAGS ('dbx_business_glossary_term' = 'Healthcare Effectiveness Data and Information Set (HEDIS) Result ID');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_result` ALTER COLUMN `billing_coverage_id` SET TAGS ('dbx_business_glossary_term' = 'Coverage Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_result` ALTER COLUMN `billing_coverage_id` SET TAGS ('dbx_pii_category' = 'person_data');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_result` ALTER COLUMN `care_site_id` SET TAGS ('dbx_business_glossary_term' = 'Care Site ID');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_result` ALTER COLUMN `claim_id` SET TAGS ('dbx_business_glossary_term' = 'Claim Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_result` ALTER COLUMN `compliance_regulatory_submission_id` SET TAGS ('dbx_business_glossary_term' = 'Regulatory Submission Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_result` ALTER COLUMN `cost_center_id` SET TAGS ('dbx_business_glossary_term' = 'Cost Center Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_result` ALTER COLUMN `drg_id` SET TAGS ('dbx_business_glossary_term' = 'Drg Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_result` ALTER COLUMN `fiscal_period_id` SET TAGS ('dbx_business_glossary_term' = 'Reporting Period ID');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_result` ALTER COLUMN `health_plan_id` SET TAGS ('dbx_business_glossary_term' = 'Health Plan ID');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_result` ALTER COLUMN `health_plan_id` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_result` ALTER COLUMN `health_plan_id` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_result` ALTER COLUMN `hedis_measure_id` SET TAGS ('dbx_business_glossary_term' = 'HEDIS Measure ID');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_result` ALTER COLUMN `interface_channel_id` SET TAGS ('dbx_business_glossary_term' = 'Interface Channel Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_result` ALTER COLUMN `org_provider_id` SET TAGS ('dbx_business_glossary_term' = 'Org Provider Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_result` ALTER COLUMN `audit_status` SET TAGS ('dbx_business_glossary_term' = 'HEDIS Audit Status');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_result` ALTER COLUMN `audit_status` SET TAGS ('dbx_value_regex' = 'not_audited|audit_in_progress|audit_passed|audit_failed|corrective_action');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_result` ALTER COLUMN `auditor_organization` SET TAGS ('dbx_business_glossary_term' = 'HEDIS Auditor Organization Name');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_result` ALTER COLUMN `benchmark_comparison_result` SET TAGS ('dbx_business_glossary_term' = 'NCQA Benchmark Comparison Result');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_result` ALTER COLUMN `benchmark_comparison_result` SET TAGS ('dbx_value_regex' = 'above_90th|between_50th_90th|below_50th|not_available');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_result` ALTER COLUMN `calculation_run_timestamp` SET TAGS ('dbx_business_glossary_term' = 'HEDIS Calculation Run Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_result` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_result` ALTER COLUMN `data_source_type` SET TAGS ('dbx_business_glossary_term' = 'HEDIS Data Source Type');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_result` ALTER COLUMN `data_source_type` SET TAGS ('dbx_value_regex' = 'claims|ehr|lab|pharmacy|registry|hybrid');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_result` ALTER COLUMN `denominator_count` SET TAGS ('dbx_business_glossary_term' = 'HEDIS Denominator Count');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_result` ALTER COLUMN `exception_count` SET TAGS ('dbx_business_glossary_term' = 'HEDIS Exception Count');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_result` ALTER COLUMN `exclusion_count` SET TAGS ('dbx_business_glossary_term' = 'HEDIS Exclusion Count');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_result` ALTER COLUMN `gap_count` SET TAGS ('dbx_business_glossary_term' = 'HEDIS Care Gap Count');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_result` ALTER COLUMN `hybrid_sample_size` SET TAGS ('dbx_business_glossary_term' = 'HEDIS Hybrid Methodology Sample Size');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_result` ALTER COLUMN `hybrid_supplemental_data_used` SET TAGS ('dbx_business_glossary_term' = 'HEDIS Hybrid Supplemental Data Used Flag');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_result` ALTER COLUMN `initial_population_count` SET TAGS ('dbx_business_glossary_term' = 'HEDIS Initial Patient Population Count');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_result` ALTER COLUMN `is_reportable` SET TAGS ('dbx_business_glossary_term' = 'HEDIS Measure Reportable Flag');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_result` ALTER COLUMN `is_starred_measure` SET TAGS ('dbx_business_glossary_term' = 'CMS Star Rating Measure Flag');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_result` ALTER COLUMN `measurement_year` SET TAGS ('dbx_business_glossary_term' = 'HEDIS Measurement Year');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_result` ALTER COLUMN `methodology_type` SET TAGS ('dbx_business_glossary_term' = 'HEDIS Methodology Type');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_result` ALTER COLUMN `methodology_type` SET TAGS ('dbx_value_regex' = 'administrative|hybrid|survey|ecds');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_result` ALTER COLUMN `mips_quality_category` SET TAGS ('dbx_business_glossary_term' = 'Merit-based Incentive Payment System (MIPS) Quality Category');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_result` ALTER COLUMN `mips_quality_category` SET TAGS ('dbx_value_regex' = 'quality|promoting_interoperability|improvement_activities|cost|not_applicable');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_result` ALTER COLUMN `ncqa_benchmark_percentile_50` SET TAGS ('dbx_business_glossary_term' = 'NCQA Benchmark 50th Percentile Rate');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_result` ALTER COLUMN `ncqa_benchmark_percentile_90` SET TAGS ('dbx_business_glossary_term' = 'NCQA Benchmark 90th Percentile Rate');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_result` ALTER COLUMN `numerator_count` SET TAGS ('dbx_business_glossary_term' = 'HEDIS Numerator Count');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_result` ALTER COLUMN `performance_rate` SET TAGS ('dbx_business_glossary_term' = 'HEDIS Performance Rate');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_result` ALTER COLUMN `prior_year_performance_rate` SET TAGS ('dbx_business_glossary_term' = 'Prior Year HEDIS Performance Rate');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_result` ALTER COLUMN `product_line` SET TAGS ('dbx_business_glossary_term' = 'Health Plan Product Line');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_result` ALTER COLUMN `product_line` SET TAGS ('dbx_value_regex' = 'commercial|medicaid|medicare|exchange|chip');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_result` ALTER COLUMN `rate_change_from_prior_year` SET TAGS ('dbx_business_glossary_term' = 'HEDIS Rate Change from Prior Year');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_result` ALTER COLUMN `reporting_period_end_date` SET TAGS ('dbx_business_glossary_term' = 'Reporting Period End Date');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_result` ALTER COLUMN `reporting_period_start_date` SET TAGS ('dbx_business_glossary_term' = 'Reporting Period Start Date');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_result` ALTER COLUMN `result_identifier` SET TAGS ('dbx_business_glossary_term' = 'HEDIS Result Business Identifier');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_result` ALTER COLUMN `result_identifier` SET TAGS ('dbx_value_regex' = '^HEDIS-[0-9]{4}-[A-Z0-9]{2,10}-[A-Z0-9]{3,20}-[0-9]{6}$');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_result` ALTER COLUMN `result_notes` SET TAGS ('dbx_business_glossary_term' = 'HEDIS Result Notes');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_result` ALTER COLUMN `result_version` SET TAGS ('dbx_business_glossary_term' = 'HEDIS Result Version Number');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_result` ALTER COLUMN `star_rating_weight` SET TAGS ('dbx_business_glossary_term' = 'CMS Star Rating Measure Weight');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_result` ALTER COLUMN `stratification_category` SET TAGS ('dbx_business_glossary_term' = 'HEDIS Stratification Category');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_result` ALTER COLUMN `submission_date` SET TAGS ('dbx_business_glossary_term' = 'HEDIS Submission Date');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_result` ALTER COLUMN `submission_status` SET TAGS ('dbx_business_glossary_term' = 'HEDIS Submission Status');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_result` ALTER COLUMN `submission_status` SET TAGS ('dbx_value_regex' = 'draft|validated|submitted|accepted|rejected|resubmitted');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_result` ALTER COLUMN `submission_target` SET TAGS ('dbx_business_glossary_term' = 'HEDIS Submission Target');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_result` ALTER COLUMN `submission_target` SET TAGS ('dbx_value_regex' = 'ncqa|cms_star|medicaid|commercial_payer|internal');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_result` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Last Updated Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_survey` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_survey` SET TAGS ('dbx_subdomain' = 'patient_safety');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_survey` ALTER COLUMN `cahps_survey_id` SET TAGS ('dbx_business_glossary_term' = 'Consumer Assessment of Healthcare Providers and Systems (CAHPS) Survey ID');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_survey` ALTER COLUMN `audit_id` SET TAGS ('dbx_business_glossary_term' = 'Audit Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_survey` ALTER COLUMN `care_site_id` SET TAGS ('dbx_business_glossary_term' = 'Facility ID');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_survey` ALTER COLUMN `clinician_id` SET TAGS ('dbx_business_glossary_term' = 'Provider ID');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_survey` ALTER COLUMN `health_plan_id` SET TAGS ('dbx_business_glossary_term' = 'Health Plan Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_survey` ALTER COLUMN `health_plan_id` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_survey` ALTER COLUMN `health_plan_id` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_survey` ALTER COLUMN `interface_channel_id` SET TAGS ('dbx_business_glossary_term' = 'Interface Channel Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_survey` ALTER COLUMN `mpi_record_id` SET TAGS ('dbx_business_glossary_term' = 'Patient ID');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_survey` ALTER COLUMN `mpi_record_id` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_survey` ALTER COLUMN `mpi_record_id` SET TAGS ('dbx_pii_identifier' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_survey` ALTER COLUMN `consent_record_id` SET TAGS ('dbx_business_glossary_term' = 'Consent Record Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_survey` ALTER COLUMN `subject_enrollment_id` SET TAGS ('dbx_business_glossary_term' = 'Subject Enrollment Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_survey` ALTER COLUMN `unit_id` SET TAGS ('dbx_business_glossary_term' = 'Unit Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_survey` ALTER COLUMN `visit_id` SET TAGS ('dbx_business_glossary_term' = 'Encounter ID');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_survey` ALTER COLUMN `administration_mode` SET TAGS ('dbx_business_glossary_term' = 'Survey Administration Mode');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_survey` ALTER COLUMN `administration_mode` SET TAGS ('dbx_value_regex' = 'mail|telephone|mixed|active_interactive_voice_response|web');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_survey` ALTER COLUMN `cms_certification_number` SET TAGS ('dbx_business_glossary_term' = 'Centers for Medicare and Medicaid Services (CMS) Certification Number');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_survey` ALTER COLUMN `cms_submission_date` SET TAGS ('dbx_business_glossary_term' = 'CMS HCAHPS Submission Date');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_survey` ALTER COLUMN `cms_submission_status` SET TAGS ('dbx_business_glossary_term' = 'CMS HCAHPS Submission Status');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_survey` ALTER COLUMN `cms_submission_status` SET TAGS ('dbx_value_regex' = 'not_submitted|submitted|accepted|rejected|resubmitted');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_survey` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_survey` ALTER COLUMN `discharge_date` SET TAGS ('dbx_business_glossary_term' = 'Patient Discharge Date');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_survey` ALTER COLUMN `eligible_discharges` SET TAGS ('dbx_business_glossary_term' = 'CAHPS Eligible Discharges Count');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_survey` ALTER COLUMN `exclusion_reason` SET TAGS ('dbx_business_glossary_term' = 'CAHPS Survey Exclusion Reason');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_survey` ALTER COLUMN `hcahps_linear_mean_score` SET TAGS ('dbx_business_glossary_term' = 'HCAHPS Linear Mean Score');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_survey` ALTER COLUMN `minimum_case_threshold_met` SET TAGS ('dbx_business_glossary_term' = 'CAHPS Minimum Case Threshold Met Indicator');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_survey` ALTER COLUMN `mode_adjustment_applied` SET TAGS ('dbx_business_glossary_term' = 'Survey Mode Adjustment Applied Indicator');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_survey` ALTER COLUMN `overall_hospital_rating` SET TAGS ('dbx_business_glossary_term' = 'HCAHPS Overall Hospital Rating');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_survey` ALTER COLUMN `patient_mix_adjustment_applied` SET TAGS ('dbx_business_glossary_term' = 'Patient Mix Adjustment Applied Indicator');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_survey` ALTER COLUMN `publicly_reported` SET TAGS ('dbx_business_glossary_term' = 'CAHPS Publicly Reported Indicator');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_survey` ALTER COLUMN `recommend_hospital` SET TAGS ('dbx_business_glossary_term' = 'HCAHPS Willingness to Recommend Hospital');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_survey` ALTER COLUMN `recommend_hospital` SET TAGS ('dbx_value_regex' = 'definitely_yes|probably_yes|probably_no|definitely_no');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_survey` ALTER COLUMN `reporting_period_end` SET TAGS ('dbx_business_glossary_term' = 'CAHPS Reporting Period End Date');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_survey` ALTER COLUMN `reporting_period_start` SET TAGS ('dbx_business_glossary_term' = 'CAHPS Reporting Period Start Date');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_survey` ALTER COLUMN `response_date` SET TAGS ('dbx_business_glossary_term' = 'Survey Response Date');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_survey` ALTER COLUMN `response_language` SET TAGS ('dbx_business_glossary_term' = 'Survey Response Language');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_survey` ALTER COLUMN `response_language` SET TAGS ('dbx_pii_category' = 'person_data');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_survey` ALTER COLUMN `response_received` SET TAGS ('dbx_business_glossary_term' = 'Survey Response Received Indicator');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_survey` ALTER COLUMN `sample_size` SET TAGS ('dbx_business_glossary_term' = 'CAHPS Survey Sample Size');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_survey` ALTER COLUMN `sampling_methodology` SET TAGS ('dbx_business_glossary_term' = 'CAHPS Sampling Methodology');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_survey` ALTER COLUMN `sampling_methodology` SET TAGS ('dbx_value_regex' = 'census|random_sample|stratified_random');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_survey` ALTER COLUMN `score_care_transition` SET TAGS ('dbx_business_glossary_term' = 'HCAHPS Care Transition Composite Score');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_survey` ALTER COLUMN `score_cleanliness` SET TAGS ('dbx_business_glossary_term' = 'HCAHPS Cleanliness of Hospital Environment Score');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_survey` ALTER COLUMN `score_communication_doctors` SET TAGS ('dbx_business_glossary_term' = 'HCAHPS Communication with Doctors Composite Score');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_survey` ALTER COLUMN `score_communication_medicines` SET TAGS ('dbx_business_glossary_term' = 'HCAHPS Communication About Medicines Composite Score');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_survey` ALTER COLUMN `score_communication_nurses` SET TAGS ('dbx_business_glossary_term' = 'HCAHPS Communication with Nurses Composite Score');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_survey` ALTER COLUMN `score_discharge_information` SET TAGS ('dbx_business_glossary_term' = 'HCAHPS Discharge Information Composite Score');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_survey` ALTER COLUMN `score_pain_management` SET TAGS ('dbx_business_glossary_term' = 'HCAHPS Pain Management Composite Score');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_survey` ALTER COLUMN `score_pain_management` SET TAGS ('dbx_pii_category' = 'person_data');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_survey` ALTER COLUMN `score_quietness` SET TAGS ('dbx_business_glossary_term' = 'HCAHPS Quietness of Hospital Environment Score');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_survey` ALTER COLUMN `score_responsiveness_staff` SET TAGS ('dbx_business_glossary_term' = 'HCAHPS Responsiveness of Hospital Staff Composite Score');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_survey` ALTER COLUMN `star_rating` SET TAGS ('dbx_business_glossary_term' = 'HCAHPS Star Rating');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_survey` ALTER COLUMN `survey_followup_date` SET TAGS ('dbx_business_glossary_term' = 'Survey Follow-Up Date');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_survey` ALTER COLUMN `survey_mailed_date` SET TAGS ('dbx_business_glossary_term' = 'Survey Mailed Date');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_survey` ALTER COLUMN `survey_program_code` SET TAGS ('dbx_business_glossary_term' = 'CAHPS Survey Program Code');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_survey` ALTER COLUMN `survey_program_code` SET TAGS ('dbx_value_regex' = 'HCAHPS|CG-CAHPS|HH-CAHPS|OAS-CAHPS|ICH-CAHPS|PCMH-CAHPS');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_survey` ALTER COLUMN `survey_status` SET TAGS ('dbx_business_glossary_term' = 'CAHPS Survey Status');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_survey` ALTER COLUMN `survey_status` SET TAGS ('dbx_value_regex' = 'sampled|mailed|completed|non_response|ineligible|excluded');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_survey` ALTER COLUMN `survey_type` SET TAGS ('dbx_business_glossary_term' = 'CAHPS Survey Type');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_survey` ALTER COLUMN `survey_type` SET TAGS ('dbx_value_regex' = 'hospital|clinician_group|home_health|outpatient_surgery|hemodialysis|pcmh');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_survey` ALTER COLUMN `survey_version` SET TAGS ('dbx_business_glossary_term' = 'CAHPS Survey Version');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_survey` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Updated Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_survey` ALTER COLUMN `vbp_patient_experience_score` SET TAGS ('dbx_business_glossary_term' = 'Value-Based Purchasing (VBP) Patient Experience Domain Score');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_survey` ALTER COLUMN `vendor_certification_number` SET TAGS ('dbx_business_glossary_term' = 'CMS Survey Vendor Certification Number');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_survey` ALTER COLUMN `vendor_name` SET TAGS ('dbx_business_glossary_term' = 'CAHPS Survey Vendor Name');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_response` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_response` SET TAGS ('dbx_subdomain' = 'patient_safety');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_response` ALTER COLUMN `cahps_response_id` SET TAGS ('dbx_business_glossary_term' = 'Consumer Assessment of Healthcare Providers and Systems (CAHPS) Response ID');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_response` ALTER COLUMN `billing_coverage_id` SET TAGS ('dbx_business_glossary_term' = 'Coverage Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_response` ALTER COLUMN `billing_coverage_id` SET TAGS ('dbx_pii_category' = 'person_data');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_response` ALTER COLUMN `cahps_survey_id` SET TAGS ('dbx_business_glossary_term' = 'CAHPS Survey ID');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_response` ALTER COLUMN `care_site_id` SET TAGS ('dbx_business_glossary_term' = 'Facility ID');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_response` ALTER COLUMN `health_plan_id` SET TAGS ('dbx_business_glossary_term' = 'Health Plan Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_response` ALTER COLUMN `health_plan_id` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_response` ALTER COLUMN `health_plan_id` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_response` ALTER COLUMN `mpi_record_id` SET TAGS ('dbx_business_glossary_term' = 'Patient ID');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_response` ALTER COLUMN `mpi_record_id` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_response` ALTER COLUMN `mpi_record_id` SET TAGS ('dbx_pii_identifier' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_response` ALTER COLUMN `consent_record_id` SET TAGS ('dbx_business_glossary_term' = 'Consent Record Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_response` ALTER COLUMN `visit_id` SET TAGS ('dbx_business_glossary_term' = 'Encounter ID');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_response` ALTER COLUMN `adjusted_composite_score` SET TAGS ('dbx_business_glossary_term' = 'HCAHPS Case-Mix Adjusted Composite Score');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_response` ALTER COLUMN `administration_mode` SET TAGS ('dbx_business_glossary_term' = 'Survey Administration Mode');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_response` ALTER COLUMN `administration_mode` SET TAGS ('dbx_value_regex' = 'mail|telephone|mail_telephone_mixed|active_interactive_voice_response|web');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_response` ALTER COLUMN `care_transition_score` SET TAGS ('dbx_business_glossary_term' = 'HCAHPS Care Transition Composite Score');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_response` ALTER COLUMN `cms_certification_number` SET TAGS ('dbx_business_glossary_term' = 'Centers for Medicare and Medicaid Services (CMS) Certification Number');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_response` ALTER COLUMN `cms_certification_number` SET TAGS ('dbx_value_regex' = '^[0-9]{6}$');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_response` ALTER COLUMN `contact_attempt_count` SET TAGS ('dbx_business_glossary_term' = 'Survey Contact Attempt Count');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_response` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_response` ALTER COLUMN `discharge_date` SET TAGS ('dbx_business_glossary_term' = 'Patient Discharge Date');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_response` ALTER COLUMN `discharge_information_score` SET TAGS ('dbx_business_glossary_term' = 'HCAHPS Discharge Information Composite Score');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_response` ALTER COLUMN `doctor_communication_score` SET TAGS ('dbx_business_glossary_term' = 'HCAHPS Communication with Doctors Composite Score');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_response` ALTER COLUMN `education_level` SET TAGS ('dbx_business_glossary_term' = 'Patient Education Level');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_response` ALTER COLUMN `education_level` SET TAGS ('dbx_value_regex' = '8th_grade_or_less|some_high_school|high_school_graduate|some_college|4_year_college_graduate|more_than_4_year_college');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_response` ALTER COLUMN `first_contact_date` SET TAGS ('dbx_business_glossary_term' = 'First Survey Contact Date');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_response` ALTER COLUMN `hospital_environment_score` SET TAGS ('dbx_business_glossary_term' = 'HCAHPS Hospital Environment Composite Score');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_response` ALTER COLUMN `ineligibility_reason` SET TAGS ('dbx_business_glossary_term' = 'Survey Ineligibility Reason');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_response` ALTER COLUMN `ineligibility_reason` SET TAGS ('dbx_value_regex' = 'age_under_18|psychiatric_admission|excluded_drg|no_overnight_stay|court_ordered|other');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_response` ALTER COLUMN `is_eligible` SET TAGS ('dbx_business_glossary_term' = 'Survey Eligibility Flag');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_response` ALTER COLUMN `is_sampled` SET TAGS ('dbx_business_glossary_term' = 'Survey Sampled Flag');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_response` ALTER COLUMN `language_of_response` SET TAGS ('dbx_business_glossary_term' = 'Survey Response Language');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_response` ALTER COLUMN `language_of_response` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_response` ALTER COLUMN `language_of_response` SET TAGS ('dbx_pii_category' = 'person_data');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_response` ALTER COLUMN `length_of_stay_days` SET TAGS ('dbx_business_glossary_term' = 'Length of Stay (LOS) Days');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_response` ALTER COLUMN `medicine_communication_score` SET TAGS ('dbx_business_glossary_term' = 'HCAHPS Communication About Medicines Composite Score');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_response` ALTER COLUMN `mrn` SET TAGS ('dbx_business_glossary_term' = 'Medical Record Number (MRN)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_response` ALTER COLUMN `mrn` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_response` ALTER COLUMN `mrn` SET TAGS ('dbx_pii_identifier' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_response` ALTER COLUMN `nurse_communication_score` SET TAGS ('dbx_business_glossary_term' = 'HCAHPS Communication with Nurses Composite Score');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_response` ALTER COLUMN `overall_hospital_rating` SET TAGS ('dbx_business_glossary_term' = 'HCAHPS Overall Hospital Rating');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_response` ALTER COLUMN `pain_management_score` SET TAGS ('dbx_business_glossary_term' = 'HCAHPS Pain Management Composite Score');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_response` ALTER COLUMN `pain_management_score` SET TAGS ('dbx_pii_category' = 'person_data');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_response` ALTER COLUMN `patient_service_line` SET TAGS ('dbx_business_glossary_term' = 'Patient Service Line');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_response` ALTER COLUMN `program_year` SET TAGS ('dbx_business_glossary_term' = 'CMS Program Year');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_response` ALTER COLUMN `recommend_hospital` SET TAGS ('dbx_business_glossary_term' = 'HCAHPS Hospital Recommendation Response');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_response` ALTER COLUMN `recommend_hospital` SET TAGS ('dbx_value_regex' = 'definitely_yes|probably_yes|probably_no|definitely_no');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_response` ALTER COLUMN `reporting_quarter` SET TAGS ('dbx_business_glossary_term' = 'CMS Reporting Quarter');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_response` ALTER COLUMN `reporting_quarter` SET TAGS ('dbx_value_regex' = '^[0-9]{4}Q[1-4]$');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_response` ALTER COLUMN `response_date` SET TAGS ('dbx_business_glossary_term' = 'Survey Response Date');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_response` ALTER COLUMN `response_status` SET TAGS ('dbx_business_glossary_term' = 'Survey Response Status');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_response` ALTER COLUMN `response_status` SET TAGS ('dbx_value_regex' = 'completed|non_response|ineligible|deceased|bad_address|language_barrier');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_response` ALTER COLUMN `sampling_date` SET TAGS ('dbx_business_glossary_term' = 'Survey Sampling Date');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_response` ALTER COLUMN `self_reported_health_status` SET TAGS ('dbx_business_glossary_term' = 'Patient Self-Reported Health Status');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_response` ALTER COLUMN `self_reported_health_status` SET TAGS ('dbx_value_regex' = 'excellent|very_good|good|fair|poor');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_response` ALTER COLUMN `self_reported_health_status` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_response` ALTER COLUMN `self_reported_health_status` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_response` ALTER COLUMN `service_category` SET TAGS ('dbx_business_glossary_term' = 'HCAHPS Patient Service Category');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_response` ALTER COLUMN `service_category` SET TAGS ('dbx_value_regex' = 'medical|surgical|maternity');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_response` ALTER COLUMN `staff_responsiveness_score` SET TAGS ('dbx_business_glossary_term' = 'HCAHPS Responsiveness of Hospital Staff Composite Score');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_response` ALTER COLUMN `survey_type` SET TAGS ('dbx_business_glossary_term' = 'CAHPS Survey Type');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_response` ALTER COLUMN `survey_type` SET TAGS ('dbx_value_regex' = 'HCAHPS|CGCAHPS|PCMH_CAHPS|ED_CAHPS|OAS_CAHPS');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_response` ALTER COLUMN `top_box_doctor_communication` SET TAGS ('dbx_business_glossary_term' = 'HCAHPS Top-Box Doctor Communication Flag');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_response` ALTER COLUMN `top_box_nurse_communication` SET TAGS ('dbx_business_glossary_term' = 'HCAHPS Top-Box Nurse Communication Flag');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_response` ALTER COLUMN `top_box_overall_rating` SET TAGS ('dbx_business_glossary_term' = 'HCAHPS Top-Box Overall Rating Flag');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_response` ALTER COLUMN `top_box_recommend` SET TAGS ('dbx_business_glossary_term' = 'HCAHPS Top-Box Recommend Hospital Flag');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_response` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Updated Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_response` ALTER COLUMN `vbp_patient_experience_score` SET TAGS ('dbx_business_glossary_term' = 'Value-Based Purchasing (VBP) Patient Experience of Care Score');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`patient_safety_event` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`patient_safety_event` SET TAGS ('dbx_subdomain' = 'patient_safety');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`patient_safety_event` ALTER COLUMN `patient_safety_event_id` SET TAGS ('dbx_business_glossary_term' = 'Patient Safety Event ID');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`patient_safety_event` ALTER COLUMN `bed_assignment_id` SET TAGS ('dbx_business_glossary_term' = 'Bed Assignment Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`patient_safety_event` ALTER COLUMN `bed_id` SET TAGS ('dbx_business_glossary_term' = 'Bed Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`patient_safety_event` ALTER COLUMN `care_site_id` SET TAGS ('dbx_business_glossary_term' = 'Facility ID');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`patient_safety_event` ALTER COLUMN `clinician_id` SET TAGS ('dbx_business_glossary_term' = 'Reporting Provider ID');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`patient_safety_event` ALTER COLUMN `contrast_admin_id` SET TAGS ('dbx_business_glossary_term' = 'Contrast Administration Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`patient_safety_event` ALTER COLUMN `critical_result_id` SET TAGS ('dbx_business_glossary_term' = 'Critical Finding Notification Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`patient_safety_event` ALTER COLUMN `consent_record_id` SET TAGS ('dbx_business_glossary_term' = 'Disclosure Consent Record Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`patient_safety_event` ALTER COLUMN `environmental_service_request_id` SET TAGS ('dbx_business_glossary_term' = 'Environmental Service Request Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`patient_safety_event` ALTER COLUMN `equipment_asset_id` SET TAGS ('dbx_business_glossary_term' = 'Equipment Asset Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`patient_safety_event` ALTER COLUMN `hazardous_material_id` SET TAGS ('dbx_business_glossary_term' = 'Hazardous Material Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`patient_safety_event` ALTER COLUMN `hotline_report_id` SET TAGS ('dbx_business_glossary_term' = 'Hotline Report Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`patient_safety_event` ALTER COLUMN `imaging_order_id` SET TAGS ('dbx_business_glossary_term' = 'Imaging Order Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`patient_safety_event` ALTER COLUMN `investigation_id` SET TAGS ('dbx_business_glossary_term' = 'Investigation Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`patient_safety_event` ALTER COLUMN `maintenance_order_id` SET TAGS ('dbx_business_glossary_term' = 'Maintenance Order Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`patient_safety_event` ALTER COLUMN `material_master_id` SET TAGS ('dbx_business_glossary_term' = 'Material Master Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`patient_safety_event` ALTER COLUMN `mpi_record_id` SET TAGS ('dbx_business_glossary_term' = 'Patient ID');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`patient_safety_event` ALTER COLUMN `mpi_record_id` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`patient_safety_event` ALTER COLUMN `mpi_record_id` SET TAGS ('dbx_pii_health' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`patient_safety_event` ALTER COLUMN `or_suite_id` SET TAGS ('dbx_business_glossary_term' = 'Or Suite Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`patient_safety_event` ALTER COLUMN `primary_patient_employee_id` SET TAGS ('dbx_business_glossary_term' = 'Risk Manager ID');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`patient_safety_event` ALTER COLUMN `primary_patient_employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`patient_safety_event` ALTER COLUMN `primary_patient_employee_id` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`patient_safety_event` ALTER COLUMN `dose_record_id` SET TAGS ('dbx_business_glossary_term' = 'Radiation Dose Record Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`patient_safety_event` ALTER COLUMN `radiology_study_id` SET TAGS ('dbx_business_glossary_term' = 'Imaging Study Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`patient_safety_event` ALTER COLUMN `room_id` SET TAGS ('dbx_business_glossary_term' = 'Room Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`patient_safety_event` ALTER COLUMN `subject_enrollment_id` SET TAGS ('dbx_business_glossary_term' = 'Subject Enrollment Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`patient_safety_event` ALTER COLUMN `triage_assessment_id` SET TAGS ('dbx_business_glossary_term' = 'Triage Assessment Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`patient_safety_event` ALTER COLUMN `triage_assessment_id` SET TAGS ('dbx_pii_category' = 'person_data');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`patient_safety_event` ALTER COLUMN `udi_record_id` SET TAGS ('dbx_business_glossary_term' = 'Udi Record Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`patient_safety_event` ALTER COLUMN `visit_id` SET TAGS ('dbx_business_glossary_term' = 'Encounter ID');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`patient_safety_event` ALTER COLUMN `action_plan_completion_date` SET TAGS ('dbx_business_glossary_term' = 'Corrective Action Plan Completion Date');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`patient_safety_event` ALTER COLUMN `action_plan_due_date` SET TAGS ('dbx_business_glossary_term' = 'Corrective Action Plan Due Date');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`patient_safety_event` ALTER COLUMN `action_plan_status` SET TAGS ('dbx_business_glossary_term' = 'Corrective Action Plan Status');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`patient_safety_event` ALTER COLUMN `action_plan_status` SET TAGS ('dbx_value_regex' = 'not_started|in_progress|completed|overdue|verified');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`patient_safety_event` ALTER COLUMN `action_plan_summary` SET TAGS ('dbx_business_glossary_term' = 'Corrective Action Plan Summary');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`patient_safety_event` ALTER COLUMN `confidentiality_indicator` SET TAGS ('dbx_business_glossary_term' = 'Peer Review Confidentiality Indicator');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`patient_safety_event` ALTER COLUMN `confidentiality_indicator` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`patient_safety_event` ALTER COLUMN `contributing_factors_summary` SET TAGS ('dbx_business_glossary_term' = 'Contributing Factors Summary');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`patient_safety_event` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`patient_safety_event` ALTER COLUMN `disclosure_date` SET TAGS ('dbx_business_glossary_term' = 'Patient Disclosure Date');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`patient_safety_event` ALTER COLUMN `disclosure_status` SET TAGS ('dbx_business_glossary_term' = 'Patient Disclosure Status');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`patient_safety_event` ALTER COLUMN `disclosure_status` SET TAGS ('dbx_value_regex' = 'not_required|pending|disclosed|declined_by_patient');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`patient_safety_event` ALTER COLUMN `effectiveness_verification_date` SET TAGS ('dbx_business_glossary_term' = 'Effectiveness Verification Date');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`patient_safety_event` ALTER COLUMN `effectiveness_verified` SET TAGS ('dbx_business_glossary_term' = 'Effectiveness Verified Indicator');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`patient_safety_event` ALTER COLUMN `event_category` SET TAGS ('dbx_business_glossary_term' = 'Patient Safety Event Category');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`patient_safety_event` ALTER COLUMN `event_description` SET TAGS ('dbx_business_glossary_term' = 'Patient Safety Event Description');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`patient_safety_event` ALTER COLUMN `event_description` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`patient_safety_event` ALTER COLUMN `event_description` SET TAGS ('dbx_pii_health' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`patient_safety_event` ALTER COLUMN `event_number` SET TAGS ('dbx_business_glossary_term' = 'Patient Safety Event Number');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`patient_safety_event` ALTER COLUMN `event_status` SET TAGS ('dbx_business_glossary_term' = 'Patient Safety Event Status');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`patient_safety_event` ALTER COLUMN `event_status` SET TAGS ('dbx_value_regex' = 'reported|under_review|rca_in_progress|action_plan_active|closed|voided');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`patient_safety_event` ALTER COLUMN `event_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Patient Safety Event Occurrence Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`patient_safety_event` ALTER COLUMN `event_type` SET TAGS ('dbx_business_glossary_term' = 'Patient Safety Event Type');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`patient_safety_event` ALTER COLUMN `event_type` SET TAGS ('dbx_value_regex' = 'sentinel_event|serious_safety_event|near_miss|unsafe_condition|no_harm_event');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`patient_safety_event` ALTER COLUMN `hai_event_type` SET TAGS ('dbx_business_glossary_term' = 'Healthcare-Associated Infection (HAI) Event Type');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`patient_safety_event` ALTER COLUMN `hai_event_type` SET TAGS ('dbx_value_regex' = 'CLABSI|CAUTI|SSI|VAP|CDIFF|none');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`patient_safety_event` ALTER COLUMN `harm_level_code` SET TAGS ('dbx_business_glossary_term' = 'Harm Level Code (NCC MERP)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`patient_safety_event` ALTER COLUMN `harm_level_code` SET TAGS ('dbx_value_regex' = 'A|B|C|D|E|F');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`patient_safety_event` ALTER COLUMN `harm_level_description` SET TAGS ('dbx_business_glossary_term' = 'Harm Level Description');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`patient_safety_event` ALTER COLUMN `immediate_actions_taken` SET TAGS ('dbx_business_glossary_term' = 'Immediate Actions Taken');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`patient_safety_event` ALTER COLUMN `is_cms_reportable` SET TAGS ('dbx_business_glossary_term' = 'Centers for Medicare and Medicaid Services (CMS) Reportable Indicator');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`patient_safety_event` ALTER COLUMN `is_sentinel_event` SET TAGS ('dbx_business_glossary_term' = 'Sentinel Event Indicator');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`patient_safety_event` ALTER COLUMN `is_state_reportable` SET TAGS ('dbx_business_glossary_term' = 'State Regulatory Reportable Indicator');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`patient_safety_event` ALTER COLUMN `is_state_reportable` SET TAGS ('dbx_pii_category' = 'person_data');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`patient_safety_event` ALTER COLUMN `location_unit` SET TAGS ('dbx_business_glossary_term' = 'Event Location Unit');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`patient_safety_event` ALTER COLUMN `patient_outcome` SET TAGS ('dbx_business_glossary_term' = 'Patient Outcome');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`patient_safety_event` ALTER COLUMN `patient_outcome` SET TAGS ('dbx_value_regex' = 'no_harm|temporary_harm|permanent_harm|required_intervention|death|unknown');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`patient_safety_event` ALTER COLUMN `patient_outcome` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`patient_safety_event` ALTER COLUMN `patient_outcome` SET TAGS ('dbx_pii_health' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`patient_safety_event` ALTER COLUMN `report_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Patient Safety Event Report Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`patient_safety_event` ALTER COLUMN `review_completion_date` SET TAGS ('dbx_business_glossary_term' = 'Investigation Review Completion Date');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`patient_safety_event` ALTER COLUMN `review_due_date` SET TAGS ('dbx_business_glossary_term' = 'Investigation Review Due Date');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`patient_safety_event` ALTER COLUMN `review_start_date` SET TAGS ('dbx_business_glossary_term' = 'Investigation Review Start Date');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`patient_safety_event` ALTER COLUMN `review_team_members` SET TAGS ('dbx_business_glossary_term' = 'Review Team Members');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`patient_safety_event` ALTER COLUMN `review_type` SET TAGS ('dbx_business_glossary_term' = 'Investigation Review Type');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`patient_safety_event` ALTER COLUMN `review_type` SET TAGS ('dbx_value_regex' = 'RCA|ACA|apparent_cause|peer_review|no_review_required');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`patient_safety_event` ALTER COLUMN `root_causes_identified` SET TAGS ('dbx_business_glossary_term' = 'Root Causes Identified');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`patient_safety_event` ALTER COLUMN `source_event_reference` SET TAGS ('dbx_business_glossary_term' = 'Source System Event ID');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`patient_safety_event` ALTER COLUMN `tjc_acknowledgment_date` SET TAGS ('dbx_business_glossary_term' = 'The Joint Commission (TJC) Acknowledgment Date');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`patient_safety_event` ALTER COLUMN `tjc_submission_date` SET TAGS ('dbx_business_glossary_term' = 'The Joint Commission (TJC) Submission Date');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`patient_safety_event` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Last Updated Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`safety_event_review` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`safety_event_review` SET TAGS ('dbx_subdomain' = 'patient_safety');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`safety_event_review` ALTER COLUMN `safety_event_review_id` SET TAGS ('dbx_business_glossary_term' = 'Safety Event Review ID');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`safety_event_review` ALTER COLUMN `care_site_id` SET TAGS ('dbx_business_glossary_term' = 'Facility ID');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`safety_event_review` ALTER COLUMN `quality_committee_id` SET TAGS ('dbx_business_glossary_term' = 'Committee Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`safety_event_review` ALTER COLUMN `corrective_action_plan_id` SET TAGS ('dbx_business_glossary_term' = 'Corrective Action Plan Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`safety_event_review` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Lead Reviewer ID');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`safety_event_review` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`safety_event_review` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`safety_event_review` ALTER COLUMN `mpi_record_id` SET TAGS ('dbx_business_glossary_term' = 'Patient ID');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`safety_event_review` ALTER COLUMN `mpi_record_id` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`safety_event_review` ALTER COLUMN `mpi_record_id` SET TAGS ('dbx_pii_health' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`safety_event_review` ALTER COLUMN `patient_safety_event_id` SET TAGS ('dbx_business_glossary_term' = 'Safety Event ID');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`safety_event_review` ALTER COLUMN `prior_review_safety_event_review_id` SET TAGS ('dbx_business_glossary_term' = 'Prior Review ID');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`safety_event_review` ALTER COLUMN `visit_id` SET TAGS ('dbx_business_glossary_term' = 'Encounter ID');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`safety_event_review` ALTER COLUMN `action_plan_completed_date` SET TAGS ('dbx_business_glossary_term' = 'Action Plan Completed Date');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`safety_event_review` ALTER COLUMN `action_plan_due_date` SET TAGS ('dbx_business_glossary_term' = 'Action Plan Due Date');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`safety_event_review` ALTER COLUMN `action_plan_status` SET TAGS ('dbx_business_glossary_term' = 'Action Plan Status');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`safety_event_review` ALTER COLUMN `action_plan_status` SET TAGS ('dbx_value_regex' = 'Not Started|In Progress|Completed|Overdue|Cancelled');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`safety_event_review` ALTER COLUMN `action_plan_summary` SET TAGS ('dbx_business_glossary_term' = 'Action Plan Summary');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`safety_event_review` ALTER COLUMN `care_setting` SET TAGS ('dbx_business_glossary_term' = 'Care Setting');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`safety_event_review` ALTER COLUMN `cms_reportable_flag` SET TAGS ('dbx_business_glossary_term' = 'Centers for Medicare and Medicaid Services (CMS) Reportable Flag');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`safety_event_review` ALTER COLUMN `contributing_factors_summary` SET TAGS ('dbx_business_glossary_term' = 'Contributing Factors Summary');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`safety_event_review` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`safety_event_review` ALTER COLUMN `department_unit` SET TAGS ('dbx_business_glossary_term' = 'Department / Unit Name');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`safety_event_review` ALTER COLUMN `disclosure_date` SET TAGS ('dbx_business_glossary_term' = 'Patient Disclosure Date');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`safety_event_review` ALTER COLUMN `disclosure_to_patient_flag` SET TAGS ('dbx_business_glossary_term' = 'Disclosure to Patient Flag');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`safety_event_review` ALTER COLUMN `effectiveness_verification_date` SET TAGS ('dbx_business_glossary_term' = 'Effectiveness Verification Date');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`safety_event_review` ALTER COLUMN `effectiveness_verification_notes` SET TAGS ('dbx_business_glossary_term' = 'Effectiveness Verification Notes');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`safety_event_review` ALTER COLUMN `effectiveness_verification_status` SET TAGS ('dbx_business_glossary_term' = 'Effectiveness Verification Status');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`safety_event_review` ALTER COLUMN `effectiveness_verification_status` SET TAGS ('dbx_value_regex' = 'Pending|In Progress|Verified Effective|Verified Ineffective|Inconclusive');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`safety_event_review` ALTER COLUMN `event_category` SET TAGS ('dbx_business_glossary_term' = 'Safety Event Category');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`safety_event_review` ALTER COLUMN `event_category` SET TAGS ('dbx_value_regex' = 'Sentinel Event|Serious Safety Event|Near Miss|Precursor|No Harm Event');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`safety_event_review` ALTER COLUMN `event_date` SET TAGS ('dbx_business_glossary_term' = 'Safety Event Date');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`safety_event_review` ALTER COLUMN `event_type_code` SET TAGS ('dbx_business_glossary_term' = 'Safety Event Type Code');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`safety_event_review` ALTER COLUMN `event_type_description` SET TAGS ('dbx_business_glossary_term' = 'Safety Event Type Description');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`safety_event_review` ALTER COLUMN `hai_event_type` SET TAGS ('dbx_business_glossary_term' = 'Healthcare-Associated Infection (HAI) Event Type');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`safety_event_review` ALTER COLUMN `harm_level` SET TAGS ('dbx_business_glossary_term' = 'Harm Level (NCC MERP Index)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`safety_event_review` ALTER COLUMN `harm_level` SET TAGS ('dbx_value_regex' = 'E - Temporary Harm|F - Temporary Harm with Intervention|G - Permanent Harm|H - Life-Sustaining Intervention|I - Death');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`safety_event_review` ALTER COLUMN `icd10_diagnosis_code` SET TAGS ('dbx_business_glossary_term' = 'International Classification of Diseases 10th Revision (ICD-10) Diagnosis Code');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`safety_event_review` ALTER COLUMN `icd10_diagnosis_code` SET TAGS ('dbx_value_regex' = '^[A-Z][0-9]{2}(.[A-Z0-9]{1,4})?$');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`safety_event_review` ALTER COLUMN `icd10_diagnosis_code` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`safety_event_review` ALTER COLUMN `icd10_diagnosis_code` SET TAGS ('dbx_pii_health' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`safety_event_review` ALTER COLUMN `patient_safety_indicator_code` SET TAGS ('dbx_business_glossary_term' = 'Patient Safety Indicator (PSI) Code');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`safety_event_review` ALTER COLUMN `quality_committee_review_flag` SET TAGS ('dbx_business_glossary_term' = 'Quality Committee Review Flag');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`safety_event_review` ALTER COLUMN `recurrence_flag` SET TAGS ('dbx_business_glossary_term' = 'Recurrence Flag');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`safety_event_review` ALTER COLUMN `review_approved_date` SET TAGS ('dbx_business_glossary_term' = 'Review Approved Date');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`safety_event_review` ALTER COLUMN `review_completed_date` SET TAGS ('dbx_business_glossary_term' = 'Review Completed Date');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`safety_event_review` ALTER COLUMN `review_initiated_date` SET TAGS ('dbx_business_glossary_term' = 'Review Initiated Date');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`safety_event_review` ALTER COLUMN `review_number` SET TAGS ('dbx_business_glossary_term' = 'Review Number');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`safety_event_review` ALTER COLUMN `review_status` SET TAGS ('dbx_business_glossary_term' = 'Review Status');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`safety_event_review` ALTER COLUMN `review_status` SET TAGS ('dbx_value_regex' = 'Initiated|In Progress|Pending Approval|Completed|Closed|Cancelled');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`safety_event_review` ALTER COLUMN `review_team_composition` SET TAGS ('dbx_business_glossary_term' = 'Review Team Composition');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`safety_event_review` ALTER COLUMN `review_team_size` SET TAGS ('dbx_business_glossary_term' = 'Review Team Size');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`safety_event_review` ALTER COLUMN `review_type` SET TAGS ('dbx_business_glossary_term' = 'Review Type');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`safety_event_review` ALTER COLUMN `review_type` SET TAGS ('dbx_value_regex' = 'RCA|ACA|FMEA|Peer Review|Mortality Review|Near Miss Review');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`safety_event_review` ALTER COLUMN `risk_score` SET TAGS ('dbx_business_glossary_term' = 'Risk Score');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`safety_event_review` ALTER COLUMN `root_cause_category` SET TAGS ('dbx_business_glossary_term' = 'Root Cause Category');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`safety_event_review` ALTER COLUMN `root_cause_summary` SET TAGS ('dbx_business_glossary_term' = 'Root Cause Summary');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`safety_event_review` ALTER COLUMN `source_system_code` SET TAGS ('dbx_business_glossary_term' = 'Source System Code');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`safety_event_review` ALTER COLUMN `state_reportable_flag` SET TAGS ('dbx_business_glossary_term' = 'State Reportable Flag');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`safety_event_review` ALTER COLUMN `state_reportable_flag` SET TAGS ('dbx_pii_category' = 'person_data');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`safety_event_review` ALTER COLUMN `tjc_reportable_flag` SET TAGS ('dbx_business_glossary_term' = 'The Joint Commission (TJC) Reportable Flag');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`safety_event_review` ALTER COLUMN `tjc_reported_date` SET TAGS ('dbx_business_glossary_term' = 'The Joint Commission (TJC) Reported Date');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`safety_event_review` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Updated Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`mortality_review` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`mortality_review` SET TAGS ('dbx_subdomain' = 'patient_safety');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`mortality_review` ALTER COLUMN `mortality_review_id` SET TAGS ('dbx_business_glossary_term' = 'Mortality Review ID');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`mortality_review` ALTER COLUMN `care_site_id` SET TAGS ('dbx_business_glossary_term' = 'Facility ID');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`mortality_review` ALTER COLUMN `quality_committee_id` SET TAGS ('dbx_business_glossary_term' = 'Peer Review Committee ID');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`mortality_review` ALTER COLUMN `drg_id` SET TAGS ('dbx_business_glossary_term' = 'Drg Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`mortality_review` ALTER COLUMN `investigation_id` SET TAGS ('dbx_business_glossary_term' = 'Investigation Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`mortality_review` ALTER COLUMN `invoice_id` SET TAGS ('dbx_business_glossary_term' = 'Invoice Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`mortality_review` ALTER COLUMN `mpi_record_id` SET TAGS ('dbx_business_glossary_term' = 'Patient ID');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`mortality_review` ALTER COLUMN `mpi_record_id` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`mortality_review` ALTER COLUMN `mpi_record_id` SET TAGS ('dbx_pii_identifier' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`mortality_review` ALTER COLUMN `clinician_id` SET TAGS ('dbx_business_glossary_term' = 'Attending Provider ID');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`mortality_review` ALTER COLUMN `consent_record_id` SET TAGS ('dbx_business_glossary_term' = 'Review Consent Record Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`mortality_review` ALTER COLUMN `reviewer_provider_clinician_id` SET TAGS ('dbx_business_glossary_term' = 'Primary Reviewer Provider ID');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`mortality_review` ALTER COLUMN `specialty_id` SET TAGS ('dbx_business_glossary_term' = 'Specialty Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`mortality_review` ALTER COLUMN `subject_enrollment_id` SET TAGS ('dbx_business_glossary_term' = 'Subject Enrollment Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`mortality_review` ALTER COLUMN `udi_record_id` SET TAGS ('dbx_business_glossary_term' = 'Udi Record Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`mortality_review` ALTER COLUMN `unit_id` SET TAGS ('dbx_business_glossary_term' = 'Unit Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`mortality_review` ALTER COLUMN `visit_id` SET TAGS ('dbx_business_glossary_term' = 'Encounter ID');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`mortality_review` ALTER COLUMN `action_plan_due_date` SET TAGS ('dbx_business_glossary_term' = 'Action Plan Due Date');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`mortality_review` ALTER COLUMN `action_plan_required_flag` SET TAGS ('dbx_business_glossary_term' = 'Action Plan Required Flag');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`mortality_review` ALTER COLUMN `care_quality_rating` SET TAGS ('dbx_business_glossary_term' = 'Care Quality Rating');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`mortality_review` ALTER COLUMN `care_quality_rating` SET TAGS ('dbx_value_regex' = 'optimal|suboptimal|poor|not_applicable');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`mortality_review` ALTER COLUMN `cdi_query_initiated_flag` SET TAGS ('dbx_business_glossary_term' = 'Clinical Documentation Improvement (CDI) Query Initiated Flag');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`mortality_review` ALTER COLUMN `cmi_impact_flag` SET TAGS ('dbx_business_glossary_term' = 'Case Mix Index (CMI) Impact Flag');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`mortality_review` ALTER COLUMN `cms_mortality_measure_code` SET TAGS ('dbx_business_glossary_term' = 'CMS Mortality Outcome Measure Code');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`mortality_review` ALTER COLUMN `cms_mortality_measure_flag` SET TAGS ('dbx_business_glossary_term' = 'CMS Mortality Outcome Measure Flag');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`mortality_review` ALTER COLUMN `committee_findings_summary` SET TAGS ('dbx_business_glossary_term' = 'Committee Findings Summary');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`mortality_review` ALTER COLUMN `committee_findings_summary` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`mortality_review` ALTER COLUMN `committee_review_date` SET TAGS ('dbx_business_glossary_term' = 'Committee Review Date');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`mortality_review` ALTER COLUMN `confidentiality_protection_flag` SET TAGS ('dbx_business_glossary_term' = 'Peer Review Confidentiality Protection Flag');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`mortality_review` ALTER COLUMN `contributing_factor_1` SET TAGS ('dbx_business_glossary_term' = 'Contributing Clinical Factor 1');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`mortality_review` ALTER COLUMN `contributing_factor_2` SET TAGS ('dbx_business_glossary_term' = 'Contributing Clinical Factor 2');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`mortality_review` ALTER COLUMN `contributing_factor_3` SET TAGS ('dbx_business_glossary_term' = 'Contributing Clinical Factor 3');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`mortality_review` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`mortality_review` ALTER COLUMN `days_from_admission_to_death` SET TAGS ('dbx_business_glossary_term' = 'Days from Admission to Death');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`mortality_review` ALTER COLUMN `death_classification` SET TAGS ('dbx_business_glossary_term' = 'Death Classification');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`mortality_review` ALTER COLUMN `death_classification` SET TAGS ('dbx_value_regex' = 'expected|unexpected|indeterminate');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`mortality_review` ALTER COLUMN `death_date` SET TAGS ('dbx_business_glossary_term' = 'Date of Death');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`mortality_review` ALTER COLUMN `death_date` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`mortality_review` ALTER COLUMN `death_date` SET TAGS ('dbx_pii_health' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`mortality_review` ALTER COLUMN `death_location_type` SET TAGS ('dbx_business_glossary_term' = 'Death Location Type');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`mortality_review` ALTER COLUMN `death_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Date and Time of Death');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`mortality_review` ALTER COLUMN `death_timestamp` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`mortality_review` ALTER COLUMN `death_timestamp` SET TAGS ('dbx_pii_health' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`mortality_review` ALTER COLUMN `dnr_status_at_death` SET TAGS ('dbx_business_glossary_term' = 'Do Not Resuscitate (DNR) Status at Time of Death');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`mortality_review` ALTER COLUMN `dnr_status_at_death` SET TAGS ('dbx_value_regex' = 'full_code|dnr|dni|dnr_dni|comfort_care');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`mortality_review` ALTER COLUMN `hai_related_flag` SET TAGS ('dbx_business_glossary_term' = 'Healthcare-Associated Infection (HAI) Related Flag');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`mortality_review` ALTER COLUMN `hai_type` SET TAGS ('dbx_business_glossary_term' = 'Healthcare-Associated Infection (HAI) Type');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`mortality_review` ALTER COLUMN `hospice_enrolled_flag` SET TAGS ('dbx_business_glossary_term' = 'Hospice Enrollment Flag');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`mortality_review` ALTER COLUMN `improvement_recommendation` SET TAGS ('dbx_business_glossary_term' = 'Improvement Recommendation');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`mortality_review` ALTER COLUMN `improvement_recommendation` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`mortality_review` ALTER COLUMN `mips_reportable_flag` SET TAGS ('dbx_business_glossary_term' = 'Merit-Based Incentive Payment System (MIPS) Reportable Flag');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`mortality_review` ALTER COLUMN `palliative_care_involved_flag` SET TAGS ('dbx_business_glossary_term' = 'Palliative Care Involvement Flag');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`mortality_review` ALTER COLUMN `preventability_determination` SET TAGS ('dbx_business_glossary_term' = 'Preventability Determination');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`mortality_review` ALTER COLUMN `preventability_determination` SET TAGS ('dbx_value_regex' = 'preventable|potentially_preventable|not_preventable|indeterminate');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`mortality_review` ALTER COLUMN `primary_cause_of_death_description` SET TAGS ('dbx_business_glossary_term' = 'Primary Cause of Death Description');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`mortality_review` ALTER COLUMN `primary_icd10_cause_of_death` SET TAGS ('dbx_business_glossary_term' = 'Primary ICD-10 Cause of Death Code');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`mortality_review` ALTER COLUMN `primary_icd10_cause_of_death` SET TAGS ('dbx_value_regex' = '^[A-Z][0-9A-Z]{2,6}$');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`mortality_review` ALTER COLUMN `readmission_related_flag` SET TAGS ('dbx_business_glossary_term' = 'Readmission-Related Death Flag');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`mortality_review` ALTER COLUMN `review_case_number` SET TAGS ('dbx_business_glossary_term' = 'Mortality Review Case Number');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`mortality_review` ALTER COLUMN `review_completed_date` SET TAGS ('dbx_business_glossary_term' = 'Review Completed Date');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`mortality_review` ALTER COLUMN `review_initiated_date` SET TAGS ('dbx_business_glossary_term' = 'Review Initiated Date');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`mortality_review` ALTER COLUMN `review_status` SET TAGS ('dbx_business_glossary_term' = 'Mortality Review Status');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`mortality_review` ALTER COLUMN `review_status` SET TAGS ('dbx_value_regex' = 'initiated|in_review|pending_committee|completed|closed|voided');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`mortality_review` ALTER COLUMN `review_trigger_type` SET TAGS ('dbx_business_glossary_term' = 'Mortality Review Trigger Type');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`mortality_review` ALTER COLUMN `root_cause_analysis_required_flag` SET TAGS ('dbx_business_glossary_term' = 'Root Cause Analysis (RCA) Required Flag');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`mortality_review` ALTER COLUMN `sentinel_event_flag` SET TAGS ('dbx_business_glossary_term' = 'Sentinel Event Flag');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`mortality_review` ALTER COLUMN `surgical_case_flag` SET TAGS ('dbx_business_glossary_term' = 'Surgical Case Flag');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`mortality_review` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Updated Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`vbp_program` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`vbp_program` SET TAGS ('dbx_subdomain' = 'measure_performance');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`vbp_program` ALTER COLUMN `vbp_program_id` SET TAGS ('dbx_business_glossary_term' = 'Value-Based Purchasing (VBP) Program ID');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`vbp_program` ALTER COLUMN `budget_id` SET TAGS ('dbx_business_glossary_term' = 'Budget Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`vbp_program` ALTER COLUMN `compliance_regulatory_submission_id` SET TAGS ('dbx_business_glossary_term' = 'Regulatory Submission Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`vbp_program` ALTER COLUMN `payer_id` SET TAGS ('dbx_business_glossary_term' = 'Payer Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`vbp_program` ALTER COLUMN `promoting_interoperability_id` SET TAGS ('dbx_business_glossary_term' = 'Promoting Interoperability Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`vbp_program` ALTER COLUMN `quality_program_id` SET TAGS ('dbx_business_glossary_term' = 'Quality Program Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`vbp_program` ALTER COLUMN `achievement_benchmark_percentile` SET TAGS ('dbx_business_glossary_term' = 'Achievement Benchmark Percentile');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`vbp_program` ALTER COLUMN `achievement_threshold_percentile` SET TAGS ('dbx_business_glossary_term' = 'Achievement Threshold Percentile');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`vbp_program` ALTER COLUMN `applicable_provider_type` SET TAGS ('dbx_business_glossary_term' = 'Applicable Provider Type');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`vbp_program` ALTER COLUMN `applicable_provider_type` SET TAGS ('dbx_value_regex' = 'acute_care_hospital|critical_access_hospital|psychiatric_hospital|long_term_care|skilled_nursing_facility|home_health_agency');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`vbp_program` ALTER COLUMN `approved_by` SET TAGS ('dbx_business_glossary_term' = 'Program Configuration Approved By');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`vbp_program` ALTER COLUMN `approved_date` SET TAGS ('dbx_business_glossary_term' = 'Program Configuration Approved Date');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`vbp_program` ALTER COLUMN `baseline_period_end` SET TAGS ('dbx_business_glossary_term' = 'Baseline Period End Date');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`vbp_program` ALTER COLUMN `baseline_period_start` SET TAGS ('dbx_business_glossary_term' = 'Baseline Period Start Date');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`vbp_program` ALTER COLUMN `cahps_survey_vendor_required` SET TAGS ('dbx_business_glossary_term' = 'CAHPS Survey Approved Vendor Required Flag');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`vbp_program` ALTER COLUMN `clinical_outcomes_domain_weight` SET TAGS ('dbx_business_glossary_term' = 'Clinical Outcomes Domain Weight');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`vbp_program` ALTER COLUMN `cms_program_code` SET TAGS ('dbx_business_glossary_term' = 'Centers for Medicare and Medicaid Services (CMS) Program Identifier');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`vbp_program` ALTER COLUMN `cms_program_code` SET TAGS ('dbx_value_regex' = '^CMS-VBP-[0-9]{4}-[A-Z0-9]+$');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`vbp_program` ALTER COLUMN `correction_window_end` SET TAGS ('dbx_business_glossary_term' = 'VBP Score Correction Window End Date');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`vbp_program` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`vbp_program` ALTER COLUMN `efficiency_cost_reduction_weight` SET TAGS ('dbx_business_glossary_term' = 'Efficiency and Cost Reduction Domain Weight');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`vbp_program` ALTER COLUMN `federal_register_notice` SET TAGS ('dbx_business_glossary_term' = 'Federal Register Notice Reference');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`vbp_program` ALTER COLUMN `final_score_publication_date` SET TAGS ('dbx_business_glossary_term' = 'VBP Final Score Publication Date');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`vbp_program` ALTER COLUMN `fiscal_year` SET TAGS ('dbx_business_glossary_term' = 'CMS Fiscal Year');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`vbp_program` ALTER COLUMN `is_new_measure_set` SET TAGS ('dbx_business_glossary_term' = 'New Measure Set Indicator');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`vbp_program` ALTER COLUMN `max_achievement_points` SET TAGS ('dbx_business_glossary_term' = 'Maximum Achievement Points');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`vbp_program` ALTER COLUMN `max_domain_score` SET TAGS ('dbx_business_glossary_term' = 'Maximum Domain Score');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`vbp_program` ALTER COLUMN `max_improvement_points` SET TAGS ('dbx_business_glossary_term' = 'Maximum Improvement Points');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`vbp_program` ALTER COLUMN `max_payment_adjustment_factor` SET TAGS ('dbx_business_glossary_term' = 'Maximum VBP Payment Adjustment Factor');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`vbp_program` ALTER COLUMN `max_tps` SET TAGS ('dbx_business_glossary_term' = 'Maximum Total Performance Score (TPS)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`vbp_program` ALTER COLUMN `measure_set_version` SET TAGS ('dbx_business_glossary_term' = 'VBP Measure Set Version');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`vbp_program` ALTER COLUMN `min_case_volume_required` SET TAGS ('dbx_business_glossary_term' = 'Minimum Case Volume Required for Measure Eligibility');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`vbp_program` ALTER COLUMN `min_measure_count_required` SET TAGS ('dbx_business_glossary_term' = 'Minimum Measure Count Required for Scoring');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`vbp_program` ALTER COLUMN `min_payment_adjustment_factor` SET TAGS ('dbx_business_glossary_term' = 'Minimum VBP Payment Adjustment Factor');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`vbp_program` ALTER COLUMN `nqf_alignment_flag` SET TAGS ('dbx_business_glossary_term' = 'National Quality Forum (NQF) Measure Alignment Flag');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`vbp_program` ALTER COLUMN `payment_adjustment_formula` SET TAGS ('dbx_business_glossary_term' = 'VBP Payment Adjustment Formula Description');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`vbp_program` ALTER COLUMN `payment_year` SET TAGS ('dbx_business_glossary_term' = 'VBP Payment Year');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`vbp_program` ALTER COLUMN `performance_period_end` SET TAGS ('dbx_business_glossary_term' = 'Performance Period End Date');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`vbp_program` ALTER COLUMN `performance_period_start` SET TAGS ('dbx_business_glossary_term' = 'Performance Period Start Date');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`vbp_program` ALTER COLUMN `person_community_engagement_weight` SET TAGS ('dbx_business_glossary_term' = 'Person and Community Engagement Domain Weight');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`vbp_program` ALTER COLUMN `person_community_engagement_weight` SET TAGS ('dbx_pii_category' = 'person_data');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`vbp_program` ALTER COLUMN `preview_report_release_date` SET TAGS ('dbx_business_glossary_term' = 'VBP Preview Report Release Date');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`vbp_program` ALTER COLUMN `program_code` SET TAGS ('dbx_business_glossary_term' = 'Value-Based Purchasing (VBP) Program Code');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`vbp_program` ALTER COLUMN `program_code` SET TAGS ('dbx_value_regex' = '^VBP-[A-Z0-9]{3,20}$');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`vbp_program` ALTER COLUMN `program_description` SET TAGS ('dbx_business_glossary_term' = 'VBP Program Description');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`vbp_program` ALTER COLUMN `program_name` SET TAGS ('dbx_business_glossary_term' = 'Value-Based Purchasing (VBP) Program Name');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`vbp_program` ALTER COLUMN `program_status` SET TAGS ('dbx_business_glossary_term' = 'Value-Based Purchasing (VBP) Program Status');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`vbp_program` ALTER COLUMN `program_status` SET TAGS ('dbx_value_regex' = 'active|inactive|pending|suspended|archived');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`vbp_program` ALTER COLUMN `program_type` SET TAGS ('dbx_business_glossary_term' = 'Value-Based Purchasing (VBP) Program Type');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`vbp_program` ALTER COLUMN `program_type` SET TAGS ('dbx_value_regex' = 'HVBP|PVBP|ESRD_QIP|SNF_VBP|HH_VBP');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`vbp_program` ALTER COLUMN `qualitynet_program_code` SET TAGS ('dbx_business_glossary_term' = 'QualityNet Program Code');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`vbp_program` ALTER COLUMN `regulatory_rule_citation` SET TAGS ('dbx_business_glossary_term' = 'Regulatory Rule Citation');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`vbp_program` ALTER COLUMN `safety_domain_weight` SET TAGS ('dbx_business_glossary_term' = 'Safety Domain Weight');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`vbp_program` ALTER COLUMN `total_domain_weight_check` SET TAGS ('dbx_business_glossary_term' = 'Total Domain Weight Validation Sum');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`vbp_program` ALTER COLUMN `tps_methodology` SET TAGS ('dbx_business_glossary_term' = 'Total Performance Score (TPS) Methodology');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`vbp_program` ALTER COLUMN `tps_methodology` SET TAGS ('dbx_value_regex' = 'achievement_improvement_higher|achievement_only|improvement_only');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`vbp_program` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Last Updated Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`vbp_program` ALTER COLUMN `withhold_rate` SET TAGS ('dbx_business_glossary_term' = 'VBP Medicare Payment Withhold Rate');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure` SET TAGS ('dbx_subdomain' = 'measure_performance');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure` ALTER COLUMN `measure_id` SET TAGS ('dbx_business_glossary_term' = 'Measure Identifier');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure` ALTER COLUMN `compliance_policy_id` SET TAGS ('dbx_business_glossary_term' = 'Policy Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure` ALTER COLUMN `cpt_code_id` SET TAGS ('dbx_business_glossary_term' = 'Cpt Code Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure` ALTER COLUMN `drg_id` SET TAGS ('dbx_business_glossary_term' = 'Drg Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure` ALTER COLUMN `health_plan_id` SET TAGS ('dbx_business_glossary_term' = 'Health Plan Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure` ALTER COLUMN `health_plan_id` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure` ALTER COLUMN `health_plan_id` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure` ALTER COLUMN `hedis_measure_id` SET TAGS ('dbx_business_glossary_term' = 'Healthcare Effectiveness Data and Information Set (HEDIS) Measure Identifier');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure` ALTER COLUMN `icd_code_id` SET TAGS ('dbx_business_glossary_term' = 'Icd Code Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure` ALTER COLUMN `loinc_code_id` SET TAGS ('dbx_business_glossary_term' = 'Loinc Code Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure` ALTER COLUMN `active_status` SET TAGS ('dbx_business_glossary_term' = 'Measure Active Status');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure` ALTER COLUMN `active_status` SET TAGS ('dbx_value_regex' = 'active|inactive|retired|draft|under_review');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure` ALTER COLUMN `benchmark_percentile` SET TAGS ('dbx_business_glossary_term' = 'Benchmark Percentile');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure` ALTER COLUMN `benchmark_threshold` SET TAGS ('dbx_business_glossary_term' = 'Benchmark Performance Threshold');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure` ALTER COLUMN `care_setting` SET TAGS ('dbx_business_glossary_term' = 'Care Setting');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure` ALTER COLUMN `clinical_domain` SET TAGS ('dbx_business_glossary_term' = 'Clinical Domain');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure` ALTER COLUMN `cms_ecqm_code` SET TAGS ('dbx_business_glossary_term' = 'Centers for Medicare and Medicaid Services (CMS) Electronic Clinical Quality Measure (eCQM) Identifier');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure` ALTER COLUMN `cms_ecqm_code` SET TAGS ('dbx_value_regex' = '^CMS[0-9]{1,5}v[0-9]{1,3}$');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure` ALTER COLUMN `measure_code` SET TAGS ('dbx_business_glossary_term' = 'Quality Measure Code');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure` ALTER COLUMN `measure_code` SET TAGS ('dbx_value_regex' = '^[A-Z0-9_-]{2,30}$');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure` ALTER COLUMN `cpt_code_set` SET TAGS ('dbx_business_glossary_term' = 'Current Procedural Terminology (CPT) Code Set');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure` ALTER COLUMN `data_source` SET TAGS ('dbx_business_glossary_term' = 'Measure Data Source');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure` ALTER COLUMN `denominator_definition` SET TAGS ('dbx_business_glossary_term' = 'Measure Denominator Definition');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure` ALTER COLUMN `denominator_exception` SET TAGS ('dbx_business_glossary_term' = 'Measure Denominator Exception');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure` ALTER COLUMN `denominator_exclusion` SET TAGS ('dbx_business_glossary_term' = 'Measure Denominator Exclusion');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure` ALTER COLUMN `effective_end_date` SET TAGS ('dbx_business_glossary_term' = 'Measure Effective End Date');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure` ALTER COLUMN `effective_start_date` SET TAGS ('dbx_business_glossary_term' = 'Measure Effective Start Date');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure` ALTER COLUMN `eligible_population_criteria` SET TAGS ('dbx_business_glossary_term' = 'Eligible Population Criteria');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure` ALTER COLUMN `floor_threshold` SET TAGS ('dbx_business_glossary_term' = 'Performance Floor Threshold');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure` ALTER COLUMN `hai_category` SET TAGS ('dbx_business_glossary_term' = 'Healthcare-Associated Infection (HAI) Category');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure` ALTER COLUMN `higher_is_better` SET TAGS ('dbx_business_glossary_term' = 'Higher Score Is Better Indicator');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure` ALTER COLUMN `icd10_code_set` SET TAGS ('dbx_business_glossary_term' = 'International Classification of Diseases 10th Revision (ICD-10) Code Set');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure` ALTER COLUMN `loinc_code_set` SET TAGS ('dbx_business_glossary_term' = 'Logical Observation Identifiers Names and Codes (LOINC) Code Set');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure` ALTER COLUMN `measurement_methodology` SET TAGS ('dbx_business_glossary_term' = 'Measurement Methodology');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure` ALTER COLUMN `measurement_methodology` SET TAGS ('dbx_value_regex' = 'administrative|hybrid|chart_abstracted|ecqm|survey|registry');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure` ALTER COLUMN `measurement_year` SET TAGS ('dbx_business_glossary_term' = 'Measurement Year');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure` ALTER COLUMN `minimum_sample_size` SET TAGS ('dbx_business_glossary_term' = 'Minimum Sample Size');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure` ALTER COLUMN `mips_category` SET TAGS ('dbx_business_glossary_term' = 'Merit-Based Incentive Payment System (MIPS) Category');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure` ALTER COLUMN `mips_category` SET TAGS ('dbx_value_regex' = 'quality|promoting_interoperability|improvement_activities|cost|NONE');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure` ALTER COLUMN `nqf_number` SET TAGS ('dbx_business_glossary_term' = 'National Quality Forum (NQF) Number');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure` ALTER COLUMN `nqf_number` SET TAGS ('dbx_value_regex' = '^NQF-?[0-9]{4}[A-Za-z]?$');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure` ALTER COLUMN `numerator_definition` SET TAGS ('dbx_business_glossary_term' = 'Measure Numerator Definition');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure` ALTER COLUMN `reporting_period_end` SET TAGS ('dbx_business_glossary_term' = 'Reporting Period End Date');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure` ALTER COLUMN `reporting_period_start` SET TAGS ('dbx_business_glossary_term' = 'Reporting Period Start Date');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure` ALTER COLUMN `reporting_program` SET TAGS ('dbx_business_glossary_term' = 'Quality Reporting Program');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure` ALTER COLUMN `risk_adjustment_flag` SET TAGS ('dbx_business_glossary_term' = 'Risk Adjustment Flag');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure` ALTER COLUMN `risk_adjustment_model` SET TAGS ('dbx_business_glossary_term' = 'Risk Adjustment Model');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure` ALTER COLUMN `short_name` SET TAGS ('dbx_business_glossary_term' = 'Quality Measure Short Name');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure` ALTER COLUMN `snomed_code_set` SET TAGS ('dbx_business_glossary_term' = 'Systematized Nomenclature of Medicine Clinical Terms (SNOMED CT) Code Set');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure` ALTER COLUMN `specification_url` SET TAGS ('dbx_business_glossary_term' = 'Measure Specification URL');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure` ALTER COLUMN `steward` SET TAGS ('dbx_business_glossary_term' = 'Quality Measure Steward');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure` ALTER COLUMN `stratification_criteria` SET TAGS ('dbx_business_glossary_term' = 'Measure Stratification Criteria');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure` ALTER COLUMN `submission_deadline` SET TAGS ('dbx_business_glossary_term' = 'Regulatory Submission Deadline');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure` ALTER COLUMN `title` SET TAGS ('dbx_business_glossary_term' = 'Quality Measure Title');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure` ALTER COLUMN `tjc_measure_set` SET TAGS ('dbx_business_glossary_term' = 'The Joint Commission (TJC) Measure Set');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure` ALTER COLUMN `measure_type` SET TAGS ('dbx_business_glossary_term' = 'Quality Measure Type');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure` ALTER COLUMN `measure_type` SET TAGS ('dbx_value_regex' = 'process|outcome|structural|patient_experience|efficiency|intermediate_outcome');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Updated Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure` ALTER COLUMN `vbp_domain` SET TAGS ('dbx_business_glossary_term' = 'Value-Based Purchasing (VBP) Domain');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure` ALTER COLUMN `vbp_domain` SET TAGS ('dbx_value_regex' = 'clinical_care|safety|efficiency|patient_experience|NONE');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure` ALTER COLUMN `version` SET TAGS ('dbx_business_glossary_term' = 'Measure Version');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure` ALTER COLUMN `version` SET TAGS ('dbx_value_regex' = '^[0-9]+.[0-9]+(.[0-9]+)?$');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure_result` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure_result` SET TAGS ('dbx_subdomain' = 'measure_performance');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure_result` ALTER COLUMN `measure_result_id` SET TAGS ('dbx_business_glossary_term' = 'Measure Result ID');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure_result` ALTER COLUMN `audit_id` SET TAGS ('dbx_business_glossary_term' = 'Audit Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure_result` ALTER COLUMN `billing_coverage_id` SET TAGS ('dbx_business_glossary_term' = 'Coverage Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure_result` ALTER COLUMN `billing_coverage_id` SET TAGS ('dbx_pii_category' = 'person_data');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure_result` ALTER COLUMN `care_site_id` SET TAGS ('dbx_business_glossary_term' = 'Facility ID');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure_result` ALTER COLUMN `claim_id` SET TAGS ('dbx_business_glossary_term' = 'Claim Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure_result` ALTER COLUMN `clinician_id` SET TAGS ('dbx_business_glossary_term' = 'Provider ID');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure_result` ALTER COLUMN `compliance_regulatory_submission_id` SET TAGS ('dbx_business_glossary_term' = 'Regulatory Submission Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure_result` ALTER COLUMN `drg_id` SET TAGS ('dbx_business_glossary_term' = 'Drg Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure_result` ALTER COLUMN `health_plan_id` SET TAGS ('dbx_business_glossary_term' = 'Health Plan Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure_result` ALTER COLUMN `health_plan_id` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure_result` ALTER COLUMN `health_plan_id` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure_result` ALTER COLUMN `interface_channel_id` SET TAGS ('dbx_business_glossary_term' = 'Interface Channel Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure_result` ALTER COLUMN `measure_id` SET TAGS ('dbx_business_glossary_term' = 'Measure ID');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure_result` ALTER COLUMN `org_provider_id` SET TAGS ('dbx_business_glossary_term' = 'Org Provider Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure_result` ALTER COLUMN `payer_id` SET TAGS ('dbx_business_glossary_term' = 'Payer ID');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure_result` ALTER COLUMN `radiology_appointment_id` SET TAGS ('dbx_business_glossary_term' = 'Imaging Appointment Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure_result` ALTER COLUMN `report_id` SET TAGS ('dbx_business_glossary_term' = 'Radiology Report Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure_result` ALTER COLUMN `radiology_study_id` SET TAGS ('dbx_business_glossary_term' = 'Imaging Study Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure_result` ALTER COLUMN `reader_assignment_id` SET TAGS ('dbx_business_glossary_term' = 'Radiologist Assignment Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure_result` ALTER COLUMN `research_study_id` SET TAGS ('dbx_business_glossary_term' = 'Research Study Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure_result` ALTER COLUMN `facility_service_id` SET TAGS ('dbx_business_glossary_term' = 'Facility Service Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure_result` ALTER COLUMN `unit_id` SET TAGS ('dbx_business_glossary_term' = 'Unit ID');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure_result` ALTER COLUMN `visit_procedure_id` SET TAGS ('dbx_business_glossary_term' = 'Visit Procedure Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure_result` ALTER COLUMN `benchmark_comparison_result` SET TAGS ('dbx_business_glossary_term' = 'Benchmark Comparison Result');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure_result` ALTER COLUMN `benchmark_comparison_result` SET TAGS ('dbx_value_regex' = 'above_benchmark|at_benchmark|below_benchmark|no_benchmark');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure_result` ALTER COLUMN `cms_submission_date` SET TAGS ('dbx_business_glossary_term' = 'CMS Submission Date');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure_result` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure_result` ALTER COLUMN `data_completeness_rate` SET TAGS ('dbx_business_glossary_term' = 'Data Completeness Rate');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure_result` ALTER COLUMN `denominator_count` SET TAGS ('dbx_business_glossary_term' = 'Denominator Count');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure_result` ALTER COLUMN `exception_count` SET TAGS ('dbx_business_glossary_term' = 'Exception Count');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure_result` ALTER COLUMN `exclusion_count` SET TAGS ('dbx_business_glossary_term' = 'Exclusion Count');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure_result` ALTER COLUMN `gap_count` SET TAGS ('dbx_business_glossary_term' = 'Gap Count');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure_result` ALTER COLUMN `gap_to_target_rate` SET TAGS ('dbx_business_glossary_term' = 'Gap to Target Rate');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure_result` ALTER COLUMN `hai_event_type` SET TAGS ('dbx_business_glossary_term' = 'Healthcare-Associated Infection (HAI) Event Type');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure_result` ALTER COLUMN `hai_event_type` SET TAGS ('dbx_value_regex' = 'CLABSI|CAUTI|SSI|MRSA|CDI|not_applicable');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure_result` ALTER COLUMN `hedis_methodology_indicator` SET TAGS ('dbx_business_glossary_term' = 'HEDIS Methodology Indicator');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure_result` ALTER COLUMN `hedis_methodology_indicator` SET TAGS ('dbx_value_regex' = 'administrative|hybrid|not_applicable');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure_result` ALTER COLUMN `is_publicly_reported` SET TAGS ('dbx_business_glossary_term' = 'Publicly Reported Flag');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure_result` ALTER COLUMN `measure_domain` SET TAGS ('dbx_business_glossary_term' = 'Measure Domain');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure_result` ALTER COLUMN `measurement_level` SET TAGS ('dbx_business_glossary_term' = 'Measurement Level');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure_result` ALTER COLUMN `measurement_level` SET TAGS ('dbx_value_regex' = 'facility|unit|provider|health_plan|population');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure_result` ALTER COLUMN `measurement_methodology` SET TAGS ('dbx_business_glossary_term' = 'Measurement Methodology');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure_result` ALTER COLUMN `measurement_methodology` SET TAGS ('dbx_value_regex' = 'administrative|hybrid|chart_abstracted|registry|ehr_direct');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure_result` ALTER COLUMN `measurement_period_end_date` SET TAGS ('dbx_business_glossary_term' = 'Measurement Period End Date');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure_result` ALTER COLUMN `measurement_period_start_date` SET TAGS ('dbx_business_glossary_term' = 'Measurement Period Start Date');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure_result` ALTER COLUMN `meets_reporting_threshold` SET TAGS ('dbx_business_glossary_term' = 'Meets Reporting Threshold Flag');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure_result` ALTER COLUMN `mips_measure_category` SET TAGS ('dbx_business_glossary_term' = 'Merit-based Incentive Payment System (MIPS) Measure Category');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure_result` ALTER COLUMN `mips_measure_category` SET TAGS ('dbx_value_regex' = 'quality|promoting_interoperability|improvement_activities|cost');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure_result` ALTER COLUMN `mips_points_earned` SET TAGS ('dbx_business_glossary_term' = 'Merit-based Incentive Payment System (MIPS) Points Earned');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure_result` ALTER COLUMN `national_benchmark_rate` SET TAGS ('dbx_business_glossary_term' = 'National Benchmark Rate');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure_result` ALTER COLUMN `ncqa_submission_status` SET TAGS ('dbx_business_glossary_term' = 'National Committee for Quality Assurance (NCQA) Submission Status');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure_result` ALTER COLUMN `ncqa_submission_status` SET TAGS ('dbx_value_regex' = 'not_submitted|submitted|accepted|rejected|pending');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure_result` ALTER COLUMN `nqf_number` SET TAGS ('dbx_business_glossary_term' = 'National Quality Forum (NQF) Number');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure_result` ALTER COLUMN `nqf_number` SET TAGS ('dbx_value_regex' = '^NQF-[0-9]{4}$');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure_result` ALTER COLUMN `numerator_count` SET TAGS ('dbx_business_glossary_term' = 'Numerator Count');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure_result` ALTER COLUMN `payer_submission_status` SET TAGS ('dbx_business_glossary_term' = 'Payer Submission Status');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure_result` ALTER COLUMN `payer_submission_status` SET TAGS ('dbx_value_regex' = 'not_submitted|submitted|accepted|rejected|pending');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure_result` ALTER COLUMN `percentile_rank` SET TAGS ('dbx_business_glossary_term' = 'Percentile Rank');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure_result` ALTER COLUMN `performance_rate` SET TAGS ('dbx_business_glossary_term' = 'Performance Rate');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure_result` ALTER COLUMN `performance_year` SET TAGS ('dbx_business_glossary_term' = 'Performance Year');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure_result` ALTER COLUMN `reporting_program` SET TAGS ('dbx_business_glossary_term' = 'Reporting Program');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure_result` ALTER COLUMN `reporting_quarter` SET TAGS ('dbx_business_glossary_term' = 'Reporting Quarter');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure_result` ALTER COLUMN `result_calculated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Result Calculated Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure_result` ALTER COLUMN `result_status` SET TAGS ('dbx_business_glossary_term' = 'Result Status');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure_result` ALTER COLUMN `result_status` SET TAGS ('dbx_value_regex' = 'draft|final|submitted|accepted|rejected|under_review');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure_result` ALTER COLUMN `sir_value` SET TAGS ('dbx_business_glossary_term' = 'Standardized Infection Ratio (SIR) Value');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure_result` ALTER COLUMN `target_rate` SET TAGS ('dbx_business_glossary_term' = 'Target Rate');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure_result` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Updated Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure_result` ALTER COLUMN `vbp_achievement_score` SET TAGS ('dbx_business_glossary_term' = 'Value-Based Purchasing (VBP) Achievement Score');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure_result` ALTER COLUMN `vbp_domain` SET TAGS ('dbx_business_glossary_term' = 'Value-Based Purchasing (VBP) Domain');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure_result` ALTER COLUMN `vbp_improvement_score` SET TAGS ('dbx_business_glossary_term' = 'Value-Based Purchasing (VBP) Improvement Score');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cdi_review` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cdi_review` SET TAGS ('dbx_subdomain' = 'accreditation_compliance');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cdi_review` ALTER COLUMN `cdi_review_id` SET TAGS ('dbx_business_glossary_term' = 'Clinical Documentation Improvement (CDI) Review ID');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cdi_review` ALTER COLUMN `audit_id` SET TAGS ('dbx_business_glossary_term' = 'Audit Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cdi_review` ALTER COLUMN `care_site_id` SET TAGS ('dbx_business_glossary_term' = 'Facility ID');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cdi_review` ALTER COLUMN `cdi_worksheet_id` SET TAGS ('dbx_business_glossary_term' = 'CDI Worksheet ID');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cdi_review` ALTER COLUMN `clinician_id` SET TAGS ('dbx_business_glossary_term' = 'Attending Provider ID');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cdi_review` ALTER COLUMN `drg_assignment_id` SET TAGS ('dbx_business_glossary_term' = 'Drg Assignment Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cdi_review` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'CDI Reviewer ID');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cdi_review` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cdi_review` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cdi_review` ALTER COLUMN `invoice_id` SET TAGS ('dbx_business_glossary_term' = 'Invoice Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cdi_review` ALTER COLUMN `mpi_record_id` SET TAGS ('dbx_business_glossary_term' = 'Patient ID');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cdi_review` ALTER COLUMN `mpi_record_id` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cdi_review` ALTER COLUMN `mpi_record_id` SET TAGS ('dbx_pii_health' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cdi_review` ALTER COLUMN `specialty_id` SET TAGS ('dbx_business_glossary_term' = 'Specialty Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cdi_review` ALTER COLUMN `subject_enrollment_id` SET TAGS ('dbx_business_glossary_term' = 'Subject Enrollment Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cdi_review` ALTER COLUMN `unit_id` SET TAGS ('dbx_business_glossary_term' = 'Unit Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cdi_review` ALTER COLUMN `visit_id` SET TAGS ('dbx_business_glossary_term' = 'Encounter ID');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cdi_review` ALTER COLUMN `drg_id` SET TAGS ('dbx_business_glossary_term' = 'Working Drg Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cdi_review` ALTER COLUMN `admit_date` SET TAGS ('dbx_business_glossary_term' = 'Admission Date');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cdi_review` ALTER COLUMN `cc_mcc_opportunity_flag` SET TAGS ('dbx_business_glossary_term' = 'CC/MCC Capture Opportunity Flag');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cdi_review` ALTER COLUMN `cc_mcc_status` SET TAGS ('dbx_business_glossary_term' = 'Complication and Comorbidity / Major Complication and Comorbidity (CC/MCC) Capture Status');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cdi_review` ALTER COLUMN `cc_mcc_status` SET TAGS ('dbx_value_regex' = 'no_cc_mcc|cc|mcc|not_applicable');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cdi_review` ALTER COLUMN `clinical_indicator_summary` SET TAGS ('dbx_business_glossary_term' = 'Clinical Indicator Summary');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cdi_review` ALTER COLUMN `cmi_impact` SET TAGS ('dbx_business_glossary_term' = 'Case Mix Index (CMI) Impact');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cdi_review` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cdi_review` ALTER COLUMN `discharge_date` SET TAGS ('dbx_business_glossary_term' = 'Discharge Date');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cdi_review` ALTER COLUMN `documentation_impact` SET TAGS ('dbx_business_glossary_term' = 'Documentation Impact Category');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cdi_review` ALTER COLUMN `documentation_impact` SET TAGS ('dbx_value_regex' = 'drg_change|cc_mcc_capture|poa_change|no_impact|multiple');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cdi_review` ALTER COLUMN `drg_change_flag` SET TAGS ('dbx_business_glossary_term' = 'DRG Change Flag');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cdi_review` ALTER COLUMN `poa_status` SET TAGS ('dbx_business_glossary_term' = 'Present on Admission (POA) Status');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cdi_review` ALTER COLUMN `poa_status` SET TAGS ('dbx_value_regex' = 'yes|no|unknown|exempt|clinically_undetermined');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cdi_review` ALTER COLUMN `principal_diagnosis_code` SET TAGS ('dbx_business_glossary_term' = 'Principal Diagnosis ICD-10-CM Code');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cdi_review` ALTER COLUMN `principal_diagnosis_code` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cdi_review` ALTER COLUMN `principal_diagnosis_code` SET TAGS ('dbx_pii_health' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cdi_review` ALTER COLUMN `query_initiated_flag` SET TAGS ('dbx_business_glossary_term' = 'Physician Query Initiated Flag');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cdi_review` ALTER COLUMN `query_method` SET TAGS ('dbx_business_glossary_term' = 'Physician Query Method');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cdi_review` ALTER COLUMN `query_method` SET TAGS ('dbx_value_regex' = 'verbal|written|electronic|concurrent_electronic');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cdi_review` ALTER COLUMN `query_outcome` SET TAGS ('dbx_business_glossary_term' = 'Physician Query Outcome');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cdi_review` ALTER COLUMN `query_outcome` SET TAGS ('dbx_value_regex' = 'agree|disagree|amended|no_change|clinically_undetermined');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cdi_review` ALTER COLUMN `query_response_date` SET TAGS ('dbx_business_glossary_term' = 'Physician Query Response Date');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cdi_review` ALTER COLUMN `query_response_status` SET TAGS ('dbx_business_glossary_term' = 'Physician Query Response Status');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cdi_review` ALTER COLUMN `query_response_status` SET TAGS ('dbx_value_regex' = 'pending|responded|no_response|withdrawn');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cdi_review` ALTER COLUMN `query_type` SET TAGS ('dbx_business_glossary_term' = 'Physician Query Type');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cdi_review` ALTER COLUMN `query_type` SET TAGS ('dbx_value_regex' = 'compliant|leading|non_compliant');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cdi_review` ALTER COLUMN `review_completion_timestamp` SET TAGS ('dbx_business_glossary_term' = 'CDI Review Completion Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cdi_review` ALTER COLUMN `review_date` SET TAGS ('dbx_business_glossary_term' = 'CDI Review Date');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cdi_review` ALTER COLUMN `review_finding_type` SET TAGS ('dbx_business_glossary_term' = 'CDI Review Finding Type');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cdi_review` ALTER COLUMN `review_finding_type` SET TAGS ('dbx_value_regex' = 'query_opportunity|no_opportunity|documentation_complete|unable_to_review');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cdi_review` ALTER COLUMN `review_lag_days` SET TAGS ('dbx_business_glossary_term' = 'CDI Review Lag Days');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cdi_review` ALTER COLUMN `review_number` SET TAGS ('dbx_business_glossary_term' = 'CDI Review Number');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cdi_review` ALTER COLUMN `review_number` SET TAGS ('dbx_value_regex' = '^CDI-[0-9]{4}-[0-9]{7}$');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cdi_review` ALTER COLUMN `review_sequence_number` SET TAGS ('dbx_business_glossary_term' = 'CDI Review Sequence Number');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cdi_review` ALTER COLUMN `review_status` SET TAGS ('dbx_business_glossary_term' = 'CDI Review Status');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cdi_review` ALTER COLUMN `review_status` SET TAGS ('dbx_value_regex' = 'open|pending_query|pending_response|completed|cancelled');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cdi_review` ALTER COLUMN `review_timestamp` SET TAGS ('dbx_business_glossary_term' = 'CDI Review Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cdi_review` ALTER COLUMN `review_type` SET TAGS ('dbx_business_glossary_term' = 'CDI Review Type');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cdi_review` ALTER COLUMN `review_type` SET TAGS ('dbx_value_regex' = 'initial|follow_up|post_discharge|concurrent|retrospective');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cdi_review` ALTER COLUMN `reviewer_credential` SET TAGS ('dbx_business_glossary_term' = 'CDI Reviewer Credential');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cdi_review` ALTER COLUMN `reviewer_role` SET TAGS ('dbx_business_glossary_term' = 'CDI Reviewer Role');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cdi_review` ALTER COLUMN `reviewer_role` SET TAGS ('dbx_value_regex' = 'cdi_specialist|cdi_physician_advisor|coder|supervisor');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cdi_review` ALTER COLUMN `source_review_reference` SET TAGS ('dbx_business_glossary_term' = 'Source System Review ID');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`cdi_review` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Updated Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_program` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_program` SET TAGS ('dbx_subdomain' = 'accreditation_compliance');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_program` ALTER COLUMN `accreditation_program_id` SET TAGS ('dbx_business_glossary_term' = 'Accreditation Program ID');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_program` ALTER COLUMN `accreditation_status_id` SET TAGS ('dbx_business_glossary_term' = 'Accreditation Status Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_program` ALTER COLUMN `care_site_id` SET TAGS ('dbx_business_glossary_term' = 'Facility ID');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_program` ALTER COLUMN `payer_id` SET TAGS ('dbx_business_glossary_term' = 'Payer Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_program` ALTER COLUMN `quality_program_id` SET TAGS ('dbx_business_glossary_term' = 'Quality Program Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_program` ALTER COLUMN `accreditation_coordinator_name` SET TAGS ('dbx_business_glossary_term' = 'Accreditation Program Coordinator Name');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_program` ALTER COLUMN `accreditation_cycle_years` SET TAGS ('dbx_business_glossary_term' = 'Accreditation Cycle Duration (Years)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_program` ALTER COLUMN `accreditation_decision` SET TAGS ('dbx_business_glossary_term' = 'Accreditation Decision');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_program` ALTER COLUMN `accreditation_decision` SET TAGS ('dbx_value_regex' = 'accredited|accredited_with_follow_up|conditional|preliminary_denial|denial|not_accredited');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_program` ALTER COLUMN `accrediting_body` SET TAGS ('dbx_business_glossary_term' = 'Accrediting Body');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_program` ALTER COLUMN `accrediting_body` SET TAGS ('dbx_value_regex' = 'TJC|CMS|NCQA|DNV|HFAP|URAC');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_program` ALTER COLUMN `cms_acceptance_status` SET TAGS ('dbx_business_glossary_term' = 'Centers for Medicare and Medicaid Services (CMS) Plan of Correction Acceptance Status');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_program` ALTER COLUMN `cms_acceptance_status` SET TAGS ('dbx_value_regex' = 'accepted|rejected|pending|not_applicable');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_program` ALTER COLUMN `cms_certification_number` SET TAGS ('dbx_business_glossary_term' = 'Centers for Medicare and Medicaid Services (CMS) Certification Number');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_program` ALTER COLUMN `cms_certification_number` SET TAGS ('dbx_value_regex' = '^[0-9]{6}$');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_program` ALTER COLUMN `complaint_survey_indicator` SET TAGS ('dbx_business_glossary_term' = 'Complaint Survey Indicator');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_program` ALTER COLUMN `condition_level_deficiency_count` SET TAGS ('dbx_business_glossary_term' = 'Condition-Level Deficiency Count');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_program` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_program` ALTER COLUMN `deemed_status` SET TAGS ('dbx_business_glossary_term' = 'Deemed Status Indicator');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_program` ALTER COLUMN `effective_date` SET TAGS ('dbx_business_glossary_term' = 'Accreditation Effective Date');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_program` ALTER COLUMN `expiration_date` SET TAGS ('dbx_business_glossary_term' = 'Accreditation Expiration Date');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_program` ALTER COLUMN `finding_compliance_status` SET TAGS ('dbx_business_glossary_term' = 'Finding Compliance Status');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_program` ALTER COLUMN `finding_compliance_status` SET TAGS ('dbx_value_regex' = 'compliant|non_compliant|partial|resolved|pending_review');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_program` ALTER COLUMN `finding_evidence` SET TAGS ('dbx_business_glossary_term' = 'Finding Evidence');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_program` ALTER COLUMN `finding_resolution_date` SET TAGS ('dbx_business_glossary_term' = 'Finding Resolution Date');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_program` ALTER COLUMN `finding_resolution_status` SET TAGS ('dbx_business_glossary_term' = 'Finding Resolution Status');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_program` ALTER COLUMN `finding_resolution_status` SET TAGS ('dbx_value_regex' = 'open|in_progress|resolved|verified|closed');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_program` ALTER COLUMN `finding_standard_reference` SET TAGS ('dbx_business_glossary_term' = 'Finding Standard Reference');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_program` ALTER COLUMN `finding_type` SET TAGS ('dbx_business_glossary_term' = 'Finding Type');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_program` ALTER COLUMN `finding_type` SET TAGS ('dbx_value_regex' = 'RFI|immediate_threat|condition_level_deficiency|standard_level_deficiency|observation');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_program` ALTER COLUMN `follow_up_required` SET TAGS ('dbx_business_glossary_term' = 'Follow-Up Survey Required Indicator');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_program` ALTER COLUMN `follow_up_survey_date` SET TAGS ('dbx_business_glossary_term' = 'Follow-Up Survey Date');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_program` ALTER COLUMN `immediate_threat_count` SET TAGS ('dbx_business_glossary_term' = 'Immediate Threat to Health and Safety Finding Count');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_program` ALTER COLUMN `is_cms_cop_applicable` SET TAGS ('dbx_business_glossary_term' = 'Centers for Medicare and Medicaid Services (CMS) Conditions of Participation (CoP) Applicable Indicator');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_program` ALTER COLUMN `last_cms_validation_date` SET TAGS ('dbx_business_glossary_term' = 'Last Centers for Medicare and Medicaid Services (CMS) Validation Survey Date');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_program` ALTER COLUMN `next_survey_due_date` SET TAGS ('dbx_business_glossary_term' = 'Next Survey Due Date');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_program` ALTER COLUMN `plan_of_correction` SET TAGS ('dbx_business_glossary_term' = 'Plan of Correction (PoC)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_program` ALTER COLUMN `poc_due_date` SET TAGS ('dbx_business_glossary_term' = 'Plan of Correction (PoC) Due Date');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_program` ALTER COLUMN `poc_submission_date` SET TAGS ('dbx_business_glossary_term' = 'Plan of Correction (PoC) Submission Date');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_program` ALTER COLUMN `program_name` SET TAGS ('dbx_business_glossary_term' = 'Accreditation Program Name');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_program` ALTER COLUMN `program_number` SET TAGS ('dbx_business_glossary_term' = 'Accreditation Program Number');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_program` ALTER COLUMN `program_status` SET TAGS ('dbx_business_glossary_term' = 'Accreditation Program Status');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_program` ALTER COLUMN `program_status` SET TAGS ('dbx_value_regex' = 'active|pending|suspended|withdrawn|expired|denied');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_program` ALTER COLUMN `program_type` SET TAGS ('dbx_business_glossary_term' = 'Accreditation Program Type');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_program` ALTER COLUMN `readiness_assessment_date` SET TAGS ('dbx_business_glossary_term' = 'Survey Readiness Assessment Date');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_program` ALTER COLUMN `readiness_score` SET TAGS ('dbx_business_glossary_term' = 'Survey Readiness Score');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_program` ALTER COLUMN `regulatory_body_contact` SET TAGS ('dbx_business_glossary_term' = 'Regulatory Body Contact Information');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_program` ALTER COLUMN `standard_level_deficiency_count` SET TAGS ('dbx_business_glossary_term' = 'Standard-Level Deficiency Count');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_program` ALTER COLUMN `standards_chapters_reviewed` SET TAGS ('dbx_business_glossary_term' = 'Standards Chapters Reviewed');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_program` ALTER COLUMN `state_license_number` SET TAGS ('dbx_business_glossary_term' = 'State Facility License Number');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_program` ALTER COLUMN `state_license_number` SET TAGS ('dbx_pii_person_data' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_program` ALTER COLUMN `state_survey_agency` SET TAGS ('dbx_business_glossary_term' = 'State Survey Agency');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_program` ALTER COLUMN `state_survey_agency` SET TAGS ('dbx_pii_category' = 'person_data');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_program` ALTER COLUMN `survey_date` SET TAGS ('dbx_business_glossary_term' = 'Survey Date');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_program` ALTER COLUMN `survey_end_date` SET TAGS ('dbx_business_glossary_term' = 'Survey End Date');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_program` ALTER COLUMN `survey_scope` SET TAGS ('dbx_business_glossary_term' = 'Survey Scope');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_program` ALTER COLUMN `survey_type` SET TAGS ('dbx_business_glossary_term' = 'Survey Type');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_program` ALTER COLUMN `survey_type` SET TAGS ('dbx_value_regex' = 'triennial|unannounced|for_cause|validation|internal_mock|readiness_tracer');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_program` ALTER COLUMN `surveyor_team` SET TAGS ('dbx_business_glossary_term' = 'Surveyor Team');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_program` ALTER COLUMN `total_findings_count` SET TAGS ('dbx_business_glossary_term' = 'Total Findings Count');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_program` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Updated Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_survey` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_survey` SET TAGS ('dbx_subdomain' = 'accreditation_compliance');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_survey` ALTER COLUMN `accreditation_survey_id` SET TAGS ('dbx_business_glossary_term' = 'Accreditation Survey ID');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_survey` ALTER COLUMN `accreditation_program_id` SET TAGS ('dbx_business_glossary_term' = 'Accreditation Program Id');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_survey` ALTER COLUMN `accreditation_program_id` SET TAGS ('dbx_internal' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_survey` ALTER COLUMN `care_site_id` SET TAGS ('dbx_business_glossary_term' = 'Facility ID');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_survey` ALTER COLUMN `quality_committee_id` SET TAGS ('dbx_business_glossary_term' = 'Committee Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_survey` ALTER COLUMN `audit_id` SET TAGS ('dbx_business_glossary_term' = 'Compliance Audit Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_survey` ALTER COLUMN `cost_center_id` SET TAGS ('dbx_business_glossary_term' = 'Cost Center Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_survey` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Internal Survey Coordinator ID');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_survey` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_survey` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_survey` ALTER COLUMN `payer_id` SET TAGS ('dbx_business_glossary_term' = 'Payer Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_survey` ALTER COLUMN `research_study_id` SET TAGS ('dbx_business_glossary_term' = 'Research Study Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_survey` ALTER COLUMN `accreditation_decision` SET TAGS ('dbx_business_glossary_term' = 'Accreditation Decision');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_survey` ALTER COLUMN `accreditation_decision` SET TAGS ('dbx_value_regex' = 'accredited|conditional|preliminary_denial|denial|not_applicable');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_survey` ALTER COLUMN `accreditation_decision_date` SET TAGS ('dbx_business_glossary_term' = 'Accreditation Decision Date');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_survey` ALTER COLUMN `accreditation_expiration_date` SET TAGS ('dbx_business_glossary_term' = 'Accreditation Expiration Date');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_survey` ALTER COLUMN `accreditation_standards_edition` SET TAGS ('dbx_business_glossary_term' = 'Accreditation Standards Edition');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_survey` ALTER COLUMN `accrediting_body` SET TAGS ('dbx_business_glossary_term' = 'Accrediting Body');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_survey` ALTER COLUMN `cms_certification_number` SET TAGS ('dbx_business_glossary_term' = 'CMS Certification Number (CCN)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_survey` ALTER COLUMN `cms_certification_number` SET TAGS ('dbx_value_regex' = '^[0-9]{6}$');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_survey` ALTER COLUMN `condition_level_deficiency` SET TAGS ('dbx_business_glossary_term' = 'Condition-Level Deficiency Flag');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_survey` ALTER COLUMN `cop_deficiencies_cited` SET TAGS ('dbx_business_glossary_term' = 'Conditions of Participation (CoP) Deficiencies Cited');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_survey` ALTER COLUMN `corrective_action_plan_status` SET TAGS ('dbx_business_glossary_term' = 'Corrective Action Plan (CAP) Status');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_survey` ALTER COLUMN `corrective_action_plan_status` SET TAGS ('dbx_value_regex' = 'not_required|in_progress|submitted|accepted|overdue');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_survey` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_survey` ALTER COLUMN `environment_of_care_included` SET TAGS ('dbx_business_glossary_term' = 'Environment of Care (EC) Module Included Flag');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_survey` ALTER COLUMN `esc_acceptance_status` SET TAGS ('dbx_business_glossary_term' = 'Evidence of Standards Compliance (ESC) Acceptance Status');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_survey` ALTER COLUMN `esc_acceptance_status` SET TAGS ('dbx_value_regex' = 'accepted|rejected|pending|partial');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_survey` ALTER COLUMN `esc_submission_date` SET TAGS ('dbx_business_glossary_term' = 'Evidence of Standards Compliance (ESC) Submission Date');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_survey` ALTER COLUMN `esc_submission_due_date` SET TAGS ('dbx_business_glossary_term' = 'Evidence of Standards Compliance (ESC) Submission Due Date');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_survey` ALTER COLUMN `findings_count_immediate_threat` SET TAGS ('dbx_business_glossary_term' = 'Findings Count — Immediate Threat to Health or Safety');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_survey` ALTER COLUMN `findings_count_observation` SET TAGS ('dbx_business_glossary_term' = 'Findings Count — Observation');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_survey` ALTER COLUMN `findings_count_requirement_improvement` SET TAGS ('dbx_business_glossary_term' = 'Findings Count — Requirement for Improvement (RFI)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_survey` ALTER COLUMN `findings_count_total` SET TAGS ('dbx_business_glossary_term' = 'Total Findings Count');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_survey` ALTER COLUMN `follow_up_survey_date` SET TAGS ('dbx_business_glossary_term' = 'Follow-Up Survey Date');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_survey` ALTER COLUMN `follow_up_survey_required` SET TAGS ('dbx_business_glossary_term' = 'Follow-Up Survey Required Flag');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_survey` ALTER COLUMN `infection_prevention_included` SET TAGS ('dbx_business_glossary_term' = 'Infection Prevention and Control Module Included Flag');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_survey` ALTER COLUMN `is_unannounced` SET TAGS ('dbx_business_glossary_term' = 'Unannounced Survey Flag');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_survey` ALTER COLUMN `lead_surveyor_name` SET TAGS ('dbx_business_glossary_term' = 'Lead Surveyor Name');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_survey` ALTER COLUMN `lead_surveyor_name` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_survey` ALTER COLUMN `life_safety_module_included` SET TAGS ('dbx_business_glossary_term' = 'Life Safety Module Included Flag');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_survey` ALTER COLUMN `national_patient_safety_goals_reviewed` SET TAGS ('dbx_business_glossary_term' = 'National Patient Safety Goals (NPSG) Reviewed Flag');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_survey` ALTER COLUMN `next_survey_target_date` SET TAGS ('dbx_business_glossary_term' = 'Next Survey Target Date');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_survey` ALTER COLUMN `notification_date` SET TAGS ('dbx_business_glossary_term' = 'Survey Notification Date');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_survey` ALTER COLUMN `overall_readiness_score` SET TAGS ('dbx_business_glossary_term' = 'Overall Readiness Score');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_survey` ALTER COLUMN `preliminary_findings_summary` SET TAGS ('dbx_business_glossary_term' = 'Preliminary Findings Summary');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_survey` ALTER COLUMN `standards_chapters_reviewed` SET TAGS ('dbx_business_glossary_term' = 'Standards Chapters Reviewed');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_survey` ALTER COLUMN `survey_duration_days` SET TAGS ('dbx_business_glossary_term' = 'Survey Duration (Days)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_survey` ALTER COLUMN `survey_end_date` SET TAGS ('dbx_business_glossary_term' = 'Survey End Date');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_survey` ALTER COLUMN `survey_number` SET TAGS ('dbx_business_glossary_term' = 'Survey Number');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_survey` ALTER COLUMN `survey_report_received_date` SET TAGS ('dbx_business_glossary_term' = 'Survey Report Received Date');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_survey` ALTER COLUMN `survey_scope` SET TAGS ('dbx_business_glossary_term' = 'Survey Scope');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_survey` ALTER COLUMN `survey_start_date` SET TAGS ('dbx_business_glossary_term' = 'Survey Start Date');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_survey` ALTER COLUMN `survey_status` SET TAGS ('dbx_business_glossary_term' = 'Survey Status');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_survey` ALTER COLUMN `survey_status` SET TAGS ('dbx_value_regex' = 'scheduled|in_progress|completed|cancelled|pending_decision');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_survey` ALTER COLUMN `survey_type` SET TAGS ('dbx_business_glossary_term' = 'Survey Type');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_survey` ALTER COLUMN `survey_type` SET TAGS ('dbx_value_regex' = 'triennial|unannounced|for_cause|validation|mock|readiness_tracer');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_survey` ALTER COLUMN `surveyor_team_composition` SET TAGS ('dbx_business_glossary_term' = 'Surveyor Team Composition');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_survey` ALTER COLUMN `system_tracer_topics` SET TAGS ('dbx_business_glossary_term' = 'System Tracer Topics');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_survey` ALTER COLUMN `system_tracer_topics` SET TAGS ('dbx_pii_person_data' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_survey` ALTER COLUMN `tjc_organization_code` SET TAGS ('dbx_business_glossary_term' = 'The Joint Commission (TJC) Organization ID');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_survey` ALTER COLUMN `tracer_methodology_used` SET TAGS ('dbx_business_glossary_term' = 'Tracer Methodology Used Flag');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_survey` ALTER COLUMN `tracer_methodology_used` SET TAGS ('dbx_pii_person_data' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_survey` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Updated Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`standard_finding` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`standard_finding` SET TAGS ('dbx_subdomain' = 'accreditation_compliance');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`standard_finding` ALTER COLUMN `standard_finding_id` SET TAGS ('dbx_business_glossary_term' = 'Standard Finding ID');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`standard_finding` ALTER COLUMN `accreditation_program_id` SET TAGS ('dbx_business_glossary_term' = 'Accreditation Program Id');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`standard_finding` ALTER COLUMN `accreditation_program_id` SET TAGS ('dbx_internal' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`standard_finding` ALTER COLUMN `accreditation_survey_id` SET TAGS ('dbx_business_glossary_term' = 'Survey ID');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`standard_finding` ALTER COLUMN `audit_finding_id` SET TAGS ('dbx_business_glossary_term' = 'Audit Finding Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`standard_finding` ALTER COLUMN `care_site_id` SET TAGS ('dbx_business_glossary_term' = 'Facility ID');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`standard_finding` ALTER COLUMN `cdm_entry_id` SET TAGS ('dbx_business_glossary_term' = 'Cdm Entry Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`standard_finding` ALTER COLUMN `quality_committee_id` SET TAGS ('dbx_business_glossary_term' = 'Committee Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`standard_finding` ALTER COLUMN `interface_downtime_id` SET TAGS ('dbx_business_glossary_term' = 'Interface Downtime Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`standard_finding` ALTER COLUMN `material_master_id` SET TAGS ('dbx_business_glossary_term' = 'Material Master Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`standard_finding` ALTER COLUMN `modality_id` SET TAGS ('dbx_business_glossary_term' = 'Modality Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`standard_finding` ALTER COLUMN `prior_finding_standard_finding_id` SET TAGS ('dbx_business_glossary_term' = 'Prior Finding ID');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`standard_finding` ALTER COLUMN `affected_department` SET TAGS ('dbx_business_glossary_term' = 'Affected Department');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`standard_finding` ALTER COLUMN `cms_acceptance_date` SET TAGS ('dbx_business_glossary_term' = 'Centers for Medicare and Medicaid Services (CMS) Acceptance Date');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`standard_finding` ALTER COLUMN `cms_acceptance_status` SET TAGS ('dbx_business_glossary_term' = 'Centers for Medicare and Medicaid Services (CMS) Acceptance Status');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`standard_finding` ALTER COLUMN `cms_acceptance_status` SET TAGS ('dbx_value_regex' = 'Pending|Accepted|Rejected|Partially Accepted|Not Applicable');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`standard_finding` ALTER COLUMN `cms_certification_number` SET TAGS ('dbx_business_glossary_term' = 'Centers for Medicare and Medicaid Services (CMS) Certification Number (CCN)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`standard_finding` ALTER COLUMN `compliance_due_date` SET TAGS ('dbx_business_glossary_term' = 'Compliance Due Date');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`standard_finding` ALTER COLUMN `corrective_action_description` SET TAGS ('dbx_business_glossary_term' = 'Corrective Action Description');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`standard_finding` ALTER COLUMN `corrective_action_owner` SET TAGS ('dbx_business_glossary_term' = 'Corrective Action Owner');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`standard_finding` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`standard_finding` ALTER COLUMN `deficiency_tag_number` SET TAGS ('dbx_business_glossary_term' = 'Deficiency Tag Number (F-Tag / K-Tag)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`standard_finding` ALTER COLUMN `effectiveness_verification_date` SET TAGS ('dbx_business_glossary_term' = 'Effectiveness Verification Date');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`standard_finding` ALTER COLUMN `effectiveness_verified` SET TAGS ('dbx_business_glossary_term' = 'Effectiveness Verification Indicator');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`standard_finding` ALTER COLUMN `element_of_performance` SET TAGS ('dbx_business_glossary_term' = 'Element of Performance (EP)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`standard_finding` ALTER COLUMN `enforcement_action` SET TAGS ('dbx_business_glossary_term' = 'Enforcement Action');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`standard_finding` ALTER COLUMN `enforcement_action` SET TAGS ('dbx_value_regex' = 'None|Civil Monetary Penalty|Denial of Payment|Temporary Management|Termination|State Monitor');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`standard_finding` ALTER COLUMN `evidence_of_deficiency` SET TAGS ('dbx_business_glossary_term' = 'Evidence of Deficiency');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`standard_finding` ALTER COLUMN `finding_date` SET TAGS ('dbx_business_glossary_term' = 'Finding Date');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`standard_finding` ALTER COLUMN `finding_description` SET TAGS ('dbx_business_glossary_term' = 'Finding Description');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`standard_finding` ALTER COLUMN `finding_number` SET TAGS ('dbx_business_glossary_term' = 'Finding Number');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`standard_finding` ALTER COLUMN `finding_status` SET TAGS ('dbx_business_glossary_term' = 'Finding Status');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`standard_finding` ALTER COLUMN `finding_status` SET TAGS ('dbx_value_regex' = 'Open|In Progress|Submitted|Accepted|Rejected|Closed');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`standard_finding` ALTER COLUMN `finding_type` SET TAGS ('dbx_business_glossary_term' = 'Finding Type');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`standard_finding` ALTER COLUMN `finding_type` SET TAGS ('dbx_value_regex' = 'Requirement for Improvement|Immediate Threat to Life|Condition-Level Deficiency|Standard-Level Deficiency|Observation');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`standard_finding` ALTER COLUMN `immediate_jeopardy` SET TAGS ('dbx_business_glossary_term' = 'Immediate Jeopardy (IJ) Indicator');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`standard_finding` ALTER COLUMN `monitoring_frequency` SET TAGS ('dbx_business_glossary_term' = 'Monitoring Frequency');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`standard_finding` ALTER COLUMN `monitoring_frequency` SET TAGS ('dbx_value_regex' = 'Daily|Weekly|Monthly|Quarterly|Annually|Ad Hoc');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`standard_finding` ALTER COLUMN `monitoring_method` SET TAGS ('dbx_business_glossary_term' = 'Monitoring Method');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`standard_finding` ALTER COLUMN `plan_of_correction` SET TAGS ('dbx_business_glossary_term' = 'Plan of Correction (POC)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`standard_finding` ALTER COLUMN `poc_due_date` SET TAGS ('dbx_business_glossary_term' = 'Plan of Correction (POC) Due Date');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`standard_finding` ALTER COLUMN `poc_submission_date` SET TAGS ('dbx_business_glossary_term' = 'Plan of Correction (POC) Submission Date');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`standard_finding` ALTER COLUMN `repeat_finding` SET TAGS ('dbx_business_glossary_term' = 'Repeat Finding Indicator');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`standard_finding` ALTER COLUMN `resolution_date` SET TAGS ('dbx_business_glossary_term' = 'Resolution Date');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`standard_finding` ALTER COLUMN `revisit_date` SET TAGS ('dbx_business_glossary_term' = 'Revisit Date');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`standard_finding` ALTER COLUMN `revisit_required` SET TAGS ('dbx_business_glossary_term' = 'Revisit Required Indicator');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`standard_finding` ALTER COLUMN `root_cause_summary` SET TAGS ('dbx_business_glossary_term' = 'Root Cause Summary');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`standard_finding` ALTER COLUMN `scope_code` SET TAGS ('dbx_business_glossary_term' = 'Deficiency Scope Code');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`standard_finding` ALTER COLUMN `scope_code` SET TAGS ('dbx_value_regex' = 'Isolated|Pattern|Widespread');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`standard_finding` ALTER COLUMN `scope_severity_grid` SET TAGS ('dbx_business_glossary_term' = 'Scope-Severity Grid Rating');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`standard_finding` ALTER COLUMN `severity_code` SET TAGS ('dbx_business_glossary_term' = 'Deficiency Severity Code');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`standard_finding` ALTER COLUMN `severity_code` SET TAGS ('dbx_value_regex' = 'A|B|C|D|E|F');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`standard_finding` ALTER COLUMN `standard_chapter` SET TAGS ('dbx_business_glossary_term' = 'Standard Chapter');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`standard_finding` ALTER COLUMN `standard_reference_code` SET TAGS ('dbx_business_glossary_term' = 'Standard Reference Code');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`standard_finding` ALTER COLUMN `standard_reference_description` SET TAGS ('dbx_business_glossary_term' = 'Standard Reference Description');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`standard_finding` ALTER COLUMN `survey_end_date` SET TAGS ('dbx_business_glossary_term' = 'Survey End Date');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`standard_finding` ALTER COLUMN `survey_start_date` SET TAGS ('dbx_business_glossary_term' = 'Survey Start Date');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`standard_finding` ALTER COLUMN `survey_type` SET TAGS ('dbx_business_glossary_term' = 'Survey Type');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`standard_finding` ALTER COLUMN `survey_type` SET TAGS ('dbx_value_regex' = 'TJC Accreditation|CMS CoP|State Survey|Internal Readiness|CMS Validation|Complaint Investigation');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`standard_finding` ALTER COLUMN `surveying_body` SET TAGS ('dbx_business_glossary_term' = 'Surveying Body');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`standard_finding` ALTER COLUMN `tjc_npsg_number` SET TAGS ('dbx_business_glossary_term' = 'The Joint Commission (TJC) National Patient Safety Goal (NPSG) Number');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`standard_finding` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Updated Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`improvement_initiative` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`improvement_initiative` SET TAGS ('dbx_subdomain' = 'accreditation_compliance');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`improvement_initiative` ALTER COLUMN `improvement_initiative_id` SET TAGS ('dbx_business_glossary_term' = 'Improvement Initiative ID');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`improvement_initiative` ALTER COLUMN `budget_id` SET TAGS ('dbx_business_glossary_term' = 'Budget Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`improvement_initiative` ALTER COLUMN `capital_project_id` SET TAGS ('dbx_business_glossary_term' = 'Capital Project Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`improvement_initiative` ALTER COLUMN `care_site_id` SET TAGS ('dbx_business_glossary_term' = 'Facility ID');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`improvement_initiative` ALTER COLUMN `quality_committee_id` SET TAGS ('dbx_business_glossary_term' = 'Committee Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`improvement_initiative` ALTER COLUMN `corrective_action_plan_id` SET TAGS ('dbx_business_glossary_term' = 'Corrective Action Plan Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`improvement_initiative` ALTER COLUMN `material_master_id` SET TAGS ('dbx_business_glossary_term' = 'Material Master Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`improvement_initiative` ALTER COLUMN `onboarding_project_id` SET TAGS ('dbx_business_glossary_term' = 'Onboarding Project Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`improvement_initiative` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Initiative Owner ID');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`improvement_initiative` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`improvement_initiative` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`improvement_initiative` ALTER COLUMN `payer_id` SET TAGS ('dbx_business_glossary_term' = 'Payer Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`improvement_initiative` ALTER COLUMN `primary_improvement_employee_id` SET TAGS ('dbx_business_glossary_term' = 'Initiative Sponsor ID');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`improvement_initiative` ALTER COLUMN `primary_improvement_employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`improvement_initiative` ALTER COLUMN `primary_improvement_employee_id` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`improvement_initiative` ALTER COLUMN `quality_program_id` SET TAGS ('dbx_business_glossary_term' = 'Quality Program Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`improvement_initiative` ALTER COLUMN `readmission_id` SET TAGS ('dbx_business_glossary_term' = 'Readmission Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`improvement_initiative` ALTER COLUMN `research_study_id` SET TAGS ('dbx_business_glossary_term' = 'Research Study Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`improvement_initiative` ALTER COLUMN `specialty_id` SET TAGS ('dbx_business_glossary_term' = 'Specialty Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`improvement_initiative` ALTER COLUMN `actual_completion_date` SET TAGS ('dbx_business_glossary_term' = 'Actual Completion Date');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`improvement_initiative` ALTER COLUMN `aim_statement` SET TAGS ('dbx_business_glossary_term' = 'Aim Statement');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`improvement_initiative` ALTER COLUMN `aim_statement` SET TAGS ('dbx_pii_category' = 'person_data');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`improvement_initiative` ALTER COLUMN `baseline_period_end` SET TAGS ('dbx_business_glossary_term' = 'Baseline Period End Date');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`improvement_initiative` ALTER COLUMN `baseline_period_start` SET TAGS ('dbx_business_glossary_term' = 'Baseline Period Start Date');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`improvement_initiative` ALTER COLUMN `baseline_value` SET TAGS ('dbx_business_glossary_term' = 'Baseline Performance Value');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`improvement_initiative` ALTER COLUMN `cms_submission_date` SET TAGS ('dbx_business_glossary_term' = 'Centers for Medicare and Medicaid Services (CMS) Submission Date');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`improvement_initiative` ALTER COLUMN `cms_submission_status` SET TAGS ('dbx_business_glossary_term' = 'Centers for Medicare and Medicaid Services (CMS) Submission Status');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`improvement_initiative` ALTER COLUMN `cms_submission_status` SET TAGS ('dbx_value_regex' = 'not_required|pending|submitted|accepted|rejected');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`improvement_initiative` ALTER COLUMN `corrective_action_plan` SET TAGS ('dbx_business_glossary_term' = 'Corrective Action Plan Summary');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`improvement_initiative` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`improvement_initiative` ALTER COLUMN `current_performance_date` SET TAGS ('dbx_business_glossary_term' = 'Current Performance Measurement Date');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`improvement_initiative` ALTER COLUMN `current_performance_value` SET TAGS ('dbx_business_glossary_term' = 'Current Performance Value');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`improvement_initiative` ALTER COLUMN `current_phase` SET TAGS ('dbx_business_glossary_term' = 'Current Initiative Phase');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`improvement_initiative` ALTER COLUMN `current_phase` SET TAGS ('dbx_value_regex' = 'plan|do|study|act|sustain|closed');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`improvement_initiative` ALTER COLUMN `department_name` SET TAGS ('dbx_business_glossary_term' = 'Department Name');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`improvement_initiative` ALTER COLUMN `goal_value` SET TAGS ('dbx_business_glossary_term' = 'Goal Performance Value');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`improvement_initiative` ALTER COLUMN `hai_event_type` SET TAGS ('dbx_business_glossary_term' = 'Healthcare-Associated Infection (HAI) Event Type');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`improvement_initiative` ALTER COLUMN `improvement_methodology` SET TAGS ('dbx_business_glossary_term' = 'Improvement Methodology');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`improvement_initiative` ALTER COLUMN `initiative_name` SET TAGS ('dbx_business_glossary_term' = 'Improvement Initiative Name');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`improvement_initiative` ALTER COLUMN `initiative_number` SET TAGS ('dbx_business_glossary_term' = 'Quality Improvement (QI) Initiative Number');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`improvement_initiative` ALTER COLUMN `initiative_number` SET TAGS ('dbx_value_regex' = '^QI-[0-9]{4}-[0-9]{5}$');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`improvement_initiative` ALTER COLUMN `initiative_status` SET TAGS ('dbx_business_glossary_term' = 'Improvement Initiative Status');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`improvement_initiative` ALTER COLUMN `initiative_status` SET TAGS ('dbx_value_regex' = 'draft|active|on_hold|completed|cancelled');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`improvement_initiative` ALTER COLUMN `initiative_type` SET TAGS ('dbx_business_glossary_term' = 'Improvement Initiative Type');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`improvement_initiative` ALTER COLUMN `initiative_type` SET TAGS ('dbx_value_regex' = 'patient_safety|clinical_quality|operational_efficiency|regulatory_compliance|patient_experience|workforce_development');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`improvement_initiative` ALTER COLUMN `is_cms_reportable` SET TAGS ('dbx_business_glossary_term' = 'CMS Reportable Initiative Flag');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`improvement_initiative` ALTER COLUMN `is_sentinel_event_related` SET TAGS ('dbx_business_glossary_term' = 'Sentinel Event Related Flag');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`improvement_initiative` ALTER COLUMN `is_tjc_reportable` SET TAGS ('dbx_business_glossary_term' = 'The Joint Commission (TJC) Reportable Initiative Flag');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`improvement_initiative` ALTER COLUMN `lessons_learned` SET TAGS ('dbx_business_glossary_term' = 'Lessons Learned');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`improvement_initiative` ALTER COLUMN `pdsa_cycle_count` SET TAGS ('dbx_business_glossary_term' = 'Plan-Do-Study-Act (PDSA) Cycle Count');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`improvement_initiative` ALTER COLUMN `priority_level` SET TAGS ('dbx_business_glossary_term' = 'Initiative Priority Level');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`improvement_initiative` ALTER COLUMN `priority_level` SET TAGS ('dbx_value_regex' = 'critical|high|medium|low');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`improvement_initiative` ALTER COLUMN `problem_statement` SET TAGS ('dbx_business_glossary_term' = 'Problem Statement');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`improvement_initiative` ALTER COLUMN `problem_statement` SET TAGS ('dbx_pii_category' = 'person_data');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`improvement_initiative` ALTER COLUMN `reporting_period_end` SET TAGS ('dbx_business_glossary_term' = 'Reporting Period End Date');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`improvement_initiative` ALTER COLUMN `reporting_period_start` SET TAGS ('dbx_business_glossary_term' = 'Reporting Period Start Date');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`improvement_initiative` ALTER COLUMN `service_line` SET TAGS ('dbx_business_glossary_term' = 'Service Line');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`improvement_initiative` ALTER COLUMN `source_system_initiative_reference` SET TAGS ('dbx_business_glossary_term' = 'Source System Initiative ID');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`improvement_initiative` ALTER COLUMN `start_date` SET TAGS ('dbx_business_glossary_term' = 'Initiative Start Date');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`improvement_initiative` ALTER COLUMN `sustainability_plan` SET TAGS ('dbx_business_glossary_term' = 'Sustainability Plan');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`improvement_initiative` ALTER COLUMN `target_completion_date` SET TAGS ('dbx_business_glossary_term' = 'Target Completion Date');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`improvement_initiative` ALTER COLUMN `team_members` SET TAGS ('dbx_business_glossary_term' = 'Initiative Team Members');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`improvement_initiative` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Updated Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_peer_review` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_peer_review` SET TAGS ('dbx_subdomain' = 'patient_safety');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_peer_review` ALTER COLUMN `quality_peer_review_id` SET TAGS ('dbx_business_glossary_term' = 'Peer Review ID');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_peer_review` ALTER COLUMN `care_site_id` SET TAGS ('dbx_business_glossary_term' = 'Facility ID');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_peer_review` ALTER COLUMN `quality_committee_id` SET TAGS ('dbx_business_glossary_term' = 'Committee Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_peer_review` ALTER COLUMN `cpt_code_id` SET TAGS ('dbx_business_glossary_term' = 'Cpt Code Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_peer_review` ALTER COLUMN `demographics_id` SET TAGS ('dbx_business_glossary_term' = 'Patient ID');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_peer_review` ALTER COLUMN `demographics_id` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_peer_review` ALTER COLUMN `demographics_id` SET TAGS ('dbx_pii_health' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_peer_review` ALTER COLUMN `drg_id` SET TAGS ('dbx_business_glossary_term' = 'Drg Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_peer_review` ALTER COLUMN `icd_code_id` SET TAGS ('dbx_business_glossary_term' = 'Icd Code Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_peer_review` ALTER COLUMN `investigation_id` SET TAGS ('dbx_business_glossary_term' = 'Investigation Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_peer_review` ALTER COLUMN `invoice_id` SET TAGS ('dbx_business_glossary_term' = 'Invoice Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_peer_review` ALTER COLUMN `or_suite_id` SET TAGS ('dbx_business_glossary_term' = 'Or Suite Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_peer_review` ALTER COLUMN `org_unit_id` SET TAGS ('dbx_business_glossary_term' = 'Department ID');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_peer_review` ALTER COLUMN `clinician_id` SET TAGS ('dbx_business_glossary_term' = 'Reviewed Provider ID');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_peer_review` ALTER COLUMN `clinician_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_peer_review` ALTER COLUMN `measure_id` SET TAGS ('dbx_business_glossary_term' = 'Quality Measure ID');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_peer_review` ALTER COLUMN `research_study_id` SET TAGS ('dbx_business_glossary_term' = 'Research Study Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_peer_review` ALTER COLUMN `consent_record_id` SET TAGS ('dbx_business_glossary_term' = 'Review Consent Record Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_peer_review` ALTER COLUMN `udi_record_id` SET TAGS ('dbx_business_glossary_term' = 'Udi Record Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_peer_review` ALTER COLUMN `unit_id` SET TAGS ('dbx_business_glossary_term' = 'Unit Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_peer_review` ALTER COLUMN `visit_id` SET TAGS ('dbx_business_glossary_term' = 'Encounter ID');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_peer_review` ALTER COLUMN `visit_id` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_peer_review` ALTER COLUMN `visit_id` SET TAGS ('dbx_pii_health' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_peer_review` ALTER COLUMN `visit_provider_id` SET TAGS ('dbx_business_glossary_term' = 'Visit Provider Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_peer_review` ALTER COLUMN `action_completion_date` SET TAGS ('dbx_business_glossary_term' = 'Peer Review Action Completion Date');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_peer_review` ALTER COLUMN `action_completion_date` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_peer_review` ALTER COLUMN `action_description` SET TAGS ('dbx_business_glossary_term' = 'Peer Review Action Description');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_peer_review` ALTER COLUMN `action_description` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_peer_review` ALTER COLUMN `action_due_date` SET TAGS ('dbx_business_glossary_term' = 'Peer Review Action Due Date');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_peer_review` ALTER COLUMN `action_due_date` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_peer_review` ALTER COLUMN `action_taken` SET TAGS ('dbx_business_glossary_term' = 'Peer Review Action Taken');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_peer_review` ALTER COLUMN `action_taken` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_peer_review` ALTER COLUMN `appeal_resolution_date` SET TAGS ('dbx_business_glossary_term' = 'Peer Review Appeal Resolution Date');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_peer_review` ALTER COLUMN `appeal_resolution_date` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_peer_review` ALTER COLUMN `appeal_status` SET TAGS ('dbx_business_glossary_term' = 'Peer Review Appeal Status');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_peer_review` ALTER COLUMN `appeal_status` SET TAGS ('dbx_value_regex' = 'not_appealed|appeal_pending|appeal_upheld|appeal_overturned');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_peer_review` ALTER COLUMN `appeal_status` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_peer_review` ALTER COLUMN `care_determination` SET TAGS ('dbx_business_glossary_term' = 'Care Appropriateness Determination');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_peer_review` ALTER COLUMN `care_determination` SET TAGS ('dbx_value_regex' = 'appropriate|appropriate_with_suggestions|not_appropriate|unable_to_determine');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_peer_review` ALTER COLUMN `care_determination` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_peer_review` ALTER COLUMN `care_event_date` SET TAGS ('dbx_business_glossary_term' = 'Care Event Date');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_peer_review` ALTER COLUMN `care_event_date` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_peer_review` ALTER COLUMN `case_number` SET TAGS ('dbx_business_glossary_term' = 'Peer Review Case Number');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_peer_review` ALTER COLUMN `case_number` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_peer_review` ALTER COLUMN `case_open_date` SET TAGS ('dbx_business_glossary_term' = 'Peer Review Case Open Date');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_peer_review` ALTER COLUMN `case_open_date` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_peer_review` ALTER COLUMN `case_status` SET TAGS ('dbx_business_glossary_term' = 'Peer Review Case Status');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_peer_review` ALTER COLUMN `case_status` SET TAGS ('dbx_value_regex' = 'open|in_review|pending_committee|closed|appealed|deferred');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_peer_review` ALTER COLUMN `case_status` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_peer_review` ALTER COLUMN `case_summary` SET TAGS ('dbx_business_glossary_term' = 'Peer Review Case Summary');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_peer_review` ALTER COLUMN `case_summary` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_peer_review` ALTER COLUMN `committee_review_date` SET TAGS ('dbx_business_glossary_term' = 'Committee Review Date');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_peer_review` ALTER COLUMN `committee_review_date` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_peer_review` ALTER COLUMN `confidentiality_protection_flag` SET TAGS ('dbx_business_glossary_term' = 'Peer Review Confidentiality Protection Flag');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_peer_review` ALTER COLUMN `confidentiality_protection_flag` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_peer_review` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_peer_review` ALTER COLUMN `educational_opportunity_description` SET TAGS ('dbx_business_glossary_term' = 'Educational Opportunity Description');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_peer_review` ALTER COLUMN `educational_opportunity_description` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_peer_review` ALTER COLUMN `educational_opportunity_flag` SET TAGS ('dbx_business_glossary_term' = 'Educational Opportunity Identified Flag');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_peer_review` ALTER COLUMN `educational_opportunity_flag` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_peer_review` ALTER COLUMN `external_reviewer_organization` SET TAGS ('dbx_business_glossary_term' = 'External Reviewer Organization');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_peer_review` ALTER COLUMN `external_reviewer_organization` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_peer_review` ALTER COLUMN `fppe_trigger_flag` SET TAGS ('dbx_business_glossary_term' = 'Focused Professional Practice Evaluation (FPPE) Trigger Flag');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_peer_review` ALTER COLUMN `fppe_trigger_flag` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_peer_review` ALTER COLUMN `npdb_report_date` SET TAGS ('dbx_business_glossary_term' = 'National Practitioner Data Bank (NPDB) Report Date');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_peer_review` ALTER COLUMN `npdb_report_date` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_peer_review` ALTER COLUMN `npdb_reportable_flag` SET TAGS ('dbx_business_glossary_term' = 'National Practitioner Data Bank (NPDB) Reportable Flag');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_peer_review` ALTER COLUMN `npdb_reportable_flag` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_peer_review` ALTER COLUMN `oppe_cycle` SET TAGS ('dbx_business_glossary_term' = 'Ongoing Professional Practice Evaluation (OPPE) Cycle');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_peer_review` ALTER COLUMN `oppe_cycle` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_peer_review` ALTER COLUMN `patient_outcome` SET TAGS ('dbx_business_glossary_term' = 'Patient Outcome');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_peer_review` ALTER COLUMN `patient_outcome` SET TAGS ('dbx_value_regex' = 'death|permanent_harm|temporary_harm|no_harm|unknown');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_peer_review` ALTER COLUMN `patient_outcome` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_peer_review` ALTER COLUMN `privileging_impact_flag` SET TAGS ('dbx_business_glossary_term' = 'Privileging Impact Flag');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_peer_review` ALTER COLUMN `privileging_impact_flag` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_peer_review` ALTER COLUMN `protection_statute_reference` SET TAGS ('dbx_business_glossary_term' = 'Peer Review Protection Statute Reference');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_peer_review` ALTER COLUMN `protection_statute_reference` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_peer_review` ALTER COLUMN `review_completion_date` SET TAGS ('dbx_business_glossary_term' = 'Peer Review Completion Date');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_peer_review` ALTER COLUMN `review_completion_date` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_peer_review` ALTER COLUMN `review_due_date` SET TAGS ('dbx_business_glossary_term' = 'Peer Review Due Date');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_peer_review` ALTER COLUMN `review_due_date` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_peer_review` ALTER COLUMN `review_level` SET TAGS ('dbx_business_glossary_term' = 'Peer Review Level');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_peer_review` ALTER COLUMN `review_level` SET TAGS ('dbx_value_regex' = 'department|committee|external|appellate');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_peer_review` ALTER COLUMN `review_level` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_peer_review` ALTER COLUMN `review_type` SET TAGS ('dbx_business_glossary_term' = 'Peer Review Type');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_peer_review` ALTER COLUMN `review_type` SET TAGS ('dbx_value_regex' = 'oppe|fppe|sentinel_event|focused|routine|complaint_driven');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_peer_review` ALTER COLUMN `review_type` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_peer_review` ALTER COLUMN `reviewer_findings` SET TAGS ('dbx_business_glossary_term' = 'Reviewer Clinical Findings');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_peer_review` ALTER COLUMN `reviewer_findings` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_peer_review` ALTER COLUMN `specialty_code` SET TAGS ('dbx_business_glossary_term' = 'Reviewed Provider Specialty Code');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_peer_review` ALTER COLUMN `trigger_description` SET TAGS ('dbx_business_glossary_term' = 'Peer Review Trigger Description');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_peer_review` ALTER COLUMN `trigger_description` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_peer_review` ALTER COLUMN `trigger_type` SET TAGS ('dbx_business_glossary_term' = 'Peer Review Trigger Type');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_peer_review` ALTER COLUMN `trigger_type` SET TAGS ('dbx_value_regex' = 'mortality|complication|complaint|focused_review|oppe|fppe');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_peer_review` ALTER COLUMN `trigger_type` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_peer_review` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Updated Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`population_health_gap` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`population_health_gap` SET TAGS ('dbx_subdomain' = 'patient_safety');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`population_health_gap` ALTER COLUMN `population_health_gap_id` SET TAGS ('dbx_business_glossary_term' = 'Population Health Gap ID');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`population_health_gap` ALTER COLUMN `population_health_gap_id` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`population_health_gap` ALTER COLUMN `population_health_gap_id` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`population_health_gap` ALTER COLUMN `billing_coverage_id` SET TAGS ('dbx_business_glossary_term' = 'Coverage Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`population_health_gap` ALTER COLUMN `billing_coverage_id` SET TAGS ('dbx_pii_category' = 'person_data');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`population_health_gap` ALTER COLUMN `care_program_enrollment_id` SET TAGS ('dbx_business_glossary_term' = 'Care Program Enrollment Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`population_health_gap` ALTER COLUMN `care_site_id` SET TAGS ('dbx_business_glossary_term' = 'Facility ID');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`population_health_gap` ALTER COLUMN `clinician_id` SET TAGS ('dbx_business_glossary_term' = 'Attributed Provider ID');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`population_health_gap` ALTER COLUMN `claim_id` SET TAGS ('dbx_business_glossary_term' = 'Closure Claim Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`population_health_gap` ALTER COLUMN `compliance_regulatory_submission_id` SET TAGS ('dbx_business_glossary_term' = 'Regulatory Submission Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`population_health_gap` ALTER COLUMN `cpt_code_id` SET TAGS ('dbx_business_glossary_term' = 'Cpt Code Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`population_health_gap` ALTER COLUMN `demographics_id` SET TAGS ('dbx_business_glossary_term' = 'Patient ID');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`population_health_gap` ALTER COLUMN `demographics_id` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`population_health_gap` ALTER COLUMN `demographics_id` SET TAGS ('dbx_pii_identifier' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`population_health_gap` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Care Coordinator ID');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`population_health_gap` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`population_health_gap` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`population_health_gap` ALTER COLUMN `follow_up_id` SET TAGS ('dbx_business_glossary_term' = 'Follow Up Recommendation Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`population_health_gap` ALTER COLUMN `health_plan_id` SET TAGS ('dbx_business_glossary_term' = 'Health Plan Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`population_health_gap` ALTER COLUMN `health_plan_id` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`population_health_gap` ALTER COLUMN `health_plan_id` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`population_health_gap` ALTER COLUMN `hedis_measure_id` SET TAGS ('dbx_business_glossary_term' = 'Hedis Measure Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`population_health_gap` ALTER COLUMN `hie_query_id` SET TAGS ('dbx_business_glossary_term' = 'Hie Query Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`population_health_gap` ALTER COLUMN `icd_code_id` SET TAGS ('dbx_business_glossary_term' = 'Icd Code Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`population_health_gap` ALTER COLUMN `loinc_code_id` SET TAGS ('dbx_business_glossary_term' = 'Loinc Code Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`population_health_gap` ALTER COLUMN `payer_id` SET TAGS ('dbx_business_glossary_term' = 'Payer Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`population_health_gap` ALTER COLUMN `pcp_attribution_id` SET TAGS ('dbx_business_glossary_term' = 'Pcp Attribution Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`population_health_gap` ALTER COLUMN `measure_id` SET TAGS ('dbx_business_glossary_term' = 'Quality Measure ID');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`population_health_gap` ALTER COLUMN `quality_program_id` SET TAGS ('dbx_business_glossary_term' = 'Population Health Program ID');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`population_health_gap` ALTER COLUMN `specialty_id` SET TAGS ('dbx_business_glossary_term' = 'Specialty Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`population_health_gap` ALTER COLUMN `visit_diagnosis_id` SET TAGS ('dbx_business_glossary_term' = 'Visit Diagnosis Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`population_health_gap` ALTER COLUMN `visit_diagnosis_id` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`population_health_gap` ALTER COLUMN `visit_diagnosis_id` SET TAGS ('dbx_pii_health' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`population_health_gap` ALTER COLUMN `visit_id` SET TAGS ('dbx_business_glossary_term' = 'Closure Encounter ID');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`population_health_gap` ALTER COLUMN `care_gap_description` SET TAGS ('dbx_business_glossary_term' = 'Care Gap Description');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`population_health_gap` ALTER COLUMN `clinical_note` SET TAGS ('dbx_business_glossary_term' = 'Clinical Note');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`population_health_gap` ALTER COLUMN `clinical_note` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`population_health_gap` ALTER COLUMN `closure_date` SET TAGS ('dbx_business_glossary_term' = 'Care Gap Closure Date');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`population_health_gap` ALTER COLUMN `closure_method` SET TAGS ('dbx_business_glossary_term' = 'Care Gap Closure Method');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`population_health_gap` ALTER COLUMN `closure_method` SET TAGS ('dbx_value_regex' = 'claim|clinical_documentation|patient_attestation|lab_result|immunization_registry|care_plan');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`population_health_gap` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`population_health_gap` ALTER COLUMN `data_source` SET TAGS ('dbx_business_glossary_term' = 'Gap Data Source');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`population_health_gap` ALTER COLUMN `data_source` SET TAGS ('dbx_value_regex' = 'ehr_clinical|claims|lab_feed|immunization_registry|patient_attestation|care_plan');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`population_health_gap` ALTER COLUMN `due_date` SET TAGS ('dbx_business_glossary_term' = 'Care Gap Due Date');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`population_health_gap` ALTER COLUMN `exclusion_reason` SET TAGS ('dbx_business_glossary_term' = 'Denominator Exclusion Reason');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`population_health_gap` ALTER COLUMN `exclusion_reason` SET TAGS ('dbx_value_regex' = 'medical_exclusion|patient_declined|hospice|deceased|moved_out_of_area|not_eligible');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`population_health_gap` ALTER COLUMN `gap_category` SET TAGS ('dbx_business_glossary_term' = 'Care Gap Clinical Category');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`population_health_gap` ALTER COLUMN `gap_category` SET TAGS ('dbx_value_regex' = 'screening|immunization|monitoring|medication|counseling|follow_up');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`population_health_gap` ALTER COLUMN `gap_number` SET TAGS ('dbx_business_glossary_term' = 'Care Gap Number');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`population_health_gap` ALTER COLUMN `gap_status` SET TAGS ('dbx_business_glossary_term' = 'Care Gap Status');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`population_health_gap` ALTER COLUMN `gap_status` SET TAGS ('dbx_value_regex' = 'open|closed|excluded|in_progress|voided');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`population_health_gap` ALTER COLUMN `gap_type` SET TAGS ('dbx_business_glossary_term' = 'Care Gap Type');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`population_health_gap` ALTER COLUMN `gap_type` SET TAGS ('dbx_value_regex' = 'preventive_care|chronic_disease_management|hedis_measure|medication_adherence|behavioral_health|other');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`population_health_gap` ALTER COLUMN `identified_date` SET TAGS ('dbx_business_glossary_term' = 'Gap Identified Date');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`population_health_gap` ALTER COLUMN `is_denominator_eligible` SET TAGS ('dbx_business_glossary_term' = 'Denominator Eligibility Indicator');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`population_health_gap` ALTER COLUMN `is_numerator_compliant` SET TAGS ('dbx_business_glossary_term' = 'Numerator Compliance Indicator');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`population_health_gap` ALTER COLUMN `last_outreach_channel` SET TAGS ('dbx_business_glossary_term' = 'Last Outreach Channel');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`population_health_gap` ALTER COLUMN `last_outreach_channel` SET TAGS ('dbx_value_regex' = 'phone|letter|portal_message|care_coordinator|telehealth|sms');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`population_health_gap` ALTER COLUMN `last_outreach_date` SET TAGS ('dbx_business_glossary_term' = 'Last Outreach Date');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`population_health_gap` ALTER COLUMN `measurement_year` SET TAGS ('dbx_business_glossary_term' = 'HEDIS Measurement Year');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`population_health_gap` ALTER COLUMN `mrn` SET TAGS ('dbx_business_glossary_term' = 'Medical Record Number (MRN)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`population_health_gap` ALTER COLUMN `mrn` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`population_health_gap` ALTER COLUMN `mrn` SET TAGS ('dbx_pii_identifier' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`population_health_gap` ALTER COLUMN `outreach_attempt_count` SET TAGS ('dbx_business_glossary_term' = 'Outreach Attempt Count');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`population_health_gap` ALTER COLUMN `outreach_response_status` SET TAGS ('dbx_business_glossary_term' = 'Outreach Response Status');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`population_health_gap` ALTER COLUMN `outreach_response_status` SET TAGS ('dbx_value_regex' = 'no_response|patient_engaged|appointment_scheduled|declined|unreachable');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`population_health_gap` ALTER COLUMN `priority_level` SET TAGS ('dbx_business_glossary_term' = 'Care Gap Priority Level');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`population_health_gap` ALTER COLUMN `priority_level` SET TAGS ('dbx_value_regex' = 'high|medium|low');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`population_health_gap` ALTER COLUMN `reporting_period_end` SET TAGS ('dbx_business_glossary_term' = 'Reporting Period End Date');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`population_health_gap` ALTER COLUMN `reporting_period_start` SET TAGS ('dbx_business_glossary_term' = 'Reporting Period Start Date');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`population_health_gap` ALTER COLUMN `reporting_program` SET TAGS ('dbx_business_glossary_term' = 'Quality Reporting Program');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`population_health_gap` ALTER COLUMN `risk_score` SET TAGS ('dbx_business_glossary_term' = 'Patient Risk Score');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`population_health_gap` ALTER COLUMN `risk_score` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`population_health_gap` ALTER COLUMN `scheduled_appointment_date` SET TAGS ('dbx_business_glossary_term' = 'Scheduled Appointment Date');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`population_health_gap` ALTER COLUMN `snomed_code` SET TAGS ('dbx_business_glossary_term' = 'Systematized Nomenclature of Medicine Clinical Terms (SNOMED CT) Code');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`population_health_gap` ALTER COLUMN `snomed_code` SET TAGS ('dbx_value_regex' = '^[0-9]{6,18}$');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`population_health_gap` ALTER COLUMN `source_gap_reference` SET TAGS ('dbx_business_glossary_term' = 'Source System Gap ID');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`population_health_gap` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Updated Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`sdoh_screening` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`sdoh_screening` SET TAGS ('dbx_subdomain' = 'patient_safety');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`sdoh_screening` ALTER COLUMN `sdoh_screening_id` SET TAGS ('dbx_business_glossary_term' = 'Sdoh Screening Identifier');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`sdoh_screening` ALTER COLUMN `care_site_id` SET TAGS ('dbx_business_glossary_term' = 'Facility ID');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`sdoh_screening` ALTER COLUMN `clinician_id` SET TAGS ('dbx_business_glossary_term' = 'Administering Provider ID');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`sdoh_screening` ALTER COLUMN `compliance_regulatory_submission_id` SET TAGS ('dbx_business_glossary_term' = 'Regulatory Submission Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`sdoh_screening` ALTER COLUMN `health_plan_id` SET TAGS ('dbx_business_glossary_term' = 'Health Plan Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`sdoh_screening` ALTER COLUMN `health_plan_id` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`sdoh_screening` ALTER COLUMN `health_plan_id` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`sdoh_screening` ALTER COLUMN `loinc_code_id` SET TAGS ('dbx_business_glossary_term' = 'Loinc Code Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`sdoh_screening` ALTER COLUMN `mpi_record_id` SET TAGS ('dbx_business_glossary_term' = 'Patient ID');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`sdoh_screening` ALTER COLUMN `mpi_record_id` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`sdoh_screening` ALTER COLUMN `mpi_record_id` SET TAGS ('dbx_pii_identifier' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`sdoh_screening` ALTER COLUMN `payer_id` SET TAGS ('dbx_business_glossary_term' = 'Payer Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`sdoh_screening` ALTER COLUMN `measure_id` SET TAGS ('dbx_business_glossary_term' = 'Quality Measure Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`sdoh_screening` ALTER COLUMN `consent_record_id` SET TAGS ('dbx_business_glossary_term' = 'Referral Consent Record Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`sdoh_screening` ALTER COLUMN `sdoh_assessment_id` SET TAGS ('dbx_business_glossary_term' = 'Sdoh Assessment Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`sdoh_screening` ALTER COLUMN `snomed_concept_id` SET TAGS ('dbx_business_glossary_term' = 'Snomed Concept Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`sdoh_screening` ALTER COLUMN `unit_id` SET TAGS ('dbx_business_glossary_term' = 'Unit Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`sdoh_screening` ALTER COLUMN `visit_id` SET TAGS ('dbx_business_glossary_term' = 'Encounter ID');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`sdoh_screening` ALTER COLUMN `administration_mode` SET TAGS ('dbx_business_glossary_term' = 'Screening Administration Mode');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`sdoh_screening` ALTER COLUMN `administration_mode` SET TAGS ('dbx_value_regex' = 'in_person|telephone|patient_portal|paper|proxy');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`sdoh_screening` ALTER COLUMN `community_resource_connected` SET TAGS ('dbx_business_glossary_term' = 'Community Resource Connected Flag');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`sdoh_screening` ALTER COLUMN `community_resource_name` SET TAGS ('dbx_business_glossary_term' = 'Community Resource Name');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`sdoh_screening` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`sdoh_screening` ALTER COLUMN `health_equity_stratifier` SET TAGS ('dbx_business_glossary_term' = 'Health Equity Stratifier');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`sdoh_screening` ALTER COLUMN `health_equity_stratifier` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`sdoh_screening` ALTER COLUMN `health_equity_stratifier` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`sdoh_screening` ALTER COLUMN `interpreter_used` SET TAGS ('dbx_business_glossary_term' = 'Interpreter Used Flag');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`sdoh_screening` ALTER COLUMN `is_denominator_eligible` SET TAGS ('dbx_business_glossary_term' = 'Denominator Eligible Flag');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`sdoh_screening` ALTER COLUMN `is_numerator_compliant` SET TAGS ('dbx_business_glossary_term' = 'Numerator Compliant Flag');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`sdoh_screening` ALTER COLUMN `is_positive_screen` SET TAGS ('dbx_business_glossary_term' = 'Positive SDOH Screen Flag');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`sdoh_screening` ALTER COLUMN `is_positive_screen` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`sdoh_screening` ALTER COLUMN `is_positive_screen` SET TAGS ('dbx_pii_health' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`sdoh_screening` ALTER COLUMN `is_referral_generated` SET TAGS ('dbx_business_glossary_term' = 'Referral Generated Flag');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`sdoh_screening` ALTER COLUMN `language_of_administration` SET TAGS ('dbx_business_glossary_term' = 'Language of Administration');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`sdoh_screening` ALTER COLUMN `language_of_administration` SET TAGS ('dbx_pii_category' = 'person_data');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`sdoh_screening` ALTER COLUMN `need_resolution_date` SET TAGS ('dbx_business_glossary_term' = 'Social Need Resolution Date');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`sdoh_screening` ALTER COLUMN `need_resolved` SET TAGS ('dbx_business_glossary_term' = 'Social Need Resolved Flag');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`sdoh_screening` ALTER COLUMN `positive_screen_reason` SET TAGS ('dbx_business_glossary_term' = 'Positive Screen Reason');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`sdoh_screening` ALTER COLUMN `positive_screen_reason` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`sdoh_screening` ALTER COLUMN `positive_screen_reason` SET TAGS ('dbx_pii_health' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`sdoh_screening` ALTER COLUMN `program_year` SET TAGS ('dbx_business_glossary_term' = 'Quality Program Year');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`sdoh_screening` ALTER COLUMN `question_text` SET TAGS ('dbx_business_glossary_term' = 'Screening Question Text');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`sdoh_screening` ALTER COLUMN `referral_date` SET TAGS ('dbx_business_glossary_term' = 'SDOH Referral Date');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`sdoh_screening` ALTER COLUMN `referral_type` SET TAGS ('dbx_business_glossary_term' = 'SDOH Referral Type');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`sdoh_screening` ALTER COLUMN `referral_type` SET TAGS ('dbx_value_regex' = 'community_resource|social_work|care_management|food_bank|housing_agency|other');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`sdoh_screening` ALTER COLUMN `refusal_reason` SET TAGS ('dbx_business_glossary_term' = 'Screening Refusal Reason');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`sdoh_screening` ALTER COLUMN `refusal_reason` SET TAGS ('dbx_value_regex' = 'patient_declined|language_barrier|cognitive_impairment|time_constraint|not_applicable|other');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`sdoh_screening` ALTER COLUMN `reporting_period_end` SET TAGS ('dbx_business_glossary_term' = 'Reporting Period End Date');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`sdoh_screening` ALTER COLUMN `reporting_period_start` SET TAGS ('dbx_business_glossary_term' = 'Reporting Period Start Date');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`sdoh_screening` ALTER COLUMN `resource_connection_date` SET TAGS ('dbx_business_glossary_term' = 'Resource Connection Date');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`sdoh_screening` ALTER COLUMN `response_code` SET TAGS ('dbx_business_glossary_term' = 'Screening Response Code');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`sdoh_screening` ALTER COLUMN `response_code` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`sdoh_screening` ALTER COLUMN `response_code` SET TAGS ('dbx_pii_health' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`sdoh_screening` ALTER COLUMN `response_value` SET TAGS ('dbx_business_glossary_term' = 'Screening Response Value');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`sdoh_screening` ALTER COLUMN `response_value` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`sdoh_screening` ALTER COLUMN `response_value` SET TAGS ('dbx_pii_health' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`sdoh_screening` ALTER COLUMN `screening_date` SET TAGS ('dbx_business_glossary_term' = 'SDOH Screening Date');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`sdoh_screening` ALTER COLUMN `screening_number` SET TAGS ('dbx_business_glossary_term' = 'SDOH Screening Number');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`sdoh_screening` ALTER COLUMN `screening_setting` SET TAGS ('dbx_business_glossary_term' = 'Screening Care Setting');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`sdoh_screening` ALTER COLUMN `screening_setting` SET TAGS ('dbx_value_regex' = 'inpatient|outpatient|emergency_department|telehealth|community');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`sdoh_screening` ALTER COLUMN `screening_status` SET TAGS ('dbx_business_glossary_term' = 'SDOH Screening Status');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`sdoh_screening` ALTER COLUMN `screening_status` SET TAGS ('dbx_value_regex' = 'completed|in_progress|refused|not_eligible|voided');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`sdoh_screening` ALTER COLUMN `screening_timestamp` SET TAGS ('dbx_business_glossary_term' = 'SDOH Screening Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`sdoh_screening` ALTER COLUMN `screening_tool_code` SET TAGS ('dbx_business_glossary_term' = 'SDOH Screening Tool Code');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`sdoh_screening` ALTER COLUMN `screening_tool_code` SET TAGS ('dbx_value_regex' = 'AHC_HRSN|PRAPARE|HUNGER_VITAL_SIGN|WELLCARE|ISCREEN|WE_CARE');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`sdoh_screening` ALTER COLUMN `screening_tool_name` SET TAGS ('dbx_business_glossary_term' = 'SDOH Screening Tool Name');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`sdoh_screening` ALTER COLUMN `screening_tool_version` SET TAGS ('dbx_business_glossary_term' = 'SDOH Screening Tool Version');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`sdoh_screening` ALTER COLUMN `sdoh_domain` SET TAGS ('dbx_business_glossary_term' = 'Social Determinants of Health (SDOH) Domain');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`sdoh_screening` ALTER COLUMN `sdoh_domain` SET TAGS ('dbx_value_regex' = 'food_insecurity|housing_instability|transportation|interpersonal_safety|financial_strain');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`sdoh_screening` ALTER COLUMN `source_system_record_reference` SET TAGS ('dbx_business_glossary_term' = 'Source System Record ID');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`sdoh_screening` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Updated Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program` SET TAGS ('dbx_subdomain' = 'measure_performance');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program` ALTER COLUMN `quality_program_id` SET TAGS ('dbx_business_glossary_term' = 'Quality Program ID');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Quality Program Manager ID');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program` ALTER COLUMN `accreditation_standard_version` SET TAGS ('dbx_business_glossary_term' = 'Accreditation Standard Version');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program` ALTER COLUMN `accreditation_status` SET TAGS ('dbx_business_glossary_term' = 'Accreditation Status');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program` ALTER COLUMN `accreditation_status` SET TAGS ('dbx_value_regex' = 'accredited|conditional|provisional|denied|not-applicable');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program` ALTER COLUMN `apm_model_name` SET TAGS ('dbx_business_glossary_term' = 'Alternative Payment Model (APM) Model Name');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program` ALTER COLUMN `baseline_period_end` SET TAGS ('dbx_business_glossary_term' = 'Baseline Period End Date');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program` ALTER COLUMN `baseline_period_start` SET TAGS ('dbx_business_glossary_term' = 'Baseline Period Start Date');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program` ALTER COLUMN `care_setting` SET TAGS ('dbx_business_glossary_term' = 'Care Setting');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program` ALTER COLUMN `care_setting` SET TAGS ('dbx_value_regex' = 'inpatient|outpatient|ambulatory|post-acute|home-health|all');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program` ALTER COLUMN `cms_certification_number` SET TAGS ('dbx_business_glossary_term' = 'Centers for Medicare and Medicaid Services (CMS) Certification Number (CCN)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program` ALTER COLUMN `cms_certification_number` SET TAGS ('dbx_value_regex' = '^[0-9]{6}$');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program` ALTER COLUMN `data_submission_method` SET TAGS ('dbx_business_glossary_term' = 'Data Submission Method');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program` ALTER COLUMN `data_submission_method` SET TAGS ('dbx_value_regex' = 'QualityNet|NCQA-IDSS|direct-EHR|registry|claims|attestation');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program` ALTER COLUMN `effective_end_date` SET TAGS ('dbx_business_glossary_term' = 'Program Effective End Date');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program` ALTER COLUMN `effective_start_date` SET TAGS ('dbx_business_glossary_term' = 'Program Effective Start Date');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program` ALTER COLUMN `executive_sponsor_name` SET TAGS ('dbx_business_glossary_term' = 'Executive Sponsor Name');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program` ALTER COLUMN `incentive_amount` SET TAGS ('dbx_business_glossary_term' = 'Financial Incentive Amount');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program` ALTER COLUMN `incentive_amount` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program` ALTER COLUMN `last_survey_date` SET TAGS ('dbx_business_glossary_term' = 'Last Survey Date');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program` ALTER COLUMN `measure_count` SET TAGS ('dbx_business_glossary_term' = 'Quality Measure Count');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program` ALTER COLUMN `mips_quality_category_weight` SET TAGS ('dbx_business_glossary_term' = 'Merit-based Incentive Payment System (MIPS) Quality Category Weight');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program` ALTER COLUMN `mips_submission_type` SET TAGS ('dbx_business_glossary_term' = 'Merit-based Incentive Payment System (MIPS) Submission Type');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program` ALTER COLUMN `mips_submission_type` SET TAGS ('dbx_value_regex' = 'individual|group|apm-entity|virtual-group|not-applicable');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program` ALTER COLUMN `next_survey_date` SET TAGS ('dbx_business_glossary_term' = 'Next Survey Date');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program` ALTER COLUMN `participating_facility_count` SET TAGS ('dbx_business_glossary_term' = 'Participating Facility Count');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program` ALTER COLUMN `payment_adjustment_factor` SET TAGS ('dbx_business_glossary_term' = 'Payment Adjustment Factor');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program` ALTER COLUMN `payment_adjustment_factor` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program` ALTER COLUMN `penalty_amount` SET TAGS ('dbx_business_glossary_term' = 'Financial Penalty Amount');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program` ALTER COLUMN `penalty_amount` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program` ALTER COLUMN `performance_period_end` SET TAGS ('dbx_business_glossary_term' = 'Performance Period End Date');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program` ALTER COLUMN `performance_period_start` SET TAGS ('dbx_business_glossary_term' = 'Performance Period Start Date');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program` ALTER COLUMN `program_category` SET TAGS ('dbx_business_glossary_term' = 'Quality Program Category');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program` ALTER COLUMN `program_category` SET TAGS ('dbx_value_regex' = 'value-based-care|patient-safety|accreditation|population-health|regulatory-reporting|internal');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program` ALTER COLUMN `program_code` SET TAGS ('dbx_business_glossary_term' = 'Quality Program Code');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program` ALTER COLUMN `program_code` SET TAGS ('dbx_value_regex' = '^[A-Z0-9_-]{2,30}$');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program` ALTER COLUMN `program_description` SET TAGS ('dbx_business_glossary_term' = 'Quality Program Description');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program` ALTER COLUMN `program_name` SET TAGS ('dbx_business_glossary_term' = 'Quality Program Name');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program` ALTER COLUMN `program_status` SET TAGS ('dbx_business_glossary_term' = 'Quality Program Status');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program` ALTER COLUMN `program_status` SET TAGS ('dbx_value_regex' = 'active|inactive|pending|suspended|retired');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program` ALTER COLUMN `program_type` SET TAGS ('dbx_business_glossary_term' = 'Quality Program Type');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program` ALTER COLUMN `program_type` SET TAGS ('dbx_value_regex' = 'pay-for-performance|accreditation|improvement|reporting|certification');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program` ALTER COLUMN `public_reporting_flag` SET TAGS ('dbx_business_glossary_term' = 'Public Reporting Flag');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program` ALTER COLUMN `regulatory_authority` SET TAGS ('dbx_business_glossary_term' = 'Regulatory Authority');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program` ALTER COLUMN `reporting_frequency` SET TAGS ('dbx_business_glossary_term' = 'Reporting Frequency');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program` ALTER COLUMN `reporting_frequency` SET TAGS ('dbx_value_regex' = 'monthly|quarterly|semi-annual|annual|continuous');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program` ALTER COLUMN `risk_adjustment_applied` SET TAGS ('dbx_business_glossary_term' = 'Risk Adjustment Applied Flag');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program` ALTER COLUMN `sdoh_adjustment_applied` SET TAGS ('dbx_business_glossary_term' = 'Social Determinants of Health (SDOH) Adjustment Applied Flag');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program` ALTER COLUMN `short_name` SET TAGS ('dbx_business_glossary_term' = 'Quality Program Short Name');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program` ALTER COLUMN `sponsor` SET TAGS ('dbx_business_glossary_term' = 'Quality Program Sponsor');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program` ALTER COLUMN `submission_deadline` SET TAGS ('dbx_business_glossary_term' = 'Program Submission Deadline');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program` ALTER COLUMN `survey_cycle_months` SET TAGS ('dbx_business_glossary_term' = 'Survey Cycle Duration (Months)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program` ALTER COLUMN `total_performance_score_methodology` SET TAGS ('dbx_business_glossary_term' = 'Total Performance Score (TPS) Methodology');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Updated Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program` ALTER COLUMN `url` SET TAGS ('dbx_business_glossary_term' = 'Quality Program Reference URL');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program` ALTER COLUMN `vbp_clinical_outcomes_weight` SET TAGS ('dbx_business_glossary_term' = 'Value-Based Purchasing (VBP) Clinical Outcomes Domain Weight');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program` ALTER COLUMN `vbp_efficiency_cost_weight` SET TAGS ('dbx_business_glossary_term' = 'Value-Based Purchasing (VBP) Efficiency and Cost Reduction Domain Weight');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program` ALTER COLUMN `vbp_person_community_weight` SET TAGS ('dbx_business_glossary_term' = 'Value-Based Purchasing (VBP) Person and Community Engagement Domain Weight');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program` ALTER COLUMN `vbp_safety_weight` SET TAGS ('dbx_business_glossary_term' = 'Value-Based Purchasing (VBP) Safety Domain Weight');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program` ALTER COLUMN `withhold_percentage` SET TAGS ('dbx_business_glossary_term' = 'Payment Withhold Percentage');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program` ALTER COLUMN `withhold_percentage` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program` ALTER COLUMN `withhold_percentage` SET TAGS ('dbx_pii_category' = 'person_data');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program` ALTER COLUMN `year` SET TAGS ('dbx_business_glossary_term' = 'Quality Program Year');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`corrective_action` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`corrective_action` SET TAGS ('dbx_subdomain' = 'accreditation_compliance');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`corrective_action` ALTER COLUMN `corrective_action_id` SET TAGS ('dbx_business_glossary_term' = 'Corrective Action Identifier (ID)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`corrective_action` ALTER COLUMN `accreditation_survey_id` SET TAGS ('dbx_business_glossary_term' = 'Accreditation Survey Identifier (ID)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`corrective_action` ALTER COLUMN `budget_id` SET TAGS ('dbx_business_glossary_term' = 'Budget Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`corrective_action` ALTER COLUMN `capital_expenditure_id` SET TAGS ('dbx_business_glossary_term' = 'Capital Expenditure Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`corrective_action` ALTER COLUMN `care_site_id` SET TAGS ('dbx_business_glossary_term' = 'Facility Identifier (ID)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`corrective_action` ALTER COLUMN `quality_committee_id` SET TAGS ('dbx_business_glossary_term' = 'Committee Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`corrective_action` ALTER COLUMN `corrective_action_plan_id` SET TAGS ('dbx_business_glossary_term' = 'Compliance Corrective Action Plan Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`corrective_action` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Responsible Party Provider Identifier (ID)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`corrective_action` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`corrective_action` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`corrective_action` ALTER COLUMN `improvement_initiative_id` SET TAGS ('dbx_business_glossary_term' = 'Quality Improvement Initiative Identifier (ID)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`corrective_action` ALTER COLUMN `interface_downtime_id` SET TAGS ('dbx_business_glossary_term' = 'Interface Downtime Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`corrective_action` ALTER COLUMN `material_master_id` SET TAGS ('dbx_business_glossary_term' = 'Material Master Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`corrective_action` ALTER COLUMN `mortality_review_id` SET TAGS ('dbx_business_glossary_term' = 'Mortality Review Identifier (ID)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`corrective_action` ALTER COLUMN `parent_corrective_action_id` SET TAGS ('dbx_business_glossary_term' = 'Parent Corrective Action Id');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`corrective_action` ALTER COLUMN `parent_corrective_action_id` SET TAGS ('dbx_self_ref_fk' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`corrective_action` ALTER COLUMN `patient_safety_event_id` SET TAGS ('dbx_business_glossary_term' = 'Patient Safety Event Identifier (ID)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`corrective_action` ALTER COLUMN `quality_peer_review_id` SET TAGS ('dbx_business_glossary_term' = 'Peer Review Case Identifier (ID)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`corrective_action` ALTER COLUMN `recall_notice_id` SET TAGS ('dbx_business_glossary_term' = 'Recall Notice Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`corrective_action` ALTER COLUMN `standard_finding_id` SET TAGS ('dbx_business_glossary_term' = 'Standard Finding Identifier (ID)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`corrective_action` ALTER COLUMN `acceptance_date` SET TAGS ('dbx_business_glossary_term' = 'Regulatory Acceptance Date');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`corrective_action` ALTER COLUMN `acceptance_status` SET TAGS ('dbx_business_glossary_term' = 'Regulatory Acceptance Status');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`corrective_action` ALTER COLUMN `acceptance_status` SET TAGS ('dbx_value_regex' = 'pending|accepted|rejected|revision_requested');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`corrective_action` ALTER COLUMN `action_description` SET TAGS ('dbx_business_glossary_term' = 'Corrective Action Description');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`corrective_action` ALTER COLUMN `action_number` SET TAGS ('dbx_business_glossary_term' = 'Corrective Action Number');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`corrective_action` ALTER COLUMN `action_status` SET TAGS ('dbx_business_glossary_term' = 'Corrective Action Status');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`corrective_action` ALTER COLUMN `action_status` SET TAGS ('dbx_value_regex' = 'open|in_progress|completed|verified|closed|overdue');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`corrective_action` ALTER COLUMN `action_type` SET TAGS ('dbx_business_glossary_term' = 'Corrective and Preventive Action (CAPA) Type');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`corrective_action` ALTER COLUMN `action_type` SET TAGS ('dbx_value_regex' = 'corrective|preventive|both');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`corrective_action` ALTER COLUMN `assigned_date` SET TAGS ('dbx_business_glossary_term' = 'Action Assigned Date');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`corrective_action` ALTER COLUMN `completion_date` SET TAGS ('dbx_business_glossary_term' = 'Action Completion Date');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`corrective_action` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`corrective_action` ALTER COLUMN `days_to_complete` SET TAGS ('dbx_business_glossary_term' = 'Days to Complete Action');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`corrective_action` ALTER COLUMN `department_name` SET TAGS ('dbx_business_glossary_term' = 'Department Name');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`corrective_action` ALTER COLUMN `due_date` SET TAGS ('dbx_business_glossary_term' = 'Action Due Date');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`corrective_action` ALTER COLUMN `effectiveness_verification_date` SET TAGS ('dbx_business_glossary_term' = 'Effectiveness Verification Date');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`corrective_action` ALTER COLUMN `effectiveness_verification_method` SET TAGS ('dbx_business_glossary_term' = 'Effectiveness Verification Method');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`corrective_action` ALTER COLUMN `effectiveness_verified` SET TAGS ('dbx_business_glossary_term' = 'Effectiveness Verified Indicator');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`corrective_action` ALTER COLUMN `is_cms_reportable` SET TAGS ('dbx_business_glossary_term' = 'Centers for Medicare and Medicaid Services (CMS) Reportable Indicator');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`corrective_action` ALTER COLUMN `is_overdue` SET TAGS ('dbx_business_glossary_term' = 'Action Overdue Indicator');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`corrective_action` ALTER COLUMN `is_state_reportable` SET TAGS ('dbx_business_glossary_term' = 'State Regulatory Agency Reportable Indicator');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`corrective_action` ALTER COLUMN `is_state_reportable` SET TAGS ('dbx_pii_category' = 'person_data');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`corrective_action` ALTER COLUMN `is_tjc_reportable` SET TAGS ('dbx_business_glossary_term' = 'The Joint Commission (TJC) Reportable Indicator');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`corrective_action` ALTER COLUMN `monitoring_frequency` SET TAGS ('dbx_business_glossary_term' = 'Monitoring Frequency');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`corrective_action` ALTER COLUMN `monitoring_method` SET TAGS ('dbx_business_glossary_term' = 'Monitoring Method');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`corrective_action` ALTER COLUMN `originating_event_type` SET TAGS ('dbx_business_glossary_term' = 'Originating Event Type');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`corrective_action` ALTER COLUMN `priority_level` SET TAGS ('dbx_business_glossary_term' = 'Action Priority Level');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`corrective_action` ALTER COLUMN `priority_level` SET TAGS ('dbx_value_regex' = 'critical|high|medium|low');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`corrective_action` ALTER COLUMN `regulatory_program` SET TAGS ('dbx_business_glossary_term' = 'Regulatory Program');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`corrective_action` ALTER COLUMN `responsible_party_name` SET TAGS ('dbx_business_glossary_term' = 'Responsible Party Name');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`corrective_action` ALTER COLUMN `responsible_party_role` SET TAGS ('dbx_business_glossary_term' = 'Responsible Party Role');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`corrective_action` ALTER COLUMN `root_cause_category` SET TAGS ('dbx_business_glossary_term' = 'Root Cause Category');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`corrective_action` ALTER COLUMN `root_cause_summary` SET TAGS ('dbx_business_glossary_term' = 'Root Cause Analysis Summary');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`corrective_action` ALTER COLUMN `service_line` SET TAGS ('dbx_business_glossary_term' = 'Service Line');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`corrective_action` ALTER COLUMN `source_system_action_reference` SET TAGS ('dbx_business_glossary_term' = 'Source System Action Identifier (ID)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`corrective_action` ALTER COLUMN `submission_date` SET TAGS ('dbx_business_glossary_term' = 'Regulatory Submission Date');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`corrective_action` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Updated Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`corrective_action` ALTER COLUMN `verification_notes` SET TAGS ('dbx_business_glossary_term' = 'Verification Notes');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`corrective_action` ALTER COLUMN `verification_result` SET TAGS ('dbx_business_glossary_term' = 'Verification Result');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`corrective_action` ALTER COLUMN `verification_result` SET TAGS ('dbx_value_regex' = 'effective|partially_effective|ineffective|pending');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`program_measure_assignment` SET TAGS ('dbx_data_type' = 'association_data');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`program_measure_assignment` SET TAGS ('dbx_subdomain' = 'measure_performance');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`program_measure_assignment` SET TAGS ('dbx_association_edges' = 'quality.quality_program,quality.measure');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`program_measure_assignment` ALTER COLUMN `program_measure_assignment_id` SET TAGS ('dbx_business_glossary_term' = 'Program Measure Assignment ID');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`program_measure_assignment` ALTER COLUMN `measure_id` SET TAGS ('dbx_business_glossary_term' = 'Program Measure Assignment - Quality Measure Id');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`program_measure_assignment` ALTER COLUMN `quality_program_id` SET TAGS ('dbx_business_glossary_term' = 'Program Measure Assignment - Quality Program Id');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`program_measure_assignment` ALTER COLUMN `achievement_threshold` SET TAGS ('dbx_business_glossary_term' = 'Achievement Threshold');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`program_measure_assignment` ALTER COLUMN `assigned_by` SET TAGS ('dbx_business_glossary_term' = 'Assigned By');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`program_measure_assignment` ALTER COLUMN `assigned_date` SET TAGS ('dbx_business_glossary_term' = 'Assignment Date');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`program_measure_assignment` ALTER COLUMN `improvement_threshold` SET TAGS ('dbx_business_glossary_term' = 'Improvement Threshold');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`program_measure_assignment` ALTER COLUMN `is_mandatory` SET TAGS ('dbx_business_glossary_term' = 'Is Mandatory Measure');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`program_measure_assignment` ALTER COLUMN `last_modified_by` SET TAGS ('dbx_business_glossary_term' = 'Last Modified By');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`program_measure_assignment` ALTER COLUMN `last_modified_date` SET TAGS ('dbx_business_glossary_term' = 'Last Modified Date');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`program_measure_assignment` ALTER COLUMN `measure_domain_assignment` SET TAGS ('dbx_business_glossary_term' = 'Measure Domain Assignment');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`program_measure_assignment` ALTER COLUMN `measure_inclusion_end_date` SET TAGS ('dbx_business_glossary_term' = 'Measure Inclusion End Date');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`program_measure_assignment` ALTER COLUMN `measure_inclusion_start_date` SET TAGS ('dbx_business_glossary_term' = 'Measure Inclusion Start Date');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`program_measure_assignment` ALTER COLUMN `measure_points_available` SET TAGS ('dbx_business_glossary_term' = 'Measure Points Available');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`program_measure_assignment` ALTER COLUMN `measure_reporting_frequency` SET TAGS ('dbx_business_glossary_term' = 'Measure Reporting Frequency');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`program_measure_assignment` ALTER COLUMN `measure_status_in_program` SET TAGS ('dbx_business_glossary_term' = 'Measure Status in Program');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`program_measure_assignment` ALTER COLUMN `measure_weight` SET TAGS ('dbx_business_glossary_term' = 'Measure Weight');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`program_measure_assignment` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Assignment Notes');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`initiative_measure_target` SET TAGS ('dbx_data_type' = 'association_data');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`initiative_measure_target` SET TAGS ('dbx_subdomain' = 'accreditation_compliance');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`initiative_measure_target` SET TAGS ('dbx_association_edges' = 'quality.improvement_initiative,quality.measure');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`initiative_measure_target` ALTER COLUMN `initiative_measure_target_id` SET TAGS ('dbx_business_glossary_term' = 'Initiative Measure Target ID');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`initiative_measure_target` ALTER COLUMN `improvement_initiative_id` SET TAGS ('dbx_business_glossary_term' = 'Initiative Measure Target - Improvement Initiative Id');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`initiative_measure_target` ALTER COLUMN `measure_id` SET TAGS ('dbx_business_glossary_term' = 'Initiative Measure Target - Quality Measure Id');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`initiative_measure_target` ALTER COLUMN `baseline_period_end` SET TAGS ('dbx_business_glossary_term' = 'Baseline Period End Date');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`initiative_measure_target` ALTER COLUMN `baseline_period_start` SET TAGS ('dbx_business_glossary_term' = 'Baseline Period Start Date');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`initiative_measure_target` ALTER COLUMN `baseline_value` SET TAGS ('dbx_business_glossary_term' = 'Baseline Performance Value');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`initiative_measure_target` ALTER COLUMN `current_performance_date` SET TAGS ('dbx_business_glossary_term' = 'Current Performance Date');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`initiative_measure_target` ALTER COLUMN `current_performance_value` SET TAGS ('dbx_business_glossary_term' = 'Current Performance Value');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`initiative_measure_target` ALTER COLUMN `goal_value` SET TAGS ('dbx_business_glossary_term' = 'Goal Performance Value');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`initiative_measure_target` ALTER COLUMN `is_primary_measure` SET TAGS ('dbx_business_glossary_term' = 'Is Primary Measure Flag');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`initiative_measure_target` ALTER COLUMN `measure_role_in_initiative` SET TAGS ('dbx_business_glossary_term' = 'Measure Role in Initiative');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`initiative_measure_target` ALTER COLUMN `measure_unit` SET TAGS ('dbx_business_glossary_term' = 'Measure Unit of Measure');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`initiative_measure_target` ALTER COLUMN `measurement_end_date` SET TAGS ('dbx_business_glossary_term' = 'Measurement End Date');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`initiative_measure_target` ALTER COLUMN `measurement_start_date` SET TAGS ('dbx_business_glossary_term' = 'Measurement Start Date');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`initiative_measure_target` ALTER COLUMN `target_measure_code` SET TAGS ('dbx_business_glossary_term' = 'Target Measure Code');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`initiative_measure_target` ALTER COLUMN `target_measure_name` SET TAGS ('dbx_business_glossary_term' = 'Target Measure Name');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`initiative_measure_target` ALTER COLUMN `target_status` SET TAGS ('dbx_business_glossary_term' = 'Target Status');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`contract_initiative` SET TAGS ('dbx_data_type' = 'association_data');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`contract_initiative` SET TAGS ('dbx_subdomain' = 'accreditation_compliance');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`contract_initiative` SET TAGS ('dbx_association_edges' = 'quality.improvement_initiative,insurance.payer_contract');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`contract_initiative` ALTER COLUMN `contract_initiative_id` SET TAGS ('dbx_business_glossary_term' = 'Contract Initiative Identifier');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`contract_initiative` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Created By Employee');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`contract_initiative` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`contract_initiative` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`contract_initiative` ALTER COLUMN `contract_last_updated_by_employee_id` SET TAGS ('dbx_business_glossary_term' = 'Last Updated By Employee');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`contract_initiative` ALTER COLUMN `contract_last_updated_by_employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`contract_initiative` ALTER COLUMN `contract_last_updated_by_employee_id` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`contract_initiative` ALTER COLUMN `improvement_initiative_id` SET TAGS ('dbx_business_glossary_term' = 'Contract Initiative - Improvement Initiative Id');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`contract_initiative` ALTER COLUMN `payer_contract_id` SET TAGS ('dbx_business_glossary_term' = 'Contract Initiative - Payer Contract Id');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`contract_initiative` ALTER COLUMN `contract_measure_code` SET TAGS ('dbx_business_glossary_term' = 'Contract Measure Code');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`contract_initiative` ALTER COLUMN `created_date` SET TAGS ('dbx_business_glossary_term' = 'Record Created Date');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`contract_initiative` ALTER COLUMN `end_date` SET TAGS ('dbx_business_glossary_term' = 'Contract Initiative End Date');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`contract_initiative` ALTER COLUMN `incentive_amount` SET TAGS ('dbx_business_glossary_term' = 'Contract Incentive Amount');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`contract_initiative` ALTER COLUMN `incentive_amount` SET TAGS ('dbx_financial' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`contract_initiative` ALTER COLUMN `incentive_earned_to_date` SET TAGS ('dbx_business_glossary_term' = 'Incentive Earned To Date');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`contract_initiative` ALTER COLUMN `incentive_earned_to_date` SET TAGS ('dbx_financial' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`contract_initiative` ALTER COLUMN `is_mandatory` SET TAGS ('dbx_business_glossary_term' = 'Mandatory Initiative Flag');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`contract_initiative` ALTER COLUMN `last_reported_date` SET TAGS ('dbx_business_glossary_term' = 'Last Reported Date');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`contract_initiative` ALTER COLUMN `last_updated_date` SET TAGS ('dbx_business_glossary_term' = 'Record Last Updated Date');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`contract_initiative` ALTER COLUMN `next_reporting_due_date` SET TAGS ('dbx_business_glossary_term' = 'Next Reporting Due Date');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`contract_initiative` ALTER COLUMN `penalty_amount` SET TAGS ('dbx_business_glossary_term' = 'Contract Penalty Amount');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`contract_initiative` ALTER COLUMN `penalty_amount` SET TAGS ('dbx_financial' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`contract_initiative` ALTER COLUMN `penalty_incurred_to_date` SET TAGS ('dbx_business_glossary_term' = 'Penalty Incurred To Date');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`contract_initiative` ALTER COLUMN `penalty_incurred_to_date` SET TAGS ('dbx_financial' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`contract_initiative` ALTER COLUMN `performance_target` SET TAGS ('dbx_business_glossary_term' = 'Contract Performance Target');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`contract_initiative` ALTER COLUMN `reporting_frequency` SET TAGS ('dbx_business_glossary_term' = 'Contract Reporting Frequency');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`contract_initiative` ALTER COLUMN `start_date` SET TAGS ('dbx_business_glossary_term' = 'Contract Initiative Start Date');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`contract_initiative` ALTER COLUMN `contract_initiative_status` SET TAGS ('dbx_business_glossary_term' = 'Contract Initiative Status');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program_participation` SET TAGS ('dbx_data_type' = 'association_data');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program_participation` SET TAGS ('dbx_subdomain' = 'measure_performance');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program_participation` SET TAGS ('dbx_association_edges' = 'quality.quality_program,insurance.health_plan');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program_participation` ALTER COLUMN `quality_program_participation_id` SET TAGS ('dbx_business_glossary_term' = 'quality_program_participation Identifier');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program_participation` ALTER COLUMN `health_plan_id` SET TAGS ('dbx_business_glossary_term' = 'Program Participation - Health Plan Id');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program_participation` ALTER COLUMN `health_plan_id` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program_participation` ALTER COLUMN `health_plan_id` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program_participation` ALTER COLUMN `quality_program_id` SET TAGS ('dbx_business_glossary_term' = 'Program Participation - Quality Program Id');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program_participation` ALTER COLUMN `compliance_status` SET TAGS ('dbx_business_glossary_term' = 'Compliance Status');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program_participation` ALTER COLUMN `created_date` SET TAGS ('dbx_business_glossary_term' = 'Record Created Date');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program_participation` ALTER COLUMN `effective_date` SET TAGS ('dbx_business_glossary_term' = 'Participation Effective Date');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program_participation` ALTER COLUMN `enrollment_count_at_participation` SET TAGS ('dbx_business_glossary_term' = 'Enrollment Count at Participation');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program_participation` ALTER COLUMN `last_submission_date` SET TAGS ('dbx_business_glossary_term' = 'Last Submission Date');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program_participation` ALTER COLUMN `measure_set_version` SET TAGS ('dbx_business_glossary_term' = 'Plan Measure Set Version');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program_participation` ALTER COLUMN `participation_type` SET TAGS ('dbx_business_glossary_term' = 'Participation Type');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program_participation` ALTER COLUMN `performance_score` SET TAGS ('dbx_business_glossary_term' = 'Plan Performance Score');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program_participation` ALTER COLUMN `reporting_frequency` SET TAGS ('dbx_business_glossary_term' = 'Plan Reporting Frequency');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program_participation` ALTER COLUMN `quality_program_participation_status` SET TAGS ('dbx_business_glossary_term' = 'Program Participation Status');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program_participation` ALTER COLUMN `submission_method` SET TAGS ('dbx_business_glossary_term' = 'Plan Submission Method');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program_participation` ALTER COLUMN `termination_date` SET TAGS ('dbx_business_glossary_term' = 'Participation Termination Date');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program_participation` ALTER COLUMN `updated_date` SET TAGS ('dbx_business_glossary_term' = 'Record Updated Date');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`program_study_participation` SET TAGS ('dbx_data_type' = 'association_data');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`program_study_participation` SET TAGS ('dbx_subdomain' = 'measure_performance');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`program_study_participation` SET TAGS ('dbx_association_edges' = 'quality.quality_program,research.research_study');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`program_study_participation` ALTER COLUMN `program_study_participation_id` SET TAGS ('dbx_business_glossary_term' = 'Program Study Participation Identifier');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`program_study_participation` ALTER COLUMN `quality_program_id` SET TAGS ('dbx_business_glossary_term' = 'Quality Program Identifier');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`program_study_participation` ALTER COLUMN `research_study_id` SET TAGS ('dbx_business_glossary_term' = 'Research Study Identifier');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`program_study_participation` ALTER COLUMN `program_study_research_study_id` SET TAGS ('dbx_business_glossary_term' = 'Program Study Participation - Research Study Id');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`program_study_participation` ALTER COLUMN `affected_measure_ids` SET TAGS ('dbx_business_glossary_term' = 'Affected Measure Identifiers');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`program_study_participation` ALTER COLUMN `cms_reporting_flag` SET TAGS ('dbx_business_glossary_term' = 'CMS Reporting Required Flag');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`program_study_participation` ALTER COLUMN `created_date` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`program_study_participation` ALTER COLUMN `end_date` SET TAGS ('dbx_business_glossary_term' = 'Participation End Date');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`program_study_participation` ALTER COLUMN `enrollment_impact_on_measures` SET TAGS ('dbx_business_glossary_term' = 'Enrollment Impact on Measures');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`program_study_participation` ALTER COLUMN `last_updated_by` SET TAGS ('dbx_business_glossary_term' = 'Record Last Updated By User');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`program_study_participation` ALTER COLUMN `last_updated_date` SET TAGS ('dbx_business_glossary_term' = 'Record Last Updated Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`program_study_participation` ALTER COLUMN `measure_stratification_required` SET TAGS ('dbx_business_glossary_term' = 'Measure Stratification Required Flag');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`program_study_participation` ALTER COLUMN `participation_status` SET TAGS ('dbx_business_glossary_term' = 'Participation Status');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`program_study_participation` ALTER COLUMN `program_participation_type` SET TAGS ('dbx_business_glossary_term' = 'Program Participation Type');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`program_study_participation` ALTER COLUMN `reporting_exclusion_rules` SET TAGS ('dbx_business_glossary_term' = 'Reporting Exclusion Rules');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`program_study_participation` ALTER COLUMN `start_date` SET TAGS ('dbx_business_glossary_term' = 'Participation Start Date');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`program_study_participation` ALTER COLUMN `created_by` SET TAGS ('dbx_business_glossary_term' = 'Record Created By User');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure_budget_allocation` SET TAGS ('dbx_data_type' = 'association_data');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure_budget_allocation` SET TAGS ('dbx_subdomain' = 'measure_performance');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure_budget_allocation` SET TAGS ('dbx_association_edges' = 'quality.measure,finance.budget_line');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure_budget_allocation` ALTER COLUMN `measure_budget_allocation_id` SET TAGS ('dbx_business_glossary_term' = 'Measure Budget Allocation Identifier');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure_budget_allocation` ALTER COLUMN `budget_line_id` SET TAGS ('dbx_business_glossary_term' = 'Measure Budget Allocation - Budget Line Id');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure_budget_allocation` ALTER COLUMN `measure_id` SET TAGS ('dbx_business_glossary_term' = 'Measure Budget Allocation - Quality Measure Id');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure_budget_allocation` ALTER COLUMN `allocation_notes` SET TAGS ('dbx_business_glossary_term' = 'Allocation Notes');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure_budget_allocation` ALTER COLUMN `allocation_percentage` SET TAGS ('dbx_business_glossary_term' = 'Budget Allocation Percentage');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure_budget_allocation` ALTER COLUMN `allocation_percentage` SET TAGS ('dbx_pii_category' = 'person_data');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure_budget_allocation` ALTER COLUMN `allocation_status` SET TAGS ('dbx_business_glossary_term' = 'Allocation Status');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure_budget_allocation` ALTER COLUMN `budgeted_improvement_cost` SET TAGS ('dbx_business_glossary_term' = 'Budgeted Improvement Cost');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure_budget_allocation` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure_budget_allocation` ALTER COLUMN `effective_end_date` SET TAGS ('dbx_business_glossary_term' = 'Effective End Date');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure_budget_allocation` ALTER COLUMN `effective_start_date` SET TAGS ('dbx_business_glossary_term' = 'Effective Start Date');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure_budget_allocation` ALTER COLUMN `fiscal_year` SET TAGS ('dbx_business_glossary_term' = 'Fiscal Year');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure_budget_allocation` ALTER COLUMN `measure_target_value` SET TAGS ('dbx_business_glossary_term' = 'Measure Target Value');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure_budget_allocation` ALTER COLUMN `modified_by` SET TAGS ('dbx_business_glossary_term' = 'Modified By');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure_budget_allocation` ALTER COLUMN `modified_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Modified Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure_budget_allocation` ALTER COLUMN `performance_incentive_amount` SET TAGS ('dbx_business_glossary_term' = 'Performance Incentive Amount');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure_budget_allocation` ALTER COLUMN `created_by` SET TAGS ('dbx_business_glossary_term' = 'Created By');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_committee` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_committee` SET TAGS ('dbx_subdomain' = 'accreditation_compliance');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_committee` ALTER COLUMN `quality_committee_id` SET TAGS ('dbx_business_glossary_term' = 'Committee Identifier');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_committee` ALTER COLUMN `accreditation_program_id` SET TAGS ('dbx_business_glossary_term' = 'Accreditation Program Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_committee` ALTER COLUMN `care_site_id` SET TAGS ('dbx_business_glossary_term' = 'Care Site Id');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_committee` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Employee Id');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_committee` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_committee` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_committee` ALTER COLUMN `financial_entity_id` SET TAGS ('dbx_business_glossary_term' = 'Reporting Entity Id');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_committee` ALTER COLUMN `org_unit_id` SET TAGS ('dbx_business_glossary_term' = 'Org Unit Id');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_committee` ALTER COLUMN `parent_committee_id` SET TAGS ('dbx_business_glossary_term' = 'Parent Committee Id');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_committee` ALTER COLUMN `quality_program_id` SET TAGS ('dbx_business_glossary_term' = 'Quality Program Id (Foreign Key)');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_committee` ALTER COLUMN `accreditation_relevant_flag` SET TAGS ('dbx_business_glossary_term' = 'Accreditation Relevant Flag');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_committee` ALTER COLUMN `active_flag` SET TAGS ('dbx_business_glossary_term' = 'Active Flag');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_committee` ALTER COLUMN `annual_report_required_flag` SET TAGS ('dbx_business_glossary_term' = 'Annual Report Required Flag');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_committee` ALTER COLUMN `budget_allocated_amount` SET TAGS ('dbx_business_glossary_term' = 'Budget Allocated Amount');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_committee` ALTER COLUMN `budget_allocated_amount` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_committee` ALTER COLUMN `budget_currency_code` SET TAGS ('dbx_business_glossary_term' = 'Budget Currency Code');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_committee` ALTER COLUMN `bylaws_document_url` SET TAGS ('dbx_business_glossary_term' = 'Bylaws Document Url');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_committee` ALTER COLUMN `chair_name` SET TAGS ('dbx_business_glossary_term' = 'Chair Name');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_committee` ALTER COLUMN `chair_name` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_committee` ALTER COLUMN `chair_name` SET TAGS ('dbx_pii_name' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_committee` ALTER COLUMN `charter_document_url` SET TAGS ('dbx_business_glossary_term' = 'Charter Document Url');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_committee` ALTER COLUMN `charter_effective_date` SET TAGS ('dbx_business_glossary_term' = 'Charter Effective Date');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_committee` ALTER COLUMN `charter_expiration_date` SET TAGS ('dbx_business_glossary_term' = 'Charter Expiration Date');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_committee` ALTER COLUMN `quality_committee_code` SET TAGS ('dbx_business_glossary_term' = 'Committee Code');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_committee` ALTER COLUMN `confidentiality_level` SET TAGS ('dbx_business_glossary_term' = 'Confidentiality Level');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_committee` ALTER COLUMN `contact_email` SET TAGS ('dbx_business_glossary_term' = 'Contact Email');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_committee` ALTER COLUMN `contact_email` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_committee` ALTER COLUMN `contact_email` SET TAGS ('dbx_pii_email' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_committee` ALTER COLUMN `contact_phone` SET TAGS ('dbx_business_glossary_term' = 'Contact Phone');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_committee` ALTER COLUMN `contact_phone` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_committee` ALTER COLUMN `contact_phone` SET TAGS ('dbx_pii_phone' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_committee` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_committee` ALTER COLUMN `dissolution_reason` SET TAGS ('dbx_business_glossary_term' = 'Dissolution Reason');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_committee` ALTER COLUMN `dissolved_date` SET TAGS ('dbx_business_glossary_term' = 'Dissolved Date');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_committee` ALTER COLUMN `established_date` SET TAGS ('dbx_business_glossary_term' = 'Established Date');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_committee` ALTER COLUMN `last_meeting_date` SET TAGS ('dbx_business_glossary_term' = 'Last Meeting Date');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_committee` ALTER COLUMN `last_modified_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Last Modified Timestamp');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_committee` ALTER COLUMN `meeting_frequency` SET TAGS ('dbx_business_glossary_term' = 'Meeting Frequency');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_committee` ALTER COLUMN `meeting_location` SET TAGS ('dbx_business_glossary_term' = 'Meeting Location');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_committee` ALTER COLUMN `member_count` SET TAGS ('dbx_business_glossary_term' = 'Member Count');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_committee` ALTER COLUMN `mission_statement` SET TAGS ('dbx_business_glossary_term' = 'Mission Statement');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_committee` ALTER COLUMN `mission_statement` SET TAGS ('dbx_pii_category' = 'person_data');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_committee` ALTER COLUMN `quality_committee_name` SET TAGS ('dbx_business_glossary_term' = 'Committee Name');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_committee` ALTER COLUMN `quality_committee_name` SET TAGS ('dbx_pii_person_data' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_committee` ALTER COLUMN `next_meeting_date` SET TAGS ('dbx_business_glossary_term' = 'Next Meeting Date');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_committee` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Notes');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_committee` ALTER COLUMN `quorum_requirement` SET TAGS ('dbx_business_glossary_term' = 'Quorum Requirement');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_committee` ALTER COLUMN `regulatory_oversight_flag` SET TAGS ('dbx_business_glossary_term' = 'Regulatory Oversight Flag');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_committee` ALTER COLUMN `scope_description` SET TAGS ('dbx_business_glossary_term' = 'Scope Description');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_committee` ALTER COLUMN `secretary_name` SET TAGS ('dbx_business_glossary_term' = 'Secretary Name');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_committee` ALTER COLUMN `secretary_name` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_committee` ALTER COLUMN `secretary_name` SET TAGS ('dbx_pii_name' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_committee` ALTER COLUMN `quality_committee_status` SET TAGS ('dbx_business_glossary_term' = 'Status');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_committee` ALTER COLUMN `quality_committee_type` SET TAGS ('dbx_business_glossary_term' = 'Committee Type');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_committee` ALTER COLUMN `vice_chair_name` SET TAGS ('dbx_business_glossary_term' = 'Vice Chair Name');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_committee` ALTER COLUMN `vice_chair_name` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_committee` ALTER COLUMN `vice_chair_name` SET TAGS ('dbx_pii_name' = 'true');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_committee` ALTER COLUMN `voting_member_count` SET TAGS ('dbx_business_glossary_term' = 'Voting Member Count');
-ALTER TABLE `vibe_healthcare_v1`.`quality`.`committee` SET TAGS ('dbx_data_type' = 'master_data');
+ALTER SCHEMA `vibe_healthcare_v1`.`quality` SET TAGS ('pii_division' = 'corporate');
+ALTER SCHEMA `vibe_healthcare_v1`.`quality` SET TAGS ('pii_domain' = 'quality');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_measure` SET TAGS ('pii_data_type' = 'master_data');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_measure` SET TAGS ('pii_subdomain' = 'measure_management');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_measure` SET TAGS ('pii_domain' = 'quality');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_measure` SET TAGS ('pii_subdomain' = 'hedis');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_measure` SET TAGS ('pii_structure_enforced' = 'v22domains');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_measure` SET TAGS ('pii_vibe_domain_created' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_measure` ALTER COLUMN `icd_code_id` SET TAGS ('pii_sensitivity' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_measure` ALTER COLUMN `clinical_area` SET TAGS ('pii_sensitivity' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_measure` ALTER COLUMN `clinical_area` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_measure` ALTER COLUMN `clinical_area` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_measure` ALTER COLUMN `clinical_area` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_measure` ALTER COLUMN `clinical_area` SET TAGS ('pii_health' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_measure` ALTER COLUMN `clinical_area` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_measure` ALTER COLUMN `clinical_area` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_measure` ALTER COLUMN `clinical_area` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_measure` ALTER COLUMN `continuous_enrollment_days` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_measure` ALTER COLUMN `continuous_enrollment_days` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_measure` ALTER COLUMN `continuous_enrollment_days` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_measure` ALTER COLUMN `continuous_enrollment_days` SET TAGS ('pii_identifier' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_measure` ALTER COLUMN `continuous_enrollment_days` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_measure` ALTER COLUMN `continuous_enrollment_days` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_measure` ALTER COLUMN `continuous_enrollment_days` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_measure` ALTER COLUMN `hybrid_medical_record_required` SET TAGS ('pii_restricted' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_measure` ALTER COLUMN `hybrid_medical_record_required` SET TAGS ('pii_health' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_measure` ALTER COLUMN `icd10_code_list` SET TAGS ('pii_sensitivity' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_measure` ALTER COLUMN `measure_name` SET TAGS ('pii_sensitivity' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_measure` ALTER COLUMN `measure_name` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_measure` ALTER COLUMN `measure_name` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_measure` ALTER COLUMN `measure_name` SET TAGS ('pii_name' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_measure` ALTER COLUMN `measure_name` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_measure` ALTER COLUMN `measure_name` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_measure` ALTER COLUMN `measure_name` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_measure` ALTER COLUMN `measure_short_name` SET TAGS ('pii_sensitivity' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_measure` ALTER COLUMN `measure_short_name` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_measure` ALTER COLUMN `measure_short_name` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_measure` ALTER COLUMN `measure_short_name` SET TAGS ('pii_name' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_measure` ALTER COLUMN `measure_short_name` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_measure` ALTER COLUMN `measure_short_name` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_measure` ALTER COLUMN `measure_short_name` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_measure` ALTER COLUMN `reporting_period_end_date` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_measure` ALTER COLUMN `reporting_period_end_date` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_measure` ALTER COLUMN `reporting_period_end_date` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_measure` ALTER COLUMN `reporting_period_end_date` SET TAGS ('pii_identifier' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_measure` ALTER COLUMN `reporting_period_end_date` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_measure` ALTER COLUMN `reporting_period_end_date` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_measure` ALTER COLUMN `reporting_period_end_date` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_measure` ALTER COLUMN `reporting_period_start_date` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_measure` ALTER COLUMN `reporting_period_start_date` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_measure` ALTER COLUMN `reporting_period_start_date` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_measure` ALTER COLUMN `reporting_period_start_date` SET TAGS ('pii_identifier' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_measure` ALTER COLUMN `reporting_period_start_date` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_measure` ALTER COLUMN `reporting_period_start_date` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_measure` ALTER COLUMN `reporting_period_start_date` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_measure` ALTER COLUMN `reporting_submission_deadline` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_measure` ALTER COLUMN `reporting_submission_deadline` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_measure` ALTER COLUMN `reporting_submission_deadline` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_measure` ALTER COLUMN `reporting_submission_deadline` SET TAGS ('pii_identifier' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_measure` ALTER COLUMN `reporting_submission_deadline` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_measure` ALTER COLUMN `reporting_submission_deadline` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_measure` ALTER COLUMN `reporting_submission_deadline` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_result` SET TAGS ('pii_data_type' = 'transactional_data');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_result` SET TAGS ('pii_subdomain' = 'measure_management');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_result` SET TAGS ('pii_domain' = 'quality');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_result` SET TAGS ('pii_subdomain' = 'hedis');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_result` SET TAGS ('pii_structure_enforced' = 'v22domains');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_result` SET TAGS ('pii_vibe_domain_created' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_result` ALTER COLUMN `health_plan_id` SET TAGS ('pii_restricted' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_result` ALTER COLUMN `health_plan_id` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_result` ALTER COLUMN `health_plan_id` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_result` ALTER COLUMN `health_plan_id` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_result` ALTER COLUMN `health_plan_id` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_result` ALTER COLUMN `health_plan_id` SET TAGS ('pii_health' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_result` ALTER COLUMN `health_plan_id` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_result` ALTER COLUMN `health_plan_id` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_result` ALTER COLUMN `health_plan_id` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_result` ALTER COLUMN `reporting_period_end_date` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_result` ALTER COLUMN `reporting_period_end_date` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_result` ALTER COLUMN `reporting_period_end_date` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_result` ALTER COLUMN `reporting_period_end_date` SET TAGS ('pii_identifier' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_result` ALTER COLUMN `reporting_period_end_date` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_result` ALTER COLUMN `reporting_period_end_date` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_result` ALTER COLUMN `reporting_period_end_date` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_result` ALTER COLUMN `reporting_period_start_date` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_result` ALTER COLUMN `reporting_period_start_date` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_result` ALTER COLUMN `reporting_period_start_date` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_result` ALTER COLUMN `reporting_period_start_date` SET TAGS ('pii_identifier' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_result` ALTER COLUMN `reporting_period_start_date` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_result` ALTER COLUMN `reporting_period_start_date` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_result` ALTER COLUMN `reporting_period_start_date` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_result` ALTER COLUMN `result_identifier` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_result` ALTER COLUMN `result_identifier` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_result` ALTER COLUMN `result_identifier` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_result` ALTER COLUMN `result_identifier` SET TAGS ('pii_identifier' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_result` ALTER COLUMN `result_identifier` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_result` ALTER COLUMN `result_identifier` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_result` ALTER COLUMN `result_identifier` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_result` ALTER COLUMN `star_rating_weight` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_result` ALTER COLUMN `star_rating_weight` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_result` ALTER COLUMN `star_rating_weight` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_result` ALTER COLUMN `star_rating_weight` SET TAGS ('pii_identifier' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_result` ALTER COLUMN `star_rating_weight` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_result` ALTER COLUMN `star_rating_weight` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`hedis_result` ALTER COLUMN `star_rating_weight` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_survey` SET TAGS ('pii_data_type' = 'master_data');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_survey` SET TAGS ('pii_subdomain' = 'patient_experience');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_survey` SET TAGS ('pii_domain' = 'quality');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_survey` SET TAGS ('pii_subdomain' = 'patient_experience');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_survey` SET TAGS ('pii_structure_enforced' = 'v22domains');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_survey` SET TAGS ('pii_vibe_domain_created' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_survey` ALTER COLUMN `health_plan_id` SET TAGS ('pii_restricted' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_survey` ALTER COLUMN `health_plan_id` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_survey` ALTER COLUMN `health_plan_id` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_survey` ALTER COLUMN `health_plan_id` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_survey` ALTER COLUMN `health_plan_id` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_survey` ALTER COLUMN `health_plan_id` SET TAGS ('pii_health' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_survey` ALTER COLUMN `health_plan_id` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_survey` ALTER COLUMN `health_plan_id` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_survey` ALTER COLUMN `health_plan_id` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_survey` ALTER COLUMN `mpi_record_id` SET TAGS ('pii_sensitivity' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_survey` ALTER COLUMN `overall_hospital_rating` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_survey` ALTER COLUMN `overall_hospital_rating` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_survey` ALTER COLUMN `overall_hospital_rating` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_survey` ALTER COLUMN `overall_hospital_rating` SET TAGS ('pii_identifier' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_survey` ALTER COLUMN `overall_hospital_rating` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_survey` ALTER COLUMN `overall_hospital_rating` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_survey` ALTER COLUMN `overall_hospital_rating` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_survey` ALTER COLUMN `patient_mix_adjustment_applied` SET TAGS ('pii_sensitivity' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_survey` ALTER COLUMN `record_number` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_survey` ALTER COLUMN `record_number` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_survey` ALTER COLUMN `record_number` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_survey` ALTER COLUMN `record_number` SET TAGS ('pii_identifier' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_survey` ALTER COLUMN `record_number` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_survey` ALTER COLUMN `record_number` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_survey` ALTER COLUMN `record_number` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_survey` ALTER COLUMN `reporting_period_end` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_survey` ALTER COLUMN `reporting_period_end` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_survey` ALTER COLUMN `reporting_period_end` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_survey` ALTER COLUMN `reporting_period_end` SET TAGS ('pii_identifier' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_survey` ALTER COLUMN `reporting_period_end` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_survey` ALTER COLUMN `reporting_period_end` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_survey` ALTER COLUMN `reporting_period_end` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_survey` ALTER COLUMN `reporting_period_start` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_survey` ALTER COLUMN `reporting_period_start` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_survey` ALTER COLUMN `reporting_period_start` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_survey` ALTER COLUMN `reporting_period_start` SET TAGS ('pii_identifier' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_survey` ALTER COLUMN `reporting_period_start` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_survey` ALTER COLUMN `reporting_period_start` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_survey` ALTER COLUMN `reporting_period_start` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_survey` ALTER COLUMN `star_rating` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_survey` ALTER COLUMN `star_rating` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_survey` ALTER COLUMN `star_rating` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_survey` ALTER COLUMN `star_rating` SET TAGS ('pii_identifier' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_survey` ALTER COLUMN `star_rating` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_survey` ALTER COLUMN `star_rating` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_survey` ALTER COLUMN `star_rating` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_survey` ALTER COLUMN `vbp_patient_experience_score` SET TAGS ('pii_sensitivity' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_survey` ALTER COLUMN `vendor_name` SET TAGS ('pii_sensitivity' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_survey` ALTER COLUMN `vendor_name` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_survey` ALTER COLUMN `vendor_name` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_survey` ALTER COLUMN `vendor_name` SET TAGS ('pii_name' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_survey` ALTER COLUMN `vendor_name` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_survey` ALTER COLUMN `vendor_name` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_survey` ALTER COLUMN `vendor_name` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_response` SET TAGS ('pii_data_type' = 'transactional_data');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_response` SET TAGS ('pii_subdomain' = 'patient_experience');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_response` SET TAGS ('pii_domain' = 'quality');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_response` SET TAGS ('pii_subdomain' = 'patient_experience');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_response` SET TAGS ('pii_structure_enforced' = 'v22domains');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_response` SET TAGS ('pii_vibe_domain_created' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_response` ALTER COLUMN `health_plan_id` SET TAGS ('pii_restricted' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_response` ALTER COLUMN `health_plan_id` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_response` ALTER COLUMN `health_plan_id` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_response` ALTER COLUMN `health_plan_id` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_response` ALTER COLUMN `health_plan_id` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_response` ALTER COLUMN `health_plan_id` SET TAGS ('pii_health' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_response` ALTER COLUMN `health_plan_id` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_response` ALTER COLUMN `health_plan_id` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_response` ALTER COLUMN `health_plan_id` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_response` ALTER COLUMN `mpi_record_id` SET TAGS ('pii_sensitivity' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_response` ALTER COLUMN `mrn` SET TAGS ('pii_sensitivity' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_response` ALTER COLUMN `mrn` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_response` ALTER COLUMN `mrn` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_response` ALTER COLUMN `mrn` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_response` ALTER COLUMN `mrn` SET TAGS ('pii_identifier' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_response` ALTER COLUMN `mrn` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_response` ALTER COLUMN `mrn` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_response` ALTER COLUMN `mrn` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_response` ALTER COLUMN `overall_hospital_rating` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_response` ALTER COLUMN `overall_hospital_rating` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_response` ALTER COLUMN `overall_hospital_rating` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_response` ALTER COLUMN `overall_hospital_rating` SET TAGS ('pii_identifier' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_response` ALTER COLUMN `overall_hospital_rating` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_response` ALTER COLUMN `overall_hospital_rating` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_response` ALTER COLUMN `overall_hospital_rating` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_response` ALTER COLUMN `patient_service_line` SET TAGS ('pii_sensitivity' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_response` ALTER COLUMN `record_number` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_response` ALTER COLUMN `record_number` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_response` ALTER COLUMN `record_number` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_response` ALTER COLUMN `record_number` SET TAGS ('pii_identifier' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_response` ALTER COLUMN `record_number` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_response` ALTER COLUMN `record_number` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_response` ALTER COLUMN `record_number` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_response` ALTER COLUMN `reporting_quarter` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_response` ALTER COLUMN `reporting_quarter` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_response` ALTER COLUMN `reporting_quarter` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_response` ALTER COLUMN `reporting_quarter` SET TAGS ('pii_identifier' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_response` ALTER COLUMN `reporting_quarter` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_response` ALTER COLUMN `reporting_quarter` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_response` ALTER COLUMN `reporting_quarter` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_response` ALTER COLUMN `self_reported_health_status` SET TAGS ('pii_sensitivity' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_response` ALTER COLUMN `self_reported_health_status` SET TAGS ('pii_restricted' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_response` ALTER COLUMN `self_reported_health_status` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_response` ALTER COLUMN `self_reported_health_status` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_response` ALTER COLUMN `self_reported_health_status` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_response` ALTER COLUMN `self_reported_health_status` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_response` ALTER COLUMN `self_reported_health_status` SET TAGS ('pii_health' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_response` ALTER COLUMN `self_reported_health_status` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_response` ALTER COLUMN `self_reported_health_status` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_response` ALTER COLUMN `self_reported_health_status` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_response` ALTER COLUMN `top_box_overall_rating` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_response` ALTER COLUMN `top_box_overall_rating` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_response` ALTER COLUMN `top_box_overall_rating` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_response` ALTER COLUMN `top_box_overall_rating` SET TAGS ('pii_identifier' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_response` ALTER COLUMN `top_box_overall_rating` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_response` ALTER COLUMN `top_box_overall_rating` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_response` ALTER COLUMN `top_box_overall_rating` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`cahps_response` ALTER COLUMN `vbp_patient_experience_score` SET TAGS ('pii_sensitivity' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`patient_safety_event` SET TAGS ('pii_data_type' = 'transactional_data');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`patient_safety_event` SET TAGS ('pii_subdomain' = 'safety_review');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`patient_safety_event` SET TAGS ('pii_domain' = 'quality');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`patient_safety_event` SET TAGS ('pii_subdomain' = 'patient_safety');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`patient_safety_event` SET TAGS ('pii_structure_enforced' = 'v22domains');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`patient_safety_event` SET TAGS ('pii_vibe_domain_created' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`patient_safety_event` ALTER COLUMN `patient_safety_event_id` SET TAGS ('pii_sensitivity' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`patient_safety_event` ALTER COLUMN `mpi_record_id` SET TAGS ('pii_sensitivity' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`patient_safety_event` ALTER COLUMN `employee_id` SET TAGS ('pii_sensitivity' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`patient_safety_event` ALTER COLUMN `employee_id` SET TAGS ('pii_confidential' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`patient_safety_event` ALTER COLUMN `employee_id` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`patient_safety_event` ALTER COLUMN `contributing_factors_summary` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`patient_safety_event` ALTER COLUMN `contributing_factors_summary` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`patient_safety_event` ALTER COLUMN `contributing_factors_summary` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`patient_safety_event` ALTER COLUMN `contributing_factors_summary` SET TAGS ('pii_identifier' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`patient_safety_event` ALTER COLUMN `contributing_factors_summary` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`patient_safety_event` ALTER COLUMN `contributing_factors_summary` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`patient_safety_event` ALTER COLUMN `contributing_factors_summary` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`patient_safety_event` ALTER COLUMN `harm_level_code` SET TAGS ('pii_sensitivity' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`patient_safety_event` ALTER COLUMN `harm_level_description` SET TAGS ('pii_sensitivity' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`patient_safety_event` ALTER COLUMN `is_sentinel_event` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`patient_safety_event` ALTER COLUMN `is_sentinel_event` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`patient_safety_event` ALTER COLUMN `is_sentinel_event` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`patient_safety_event` ALTER COLUMN `is_sentinel_event` SET TAGS ('pii_identifier' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`patient_safety_event` ALTER COLUMN `is_sentinel_event` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`patient_safety_event` ALTER COLUMN `is_sentinel_event` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`patient_safety_event` ALTER COLUMN `is_sentinel_event` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`patient_safety_event` ALTER COLUMN `is_state_reportable` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`patient_safety_event` ALTER COLUMN `is_state_reportable` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`patient_safety_event` ALTER COLUMN `is_state_reportable` SET TAGS ('pii_address' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`patient_safety_event` ALTER COLUMN `is_state_reportable` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`patient_safety_event` ALTER COLUMN `is_state_reportable` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`patient_safety_event` ALTER COLUMN `is_state_reportable` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`patient_safety_event` ALTER COLUMN `patient_outcome` SET TAGS ('pii_sensitivity' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`safety_event_review` SET TAGS ('pii_data_type' = 'transactional_data');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`safety_event_review` SET TAGS ('pii_subdomain' = 'safety_review');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`safety_event_review` SET TAGS ('pii_domain' = 'quality');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`safety_event_review` SET TAGS ('pii_subdomain' = 'patient_safety');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`safety_event_review` SET TAGS ('pii_structure_enforced' = 'v22domains');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`safety_event_review` SET TAGS ('pii_vibe_domain_created' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`safety_event_review` ALTER COLUMN `employee_id` SET TAGS ('pii_confidential' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`safety_event_review` ALTER COLUMN `employee_id` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`safety_event_review` ALTER COLUMN `mpi_record_id` SET TAGS ('pii_sensitivity' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`safety_event_review` ALTER COLUMN `patient_safety_event_id` SET TAGS ('pii_sensitivity' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`safety_event_review` ALTER COLUMN `care_setting` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`safety_event_review` ALTER COLUMN `care_setting` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`safety_event_review` ALTER COLUMN `care_setting` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`safety_event_review` ALTER COLUMN `care_setting` SET TAGS ('pii_identifier' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`safety_event_review` ALTER COLUMN `care_setting` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`safety_event_review` ALTER COLUMN `care_setting` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`safety_event_review` ALTER COLUMN `care_setting` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`safety_event_review` ALTER COLUMN `contributing_factors_summary` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`safety_event_review` ALTER COLUMN `contributing_factors_summary` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`safety_event_review` ALTER COLUMN `contributing_factors_summary` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`safety_event_review` ALTER COLUMN `contributing_factors_summary` SET TAGS ('pii_identifier' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`safety_event_review` ALTER COLUMN `contributing_factors_summary` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`safety_event_review` ALTER COLUMN `contributing_factors_summary` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`safety_event_review` ALTER COLUMN `contributing_factors_summary` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`safety_event_review` ALTER COLUMN `disclosure_to_patient_flag` SET TAGS ('pii_sensitivity' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`safety_event_review` ALTER COLUMN `harm_level` SET TAGS ('pii_sensitivity' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`safety_event_review` ALTER COLUMN `icd10_diagnosis_code` SET TAGS ('pii_sensitivity' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`safety_event_review` ALTER COLUMN `icd10_diagnosis_code` SET TAGS ('pii_restricted' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`safety_event_review` ALTER COLUMN `icd10_diagnosis_code` SET TAGS ('pii_health' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`safety_event_review` ALTER COLUMN `icd10_diagnosis_code` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`safety_event_review` ALTER COLUMN `icd10_diagnosis_code` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`safety_event_review` ALTER COLUMN `icd10_diagnosis_code` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`safety_event_review` ALTER COLUMN `icd10_diagnosis_code` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`safety_event_review` ALTER COLUMN `icd10_diagnosis_code` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`safety_event_review` ALTER COLUMN `icd10_diagnosis_code` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`safety_event_review` ALTER COLUMN `patient_safety_indicator_code` SET TAGS ('pii_sensitivity' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`safety_event_review` ALTER COLUMN `state_reportable_flag` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`safety_event_review` ALTER COLUMN `state_reportable_flag` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`safety_event_review` ALTER COLUMN `state_reportable_flag` SET TAGS ('pii_address' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`safety_event_review` ALTER COLUMN `state_reportable_flag` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`safety_event_review` ALTER COLUMN `state_reportable_flag` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`safety_event_review` ALTER COLUMN `state_reportable_flag` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mortality_review` SET TAGS ('pii_data_type' = 'transactional_data');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mortality_review` SET TAGS ('pii_subdomain' = 'safety_review');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mortality_review` SET TAGS ('pii_domain' = 'quality');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mortality_review` SET TAGS ('pii_subdomain' = 'patient_safety');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mortality_review` SET TAGS ('pii_structure_enforced' = 'v22domains');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mortality_review` SET TAGS ('pii_vibe_domain_created' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mortality_review` ALTER COLUMN `drg_id` SET TAGS ('pii_sensitivity' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mortality_review` ALTER COLUMN `mpi_record_id` SET TAGS ('pii_sensitivity' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mortality_review` ALTER COLUMN `care_quality_rating` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mortality_review` ALTER COLUMN `care_quality_rating` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mortality_review` ALTER COLUMN `care_quality_rating` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mortality_review` ALTER COLUMN `care_quality_rating` SET TAGS ('pii_identifier' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mortality_review` ALTER COLUMN `care_quality_rating` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mortality_review` ALTER COLUMN `care_quality_rating` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mortality_review` ALTER COLUMN `care_quality_rating` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mortality_review` ALTER COLUMN `contributing_factor_1` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mortality_review` ALTER COLUMN `contributing_factor_1` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mortality_review` ALTER COLUMN `contributing_factor_1` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mortality_review` ALTER COLUMN `contributing_factor_1` SET TAGS ('pii_identifier' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mortality_review` ALTER COLUMN `contributing_factor_1` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mortality_review` ALTER COLUMN `contributing_factor_1` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mortality_review` ALTER COLUMN `contributing_factor_1` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mortality_review` ALTER COLUMN `contributing_factor_2` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mortality_review` ALTER COLUMN `contributing_factor_2` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mortality_review` ALTER COLUMN `contributing_factor_2` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mortality_review` ALTER COLUMN `contributing_factor_2` SET TAGS ('pii_identifier' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mortality_review` ALTER COLUMN `contributing_factor_2` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mortality_review` ALTER COLUMN `contributing_factor_2` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mortality_review` ALTER COLUMN `contributing_factor_2` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mortality_review` ALTER COLUMN `contributing_factor_3` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mortality_review` ALTER COLUMN `contributing_factor_3` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mortality_review` ALTER COLUMN `contributing_factor_3` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mortality_review` ALTER COLUMN `contributing_factor_3` SET TAGS ('pii_identifier' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mortality_review` ALTER COLUMN `contributing_factor_3` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mortality_review` ALTER COLUMN `contributing_factor_3` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mortality_review` ALTER COLUMN `contributing_factor_3` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mortality_review` ALTER COLUMN `days_from_admission_to_death` SET TAGS ('pii_sensitivity' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mortality_review` ALTER COLUMN `days_from_admission_to_death` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mortality_review` ALTER COLUMN `days_from_admission_to_death` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mortality_review` ALTER COLUMN `days_from_admission_to_death` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mortality_review` ALTER COLUMN `days_from_admission_to_death` SET TAGS ('pii_identifier' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mortality_review` ALTER COLUMN `days_from_admission_to_death` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mortality_review` ALTER COLUMN `days_from_admission_to_death` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mortality_review` ALTER COLUMN `days_from_admission_to_death` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mortality_review` ALTER COLUMN `death_classification` SET TAGS ('pii_sensitivity' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mortality_review` ALTER COLUMN `death_classification` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mortality_review` ALTER COLUMN `death_classification` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mortality_review` ALTER COLUMN `death_classification` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mortality_review` ALTER COLUMN `death_classification` SET TAGS ('pii_identifier' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mortality_review` ALTER COLUMN `death_classification` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mortality_review` ALTER COLUMN `death_classification` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mortality_review` ALTER COLUMN `death_classification` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mortality_review` ALTER COLUMN `death_date` SET TAGS ('pii_sensitivity' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mortality_review` ALTER COLUMN `death_date` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mortality_review` ALTER COLUMN `death_date` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mortality_review` ALTER COLUMN `death_date` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mortality_review` ALTER COLUMN `death_date` SET TAGS ('pii_identifier' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mortality_review` ALTER COLUMN `death_date` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mortality_review` ALTER COLUMN `death_date` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mortality_review` ALTER COLUMN `death_date` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mortality_review` ALTER COLUMN `death_location_type` SET TAGS ('pii_sensitivity' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mortality_review` ALTER COLUMN `death_location_type` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mortality_review` ALTER COLUMN `death_location_type` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mortality_review` ALTER COLUMN `death_location_type` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mortality_review` ALTER COLUMN `death_location_type` SET TAGS ('pii_identifier' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mortality_review` ALTER COLUMN `death_location_type` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mortality_review` ALTER COLUMN `death_location_type` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mortality_review` ALTER COLUMN `death_location_type` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mortality_review` ALTER COLUMN `death_timestamp` SET TAGS ('pii_sensitivity' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mortality_review` ALTER COLUMN `death_timestamp` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mortality_review` ALTER COLUMN `death_timestamp` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mortality_review` ALTER COLUMN `death_timestamp` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mortality_review` ALTER COLUMN `death_timestamp` SET TAGS ('pii_identifier' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mortality_review` ALTER COLUMN `death_timestamp` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mortality_review` ALTER COLUMN `death_timestamp` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mortality_review` ALTER COLUMN `death_timestamp` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mortality_review` ALTER COLUMN `dnr_status_at_death` SET TAGS ('pii_sensitivity' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mortality_review` ALTER COLUMN `dnr_status_at_death` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mortality_review` ALTER COLUMN `dnr_status_at_death` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mortality_review` ALTER COLUMN `dnr_status_at_death` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mortality_review` ALTER COLUMN `dnr_status_at_death` SET TAGS ('pii_identifier' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mortality_review` ALTER COLUMN `dnr_status_at_death` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mortality_review` ALTER COLUMN `dnr_status_at_death` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mortality_review` ALTER COLUMN `dnr_status_at_death` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mortality_review` ALTER COLUMN `primary_cause_of_death_description` SET TAGS ('pii_sensitivity' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mortality_review` ALTER COLUMN `primary_cause_of_death_description` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mortality_review` ALTER COLUMN `primary_cause_of_death_description` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mortality_review` ALTER COLUMN `primary_cause_of_death_description` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mortality_review` ALTER COLUMN `primary_cause_of_death_description` SET TAGS ('pii_identifier' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mortality_review` ALTER COLUMN `primary_cause_of_death_description` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mortality_review` ALTER COLUMN `primary_cause_of_death_description` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mortality_review` ALTER COLUMN `primary_cause_of_death_description` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mortality_review` ALTER COLUMN `primary_icd10_cause_of_death` SET TAGS ('pii_sensitivity' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mortality_review` ALTER COLUMN `primary_icd10_cause_of_death` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mortality_review` ALTER COLUMN `primary_icd10_cause_of_death` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mortality_review` ALTER COLUMN `primary_icd10_cause_of_death` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mortality_review` ALTER COLUMN `primary_icd10_cause_of_death` SET TAGS ('pii_identifier' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mortality_review` ALTER COLUMN `primary_icd10_cause_of_death` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mortality_review` ALTER COLUMN `primary_icd10_cause_of_death` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mortality_review` ALTER COLUMN `primary_icd10_cause_of_death` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mortality_review` ALTER COLUMN `sentinel_event_flag` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mortality_review` ALTER COLUMN `sentinel_event_flag` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mortality_review` ALTER COLUMN `sentinel_event_flag` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mortality_review` ALTER COLUMN `sentinel_event_flag` SET TAGS ('pii_identifier' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mortality_review` ALTER COLUMN `sentinel_event_flag` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mortality_review` ALTER COLUMN `sentinel_event_flag` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mortality_review` ALTER COLUMN `sentinel_event_flag` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`vbp_program` SET TAGS ('pii_data_type' = 'master_data');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`vbp_program` SET TAGS ('pii_subdomain' = 'measure_management');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`vbp_program` SET TAGS ('pii_domain' = 'quality');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`vbp_program` SET TAGS ('pii_subdomain' = 'value_based_care');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`vbp_program` SET TAGS ('pii_structure_enforced' = 'v22domains');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`vbp_program` SET TAGS ('pii_vibe_domain_created' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`vbp_program` ALTER COLUMN `promoting_interoperability_id` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`vbp_program` ALTER COLUMN `promoting_interoperability_id` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`vbp_program` ALTER COLUMN `promoting_interoperability_id` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`vbp_program` ALTER COLUMN `promoting_interoperability_id` SET TAGS ('pii_identifier' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`vbp_program` ALTER COLUMN `promoting_interoperability_id` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`vbp_program` ALTER COLUMN `promoting_interoperability_id` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`vbp_program` ALTER COLUMN `promoting_interoperability_id` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`vbp_program` ALTER COLUMN `clinical_outcomes_domain_weight` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`vbp_program` ALTER COLUMN `clinical_outcomes_domain_weight` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`vbp_program` ALTER COLUMN `clinical_outcomes_domain_weight` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`vbp_program` ALTER COLUMN `clinical_outcomes_domain_weight` SET TAGS ('pii_health' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`vbp_program` ALTER COLUMN `clinical_outcomes_domain_weight` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`vbp_program` ALTER COLUMN `clinical_outcomes_domain_weight` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`vbp_program` ALTER COLUMN `clinical_outcomes_domain_weight` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`vbp_program` ALTER COLUMN `program_name` SET TAGS ('pii_sensitivity' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`vbp_program` ALTER COLUMN `program_name` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`vbp_program` ALTER COLUMN `program_name` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`vbp_program` ALTER COLUMN `program_name` SET TAGS ('pii_name' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`vbp_program` ALTER COLUMN `program_name` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`vbp_program` ALTER COLUMN `program_name` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`vbp_program` ALTER COLUMN `program_name` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure` SET TAGS ('pii_data_type' = 'master_data');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure` SET TAGS ('pii_subdomain' = 'measure_management');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure` SET TAGS ('pii_domain' = 'quality');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure` SET TAGS ('pii_subdomain' = 'quality_measurement');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure` SET TAGS ('pii_structure_enforced' = 'v22domains');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure` SET TAGS ('pii_vibe_domain_created' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure` ALTER COLUMN `drg_id` SET TAGS ('pii_sensitivity' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure` ALTER COLUMN `icd_code_id` SET TAGS ('pii_sensitivity' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure` ALTER COLUMN `care_setting` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure` ALTER COLUMN `care_setting` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure` ALTER COLUMN `care_setting` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure` ALTER COLUMN `care_setting` SET TAGS ('pii_identifier' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure` ALTER COLUMN `care_setting` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure` ALTER COLUMN `care_setting` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure` ALTER COLUMN `care_setting` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure` ALTER COLUMN `clinical_ai_integration_marker` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure` ALTER COLUMN `clinical_ai_integration_marker` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure` ALTER COLUMN `clinical_ai_integration_marker` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure` ALTER COLUMN `clinical_ai_integration_marker` SET TAGS ('pii_health' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure` ALTER COLUMN `clinical_ai_integration_marker` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure` ALTER COLUMN `clinical_ai_integration_marker` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure` ALTER COLUMN `clinical_ai_integration_marker` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure` ALTER COLUMN `clinical_domain` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure` ALTER COLUMN `clinical_domain` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure` ALTER COLUMN `clinical_domain` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure` ALTER COLUMN `clinical_domain` SET TAGS ('pii_health' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure` ALTER COLUMN `clinical_domain` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure` ALTER COLUMN `clinical_domain` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure` ALTER COLUMN `clinical_domain` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure` ALTER COLUMN `icd10_code_set` SET TAGS ('pii_sensitivity' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure` ALTER COLUMN `reporting_period_end` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure` ALTER COLUMN `reporting_period_end` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure` ALTER COLUMN `reporting_period_end` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure` ALTER COLUMN `reporting_period_end` SET TAGS ('pii_identifier' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure` ALTER COLUMN `reporting_period_end` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure` ALTER COLUMN `reporting_period_end` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure` ALTER COLUMN `reporting_period_end` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure` ALTER COLUMN `reporting_period_start` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure` ALTER COLUMN `reporting_period_start` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure` ALTER COLUMN `reporting_period_start` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure` ALTER COLUMN `reporting_period_start` SET TAGS ('pii_identifier' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure` ALTER COLUMN `reporting_period_start` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure` ALTER COLUMN `reporting_period_start` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure` ALTER COLUMN `reporting_period_start` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure` ALTER COLUMN `reporting_program` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure` ALTER COLUMN `reporting_program` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure` ALTER COLUMN `reporting_program` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure` ALTER COLUMN `reporting_program` SET TAGS ('pii_identifier' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure` ALTER COLUMN `reporting_program` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure` ALTER COLUMN `reporting_program` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure` ALTER COLUMN `reporting_program` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure` ALTER COLUMN `short_name` SET TAGS ('pii_sensitivity' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure` ALTER COLUMN `short_name` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure` ALTER COLUMN `short_name` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure` ALTER COLUMN `short_name` SET TAGS ('pii_name' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure` ALTER COLUMN `short_name` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure` ALTER COLUMN `short_name` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure` ALTER COLUMN `short_name` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure` ALTER COLUMN `submission_deadline` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure` ALTER COLUMN `submission_deadline` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure` ALTER COLUMN `submission_deadline` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure` ALTER COLUMN `submission_deadline` SET TAGS ('pii_identifier' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure` ALTER COLUMN `submission_deadline` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure` ALTER COLUMN `submission_deadline` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure` ALTER COLUMN `submission_deadline` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure_result` SET TAGS ('pii_data_type' = 'transactional_data');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure_result` SET TAGS ('pii_subdomain' = 'measure_management');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure_result` SET TAGS ('pii_domain' = 'quality');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure_result` SET TAGS ('pii_subdomain' = 'quality_measurement');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure_result` SET TAGS ('pii_structure_enforced' = 'v22domains');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure_result` SET TAGS ('pii_vibe_domain_created' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure_result` ALTER COLUMN `drg_id` SET TAGS ('pii_sensitivity' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure_result` ALTER COLUMN `health_plan_id` SET TAGS ('pii_restricted' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure_result` ALTER COLUMN `health_plan_id` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure_result` ALTER COLUMN `health_plan_id` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure_result` ALTER COLUMN `health_plan_id` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure_result` ALTER COLUMN `health_plan_id` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure_result` ALTER COLUMN `health_plan_id` SET TAGS ('pii_health' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure_result` ALTER COLUMN `health_plan_id` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure_result` ALTER COLUMN `health_plan_id` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure_result` ALTER COLUMN `health_plan_id` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure_result` ALTER COLUMN `meets_reporting_threshold` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure_result` ALTER COLUMN `meets_reporting_threshold` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure_result` ALTER COLUMN `meets_reporting_threshold` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure_result` ALTER COLUMN `meets_reporting_threshold` SET TAGS ('pii_identifier' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure_result` ALTER COLUMN `meets_reporting_threshold` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure_result` ALTER COLUMN `meets_reporting_threshold` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure_result` ALTER COLUMN `meets_reporting_threshold` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure_result` ALTER COLUMN `reporting_program` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure_result` ALTER COLUMN `reporting_program` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure_result` ALTER COLUMN `reporting_program` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure_result` ALTER COLUMN `reporting_program` SET TAGS ('pii_identifier' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure_result` ALTER COLUMN `reporting_program` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure_result` ALTER COLUMN `reporting_program` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure_result` ALTER COLUMN `reporting_program` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure_result` ALTER COLUMN `reporting_quarter` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure_result` ALTER COLUMN `reporting_quarter` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure_result` ALTER COLUMN `reporting_quarter` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure_result` ALTER COLUMN `reporting_quarter` SET TAGS ('pii_identifier' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure_result` ALTER COLUMN `reporting_quarter` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure_result` ALTER COLUMN `reporting_quarter` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure_result` ALTER COLUMN `reporting_quarter` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`cdi_review` SET TAGS ('pii_data_type' = 'transactional_data');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`cdi_review` SET TAGS ('pii_subdomain' = 'safety_review');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`cdi_review` SET TAGS ('pii_domain' = 'quality');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`cdi_review` SET TAGS ('pii_subdomain' = 'clinical_documentation');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`cdi_review` SET TAGS ('pii_structure_enforced' = 'v22domains');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`cdi_review` SET TAGS ('pii_vibe_domain_created' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`cdi_review` ALTER COLUMN `drg_assignment_id` SET TAGS ('pii_sensitivity' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`cdi_review` ALTER COLUMN `employee_id` SET TAGS ('pii_confidential' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`cdi_review` ALTER COLUMN `employee_id` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`cdi_review` ALTER COLUMN `mpi_record_id` SET TAGS ('pii_sensitivity' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`cdi_review` ALTER COLUMN `drg_id` SET TAGS ('pii_sensitivity' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`cdi_review` ALTER COLUMN `clinical_indicator_summary` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`cdi_review` ALTER COLUMN `clinical_indicator_summary` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`cdi_review` ALTER COLUMN `clinical_indicator_summary` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`cdi_review` ALTER COLUMN `clinical_indicator_summary` SET TAGS ('pii_health' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`cdi_review` ALTER COLUMN `clinical_indicator_summary` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`cdi_review` ALTER COLUMN `clinical_indicator_summary` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`cdi_review` ALTER COLUMN `clinical_indicator_summary` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`cdi_review` ALTER COLUMN `drg_change_flag` SET TAGS ('pii_sensitivity' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`cdi_review` ALTER COLUMN `principal_diagnosis_code` SET TAGS ('pii_sensitivity' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`cdi_review` ALTER COLUMN `principal_diagnosis_code` SET TAGS ('pii_restricted' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`cdi_review` ALTER COLUMN `principal_diagnosis_code` SET TAGS ('pii_health' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`cdi_review` ALTER COLUMN `principal_diagnosis_code` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`cdi_review` ALTER COLUMN `principal_diagnosis_code` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`cdi_review` ALTER COLUMN `principal_diagnosis_code` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`cdi_review` ALTER COLUMN `principal_diagnosis_code` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`cdi_review` ALTER COLUMN `principal_diagnosis_code` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`cdi_review` ALTER COLUMN `principal_diagnosis_code` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`cdi_review` ALTER COLUMN `reviewer_credential` SET TAGS ('pii_sensitivity' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`cdi_review` ALTER COLUMN `reviewer_role` SET TAGS ('pii_sensitivity' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_program` SET TAGS ('pii_data_type' = 'master_data');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_program` SET TAGS ('pii_subdomain' = 'accreditation_improvement');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_program` SET TAGS ('pii_domain' = 'quality');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_program` SET TAGS ('pii_subdomain' = 'accreditation');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_program` SET TAGS ('pii_structure_enforced' = 'v22domains');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_program` SET TAGS ('pii_vibe_domain_created' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_program` ALTER COLUMN `accreditation_coordinator_name` SET TAGS ('pii_sensitivity' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_program` ALTER COLUMN `accreditation_coordinator_name` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_program` ALTER COLUMN `accreditation_coordinator_name` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_program` ALTER COLUMN `accreditation_coordinator_name` SET TAGS ('pii_name' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_program` ALTER COLUMN `accreditation_coordinator_name` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_program` ALTER COLUMN `accreditation_coordinator_name` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_program` ALTER COLUMN `accreditation_coordinator_name` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_program` ALTER COLUMN `accrediting_body` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_program` ALTER COLUMN `accrediting_body` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_program` ALTER COLUMN `accrediting_body` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_program` ALTER COLUMN `accrediting_body` SET TAGS ('pii_identifier' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_program` ALTER COLUMN `accrediting_body` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_program` ALTER COLUMN `accrediting_body` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_program` ALTER COLUMN `accrediting_body` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_program` ALTER COLUMN `condition_level_deficiency_count` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_program` ALTER COLUMN `condition_level_deficiency_count` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_program` ALTER COLUMN `condition_level_deficiency_count` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_program` ALTER COLUMN `condition_level_deficiency_count` SET TAGS ('pii_health' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_program` ALTER COLUMN `condition_level_deficiency_count` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_program` ALTER COLUMN `condition_level_deficiency_count` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_program` ALTER COLUMN `condition_level_deficiency_count` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_program` ALTER COLUMN `program_name` SET TAGS ('pii_sensitivity' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_program` ALTER COLUMN `program_name` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_program` ALTER COLUMN `program_name` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_program` ALTER COLUMN `program_name` SET TAGS ('pii_name' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_program` ALTER COLUMN `program_name` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_program` ALTER COLUMN `program_name` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_program` ALTER COLUMN `program_name` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_program` ALTER COLUMN `state_license_number` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_program` ALTER COLUMN `state_license_number` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_program` ALTER COLUMN `state_license_number` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_program` ALTER COLUMN `state_license_number` SET TAGS ('pii_identifier' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_program` ALTER COLUMN `state_license_number` SET TAGS ('pii_address' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_program` ALTER COLUMN `state_license_number` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_program` ALTER COLUMN `state_license_number` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_program` ALTER COLUMN `state_license_number` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_program` ALTER COLUMN `state_survey_agency` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_program` ALTER COLUMN `state_survey_agency` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_program` ALTER COLUMN `state_survey_agency` SET TAGS ('pii_address' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_program` ALTER COLUMN `state_survey_agency` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_program` ALTER COLUMN `state_survey_agency` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_program` ALTER COLUMN `state_survey_agency` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_program` ALTER COLUMN `surveyor_team` SET TAGS ('pii_sensitivity' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_survey` SET TAGS ('pii_data_type' = 'transactional_data');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_survey` SET TAGS ('pii_subdomain' = 'accreditation_improvement');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_survey` SET TAGS ('pii_domain' = 'quality');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_survey` SET TAGS ('pii_subdomain' = 'accreditation');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_survey` SET TAGS ('pii_structure_enforced' = 'v22domains');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_survey` SET TAGS ('pii_vibe_domain_created' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_survey` ALTER COLUMN `employee_id` SET TAGS ('pii_confidential' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_survey` ALTER COLUMN `employee_id` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_survey` ALTER COLUMN `accrediting_body` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_survey` ALTER COLUMN `accrediting_body` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_survey` ALTER COLUMN `accrediting_body` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_survey` ALTER COLUMN `accrediting_body` SET TAGS ('pii_identifier' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_survey` ALTER COLUMN `accrediting_body` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_survey` ALTER COLUMN `accrediting_body` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_survey` ALTER COLUMN `accrediting_body` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_survey` ALTER COLUMN `condition_level_deficiency` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_survey` ALTER COLUMN `condition_level_deficiency` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_survey` ALTER COLUMN `condition_level_deficiency` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_survey` ALTER COLUMN `condition_level_deficiency` SET TAGS ('pii_health' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_survey` ALTER COLUMN `condition_level_deficiency` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_survey` ALTER COLUMN `condition_level_deficiency` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_survey` ALTER COLUMN `condition_level_deficiency` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_survey` ALTER COLUMN `findings_count_observation` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_survey` ALTER COLUMN `findings_count_observation` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_survey` ALTER COLUMN `findings_count_observation` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_survey` ALTER COLUMN `findings_count_observation` SET TAGS ('pii_health' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_survey` ALTER COLUMN `findings_count_observation` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_survey` ALTER COLUMN `findings_count_observation` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_survey` ALTER COLUMN `findings_count_observation` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_survey` ALTER COLUMN `lead_surveyor_name` SET TAGS ('pii_sensitivity' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_survey` ALTER COLUMN `lead_surveyor_name` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_survey` ALTER COLUMN `lead_surveyor_name` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_survey` ALTER COLUMN `lead_surveyor_name` SET TAGS ('pii_name' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_survey` ALTER COLUMN `lead_surveyor_name` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_survey` ALTER COLUMN `lead_surveyor_name` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_survey` ALTER COLUMN `lead_surveyor_name` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_survey` ALTER COLUMN `national_patient_safety_goals_reviewed` SET TAGS ('pii_sensitivity' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_survey` ALTER COLUMN `surveyor_team_composition` SET TAGS ('pii_sensitivity' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_survey` ALTER COLUMN `system_tracer_topics` SET TAGS ('pii_sensitivity' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_survey` ALTER COLUMN `system_tracer_topics` SET TAGS ('pii_person' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_survey` ALTER COLUMN `tracer_methodology_used` SET TAGS ('pii_sensitivity' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`accreditation_survey` ALTER COLUMN `tracer_methodology_used` SET TAGS ('pii_person' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`standard_finding` SET TAGS ('pii_data_type' = 'transactional_data');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`standard_finding` SET TAGS ('pii_subdomain' = 'accreditation_improvement');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`standard_finding` SET TAGS ('pii_domain' = 'quality');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`standard_finding` SET TAGS ('pii_subdomain' = 'accreditation');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`standard_finding` SET TAGS ('pii_structure_enforced' = 'v22domains');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`standard_finding` SET TAGS ('pii_vibe_domain_created' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`improvement_initiative` SET TAGS ('pii_data_type' = 'master_data');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`improvement_initiative` SET TAGS ('pii_subdomain' = 'accreditation_improvement');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`improvement_initiative` SET TAGS ('pii_domain' = 'quality');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`improvement_initiative` SET TAGS ('pii_subdomain' = 'quality_improvement');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`improvement_initiative` SET TAGS ('pii_structure_enforced' = 'v22domains');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`improvement_initiative` SET TAGS ('pii_vibe_domain_created' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`improvement_initiative` ALTER COLUMN `employee_id` SET TAGS ('pii_confidential' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`improvement_initiative` ALTER COLUMN `employee_id` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`improvement_initiative` ALTER COLUMN `owner_employee_id` SET TAGS ('pii_confidential' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`improvement_initiative` ALTER COLUMN `owner_employee_id` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`improvement_initiative` ALTER COLUMN `aim_statement` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`improvement_initiative` ALTER COLUMN `aim_statement` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`improvement_initiative` ALTER COLUMN `aim_statement` SET TAGS ('pii_address' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`improvement_initiative` ALTER COLUMN `aim_statement` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`improvement_initiative` ALTER COLUMN `aim_statement` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`improvement_initiative` ALTER COLUMN `aim_statement` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`improvement_initiative` ALTER COLUMN `clinical_domain` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`improvement_initiative` ALTER COLUMN `clinical_domain` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`improvement_initiative` ALTER COLUMN `clinical_domain` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`improvement_initiative` ALTER COLUMN `clinical_domain` SET TAGS ('pii_health' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`improvement_initiative` ALTER COLUMN `clinical_domain` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`improvement_initiative` ALTER COLUMN `clinical_domain` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`improvement_initiative` ALTER COLUMN `clinical_domain` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`improvement_initiative` ALTER COLUMN `initiative_name` SET TAGS ('pii_sensitivity' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`improvement_initiative` ALTER COLUMN `initiative_name` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`improvement_initiative` ALTER COLUMN `initiative_name` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`improvement_initiative` ALTER COLUMN `initiative_name` SET TAGS ('pii_name' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`improvement_initiative` ALTER COLUMN `initiative_name` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`improvement_initiative` ALTER COLUMN `initiative_name` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`improvement_initiative` ALTER COLUMN `initiative_name` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`improvement_initiative` ALTER COLUMN `problem_statement` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`improvement_initiative` ALTER COLUMN `problem_statement` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`improvement_initiative` ALTER COLUMN `problem_statement` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`improvement_initiative` ALTER COLUMN `problem_statement` SET TAGS ('pii_address' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`improvement_initiative` ALTER COLUMN `problem_statement` SET TAGS ('pii_health' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`improvement_initiative` ALTER COLUMN `problem_statement` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`improvement_initiative` ALTER COLUMN `problem_statement` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`improvement_initiative` ALTER COLUMN `problem_statement` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`improvement_initiative` ALTER COLUMN `project_lead_name` SET TAGS ('pii_sensitivity' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`improvement_initiative` ALTER COLUMN `project_lead_name` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`improvement_initiative` ALTER COLUMN `project_lead_name` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`improvement_initiative` ALTER COLUMN `project_lead_name` SET TAGS ('pii_name' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`improvement_initiative` ALTER COLUMN `project_lead_name` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`improvement_initiative` ALTER COLUMN `project_lead_name` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`improvement_initiative` ALTER COLUMN `project_lead_name` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`improvement_initiative` ALTER COLUMN `sponsor_name` SET TAGS ('pii_sensitivity' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`improvement_initiative` ALTER COLUMN `sponsor_name` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`improvement_initiative` ALTER COLUMN `sponsor_name` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`improvement_initiative` ALTER COLUMN `sponsor_name` SET TAGS ('pii_name' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`improvement_initiative` ALTER COLUMN `sponsor_name` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`improvement_initiative` ALTER COLUMN `sponsor_name` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`improvement_initiative` ALTER COLUMN `sponsor_name` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_peer_review` SET TAGS ('pii_data_type' = 'transactional_data');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_peer_review` SET TAGS ('pii_subdomain' = 'safety_review');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_peer_review` SET TAGS ('pii_domain' = 'quality');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_peer_review` SET TAGS ('pii_subdomain' = 'peer_review');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_peer_review` SET TAGS ('pii_structure_enforced' = 'v22domains');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_peer_review` SET TAGS ('pii_ssot_role' = 'canonical');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_peer_review` SET TAGS ('pii_ssot' = 'primary');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_peer_review` SET TAGS ('pii_ssot_pair' = 'radiology.radiology_peer_review');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_peer_review` SET TAGS ('pii_distinct_document' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_peer_review` SET TAGS ('pii_ssot_note' = 'distinct_domain_scope_not_duplicate');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_peer_review` SET TAGS ('pii_ssot_reference' = 'radiology.radiology_peer_review');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_peer_review` SET TAGS ('pii_duplicate_pair' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_peer_review` SET TAGS ('pii_ssot_primary' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_peer_review` SET TAGS ('pii_vibe_domain_created' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_peer_review` ALTER COLUMN `mpi_record_id` SET TAGS ('pii_sensitivity' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_peer_review` ALTER COLUMN `patient_safety_event_id` SET TAGS ('pii_sensitivity' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_peer_review` ALTER COLUMN `care_appropriateness_rating` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_peer_review` ALTER COLUMN `care_appropriateness_rating` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_peer_review` ALTER COLUMN `care_appropriateness_rating` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_peer_review` ALTER COLUMN `care_appropriateness_rating` SET TAGS ('pii_identifier' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_peer_review` ALTER COLUMN `care_appropriateness_rating` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_peer_review` ALTER COLUMN `care_appropriateness_rating` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_peer_review` ALTER COLUMN `care_appropriateness_rating` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_peer_review` ALTER COLUMN `care_quality_rating` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_peer_review` ALTER COLUMN `care_quality_rating` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_peer_review` ALTER COLUMN `care_quality_rating` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_peer_review` ALTER COLUMN `care_quality_rating` SET TAGS ('pii_identifier' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_peer_review` ALTER COLUMN `care_quality_rating` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_peer_review` ALTER COLUMN `care_quality_rating` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_peer_review` ALTER COLUMN `care_quality_rating` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_peer_review` ALTER COLUMN `care_rating` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_peer_review` ALTER COLUMN `care_rating` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_peer_review` ALTER COLUMN `care_rating` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_peer_review` ALTER COLUMN `care_rating` SET TAGS ('pii_identifier' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_peer_review` ALTER COLUMN `care_rating` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_peer_review` ALTER COLUMN `care_rating` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_peer_review` ALTER COLUMN `care_rating` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_peer_review` ALTER COLUMN `peer_review_scope` SET TAGS ('pii_discriminator' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_peer_review` ALTER COLUMN `preventability_rating` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_peer_review` ALTER COLUMN `preventability_rating` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_peer_review` ALTER COLUMN `preventability_rating` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_peer_review` ALTER COLUMN `preventability_rating` SET TAGS ('pii_identifier' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_peer_review` ALTER COLUMN `preventability_rating` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_peer_review` ALTER COLUMN `preventability_rating` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_peer_review` ALTER COLUMN `preventability_rating` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`population_health_gap` SET TAGS ('pii_data_type' = 'transactional_data');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`population_health_gap` SET TAGS ('pii_subdomain' = 'patient_experience');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`population_health_gap` SET TAGS ('pii_domain' = 'quality');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`population_health_gap` SET TAGS ('pii_subdomain' = 'population_health');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`population_health_gap` SET TAGS ('pii_structure_enforced' = 'v22domains');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`population_health_gap` SET TAGS ('pii_vibe_domain_created' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`population_health_gap` ALTER COLUMN `population_health_gap_id` SET TAGS ('pii_restricted' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`population_health_gap` ALTER COLUMN `population_health_gap_id` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`population_health_gap` ALTER COLUMN `population_health_gap_id` SET TAGS ('pii_primary_key' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`population_health_gap` ALTER COLUMN `population_health_gap_id` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`population_health_gap` ALTER COLUMN `population_health_gap_id` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`population_health_gap` ALTER COLUMN `population_health_gap_id` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`population_health_gap` ALTER COLUMN `population_health_gap_id` SET TAGS ('pii_health' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`population_health_gap` ALTER COLUMN `population_health_gap_id` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`population_health_gap` ALTER COLUMN `population_health_gap_id` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`population_health_gap` ALTER COLUMN `population_health_gap_id` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`population_health_gap` ALTER COLUMN `health_plan_id` SET TAGS ('pii_restricted' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`population_health_gap` ALTER COLUMN `health_plan_id` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`population_health_gap` ALTER COLUMN `health_plan_id` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`population_health_gap` ALTER COLUMN `health_plan_id` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`population_health_gap` ALTER COLUMN `health_plan_id` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`population_health_gap` ALTER COLUMN `health_plan_id` SET TAGS ('pii_health' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`population_health_gap` ALTER COLUMN `health_plan_id` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`population_health_gap` ALTER COLUMN `health_plan_id` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`population_health_gap` ALTER COLUMN `health_plan_id` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`population_health_gap` ALTER COLUMN `mpi_record_id` SET TAGS ('pii_sensitivity' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`population_health_gap` ALTER COLUMN `clinical_domain` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`population_health_gap` ALTER COLUMN `clinical_domain` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`population_health_gap` ALTER COLUMN `clinical_domain` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`population_health_gap` ALTER COLUMN `clinical_domain` SET TAGS ('pii_health' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`population_health_gap` ALTER COLUMN `clinical_domain` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`population_health_gap` ALTER COLUMN `clinical_domain` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`population_health_gap` ALTER COLUMN `clinical_domain` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`population_health_gap` ALTER COLUMN `gap_identifier` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`population_health_gap` ALTER COLUMN `gap_identifier` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`population_health_gap` ALTER COLUMN `gap_identifier` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`population_health_gap` ALTER COLUMN `gap_identifier` SET TAGS ('pii_identifier' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`population_health_gap` ALTER COLUMN `gap_identifier` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`population_health_gap` ALTER COLUMN `gap_identifier` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`population_health_gap` ALTER COLUMN `gap_identifier` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`sdoh_screening` SET TAGS ('pii_data_type' = 'transactional_data');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`sdoh_screening` SET TAGS ('pii_subdomain' = 'patient_experience');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`sdoh_screening` SET TAGS ('pii_domain' = 'quality');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`sdoh_screening` SET TAGS ('pii_subdomain' = 'sdoh');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`sdoh_screening` SET TAGS ('pii_structure_enforced' = 'v22domains');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`sdoh_screening` SET TAGS ('pii_vibe_domain_created' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`sdoh_screening` ALTER COLUMN `mpi_record_id` SET TAGS ('pii_sensitivity' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`sdoh_screening` ALTER COLUMN `population_health_gap_id` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`sdoh_screening` ALTER COLUMN `population_health_gap_id` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`sdoh_screening` ALTER COLUMN `population_health_gap_id` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`sdoh_screening` ALTER COLUMN `population_health_gap_id` SET TAGS ('pii_health' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`sdoh_screening` ALTER COLUMN `population_health_gap_id` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`sdoh_screening` ALTER COLUMN `population_health_gap_id` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`sdoh_screening` ALTER COLUMN `population_health_gap_id` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`sdoh_screening` ALTER COLUMN `employee_id` SET TAGS ('pii_confidential' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`sdoh_screening` ALTER COLUMN `employee_id` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`sdoh_screening` ALTER COLUMN `icd10_z_code` SET TAGS ('pii_sensitivity' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`sdoh_screening` ALTER COLUMN `primary_z_code` SET TAGS ('pii_sensitivity' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`sdoh_screening` ALTER COLUMN `primary_z_code` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`sdoh_screening` ALTER COLUMN `screening_setting` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`sdoh_screening` ALTER COLUMN `screening_setting` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`sdoh_screening` ALTER COLUMN `screening_setting` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`sdoh_screening` ALTER COLUMN `screening_setting` SET TAGS ('pii_identifier' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`sdoh_screening` ALTER COLUMN `screening_setting` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`sdoh_screening` ALTER COLUMN `screening_setting` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`sdoh_screening` ALTER COLUMN `screening_setting` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`corrective_action` SET TAGS ('pii_data_type' = 'master_data');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`corrective_action` SET TAGS ('pii_subdomain' = 'accreditation_improvement');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`corrective_action` SET TAGS ('pii_domain' = 'quality');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`corrective_action` SET TAGS ('pii_subdomain' = 'quality_improvement');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`corrective_action` SET TAGS ('pii_structure_enforced' = 'v22domains');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`corrective_action` SET TAGS ('pii_vibe_domain_created' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`corrective_action` ALTER COLUMN `employee_id` SET TAGS ('pii_confidential' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`corrective_action` ALTER COLUMN `employee_id` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`corrective_action` ALTER COLUMN `owner_employee_id` SET TAGS ('pii_confidential' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`corrective_action` ALTER COLUMN `owner_employee_id` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`corrective_action` ALTER COLUMN `patient_safety_event_id` SET TAGS ('pii_sensitivity' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`corrective_action` ALTER COLUMN `owner_name` SET TAGS ('pii_sensitivity' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`corrective_action` ALTER COLUMN `owner_name` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`corrective_action` ALTER COLUMN `owner_name` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`corrective_action` ALTER COLUMN `owner_name` SET TAGS ('pii_name' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`corrective_action` ALTER COLUMN `owner_name` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`corrective_action` ALTER COLUMN `owner_name` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`corrective_action` ALTER COLUMN `owner_name` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`corrective_action` ALTER COLUMN `responsible_party_name` SET TAGS ('pii_sensitivity' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`corrective_action` ALTER COLUMN `responsible_party_name` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`corrective_action` ALTER COLUMN `responsible_party_name` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`corrective_action` ALTER COLUMN `responsible_party_name` SET TAGS ('pii_name' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`corrective_action` ALTER COLUMN `responsible_party_name` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`corrective_action` ALTER COLUMN `responsible_party_name` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`corrective_action` ALTER COLUMN `responsible_party_name` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`program_measure_assignment` SET TAGS ('pii_data_type' = 'association_data');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`program_measure_assignment` SET TAGS ('pii_subdomain' = 'measure_management');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`program_measure_assignment` SET TAGS ('pii_association_edges' = 'quality.quality_program,quality.measure');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`program_measure_assignment` SET TAGS ('pii_domain' = 'quality');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`program_measure_assignment` SET TAGS ('pii_subdomain' = 'program_management');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`program_measure_assignment` SET TAGS ('pii_structure_enforced' = 'v22domains');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`program_measure_assignment` SET TAGS ('pii_vibe_domain_created' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`program_measure_assignment` ALTER COLUMN `reporting_end_date` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`program_measure_assignment` ALTER COLUMN `reporting_end_date` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`program_measure_assignment` ALTER COLUMN `reporting_end_date` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`program_measure_assignment` ALTER COLUMN `reporting_end_date` SET TAGS ('pii_identifier' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`program_measure_assignment` ALTER COLUMN `reporting_end_date` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`program_measure_assignment` ALTER COLUMN `reporting_end_date` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`program_measure_assignment` ALTER COLUMN `reporting_end_date` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`program_measure_assignment` ALTER COLUMN `reporting_frequency` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`program_measure_assignment` ALTER COLUMN `reporting_frequency` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`program_measure_assignment` ALTER COLUMN `reporting_frequency` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`program_measure_assignment` ALTER COLUMN `reporting_frequency` SET TAGS ('pii_identifier' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`program_measure_assignment` ALTER COLUMN `reporting_frequency` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`program_measure_assignment` ALTER COLUMN `reporting_frequency` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`program_measure_assignment` ALTER COLUMN `reporting_frequency` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`program_measure_assignment` ALTER COLUMN `reporting_priority` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`program_measure_assignment` ALTER COLUMN `reporting_priority` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`program_measure_assignment` ALTER COLUMN `reporting_priority` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`program_measure_assignment` ALTER COLUMN `reporting_priority` SET TAGS ('pii_identifier' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`program_measure_assignment` ALTER COLUMN `reporting_priority` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`program_measure_assignment` ALTER COLUMN `reporting_priority` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`program_measure_assignment` ALTER COLUMN `reporting_priority` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`program_measure_assignment` ALTER COLUMN `reporting_start_date` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`program_measure_assignment` ALTER COLUMN `reporting_start_date` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`program_measure_assignment` ALTER COLUMN `reporting_start_date` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`program_measure_assignment` ALTER COLUMN `reporting_start_date` SET TAGS ('pii_identifier' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`program_measure_assignment` ALTER COLUMN `reporting_start_date` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`program_measure_assignment` ALTER COLUMN `reporting_start_date` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`program_measure_assignment` ALTER COLUMN `reporting_start_date` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`initiative_measure_target` SET TAGS ('pii_data_type' = 'association_data');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`initiative_measure_target` SET TAGS ('pii_subdomain' = 'measure_management');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`initiative_measure_target` SET TAGS ('pii_association_edges' = 'quality.improvement_initiative,quality.measure');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`initiative_measure_target` SET TAGS ('pii_domain' = 'quality');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`initiative_measure_target` SET TAGS ('pii_subdomain' = 'quality_improvement');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`initiative_measure_target` SET TAGS ('pii_structure_enforced' = 'v22domains');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`initiative_measure_target` SET TAGS ('pii_vibe_domain_created' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`contract_initiative` SET TAGS ('pii_data_type' = 'association_data');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`contract_initiative` SET TAGS ('pii_subdomain' = 'accreditation_improvement');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`contract_initiative` SET TAGS ('pii_association_edges' = 'quality.improvement_initiative,insurance.payer_contract');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`contract_initiative` SET TAGS ('pii_domain' = 'quality');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`contract_initiative` SET TAGS ('pii_subdomain' = 'value_based_care');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`contract_initiative` SET TAGS ('pii_structure_enforced' = 'v22domains');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`contract_initiative` SET TAGS ('pii_vibe_domain_created' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`program_study_participation` SET TAGS ('pii_data_type' = 'association_data');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`program_study_participation` SET TAGS ('pii_subdomain' = 'accreditation_improvement');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`program_study_participation` SET TAGS ('pii_association_edges' = 'quality.quality_program,research.research_study');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`program_study_participation` SET TAGS ('pii_domain' = 'quality');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`program_study_participation` SET TAGS ('pii_subdomain' = 'research_quality');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`program_study_participation` SET TAGS ('pii_structure_enforced' = 'v22domains');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`program_study_participation` SET TAGS ('pii_vibe_domain_created' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure_budget_allocation` SET TAGS ('pii_data_type' = 'association_data');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure_budget_allocation` SET TAGS ('pii_subdomain' = 'measure_management');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure_budget_allocation` SET TAGS ('pii_association_edges' = 'quality.measure,finance.budget_line');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure_budget_allocation` SET TAGS ('pii_domain' = 'quality');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure_budget_allocation` SET TAGS ('pii_subdomain' = 'quality_measurement');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure_budget_allocation` SET TAGS ('pii_structure_enforced' = 'v22domains');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure_budget_allocation` SET TAGS ('pii_vibe_domain_created' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure_attribution` SET TAGS ('pii_data_type' = 'association_data');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure_attribution` SET TAGS ('pii_subdomain' = 'measure_management');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure_attribution` SET TAGS ('pii_domain' = 'quality');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure_attribution` SET TAGS ('pii_subdomain' = 'value_based_care');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure_attribution` SET TAGS ('pii_vibe_domain_created' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure_attribution` ALTER COLUMN `demographics_id` SET TAGS ('pii_sensitivity' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure_attribution` ALTER COLUMN `health_plan_id` SET TAGS ('pii_restricted' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure_attribution` ALTER COLUMN `health_plan_id` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure_attribution` ALTER COLUMN `health_plan_id` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure_attribution` ALTER COLUMN `health_plan_id` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure_attribution` ALTER COLUMN `health_plan_id` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure_attribution` ALTER COLUMN `health_plan_id` SET TAGS ('pii_health' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure_attribution` ALTER COLUMN `health_plan_id` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure_attribution` ALTER COLUMN `health_plan_id` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure_attribution` ALTER COLUMN `health_plan_id` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure_attribution` ALTER COLUMN `clinician_id` SET TAGS ('pii_sensitivity' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure_attribution` ALTER COLUMN `mpi_record_id` SET TAGS ('pii_sensitivity' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure_attribution` ALTER COLUMN `attributed_npi` SET TAGS ('pii_sensitivity' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure_attribution` ALTER COLUMN `attributed_npi` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure_attribution` ALTER COLUMN `attributed_npi` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure_attribution` ALTER COLUMN `attributed_npi` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure_attribution` ALTER COLUMN `attributed_npi` SET TAGS ('pii_identifier' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure_attribution` ALTER COLUMN `attributed_npi` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure_attribution` ALTER COLUMN `attributed_npi` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure_attribution` ALTER COLUMN `attributed_npi` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure_attribution` ALTER COLUMN `clinical_ai_integration_marker` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure_attribution` ALTER COLUMN `clinical_ai_integration_marker` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure_attribution` ALTER COLUMN `clinical_ai_integration_marker` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure_attribution` ALTER COLUMN `clinical_ai_integration_marker` SET TAGS ('pii_health' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure_attribution` ALTER COLUMN `clinical_ai_integration_marker` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure_attribution` ALTER COLUMN `clinical_ai_integration_marker` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`measure_attribution` ALTER COLUMN `clinical_ai_integration_marker` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`care_gap_closure` SET TAGS ('pii_data_type' = 'transactional_data');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`care_gap_closure` SET TAGS ('pii_subdomain' = 'patient_experience');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`care_gap_closure` SET TAGS ('pii_domain' = 'quality');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`care_gap_closure` SET TAGS ('pii_subdomain' = 'value_based_care');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`care_gap_closure` SET TAGS ('pii_grain' = 'patient x payer_contract x measurement_period');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`care_gap_closure` SET TAGS ('pii_vibe_domain_created' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`care_gap_closure` ALTER COLUMN `clinician_id` SET TAGS ('pii_sensitivity' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`care_gap_closure` ALTER COLUMN `clinical_order_id` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`care_gap_closure` ALTER COLUMN `clinical_order_id` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`care_gap_closure` ALTER COLUMN `clinical_order_id` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`care_gap_closure` ALTER COLUMN `clinical_order_id` SET TAGS ('pii_health' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`care_gap_closure` ALTER COLUMN `clinical_order_id` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`care_gap_closure` ALTER COLUMN `clinical_order_id` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`care_gap_closure` ALTER COLUMN `clinical_order_id` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`care_gap_closure` ALTER COLUMN `employee_id` SET TAGS ('pii_confidential' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`care_gap_closure` ALTER COLUMN `employee_id` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`care_gap_closure` ALTER COLUMN `demographics_id` SET TAGS ('pii_sensitivity' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`care_gap_closure` ALTER COLUMN `health_plan_id` SET TAGS ('pii_restricted' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`care_gap_closure` ALTER COLUMN `health_plan_id` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`care_gap_closure` ALTER COLUMN `health_plan_id` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`care_gap_closure` ALTER COLUMN `health_plan_id` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`care_gap_closure` ALTER COLUMN `health_plan_id` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`care_gap_closure` ALTER COLUMN `health_plan_id` SET TAGS ('pii_health' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`care_gap_closure` ALTER COLUMN `health_plan_id` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`care_gap_closure` ALTER COLUMN `health_plan_id` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`care_gap_closure` ALTER COLUMN `health_plan_id` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`care_gap_closure` ALTER COLUMN `mpi_record_id` SET TAGS ('pii_sensitivity' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`care_gap_closure` ALTER COLUMN `population_health_gap_id` SET TAGS ('pii_restricted' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`care_gap_closure` ALTER COLUMN `population_health_gap_id` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`care_gap_closure` ALTER COLUMN `population_health_gap_id` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`care_gap_closure` ALTER COLUMN `population_health_gap_id` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`care_gap_closure` ALTER COLUMN `population_health_gap_id` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`care_gap_closure` ALTER COLUMN `population_health_gap_id` SET TAGS ('pii_health' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`care_gap_closure` ALTER COLUMN `population_health_gap_id` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`care_gap_closure` ALTER COLUMN `population_health_gap_id` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`care_gap_closure` ALTER COLUMN `population_health_gap_id` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`care_gap_closure` ALTER COLUMN `clinical_ai_integration_marker` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`care_gap_closure` ALTER COLUMN `clinical_ai_integration_marker` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`care_gap_closure` ALTER COLUMN `clinical_ai_integration_marker` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`care_gap_closure` ALTER COLUMN `clinical_ai_integration_marker` SET TAGS ('pii_health' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`care_gap_closure` ALTER COLUMN `clinical_ai_integration_marker` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`care_gap_closure` ALTER COLUMN `clinical_ai_integration_marker` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`care_gap_closure` ALTER COLUMN `clinical_ai_integration_marker` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`care_gap_closure` ALTER COLUMN `closed_by` SET TAGS ('pii_sensitivity' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`care_gap_closure` ALTER COLUMN `closure_service_code` SET TAGS ('pii_sensitivity' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`care_gap_closure` ALTER COLUMN `closure_service_code` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`care_gap_closure` ALTER COLUMN `icd10_code` SET TAGS ('pii_sensitivity' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`care_gap_closure` ALTER COLUMN `mrn` SET TAGS ('pii_sensitivity' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`care_gap_closure` ALTER COLUMN `mrn` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`care_gap_closure` ALTER COLUMN `mrn` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`care_gap_closure` ALTER COLUMN `mrn` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`care_gap_closure` ALTER COLUMN `mrn` SET TAGS ('pii_identifier' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`care_gap_closure` ALTER COLUMN `mrn` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`care_gap_closure` ALTER COLUMN `mrn` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`care_gap_closure` ALTER COLUMN `mrn` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`care_gap_closure` ALTER COLUMN `responsible_clinician_npi` SET TAGS ('pii_sensitivity' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`care_gap_closure` ALTER COLUMN `responsible_clinician_npi` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`care_gap_closure` ALTER COLUMN `responsible_clinician_npi` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`care_gap_closure` ALTER COLUMN `responsible_clinician_npi` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`care_gap_closure` ALTER COLUMN `responsible_clinician_npi` SET TAGS ('pii_identifier' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`care_gap_closure` ALTER COLUMN `responsible_clinician_npi` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`care_gap_closure` ALTER COLUMN `responsible_clinician_npi` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`care_gap_closure` ALTER COLUMN `responsible_clinician_npi` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`care_gap_closure` ALTER COLUMN `responsible_owner` SET TAGS ('pii_sensitivity' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`care_gap_closure` ALTER COLUMN `responsible_provider_name` SET TAGS ('pii_sensitivity' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`care_gap_closure` ALTER COLUMN `responsible_provider_name` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`care_gap_closure` ALTER COLUMN `responsible_provider_name` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`care_gap_closure` ALTER COLUMN `responsible_provider_name` SET TAGS ('pii_name' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`care_gap_closure` ALTER COLUMN `responsible_provider_name` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`care_gap_closure` ALTER COLUMN `responsible_provider_name` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`care_gap_closure` ALTER COLUMN `responsible_provider_name` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`raf_score` SET TAGS ('pii_data_type' = 'transactional_data');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`raf_score` SET TAGS ('pii_subdomain' = 'measure_management');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`raf_score` SET TAGS ('pii_domain' = 'quality');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`raf_score` SET TAGS ('pii_subdomain' = 'value_based_care');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`raf_score` SET TAGS ('pii_grain' = 'member x year');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`raf_score` SET TAGS ('pii_vibe_domain_created' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`raf_score` ALTER COLUMN `demographics_id` SET TAGS ('pii_sensitivity' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`raf_score` ALTER COLUMN `health_plan_id` SET TAGS ('pii_restricted' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`raf_score` ALTER COLUMN `health_plan_id` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`raf_score` ALTER COLUMN `health_plan_id` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`raf_score` ALTER COLUMN `health_plan_id` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`raf_score` ALTER COLUMN `health_plan_id` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`raf_score` ALTER COLUMN `health_plan_id` SET TAGS ('pii_health' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`raf_score` ALTER COLUMN `health_plan_id` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`raf_score` ALTER COLUMN `health_plan_id` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`raf_score` ALTER COLUMN `health_plan_id` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`raf_score` ALTER COLUMN `member_member_enrollment_id` SET TAGS ('pii_sensitivity' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`raf_score` ALTER COLUMN `mpi_record_id` SET TAGS ('pii_sensitivity' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`raf_score` ALTER COLUMN `clinical_ai_integration_marker` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`raf_score` ALTER COLUMN `clinical_ai_integration_marker` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`raf_score` ALTER COLUMN `clinical_ai_integration_marker` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`raf_score` ALTER COLUMN `clinical_ai_integration_marker` SET TAGS ('pii_health' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`raf_score` ALTER COLUMN `clinical_ai_integration_marker` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`raf_score` ALTER COLUMN `clinical_ai_integration_marker` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`raf_score` ALTER COLUMN `clinical_ai_integration_marker` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`raf_score` ALTER COLUMN `date_of_birth` SET TAGS ('pii_sensitivity' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`raf_score` ALTER COLUMN `date_of_birth` SET TAGS ('pii_restricted' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`raf_score` ALTER COLUMN `date_of_birth` SET TAGS ('pii_identifier' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`raf_score` ALTER COLUMN `disability_status_flag` SET TAGS ('pii_restricted' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`raf_score` ALTER COLUMN `disability_status_flag` SET TAGS ('pii_health' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`raf_score` ALTER COLUMN `medicare_beneficiary_number` SET TAGS ('pii_sensitivity' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mips_measure_reporting` SET TAGS ('pii_data_type' = 'transactional_data');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mips_measure_reporting` SET TAGS ('pii_subdomain' = 'measure_management');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mips_measure_reporting` SET TAGS ('pii_domain' = 'quality');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mips_measure_reporting` SET TAGS ('pii_subdomain' = 'value_based_care');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mips_measure_reporting` SET TAGS ('pii_vibe_domain_created' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mips_measure_reporting` ALTER COLUMN `mips_measure_reporting_id` SET TAGS ('pii_primary_key' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mips_measure_reporting` ALTER COLUMN `mips_measure_reporting_id` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mips_measure_reporting` ALTER COLUMN `mips_measure_reporting_id` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mips_measure_reporting` ALTER COLUMN `mips_measure_reporting_id` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mips_measure_reporting` ALTER COLUMN `mips_measure_reporting_id` SET TAGS ('pii_identifier' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mips_measure_reporting` ALTER COLUMN `mips_measure_reporting_id` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mips_measure_reporting` ALTER COLUMN `mips_measure_reporting_id` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mips_measure_reporting` ALTER COLUMN `mips_measure_reporting_id` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mips_measure_reporting` ALTER COLUMN `clinician_id` SET TAGS ('pii_sensitivity' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mips_measure_reporting` ALTER COLUMN `mips_measure_reporting_category` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mips_measure_reporting` ALTER COLUMN `mips_measure_reporting_category` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mips_measure_reporting` ALTER COLUMN `mips_measure_reporting_category` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mips_measure_reporting` ALTER COLUMN `mips_measure_reporting_category` SET TAGS ('pii_identifier' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mips_measure_reporting` ALTER COLUMN `mips_measure_reporting_category` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mips_measure_reporting` ALTER COLUMN `mips_measure_reporting_category` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mips_measure_reporting` ALTER COLUMN `mips_measure_reporting_category` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mips_measure_reporting` ALTER COLUMN `clinical_ai_integration_marker` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mips_measure_reporting` ALTER COLUMN `clinical_ai_integration_marker` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mips_measure_reporting` ALTER COLUMN `clinical_ai_integration_marker` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mips_measure_reporting` ALTER COLUMN `clinical_ai_integration_marker` SET TAGS ('pii_health' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mips_measure_reporting` ALTER COLUMN `clinical_ai_integration_marker` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mips_measure_reporting` ALTER COLUMN `clinical_ai_integration_marker` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mips_measure_reporting` ALTER COLUMN `clinical_ai_integration_marker` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mips_measure_reporting` ALTER COLUMN `npi` SET TAGS ('pii_sensitivity' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mips_measure_reporting` ALTER COLUMN `npi` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mips_measure_reporting` ALTER COLUMN `npi` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mips_measure_reporting` ALTER COLUMN `npi` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mips_measure_reporting` ALTER COLUMN `npi` SET TAGS ('pii_identifier' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mips_measure_reporting` ALTER COLUMN `npi` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mips_measure_reporting` ALTER COLUMN `npi` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mips_measure_reporting` ALTER COLUMN `npi` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mips_measure_reporting` ALTER COLUMN `npi_number` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mips_measure_reporting` ALTER COLUMN `npi_number` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mips_measure_reporting` ALTER COLUMN `npi_number` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mips_measure_reporting` ALTER COLUMN `npi_number` SET TAGS ('pii_identifier' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mips_measure_reporting` ALTER COLUMN `npi_number` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mips_measure_reporting` ALTER COLUMN `npi_number` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mips_measure_reporting` ALTER COLUMN `npi_number` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mips_measure_reporting` ALTER COLUMN `reporting_period_end_date` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mips_measure_reporting` ALTER COLUMN `reporting_period_end_date` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mips_measure_reporting` ALTER COLUMN `reporting_period_end_date` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mips_measure_reporting` ALTER COLUMN `reporting_period_end_date` SET TAGS ('pii_identifier' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mips_measure_reporting` ALTER COLUMN `reporting_period_end_date` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mips_measure_reporting` ALTER COLUMN `reporting_period_end_date` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mips_measure_reporting` ALTER COLUMN `reporting_period_end_date` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mips_measure_reporting` ALTER COLUMN `reporting_period_start_date` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mips_measure_reporting` ALTER COLUMN `reporting_period_start_date` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mips_measure_reporting` ALTER COLUMN `reporting_period_start_date` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mips_measure_reporting` ALTER COLUMN `reporting_period_start_date` SET TAGS ('pii_identifier' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mips_measure_reporting` ALTER COLUMN `reporting_period_start_date` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mips_measure_reporting` ALTER COLUMN `reporting_period_start_date` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mips_measure_reporting` ALTER COLUMN `reporting_period_start_date` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mips_measure_reporting` ALTER COLUMN `reporting_rate` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mips_measure_reporting` ALTER COLUMN `reporting_rate` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mips_measure_reporting` ALTER COLUMN `reporting_rate` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mips_measure_reporting` ALTER COLUMN `reporting_rate` SET TAGS ('pii_identifier' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mips_measure_reporting` ALTER COLUMN `reporting_rate` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mips_measure_reporting` ALTER COLUMN `reporting_rate` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mips_measure_reporting` ALTER COLUMN `reporting_rate` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mips_measure_reporting` ALTER COLUMN `reporting_status` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mips_measure_reporting` ALTER COLUMN `reporting_status` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mips_measure_reporting` ALTER COLUMN `reporting_status` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mips_measure_reporting` ALTER COLUMN `reporting_status` SET TAGS ('pii_identifier' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mips_measure_reporting` ALTER COLUMN `reporting_status` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mips_measure_reporting` ALTER COLUMN `reporting_status` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mips_measure_reporting` ALTER COLUMN `reporting_status` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mips_measure_reporting` ALTER COLUMN `tin` SET TAGS ('pii_sensitivity' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mips_measure_reporting` ALTER COLUMN `tin` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mips_measure_reporting` ALTER COLUMN `tin` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mips_measure_reporting` ALTER COLUMN `tin` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mips_measure_reporting` ALTER COLUMN `tin` SET TAGS ('pii_identifier' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mips_measure_reporting` ALTER COLUMN `tin` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mips_measure_reporting` ALTER COLUMN `tin` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mips_measure_reporting` ALTER COLUMN `tin` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mips_measure_reporting` ALTER COLUMN `tin_number` SET TAGS ('pii_restricted' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mips_measure_reporting` ALTER COLUMN `tin_number` SET TAGS ('pii_identifier' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mips_measure_reporting` ALTER COLUMN `tin_number` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mips_measure_reporting` ALTER COLUMN `tin_number` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mips_measure_reporting` ALTER COLUMN `tin_number` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mips_measure_reporting` ALTER COLUMN `tin_number` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mips_measure_reporting` ALTER COLUMN `tin_number` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`mips_measure_reporting` ALTER COLUMN `tin_number` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`apm_enrollment` SET TAGS ('pii_data_type' = 'association_data');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`apm_enrollment` SET TAGS ('pii_subdomain' = 'measure_management');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`apm_enrollment` SET TAGS ('pii_domain' = 'quality');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`apm_enrollment` SET TAGS ('pii_subdomain' = 'value_based_care');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`apm_enrollment` SET TAGS ('pii_vibe_domain_created' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`apm_enrollment` ALTER COLUMN `clinician_id` SET TAGS ('pii_sensitivity' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`apm_enrollment` ALTER COLUMN `apm_entity_identifier` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`apm_enrollment` ALTER COLUMN `apm_entity_identifier` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`apm_enrollment` ALTER COLUMN `apm_entity_identifier` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`apm_enrollment` ALTER COLUMN `apm_entity_identifier` SET TAGS ('pii_identifier' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`apm_enrollment` ALTER COLUMN `apm_entity_identifier` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`apm_enrollment` ALTER COLUMN `apm_entity_identifier` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`apm_enrollment` ALTER COLUMN `apm_entity_identifier` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`apm_enrollment` ALTER COLUMN `apm_entity_name` SET TAGS ('pii_sensitivity' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`apm_enrollment` ALTER COLUMN `apm_entity_name` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`apm_enrollment` ALTER COLUMN `apm_entity_name` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`apm_enrollment` ALTER COLUMN `apm_entity_name` SET TAGS ('pii_name' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`apm_enrollment` ALTER COLUMN `apm_entity_name` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`apm_enrollment` ALTER COLUMN `apm_entity_name` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`apm_enrollment` ALTER COLUMN `apm_entity_name` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`apm_enrollment` ALTER COLUMN `apm_identifier` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`apm_enrollment` ALTER COLUMN `apm_identifier` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`apm_enrollment` ALTER COLUMN `apm_identifier` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`apm_enrollment` ALTER COLUMN `apm_identifier` SET TAGS ('pii_identifier' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`apm_enrollment` ALTER COLUMN `apm_identifier` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`apm_enrollment` ALTER COLUMN `apm_identifier` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`apm_enrollment` ALTER COLUMN `apm_identifier` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`apm_enrollment` ALTER COLUMN `apm_model_name` SET TAGS ('pii_sensitivity' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`apm_enrollment` ALTER COLUMN `apm_model_name` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`apm_enrollment` ALTER COLUMN `apm_model_name` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`apm_enrollment` ALTER COLUMN `apm_model_name` SET TAGS ('pii_name' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`apm_enrollment` ALTER COLUMN `apm_model_name` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`apm_enrollment` ALTER COLUMN `apm_model_name` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`apm_enrollment` ALTER COLUMN `apm_model_name` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`apm_enrollment` ALTER COLUMN `apm_name` SET TAGS ('pii_sensitivity' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`apm_enrollment` ALTER COLUMN `apm_name` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`apm_enrollment` ALTER COLUMN `apm_name` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`apm_enrollment` ALTER COLUMN `apm_name` SET TAGS ('pii_name' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`apm_enrollment` ALTER COLUMN `apm_name` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`apm_enrollment` ALTER COLUMN `apm_name` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`apm_enrollment` ALTER COLUMN `apm_name` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`apm_enrollment` ALTER COLUMN `apm_program_name` SET TAGS ('pii_sensitivity' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`apm_enrollment` ALTER COLUMN `apm_program_name` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`apm_enrollment` ALTER COLUMN `apm_program_name` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`apm_enrollment` ALTER COLUMN `apm_program_name` SET TAGS ('pii_name' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`apm_enrollment` ALTER COLUMN `apm_program_name` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`apm_enrollment` ALTER COLUMN `apm_program_name` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`apm_enrollment` ALTER COLUMN `apm_program_name` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`apm_enrollment` ALTER COLUMN `clinical_ai_integration_marker` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`apm_enrollment` ALTER COLUMN `clinical_ai_integration_marker` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`apm_enrollment` ALTER COLUMN `clinical_ai_integration_marker` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`apm_enrollment` ALTER COLUMN `clinical_ai_integration_marker` SET TAGS ('pii_health' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`apm_enrollment` ALTER COLUMN `clinical_ai_integration_marker` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`apm_enrollment` ALTER COLUMN `clinical_ai_integration_marker` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`apm_enrollment` ALTER COLUMN `clinical_ai_integration_marker` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`apm_enrollment` ALTER COLUMN `npi` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`apm_enrollment` ALTER COLUMN `npi` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`apm_enrollment` ALTER COLUMN `npi` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`apm_enrollment` ALTER COLUMN `npi` SET TAGS ('pii_identifier' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`apm_enrollment` ALTER COLUMN `npi` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`apm_enrollment` ALTER COLUMN `npi` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`apm_enrollment` ALTER COLUMN `npi` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`apm_enrollment` ALTER COLUMN `participant_npi` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`apm_enrollment` ALTER COLUMN `participant_npi` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`apm_enrollment` ALTER COLUMN `participant_npi` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`apm_enrollment` ALTER COLUMN `participant_npi` SET TAGS ('pii_identifier' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`apm_enrollment` ALTER COLUMN `participant_npi` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`apm_enrollment` ALTER COLUMN `participant_npi` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`apm_enrollment` ALTER COLUMN `participant_npi` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`apm_enrollment` ALTER COLUMN `participant_tin` SET TAGS ('pii_sensitivity' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`apm_enrollment` ALTER COLUMN `participant_tin` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`apm_enrollment` ALTER COLUMN `participant_tin` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`apm_enrollment` ALTER COLUMN `participant_tin` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`apm_enrollment` ALTER COLUMN `participant_tin` SET TAGS ('pii_identifier' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`apm_enrollment` ALTER COLUMN `participant_tin` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`apm_enrollment` ALTER COLUMN `participant_tin` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`apm_enrollment` ALTER COLUMN `participant_tin` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`apm_enrollment` ALTER COLUMN `tin` SET TAGS ('pii_sensitivity' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`apm_enrollment` ALTER COLUMN `tin` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`apm_enrollment` ALTER COLUMN `tin` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`apm_enrollment` ALTER COLUMN `tin` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`apm_enrollment` ALTER COLUMN `tin` SET TAGS ('pii_identifier' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`apm_enrollment` ALTER COLUMN `tin` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`apm_enrollment` ALTER COLUMN `tin` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`apm_enrollment` ALTER COLUMN `tin` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`apm_enrollment` ALTER COLUMN `tin_number` SET TAGS ('pii_restricted' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`apm_enrollment` ALTER COLUMN `tin_number` SET TAGS ('pii_identifier' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`apm_enrollment` ALTER COLUMN `tin_number` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`apm_enrollment` ALTER COLUMN `tin_number` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`apm_enrollment` ALTER COLUMN `tin_number` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`apm_enrollment` ALTER COLUMN `tin_number` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`apm_enrollment` ALTER COLUMN `tin_number` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`apm_enrollment` ALTER COLUMN `tin_number` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program_participation` SET TAGS ('pii_data_type' = 'association_data');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program_participation` SET TAGS ('pii_subdomain' = 'measure_management');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program_participation` SET TAGS ('pii_domain' = 'quality');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program_participation` SET TAGS ('pii_subdomain' = 'program_management');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program_participation` SET TAGS ('pii_structure_enforced' = 'v22domains');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program_participation` SET TAGS ('pii_ssot_role' = 'alias');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program_participation` SET TAGS ('pii_ssot_canonical' = 'facility.facility_program_participation');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program_participation` SET TAGS ('pii_ssot' = 'primary');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program_participation` SET TAGS ('pii_ssot_pair' = 'facility.facility_program_participation');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program_participation` SET TAGS ('pii_distinct_document' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program_participation` SET TAGS ('pii_ssot_note' = 'distinct_domain_scope_not_duplicate');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program_participation` SET TAGS ('pii_ssot_duplicate_of' = 'facility.facility_program_participation');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program_participation` SET TAGS ('pii_ssot_resolution' = 'designate_ssot');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program_participation` SET TAGS ('pii_ssot_pair_winner' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program_participation` SET TAGS ('pii_duplicate_of' = 'facility.facility_program_participation');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program_participation` SET TAGS ('pii_vibe_domain_created' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program_participation` ALTER COLUMN `apm_entity_identifier` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program_participation` ALTER COLUMN `apm_entity_identifier` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program_participation` ALTER COLUMN `apm_entity_identifier` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program_participation` ALTER COLUMN `apm_entity_identifier` SET TAGS ('pii_identifier' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program_participation` ALTER COLUMN `apm_entity_identifier` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program_participation` ALTER COLUMN `apm_entity_identifier` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program_participation` ALTER COLUMN `apm_entity_identifier` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program_participation` ALTER COLUMN `group_npi` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program_participation` ALTER COLUMN `group_npi` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program_participation` ALTER COLUMN `group_npi` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program_participation` ALTER COLUMN `group_npi` SET TAGS ('pii_identifier' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program_participation` ALTER COLUMN `group_npi` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program_participation` ALTER COLUMN `group_npi` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program_participation` ALTER COLUMN `group_npi` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program_participation` ALTER COLUMN `participation_scope` SET TAGS ('pii_discriminator' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program_participation` ALTER COLUMN `reporting_option` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program_participation` ALTER COLUMN `reporting_option` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program_participation` ALTER COLUMN `reporting_option` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program_participation` ALTER COLUMN `reporting_option` SET TAGS ('pii_identifier' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program_participation` ALTER COLUMN `reporting_option` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program_participation` ALTER COLUMN `reporting_option` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program_participation` ALTER COLUMN `reporting_option` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program_participation` ALTER COLUMN `tin` SET TAGS ('pii_restricted' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program_participation` ALTER COLUMN `tin` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program_participation` ALTER COLUMN `tin` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program_participation` ALTER COLUMN `tin` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program_participation` ALTER COLUMN `tin` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program_participation` ALTER COLUMN `tin` SET TAGS ('pii_identifier' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program_participation` ALTER COLUMN `tin` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program_participation` ALTER COLUMN `tin` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program_participation` ALTER COLUMN `tin` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program_participation` ALTER COLUMN `tin_number` SET TAGS ('pii_restricted' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program_participation` ALTER COLUMN `tin_number` SET TAGS ('pii_identifier' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program_participation` ALTER COLUMN `tin_number` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program_participation` ALTER COLUMN `tin_number` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program_participation` ALTER COLUMN `tin_number` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program_participation` ALTER COLUMN `tin_number` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program_participation` ALTER COLUMN `tin_number` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program_participation` ALTER COLUMN `tin_number` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_committee` SET TAGS ('pii_data_type' = 'master_data');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_committee` SET TAGS ('pii_subdomain' = 'safety_review');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_committee` SET TAGS ('pii_domain' = 'quality');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_committee` SET TAGS ('pii_subdomain' = 'governance');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_committee` SET TAGS ('pii_structure_enforced' = 'v22domains');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_committee` SET TAGS ('pii_ssot_role' = 'canonical');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_committee` SET TAGS ('pii_ssot_primary' = 'provider.committee');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_committee` SET TAGS ('pii_distinct_document' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_committee` SET TAGS ('pii_ssot' = 'domain_specific');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_committee` SET TAGS ('pii_ssot_note' = 'distinct_domain_scope_not_duplicate');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_committee` SET TAGS ('pii_ssot_duplicate_of' = 'provider.committee');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_committee` SET TAGS ('pii_ssot_resolution' = 'designate_ssot');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_committee` SET TAGS ('pii_ssot_canonical' = 'provider.committee');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_committee` SET TAGS ('pii_ssot_pair_winner' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_committee` SET TAGS ('pii_duplicate_of' = 'provider.committee');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_committee` SET TAGS ('pii_vibe_domain_created' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_committee` ALTER COLUMN `employee_id` SET TAGS ('pii_confidential' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_committee` ALTER COLUMN `employee_id` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_committee` ALTER COLUMN `chair_name` SET TAGS ('pii_sensitivity' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_committee` ALTER COLUMN `chair_name` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_committee` ALTER COLUMN `chair_name` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_committee` ALTER COLUMN `chair_name` SET TAGS ('pii_name' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_committee` ALTER COLUMN `chair_name` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_committee` ALTER COLUMN `chair_name` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_committee` ALTER COLUMN `chair_name` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_committee` ALTER COLUMN `chairperson_name` SET TAGS ('pii_sensitivity' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_committee` ALTER COLUMN `chairperson_name` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_committee` ALTER COLUMN `chairperson_name` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_committee` ALTER COLUMN `chairperson_name` SET TAGS ('pii_name' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_committee` ALTER COLUMN `chairperson_name` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_committee` ALTER COLUMN `chairperson_name` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_committee` ALTER COLUMN `chairperson_name` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_committee` ALTER COLUMN `committee_name` SET TAGS ('pii_sensitivity' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_committee` ALTER COLUMN `committee_name` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_committee` ALTER COLUMN `committee_name` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_committee` ALTER COLUMN `committee_name` SET TAGS ('pii_name' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_committee` ALTER COLUMN `committee_name` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_committee` ALTER COLUMN `committee_name` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_committee` ALTER COLUMN `committee_name` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_committee` ALTER COLUMN `committee_scope` SET TAGS ('pii_discriminator' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_committee` ALTER COLUMN `last_meeting_date` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_committee` ALTER COLUMN `last_meeting_date` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_committee` ALTER COLUMN `last_meeting_date` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_committee` ALTER COLUMN `last_meeting_date` SET TAGS ('pii_identifier' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_committee` ALTER COLUMN `last_meeting_date` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_committee` ALTER COLUMN `last_meeting_date` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_committee` ALTER COLUMN `last_meeting_date` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_committee` ALTER COLUMN `meeting_frequency` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_committee` ALTER COLUMN `meeting_frequency` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_committee` ALTER COLUMN `meeting_frequency` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_committee` ALTER COLUMN `meeting_frequency` SET TAGS ('pii_identifier' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_committee` ALTER COLUMN `meeting_frequency` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_committee` ALTER COLUMN `meeting_frequency` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_committee` ALTER COLUMN `meeting_frequency` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_committee` ALTER COLUMN `next_meeting_date` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_committee` ALTER COLUMN `next_meeting_date` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_committee` ALTER COLUMN `next_meeting_date` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_committee` ALTER COLUMN `next_meeting_date` SET TAGS ('pii_identifier' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_committee` ALTER COLUMN `next_meeting_date` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_committee` ALTER COLUMN `next_meeting_date` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_committee` ALTER COLUMN `next_meeting_date` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_committee` ALTER COLUMN `reporting_authority` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_committee` ALTER COLUMN `reporting_authority` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_committee` ALTER COLUMN `reporting_authority` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_committee` ALTER COLUMN `reporting_authority` SET TAGS ('pii_identifier' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_committee` ALTER COLUMN `reporting_authority` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_committee` ALTER COLUMN `reporting_authority` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_committee` ALTER COLUMN `reporting_authority` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_committee` ALTER COLUMN `reporting_body` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_committee` ALTER COLUMN `reporting_body` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_committee` ALTER COLUMN `reporting_body` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_committee` ALTER COLUMN `reporting_body` SET TAGS ('pii_identifier' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_committee` ALTER COLUMN `reporting_body` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_committee` ALTER COLUMN `reporting_body` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_committee` ALTER COLUMN `reporting_body` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_committee` ALTER COLUMN `reporting_relationship` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_committee` ALTER COLUMN `reporting_relationship` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_committee` ALTER COLUMN `reporting_relationship` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_committee` ALTER COLUMN `reporting_relationship` SET TAGS ('pii_identifier' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_committee` ALTER COLUMN `reporting_relationship` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_committee` ALTER COLUMN `reporting_relationship` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_committee` ALTER COLUMN `reporting_relationship` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_committee` ALTER COLUMN `reporting_structure` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_committee` ALTER COLUMN `reporting_structure` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_committee` ALTER COLUMN `reporting_structure` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_committee` ALTER COLUMN `reporting_structure` SET TAGS ('pii_identifier' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_committee` ALTER COLUMN `reporting_structure` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_committee` ALTER COLUMN `reporting_structure` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_committee` ALTER COLUMN `reporting_structure` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program` SET TAGS ('pii_data_type' = 'master_data');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program` SET TAGS ('pii_subdomain' = 'measure_management');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program` SET TAGS ('pii_domain' = 'quality');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program` SET TAGS ('pii_subdomain' = 'program_management');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program` SET TAGS ('pii_structure_enforced' = 'v22domains');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program` SET TAGS ('pii_ssot_role' = 'alias');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program` SET TAGS ('pii_ssot_canonical' = 'compliance.compliance_program');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program` SET TAGS ('pii_ssot_note' = 'Retain both with distinct scope tags');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program` SET TAGS ('pii_ssot' = 'primary');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program` SET TAGS ('pii_ssot_pair' = 'compliance.compliance_program');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program` SET TAGS ('pii_distinct_document' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program` SET TAGS ('pii_ssot_duplicate_of' = 'compliance.compliance_program');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program` SET TAGS ('pii_ssot_resolution' = 'designate_ssot');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program` SET TAGS ('pii_ssot_reference' = 'compliance.compliance_program');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program` SET TAGS ('pii_duplicate_pair' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program` SET TAGS ('pii_vibe_domain_created' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program` ALTER COLUMN `employee_id` SET TAGS ('pii_confidential' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program` ALTER COLUMN `employee_id` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program` ALTER COLUMN `goal_statement` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program` ALTER COLUMN `goal_statement` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program` ALTER COLUMN `goal_statement` SET TAGS ('pii_address' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program` ALTER COLUMN `goal_statement` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program` ALTER COLUMN `goal_statement` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program` ALTER COLUMN `goal_statement` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program` ALTER COLUMN `program_name` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program` ALTER COLUMN `program_name` SET TAGS ('pii_sensitivity' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program` ALTER COLUMN `program_name` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program` ALTER COLUMN `program_name` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program` ALTER COLUMN `program_name` SET TAGS ('pii_name' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program` ALTER COLUMN `program_name` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program` ALTER COLUMN `program_name` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program` ALTER COLUMN `program_name` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program` ALTER COLUMN `program_owner_name` SET TAGS ('pii_sensitivity' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program` ALTER COLUMN `program_owner_name` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program` ALTER COLUMN `program_owner_name` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program` ALTER COLUMN `program_owner_name` SET TAGS ('pii_name' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program` ALTER COLUMN `program_owner_name` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program` ALTER COLUMN `program_owner_name` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program` ALTER COLUMN `program_owner_name` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program` ALTER COLUMN `program_scope` SET TAGS ('pii_discriminator' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program` ALTER COLUMN `reporting_framework` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program` ALTER COLUMN `reporting_framework` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program` ALTER COLUMN `reporting_framework` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program` ALTER COLUMN `reporting_framework` SET TAGS ('pii_identifier' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program` ALTER COLUMN `reporting_framework` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program` ALTER COLUMN `reporting_framework` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program` ALTER COLUMN `reporting_framework` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program` ALTER COLUMN `reporting_frequency` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program` ALTER COLUMN `reporting_frequency` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program` ALTER COLUMN `reporting_frequency` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program` ALTER COLUMN `reporting_frequency` SET TAGS ('pii_identifier' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program` ALTER COLUMN `reporting_frequency` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program` ALTER COLUMN `reporting_frequency` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program` ALTER COLUMN `reporting_frequency` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program` ALTER COLUMN `reporting_period_end` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program` ALTER COLUMN `reporting_period_end` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program` ALTER COLUMN `reporting_period_end` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program` ALTER COLUMN `reporting_period_end` SET TAGS ('pii_identifier' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program` ALTER COLUMN `reporting_period_end` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program` ALTER COLUMN `reporting_period_end` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program` ALTER COLUMN `reporting_period_end` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program` ALTER COLUMN `reporting_period_start` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program` ALTER COLUMN `reporting_period_start` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program` ALTER COLUMN `reporting_period_start` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program` ALTER COLUMN `reporting_period_start` SET TAGS ('pii_identifier' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program` ALTER COLUMN `reporting_period_start` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program` ALTER COLUMN `reporting_period_start` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program` ALTER COLUMN `reporting_period_start` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program` ALTER COLUMN `reporting_year` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program` ALTER COLUMN `reporting_year` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program` ALTER COLUMN `reporting_year` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program` ALTER COLUMN `reporting_year` SET TAGS ('pii_identifier' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program` ALTER COLUMN `reporting_year` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program` ALTER COLUMN `reporting_year` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program` ALTER COLUMN `reporting_year` SET TAGS ('pii_mask_non_prod' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program` ALTER COLUMN `submission_deadline` SET TAGS ('pii_pii' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program` ALTER COLUMN `submission_deadline` SET TAGS ('pii_phi' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program` ALTER COLUMN `submission_deadline` SET TAGS ('pii_sensitive' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program` ALTER COLUMN `submission_deadline` SET TAGS ('pii_identifier' = 'true');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program` ALTER COLUMN `submission_deadline` SET TAGS ('pii_unity_catalog_tag' = 'pii');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program` ALTER COLUMN `submission_deadline` SET TAGS ('pii_classification' = 'phi');
+ALTER TABLE `vibe_healthcare_v1`.`quality`.`quality_program` ALTER COLUMN `submission_deadline` SET TAGS ('pii_mask_non_prod' = 'true');

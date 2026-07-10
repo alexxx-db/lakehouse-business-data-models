@@ -1,59 +1,59 @@
--- Metric views for domain: finance | Business: Healthcare | Version: 2 | Generated on: 2026-07-10 14:53:25
+-- Metric views for domain: finance | Business: Healthcare | Version: 2 | Generated on: 2026-07-02 07:21:53
 
 CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`finance_ap_invoice`
 WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Accounts payable invoice KPIs for spend management, payment timeliness, and PO match compliance. Source: finance.ap_invoice (single-table)."
+  comment: "Accounts payable invoice KPIs for spend management, cash outflow planning, and vendor payment governance. Single-table view over finance.ap_invoice."
   source: "`vibe_healthcare_v1`.`finance`.`ap_invoice`"
   dimensions:
     - name: "invoice_status"
       expr: invoice_status
-      comment: "Lifecycle status of the AP invoice (open, paid, on-hold, etc.)."
-    - name: "invoice_type"
-      expr: invoice_type
-      comment: "Type of AP invoice used for spend categorization."
+      comment: "Lifecycle status of the AP invoice (e.g. open, paid, on-hold) for aging and workflow analysis."
     - name: "approval_status"
       expr: approval_status
-      comment: "Approval state of the invoice for workflow monitoring."
-    - name: "three_way_match_status"
-      expr: three_way_match_status
-      comment: "Three-way match status (PO/receipt/invoice) for procurement compliance."
+      comment: "Approval workflow state used to monitor bottlenecks in AP processing."
+    - name: "invoice_type"
+      expr: invoice_type
+      comment: "Type of invoice (standard, credit memo, prepayment) for spend categorization."
     - name: "payment_method"
       expr: payment_method
-      comment: "Method used or planned to pay the invoice (check, ACH, wire)."
-    - name: "invoice_currency_code"
-      expr: invoice_currency_code
-      comment: "Transaction currency of the invoice."
+      comment: "Method of payment (check, ACH, wire) for treasury and disbursement analysis."
+    - name: "three_way_match_status"
+      expr: three_way_match_status
+      comment: "Three-way match outcome (matched vs exception) for procurement compliance monitoring."
     - name: "invoice_month"
       expr: DATE_TRUNC('MONTH', invoice_date)
-      comment: "Month bucket of the invoice date for spend trending."
+      comment: "Invoice month bucket for period-over-period spend trending."
     - name: "due_month"
       expr: DATE_TRUNC('MONTH', due_date)
-      comment: "Month bucket of the invoice due date for payables aging planning."
+      comment: "Due-date month bucket for cash outflow forecasting."
   measures:
-    - name: "invoice_count"
+    - name: "Invoice Count"
       expr: COUNT(1)
-      comment: "Total number of AP invoices; baseline volume for payables workload."
-    - name: "total_invoice_amount"
+      comment: "Total number of AP invoices — baseline volume for workload and throughput analysis."
+    - name: "Total Invoice Amount"
+      expr: SUM(CAST(invoice_amount AS DOUBLE))
+      comment: "Total gross invoice spend — drives cash outflow planning and vendor spend management."
+    - name: "Total Amount"
       expr: SUM(CAST(total_amount AS DOUBLE))
-      comment: "Total AP spend committed across invoices; core payables exposure metric."
-    - name: "total_tax_amount"
-      expr: SUM(CAST(tax_amount AS DOUBLE))
-      comment: "Total tax on AP invoices for tax accrual and reporting."
-    - name: "total_discount_amount"
+      comment: "Total payable amount including tax and freight — the committed cash obligation."
+    - name: "Total Discount Amount"
       expr: SUM(CAST(discount_amount AS DOUBLE))
-      comment: "Total early-pay/negotiated discounts on invoices; procurement savings signal."
-    - name: "avg_invoice_amount"
-      expr: AVG(CAST(total_amount AS DOUBLE))
-      comment: "Average invoice value; indicates spend concentration and PO sizing."
-    - name: "held_invoice_count"
-      expr: SUM(CASE WHEN hold_reason_code IS NOT NULL THEN 1 ELSE 0 END)
-      comment: "Count of invoices on hold; drives payables exception remediation."
-    - name: "distinct_vendor_count"
+      comment: "Total early-pay/negotiated discounts captured — measures working-capital savings."
+    - name: "Total Tax Amount"
+      expr: SUM(CAST(tax_amount AS DOUBLE))
+      comment: "Total tax on AP invoices for tax reporting and reconciliation."
+    - name: "Avg Invoice Amount"
+      expr: AVG(CAST(invoice_amount AS DOUBLE))
+      comment: "Average invoice size — signals vendor mix and spend concentration shifts."
+    - name: "Distinct Vendor Count"
       expr: COUNT(DISTINCT vendor_id)
-      comment: "Number of distinct vendors invoiced; vendor concentration and consolidation opportunity."
+      comment: "Number of distinct vendors billed — measures supplier base breadth and concentration risk."
+    - name: "On Hold Invoice Count"
+      expr: SUM(CASE WHEN hold_reason_code IS NOT NULL THEN 1 ELSE 0 END)
+      comment: "Count of invoices placed on hold — flags disputes and payment blockages requiring intervention."
 $$;
 
 CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`finance_ap_payment`
@@ -61,43 +61,43 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Accounts payable payment KPIs for disbursement volume, discount capture, and void/reconciliation control. Source: finance.ap_payment (single-table)."
+  comment: "Accounts payable disbursement KPIs for treasury cash management, payment reconciliation, and discount capture. Single-table view over finance.ap_payment."
   source: "`vibe_healthcare_v1`.`finance`.`ap_payment`"
   dimensions:
     - name: "payment_status"
       expr: payment_status
-      comment: "Status of the payment (issued, cleared, voided)."
-    - name: "payment_type"
-      expr: payment_type
-      comment: "Type of disbursement for categorization."
+      comment: "Status of the payment (issued, cleared, voided) for disbursement monitoring."
     - name: "payment_method"
       expr: payment_method
-      comment: "Disbursement method (check, ACH, wire)."
+      comment: "Payment method (check, ACH, wire) for treasury channel analysis."
+    - name: "payment_type"
+      expr: payment_type
+      comment: "Payment type classification for spend categorization."
     - name: "payment_reconciliation_status"
       expr: payment_reconciliation_status
-      comment: "Reconciliation status against bank statements."
-    - name: "currency_code"
-      expr: currency_code
-      comment: "Currency of the payment."
+      comment: "Reconciliation state used to track outstanding vs cleared disbursements."
     - name: "payment_month"
       expr: DATE_TRUNC('MONTH', payment_date)
-      comment: "Month bucket of the payment date for cash outflow trending."
+      comment: "Payment month bucket for cash-outflow trending."
   measures:
-    - name: "payment_count"
+    - name: "Payment Count"
       expr: COUNT(1)
-      comment: "Total number of AP payments; disbursement workload baseline."
-    - name: "total_payment_amount"
+      comment: "Total disbursements issued — baseline for treasury workload and throughput."
+    - name: "Total Payment Amount"
       expr: SUM(CAST(payment_amount AS DOUBLE))
-      comment: "Total cash disbursed to vendors; core cash outflow metric."
-    - name: "total_discount_taken"
+      comment: "Total cash disbursed to vendors — core treasury outflow KPI."
+    - name: "Total Discount Taken"
       expr: SUM(CAST(discount_taken_amount AS DOUBLE))
-      comment: "Total early-payment discounts captured; working-capital efficiency."
-    - name: "avg_payment_amount"
+      comment: "Total early-pay discounts realized on payment — measures working-capital efficiency."
+    - name: "Avg Payment Amount"
       expr: AVG(CAST(payment_amount AS DOUBLE))
-      comment: "Average payment size for disbursement pattern analysis."
-    - name: "voided_payment_count"
+      comment: "Average payment size — informs batch sizing and fraud-threshold tuning."
+    - name: "Voided Payment Count"
       expr: SUM(CASE WHEN void_date IS NOT NULL THEN 1 ELSE 0 END)
-      comment: "Count of voided payments; control and error-rate indicator."
+      comment: "Count of voided payments — flags process errors and disbursement rework."
+    - name: "Distinct Vendor Count"
+      expr: COUNT(DISTINCT vendor_id)
+      comment: "Distinct vendors paid — supplier payment concentration measure."
 $$;
 
 CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`finance_ar_account`
@@ -105,49 +105,52 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Accounts receivable account KPIs for collections, aging, disputes, and write-off exposure. Source: finance.ar_account (single-table)."
+  comment: "Accounts receivable account KPIs for collections effectiveness, aging, bad-debt exposure, and write-off monitoring. Single-table view over finance.ar_account."
   source: "`vibe_healthcare_v1`.`finance`.`ar_account`"
   dimensions:
     - name: "account_status"
       expr: account_status
-      comment: "Status of the AR account for collections segmentation."
+      comment: "AR account status (active, collections, written-off) for portfolio health analysis."
     - name: "account_type"
       expr: account_type
-      comment: "Type of receivable account."
+      comment: "Account type for receivables segmentation."
     - name: "aging_bucket"
       expr: aging_bucket
-      comment: "Aging bucket of the receivable balance; drives collection prioritization."
+      comment: "Aging bucket (0-30, 31-60, etc.) — the primary lens for collections prioritization."
     - name: "debtor_type"
       expr: debtor_type
-      comment: "Type of debtor (payer, patient, other)."
-    - name: "currency_code"
-      expr: currency_code
-      comment: "Currency of the AR account."
+      comment: "Type of debtor (payer, patient, guarantor) for AR mix analysis."
+    - name: "invoice_month"
+      expr: DATE_TRUNC('MONTH', invoice_date)
+      comment: "Invoice month bucket for receivables cohort trending."
   measures:
-    - name: "account_count"
+    - name: "Account Count"
       expr: COUNT(1)
-      comment: "Total AR accounts; receivable portfolio size."
-    - name: "total_current_balance"
+      comment: "Total AR accounts — baseline for portfolio sizing."
+    - name: "Total Current Balance"
       expr: SUM(CAST(current_balance AS DOUBLE))
-      comment: "Total outstanding AR balance; core receivable exposure."
-    - name: "total_payments_received"
+      comment: "Total outstanding receivable balance — the core AR exposure KPI."
+    - name: "Total Original Balance"
+      expr: SUM(CAST(original_balance AS DOUBLE))
+      comment: "Total original billed balance — denominator for collection-rate analysis."
+    - name: "Total Payments Received"
       expr: SUM(CAST(total_payments_received AS DOUBLE))
-      comment: "Total payments received against AR; collections performance."
-    - name: "total_write_off_amount"
+      comment: "Total cash collected against accounts — measures collections effectiveness."
+    - name: "Total Write Off Amount"
       expr: SUM(CAST(write_off_amount AS DOUBLE))
-      comment: "Total amount written off; bad-debt leakage indicator."
-    - name: "total_interest_accrued"
+      comment: "Total written-off receivables — bad-debt loss that leadership must minimize."
+    - name: "Total Interest Accrued"
       expr: SUM(CAST(total_interest_accrued AS DOUBLE))
-      comment: "Total interest accrued on overdue receivables."
-    - name: "avg_current_balance"
-      expr: AVG(CAST(current_balance AS DOUBLE))
-      comment: "Average balance per AR account for segmentation."
-    - name: "disputed_account_count"
+      comment: "Total interest accrued on overdue balances — revenue recovery on delinquency."
+    - name: "Disputed Account Count"
       expr: SUM(CASE WHEN dispute_flag = TRUE THEN 1 ELSE 0 END)
-      comment: "Count of accounts in dispute; revenue-at-risk indicator."
-    - name: "legal_action_account_count"
+      comment: "Count of disputed accounts — flags revenue at risk requiring resolution."
+    - name: "Legal Action Account Count"
       expr: SUM(CASE WHEN legal_action_flag = TRUE THEN 1 ELSE 0 END)
-      comment: "Count of accounts in legal action; escalated collections exposure."
+      comment: "Accounts in legal action — escalated collections exposure."
+    - name: "Avg Current Balance"
+      expr: AVG(CAST(current_balance AS DOUBLE))
+      comment: "Average outstanding balance per account — informs collections staffing and strategy."
 $$;
 
 CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`finance_ar_transaction`
@@ -155,40 +158,40 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "AR transaction KPIs for cash application, posting throughput, and reconciliation status. Source: finance.ar_transaction (single-table)."
+  comment: "AR transaction KPIs for cash application, adjustments, and posting monitoring. Single-table view over finance.ar_transaction."
   source: "`vibe_healthcare_v1`.`finance`.`ar_transaction`"
   dimensions:
     - name: "transaction_type"
       expr: transaction_type
-      comment: "Type of AR transaction (charge, payment, adjustment)."
+      comment: "Transaction type (payment, adjustment, charge) for receivables activity mix."
     - name: "posting_status"
       expr: posting_status
-      comment: "Posting status to the ledger."
-    - name: "reconciliation_status"
-      expr: reconciliation_status
-      comment: "Reconciliation status of the transaction."
+      comment: "Posting status for GL-integration monitoring."
     - name: "aging_bucket"
       expr: aging_bucket
-      comment: "Aging bucket at transaction level."
+      comment: "Aging bucket at transaction level for delinquency analysis."
+    - name: "reconciliation_status"
+      expr: reconciliation_status
+      comment: "Reconciliation state for cash-application controls."
     - name: "transaction_month"
       expr: DATE_TRUNC('MONTH', transaction_date)
-      comment: "Month bucket of the transaction date for trending."
+      comment: "Transaction month bucket for AR activity trending."
   measures:
-    - name: "transaction_count"
+    - name: "Transaction Count"
       expr: COUNT(1)
-      comment: "Total AR transactions; posting workload baseline."
-    - name: "total_transaction_amount"
+      comment: "Total AR transactions — baseline activity volume."
+    - name: "Total Transaction Amount"
       expr: SUM(CAST(transaction_amount AS DOUBLE))
-      comment: "Total transacted AR amount; cash and adjustment throughput."
-    - name: "total_tax_amount"
+      comment: "Total value of AR transactions — drives cash-flow and receivables movement analysis."
+    - name: "Total Tax Amount"
       expr: SUM(CAST(tax_amount AS DOUBLE))
-      comment: "Total tax across AR transactions."
-    - name: "avg_transaction_amount"
-      expr: AVG(CAST(transaction_amount AS DOUBLE))
-      comment: "Average transaction value for pattern analysis."
-    - name: "reversal_transaction_count"
+      comment: "Total tax on AR transactions for reporting reconciliation."
+    - name: "Reversal Transaction Count"
       expr: SUM(CASE WHEN reversal_flag = TRUE THEN 1 ELSE 0 END)
-      comment: "Count of reversed transactions; control and error indicator."
+      comment: "Count of reversed transactions — flags posting errors and rework."
+    - name: "Avg Transaction Amount"
+      expr: AVG(CAST(transaction_amount AS DOUBLE))
+      comment: "Average transaction size for anomaly detection and process sizing."
 $$;
 
 CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`finance_budget`
@@ -196,251 +199,43 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Budget KPIs for planning coverage across revenue, expense, capital, and FTE. Source: finance.budget (single-table)."
+  comment: "Budget KPIs for financial planning, revenue/expense targets, and net-income planning oversight. Single-table view over finance.budget."
   source: "`vibe_healthcare_v1`.`finance`.`budget`"
   dimensions:
     - name: "budget_status"
       expr: budget_status
-      comment: "Approval/lifecycle status of the budget."
+      comment: "Budget lifecycle status (draft, approved, active) for planning-cycle monitoring."
     - name: "budget_type"
       expr: budget_type
-      comment: "Type of budget (operating, capital, etc.)."
+      comment: "Type of budget (operating, capital) for planning segmentation."
     - name: "budget_category"
       expr: budget_category
-      comment: "Budget category for grouping."
+      comment: "Budget category for expenditure classification."
     - name: "fiscal_year"
       expr: fiscal_year
-      comment: "Fiscal year the budget applies to."
+      comment: "Fiscal year of the budget for annual planning comparison."
     - name: "funding_source"
       expr: funding_source
-      comment: "Funding source backing the budget."
+      comment: "Funding source (operations, grant, philanthropy) for funding-mix analysis."
   measures:
-    - name: "budget_count"
+    - name: "Budget Count"
       expr: COUNT(1)
-      comment: "Number of budgets; planning coverage baseline."
-    - name: "total_budgeted_revenue"
+      comment: "Total budgets defined — baseline planning portfolio size."
+    - name: "Total Budgeted Revenue"
       expr: SUM(CAST(total_budgeted_revenue AS DOUBLE))
-      comment: "Total planned revenue; top-line planning target."
-    - name: "total_budgeted_expense"
+      comment: "Total planned revenue — the top-line target executives steer toward."
+    - name: "Total Budgeted Expense"
       expr: SUM(CAST(total_budgeted_expense AS DOUBLE))
-      comment: "Total planned expense; cost planning target."
-    - name: "total_budgeted_capital"
+      comment: "Total planned expense — the cost envelope leadership manages against."
+    - name: "Total Budgeted Capital"
       expr: SUM(CAST(total_budgeted_capital AS DOUBLE))
-      comment: "Total planned capital spend; capital allocation view."
-    - name: "total_budgeted_net_income"
+      comment: "Total planned capital spend — informs capital-allocation decisions."
+    - name: "Total Budgeted Net Income"
       expr: SUM(CAST(budgeted_net_income AS DOUBLE))
-      comment: "Total planned net income; profitability target."
-    - name: "total_budgeted_fte"
+      comment: "Total planned net income — the bottom-line profitability target."
+    - name: "Total Budgeted FTE"
       expr: SUM(CAST(budgeted_fte_count AS DOUBLE))
-      comment: "Total planned FTE headcount; workforce planning target."
-$$;
-
-CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`finance_budget_transfer`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Budget transfer KPIs for reallocation volume, reversal control, and compliance monitoring. Source: finance.budget_transfer (single-table)."
-  source: "`vibe_healthcare_v1`.`finance`.`budget_transfer`"
-  dimensions:
-    - name: "transfer_status"
-      expr: transfer_status
-      comment: "Status of the budget transfer request."
-    - name: "transfer_type"
-      expr: transfer_type
-      comment: "Type of budget transfer."
-    - name: "approval_level"
-      expr: approval_level
-      comment: "Approval level applied to the transfer."
-    - name: "fiscal_year"
-      expr: fiscal_year
-      comment: "Fiscal year of the transfer."
-    - name: "transfer_month"
-      expr: DATE_TRUNC('MONTH', transfer_date)
-      comment: "Month bucket of the transfer date."
-  measures:
-    - name: "transfer_count"
-      expr: COUNT(1)
-      comment: "Number of budget transfers; reallocation activity baseline."
-    - name: "total_transfer_amount"
-      expr: SUM(CAST(transfer_amount AS DOUBLE))
-      comment: "Total dollars reallocated across budgets; budget flexibility indicator."
-    - name: "avg_transfer_amount"
-      expr: AVG(CAST(transfer_amount AS DOUBLE))
-      comment: "Average transfer size for governance thresholds."
-    - name: "reversed_transfer_count"
-      expr: SUM(CASE WHEN reversal_flag = TRUE THEN 1 ELSE 0 END)
-      comment: "Count of reversed transfers; process-error indicator."
-$$;
-
-CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`finance_capital_expenditure`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Capital expenditure KPIs for CapEx spend, capitalization eligibility, and reversal control. Source: finance.capital_expenditure (single-table)."
-  source: "`vibe_healthcare_v1`.`finance`.`capital_expenditure`"
-  dimensions:
-    - name: "expenditure_status"
-      expr: expenditure_status
-      comment: "Status of the capital expenditure."
-    - name: "expenditure_type"
-      expr: expenditure_type
-      comment: "Type of capital expenditure."
-    - name: "asset_category"
-      expr: asset_category
-      comment: "Asset category being funded."
-    - name: "approval_status"
-      expr: approval_status
-      comment: "Approval status for CapEx governance."
-    - name: "fiscal_year"
-      expr: fiscal_year
-      comment: "Fiscal year of the expenditure."
-    - name: "expenditure_month"
-      expr: DATE_TRUNC('MONTH', expenditure_date)
-      comment: "Month bucket of the expenditure date."
-  measures:
-    - name: "expenditure_count"
-      expr: COUNT(1)
-      comment: "Number of capital expenditures; CapEx activity baseline."
-    - name: "total_expenditure_amount"
-      expr: SUM(CAST(expenditure_amount AS DOUBLE))
-      comment: "Total capital spend; core CapEx exposure metric."
-    - name: "total_labor_hours"
-      expr: SUM(CAST(labor_hours AS DOUBLE))
-      comment: "Total internal labor hours capitalized; construction-in-progress effort."
-    - name: "avg_expenditure_amount"
-      expr: AVG(CAST(expenditure_amount AS DOUBLE))
-      comment: "Average CapEx transaction size."
-    - name: "capitalization_eligible_count"
-      expr: SUM(CASE WHEN capitalization_eligible_flag = TRUE THEN 1 ELSE 0 END)
-      comment: "Count of capitalization-eligible expenditures; asset-book pipeline."
-$$;
-
-CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`finance_capital_project`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Capital project KPIs for budget vs actual variance, committed cost, and revenue-generating investment mix. Source: finance.capital_project (single-table)."
-  source: "`vibe_healthcare_v1`.`finance`.`capital_project`"
-  dimensions:
-    - name: "project_status"
-      expr: project_status
-      comment: "Status of the capital project."
-    - name: "project_type"
-      expr: project_type
-      comment: "Type of capital project."
-    - name: "project_phase"
-      expr: project_phase
-      comment: "Current phase of the project."
-    - name: "project_priority"
-      expr: project_priority
-      comment: "Priority ranking of the project."
-    - name: "funding_source"
-      expr: funding_source
-      comment: "Funding source for the project."
-  measures:
-    - name: "project_count"
-      expr: COUNT(1)
-      comment: "Number of capital projects in the portfolio."
-    - name: "total_approved_budget"
-      expr: SUM(CAST(approved_capital_budget AS DOUBLE))
-      comment: "Total approved capital budget; portfolio investment envelope."
-    - name: "total_actual_costs"
-      expr: SUM(CAST(total_actual_costs AS DOUBLE))
-      comment: "Total actual costs incurred; capital burn."
-    - name: "total_committed_costs"
-      expr: SUM(CAST(total_committed_costs AS DOUBLE))
-      comment: "Total committed costs; forward capital commitment exposure."
-    - name: "total_variance_amount"
-      expr: SUM(CAST(variance_amount AS DOUBLE))
-      comment: "Total budget-to-actual variance; project cost control indicator."
-    - name: "total_expected_annual_savings"
-      expr: SUM(CAST(expected_annual_savings AS DOUBLE))
-      comment: "Total expected annual savings; ROI justification for capital allocation."
-    - name: "revenue_generating_project_count"
-      expr: SUM(CASE WHEN is_revenue_generating = TRUE THEN 1 ELSE 0 END)
-      comment: "Count of revenue-generating projects; strategic investment mix."
-$$;
-
-CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`finance_cost_allocation`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Cost allocation KPIs for allocated cost distribution, adjustments, and Medicare reportability. Source: finance.cost_allocation (single-table)."
-  source: "`vibe_healthcare_v1`.`finance`.`cost_allocation`"
-  dimensions:
-    - name: "allocation_category"
-      expr: allocation_category
-      comment: "Category of the cost allocation."
-    - name: "allocation_basis"
-      expr: allocation_basis
-      comment: "Basis used for the allocation (statistics, RVU, etc.)."
-    - name: "allocation_run_status"
-      expr: allocation_run_status
-      comment: "Status of the associated allocation run."
-    - name: "allocation_month"
-      expr: DATE_TRUNC('MONTH', allocation_date)
-      comment: "Month bucket of the allocation date."
-  measures:
-    - name: "allocation_count"
-      expr: COUNT(1)
-      comment: "Number of cost allocation records; allocation activity baseline."
-    - name: "total_allocated_amount"
-      expr: SUM(CAST(allocated_amount AS DOUBLE))
-      comment: "Total cost allocated across cost centers; core allocation output."
-    - name: "total_allocation_adjustment"
-      expr: SUM(CAST(allocation_adjustment_amount AS DOUBLE))
-      comment: "Total allocation adjustments; restatement/correction volume."
-    - name: "total_source_cost_pool"
-      expr: SUM(CAST(source_cost_pool_amount AS DOUBLE))
-      comment: "Total source cost pool being allocated."
-    - name: "medicare_reportable_count"
-      expr: SUM(CASE WHEN is_medicare_reportable = TRUE THEN 1 ELSE 0 END)
-      comment: "Count of Medicare-reportable allocations; cost-report compliance."
-$$;
-
-CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`finance_journal_entry`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Journal entry KPIs for GL posting volume, balancing, and reversal control. Source: finance.journal_entry (single-table)."
-  source: "`vibe_healthcare_v1`.`finance`.`journal_entry`"
-  dimensions:
-    - name: "posting_status"
-      expr: posting_status
-      comment: "Posting status of the journal entry."
-    - name: "journal_category"
-      expr: journal_category
-      comment: "Category of the journal entry."
-    - name: "journal_source"
-      expr: journal_source
-      comment: "Source system/module of the entry."
-    - name: "fiscal_year"
-      expr: fiscal_year
-      comment: "Fiscal year of the entry."
-    - name: "posting_month"
-      expr: DATE_TRUNC('MONTH', posting_date)
-      comment: "Month bucket of the posting date."
-  measures:
-    - name: "entry_count"
-      expr: COUNT(1)
-      comment: "Number of journal entries; GL posting workload baseline."
-    - name: "total_debit_amount"
-      expr: SUM(CAST(total_debit_amount AS DOUBLE))
-      comment: "Total debits posted; GL activity magnitude."
-    - name: "total_credit_amount"
-      expr: SUM(CAST(total_credit_amount AS DOUBLE))
-      comment: "Total credits posted; balances against debits for control."
-    - name: "reversal_entry_count"
-      expr: SUM(CASE WHEN reversal_indicator = TRUE THEN 1 ELSE 0 END)
-      comment: "Count of reversal entries; close-quality and error indicator."
-    - name: "intercompany_entry_count"
-      expr: SUM(CASE WHEN intercompany_indicator = TRUE THEN 1 ELSE 0 END)
-      comment: "Count of intercompany entries; elimination workload."
+      comment: "Total budgeted full-time equivalents — labor-cost planning driver."
 $$;
 
 CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`finance_financial_forecast`
@@ -448,212 +243,87 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Financial forecast KPIs for projected revenue, expense, net income, and capital across scenarios. Source: finance.financial_forecast (single-table)."
+  comment: "Financial forecast KPIs for rolling projections of revenue, expense, and operating income to support strategic planning. Single-table view over finance.financial_forecast."
   source: "`vibe_healthcare_v1`.`finance`.`financial_forecast`"
   dimensions:
     - name: "forecast_status"
       expr: forecast_status
-      comment: "Status of the forecast."
+      comment: "Forecast lifecycle status for planning-cycle tracking."
     - name: "forecast_type"
       expr: forecast_type
-      comment: "Type of forecast."
-    - name: "forecast_methodology"
-      expr: forecast_methodology
-      comment: "Methodology used to build the forecast."
+      comment: "Forecast type for planning segmentation."
+    - name: "forecast_scenario"
+      expr: forecast_scenario
+      comment: "Scenario (base, upside, downside) for sensitivity analysis."
     - name: "fiscal_year"
       expr: fiscal_year
-      comment: "Fiscal year the forecast covers."
+      comment: "Fiscal year of the forecast for annual projection comparison."
     - name: "forecast_period_month"
       expr: DATE_TRUNC('MONTH', forecast_period_start_date)
-      comment: "Month bucket of the forecast period start."
+      comment: "Forecast period month for time-series projection trending."
   measures:
-    - name: "forecast_count"
+    - name: "Forecast Count"
       expr: COUNT(1)
-      comment: "Number of forecasts; forecasting coverage baseline."
-    - name: "total_forecasted_revenue"
-      expr: SUM(CAST(total_forecasted_revenue AS DOUBLE))
-      comment: "Total projected revenue; forward top-line view."
-    - name: "total_forecasted_expense"
-      expr: SUM(CAST(total_forecasted_expense AS DOUBLE))
-      comment: "Total projected expense; forward cost view."
-    - name: "total_forecasted_net_income"
+      comment: "Number of forecasts — baseline planning-model volume."
+    - name: "Total Forecast Revenue"
+      expr: SUM(CAST(total_forecast_revenue AS DOUBLE))
+      comment: "Total projected revenue — the forward-looking top line for strategic steering."
+    - name: "Total Forecast Expense"
+      expr: SUM(CAST(total_forecast_expense AS DOUBLE))
+      comment: "Total projected expense — forward cost envelope for planning."
+    - name: "Total Forecasted Net Income"
       expr: SUM(CAST(total_forecasted_net_income AS DOUBLE))
-      comment: "Total projected net income; forward profitability view."
-    - name: "total_forecasted_operating_income"
+      comment: "Total projected net income — forward profitability leadership monitors."
+    - name: "Total Forecasted Operating Income"
       expr: SUM(CAST(total_forecasted_operating_income AS DOUBLE))
-      comment: "Total projected operating income; core-operations profitability."
-    - name: "total_forecasted_capex"
+      comment: "Total projected operating income — core operating-performance projection."
+    - name: "Total Forecasted Capital Expenditure"
       expr: SUM(CAST(total_forecasted_capital_expenditure AS DOUBLE))
-      comment: "Total projected capital expenditure; forward capital plan."
+      comment: "Total projected capital spend — forward capital-planning driver."
 $$;
 
-CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`finance_financial_period_close`
+CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`finance_journal_entry`
 WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Period-close KPIs for close cycle time, checklist completion, and open-item control. Source: finance.financial_period_close (single-table)."
-  source: "`vibe_healthcare_v1`.`finance`.`financial_period_close`"
+  comment: "General ledger journal entry KPIs for close-process monitoring, posting controls, and adjustment oversight. Single-table view over finance.journal_entry."
+  source: "`vibe_healthcare_v1`.`finance`.`journal_entry`"
   dimensions:
-    - name: "close_status"
-      expr: close_status
-      comment: "Status of the period close."
-    - name: "close_type"
-      expr: close_type
-      comment: "Type of close (soft, hard)."
-    - name: "close_efficiency_rating"
-      expr: close_efficiency_rating
-      comment: "Efficiency rating of the close process."
+    - name: "posting_status"
+      expr: posting_status
+      comment: "Posting status (unposted, posted) — key control for close completeness."
+    - name: "journal_category"
+      expr: journal_category
+      comment: "Journal category for entry classification and audit."
+    - name: "journal_source"
+      expr: journal_source
+      comment: "Source system of the entry for automation vs manual analysis."
+    - name: "adjustment_type"
+      expr: adjustment_type
+      comment: "Adjustment type for period-end adjustment monitoring."
+    - name: "fiscal_year"
+      expr: fiscal_year
+      comment: "Fiscal year for annual GL-activity comparison."
+    - name: "posting_month"
+      expr: DATE_TRUNC('MONTH', posting_date)
+      comment: "Posting month bucket for GL-activity trending."
   measures:
-    - name: "close_count"
+    - name: "Journal Entry Count"
       expr: COUNT(1)
-      comment: "Number of period closes tracked."
-    - name: "avg_checklist_completion_pct"
-      expr: AVG(CAST(close_checklist_completion_percentage AS DOUBLE))
-      comment: "Average checklist completion percentage; close-readiness KPI."
-    - name: "prior_period_adjustment_count"
-      expr: SUM(CASE WHEN prior_period_adjustment_flag = TRUE THEN 1 ELSE 0 END)
-      comment: "Count of closes with prior-period adjustments; restatement risk indicator."
-$$;
-
-CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`finance_bank_reconciliation`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Bank reconciliation KPIs for unreconciled variance, outstanding items, and exception control. Source: finance.bank_reconciliation (single-table)."
-  source: "`vibe_healthcare_v1`.`finance`.`bank_reconciliation`"
-  dimensions:
-    - name: "reconciliation_status"
-      expr: reconciliation_status
-      comment: "Status of the bank reconciliation."
-    - name: "currency_code"
-      expr: currency_code
-      comment: "Currency of the reconciliation."
-    - name: "statement_month"
-      expr: DATE_TRUNC('MONTH', statement_date)
-      comment: "Month bucket of the bank statement date."
-  measures:
-    - name: "reconciliation_count"
-      expr: COUNT(1)
-      comment: "Number of bank reconciliations performed."
-    - name: "total_unreconciled_variance"
-      expr: SUM(CAST(unreconciled_variance AS DOUBLE))
-      comment: "Total unreconciled variance; cash-control risk indicator."
-    - name: "total_outstanding_checks"
-      expr: SUM(CAST(outstanding_checks_total AS DOUBLE))
-      comment: "Total outstanding checks; cash-timing exposure."
-    - name: "total_deposits_in_transit"
-      expr: SUM(CAST(deposits_in_transit_total AS DOUBLE))
-      comment: "Total deposits in transit; cash-timing exposure."
-    - name: "exception_reconciliation_count"
-      expr: SUM(CASE WHEN exception_flag = TRUE THEN 1 ELSE 0 END)
-      comment: "Count of reconciliations flagged as exceptions; control workload."
-$$;
-
-CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`finance_fund`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Fund KPIs for balance, endowment corpus, and restricted-fund oversight. Source: finance.fund (single-table)."
-  source: "`vibe_healthcare_v1`.`finance`.`fund`"
-  dimensions:
-    - name: "fund_status"
-      expr: fund_status
-      comment: "Status of the fund."
-    - name: "fund_type"
-      expr: fund_type
-      comment: "Type of fund."
-    - name: "fund_category"
-      expr: fund_category
-      comment: "Category of the fund."
-    - name: "restriction_type"
-      expr: restriction_type
-      comment: "Restriction classification of the fund."
-  measures:
-    - name: "fund_count"
-      expr: COUNT(1)
-      comment: "Number of funds under management."
-    - name: "total_balance"
-      expr: SUM(CAST(balance AS DOUBLE))
-      comment: "Total current fund balance; net assets under management."
-    - name: "total_endowment_corpus"
-      expr: SUM(CAST(endowment_corpus_amount AS DOUBLE))
-      comment: "Total endowment corpus; permanently restricted principal."
-    - name: "restricted_fund_count"
-      expr: SUM(CASE WHEN donor_restriction_indicator = TRUE THEN 1 ELSE 0 END)
-      comment: "Count of donor-restricted funds; compliance oversight."
-$$;
-
-CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`finance_donor`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Donor / philanthropy KPIs for lifetime giving, segmentation, and pipeline health. Source: finance.donor (single-table)."
-  source: "`vibe_healthcare_v1`.`finance`.`donor`"
-  dimensions:
-    - name: "donor_type"
-      expr: donor_type
-      comment: "Type of donor."
-    - name: "donor_status"
-      expr: donor_status
-      comment: "Status of the donor relationship."
-    - name: "segment"
-      expr: segment
-      comment: "Donor segment for fundraising strategy."
-    - name: "wealth_capacity_rating"
-      expr: wealth_capacity_rating
-      comment: "Wealth capacity rating for major-gift prioritization."
-  measures:
-    - name: "donor_count"
-      expr: COUNT(1)
-      comment: "Number of donors; giving base size."
-    - name: "total_lifetime_giving"
-      expr: SUM(CAST(lifetime_giving_amount AS DOUBLE))
-      comment: "Total lifetime giving; cumulative philanthropic value."
-    - name: "avg_lifetime_giving"
-      expr: AVG(CAST(lifetime_giving_amount AS DOUBLE))
-      comment: "Average lifetime giving per donor; segment value indicator."
-    - name: "avg_affinity_score"
-      expr: AVG(CAST(affinity_score AS DOUBLE))
-      comment: "Average affinity score; engagement/propensity signal."
-    - name: "planned_giving_donor_count"
-      expr: SUM(CASE WHEN planned_giving_flag = TRUE THEN 1 ELSE 0 END)
-      comment: "Count of planned-giving donors; legacy pipeline."
-$$;
-
-CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`finance_depreciation_run`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Depreciation run KPIs for depreciation expense, run failures, and posting control. Source: finance.depreciation_run (single-table)."
-  source: "`vibe_healthcare_v1`.`finance`.`depreciation_run`"
-  dimensions:
-    - name: "run_status"
-      expr: run_status
-      comment: "Status of the depreciation run."
-    - name: "run_type"
-      expr: run_type
-      comment: "Type of depreciation run."
-    - name: "calculation_method"
-      expr: calculation_method
-      comment: "Depreciation calculation method applied."
-    - name: "run_month"
-      expr: DATE_TRUNC('MONTH', run_date)
-      comment: "Month bucket of the run date."
-  measures:
-    - name: "run_count"
-      expr: COUNT(1)
-      comment: "Number of depreciation runs executed."
-    - name: "total_depreciation_amount"
-      expr: SUM(CAST(total_depreciation_amount AS DOUBLE))
-      comment: "Total depreciation expense recognized; core non-cash expense."
-    - name: "reversed_run_count"
-      expr: SUM(CASE WHEN reversal_flag = TRUE THEN 1 ELSE 0 END)
-      comment: "Count of reversed runs; process-error indicator."
+      comment: "Total journal entries — baseline GL activity and close workload."
+    - name: "Total Debit Amount"
+      expr: SUM(CAST(total_debit_amount AS DOUBLE))
+      comment: "Total debits posted — a leg of ledger balancing and volume monitoring."
+    - name: "Total Credit Amount"
+      expr: SUM(CAST(total_credit_amount AS DOUBLE))
+      comment: "Total credits posted — the offsetting leg for balancing controls."
+    - name: "Reversal Entry Count"
+      expr: SUM(CASE WHEN reversal_indicator = TRUE THEN 1 ELSE 0 END)
+      comment: "Count of reversal entries — flags error correction and process quality."
+    - name: "Intercompany Entry Count"
+      expr: SUM(CASE WHEN intercompany_indicator = TRUE THEN 1 ELSE 0 END)
+      comment: "Count of intercompany entries — elimination and consolidation workload driver."
 $$;
 
 CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`finance_fixed_asset`
@@ -661,31 +331,324 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Fixed asset KPIs for asset base value, accumulated depreciation, and net book value. Source: finance.fixed_asset (single-table)."
+  comment: "Fixed asset KPIs for capital-base valuation, depreciation exposure, and asset-lifecycle management. Single-table view over finance.fixed_asset."
   source: "`vibe_healthcare_v1`.`finance`.`fixed_asset`"
   dimensions:
     - name: "asset_status"
       expr: asset_status
-      comment: "Status of the fixed asset."
+      comment: "Asset status (in-service, disposed, retired) for lifecycle analysis."
     - name: "asset_category"
       expr: asset_category
-      comment: "Category of the fixed asset."
+      comment: "Asset category (equipment, building, IT) for capital-base segmentation."
     - name: "depreciation_method"
       expr: depreciation_method
-      comment: "Depreciation method applied to the asset."
+      comment: "Depreciation method for accounting-policy analysis."
+    - name: "acquisition_month"
+      expr: DATE_TRUNC('MONTH', acquisition_date)
+      comment: "Acquisition month bucket for capital-investment trending."
   measures:
-    - name: "asset_count"
+    - name: "Asset Count"
       expr: COUNT(1)
-      comment: "Number of fixed assets in the register."
-    - name: "total_acquisition_cost"
+      comment: "Total fixed assets — baseline capital-base inventory."
+    - name: "Total Acquisition Cost"
       expr: SUM(CAST(acquisition_cost AS DOUBLE))
-      comment: "Total acquisition cost; gross asset base."
-    - name: "total_accumulated_depreciation"
-      expr: SUM(CAST(accumulated_depreciation AS DOUBLE))
-      comment: "Total accumulated depreciation; asset consumption to date."
-    - name: "total_net_book_value"
+      comment: "Total gross acquisition cost — the invested capital base."
+    - name: "Total Net Book Value"
       expr: SUM(CAST(net_book_value AS DOUBLE))
-      comment: "Total net book value; current balance-sheet asset value."
+      comment: "Total net book value — current balance-sheet asset value executives monitor."
+    - name: "Total Accumulated Depreciation"
+      expr: SUM(CAST(accumulated_depreciation AS DOUBLE))
+      comment: "Total accumulated depreciation — measures asset aging and reinvestment need."
+    - name: "Total Disposal Proceeds"
+      expr: SUM(CAST(disposal_proceeds AS DOUBLE))
+      comment: "Total proceeds from asset disposals — capital-recovery measure."
+    - name: "Avg Useful Life Years"
+      expr: AVG(CAST(useful_life_years AS DOUBLE))
+      comment: "Average useful life of assets — informs depreciation planning and replacement cycles."
+$$;
+
+CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`finance_cost_allocation`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Cost allocation KPIs for indirect-cost distribution, cost-center accountability, and Medicare cost-report support. Single-table view over finance.cost_allocation."
+  source: "`vibe_healthcare_v1`.`finance`.`cost_allocation`"
+  dimensions:
+    - name: "allocation_status"
+      expr: allocation_status
+      comment: "Allocation status for run-completion monitoring."
+    - name: "allocation_category"
+      expr: allocation_category
+      comment: "Allocation category for cost-pool classification."
+    - name: "allocation_tier"
+      expr: allocation_tier
+      comment: "Step-down allocation tier for cost-report methodology analysis."
+    - name: "service_line_code"
+      expr: service_line_code
+      comment: "Service line for allocated-cost accountability by line of business."
+    - name: "fiscal_year"
+      expr: fiscal_year
+      comment: "Fiscal year for annual allocation comparison."
+  measures:
+    - name: "Allocation Count"
+      expr: COUNT(1)
+      comment: "Number of allocation records — baseline distribution volume."
+    - name: "Total Allocated Amount"
+      expr: SUM(CAST(allocated_amount AS DOUBLE))
+      comment: "Total cost allocated to targets — the core indirect-cost distribution KPI."
+    - name: "Total Source Amount"
+      expr: SUM(CAST(source_amount AS DOUBLE))
+      comment: "Total source cost pool amount — denominator for allocation coverage."
+    - name: "Total Adjustment Amount"
+      expr: SUM(CAST(allocation_adjustment_amount AS DOUBLE))
+      comment: "Total allocation adjustments — flags true-ups and methodology corrections."
+    - name: "Medicare Reportable Allocation Count"
+      expr: SUM(CASE WHEN is_medicare_reportable = TRUE THEN 1 ELSE 0 END)
+      comment: "Count of Medicare-reportable allocations — cost-report compliance driver."
+$$;
+
+CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`finance_capital_project`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Capital project KPIs for capital-plan execution, budget variance, and ROI oversight. Single-table view over finance.capital_project."
+  source: "`vibe_healthcare_v1`.`finance`.`capital_project`"
+  dimensions:
+    - name: "project_status"
+      expr: project_status
+      comment: "Project status for capital-plan execution monitoring."
+    - name: "project_phase"
+      expr: project_phase
+      comment: "Project phase (planning, construction, closeout) for lifecycle analysis."
+    - name: "project_type"
+      expr: project_type
+      comment: "Project type for capital-portfolio segmentation."
+    - name: "project_priority"
+      expr: project_priority
+      comment: "Project priority for capital-allocation prioritization."
+    - name: "funding_source"
+      expr: funding_source
+      comment: "Funding source for capital-financing analysis."
+  measures:
+    - name: "Project Count"
+      expr: COUNT(1)
+      comment: "Number of capital projects — baseline capital-portfolio size."
+    - name: "Total Approved Capital Budget"
+      expr: SUM(CAST(approved_capital_budget AS DOUBLE))
+      comment: "Total approved capital budget — the committed capital envelope."
+    - name: "Total Actual Costs"
+      expr: SUM(CAST(total_actual_costs AS DOUBLE))
+      comment: "Total actual capital spend to date — burn against approved budget."
+    - name: "Total Committed Costs"
+      expr: SUM(CAST(total_committed_costs AS DOUBLE))
+      comment: "Total committed (contracted) costs — forward capital obligation."
+    - name: "Total Expected Annual Savings"
+      expr: SUM(CAST(expected_annual_savings AS DOUBLE))
+      comment: "Total projected annual savings — ROI driver for capital justification."
+    - name: "Total Expected Annual Revenue"
+      expr: SUM(CAST(expected_annual_revenue AS DOUBLE))
+      comment: "Total projected annual revenue from projects — revenue-generating capital ROI."
+    - name: "Avg Variance Percent"
+      expr: AVG(CAST(variance_percent AS DOUBLE))
+      comment: "Average budget variance percentage — flags cost overruns needing intervention."
+$$;
+
+CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`finance_bank_reconciliation`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Bank reconciliation KPIs for cash-control effectiveness, unreconciled-variance monitoring, and treasury governance. Single-table view over finance.bank_reconciliation."
+  source: "`vibe_healthcare_v1`.`finance`.`bank_reconciliation`"
+  dimensions:
+    - name: "reconciliation_status"
+      expr: reconciliation_status
+      comment: "Reconciliation status for control-completion monitoring."
+    - name: "statement_month"
+      expr: DATE_TRUNC('MONTH', statement_date)
+      comment: "Statement month bucket for reconciliation-cycle trending."
+  measures:
+    - name: "Reconciliation Count"
+      expr: COUNT(1)
+      comment: "Number of reconciliations performed — baseline control-activity volume."
+    - name: "Total Unreconciled Variance"
+      expr: SUM(CAST(unreconciled_variance AS DOUBLE))
+      comment: "Total unreconciled variance — the key cash-control exposure requiring investigation."
+    - name: "Total Outstanding Checks"
+      expr: SUM(CAST(outstanding_checks_amount AS DOUBLE))
+      comment: "Total outstanding checks — cash-timing float that affects available balance."
+    - name: "Total Deposits In Transit"
+      expr: SUM(CAST(deposits_in_transit AS DOUBLE))
+      comment: "Total deposits in transit — pending cash inflow for treasury planning."
+    - name: "Exception Reconciliation Count"
+      expr: SUM(CASE WHEN exception_flag = TRUE THEN 1 ELSE 0 END)
+      comment: "Count of reconciliations with exceptions — flags control breakdowns."
+    - name: "Avg Difference Amount"
+      expr: AVG(CAST(difference_amount AS DOUBLE))
+      comment: "Average reconciliation difference — signals systemic reconciliation issues."
+$$;
+
+CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`finance_donor`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Philanthropy donor KPIs for fundraising performance, donor-base health, and lifetime-value analysis. Single-table view over finance.donor."
+  source: "`vibe_healthcare_v1`.`finance`.`donor`"
+  dimensions:
+    - name: "donor_type"
+      expr: donor_type
+      comment: "Donor type (individual, corporate, foundation) for fundraising segmentation."
+    - name: "donor_status"
+      expr: donor_status
+      comment: "Donor status (active, lapsed) for retention analysis."
+    - name: "donor_category"
+      expr: donor_category
+      comment: "Donor category for giving-tier segmentation."
+    - name: "recognition_level"
+      expr: recognition_level
+      comment: "Recognition level for major-gift stewardship analysis."
+    - name: "segment"
+      expr: segment
+      comment: "Donor segment for campaign targeting."
+  measures:
+    - name: "Donor Count"
+      expr: COUNT(1)
+      comment: "Total donors — baseline donor-base size."
+    - name: "Total Lifetime Giving"
+      expr: SUM(CAST(lifetime_giving_amount AS DOUBLE))
+      comment: "Total lifetime giving across donors — cumulative philanthropic value."
+    - name: "Total Contributed Amount"
+      expr: SUM(CAST(total_contributed_amount AS DOUBLE))
+      comment: "Total contributed amount — fundraising revenue KPI leadership tracks."
+    - name: "Avg Lifetime Giving"
+      expr: AVG(CAST(lifetime_giving_amount AS DOUBLE))
+      comment: "Average lifetime giving per donor — measures donor value and cultivation ROI."
+    - name: "Avg Affinity Score"
+      expr: AVG(CAST(affinity_score AS DOUBLE))
+      comment: "Average donor affinity score — informs prospect prioritization."
+    - name: "Planned Giving Donor Count"
+      expr: SUM(CASE WHEN planned_giving_flag = TRUE THEN 1 ELSE 0 END)
+      comment: "Count of planned-giving donors — future revenue pipeline for major gifts."
+$$;
+
+CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`finance_fund`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Fund KPIs for restricted/endowment fund balance tracking, spending-policy compliance, and stewardship. Single-table view over finance.fund."
+  source: "`vibe_healthcare_v1`.`finance`.`fund`"
+  dimensions:
+    - name: "fund_type"
+      expr: fund_type
+      comment: "Fund type (operating, endowment, restricted) for fund-portfolio segmentation."
+    - name: "fund_status"
+      expr: fund_status
+      comment: "Fund status for lifecycle monitoring."
+    - name: "fund_category"
+      expr: fund_category
+      comment: "Fund category for classification and reporting."
+    - name: "restriction_type"
+      expr: restriction_type
+      comment: "Restriction type for donor-restriction compliance analysis."
+    - name: "funding_source"
+      expr: funding_source
+      comment: "Funding source for fund-origin analysis."
+  measures:
+    - name: "Fund Count"
+      expr: COUNT(1)
+      comment: "Number of funds — baseline fund-portfolio size."
+    - name: "Total Fund Balance"
+      expr: SUM(CAST(fund_balance AS DOUBLE))
+      comment: "Total fund balance — the aggregate stewarded assets executives monitor."
+    - name: "Total Endowment Corpus"
+      expr: SUM(CAST(endowment_corpus_amount AS DOUBLE))
+      comment: "Total endowment corpus — permanently restricted principal base."
+    - name: "Total Beginning Balance"
+      expr: SUM(CAST(beginning_balance AS DOUBLE))
+      comment: "Total beginning balance — baseline for fund-growth analysis."
+    - name: "Restricted Fund Count"
+      expr: SUM(CASE WHEN is_restricted = TRUE THEN 1 ELSE 0 END)
+      comment: "Count of restricted funds — compliance-monitoring scope for donor restrictions."
+$$;
+
+CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`finance_grant`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Grant KPIs for sponsored-program financial oversight, spend-down tracking, and indirect-cost recovery. Single-table view over finance.grant."
+  source: "`vibe_healthcare_v1`.`finance`.`grant`"
+  dimensions:
+    - name: "grant_status"
+      expr: grant_status
+      comment: "Grant status (active, closeout) for program-lifecycle monitoring."
+    - name: "grant_type"
+      expr: grant_type
+      comment: "Grant type for sponsored-program segmentation."
+    - name: "compliance_status"
+      expr: compliance_status
+      comment: "Compliance status for grant-reporting risk monitoring."
+    - name: "sponsor_name"
+      expr: sponsor_name
+      comment: "Sponsor name for funder-relationship analysis."
+    - name: "funding_mechanism"
+      expr: funding_mechanism
+      comment: "Funding mechanism for grant-portfolio segmentation."
+  measures:
+    - name: "Grant Count"
+      expr: COUNT(1)
+      comment: "Number of grants — baseline sponsored-program portfolio size."
+    - name: "Total Awarded Amount"
+      expr: SUM(CAST(awarded_amount AS DOUBLE))
+      comment: "Total grant awards — the sponsored-funding revenue base."
+    - name: "Total Amount Expended"
+      expr: SUM(CAST(amount_expended AS DOUBLE))
+      comment: "Total grant funds expended — spend-down progress against awards."
+    - name: "Total Direct Cost"
+      expr: SUM(CAST(direct_cost_amount AS DOUBLE))
+      comment: "Total direct costs — core program spending for compliance reporting."
+    - name: "Total Indirect Cost"
+      expr: SUM(CAST(indirect_cost_amount AS DOUBLE))
+      comment: "Total indirect costs recovered — overhead-recovery KPI for financial sustainability."
+    - name: "Total Cost Share"
+      expr: SUM(CAST(cost_share_amount AS DOUBLE))
+      comment: "Total institutional cost-share commitment — matching-fund obligation to monitor."
+$$;
+
+CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`finance_financial_period_close`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Financial period close KPIs for close-cycle efficiency, checklist completion, and audit-readiness monitoring. Single-table view over finance.financial_period_close."
+  source: "`vibe_healthcare_v1`.`finance`.`financial_period_close`"
+  dimensions:
+    - name: "close_status"
+      expr: close_status
+      comment: "Close status for period-close progress monitoring."
+    - name: "close_type"
+      expr: close_type
+      comment: "Close type (soft, hard) for close-cycle analysis."
+    - name: "approval_status"
+      expr: approval_status
+      comment: "Approval status for close sign-off monitoring."
+    - name: "close_efficiency_rating"
+      expr: close_efficiency_rating
+      comment: "Close efficiency rating for process-quality benchmarking."
+  measures:
+    - name: "Close Count"
+      expr: COUNT(1)
+      comment: "Number of period closes — baseline close-cycle volume."
+    - name: "Avg Checklist Completion Pct"
+      expr: AVG(CAST(close_checklist_completion_percentage AS DOUBLE))
+      comment: "Average close-checklist completion percentage — measures close readiness and control adherence."
+    - name: "Prior Period Adjustment Count"
+      expr: SUM(CASE WHEN prior_period_adjustment_flag = TRUE THEN 1 ELSE 0 END)
+      comment: "Count of closes with prior-period adjustments — flags restatement risk and control weakness."
 $$;
 
 CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`finance_intercompany_transaction`
@@ -693,70 +656,76 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Intercompany transaction KPIs for elimination volume, reconciliation variance, and posting control. Source: finance.intercompany_transaction (single-table)."
+  comment: "Intercompany transaction KPIs for consolidation, elimination completeness, and settlement monitoring. Single-table view over finance.intercompany_transaction."
   source: "`vibe_healthcare_v1`.`finance`.`intercompany_transaction`"
   dimensions:
-    - name: "transaction_status"
-      expr: transaction_status
-      comment: "Status of the intercompany transaction."
     - name: "transaction_type"
       expr: transaction_type
-      comment: "Type of intercompany transaction."
+      comment: "Intercompany transaction type for activity classification."
+    - name: "transaction_status"
+      expr: transaction_status
+      comment: "Transaction status for processing monitoring."
+    - name: "settlement_status"
+      expr: settlement_status
+      comment: "Settlement status for intercompany cash-settlement tracking."
     - name: "reconciliation_status"
       expr: reconciliation_status
-      comment: "Reconciliation status of the transaction."
-    - name: "transaction_month"
-      expr: DATE_TRUNC('MONTH', transaction_date)
-      comment: "Month bucket of the transaction date."
+      comment: "Reconciliation status for consolidation-control monitoring."
+    - name: "fiscal_year"
+      expr: fiscal_year
+      comment: "Fiscal year for annual intercompany-activity comparison."
   measures:
-    - name: "transaction_count"
+    - name: "Transaction Count"
       expr: COUNT(1)
-      comment: "Number of intercompany transactions."
-    - name: "total_transaction_amount"
+      comment: "Number of intercompany transactions — baseline consolidation workload."
+    - name: "Total Transaction Amount"
       expr: SUM(CAST(transaction_amount AS DOUBLE))
-      comment: "Total intercompany transaction value; consolidation exposure."
-    - name: "total_reconciliation_variance"
+      comment: "Total intercompany transaction value — gross activity requiring elimination."
+    - name: "Total Reconciliation Variance"
       expr: SUM(CAST(reconciliation_variance_amount AS DOUBLE))
-      comment: "Total reconciliation variance; intercompany control risk."
-    - name: "elimination_transaction_count"
-      expr: SUM(CASE WHEN elimination_indicator = TRUE THEN 1 ELSE 0 END)
-      comment: "Count of elimination-flagged transactions; consolidation workload."
+      comment: "Total intercompany reconciliation variance — flags out-of-balance consolidation exposure."
+    - name: "Elimination Transaction Count"
+      expr: SUM(CASE WHEN elimination_flag = TRUE THEN 1 ELSE 0 END)
+      comment: "Count of elimination-flagged transactions — consolidation-completeness driver."
 $$;
 
-CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`finance_payment_batch`
+CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`finance_capital_expenditure`
 WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Payment batch KPIs for disbursement throughput, batch success rate, and reconciliation status. Source: finance.payment_batch (single-table)."
-  source: "`vibe_healthcare_v1`.`finance`.`payment_batch`"
+  comment: "Capital expenditure metrics"
+  source: "`vibe_healthcare_v1`.`finance`.`capital_expenditure`"
   dimensions:
-    - name: "payment_batch_status"
-      expr: payment_batch_status
-      comment: "Status of the payment batch."
-    - name: "batch_type"
-      expr: batch_type
-      comment: "Type of payment batch."
-    - name: "payment_method"
-      expr: payment_method
-      comment: "Payment method used in the batch."
-    - name: "reconciliation_status"
-      expr: reconciliation_status
-      comment: "Reconciliation status of the batch."
-    - name: "batch_month"
-      expr: DATE_TRUNC('MONTH', batch_date)
-      comment: "Month bucket of the batch date."
+    - name: "fiscal_year"
+      expr: fiscal_year
+      comment: "Fiscal year of the expenditure"
+    - name: "cost_center_id"
+      expr: cost_center_id
+      comment: "Cost center charged"
+    - name: "capital_project_id"
+      expr: capital_project_id
+      comment: "Associated capital project identifier"
+    - name: "asset_category"
+      expr: asset_category
+      comment: "Category of the capital asset"
+    - name: "expenditure_type"
+      expr: expenditure_type
+      comment: "Type of capital expenditure"
+    - name: "vendor_id"
+      expr: vendor_id
+      comment: "Vendor providing the capital asset"
   measures:
-    - name: "batch_count"
+    - name: "total_expenditure_amount"
+      expr: SUM(CAST(expenditure_amount AS DOUBLE))
+      comment: "Total capital expenditure amount"
+    - name: "expenditure_count"
       expr: COUNT(1)
-      comment: "Number of payment batches processed."
-    - name: "total_batch_amount"
-      expr: SUM(CAST(total_batch_amount AS DOUBLE))
-      comment: "Total gross batch disbursement amount; cash outflow via batches."
-    - name: "total_net_batch_amount"
-      expr: SUM(CAST(net_batch_amount AS DOUBLE))
-      comment: "Total net batch amount after adjustments."
-    - name: "avg_batch_amount"
-      expr: AVG(CAST(total_batch_amount AS DOUBLE))
-      comment: "Average batch size for processing efficiency analysis."
+      comment: "Number of capital expenditure records"
+    - name: "average_expenditure_amount"
+      expr: AVG(CAST(expenditure_amount AS DOUBLE))
+      comment: "Average expenditure amount"
+    - name: "total_salvage_value"
+      expr: SUM(CAST(salvage_value AS DOUBLE))
+      comment: "Total salvage value of assets"
 $$;

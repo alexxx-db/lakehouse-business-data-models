@@ -1,5 +1,5 @@
--- Schema for Domain: customer | Business:  | Version: v2_ecm
--- Generated on: 2026-07-10 12:59:00
+-- Schema for Domain: customer | Business: Manufacturing | Version: v2_ecm
+-- Generated on: 2026-07-03 05:59:31
 
 -- ========= DATABASE =========
 CREATE DATABASE IF NOT EXISTS `vibe_manufacturing_v1`.`customer` COMMENT 'Customer identity and account management domain serving as the SSOT for all B2B industrial customers, OEM accounts, distributors, and end-user organizations. Manages customer profiles, contacts, account hierarchies, segmentation, credit terms, relationship history, and SLA agreements via Salesforce CRM.';
@@ -8,7 +8,6 @@ CREATE DATABASE IF NOT EXISTS `vibe_manufacturing_v1`.`customer` COMMENT 'Custom
 CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`customer`.`customer_account` (
     `customer_account_id` BIGINT COMMENT 'Unique surrogate identifier for the customer account record in the Databricks Silver Layer. Primary key for the customer_account master data product. Serves as the SSOT reference key for all downstream domains including sales, service, order, and billing.',
     `company_code_id` BIGINT COMMENT 'Foreign key linking to finance.company_code. Business justification: Legal‑entity invoicing and tax reporting assign each customer to a company code for statutory compliance.',
-    `cost_center_id` BIGINT COMMENT 'Foreign key linking to finance.cost_center. Business justification: Cost Allocation Report requires mapping each customer account to a cost center for internal expense tracking per strategic account.',
     `parent_account_customer_account_id` BIGINT COMMENT 'Self-referencing identifier pointing to the parent customer_account record in the corporate hierarchy. Enables multi-level account hierarchy modeling (e.g., subsidiary → division → global parent). Null for top-level accounts.',
     `payment_term_id` BIGINT COMMENT 'Foreign key linking to billing.payment_term. Business justification: Needed to assign a default payment term to each customer account, used in billing cycle setup and compliance with payment‑term policies.',
     `price_book_id` BIGINT COMMENT 'Identifier of the SAP S/4HANA pricing condition group or price list assigned to this customer. Determines applicable pricing, discounts, and surcharges during sales order creation.',
@@ -19,11 +18,12 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`customer`.`customer_account` (
     `territory_id` BIGINT COMMENT 'Foreign key linking to sales.territory. Business justification: Direct FK to sales territory replaces the denormalized code, supporting territory‑based reporting and incentive calculations.',
     `segment_id` BIGINT COMMENT 'Foreign key linking to customer.customer_segment. Business justification: Linking account to its segment enables normalization of segment data and removes redundant string field.',
     `supplier_id` BIGINT COMMENT 'Foreign key linking to supplier.supplier. Business justification: Procurement planning and supplier performance dashboards require each account to designate a primary supplier.',
+    `billing_account_id` BIGINT COMMENT 'Foreign key linking to billing.billing_account. Business justification: Required for linking each customer account to its billing account for invoice generation and financial reporting, a core process in manufacturing finance.',
+    `account_name` STRING COMMENT '',
     `account_source` STRING COMMENT 'Channel or method through which this customer account was originally acquired. Used for marketing attribution, channel effectiveness analysis, and sales pipeline reporting. [ENUM-REF-CANDIDATE: direct_sales|referral|trade_show|inbound_marketing|partner|acquisition|existing_relationship — 7 candidates stripped; promote to reference product]',
     `account_status` STRING COMMENT 'Current lifecycle state of the customer account. Controls whether transactions, orders, and service requests can be processed against this account. Managed in Salesforce CRM and synchronized to SAP S/4HANA.. Valid values are `active|inactive|prospect|suspended|terminated|on_hold`',
     `account_type` STRING COMMENT 'Classification of the customers commercial role in the industrial supply chain. Drives pricing tiers, contract templates, and service entitlements. [ENUM-REF-CANDIDATE: OEM|distributor|system_integrator|end_user|EPC_contractor|reseller|value_added_reseller|direct — promote to reference product if additional types are needed]. Valid values are `OEM|distributor|system_integrator|end_user|EPC_contractor|reseller`',
     `annual_revenue` DECIMAL(18,2) COMMENT 'Customer organizations most recently reported annual revenue in the accounts local currency. Used for customer segmentation, credit risk assessment, and strategic account classification. Currency indicated by revenue_currency_code.',
-    `billing_account_id` BIGINT COMMENT 'Foreign key linking to billing.billing_account. Business justification: Required for linking each customer account to its billing account for invoice generation and financial reporting, a core process in manufacturing finance.',
     `billing_city` STRING COMMENT 'City of the customers primary billing address. Used for geographic segmentation, logistics planning, and tax jurisdiction determination.',
     `billing_country_code` STRING COMMENT 'ISO 3166-1 alpha-3 three-letter country code for the customers primary billing address country. Used for tax jurisdiction determination, regulatory compliance, and geographic segmentation.. Valid values are `^[A-Z]{3}$`',
     `billing_postal_code` STRING COMMENT 'Postal or ZIP code of the customers primary billing address. Used for tax jurisdiction mapping, logistics routing, and geographic analytics.',
@@ -31,8 +31,8 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`customer`.`customer_account` (
     `close_date` DATE COMMENT 'Date on which the customer account was formally closed or terminated. Null for active accounts. Used for churn analysis, lifecycle reporting, and regulatory record retention.',
     `created_timestamp` TIMESTAMP COMMENT 'Timestamp when the customer account record was first created in the source system of record (Salesforce CRM). Conforms to ISO 8601 format yyyy-MM-ddTHH:mm:ss.SSSXXX. Used for audit trail and data lineage.',
     `credit_limit` DECIMAL(18,2) COMMENT 'Maximum outstanding accounts receivable balance permitted for this customer account, denominated in the accounts billing currency. Enforced in SAP S/4HANA SD order processing and credit management workflows.',
-    `credit_limit_currency_code` STRING COMMENT 'ISO 4217 three-letter currency code for the credit_limit field. Ensures correct interpretation of the credit limit in multi-currency environments.. Valid values are `^[A-Z]{3}$`',
-    `credit_rating` STRING COMMENT 'Credit rating assigned to the customer by an internal credit team or external agency (e.g., Dun & Bradstreet, Moodys). Used to determine credit limits, payment terms, and order approval workflows in SAP S/4HANA FI.',
+    `credit_limit_currency_code` DECIMAL(18,2) COMMENT 'ISO 4217 three-letter currency code for the credit_limit field. Ensures correct interpretation of the credit limit in multi-currency environments.',
+    `credit_rating` DECIMAL(18,2) COMMENT 'Credit rating assigned to the customer by an internal credit team or external agency (e.g., Dun & Bradstreet, Moodys). Used to determine credit limits, payment terms, and order approval workflows in SAP S/4HANA FI.',
     `crm_account_code` STRING COMMENT 'Native Account record ID from Salesforce CRM (Account object). Used to cross-reference the master record back to the operational source system for reconciliation and lineage tracing.',
     `data_quality_score` DECIMAL(18,2) COMMENT 'Numeric score (0.00–100.00) representing the completeness and accuracy of the customer account record as assessed by Informatica MDM data quality rules. Used to prioritize data stewardship activities and MDM enrichment workflows.',
     `distribution_channel_code` STRING COMMENT 'SAP S/4HANA distribution channel code indicating how products are sold to this customer (e.g., direct sales, wholesale, OEM channel). Part of the SAP SD organizational assignment.',
@@ -50,14 +50,14 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`customer`.`customer_account` (
     `open_date` DATE COMMENT 'Date on which the customer account was formally opened and activated in the system of record. Marks the start of the commercial relationship. Used for customer tenure calculations and cohort analysis.',
     `phone` STRING COMMENT 'Primary business telephone number for the customer organization. Used for account management communications and service escalation. Stored in E.164-compatible format.. Valid values are `^+?[0-9s-().]{7,20}$`',
     `preferred_language_code` STRING COMMENT 'ISO 639-1 language code (optionally with ISO 3166-1 region suffix) indicating the customers preferred language for communications, documents, and correspondence (e.g., en-US, de-DE, fr-FR).. Valid values are `^[a-z]{2}(-[A-Z]{2})?$`',
-    `revenue_currency_code` STRING COMMENT 'ISO 4217 three-letter currency code for the annual_revenue field (e.g., USD, EUR, GBP). Required to correctly interpret the revenue figure for multi-currency global accounts.. Valid values are `^[A-Z]{3}$`',
+    `revenue_currency_code` DECIMAL(18,2) COMMENT 'ISO 4217 three-letter currency code for the annual_revenue field (e.g., USD, EUR, GBP). Required to correctly interpret the revenue figure for multi-currency global accounts.',
     `sales_organization_code` STRING COMMENT 'SAP S/4HANA sales organization code responsible for selling to this customer. Determines the legal entity, currency, and pricing procedures applicable to sales transactions.',
     `sap_business_partner_code` STRING COMMENT 'Business Partner number assigned in SAP S/4HANA (SD/FI modules). Enables cross-system reconciliation between Salesforce CRM and SAP ERP for order-to-cash and accounts receivable processes.',
     `sla_tier` STRING COMMENT 'SLA tier assigned to this customer account, defining the service response times, support priority, and escalation paths applicable to service requests and after-sales support. Managed in Salesforce Service Cloud.. Valid values are `platinum|gold|silver|bronze|standard`',
     `status_date` DATE COMMENT 'Date on which the current account_status became effective. Supports lifecycle history tracking and audit compliance. Used to calculate duration in current status for account health reporting.',
     `tax_number` STRING COMMENT 'Government-issued tax identification number for the customers legal entity (e.g., EIN in the US, CRN in the UK). Required for invoicing, tax reporting, and regulatory compliance under IFRS/GAAP.',
     `trading_name` STRING COMMENT 'Commercial or brand name under which the customer operates if different from the legal entity name. Used in sales communications, account management, and CRM displays.',
-    `vat_registration_number` STRING COMMENT 'VAT registration number for the customer entity, required for EU and international tax compliance. Used in invoice generation and cross-border transaction reporting.',
+    `vat_registration_number` DECIMAL(18,2) COMMENT 'VAT registration number for the customer entity, required for EU and international tax compliance. Used in invoice generation and cross-border transaction reporting.',
     `website` STRING COMMENT 'Official website URL of the customer organization. Used for account research, digital engagement tracking, and customer profile enrichment.. Valid values are `^https?://[^s/$.?#].[^s]*$`',
     CONSTRAINT pk_customer_account PRIMARY KEY(`customer_account_id`)
 ) COMMENT 'Master record for all B2B industrial customers, OEM accounts, distributors, and end-user organizations. Serves as the SSOT for customer identity in Salesforce CRM (Account object) and SAP Business Partner. Captures legal entity name, industry classification (SIC/NAICS), account type (OEM, distributor, system integrator, end-user, EPC contractor), account status with full lifecycle history, annual revenue, employee count, DUNS number, tax ID, VAT registration, credit rating, assigned account manager, parent account reference, and strategic account flag. Foundation entity referenced by all other products in this domain and cross-referenced by sales, service, order, and billing domains. Corporate hierarchy and commercial relationships are managed in account_relationship.';
@@ -115,7 +115,6 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`customer`.`customer_contact` (
 CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`customer`.`account_hierarchy` (
     `account_hierarchy_id` BIGINT COMMENT 'Unique surrogate identifier for each parent-child account hierarchy relationship record in the Salesforce CRM account hierarchy model. Serves as the primary key for this Silver Layer data product.',
     `customer_account_id` BIGINT COMMENT 'Identifier of the child account in the corporate hierarchy relationship. References the subsidiary, division, affiliate, or joint venture that reports up to the parent account.',
-    `parent_customer_account_id` BIGINT COMMENT 'add column parent_account_id (BIGINT) with FK to customer.customer_account.customer_account_id - hierarchy needs both child and parent account references to define the tree structure',
     `primary_customer_account_id` BIGINT COMMENT 'Identifier of the parent account in the corporate hierarchy relationship. References the account that owns or controls the child account (e.g., global OEM headquarters, holding company, or divisional parent).',
     `account_tier` STRING COMMENT 'Commercial tier classification of the child account within the hierarchy, reflecting strategic importance and revenue contribution. Strategic = top-tier global OEM or enterprise accounts; key = significant regional accounts; standard = regular commercial accounts; transactional = low-volume or spot-buy accounts. Drives SLA, pricing, and service prioritization.. Valid values are `strategic|key|standard|transactional`',
     `approval_status` STRING COMMENT 'Governance approval status of the hierarchy relationship record. Approved = validated and active for use in reporting; pending_approval = submitted for review; rejected = not approved for use; under_review = currently being evaluated by data governance or account management team.. Valid values are `approved|pending_approval|rejected|under_review`',
@@ -124,7 +123,7 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`customer`.`account_hierarchy` (
     `consolidation_required` BOOLEAN COMMENT 'Indicates whether the child accounts financials must be consolidated into the parent accounts financial statements for regulatory and management reporting purposes. Drives SAP S/4HANA FI/CO consolidation processes.',
     `controlling_interest` BOOLEAN COMMENT 'Indicates whether the parent account holds a controlling interest (majority ownership or effective control) over the child account. True = controlling interest exists; False = non-controlling or minority interest. Drives financial consolidation rules per IFRS 10.',
     `created_timestamp` TIMESTAMP COMMENT 'Date and time when this hierarchy relationship record was first created in the system. Provides the audit trail entry point for the record lifecycle. Sourced from Salesforce CRM CreatedDate or Informatica MDM record creation timestamp.',
-    `credit_rollup_eligible` BOOLEAN COMMENT 'Indicates whether the child accounts credit exposure should be aggregated to the parent account for enterprise-wide credit limit management. True = include in parent credit roll-up; False = manage credit independently. Critical for global OEM credit risk management in SAP S/4HANA FI.',
+    `credit_rollup_eligible` DECIMAL(18,2) COMMENT 'Indicates whether the child accounts credit exposure should be aggregated to the parent account for enterprise-wide credit limit management. True = include in parent credit roll-up; False = manage credit independently. Critical for global OEM credit risk management in SAP S/4HANA FI.',
     `crm_hierarchy_code` STRING COMMENT 'The native Salesforce CRM Account Hierarchy record identifier (18-character Salesforce ID) for this relationship. Enables direct traceability back to the source system of record for reconciliation and audit purposes.',
     `data_quality_score` DECIMAL(18,2) COMMENT 'Informatica MDM-calculated data quality score for this hierarchy relationship record, expressed as a percentage (0.00–100.00). Reflects completeness, accuracy, and consistency of the hierarchy data. Used by data stewards to prioritize remediation efforts and monitor MDM data quality KPIs.',
     `effective_from` DATE COMMENT 'The date on which the parent-child hierarchy relationship became legally or commercially effective. Used for temporal reporting, historical roll-up analysis, and compliance with IFRS 10 consolidation timelines.',
@@ -148,7 +147,7 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`customer`.`account_hierarchy` (
     `pricing_rollup_eligible` BOOLEAN COMMENT 'Indicates whether the child accounts purchase volumes should be aggregated to the parent account for volume-based pricing, rebate calculation, and global framework agreement pricing in SAP S/4HANA SD. True = volumes consolidated at parent level; False = priced independently.',
     `primary_country_code` STRING COMMENT 'ISO 3166-1 alpha-3 country code representing the primary country of the child account within this hierarchy relationship. Used for geographic roll-up reporting, trade compliance, and export control screening.. Valid values are `^[A-Z]{3}$`',
     `relationship_type` STRING COMMENT 'Classifies the nature of the corporate relationship between parent and child accounts. Drives legal, financial, and commercial treatment: subsidiary (majority-owned legal entity), division (internal business unit), affiliate (minority-owned or associated entity), joint_venture (co-owned entity), distributor (channel partner), franchise (licensed operator). [ENUM-REF-CANDIDATE: subsidiary|division|affiliate|joint_venture|distributor|franchise — promote to reference product if additional types are needed]. Valid values are `subsidiary|division|affiliate|joint_venture|distributor|franchise`',
-    `revenue_rollup_eligible` BOOLEAN COMMENT 'Indicates whether the child accounts revenue should be rolled up and attributed to the parent account for enterprise-level revenue reporting and global OEM account performance tracking. True = include in parent roll-up; False = exclude (e.g., for minority affiliates or reporting-only hierarchy nodes).',
+    `revenue_rollup_eligible` DECIMAL(18,2) COMMENT 'Indicates whether the child accounts revenue should be rolled up and attributed to the parent account for enterprise-level revenue reporting and global OEM account performance tracking. True = include in parent roll-up; False = exclude (e.g., for minority affiliates or reporting-only hierarchy nodes).',
     `sla_inherited` BOOLEAN COMMENT 'Indicates whether the child account inherits the Service Level Agreement (SLA) terms from the parent account in this hierarchy relationship. True = child account uses parent SLA; False = child account has its own independently negotiated SLA. Drives Salesforce Service Cloud case routing and escalation logic.',
     `termination_reason` STRING COMMENT 'Business reason for the termination or deactivation of the hierarchy relationship. Captures the event that caused the relationship to end: divestiture (sale of subsidiary), merger (entities combined), acquisition (absorbed by another entity), restructuring (internal reorganization), dissolution (entity closed), reclassification (moved to different hierarchy), data_correction (error correction). [ENUM-REF-CANDIDATE: divestiture|merger|acquisition|restructuring|dissolution|reclassification|data_correction — 7 candidates stripped; promote to reference product]',
     CONSTRAINT pk_account_hierarchy PRIMARY KEY(`account_hierarchy_id`)
@@ -184,10 +183,10 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`customer`.`segment` (
     `nda_required` BOOLEAN COMMENT 'Indicates whether a Non-Disclosure Agreement (NDA) is required for customer accounts in this segment before sharing product roadmaps, engineering specifications, or pricing strategies. Relevant for Strategic and OEM segments involved in co-development programs.',
     `next_review_date` DATE COMMENT 'Scheduled date for the next formal review of this segment definition. Calculated from last_review_date plus review_cycle_months. Used by the segment manager and commercial governance team to plan review activities.',
     `owner_email` STRING COMMENT 'Business email address of the assigned segment manager. Used for automated notifications, review cycle reminders, and escalation routing in Salesforce CRM workflows. Classified confidential as it is an internal business contact.. Valid values are `^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+.[a-zA-Z]{2,}$`',
-    `payment_terms_code` STRING COMMENT 'SAP S/4HANA payment terms code (e.g., NT30, NT60, 2/10NT30) assigned as the default for customer accounts in this segment. Defines invoice due dates, early payment discount eligibility, and cash flow planning inputs.. Valid values are `^[A-Z0-9]{2,10}$`',
+    `payment_terms_code` DECIMAL(18,2) COMMENT 'SAP S/4HANA payment terms code (e.g., NT30, NT60, 2/10NT30) assigned as the default for customer accounts in this segment. Defines invoice due dates, early payment discount eligibility, and cash flow planning inputs.',
     `pricing_tier_code` STRING COMMENT 'Code referencing the applicable pricing tier in SAP S/4HANA SD condition records for customers assigned to this segment. Drives list price, discount matrix, and rebate eligibility. Confidential as it encodes commercial pricing strategy.. Valid values are `^[A-Z0-9_]{2,15}$`',
     `rebate_eligible` BOOLEAN COMMENT 'Indicates whether customer accounts in this segment are eligible for volume-based rebate programs. When True, rebate agreements are activated in SAP S/4HANA SD rebate processing for qualifying accounts.',
-    `revenue_band_currency` STRING COMMENT 'ISO 4217 three-letter currency code in which the revenue band thresholds (revenue_band_min and revenue_band_max) are denominated (e.g., USD, EUR, GBP). Ensures consistent multi-currency interpretation across global sales regions.. Valid values are `^[A-Z]{3}$`',
+    `revenue_band_currency` DECIMAL(18,2) COMMENT 'ISO 4217 three-letter currency code in which the revenue band thresholds (revenue_band_min and revenue_band_max) are denominated (e.g., USD, EUR, GBP). Ensures consistent multi-currency interpretation across global sales regions.',
     `revenue_band_max` DECIMAL(18,2) COMMENT 'Maximum annual revenue threshold (in USD) that defines the upper boundary of the revenue band for this segment. Null indicates an open-ended upper bound (e.g., for the Strategic tier). Used in pricing tier assignment and SLA prioritization.',
     `revenue_band_min` DECIMAL(18,2) COMMENT 'Minimum annual revenue threshold (in USD) that a customer account must meet to qualify for this segment. Used in conjunction with revenue_band_max to define the revenue band boundary for segmentation scoring.',
     `review_cycle_months` STRING COMMENT 'Frequency in months at which the segment definition, criteria, and account assignments are formally reviewed and validated by the segment manager and commercial leadership (e.g., 3 = quarterly, 6 = semi-annual, 12 = annual).',
@@ -233,22 +232,22 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`customer`.`address` (
     `loading_dock_available` BOOLEAN COMMENT 'Indicates whether a loading dock is available at this address for receiving industrial equipment, automation systems, and bulk material shipments. Affects carrier selection (LTL vs FTL) and delivery scheduling in the Transportation Management System (TMS).',
     `longitude` DECIMAL(18,2) COMMENT 'Geographic longitude coordinate of the address in decimal degrees (WGS 84 datum). Precision to 7 decimal places (~1 cm accuracy). Used alongside latitude for geospatial analytics, field service routing, and logistics network optimization.',
     `mdm_address_key` STRING COMMENT 'Unique address identifier assigned by Informatica MDM during master data consolidation and deduplication. Enables cross-system address matching and golden record linkage across SAP S/4HANA, Salesforce CRM, and other operational systems.',
-    `plant_code` STRING COMMENT 'SAP S/4HANA plant code associated with this address when the address represents a customers manufacturing plant or production facility. Enables direct linkage between customer delivery addresses and SAP plant master data for production planning (MRP/MRP II) and goods receipt processing.',
+    `plant_code` STRING COMMENT 'SAP S/4HANA plant code associated with this address when the address represents a customers manufacturing plant or production facility. Enables direct linkage between customer delivery addresses and SAP plant master data for production planning (MRP/MRP II) and goods receipt processing. Denormalized natural key; SSOT is asset.plant.plant_code.',
     `po_box` STRING COMMENT 'Post Office (PO) Box number for mailing addresses where physical street delivery is not applicable. Used for billing correspondence and formal legal notices to corporate customers. Stored separately from street address lines.',
     `po_box_postal_code` STRING COMMENT 'Postal code specific to the PO Box address, which may differ from the street address postal code. Required for accurate mail routing when a PO Box is used for billing or correspondence.',
     `postal_code` STRING COMMENT 'Postal or ZIP code for the address. Format varies by country (e.g., 5-digit US ZIP, alphanumeric UK postcode). Used for mail delivery, logistics carrier routing (LTL/FTL), and geographic segmentation.',
     `postal_code_extension` STRING COMMENT 'Extended postal code suffix providing finer delivery point precision (e.g., ZIP+4 in the US). Improves mail delivery accuracy and carrier routing for industrial shipments.',
     `room_number` STRING COMMENT 'Room, suite, or unit number within a building at this address. Provides the most granular level of location detail for field service technician dispatch and internal mail routing at customer facilities.',
-    `sales_region_code` STRING COMMENT 'Sales region or territory code associated with this address, used for sales force assignment, revenue reporting, and quota management. Derived from geographic location and aligned with SAP S/4HANA SD sales organization structure.',
-    `service_territory_code` STRING COMMENT 'Field service territory code assigned to this address, used to route field service engineers and technicians for equipment maintenance, installation, and after-sales support. Aligns with Salesforce Service Cloud territory management and Maximo Asset Management work order dispatch.',
+    `sales_region_code` STRING COMMENT 'Sales region or territory code associated with this address, used for sales force assignment, revenue reporting, and quota management. Derived from geographic location and aligned with SAP S/4HANA SD sales organization structure. Denormalized natural key; SSOT is sales.territory.territory_code.',
+    `service_territory_code` STRING COMMENT 'Field service territory code assigned to this address, used to route field service engineers and technicians for equipment maintenance, installation, and after-sales support. Aligns with Salesforce Service Cloud territory management and Maximo Asset Management work order dispatch. Denormalized natural key; SSOT is service.zone.zone_code.',
     `shipping_condition` STRING COMMENT 'Default shipping condition or delivery method applicable to this address, indicating the preferred logistics mode. LTL (Less Than Truckload) and FTL (Full Truckload) are standard industrial shipping terms. Drives carrier selection and Transportation Management System (TMS) routing.. Valid values are `standard|express|freight|ltl|ftl|will_call`',
-    `source_system_address_code` STRING COMMENT 'The native address identifier from the originating source system (e.g., Salesforce CRM Address ID, SAP ADRC ADDRNUMBER). Enables reverse lookup and reconciliation between the Databricks Silver Layer and operational systems during ETL and data quality processes.',
+    `source_system_address_code` STRING COMMENT 'The native address identifier from the originating source system (e.g., Salesforce CRM Address ID, SAP ADRC ADDRNUMBER). Enables reverse lookup and reconciliation between the Databricks Silver Layer and operational systems during ETL and data quality processes. Denormalized natural key; SSOT is customer.address.mdm_address_key.',
     `state_province` STRING COMMENT 'State, province, or regional administrative division of the address. Stored as ISO 3166-2 subdivision code (e.g., US-CA, DE-BY). Used for tax jurisdiction, regulatory compliance (OSHA, EPA), and logistics zone determination.',
-    `tax_jurisdiction_code` STRING COMMENT 'Tax jurisdiction identifier for the address location, used to determine applicable sales tax, VAT, or GST rates for invoicing. Typically derived from postal code and state/province. Aligns with SAP S/4HANA tax determination and IFRS/GAAP revenue recognition requirements.',
+    `tax_jurisdiction_code` STRING COMMENT 'Tax jurisdiction identifier for the address location, used to determine applicable sales tax, VAT, or GST rates for invoicing. Typically derived from postal code and state/province. Aligns with SAP S/4HANA tax determination and IFRS/GAAP revenue recognition requirements. Denormalized natural key; SSOT is finance.company_code.company_code.',
     `time_zone` STRING COMMENT 'IANA time zone identifier for the address location (e.g., America/Chicago, Europe/Berlin, Asia/Shanghai). Used for scheduling field service visits, coordinating production planning across global manufacturing sites, and SLA response time calculations.',
     `validation_source` STRING COMMENT 'The system or method used to validate the address. Tracks whether validation was performed by USPS CASS certification, a geocoding API (Google Maps, HERE), Informatica MDM address cleansing, manual review, or not yet validated. Supports data quality governance.. Valid values are `usps_cass|google_maps|here_api|informatica_mdm|manual|unvalidated`',
     `validation_timestamp` TIMESTAMP COMMENT 'Date and time when the address was last validated against a postal authority or address verification service. Used to determine if re-validation is required based on data quality policies.',
-    `vat_registration_number` STRING COMMENT 'Value Added Tax (VAT) registration number associated with this address, particularly for EU and international billing addresses. Required for cross-border B2B invoicing compliance and VAT reclaim processes in industrial manufacturing.',
+    `vat_registration_number` DECIMAL(18,2) COMMENT 'Value Added Tax (VAT) registration number associated with this address, particularly for EU and international billing addresses. Required for cross-border B2B invoicing compliance and VAT reclaim processes in industrial manufacturing.',
     CONSTRAINT pk_address PRIMARY KEY(`address_id`)
 ) COMMENT 'Physical and mailing address records for customer accounts and contacts, including headquarters, billing address, shipping/delivery address, and plant site addresses. Captures address type, street lines, city, state/province, postal code, country, geocoordinates, validated flag, and primary address indicator. Supports logistics, invoicing, and field service dispatch.';
 
@@ -260,30 +259,30 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`customer`.`credit_profile` (
     `approved_by` STRING COMMENT 'Name or employee ID of the credit manager or authorized approver who approved the current credit limit and terms. Required for segregation of duties (SoD) compliance and audit trail in SAP S/4HANA FI-AR.',
     `bad_debt_provision_amount` DECIMAL(18,2) COMMENT 'Amount provisioned for potential bad debt loss on this customers receivables under the IFRS 9 Expected Credit Loss (ECL) model or GAAP ASC 310 allowance method. Maintained in SAP S/4HANA FI-AR.',
     `bank_account_verified_flag` BOOLEAN COMMENT 'Indicates whether the customers bank account details on file have been verified through the companys bank account validation process. True = verified; False = unverified. Required for direct debit and bank transfer payment methods.',
-    `collection_strategy_code` STRING COMMENT 'Code identifying the dunning and collections strategy assigned to this customer in SAP S/4HANA FI-AR (e.g., standard dunning, escalated collections, legal action track). Drives automated dunning notice generation.',
+    `collection_strategy_code` DECIMAL(18,2) COMMENT 'Code identifying the dunning and collections strategy assigned to this customer in SAP S/4HANA FI-AR (e.g., standard dunning, escalated collections, legal action track). Drives automated dunning notice generation.',
     `created_timestamp` TIMESTAMP COMMENT 'Timestamp when this credit profile record was first created in the system, in ISO 8601 format (yyyy-MM-ddTHH:mm:ss.SSSXXX). Supports data lineage, audit trail, and IFRS/GAAP record-keeping requirements.',
-    `credit_account_type` STRING COMMENT 'Classification of the credit account based on the nature of the customer relationship. Determines applicable credit policies and risk frameworks. [ENUM-REF-CANDIDATE: domestic|export|intercompany|distributor|oem|government — promote to reference product if additional types are required]. Valid values are `domestic|export|intercompany|distributor|oem`',
-    `credit_control_area` STRING COMMENT 'SAP organizational unit (credit control area code) responsible for managing and monitoring this customers credit. Defines the credit management scope and currency for credit limit enforcement in SAP S/4HANA FI-AR.',
+    `credit_account_type` DECIMAL(18,2) COMMENT 'Classification of the credit account based on the nature of the customer relationship. Determines applicable credit policies and risk frameworks. [ENUM-REF-CANDIDATE: domestic|export|intercompany|distributor|oem|government — promote to reference product if additional types are required]',
+    `credit_control_area` DECIMAL(18,2) COMMENT 'SAP organizational unit (credit control area code) responsible for managing and monitoring this customers credit. Defines the credit management scope and currency for credit limit enforcement in SAP S/4HANA FI-AR.',
     `credit_hold_date` DATE COMMENT 'Date on which the credit hold was applied to the customer account. Used for aging analysis of credit holds and SLA compliance tracking for credit resolution processes.',
     `credit_hold_flag` BOOLEAN COMMENT 'Indicates whether the customer account is currently placed on credit hold, blocking new order processing in SAP S/4HANA SD and Siemens Opcenter MES. True = credit hold active; False = no hold. Synchronized with Salesforce CRM account status.',
-    `credit_hold_reason` STRING COMMENT 'Reason code explaining why the customer account has been placed on credit hold. Required for audit trail and CAPA (Corrective and Preventive Action) processes. Null when credit_hold_flag is False.. Valid values are `overdue_balance|credit_limit_exceeded|payment_default|legal_dispute|credit_review_pending|fraud_suspicion`',
+    `credit_hold_reason` DECIMAL(18,2) COMMENT 'Reason code explaining why the customer account has been placed on credit hold. Required for audit trail and CAPA (Corrective and Preventive Action) processes. Null when credit_hold_flag is False.',
     `credit_hold_released_date` DATE COMMENT 'Date on which the credit hold was lifted and normal order processing was reinstated. Null if the credit hold is still active. Used for credit resolution cycle time analysis.',
     `credit_insurance_coverage_limit` DECIMAL(18,2) COMMENT 'Maximum insured amount under the trade credit insurance policy for this customer, in the account currency. Represents the maximum receivable amount recoverable in case of customer default.',
     `credit_insurance_expiry_date` DATE COMMENT 'Date on which the trade credit insurance policy for this customer expires. Triggers renewal workflow alerts to prevent uninsured credit exposure.',
-    `credit_insurance_policy_number` STRING COMMENT 'Reference number of the trade credit insurance policy (e.g., Euler Hermes, Coface, Atradius) covering this customers receivables. Null if no credit insurance is in place. Used for insurance claim processing and risk mitigation reporting.',
-    `credit_insurance_provider` STRING COMMENT 'Name of the trade credit insurance provider covering this customers receivables (e.g., Euler Hermes, Coface, Atradius, Credendo). Null if no credit insurance is in place.',
+    `credit_insurance_policy_number` DECIMAL(18,2) COMMENT 'Reference number of the trade credit insurance policy (e.g., Euler Hermes, Coface, Atradius) covering this customers receivables. Null if no credit insurance is in place. Used for insurance claim processing and risk mitigation reporting.',
+    `credit_insurance_provider` DECIMAL(18,2) COMMENT 'Name of the trade credit insurance provider covering this customers receivables (e.g., Euler Hermes, Coface, Atradius, Credendo). Null if no credit insurance is in place.',
     `credit_limit` DECIMAL(18,2) COMMENT 'Maximum approved credit exposure (in the account currency) that can be extended to the customer at any point in time. Set during credit review and enforced in SAP S/4HANA FI-AR credit management.',
-    `credit_notes` STRING COMMENT 'Free-text field for credit analyst notes, special conditions, exceptions, or contextual information relevant to this customers credit profile. Supports credit review documentation and exception management.',
-    `credit_rating` STRING COMMENT 'Internal or external credit risk rating assigned to the customer (e.g., A, B, C, D or numeric score). Used to classify credit risk tier and determine applicable credit terms, insurance requirements, and collection priority. May align with Dun & Bradstreet or internal scoring models.',
-    `credit_rating_agency` STRING COMMENT 'Source or agency that issued the credit rating for this customer. Distinguishes between internally-derived ratings and third-party agency assessments used for credit risk management. [ENUM-REF-CANDIDATE: internal|dun_bradstreet|moody|sp|fitch|coface|euler_hermes — 7 candidates stripped; promote to reference product]',
-    `credit_review_frequency` STRING COMMENT 'Frequency at which formal credit reviews are scheduled for this customer. Determined by credit risk tier and customer segment. Higher-risk customers require more frequent reviews.. Valid values are `monthly|quarterly|semi_annual|annual|event_driven`',
-    `credit_segment` STRING COMMENT 'SAP S/4HANA credit segment identifier that groups customers under a common credit management policy and credit limit pool. Enables multi-segment credit management for customers operating across multiple business units or regions.',
-    `credit_status` STRING COMMENT 'Current lifecycle status of the customer credit profile. Drives order release decisions in SAP S/4HANA SD and MES order management. on_hold and blocked prevent new order processing until resolved.. Valid values are `active|on_hold|blocked|suspended|closed`',
+    `credit_notes` DECIMAL(18,2) COMMENT 'Free-text field for credit analyst notes, special conditions, exceptions, or contextual information relevant to this customers credit profile. Supports credit review documentation and exception management.',
+    `credit_rating` DECIMAL(18,2) COMMENT 'Internal or external credit risk rating assigned to the customer (e.g., A, B, C, D or numeric score). Used to classify credit risk tier and determine applicable credit terms, insurance requirements, and collection priority. May align with Dun & Bradstreet or internal scoring models.',
+    `credit_rating_agency` DECIMAL(18,2) COMMENT 'Source or agency that issued the credit rating for this customer. Distinguishes between internally-derived ratings and third-party agency assessments used for credit risk management. [ENUM-REF-CANDIDATE: internal|dun_bradstreet|moody|sp|fitch|coface|euler_hermes — 7 candidates stripped; promote to reference product]',
+    `credit_review_frequency` DECIMAL(18,2) COMMENT 'Frequency at which formal credit reviews are scheduled for this customer. Determined by credit risk tier and customer segment. Higher-risk customers require more frequent reviews.',
+    `credit_segment` DECIMAL(18,2) COMMENT 'SAP S/4HANA credit segment identifier that groups customers under a common credit management policy and credit limit pool. Enables multi-segment credit management for customers operating across multiple business units or regions.',
+    `credit_status` DECIMAL(18,2) COMMENT 'Current lifecycle status of the customer credit profile. Drives order release decisions in SAP S/4HANA SD and MES order management. on_hold and blocked prevent new order processing until resolved.',
     `credit_utilization_pct` DECIMAL(18,2) COMMENT 'Percentage of the approved credit limit currently consumed by the outstanding balance (outstanding_balance / credit_limit × 100). Triggers credit hold alerts when threshold is breached. Synchronized from SAP S/4HANA FI-AR credit exposure calculation.',
     `currency_code` STRING COMMENT 'ISO 4217 three-letter currency code in which the credit limit, outstanding balance, and financial terms are denominated (e.g., USD, EUR, GBP). Aligns with the customers billing currency in SAP S/4HANA.. Valid values are `^[A-Z]{3}$`',
     `dso_days` DECIMAL(18,2) COMMENT 'Days Sales Outstanding — the average number of days it takes the customer to pay invoices, calculated as (outstanding_balance / total_credit_sales) × number_of_days. A key KPI for accounts receivable performance and cash flow management per IFRS/GAAP reporting.',
     `dunning_level` STRING COMMENT 'Current dunning level (1–4) indicating the escalation stage of overdue payment notices sent to the customer. Level 1 = first reminder; Level 4 = final notice before legal action. Managed in SAP S/4HANA FI-AR dunning program.',
-    `early_payment_discount_days` STRING COMMENT 'Number of days from invoice date within which the customer must pay to qualify for the early payment discount. Null if no early payment discount applies.',
+    `early_payment_discount_days` DECIMAL(18,2) COMMENT 'Number of days from invoice date within which the customer must pay to qualify for the early payment discount. Null if no early payment discount applies.',
     `early_payment_discount_pct` DECIMAL(18,2) COMMENT 'Percentage discount offered to the customer for early payment within the discount period defined in the payment terms (e.g., 2.00 for a 2% early payment discount). Null if no early payment discount applies.',
     `effective_date` DATE COMMENT 'Date from which the current credit terms, credit limit, and risk classification became effective for this customer. Supports temporal credit management and audit trail requirements.',
     `expiry_date` DATE COMMENT 'Date on which the current credit terms and credit limit are scheduled to expire and require renewal or re-assessment. Null for open-ended credit agreements. Triggers next_credit_review_date workflow.',
@@ -295,9 +294,9 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`customer`.`credit_profile` (
     `outstanding_balance` DECIMAL(18,2) COMMENT 'Total open accounts receivable balance currently owed by the customer in the account currency, as synchronized from SAP S/4HANA FI-AR. Includes all open invoices, debit memos, and unapplied credits. Used for credit utilization monitoring.',
     `overdue_amount` DECIMAL(18,2) COMMENT 'Total value of invoices that have exceeded their due date and remain unpaid, in the account currency. A subset of outstanding_balance. Used for collections prioritization and bad debt provisioning per IFRS 9 expected credit loss model.',
     `payment_behavior_score` DECIMAL(18,2) COMMENT 'Internal scoring metric (0–100) reflecting the customers historical payment behavior, including on-time payment rate, frequency of late payments, and average days late. Inputs into credit rating and risk category determination.',
-    `payment_method` STRING COMMENT 'Agreed payment instrument used by the customer for settling invoices (e.g., bank transfer, letter of credit for export customers, direct debit). Configured in SAP S/4HANA FI-AR payment method settings.. Valid values are `bank_transfer|check|letter_of_credit|direct_debit|documentary_collection`',
-    `payment_terms_code` STRING COMMENT 'SAP payment terms key defining the agreed payment schedule for this customer (e.g., NT30 = Net 30, NT60 = Net 60, NT90 = Net 90, 2/10NT30 = 2% discount if paid within 10 days, net 30). Drives invoice due date calculation in SAP S/4HANA FI-AR.',
-    `payment_terms_days` STRING COMMENT 'Number of calendar days from invoice date within which payment is due under the agreed payment terms (e.g., 30 for Net 30, 60 for Net 60, 90 for Net 90). Used for DSO calculation and cash flow forecasting.',
+    `payment_method` DECIMAL(18,2) COMMENT 'Agreed payment instrument used by the customer for settling invoices (e.g., bank transfer, letter of credit for export customers, direct debit). Configured in SAP S/4HANA FI-AR payment method settings.',
+    `payment_terms_code` DECIMAL(18,2) COMMENT 'SAP payment terms key defining the agreed payment schedule for this customer (e.g., NT30 = Net 30, NT60 = Net 60, NT90 = Net 90, 2/10NT30 = 2% discount if paid within 10 days, net 30). Drives invoice due date calculation in SAP S/4HANA FI-AR.',
+    `payment_terms_days` DECIMAL(18,2) COMMENT 'Number of calendar days from invoice date within which payment is due under the agreed payment terms (e.g., 30 for Net 30, 60 for Net 60, 90 for Net 90). Used for DSO calculation and cash flow forecasting.',
     `risk_category` STRING COMMENT 'Categorical risk classification assigned to the customer based on credit rating, payment history, and financial health assessment. Drives credit limit setting, insurance requirements, and collection strategy.. Valid values are `low|medium|high|very_high|watch_list`',
     `salesforce_account_code` STRING COMMENT 'Salesforce CRM Account record ID for this customer, used for bi-directional synchronization of credit status and credit hold flags between SAP S/4HANA FI-AR and Salesforce CRM Sales Cloud.',
     `sap_customer_account_number` STRING COMMENT 'The externally-known SAP S/4HANA FI-AR customer account number (debtor number) used to uniquely identify the customer in the ERP system. Serves as the business identifier for cross-system reconciliation.',
@@ -379,7 +378,7 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`customer`.`account_relationship
     `mdm_relationship_code` STRING COMMENT 'Informatica MDM golden record identifier for this account relationship. Serves as the cross-system master identifier for data quality, deduplication, and governance processes.',
     `next_review_date` DATE COMMENT 'Scheduled date for the next formal business review of this account relationship. Automatically calculated based on last_review_date and review_frequency. Used for account management planning.',
     `ownership_percentage` DECIMAL(18,2) COMMENT 'Percentage of equity ownership held by the parent account in the child account for corporate hierarchy relationships (e.g., 100.00 for wholly-owned subsidiary, 51.00 for majority-owned affiliate). Null for non-equity commercial relationships. Relevant for financial consolidation under IFRS/GAAP.',
-    `payment_terms_code` STRING COMMENT 'SAP payment terms code defining the agreed payment conditions for the commercial relationship (e.g., NET30, NET60, 2/10NET30). Sourced from SAP S/4HANA SD customer master payment terms.',
+    `payment_terms_code` DECIMAL(18,2) COMMENT 'SAP payment terms code defining the agreed payment conditions for the commercial relationship (e.g., NET30, NET60, 2/10NET30). Sourced from SAP S/4HANA SD customer master payment terms.',
     `preferred_contact_method` STRING COMMENT 'Preferred communication channel for managing this account relationship, as agreed with the customer. Guides account managers on how to engage with the relationship counterpart for reviews, escalations, and business development.. Valid values are `email|phone|portal|in_person|video_conference`',
     `primary_currency_code` STRING COMMENT 'ISO 4217 three-letter currency code for the primary transactional currency of the commercial relationship (e.g., USD, EUR, GBP). Used for financial roll-up reporting and revenue attribution across the account hierarchy.. Valid values are `^[A-Z]{3}$`',
     `relationship_description` STRING COMMENT 'Free-text narrative describing the nature, context, and business purpose of the account relationship. Captures nuances not represented by structured fields, such as historical context, strategic rationale, or special commercial terms.',
@@ -395,7 +394,7 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`customer`.`account_relationship
     `sales_org_code` STRING COMMENT 'SAP Sales Organization code responsible for managing the commercial aspects of this account relationship. Determines pricing, order processing, and revenue booking rules applicable to the relationship.',
     `sla_tier` STRING COMMENT 'SLA tier assigned to this account relationship, determining the level of service, response times, and support entitlements applicable to the child account. Platinum and gold tiers receive priority support and dedicated account management.. Valid values are `platinum|gold|silver|bronze|standard`',
     `start_date` DATE COMMENT 'The calendar date on which the account relationship formally commenced. For hierarchy relationships, this is the date the corporate structure was established. For commercial relationships, this is the agreement or contract start date.',
-    `strategic_importance_rating` STRING COMMENT 'Qualitative rating of the strategic importance of this account relationship to the manufacturing business. Critical indicates top-tier global accounts; high indicates major regional accounts; medium indicates standard commercial accounts; low indicates transactional or minor accounts.. Valid values are `critical|high|medium|low`',
+    `strategic_importance_rating` DECIMAL(18,2) COMMENT 'Qualitative rating of the strategic importance of this account relationship to the manufacturing business. Critical indicates top-tier global accounts; high indicates major regional accounts; medium indicates standard commercial accounts; low indicates transactional or minor accounts.',
     `termination_reason` STRING COMMENT 'Reason code explaining why the account relationship was terminated or ended. Populated only when relationship_status = terminated. Used for churn analysis and relationship lifecycle reporting.. Valid values are `contract_expiry|mutual_agreement|breach|acquisition|restructuring|other`',
     `territory_code` STRING COMMENT 'Sales territory or geographic region code assigned to this account relationship, used for territory management, revenue attribution, and sales performance reporting. Aligns with SAP S/4HANA SD sales territory configuration.. Valid values are `^[A-Z]{2,6}$`',
     CONSTRAINT pk_account_relationship PRIMARY KEY(`account_relationship_id`)
@@ -416,7 +415,7 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`customer`.`interaction` (
     `created_timestamp` TIMESTAMP COMMENT 'Timestamp when this interaction record was first created in the system. Serves as the audit trail creation marker for data governance and lineage purposes.',
     `crm_activity_code` STRING COMMENT 'External identifier of the corresponding Task or Event record in Salesforce CRM. Used for cross-system traceability and delta-load reconciliation from the source system of record.',
     `interaction_description` STRING COMMENT 'Detailed narrative of the interaction content, topics discussed, key decisions made, and context. Supports relationship history review and account management continuity.',
-    `duration_minutes` STRING COMMENT 'Actual elapsed duration of the interaction in minutes as recorded by the interaction owner. Supports engagement depth analysis and SLA compliance monitoring.',
+    `duration_minutes` DECIMAL(18,2) COMMENT 'Actual elapsed duration of the interaction in minutes as recorded by the interaction owner. Supports engagement depth analysis and SLA compliance monitoring.',
     `end_timestamp` TIMESTAMP COMMENT 'Precise date and time when the customer interaction concluded. Combined with start timestamp to derive actual interaction duration.',
     `external_participants` STRING COMMENT 'Comma-separated list of customer-side participant names and roles who attended the interaction (e.g., John Smith - VP Engineering, Jane Doe - Procurement Manager). Classified confidential as it contains customer personnel information.',
     `follow_up_action` STRING COMMENT 'Description of the specific follow-up action to be taken after this interaction (e.g., Send product specification sheet, Schedule site visit, Prepare PPAP documentation).',
@@ -444,7 +443,7 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`customer`.`interaction` (
     `source` STRING COMMENT 'System or method through which this interaction record was created or ingested. Supports data lineage tracking and source system reconciliation in the lakehouse silver layer.. Valid values are `salesforce_crm|manual_entry|email_integration|calendar_sync|survey_platform`',
     `start_timestamp` TIMESTAMP COMMENT 'Precise date and time when the customer interaction began. Used for duration calculation, scheduling conflict detection, and time-zone-aware reporting.',
     `subject` STRING COMMENT 'Short descriptive title or subject line summarizing the purpose of the interaction (e.g., Q3 Automation System Review, PLC Upgrade Technical Demo). Maps to Salesforce CRM Activity Subject field.',
-    `verbatim_feedback` STRING COMMENT 'Unstructured, verbatim text feedback provided by the customer during or after the interaction. Captured for voice-of-customer (VoC) analysis, sentiment analysis, and continuous improvement programs. Classified confidential as it contains customer-specific business opinions.',
+    `verbatim_feedback` DECIMAL(18,2) COMMENT 'Unstructured, verbatim text feedback provided by the customer during or after the interaction. Captured for voice-of-customer (VoC) analysis, sentiment analysis, and continuous improvement programs. Classified confidential as it contains customer-specific business opinions.',
     CONSTRAINT pk_interaction PRIMARY KEY(`interaction_id`)
 ) COMMENT 'Records of all customer-facing business interactions and touchpoints including sales calls, site visits, product demonstrations, technical consultations, trade show meetings, executive briefings, and customer satisfaction survey responses (NPS). Maps to Salesforce CRM Activity (Task/Event). Captures interaction type, channel (phone, email, in-person, virtual, survey), date, duration, participants, outcome, satisfaction score (where applicable), verbatim feedback, follow-up actions, and associated opportunity or account. Supports relationship health monitoring and customer experience tracking.';
 
@@ -489,7 +488,7 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`customer`.`customer_lead` (
     `plc_installed_base` STRING COMMENT 'Description of the existing PLC (Programmable Logic Controller) installed base at the prospects facilities (e.g., Siemens S7-300, Allen-Bradley ControlLogix). Used to assess upgrade/migration opportunity and compatibility.',
     `product_interest_area` STRING COMMENT 'Primary product category or solution area the lead has expressed interest in. Drives sales rep assignment, product specialist routing, and targeted content delivery. [ENUM-REF-CANDIDATE: Drives|PLCs|Switchgear|Building Automation|Grid Solutions|Motion Control|Industrial IoT|SCADA|HMI|Robotics — promote to reference product]',
     `referral_partner_name` STRING COMMENT 'Name of the channel partner, distributor, OEM, or system integrator who referred this lead. Populated when lead_source is Partner Referral or Referral. Used for partner performance tracking and commission attribution.',
-    `revenue_currency` STRING COMMENT 'ISO 4217 three-letter currency code for the estimated_annual_revenue field (e.g., USD, EUR, GBP). Enables multi-currency normalization for global lead management.. Valid values are `^[A-Z]{3}$`',
+    `revenue_currency` DECIMAL(18,2) COMMENT 'ISO 4217 three-letter currency code for the estimated_annual_revenue field (e.g., USD, EUR, GBP). Enables multi-currency normalization for global lead management.',
     `sales_region` STRING COMMENT 'High-level geographic sales region grouping for the lead. Used for regional pipeline reporting, quota management, and executive dashboards.. Valid values are `North America|Europe|Asia Pacific|Latin America|Middle East & Africa`',
     `sales_territory` STRING COMMENT 'Geographic or account-based sales territory to which this lead is assigned (e.g., EMEA-North, APAC-Industrial, NA-Midwest). Drives sales rep routing and territory performance reporting.',
     `salesforce_lead_code` STRING COMMENT 'Native Salesforce CRM Lead object identifier (18-character Salesforce ID) used for cross-system traceability and synchronization with the source system of record.',
@@ -504,12 +503,12 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`customer`.`account_site` (
     `cost_center_id` BIGINT COMMENT 'Foreign key linking to finance.cost_center. Business justification: Site‑level cost tracking links each plant/site to a cost center for detailed operational expense reporting.',
     `customer_account_id` BIGINT COMMENT 'Reference to the parent customer account to which this site belongs. Links the physical site to the B2B customer, OEM, distributor, or end-user organization in the account master.',
     `customer_contact_id` BIGINT COMMENT 'Reference to the primary contact person at this site responsible for coordinating field service visits, deliveries, and maintenance activities. Links to the contact master record.',
+    `sku_master_id` BIGINT COMMENT 'Foreign key linking to product.sku_master. Business justification: Needed for site‑level asset management; links each plant site to the primary product installed for maintenance scheduling and warranty tracking.',
     `org_unit_id` BIGINT COMMENT 'Foreign key linking to workforce.org_unit. Business justification: Linking a manufacturing site to its responsible org unit enables cost allocation, governance and production planning.',
     `profit_center_id` BIGINT COMMENT 'Foreign key linking to finance.profit_center. Business justification: Profit center reporting per manufacturing site requires a profit_center_id on the site record.',
     `employee_id` BIGINT COMMENT 'Foreign key linking to workforce.employee. Business justification: Site manager employee is needed for operations, maintenance scheduling and safety compliance reports.',
     `rep_id` BIGINT COMMENT 'Foreign key linking to sales.rep. Business justification: Site‑level sales rep ownership is required for site‑specific revenue tracking and service contract management.',
     `network_node_id` BIGINT COMMENT 'Foreign key linking to supply.network_node. Business justification: Linking a customer site to a supply‑chain network node enables routing, capacity, and cross‑docking decisions in logistics planning.',
-    `site_id` BIGINT COMMENT 'Foreign key linking to supplier.supplier_site. Business justification: Logistics scheduling links each customer site to the supplier site that delivers goods, enabling inbound receipt matching.',
     `access_restriction_notes` STRING COMMENT 'Free-text notes describing access restrictions, security clearance requirements, visitor registration procedures, or special entry protocols for field service engineers and delivery personnel at this site.',
     `address_line1` STRING COMMENT 'Primary street address line of the physical site location. Used for field service dispatch, logistics planning, and shipment routing.',
     `address_line2` STRING COMMENT 'Secondary address line for the site (suite, building, floor, gate number). Supplements address_line1 for precise field service and logistics routing.',
@@ -533,9 +532,9 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`customer`.`account_site` (
     `network_connectivity_type` STRING COMMENT 'Primary network connectivity type available at the site for IIoT device integration, remote monitoring, and SCADA/MES connectivity. Determines feasibility of remote diagnostics and predictive maintenance services.. Valid values are `ethernet|fiber|wireless|cellular|vpn|none`',
     `next_scheduled_maintenance_date` DATE COMMENT 'Date of the next planned preventive maintenance visit at this site. Drives field service dispatch scheduling, spare parts pre-positioning, and resource capacity planning for the service organization.',
     `number_of_production_lines` STRING COMMENT 'Count of active production lines at the manufacturing site. Used to estimate installed base potential, maintenance workload, and spare parts demand. Relevant for manufacturing plant site types.',
-    `operates_24x7` BOOLEAN COMMENT 'Indicates whether the site operates continuously 24 hours a day, 7 days a week. When true, overrides operational_hours_start/end for scheduling purposes and may trigger higher SLA tier assignment.',
-    `operational_hours_end` STRING COMMENT 'Daily operational end time of the site in HH:MM (24-hour) format in the sites local time zone. Used to constrain field service scheduling, maintenance windows, and delivery cutoff times.. Valid values are `^([01]d|2[0-3]):[0-5]d$`',
-    `operational_hours_start` STRING COMMENT 'Daily operational start time of the site in HH:MM (24-hour) format in the sites local time zone. Used to schedule field service visits, preventive maintenance windows, and delivery time slots within permitted hours.. Valid values are `^([01]d|2[0-3]):[0-5]d$`',
+    `operates_24x7` DECIMAL(18,2) COMMENT 'Indicates whether the site operates continuously 24 hours a day, 7 days a week. When true, overrides operational_hours_start/end for scheduling purposes and may trigger higher SLA tier assignment.',
+    `operational_hours_end` DECIMAL(18,2) COMMENT 'Daily operational end time of the site in HH:MM (24-hour) format in the sites local time zone. Used to constrain field service scheduling, maintenance windows, and delivery cutoff times.',
+    `operational_hours_start` DECIMAL(18,2) COMMENT 'Daily operational start time of the site in HH:MM (24-hour) format in the sites local time zone. Used to schedule field service visits, preventive maintenance windows, and delivery time slots within permitted hours.',
     `plant_floor_area_sqm` DECIMAL(18,2) COMMENT 'Total operational floor area of the site in square meters. Used for capacity planning, equipment density analysis, and logistics resource estimation for large-scale installations.',
     `postal_code` STRING COMMENT 'Postal or ZIP code of the customer site address. Used for logistics zone mapping, field service territory assignment, and tax jurisdiction determination.',
     `power_supply_frequency_hz` STRING COMMENT 'Electrical supply frequency at the site in Hertz (50 or 60 Hz). Required for equipment compatibility validation for automation systems, drives, and electrification products.',
@@ -561,7 +560,6 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`customer`.`customer_certificati
     `account_site_id` BIGINT COMMENT 'Reference to the specific customer facility, plant, or operational site to which this certification applies. A single account may hold certifications at multiple sites.',
     `employee_id` BIGINT COMMENT 'Foreign key linking to workforce.employee. Business justification: Certification audits are performed by internal auditors; tracking the employee provides audit trail and compliance reporting.',
     `customer_account_id` BIGINT COMMENT 'Reference to the B2B customer account or OEM organization that holds this certification. Links the certification to the customer master record in Salesforce CRM.',
-    `product_certification_id` BIGINT COMMENT 'Foreign key linking to product.product_certification. Business justification: Ensures regulatory compliance tracking by linking a customer’s certification record to the master product certification definition.',
     `applicable_product_categories` STRING COMMENT 'Comma-separated list of product categories or commodity codes to which this certification applies, as declared in the certificate scope. Used to match certification coverage against specific procurement line items and OEM qualification requirements.',
     `body_country` STRING COMMENT 'The ISO 3166-1 alpha-3 country code of the country where the certifying body is registered and operates (e.g., USA, DEU, GBR). Used for jurisdictional compliance analysis and accreditation authority mapping.. Valid values are `^[A-Z]{3}$`',
     `capa_due_date` DATE COMMENT 'The deadline by which the customer must submit or complete their Corrective and Preventive Action (CAPA) plan to the certifying body or internal compliance team. Null when capa_required is False.',
@@ -579,9 +577,9 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`customer`.`customer_certificati
     `initial_certification_date` DATE COMMENT 'The date on which the customer first obtained this certification standard, regardless of subsequent renewals. Used to calculate total years of certified operation and assess supplier maturity in qualification processes.',
     `is_multi_site` BOOLEAN COMMENT 'Indicates whether this certificate covers multiple customer sites under a single certificate number (multi-site certification). When True, the certification scope applies to all sites listed in the certificate annex rather than a single facility.',
     `is_primary_certification` BOOLEAN COMMENT 'Indicates whether this certification is the primary or most critical certification for the customer account within its certification type. Used to prioritize compliance checks and qualification gate decisions when a customer holds multiple certifications of the same type.',
-    `issue_date` DATE COMMENT 'The date on which the certification was formally issued or granted by the certifying body. Represents the start of the current certification cycle. Formatted as yyyy-MM-dd.',
-    `issuing_body_accreditation_number` STRING COMMENT 'The accreditation number of the certification body as granted by a national accreditation authority (e.g., ANAB, UKAS, DAkkS). Enables verification that the issuing body is formally accredited to issue the specific standard.',
-    `issuing_body_name` STRING COMMENT 'The name of the accredited certification body or registrar that issued the certificate (e.g., Bureau Veritas, TÜV Rheinland, SGS, DNV, Intertek). Used to validate accreditation status and credibility of the certification.',
+    `issue_date` TIMESTAMP COMMENT 'The date on which the certification was formally issued or granted by the certifying body. Represents the start of the current certification cycle. Formatted as yyyy-MM-dd.',
+    `issuing_body_accreditation_number` BOOLEAN COMMENT 'The accreditation number of the certification body as granted by a national accreditation authority (e.g., ANAB, UKAS, DAkkS). Enables verification that the issuing body is formally accredited to issue the specific standard.',
+    `issuing_body_name` BOOLEAN COMMENT 'The name of the accredited certification body or registrar that issued the certificate (e.g., Bureau Veritas, TÜV Rheinland, SGS, DNV, Intertek). Used to validate accreditation status and credibility of the certification.',
     `last_surveillance_audit_date` DATE COMMENT 'The date of the most recent surveillance audit conducted by the certifying body to verify ongoing compliance. ISO management system certifications typically require annual surveillance audits between recertification cycles.',
     `next_surveillance_audit_date` DATE COMMENT 'The scheduled date for the next surveillance audit by the certifying body. Used to proactively manage audit readiness and compliance calendar for the customer account.',
     `nonconformance_count` STRING COMMENT 'The number of open or unresolved non-conformances (NCRs) identified during the most recent audit cycle for this certification. A non-zero value may affect qualification eligibility and triggers CAPA (Corrective and Preventive Action) follow-up.',
@@ -662,7 +660,7 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`customer`.`account_team` (
     `assignment_type` STRING COMMENT 'Classifies the nature of the account team assignment as permanent (long-term), temporary (project-based), interim (gap coverage), or coverage (vacation/leave backup). Supports workforce planning and continuity management.. Valid values are `permanent|temporary|interim|coverage`',
     `case_access` STRING COMMENT 'The level of access granted to this team member for service case records associated with the customer account. Governs visibility into support tickets, NCRs, RMAs, and CAPA records.. Valid values are `none|read_only|read_write`',
     `contact_access` STRING COMMENT 'The level of access granted to this team member for contact records associated with the customer account. Controls visibility into customer stakeholder information.. Valid values are `none|read_only|read_write`',
-    `cost_center_code` STRING COMMENT 'The SAP S/4HANA cost center code associated with the team members department. Used for internal cost allocation of account management activities and OpEx reporting.',
+    `cost_center_code` DECIMAL(18,2) COMMENT 'The SAP S/4HANA cost center code associated with the team members department. Used for internal cost allocation of account management activities and OpEx reporting.',
     `coverage_country_code` STRING COMMENT 'The ISO 3166-1 alpha-3 country code representing the primary country this team member covers for the assigned account. Used for regulatory compliance, export control, and regional reporting.. Valid values are `^[A-Z]{3}$`',
     `created_timestamp` TIMESTAMP COMMENT 'The timestamp when this account team assignment record was first created in the source system. Used for audit trail, data lineage, and SLA compliance reporting.',
     `crm_owner_code` STRING COMMENT 'The Salesforce CRM user ID of the record owner responsible for maintaining this account team member record. Used for data stewardship, governance, and audit accountability.',
@@ -711,7 +709,7 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`customer`.`customer_onboarding`
     `compliance_check_status` STRING COMMENT 'Status of mandatory regulatory and trade compliance screening for the new customer, including export control, sanctions screening, and anti-bribery checks.. Valid values are `pending|passed|failed|waived`',
     `contract_signature_date` DATE COMMENT 'The date on which the customer signed the contract, marking the official start trigger for the onboarding workflow.',
     `credit_limit_approved` DECIMAL(18,2) COMMENT 'The approved credit limit amount (in base currency) assigned to the customer account during onboarding. Established by the finance team as part of credit setup.',
-    `credit_setup_status` STRING COMMENT 'Current status of the credit limit and payment terms setup for the new customer account in SAP S/4HANA FI. A prerequisite for first order processing.. Valid values are `pending|in_review|approved|rejected|on_hold`',
+    `credit_setup_status` DECIMAL(18,2) COMMENT 'Current status of the credit limit and payment terms setup for the new customer account in SAP S/4HANA FI. A prerequisite for first order processing.',
     `customer_primary_contact_email` STRING COMMENT 'Email address of the primary contact person at the customer organization for onboarding communications and coordination.. Valid values are `^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+.[a-zA-Z]{2,}$`',
     `customer_primary_contact_name` STRING COMMENT 'Full name of the primary contact person at the customer organization responsible for coordinating the onboarding process on the customer side.',
     `edi_setup_status` STRING COMMENT 'Current status of the Electronic Data Interchange (EDI) integration setup for the customer. Tracks configuration, testing, and go-live of EDI order transmission channels.. Valid values are `not_required|pending|in_progress|testing|completed|failed`',
@@ -729,7 +727,7 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`customer`.`customer_onboarding`
     `notes` STRING COMMENT 'Free-text field for the onboarding coordinator to capture additional context, special instructions, customer-specific requirements, or internal observations relevant to the onboarding case.',
     `onboarding_number` STRING COMMENT 'Externally visible, human-readable reference number for the onboarding case, used in communications with the customer and internal teams. Format: ONB-YYYY-NNNNNN.. Valid values are `^ONB-[0-9]{4}-[0-9]{6}$`',
     `onboarding_status` STRING COMMENT 'Current lifecycle state of the onboarding workflow. Tracks progression from initiation through full account activation. Values: not_started, in_progress, on_hold, completed, cancelled.. Valid values are `not_started|in_progress|on_hold|completed|cancelled`',
-    `payment_terms_code` STRING COMMENT 'The SAP payment terms code assigned to the customer account (e.g., NET30, NET60, 2/10NET30). Defines the payment schedule and early payment discount terms.',
+    `payment_terms_code` DECIMAL(18,2) COMMENT 'The SAP payment terms code assigned to the customer account (e.g., NET30, NET60, 2/10NET30). Defines the payment schedule and early payment discount terms.',
     `portal_setup_status` STRING COMMENT 'Current status of the customer self-service portal account provisioning, including login credentials, access rights, and order management capabilities.. Valid values are `not_required|pending|in_progress|completed|failed`',
     `pricing_setup_status` STRING COMMENT 'Current status of the customer-specific pricing configuration in SAP S/4HANA SD, including contract pricing, volume discounts, and special pricing agreements.. Valid values are `pending|in_progress|completed|approved`',
     `quality_agreement_signed_flag` BOOLEAN COMMENT 'Indicates whether a formal quality agreement has been signed with the customer, defining quality standards, inspection requirements, and CAPA (Corrective and Preventive Action) processes.',
@@ -740,7 +738,7 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`customer`.`customer_onboarding`
     `tax_exemption_certificate_number` STRING COMMENT 'The official certificate number of the customers tax exemption document. Required for tax-exempt account configuration in SAP S/4HANA FI.',
     `tax_exemption_flag` BOOLEAN COMMENT 'Indicates whether the customer has a valid tax exemption certificate on file. Affects tax configuration in SAP S/4HANA during account setup.',
     `template_code` STRING COMMENT 'The code identifying the onboarding workflow template applied to this account. Templates vary by account type (OEM, distributor, end-user) and define the required checklist items and stage sequence.',
-    `total_checklist_items` STRING COMMENT 'The total number of onboarding checklist items applicable to this customer account, based on account type and segment. Denominator for checklist completion percentage.',
+    `total_checklist_items` DECIMAL(18,2) COMMENT 'The total number of onboarding checklist items applicable to this customer account, based on account type and segment. Denominator for checklist completion percentage.',
     `training_completed_flag` BOOLEAN COMMENT 'Indicates whether the customer has completed all required product, portal, and ordering process training sessions as part of the onboarding checklist.',
     `training_completion_date` DATE COMMENT 'The date on which the customer completed all mandatory onboarding training sessions. Null if training has not yet been completed.',
     CONSTRAINT pk_customer_onboarding PRIMARY KEY(`customer_onboarding_id`)
@@ -791,7 +789,6 @@ ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_account` ADD CONSTRAINT
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_contact` ADD CONSTRAINT `fk_customer_customer_contact_customer_account_id` FOREIGN KEY (`customer_account_id`) REFERENCES `vibe_manufacturing_v1`.`customer`.`customer_account`(`customer_account_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_contact` ADD CONSTRAINT `fk_customer_customer_contact_reports_to_contact_id` FOREIGN KEY (`reports_to_contact_id`) REFERENCES `vibe_manufacturing_v1`.`customer`.`customer_contact`(`customer_contact_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`account_hierarchy` ADD CONSTRAINT `fk_customer_account_hierarchy_customer_account_id` FOREIGN KEY (`customer_account_id`) REFERENCES `vibe_manufacturing_v1`.`customer`.`customer_account`(`customer_account_id`);
-ALTER TABLE `vibe_manufacturing_v1`.`customer`.`account_hierarchy` ADD CONSTRAINT `fk_customer_account_hierarchy_parent_customer_account_id` FOREIGN KEY (`parent_customer_account_id`) REFERENCES `vibe_manufacturing_v1`.`customer`.`customer_account`(`customer_account_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`account_hierarchy` ADD CONSTRAINT `fk_customer_account_hierarchy_primary_customer_account_id` FOREIGN KEY (`primary_customer_account_id`) REFERENCES `vibe_manufacturing_v1`.`customer`.`customer_account`(`customer_account_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`address` ADD CONSTRAINT `fk_customer_address_customer_account_id` FOREIGN KEY (`customer_account_id`) REFERENCES `vibe_manufacturing_v1`.`customer`.`customer_account`(`customer_account_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`address` ADD CONSTRAINT `fk_customer_address_customer_contact_id` FOREIGN KEY (`customer_contact_id`) REFERENCES `vibe_manufacturing_v1`.`customer`.`customer_contact`(`customer_contact_id`);
@@ -826,7 +823,6 @@ ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_account` SET TAGS ('dbx
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_account` SET TAGS ('dbx_subdomain' = 'account_management');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_account` ALTER COLUMN `customer_account_id` SET TAGS ('dbx_business_glossary_term' = 'Customer Account ID');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_account` ALTER COLUMN `company_code_id` SET TAGS ('dbx_business_glossary_term' = 'Company Code Id (Foreign Key)');
-ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_account` ALTER COLUMN `cost_center_id` SET TAGS ('dbx_business_glossary_term' = 'Cost Center Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_account` ALTER COLUMN `parent_account_customer_account_id` SET TAGS ('dbx_business_glossary_term' = 'Parent Account ID');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_account` ALTER COLUMN `payment_term_id` SET TAGS ('dbx_business_glossary_term' = 'Payment Term Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_account` ALTER COLUMN `price_book_id` SET TAGS ('dbx_business_glossary_term' = 'Price List ID');
@@ -839,6 +835,8 @@ ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_account` ALTER COLUMN `
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_account` ALTER COLUMN `territory_id` SET TAGS ('dbx_business_glossary_term' = 'Sales Territory Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_account` ALTER COLUMN `segment_id` SET TAGS ('dbx_business_glossary_term' = 'Customer Segment Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_account` ALTER COLUMN `supplier_id` SET TAGS ('dbx_business_glossary_term' = 'Primary Supplier Id (Foreign Key)');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_account` ALTER COLUMN `billing_account_id` SET TAGS ('dbx_business_glossary_term' = 'Billing Account Id (Foreign Key)');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_account` ALTER COLUMN `account_name` SET TAGS ('dbx_sensitivity' = 'pii');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_account` ALTER COLUMN `account_source` SET TAGS ('dbx_business_glossary_term' = 'Account Source');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_account` ALTER COLUMN `account_status` SET TAGS ('dbx_business_glossary_term' = 'Account Status');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_account` ALTER COLUMN `account_status` SET TAGS ('dbx_value_regex' = 'active|inactive|prospect|suspended|terminated|on_hold');
@@ -846,7 +844,6 @@ ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_account` ALTER COLUMN `
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_account` ALTER COLUMN `account_type` SET TAGS ('dbx_value_regex' = 'OEM|distributor|system_integrator|end_user|EPC_contractor|reseller');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_account` ALTER COLUMN `annual_revenue` SET TAGS ('dbx_business_glossary_term' = 'Annual Revenue');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_account` ALTER COLUMN `annual_revenue` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_account` ALTER COLUMN `billing_account_id` SET TAGS ('dbx_business_glossary_term' = 'Billing Account Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_account` ALTER COLUMN `billing_city` SET TAGS ('dbx_business_glossary_term' = 'Billing City');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_account` ALTER COLUMN `billing_city` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_account` ALTER COLUMN `billing_city` SET TAGS ('dbx_pii_address' = 'true');
@@ -865,7 +862,6 @@ ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_account` ALTER COLUMN `
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_account` ALTER COLUMN `credit_limit` SET TAGS ('dbx_business_glossary_term' = 'Credit Limit');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_account` ALTER COLUMN `credit_limit` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_account` ALTER COLUMN `credit_limit_currency_code` SET TAGS ('dbx_business_glossary_term' = 'Credit Limit Currency Code');
-ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_account` ALTER COLUMN `credit_limit_currency_code` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_account` ALTER COLUMN `credit_rating` SET TAGS ('dbx_business_glossary_term' = 'Credit Rating');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_account` ALTER COLUMN `credit_rating` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_account` ALTER COLUMN `crm_account_code` SET TAGS ('dbx_business_glossary_term' = 'Customer Relationship Management (CRM) Account ID');
@@ -874,6 +870,8 @@ ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_account` ALTER COLUMN `
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_account` ALTER COLUMN `duns_number` SET TAGS ('dbx_business_glossary_term' = 'Data Universal Numbering System (DUNS) Number');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_account` ALTER COLUMN `duns_number` SET TAGS ('dbx_value_regex' = '^[0-9]{9}$');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_account` ALTER COLUMN `duns_number` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_account` ALTER COLUMN `duns_number` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_account` ALTER COLUMN `duns_number` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_account` ALTER COLUMN `employee_count` SET TAGS ('dbx_business_glossary_term' = 'Employee Count');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_account` ALTER COLUMN `incoterms_code` SET TAGS ('dbx_business_glossary_term' = 'International Commercial Terms (Incoterms) Code');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_account` ALTER COLUMN `industry_naics_code` SET TAGS ('dbx_business_glossary_term' = 'North American Industry Classification System (NAICS) Code');
@@ -887,16 +885,19 @@ ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_account` ALTER COLUMN `
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_account` ALTER COLUMN `legal_name` SET TAGS ('dbx_business_glossary_term' = 'Legal Entity Name');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_account` ALTER COLUMN `legal_name` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_account` ALTER COLUMN `legal_name` SET TAGS ('dbx_pii_name' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_account` ALTER COLUMN `legal_name` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_account` ALTER COLUMN `legal_name` SET TAGS ('dbx_sensitivity' = 'pii');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_account` ALTER COLUMN `mdm_golden_record_flag` SET TAGS ('dbx_business_glossary_term' = 'Master Data Management (MDM) Golden Record Flag');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_account` ALTER COLUMN `open_date` SET TAGS ('dbx_business_glossary_term' = 'Account Open Date');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_account` ALTER COLUMN `phone` SET TAGS ('dbx_business_glossary_term' = 'Primary Business Phone Number');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_account` ALTER COLUMN `phone` SET TAGS ('dbx_value_regex' = '^+?[0-9s-().]{7,20}$');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_account` ALTER COLUMN `phone` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_account` ALTER COLUMN `phone` SET TAGS ('dbx_pii_phone' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_account` ALTER COLUMN `phone` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_account` ALTER COLUMN `phone` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_account` ALTER COLUMN `preferred_language_code` SET TAGS ('dbx_business_glossary_term' = 'Preferred Language Code');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_account` ALTER COLUMN `preferred_language_code` SET TAGS ('dbx_value_regex' = '^[a-z]{2}(-[A-Z]{2})?$');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_account` ALTER COLUMN `revenue_currency_code` SET TAGS ('dbx_business_glossary_term' = 'Revenue Currency Code');
-ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_account` ALTER COLUMN `revenue_currency_code` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_account` ALTER COLUMN `sales_organization_code` SET TAGS ('dbx_business_glossary_term' = 'Sales Organization Code');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_account` ALTER COLUMN `sap_business_partner_code` SET TAGS ('dbx_business_glossary_term' = 'SAP Business Partner (BP) ID');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_account` ALTER COLUMN `sla_tier` SET TAGS ('dbx_business_glossary_term' = 'Service Level Agreement (SLA) Tier');
@@ -905,9 +906,15 @@ ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_account` ALTER COLUMN `
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_account` ALTER COLUMN `tax_number` SET TAGS ('dbx_business_glossary_term' = 'Tax Identification Number (TIN)');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_account` ALTER COLUMN `tax_number` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_account` ALTER COLUMN `tax_number` SET TAGS ('dbx_pii_identifier' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_account` ALTER COLUMN `tax_number` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_account` ALTER COLUMN `tax_number` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_account` ALTER COLUMN `trading_name` SET TAGS ('dbx_business_glossary_term' = 'Trading Name (DBA — Doing Business As)');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_account` ALTER COLUMN `trading_name` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_account` ALTER COLUMN `trading_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_account` ALTER COLUMN `vat_registration_number` SET TAGS ('dbx_business_glossary_term' = 'Value Added Tax (VAT) Registration Number');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_account` ALTER COLUMN `vat_registration_number` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_account` ALTER COLUMN `vat_registration_number` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_account` ALTER COLUMN `vat_registration_number` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_account` ALTER COLUMN `website` SET TAGS ('dbx_business_glossary_term' = 'Customer Website URL');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_account` ALTER COLUMN `website` SET TAGS ('dbx_value_regex' = '^https?://[^s/$.?#].[^s]*$');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_contact` SET TAGS ('dbx_data_type' = 'master_data');
@@ -921,13 +928,20 @@ ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_contact` ALTER COLUMN `
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_contact` ALTER COLUMN `rep_id` SET TAGS ('dbx_business_glossary_term' = 'Sales Rep Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_contact` ALTER COLUMN `account_site` SET TAGS ('dbx_business_glossary_term' = 'Contact Account Site');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_contact` ALTER COLUMN `assistant_name` SET TAGS ('dbx_business_glossary_term' = 'Contact Assistant Name');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_contact` ALTER COLUMN `assistant_name` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_contact` ALTER COLUMN `assistant_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_contact` ALTER COLUMN `assistant_phone` SET TAGS ('dbx_business_glossary_term' = 'Contact Assistant Phone Number');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_contact` ALTER COLUMN `assistant_phone` SET TAGS ('dbx_value_regex' = '^+?[0-9s-().]{7,20}$');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_contact` ALTER COLUMN `assistant_phone` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_contact` ALTER COLUMN `assistant_phone` SET TAGS ('dbx_pii_phone' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_contact` ALTER COLUMN `assistant_phone` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_contact` ALTER COLUMN `assistant_phone` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_contact` ALTER COLUMN `assistant_phone` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_contact` ALTER COLUMN `birthdate` SET TAGS ('dbx_business_glossary_term' = 'Contact Date of Birth');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_contact` ALTER COLUMN `birthdate` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_contact` ALTER COLUMN `birthdate` SET TAGS ('dbx_pii_dob' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_contact` ALTER COLUMN `birthdate` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_contact` ALTER COLUMN `birthdate` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_contact` ALTER COLUMN `consent_record_code` SET TAGS ('dbx_business_glossary_term' = 'Consent Record ID');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_contact` ALTER COLUMN `consent_record_code` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_contact` ALTER COLUMN `contact_type` SET TAGS ('dbx_business_glossary_term' = 'Contact Type');
@@ -944,16 +958,25 @@ ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_contact` ALTER COLUMN `
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_contact` ALTER COLUMN `email` SET TAGS ('dbx_value_regex' = '^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+.[a-zA-Z]{2,}$');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_contact` ALTER COLUMN `email` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_contact` ALTER COLUMN `email` SET TAGS ('dbx_pii_email' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_contact` ALTER COLUMN `email` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_contact` ALTER COLUMN `email` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_contact` ALTER COLUMN `email_opt_out` SET TAGS ('dbx_business_glossary_term' = 'Email Opt-Out Flag');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_contact` ALTER COLUMN `email_opt_out` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_contact` ALTER COLUMN `email_opt_out` SET TAGS ('dbx_pii_email' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_contact` ALTER COLUMN `email_opt_out` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_contact` ALTER COLUMN `email_opt_out` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_contact` ALTER COLUMN `fax` SET TAGS ('dbx_business_glossary_term' = 'Contact Fax Number');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_contact` ALTER COLUMN `fax` SET TAGS ('dbx_value_regex' = '^+?[0-9s-().]{7,20}$');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_contact` ALTER COLUMN `fax` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_contact` ALTER COLUMN `fax` SET TAGS ('dbx_pii_phone' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_contact` ALTER COLUMN `fax` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_contact` ALTER COLUMN `fax` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_contact` ALTER COLUMN `first_name` SET TAGS ('dbx_business_glossary_term' = 'Contact First Name');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_contact` ALTER COLUMN `first_name` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_contact` ALTER COLUMN `first_name` SET TAGS ('dbx_pii_name' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_contact` ALTER COLUMN `first_name` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_contact` ALTER COLUMN `first_name` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_contact` ALTER COLUMN `first_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_contact` ALTER COLUMN `gdpr_data_subject_code` SET TAGS ('dbx_business_glossary_term' = 'General Data Protection Regulation (GDPR) Data Subject ID');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_contact` ALTER COLUMN `gdpr_data_subject_code` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_contact` ALTER COLUMN `gdpr_data_subject_code` SET TAGS ('dbx_pii_identifier' = 'true');
@@ -967,10 +990,15 @@ ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_contact` ALTER COLUMN `
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_contact` ALTER COLUMN `last_name` SET TAGS ('dbx_business_glossary_term' = 'Contact Last Name');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_contact` ALTER COLUMN `last_name` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_contact` ALTER COLUMN `last_name` SET TAGS ('dbx_pii_name' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_contact` ALTER COLUMN `last_name` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_contact` ALTER COLUMN `last_name` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_contact` ALTER COLUMN `last_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_contact` ALTER COLUMN `lead_source` SET TAGS ('dbx_business_glossary_term' = 'Contact Lead Source');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_contact` ALTER COLUMN `linkedin_url` SET TAGS ('dbx_business_glossary_term' = 'Contact LinkedIn Profile URL');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_contact` ALTER COLUMN `linkedin_url` SET TAGS ('dbx_value_regex' = '^https://(www.)?linkedin.com/in/[a-zA-Z0-9-_%]+/?$');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_contact` ALTER COLUMN `linkedin_url` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_contact` ALTER COLUMN `linkedin_url` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_contact` ALTER COLUMN `linkedin_url` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_contact` ALTER COLUMN `mailing_city` SET TAGS ('dbx_business_glossary_term' = 'Contact Mailing City');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_contact` ALTER COLUMN `mailing_city` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_contact` ALTER COLUMN `mailing_city` SET TAGS ('dbx_pii_address' = 'true');
@@ -993,11 +1021,16 @@ ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_contact` ALTER COLUMN `
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_contact` ALTER COLUMN `mobile_phone` SET TAGS ('dbx_value_regex' = '^+?[0-9s-().]{7,20}$');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_contact` ALTER COLUMN `mobile_phone` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_contact` ALTER COLUMN `mobile_phone` SET TAGS ('dbx_pii_phone' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_contact` ALTER COLUMN `mobile_phone` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_contact` ALTER COLUMN `mobile_phone` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_contact` ALTER COLUMN `mobile_phone` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_contact` ALTER COLUMN `persona` SET TAGS ('dbx_business_glossary_term' = 'Contact Persona');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_contact` ALTER COLUMN `phone` SET TAGS ('dbx_business_glossary_term' = 'Contact Business Phone Number');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_contact` ALTER COLUMN `phone` SET TAGS ('dbx_value_regex' = '^+?[0-9s-().]{7,20}$');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_contact` ALTER COLUMN `phone` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_contact` ALTER COLUMN `phone` SET TAGS ('dbx_pii_phone' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_contact` ALTER COLUMN `phone` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_contact` ALTER COLUMN `phone` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_contact` ALTER COLUMN `preferred_communication_channel` SET TAGS ('dbx_business_glossary_term' = 'Preferred Communication Channel');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_contact` ALTER COLUMN `preferred_communication_channel` SET TAGS ('dbx_value_regex' = 'email|phone|mobile|in_person|video_call|portal');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_contact` ALTER COLUMN `salutation` SET TAGS ('dbx_business_glossary_term' = 'Contact Salutation');
@@ -1034,6 +1067,8 @@ ALTER TABLE `vibe_manufacturing_v1`.`customer`.`account_hierarchy` ALTER COLUMN 
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`account_hierarchy` ALTER COLUMN `hierarchy_depth` SET TAGS ('dbx_business_glossary_term' = 'Hierarchy Depth');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`account_hierarchy` ALTER COLUMN `hierarchy_level` SET TAGS ('dbx_business_glossary_term' = 'Hierarchy Level');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`account_hierarchy` ALTER COLUMN `hierarchy_name` SET TAGS ('dbx_business_glossary_term' = 'Hierarchy Relationship Name');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`account_hierarchy` ALTER COLUMN `hierarchy_name` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`account_hierarchy` ALTER COLUMN `hierarchy_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`account_hierarchy` ALTER COLUMN `hierarchy_path` SET TAGS ('dbx_business_glossary_term' = 'Hierarchy Path');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`account_hierarchy` ALTER COLUMN `hierarchy_status` SET TAGS ('dbx_business_glossary_term' = 'Hierarchy Relationship Status');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`account_hierarchy` ALTER COLUMN `hierarchy_status` SET TAGS ('dbx_value_regex' = 'active|inactive|pending|terminated|suspended');
@@ -1089,20 +1124,23 @@ ALTER TABLE `vibe_manufacturing_v1`.`customer`.`segment` ALTER COLUMN `mdm_segme
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`segment` ALTER COLUMN `min_account_count` SET TAGS ('dbx_business_glossary_term' = 'Minimum Account Count');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`segment` ALTER COLUMN `moq_applicable` SET TAGS ('dbx_business_glossary_term' = 'Minimum Order Quantity (MOQ) Applicable');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`segment` ALTER COLUMN `segment_name` SET TAGS ('dbx_business_glossary_term' = 'Customer Segment Name');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`segment` ALTER COLUMN `segment_name` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`segment` ALTER COLUMN `segment_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`segment` ALTER COLUMN `nda_required` SET TAGS ('dbx_business_glossary_term' = 'Non-Disclosure Agreement (NDA) Required');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`segment` ALTER COLUMN `next_review_date` SET TAGS ('dbx_business_glossary_term' = 'Next Segment Review Date');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`segment` ALTER COLUMN `owner_email` SET TAGS ('dbx_business_glossary_term' = 'Segment Owner Email Address');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`segment` ALTER COLUMN `owner_email` SET TAGS ('dbx_value_regex' = '^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+.[a-zA-Z]{2,}$');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`segment` ALTER COLUMN `owner_email` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`segment` ALTER COLUMN `owner_email` SET TAGS ('dbx_pii_email' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`segment` ALTER COLUMN `owner_email` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`segment` ALTER COLUMN `owner_email` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`segment` ALTER COLUMN `owner_email` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`segment` ALTER COLUMN `payment_terms_code` SET TAGS ('dbx_business_glossary_term' = 'Payment Terms Code');
-ALTER TABLE `vibe_manufacturing_v1`.`customer`.`segment` ALTER COLUMN `payment_terms_code` SET TAGS ('dbx_value_regex' = '^[A-Z0-9]{2,10}$');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`segment` ALTER COLUMN `pricing_tier_code` SET TAGS ('dbx_business_glossary_term' = 'Pricing Tier Code');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`segment` ALTER COLUMN `pricing_tier_code` SET TAGS ('dbx_value_regex' = '^[A-Z0-9_]{2,15}$');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`segment` ALTER COLUMN `pricing_tier_code` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`segment` ALTER COLUMN `rebate_eligible` SET TAGS ('dbx_business_glossary_term' = 'Rebate Eligible');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`segment` ALTER COLUMN `revenue_band_currency` SET TAGS ('dbx_business_glossary_term' = 'Revenue Band Currency');
-ALTER TABLE `vibe_manufacturing_v1`.`customer`.`segment` ALTER COLUMN `revenue_band_currency` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`segment` ALTER COLUMN `revenue_band_max` SET TAGS ('dbx_business_glossary_term' = 'Revenue Band Maximum');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`segment` ALTER COLUMN `revenue_band_max` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`segment` ALTER COLUMN `revenue_band_min` SET TAGS ('dbx_business_glossary_term' = 'Revenue Band Minimum');
@@ -1128,23 +1166,42 @@ ALTER TABLE `vibe_manufacturing_v1`.`customer`.`address` SET TAGS ('dbx_subdomai
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`address` ALTER COLUMN `address_id` SET TAGS ('dbx_business_glossary_term' = 'Address ID');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`address` ALTER COLUMN `address_id` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`address` ALTER COLUMN `address_id` SET TAGS ('dbx_pii_address' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`address` ALTER COLUMN `address_id` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`address` ALTER COLUMN `address_id` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`address` ALTER COLUMN `customer_account_id` SET TAGS ('dbx_business_glossary_term' = 'Customer ID');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`address` ALTER COLUMN `customer_contact_id` SET TAGS ('dbx_business_glossary_term' = 'Contact ID');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`address` ALTER COLUMN `address_status` SET TAGS ('dbx_business_glossary_term' = 'Address Status');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`address` ALTER COLUMN `address_status` SET TAGS ('dbx_value_regex' = 'active|inactive|pending|archived');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`address` ALTER COLUMN `address_status` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`address` ALTER COLUMN `address_status` SET TAGS ('dbx_pii_address' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`address` ALTER COLUMN `address_status` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`address` ALTER COLUMN `address_status` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`address` ALTER COLUMN `address_status` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`address` ALTER COLUMN `address_type` SET TAGS ('dbx_business_glossary_term' = 'Address Type');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`address` ALTER COLUMN `address_type` SET TAGS ('dbx_value_regex' = 'billing|shipping|headquarters|plant_site|mailing|field_service');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`address` ALTER COLUMN `address_type` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`address` ALTER COLUMN `address_type` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`address` ALTER COLUMN `attention_line` SET TAGS ('dbx_business_glossary_term' = 'Attention Line');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`address` ALTER COLUMN `attention_line` SET TAGS ('dbx_sensitivity' = 'pii');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`address` ALTER COLUMN `building_name` SET TAGS ('dbx_business_glossary_term' = 'Building Name');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`address` ALTER COLUMN `building_name` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`address` ALTER COLUMN `building_name` SET TAGS ('dbx_pii_address' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`address` ALTER COLUMN `building_name` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`address` ALTER COLUMN `building_name` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`address` ALTER COLUMN `building_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`address` ALTER COLUMN `city` SET TAGS ('dbx_business_glossary_term' = 'City');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`address` ALTER COLUMN `city` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`address` ALTER COLUMN `city` SET TAGS ('dbx_pii_address' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`address` ALTER COLUMN `city` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`address` ALTER COLUMN `city` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`address` ALTER COLUMN `country_code` SET TAGS ('dbx_business_glossary_term' = 'Country Code (ISO 3166-1 Alpha-3)');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`address` ALTER COLUMN `country_code` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`address` ALTER COLUMN `country_code` SET TAGS ('dbx_ssot_ref' = 'customer.address');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`address` ALTER COLUMN `country_code` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`address` ALTER COLUMN `country_code` SET TAGS ('dbx_mask_in_nonprod' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`address` ALTER COLUMN `country_code` SET TAGS ('dbx_denormalized' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`address` ALTER COLUMN `country_code` SET TAGS ('dbx_ssot' = 'reference.country.country_code');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`address` ALTER COLUMN `country_code` SET TAGS ('dbx_natural_key' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`address` ALTER COLUMN `county_district` SET TAGS ('dbx_business_glossary_term' = 'County / District');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`address` ALTER COLUMN `county_district` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`address` ALTER COLUMN `county_district` SET TAGS ('dbx_pii_address' = 'true');
@@ -1165,55 +1222,117 @@ ALTER TABLE `vibe_manufacturing_v1`.`customer`.`address` ALTER COLUMN `last_modi
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`address` ALTER COLUMN `latitude` SET TAGS ('dbx_business_glossary_term' = 'Latitude (Geocoordinate)');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`address` ALTER COLUMN `latitude` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`address` ALTER COLUMN `latitude` SET TAGS ('dbx_pii_address' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`address` ALTER COLUMN `latitude` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`address` ALTER COLUMN `latitude` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`address` ALTER COLUMN `line_1` SET TAGS ('dbx_business_glossary_term' = 'Address Line 1');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`address` ALTER COLUMN `line_1` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`address` ALTER COLUMN `line_1` SET TAGS ('dbx_pii_address' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`address` ALTER COLUMN `line_1` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`address` ALTER COLUMN `line_1` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`address` ALTER COLUMN `line_2` SET TAGS ('dbx_business_glossary_term' = 'Address Line 2');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`address` ALTER COLUMN `line_2` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`address` ALTER COLUMN `line_2` SET TAGS ('dbx_pii_address' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`address` ALTER COLUMN `line_2` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`address` ALTER COLUMN `line_2` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`address` ALTER COLUMN `line_3` SET TAGS ('dbx_business_glossary_term' = 'Address Line 3');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`address` ALTER COLUMN `line_3` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`address` ALTER COLUMN `line_3` SET TAGS ('dbx_pii_address' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`address` ALTER COLUMN `line_3` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`address` ALTER COLUMN `line_3` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`address` ALTER COLUMN `loading_dock_available` SET TAGS ('dbx_business_glossary_term' = 'Loading Dock Available Flag');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`address` ALTER COLUMN `longitude` SET TAGS ('dbx_business_glossary_term' = 'Longitude (Geocoordinate)');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`address` ALTER COLUMN `longitude` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`address` ALTER COLUMN `longitude` SET TAGS ('dbx_pii_address' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`address` ALTER COLUMN `longitude` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`address` ALTER COLUMN `longitude` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`address` ALTER COLUMN `mdm_address_key` SET TAGS ('dbx_business_glossary_term' = 'Master Data Management (MDM) Address Key');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`address` ALTER COLUMN `mdm_address_key` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`address` ALTER COLUMN `mdm_address_key` SET TAGS ('dbx_pii_address' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`address` ALTER COLUMN `mdm_address_key` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`address` ALTER COLUMN `mdm_address_key` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`address` ALTER COLUMN `mdm_address_key` SET TAGS ('dbx_natural_key' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`address` ALTER COLUMN `mdm_address_key` SET TAGS ('dbx_mdm_key' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`address` ALTER COLUMN `mdm_address_key` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`address` ALTER COLUMN `plant_code` SET TAGS ('dbx_business_glossary_term' = 'Plant Code');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`address` ALTER COLUMN `plant_code` SET TAGS ('dbx_ssot_ref' = 'production.plant');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`address` ALTER COLUMN `plant_code` SET TAGS ('dbx_denormalized' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`address` ALTER COLUMN `plant_code` SET TAGS ('dbx_ssot' = 'production.plant.plant_code');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`address` ALTER COLUMN `plant_code` SET TAGS ('dbx_natural_key' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`address` ALTER COLUMN `plant_code` SET TAGS ('dbx_denorm_ref' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`address` ALTER COLUMN `plant_code` SET TAGS ('dbx_denormalized_natural_key' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`address` ALTER COLUMN `plant_code` SET TAGS ('dbx_normalize' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`address` ALTER COLUMN `po_box` SET TAGS ('dbx_business_glossary_term' = 'Post Office (PO) Box');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`address` ALTER COLUMN `po_box` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`address` ALTER COLUMN `po_box` SET TAGS ('dbx_pii_address' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`address` ALTER COLUMN `po_box` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`address` ALTER COLUMN `po_box` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`address` ALTER COLUMN `po_box_postal_code` SET TAGS ('dbx_business_glossary_term' = 'Post Office (PO) Box Postal Code');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`address` ALTER COLUMN `po_box_postal_code` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`address` ALTER COLUMN `po_box_postal_code` SET TAGS ('dbx_pii_address' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`address` ALTER COLUMN `po_box_postal_code` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`address` ALTER COLUMN `po_box_postal_code` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`address` ALTER COLUMN `postal_code` SET TAGS ('dbx_business_glossary_term' = 'Postal Code');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`address` ALTER COLUMN `postal_code` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`address` ALTER COLUMN `postal_code` SET TAGS ('dbx_pii_address' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`address` ALTER COLUMN `postal_code` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`address` ALTER COLUMN `postal_code` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`address` ALTER COLUMN `postal_code_extension` SET TAGS ('dbx_business_glossary_term' = 'Postal Code Extension (ZIP+4)');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`address` ALTER COLUMN `postal_code_extension` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`address` ALTER COLUMN `postal_code_extension` SET TAGS ('dbx_pii_address' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`address` ALTER COLUMN `postal_code_extension` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`address` ALTER COLUMN `postal_code_extension` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`address` ALTER COLUMN `room_number` SET TAGS ('dbx_business_glossary_term' = 'Room / Suite Number');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`address` ALTER COLUMN `sales_region_code` SET TAGS ('dbx_business_glossary_term' = 'Sales Region Code');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`address` ALTER COLUMN `sales_region_code` SET TAGS ('dbx_ssot_ref' = 'sales.territory');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`address` ALTER COLUMN `sales_region_code` SET TAGS ('dbx_denormalized' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`address` ALTER COLUMN `sales_region_code` SET TAGS ('dbx_ssot' = 'sales.territory.region_code');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`address` ALTER COLUMN `sales_region_code` SET TAGS ('dbx_natural_key' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`address` ALTER COLUMN `sales_region_code` SET TAGS ('dbx_denorm_ref' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`address` ALTER COLUMN `sales_region_code` SET TAGS ('dbx_denormalized_natural_key' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`address` ALTER COLUMN `sales_region_code` SET TAGS ('dbx_normalize' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`address` ALTER COLUMN `service_territory_code` SET TAGS ('dbx_business_glossary_term' = 'Service Territory Code');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`address` ALTER COLUMN `service_territory_code` SET TAGS ('dbx_ssot_ref' = 'service.zone');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`address` ALTER COLUMN `service_territory_code` SET TAGS ('dbx_denormalized' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`address` ALTER COLUMN `service_territory_code` SET TAGS ('dbx_ssot' = 'service.zone.territory_code');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`address` ALTER COLUMN `service_territory_code` SET TAGS ('dbx_natural_key' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`address` ALTER COLUMN `service_territory_code` SET TAGS ('dbx_denorm_ref' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`address` ALTER COLUMN `service_territory_code` SET TAGS ('dbx_denormalized_natural_key' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`address` ALTER COLUMN `service_territory_code` SET TAGS ('dbx_normalize' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`address` ALTER COLUMN `shipping_condition` SET TAGS ('dbx_business_glossary_term' = 'Shipping Condition');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`address` ALTER COLUMN `shipping_condition` SET TAGS ('dbx_value_regex' = 'standard|express|freight|ltl|ftl|will_call');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`address` ALTER COLUMN `source_system_address_code` SET TAGS ('dbx_business_glossary_term' = 'Source System Address ID');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`address` ALTER COLUMN `source_system_address_code` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`address` ALTER COLUMN `source_system_address_code` SET TAGS ('dbx_pii_address' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`address` ALTER COLUMN `source_system_address_code` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`address` ALTER COLUMN `source_system_address_code` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`address` ALTER COLUMN `source_system_address_code` SET TAGS ('dbx_denorm_ref' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`address` ALTER COLUMN `source_system_address_code` SET TAGS ('dbx_SSOT' = 'source_system');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`address` ALTER COLUMN `source_system_address_code` SET TAGS ('dbx_denormalized_natural_key' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`address` ALTER COLUMN `source_system_address_code` SET TAGS ('dbx_normalize' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`address` ALTER COLUMN `source_system_address_code` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`address` ALTER COLUMN `state_province` SET TAGS ('dbx_business_glossary_term' = 'State / Province');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`address` ALTER COLUMN `state_province` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`address` ALTER COLUMN `state_province` SET TAGS ('dbx_pii_address' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`address` ALTER COLUMN `state_province` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`address` ALTER COLUMN `state_province` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`address` ALTER COLUMN `tax_jurisdiction_code` SET TAGS ('dbx_business_glossary_term' = 'Tax Jurisdiction Code');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`address` ALTER COLUMN `tax_jurisdiction_code` SET TAGS ('dbx_ssot_ref' = 'finance.company_code');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`address` ALTER COLUMN `tax_jurisdiction_code` SET TAGS ('dbx_denormalized' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`address` ALTER COLUMN `tax_jurisdiction_code` SET TAGS ('dbx_ssot' = 'finance.tax_determination.jurisdiction_code');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`address` ALTER COLUMN `tax_jurisdiction_code` SET TAGS ('dbx_natural_key' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`address` ALTER COLUMN `tax_jurisdiction_code` SET TAGS ('dbx_denorm_ref' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`address` ALTER COLUMN `tax_jurisdiction_code` SET TAGS ('dbx_denormalized_natural_key' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`address` ALTER COLUMN `tax_jurisdiction_code` SET TAGS ('dbx_normalize' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`address` ALTER COLUMN `time_zone` SET TAGS ('dbx_business_glossary_term' = 'Time Zone');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`address` ALTER COLUMN `validation_source` SET TAGS ('dbx_business_glossary_term' = 'Address Validation Source');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`address` ALTER COLUMN `validation_source` SET TAGS ('dbx_value_regex' = 'usps_cass|google_maps|here_api|informatica_mdm|manual|unvalidated');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`address` ALTER COLUMN `validation_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Address Validation Timestamp');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`address` ALTER COLUMN `vat_registration_number` SET TAGS ('dbx_business_glossary_term' = 'VAT Registration Number');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`address` ALTER COLUMN `vat_registration_number` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`address` ALTER COLUMN `vat_registration_number` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`address` ALTER COLUMN `vat_registration_number` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`credit_profile` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_manufacturing_v1`.`customer`.`credit_profile` SET TAGS ('dbx_subdomain' = 'engagement_lifecycle');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`credit_profile` SET TAGS ('dbx_subdomain' = 'customer_engagement');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`credit_profile` ALTER COLUMN `credit_profile_id` SET TAGS ('dbx_business_glossary_term' = 'Credit Profile ID');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`credit_profile` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Credit Analyst Employee Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`credit_profile` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
@@ -1229,12 +1348,10 @@ ALTER TABLE `vibe_manufacturing_v1`.`customer`.`credit_profile` ALTER COLUMN `ba
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`credit_profile` ALTER COLUMN `collection_strategy_code` SET TAGS ('dbx_business_glossary_term' = 'Collection Strategy Code');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`credit_profile` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`credit_profile` ALTER COLUMN `credit_account_type` SET TAGS ('dbx_business_glossary_term' = 'Credit Account Type');
-ALTER TABLE `vibe_manufacturing_v1`.`customer`.`credit_profile` ALTER COLUMN `credit_account_type` SET TAGS ('dbx_value_regex' = 'domestic|export|intercompany|distributor|oem');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`credit_profile` ALTER COLUMN `credit_control_area` SET TAGS ('dbx_business_glossary_term' = 'Credit Control Area');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`credit_profile` ALTER COLUMN `credit_hold_date` SET TAGS ('dbx_business_glossary_term' = 'Credit Hold Date');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`credit_profile` ALTER COLUMN `credit_hold_flag` SET TAGS ('dbx_business_glossary_term' = 'Credit Hold Flag');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`credit_profile` ALTER COLUMN `credit_hold_reason` SET TAGS ('dbx_business_glossary_term' = 'Credit Hold Reason');
-ALTER TABLE `vibe_manufacturing_v1`.`customer`.`credit_profile` ALTER COLUMN `credit_hold_reason` SET TAGS ('dbx_value_regex' = 'overdue_balance|credit_limit_exceeded|payment_default|legal_dispute|credit_review_pending|fraud_suspicion');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`credit_profile` ALTER COLUMN `credit_hold_released_date` SET TAGS ('dbx_business_glossary_term' = 'Credit Hold Released Date');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`credit_profile` ALTER COLUMN `credit_insurance_coverage_limit` SET TAGS ('dbx_business_glossary_term' = 'Credit Insurance Coverage Limit');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`credit_profile` ALTER COLUMN `credit_insurance_coverage_limit` SET TAGS ('dbx_confidential' = 'true');
@@ -1251,10 +1368,8 @@ ALTER TABLE `vibe_manufacturing_v1`.`customer`.`credit_profile` ALTER COLUMN `cr
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`credit_profile` ALTER COLUMN `credit_rating` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`credit_profile` ALTER COLUMN `credit_rating_agency` SET TAGS ('dbx_business_glossary_term' = 'Credit Rating Agency');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`credit_profile` ALTER COLUMN `credit_review_frequency` SET TAGS ('dbx_business_glossary_term' = 'Credit Review Frequency');
-ALTER TABLE `vibe_manufacturing_v1`.`customer`.`credit_profile` ALTER COLUMN `credit_review_frequency` SET TAGS ('dbx_value_regex' = 'monthly|quarterly|semi_annual|annual|event_driven');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`credit_profile` ALTER COLUMN `credit_segment` SET TAGS ('dbx_business_glossary_term' = 'Credit Segment');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`credit_profile` ALTER COLUMN `credit_status` SET TAGS ('dbx_business_glossary_term' = 'Credit Status');
-ALTER TABLE `vibe_manufacturing_v1`.`customer`.`credit_profile` ALTER COLUMN `credit_status` SET TAGS ('dbx_value_regex' = 'active|on_hold|blocked|suspended|closed');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`credit_profile` ALTER COLUMN `credit_utilization_pct` SET TAGS ('dbx_business_glossary_term' = 'Credit Utilization Percentage');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`credit_profile` ALTER COLUMN `credit_utilization_pct` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`credit_profile` ALTER COLUMN `currency_code` SET TAGS ('dbx_business_glossary_term' = 'Currency Code');
@@ -1280,7 +1395,6 @@ ALTER TABLE `vibe_manufacturing_v1`.`customer`.`credit_profile` ALTER COLUMN `ov
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`credit_profile` ALTER COLUMN `payment_behavior_score` SET TAGS ('dbx_business_glossary_term' = 'Payment Behavior Score');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`credit_profile` ALTER COLUMN `payment_behavior_score` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`credit_profile` ALTER COLUMN `payment_method` SET TAGS ('dbx_business_glossary_term' = 'Payment Method');
-ALTER TABLE `vibe_manufacturing_v1`.`customer`.`credit_profile` ALTER COLUMN `payment_method` SET TAGS ('dbx_value_regex' = 'bank_transfer|check|letter_of_credit|direct_debit|documentary_collection');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`credit_profile` ALTER COLUMN `payment_terms_code` SET TAGS ('dbx_business_glossary_term' = 'Payment Terms Code');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`credit_profile` ALTER COLUMN `payment_terms_days` SET TAGS ('dbx_business_glossary_term' = 'Payment Terms Days');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`credit_profile` ALTER COLUMN `risk_category` SET TAGS ('dbx_business_glossary_term' = 'Credit Risk Category');
@@ -1290,7 +1404,7 @@ ALTER TABLE `vibe_manufacturing_v1`.`customer`.`credit_profile` ALTER COLUMN `sa
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`credit_profile` ALTER COLUMN `sap_customer_account_number` SET TAGS ('dbx_business_glossary_term' = 'SAP Customer Account Number');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`credit_profile` ALTER COLUMN `sap_customer_account_number` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`sla_agreement` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_manufacturing_v1`.`customer`.`sla_agreement` SET TAGS ('dbx_subdomain' = 'engagement_lifecycle');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`sla_agreement` SET TAGS ('dbx_subdomain' = 'customer_engagement');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`sla_agreement` ALTER COLUMN `sla_agreement_id` SET TAGS ('dbx_business_glossary_term' = 'Service Level Agreement (SLA) Agreement ID');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`sla_agreement` ALTER COLUMN `customer_account_id` SET TAGS ('dbx_business_glossary_term' = 'Account ID');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`sla_agreement` ALTER COLUMN `customer_contact_id` SET TAGS ('dbx_business_glossary_term' = 'Escalation Contact ID');
@@ -1299,6 +1413,8 @@ ALTER TABLE `vibe_manufacturing_v1`.`customer`.`sla_agreement` ALTER COLUMN `emp
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`sla_agreement` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`sla_agreement` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`sla_agreement` ALTER COLUMN `agreement_name` SET TAGS ('dbx_business_glossary_term' = 'Service Level Agreement (SLA) Agreement Name');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`sla_agreement` ALTER COLUMN `agreement_name` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`sla_agreement` ALTER COLUMN `agreement_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`sla_agreement` ALTER COLUMN `agreement_number` SET TAGS ('dbx_business_glossary_term' = 'Service Level Agreement (SLA) Agreement Number');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`sla_agreement` ALTER COLUMN `agreement_number` SET TAGS ('dbx_value_regex' = '^SLA-[A-Z0-9]{4,20}$');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`sla_agreement` ALTER COLUMN `agreement_status` SET TAGS ('dbx_business_glossary_term' = 'Service Level Agreement (SLA) Agreement Status');
@@ -1393,6 +1509,8 @@ ALTER TABLE `vibe_manufacturing_v1`.`customer`.`account_relationship` ALTER COLU
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`account_relationship` ALTER COLUMN `relationship_health_score` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`account_relationship` ALTER COLUMN `relationship_health_score` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`account_relationship` ALTER COLUMN `relationship_name` SET TAGS ('dbx_business_glossary_term' = 'Relationship Name');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`account_relationship` ALTER COLUMN `relationship_name` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`account_relationship` ALTER COLUMN `relationship_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`account_relationship` ALTER COLUMN `relationship_number` SET TAGS ('dbx_business_glossary_term' = 'Relationship Number');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`account_relationship` ALTER COLUMN `relationship_number` SET TAGS ('dbx_value_regex' = '^REL-[0-9]{8,12}$');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`account_relationship` ALTER COLUMN `relationship_source` SET TAGS ('dbx_business_glossary_term' = 'Relationship Source System');
@@ -1411,13 +1529,12 @@ ALTER TABLE `vibe_manufacturing_v1`.`customer`.`account_relationship` ALTER COLU
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`account_relationship` ALTER COLUMN `sla_tier` SET TAGS ('dbx_value_regex' = 'platinum|gold|silver|bronze|standard');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`account_relationship` ALTER COLUMN `start_date` SET TAGS ('dbx_business_glossary_term' = 'Relationship Start Date');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`account_relationship` ALTER COLUMN `strategic_importance_rating` SET TAGS ('dbx_business_glossary_term' = 'Strategic Importance Rating');
-ALTER TABLE `vibe_manufacturing_v1`.`customer`.`account_relationship` ALTER COLUMN `strategic_importance_rating` SET TAGS ('dbx_value_regex' = 'critical|high|medium|low');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`account_relationship` ALTER COLUMN `termination_reason` SET TAGS ('dbx_business_glossary_term' = 'Termination Reason');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`account_relationship` ALTER COLUMN `termination_reason` SET TAGS ('dbx_value_regex' = 'contract_expiry|mutual_agreement|breach|acquisition|restructuring|other');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`account_relationship` ALTER COLUMN `territory_code` SET TAGS ('dbx_business_glossary_term' = 'Territory Code');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`account_relationship` ALTER COLUMN `territory_code` SET TAGS ('dbx_value_regex' = '^[A-Z]{2,6}$');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`interaction` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_manufacturing_v1`.`customer`.`interaction` SET TAGS ('dbx_subdomain' = 'engagement_lifecycle');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`interaction` SET TAGS ('dbx_subdomain' = 'customer_engagement');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`interaction` ALTER COLUMN `interaction_id` SET TAGS ('dbx_business_glossary_term' = 'Customer Interaction ID');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`interaction` ALTER COLUMN `customer_account_id` SET TAGS ('dbx_business_glossary_term' = 'Customer Account ID');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`interaction` ALTER COLUMN `customer_contact_id` SET TAGS ('dbx_business_glossary_term' = 'Customer Contact ID');
@@ -1452,6 +1569,8 @@ ALTER TABLE `vibe_manufacturing_v1`.`customer`.`interaction` ALTER COLUMN `is_cu
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`interaction` ALTER COLUMN `is_executive_sponsor_involved` SET TAGS ('dbx_business_glossary_term' = 'Executive Sponsor Involvement Flag');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`interaction` ALTER COLUMN `last_modified_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Last Modified Timestamp');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`interaction` ALTER COLUMN `location_name` SET TAGS ('dbx_business_glossary_term' = 'Interaction Location Name');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`interaction` ALTER COLUMN `location_name` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`interaction` ALTER COLUMN `location_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`interaction` ALTER COLUMN `location_type` SET TAGS ('dbx_business_glossary_term' = 'Interaction Location Type');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`interaction` ALTER COLUMN `location_type` SET TAGS ('dbx_value_regex' = 'customer_site|company_office|trade_show|virtual|factory_floor|neutral_venue');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`interaction` ALTER COLUMN `next_interaction_date` SET TAGS ('dbx_business_glossary_term' = 'Next Planned Interaction Date');
@@ -1476,7 +1595,7 @@ ALTER TABLE `vibe_manufacturing_v1`.`customer`.`interaction` ALTER COLUMN `subje
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`interaction` ALTER COLUMN `verbatim_feedback` SET TAGS ('dbx_business_glossary_term' = 'Customer Verbatim Feedback');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`interaction` ALTER COLUMN `verbatim_feedback` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_lead` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_lead` SET TAGS ('dbx_subdomain' = 'engagement_lifecycle');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_lead` SET TAGS ('dbx_subdomain' = 'customer_engagement');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_lead` ALTER COLUMN `customer_lead_id` SET TAGS ('dbx_business_glossary_term' = 'Lead ID');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_lead` ALTER COLUMN `rep_id` SET TAGS ('dbx_business_glossary_term' = 'Assigned Sales Representative ID');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_lead` ALTER COLUMN `customer_account_id` SET TAGS ('dbx_business_glossary_term' = 'Converted Account ID');
@@ -1490,6 +1609,8 @@ ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_lead` ALTER COLUMN `cit
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_lead` ALTER COLUMN `company_industry` SET TAGS ('dbx_business_glossary_term' = 'Lead Company Industry Sector');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_lead` ALTER COLUMN `company_name` SET TAGS ('dbx_business_glossary_term' = 'Lead Company Name');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_lead` ALTER COLUMN `company_name` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_lead` ALTER COLUMN `company_name` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_lead` ALTER COLUMN `company_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_lead` ALTER COLUMN `company_size` SET TAGS ('dbx_business_glossary_term' = 'Lead Company Employee Size Band');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_lead` ALTER COLUMN `company_size` SET TAGS ('dbx_value_regex' = '1-50|51-200|201-1000|1001-5000|5001+');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_lead` ALTER COLUMN `conversion_date` SET TAGS ('dbx_business_glossary_term' = 'Lead Conversion Date');
@@ -1504,9 +1625,13 @@ ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_lead` ALTER COLUMN `ema
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_lead` ALTER COLUMN `email` SET TAGS ('dbx_value_regex' = '^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+.[a-zA-Z]{2,}$');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_lead` ALTER COLUMN `email` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_lead` ALTER COLUMN `email` SET TAGS ('dbx_pii_email' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_lead` ALTER COLUMN `email` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_lead` ALTER COLUMN `email` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_lead` ALTER COLUMN `email_opt_out` SET TAGS ('dbx_business_glossary_term' = 'Email Opt-Out Flag');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_lead` ALTER COLUMN `email_opt_out` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_lead` ALTER COLUMN `email_opt_out` SET TAGS ('dbx_pii_email' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_lead` ALTER COLUMN `email_opt_out` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_lead` ALTER COLUMN `email_opt_out` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_lead` ALTER COLUMN `estimated_annual_revenue` SET TAGS ('dbx_business_glossary_term' = 'Estimated Annual Revenue');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_lead` ALTER COLUMN `estimated_annual_revenue` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_lead` ALTER COLUMN `estimated_close_date` SET TAGS ('dbx_business_glossary_term' = 'Estimated Close Date');
@@ -1517,6 +1642,9 @@ ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_lead` ALTER COLUMN `exi
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_lead` ALTER COLUMN `first_name` SET TAGS ('dbx_business_glossary_term' = 'Lead Contact First Name');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_lead` ALTER COLUMN `first_name` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_lead` ALTER COLUMN `first_name` SET TAGS ('dbx_pii_name' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_lead` ALTER COLUMN `first_name` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_lead` ALTER COLUMN `first_name` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_lead` ALTER COLUMN `first_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_lead` ALTER COLUMN `grade` SET TAGS ('dbx_business_glossary_term' = 'Lead Grade');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_lead` ALTER COLUMN `grade` SET TAGS ('dbx_value_regex' = 'A|B|C|D');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_lead` ALTER COLUMN `is_converted` SET TAGS ('dbx_business_glossary_term' = 'Lead Converted Flag');
@@ -1525,6 +1653,9 @@ ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_lead` ALTER COLUMN `las
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_lead` ALTER COLUMN `last_name` SET TAGS ('dbx_business_glossary_term' = 'Lead Contact Last Name');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_lead` ALTER COLUMN `last_name` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_lead` ALTER COLUMN `last_name` SET TAGS ('dbx_pii_name' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_lead` ALTER COLUMN `last_name` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_lead` ALTER COLUMN `last_name` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_lead` ALTER COLUMN `last_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_lead` ALTER COLUMN `lead_source` SET TAGS ('dbx_business_glossary_term' = 'Lead Source Channel');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_lead` ALTER COLUMN `lead_status` SET TAGS ('dbx_business_glossary_term' = 'Lead Status');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_lead` ALTER COLUMN `lead_status` SET TAGS ('dbx_value_regex' = 'New|Working|Qualified|Converted|Disqualified');
@@ -1537,13 +1668,16 @@ ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_lead` ALTER COLUMN `no_
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_lead` ALTER COLUMN `phone` SET TAGS ('dbx_business_glossary_term' = 'Lead Contact Phone Number');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_lead` ALTER COLUMN `phone` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_lead` ALTER COLUMN `phone` SET TAGS ('dbx_pii_phone' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_lead` ALTER COLUMN `phone` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_lead` ALTER COLUMN `phone` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_lead` ALTER COLUMN `plc_installed_base` SET TAGS ('dbx_business_glossary_term' = 'Programmable Logic Controller (PLC) Installed Base');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_lead` ALTER COLUMN `plc_installed_base` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_lead` ALTER COLUMN `product_interest_area` SET TAGS ('dbx_business_glossary_term' = 'Product Interest Area');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_lead` ALTER COLUMN `referral_partner_name` SET TAGS ('dbx_business_glossary_term' = 'Referral Partner Name');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_lead` ALTER COLUMN `referral_partner_name` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_lead` ALTER COLUMN `referral_partner_name` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_lead` ALTER COLUMN `referral_partner_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_lead` ALTER COLUMN `revenue_currency` SET TAGS ('dbx_business_glossary_term' = 'Revenue Currency Code');
-ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_lead` ALTER COLUMN `revenue_currency` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_lead` ALTER COLUMN `sales_region` SET TAGS ('dbx_business_glossary_term' = 'Sales Region');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_lead` ALTER COLUMN `sales_region` SET TAGS ('dbx_value_regex' = 'North America|Europe|Asia Pacific|Latin America|Middle East & Africa');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_lead` ALTER COLUMN `sales_territory` SET TAGS ('dbx_business_glossary_term' = 'Sales Territory');
@@ -1558,6 +1692,7 @@ ALTER TABLE `vibe_manufacturing_v1`.`customer`.`account_site` ALTER COLUMN `acco
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`account_site` ALTER COLUMN `cost_center_id` SET TAGS ('dbx_business_glossary_term' = 'Cost Center Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`account_site` ALTER COLUMN `customer_account_id` SET TAGS ('dbx_business_glossary_term' = 'Account ID');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`account_site` ALTER COLUMN `customer_contact_id` SET TAGS ('dbx_business_glossary_term' = 'Primary Site Contact ID');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`account_site` ALTER COLUMN `sku_master_id` SET TAGS ('dbx_business_glossary_term' = 'Installed Sku Master Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`account_site` ALTER COLUMN `org_unit_id` SET TAGS ('dbx_business_glossary_term' = 'Org Unit Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`account_site` ALTER COLUMN `profit_center_id` SET TAGS ('dbx_business_glossary_term' = 'Profit Center Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`account_site` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Site Manager Employee Id (Foreign Key)');
@@ -1565,14 +1700,15 @@ ALTER TABLE `vibe_manufacturing_v1`.`customer`.`account_site` ALTER COLUMN `empl
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`account_site` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`account_site` ALTER COLUMN `rep_id` SET TAGS ('dbx_business_glossary_term' = 'Site Sales Rep Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`account_site` ALTER COLUMN `network_node_id` SET TAGS ('dbx_business_glossary_term' = 'Supply Network Node Id (Foreign Key)');
-ALTER TABLE `vibe_manufacturing_v1`.`customer`.`account_site` ALTER COLUMN `site_id` SET TAGS ('dbx_business_glossary_term' = 'Supplier Site Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`account_site` ALTER COLUMN `access_restriction_notes` SET TAGS ('dbx_business_glossary_term' = 'Site Access Restriction Notes');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`account_site` ALTER COLUMN `address_line1` SET TAGS ('dbx_business_glossary_term' = 'Site Address Line 1');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`account_site` ALTER COLUMN `address_line1` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`account_site` ALTER COLUMN `address_line1` SET TAGS ('dbx_pii_address' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`account_site` ALTER COLUMN `address_line1` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`account_site` ALTER COLUMN `address_line2` SET TAGS ('dbx_business_glossary_term' = 'Site Address Line 2');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`account_site` ALTER COLUMN `address_line2` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`account_site` ALTER COLUMN `address_line2` SET TAGS ('dbx_pii_address' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`account_site` ALTER COLUMN `address_line2` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`account_site` ALTER COLUMN `city` SET TAGS ('dbx_business_glossary_term' = 'Site City');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`account_site` ALTER COLUMN `city` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`account_site` ALTER COLUMN `city` SET TAGS ('dbx_pii_address' = 'true');
@@ -1605,9 +1741,7 @@ ALTER TABLE `vibe_manufacturing_v1`.`customer`.`account_site` ALTER COLUMN `next
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`account_site` ALTER COLUMN `number_of_production_lines` SET TAGS ('dbx_business_glossary_term' = 'Number of Production Lines');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`account_site` ALTER COLUMN `operates_24x7` SET TAGS ('dbx_business_glossary_term' = '24x7 Operations Flag');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`account_site` ALTER COLUMN `operational_hours_end` SET TAGS ('dbx_business_glossary_term' = 'Operational Hours End Time');
-ALTER TABLE `vibe_manufacturing_v1`.`customer`.`account_site` ALTER COLUMN `operational_hours_end` SET TAGS ('dbx_value_regex' = '^([01]d|2[0-3]):[0-5]d$');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`account_site` ALTER COLUMN `operational_hours_start` SET TAGS ('dbx_business_glossary_term' = 'Operational Hours Start Time');
-ALTER TABLE `vibe_manufacturing_v1`.`customer`.`account_site` ALTER COLUMN `operational_hours_start` SET TAGS ('dbx_value_regex' = '^([01]d|2[0-3]):[0-5]d$');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`account_site` ALTER COLUMN `plant_floor_area_sqm` SET TAGS ('dbx_business_glossary_term' = 'Plant Floor Area (Square Meters)');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`account_site` ALTER COLUMN `postal_code` SET TAGS ('dbx_business_glossary_term' = 'Site Postal Code');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`account_site` ALTER COLUMN `postal_code` SET TAGS ('dbx_confidential' = 'true');
@@ -1623,15 +1757,26 @@ ALTER TABLE `vibe_manufacturing_v1`.`customer`.`account_site` ALTER COLUMN `site
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`account_site` ALTER COLUMN `site_contact_email` SET TAGS ('dbx_value_regex' = '^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+.[a-zA-Z]{2,}$');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`account_site` ALTER COLUMN `site_contact_email` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`account_site` ALTER COLUMN `site_contact_email` SET TAGS ('dbx_pii_email' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`account_site` ALTER COLUMN `site_contact_email` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`account_site` ALTER COLUMN `site_contact_email` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`account_site` ALTER COLUMN `site_contact_email` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`account_site` ALTER COLUMN `site_contact_name` SET TAGS ('dbx_business_glossary_term' = 'Site Contact Name');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`account_site` ALTER COLUMN `site_contact_name` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`account_site` ALTER COLUMN `site_contact_name` SET TAGS ('dbx_pii_name' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`account_site` ALTER COLUMN `site_contact_name` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`account_site` ALTER COLUMN `site_contact_name` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`account_site` ALTER COLUMN `site_contact_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`account_site` ALTER COLUMN `site_contact_phone` SET TAGS ('dbx_business_glossary_term' = 'Site Contact Phone Number');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`account_site` ALTER COLUMN `site_contact_phone` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`account_site` ALTER COLUMN `site_contact_phone` SET TAGS ('dbx_pii_phone' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`account_site` ALTER COLUMN `site_contact_phone` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`account_site` ALTER COLUMN `site_contact_phone` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`account_site` ALTER COLUMN `site_contact_phone` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`account_site` ALTER COLUMN `site_criticality_rating` SET TAGS ('dbx_business_glossary_term' = 'Site Criticality Rating');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`account_site` ALTER COLUMN `site_criticality_rating` SET TAGS ('dbx_value_regex' = 'critical|high|medium|low');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`account_site` ALTER COLUMN `site_name` SET TAGS ('dbx_business_glossary_term' = 'Site Name');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`account_site` ALTER COLUMN `site_name` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`account_site` ALTER COLUMN `site_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`account_site` ALTER COLUMN `site_status` SET TAGS ('dbx_business_glossary_term' = 'Site Status');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`account_site` ALTER COLUMN `site_status` SET TAGS ('dbx_value_regex' = 'active|decommissioned|under_construction|suspended|planned');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`account_site` ALTER COLUMN `site_type` SET TAGS ('dbx_business_glossary_term' = 'Site Type');
@@ -1643,14 +1788,22 @@ ALTER TABLE `vibe_manufacturing_v1`.`customer`.`account_site` ALTER COLUMN `stat
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`account_site` ALTER COLUMN `state_province` SET TAGS ('dbx_pii_address' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`account_site` ALTER COLUMN `time_zone` SET TAGS ('dbx_business_glossary_term' = 'Site Time Zone');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_certification` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_certification` SET TAGS ('dbx_subdomain' = 'engagement_lifecycle');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_certification` SET TAGS ('dbx_subdomain' = 'customer_engagement');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_certification` SET TAGS ('dbx_ssot' = 'reference');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_certification` SET TAGS ('dbx_ssot_group' = 'certification');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_certification` SET TAGS ('dbx_ssot_master' = 'asset.asset_certification');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_certification` SET TAGS ('dbx_ssot_of' = 'asset.asset_certification');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_certification` SET TAGS ('dbx_ssot_role' = 'owner');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_certification` SET TAGS ('dbx_ssot_subject' = 'customer_site_certification');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_certification` SET TAGS ('dbx_duplicate_resolution' = 'subject_partition');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_certification` SET TAGS ('dbx_product_conformity_ssot' = 'product.product_certification');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_certification` SET TAGS ('dbx_ssot_canonical' = 'asset.asset_certification');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_certification` ALTER COLUMN `customer_certification_id` SET TAGS ('dbx_business_glossary_term' = 'Customer Certification ID');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_certification` ALTER COLUMN `account_site_id` SET TAGS ('dbx_business_glossary_term' = 'Site ID');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_certification` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Auditor Employee Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_certification` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_certification` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_certification` ALTER COLUMN `customer_account_id` SET TAGS ('dbx_business_glossary_term' = 'Account ID');
-ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_certification` ALTER COLUMN `product_certification_id` SET TAGS ('dbx_business_glossary_term' = 'Product Certification Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_certification` ALTER COLUMN `applicable_product_categories` SET TAGS ('dbx_business_glossary_term' = 'Applicable Product Categories');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_certification` ALTER COLUMN `body_country` SET TAGS ('dbx_business_glossary_term' = 'Certification Body Country');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_certification` ALTER COLUMN `body_country` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
@@ -1676,6 +1829,8 @@ ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_certification` ALTER CO
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_certification` ALTER COLUMN `issue_date` SET TAGS ('dbx_business_glossary_term' = 'Certificate Issue Date');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_certification` ALTER COLUMN `issuing_body_accreditation_number` SET TAGS ('dbx_business_glossary_term' = 'Issuing Body Accreditation Number');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_certification` ALTER COLUMN `issuing_body_name` SET TAGS ('dbx_business_glossary_term' = 'Issuing Body Name');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_certification` ALTER COLUMN `issuing_body_name` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_certification` ALTER COLUMN `issuing_body_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_certification` ALTER COLUMN `last_surveillance_audit_date` SET TAGS ('dbx_business_glossary_term' = 'Last Surveillance Audit Date');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_certification` ALTER COLUMN `next_surveillance_audit_date` SET TAGS ('dbx_business_glossary_term' = 'Next Surveillance Audit Date');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_certification` ALTER COLUMN `nonconformance_count` SET TAGS ('dbx_business_glossary_term' = 'Non-Conformance Count');
@@ -1695,7 +1850,7 @@ ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_certification` ALTER CO
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_certification` ALTER COLUMN `verification_method` SET TAGS ('dbx_value_regex' = 'manual_review|online_registry|third_party_audit|self_declaration');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_certification` ALTER COLUMN `verified_by` SET TAGS ('dbx_business_glossary_term' = 'Verified By');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_entitlement` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_entitlement` SET TAGS ('dbx_subdomain' = 'engagement_lifecycle');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_entitlement` SET TAGS ('dbx_subdomain' = 'customer_engagement');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_entitlement` ALTER COLUMN `customer_entitlement_id` SET TAGS ('dbx_business_glossary_term' = 'Entitlement ID');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_entitlement` ALTER COLUMN `customer_account_id` SET TAGS ('dbx_business_glossary_term' = 'Account ID');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_entitlement` ALTER COLUMN `customer_contact_id` SET TAGS ('dbx_business_glossary_term' = 'Primary Contact ID');
@@ -1733,6 +1888,13 @@ ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_entitlement` ALTER COLU
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_entitlement` ALTER COLUMN `is_perpetual` SET TAGS ('dbx_business_glossary_term' = 'Is Perpetual Flag');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_entitlement` ALTER COLUMN `last_modified_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Last Modified Timestamp');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_entitlement` ALTER COLUMN `customer_entitlement_name` SET TAGS ('dbx_business_glossary_term' = 'Entitlement Name');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_entitlement` ALTER COLUMN `customer_entitlement_name` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_entitlement` ALTER COLUMN `customer_entitlement_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_entitlement` ALTER COLUMN `customer_entitlement_name` SET TAGS ('dbx_mask_non_prod' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_entitlement` ALTER COLUMN `customer_entitlement_name` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_entitlement` ALTER COLUMN `customer_entitlement_name` SET TAGS ('dbx_pii_type' = 'person_name');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_entitlement` ALTER COLUMN `customer_entitlement_name` SET TAGS ('dbx_pii_kind' = 'person_name');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_entitlement` ALTER COLUMN `customer_entitlement_name` SET TAGS ('dbx_mask_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_entitlement` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Entitlement Notes');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_entitlement` ALTER COLUMN `parts_access_eligible` SET TAGS ('dbx_business_glossary_term' = 'Spare Parts Access Eligible Flag');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_entitlement` ALTER COLUMN `preventive_maintenance_visits` SET TAGS ('dbx_business_glossary_term' = 'Preventive Maintenance (PM) Visits Allocated');
@@ -1817,7 +1979,7 @@ ALTER TABLE `vibe_manufacturing_v1`.`customer`.`account_team` ALTER COLUMN `star
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`account_team` ALTER COLUMN `team_member_role` SET TAGS ('dbx_business_glossary_term' = 'Account Team Member Role');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`account_team` ALTER COLUMN `termination_reason` SET TAGS ('dbx_business_glossary_term' = 'Assignment Termination Reason');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_onboarding` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_onboarding` SET TAGS ('dbx_subdomain' = 'engagement_lifecycle');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_onboarding` SET TAGS ('dbx_subdomain' = 'customer_engagement');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_onboarding` ALTER COLUMN `customer_onboarding_id` SET TAGS ('dbx_business_glossary_term' = 'Onboarding ID');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_onboarding` ALTER COLUMN `customer_account_id` SET TAGS ('dbx_business_glossary_term' = 'Customer ID');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_onboarding` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Onboarding Coordinator ID');
@@ -1840,14 +2002,19 @@ ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_onboarding` ALTER COLUM
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_onboarding` ALTER COLUMN `credit_limit_approved` SET TAGS ('dbx_business_glossary_term' = 'Approved Credit Limit');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_onboarding` ALTER COLUMN `credit_limit_approved` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_onboarding` ALTER COLUMN `credit_setup_status` SET TAGS ('dbx_business_glossary_term' = 'Credit Setup Status');
-ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_onboarding` ALTER COLUMN `credit_setup_status` SET TAGS ('dbx_value_regex' = 'pending|in_review|approved|rejected|on_hold');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_onboarding` ALTER COLUMN `customer_primary_contact_email` SET TAGS ('dbx_business_glossary_term' = 'Customer Primary Contact Email');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_onboarding` ALTER COLUMN `customer_primary_contact_email` SET TAGS ('dbx_value_regex' = '^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+.[a-zA-Z]{2,}$');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_onboarding` ALTER COLUMN `customer_primary_contact_email` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_onboarding` ALTER COLUMN `customer_primary_contact_email` SET TAGS ('dbx_pii_email' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_onboarding` ALTER COLUMN `customer_primary_contact_email` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_onboarding` ALTER COLUMN `customer_primary_contact_email` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_onboarding` ALTER COLUMN `customer_primary_contact_email` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_onboarding` ALTER COLUMN `customer_primary_contact_name` SET TAGS ('dbx_business_glossary_term' = 'Customer Primary Contact Name');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_onboarding` ALTER COLUMN `customer_primary_contact_name` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_onboarding` ALTER COLUMN `customer_primary_contact_name` SET TAGS ('dbx_pii_name' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_onboarding` ALTER COLUMN `customer_primary_contact_name` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_onboarding` ALTER COLUMN `customer_primary_contact_name` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_onboarding` ALTER COLUMN `customer_primary_contact_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_onboarding` ALTER COLUMN `edi_setup_status` SET TAGS ('dbx_business_glossary_term' = 'Electronic Data Interchange (EDI) Setup Status');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_onboarding` ALTER COLUMN `edi_setup_status` SET TAGS ('dbx_value_regex' = 'not_required|pending|in_progress|testing|completed|failed');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_onboarding` ALTER COLUMN `erp_account_created_flag` SET TAGS ('dbx_business_glossary_term' = 'Enterprise Resource Planning (ERP) Account Created Flag');
@@ -1885,7 +2052,7 @@ ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_onboarding` ALTER COLUM
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_onboarding` ALTER COLUMN `training_completed_flag` SET TAGS ('dbx_business_glossary_term' = 'Training Completed Flag');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_onboarding` ALTER COLUMN `training_completion_date` SET TAGS ('dbx_business_glossary_term' = 'Training Completion Date');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_document` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_document` SET TAGS ('dbx_subdomain' = 'engagement_lifecycle');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_document` SET TAGS ('dbx_subdomain' = 'customer_engagement');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_document` ALTER COLUMN `customer_document_id` SET TAGS ('dbx_business_glossary_term' = 'Customer Document ID');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_document` ALTER COLUMN `account_site_id` SET TAGS ('dbx_business_glossary_term' = 'Customer Site ID');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_document` ALTER COLUMN `customer_account_id` SET TAGS ('dbx_business_glossary_term' = 'Customer Account ID');
@@ -1916,6 +2083,7 @@ ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_document` ALTER COLUMN 
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_document` ALTER COLUMN `effective_date` SET TAGS ('dbx_business_glossary_term' = 'Effective Date');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_document` ALTER COLUMN `expiry_date` SET TAGS ('dbx_business_glossary_term' = 'Expiry Date');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_document` ALTER COLUMN `file_name` SET TAGS ('dbx_business_glossary_term' = 'File Name');
+ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_document` ALTER COLUMN `file_name` SET TAGS ('dbx_sensitivity' = 'pii');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_document` ALTER COLUMN `file_size_bytes` SET TAGS ('dbx_business_glossary_term' = 'File Size (Bytes)');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_document` ALTER COLUMN `is_confidential` SET TAGS ('dbx_business_glossary_term' = 'Confidential Flag');
 ALTER TABLE `vibe_manufacturing_v1`.`customer`.`customer_document` ALTER COLUMN `is_mandatory` SET TAGS ('dbx_business_glossary_term' = 'Mandatory Flag');

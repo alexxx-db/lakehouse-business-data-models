@@ -1,5 +1,5 @@
--- Schema for Domain: finance | Business:  | Version: v2_ecm
--- Generated on: 2026-07-10 12:59:01
+-- Schema for Domain: finance | Business: Manufacturing | Version: v2_ecm
+-- Generated on: 2026-07-03 05:59:32
 
 -- ========= DATABASE =========
 CREATE DATABASE IF NOT EXISTS `vibe_manufacturing_v1`.`finance` COMMENT 'Corporate finance and cost management domain governing general ledger, cost centers, profit centers, accounts payable, CapEx/OpEx tracking, EBITDA reporting, budgeting, financial planning and analysis, and financial consolidation via SAP FI/CO. Serves as SSOT for all internal financial structures and management accounting aligned with IFRS/GAAP.';
@@ -11,20 +11,20 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`finance`.`cost_center` (
     `actual_cost` DECIMAL(18,2) COMMENT 'Actual costs incurred by the cost center.',
     `allocation_basis` STRING COMMENT 'Method used to allocate costs from this center to other entities.. Valid values are `direct|percentage|activity_based`',
     `budget_amount` DECIMAL(18,2) COMMENT 'Planned budget allocated to the cost center for the fiscal period.',
-    `cost_center_code` STRING COMMENT 'Business key used to identify the cost center in financial transactions.',
+    `cost_center_code` DECIMAL(18,2) COMMENT 'Business key used to identify the cost center in financial transactions.',
     `controlling_area_code` STRING COMMENT 'Code of the controlling area to which the cost center belongs.',
-    `cost_center_group` STRING COMMENT 'Logical grouping of cost centers for reporting or allocation purposes.',
-    `cost_center_status` STRING COMMENT 'Current lifecycle status of the cost center.. Valid values are `active|inactive|planned|closed`',
-    `cost_center_type` STRING COMMENT 'Classification of the cost center by functional area.. Valid values are `production|administration|research_and_development|sales|support`',
+    `cost_center_group` DECIMAL(18,2) COMMENT 'Logical grouping of cost centers for reporting or allocation purposes.',
+    `cost_center_status` DECIMAL(18,2) COMMENT 'Current lifecycle status of the cost center.',
+    `cost_center_type` DECIMAL(18,2) COMMENT 'Classification of the cost center by functional area.',
     `created_timestamp` TIMESTAMP COMMENT 'Timestamp when the cost center record was first created.',
     `currency_code` STRING COMMENT 'Currency in which the cost centers financials are recorded.. Valid values are `^[A-Z]{3}$`',
-    `cost_center_description` STRING COMMENT 'Detailed description of the cost centers purpose and scope.',
+    `cost_center_description` DECIMAL(18,2) COMMENT 'Detailed description of the cost centers purpose and scope.',
     `external_reference` STRING COMMENT 'Identifier used to map the cost center to external systems or legacy codes.',
     `hierarchy_level` STRING COMMENT 'Depth of the cost center within the organizational hierarchy.',
     `hierarchy_path` STRING COMMENT 'Slash‑delimited path representing the cost centers position in the hierarchy (e.g., "/100/200/300").',
     `is_overhead` BOOLEAN COMMENT 'Indicates whether the cost center is used for overhead cost allocation.',
     `location_code` STRING COMMENT 'Code of the physical location or plant associated with the cost center.',
-    `cost_center_name` STRING COMMENT 'Human‑readable name of the cost center.',
+    `cost_center_name` DECIMAL(18,2) COMMENT 'Human‑readable name of the cost center.',
     `owner_department` STRING COMMENT 'Organizational department that owns the cost center.',
     `updated_timestamp` TIMESTAMP COMMENT 'Timestamp of the most recent update to the cost center record.',
     `variance_amount` DECIMAL(18,2) COMMENT 'Difference between budgeted and actual costs.',
@@ -71,6 +71,7 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`finance`.`profit_center` (
 
 CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`finance`.`gl_account` (
     `gl_account_id` BIGINT COMMENT 'System-generated unique identifier for the GL account record.',
+    `chart_of_accounts_id` BIGINT COMMENT '',
     `cost_center_id` BIGINT COMMENT 'Foreign key linking to finance.cost_center. Business justification: GL account may be assigned to a cost center for reporting.',
     `profit_center_id` BIGINT COMMENT 'Foreign key linking to finance.profit_center. Business justification: GL account may be assigned to a profit center for reporting.',
     `account_category` STRING COMMENT 'Business‑level categorisation used for reporting and analysis.. Valid values are `operating|non_operating|tax|intercompany|regulatory`',
@@ -79,9 +80,11 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`finance`.`gl_account` (
     `account_name` STRING COMMENT 'Human‑readable name describing the purpose of the GL account.',
     `account_number` STRING COMMENT 'External business identifier for the GL account, used in postings and reporting.',
     `account_type` STRING COMMENT 'Classification of the account by financial statement section.. Valid values are `balance_sheet|profit_and_loss|equity|asset|liability`',
-    `balance_type` STRING COMMENT 'Indicates whether the account is a natural debit or credit account.. Valid values are `debit|credit`',
+    `balance_amount` DECIMAL(18,2) COMMENT '',
+    `balance_type` DECIMAL(18,2) COMMENT 'Indicates whether the account is a natural debit or credit account.',
+    `blocked_flag` BOOLEAN COMMENT '',
     `consolidation_group` STRING COMMENT 'Identifier of the consolidation group for legal entity roll‑up.',
-    `cost_element_category` STRING COMMENT 'Indicates whether the account is linked to a primary or secondary cost element for CO integration.. Valid values are `primary|secondary|none`',
+    `cost_element_category` DECIMAL(18,2) COMMENT 'Indicates whether the account is linked to a primary or secondary cost element for CO integration.',
     `created_timestamp` TIMESTAMP COMMENT 'Timestamp when the GL account record was first created in the system.',
     `currency_code` STRING COMMENT 'ISO 4217 three‑letter code of the currency in which the account is denominated.',
     `current_balance` DECIMAL(18,2) COMMENT 'Running balance reflecting all posted transactions to date.',
@@ -116,18 +119,24 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`finance`.`gl_account` (
 CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`finance`.`company_code` (
     `company_code_id` BIGINT COMMENT 'Surrogate key for company code record.',
     `business_partner_id` BIGINT COMMENT 'Reference to the Business Partner master record representing the legal entity.',
+    `chart_of_accounts_id` BIGINT COMMENT '',
     `cost_center_id` BIGINT COMMENT 'Foreign key linking to finance.cost_center. Business justification: Company code is associated with a cost center for controlling.',
+    `active_flag` BOOLEAN COMMENT '',
+    `address_line` STRING COMMENT '',
     `annual_revenue_local_currency` DECIMAL(18,2) COMMENT 'Annual revenue reported in the entitys local currency.',
     `audit_trail_reference` BIGINT COMMENT 'Identifier linking to audit trail records for changes to this company code.',
     `chart_of_accounts` STRING COMMENT 'Chart of accounts key linked to the company code.',
     `company_code` STRING COMMENT 'Alphanumeric identifier for the legal entity as defined in SAP.',
     `company_code_status` STRING COMMENT 'Current lifecycle status of the company code.. Valid values are `active|inactive|pending|closed`',
+    `company_name` STRING COMMENT '',
     `consolidation_group` STRING COMMENT 'Group identifier for financial consolidation.',
     `consolidation_method` STRING COMMENT 'Method used for consolidation (e.g., full, proportional).',
     `controlling_area` STRING COMMENT 'Controlling area assigned for cost accounting.',
     `country` STRING COMMENT 'ISO 3166-1 alpha-3 country code where the legal entity is registered.',
+    `country_code` STRING COMMENT '',
     `created_timestamp` TIMESTAMP COMMENT 'Timestamp when the company code record was created in the source system.',
     `currency` STRING COMMENT 'ISO 4217 currency code used for the legal entitys financial reporting.',
+    `currency_code` STRING COMMENT '',
     `effective_end_date` DATE COMMENT 'Date when the company code ceases to be effective, if applicable.',
     `effective_start_date` DATE COMMENT 'Date from which the company code becomes effective.',
     `elimination_scope` STRING COMMENT 'Scope of intercompany eliminations for the company code.',
@@ -138,23 +147,26 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`finance`.`company_code` (
     `headquarter_state` STRING COMMENT 'State or province of the headquarters.',
     `industry_classification_code` STRING COMMENT 'Industry classification code (e.g., NAICS) for the entity.',
     `is_consolidated` BOOLEAN COMMENT 'Indicates whether the company code is included in group consolidation.',
+    `legal_entity_type` STRING COMMENT '',
     `legal_form` STRING COMMENT 'Legal form of the entity (e.g., corporation, LLC).',
     `company_code_name` STRING COMMENT 'Full legal name of the company entity.',
     `number_of_employees` STRING COMMENT 'Total number of employees for the legal entity.',
     `primary_contact_email` STRING COMMENT 'Primary email address for official communications with the legal entity.',
     `public_company_flag` BOOLEAN COMMENT 'Indicates if the entity is publicly listed.',
-    `registration_number` STRING COMMENT 'Official registration number of the entity with the corporate registry.',
+    `registration_number` DECIMAL(18,2) COMMENT 'Official registration number of the entity with the corporate registry.',
     `segment` STRING COMMENT 'Business segment classification for reporting.',
     `tax_exempt_flag` BOOLEAN COMMENT 'Indicates if the entity is tax-exempt.',
     `tax_id_number` STRING COMMENT 'Tax identification number (e.g., VAT, EIN) for the legal entity.',
+    `tax_registration_number` DECIMAL(18,2) COMMENT '',
     `updated_timestamp` TIMESTAMP COMMENT 'Timestamp of the most recent update to the company code record.',
     CONSTRAINT pk_company_code PRIMARY KEY(`company_code_id`)
 ) COMMENT 'Master record for SAP FI company codes representing legally independent entities within the manufacturing group. Captures company code identifier, company name, country, currency, fiscal year variant, chart of accounts assignment, controlling area assignment, consolidation group, consolidation method, and elimination scope. Serves as the organizational anchor for all financial postings, statutory reporting under IFRS/GAAP, and the consolidation unit for group financial statement preparation.';
 
 CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`finance`.`journal_entry` (
     `journal_entry_id` BIGINT COMMENT 'System-generated unique identifier for the journal entry record.',
+    `company_code_id` BIGINT COMMENT '',
     `cost_center_id` BIGINT COMMENT 'Foreign key linking to finance.cost_center. Business justification: Journal entry references a cost center; replace code with FK.',
-    `gl_account_id` BIGINT COMMENT 'add column gl_account_id (BIGINT) with FK to finance.gl_account.gl_account_id - journal entries must post to specific GL accounts',
+    `gl_account_id` BIGINT COMMENT '',
     `internal_order_id` BIGINT COMMENT 'Foreign key linking to finance.internal_order. Business justification: Journal entry can be linked to an internal order for cost tracking.',
     `ledger_id` BIGINT COMMENT 'Identifier of the ledger (e.g., primary, secondary) where the entry is posted.',
     `employee_id` BIGINT COMMENT 'Foreign key linking to workforce.employee. Business justification: Audit requirement to trace each journal entry to the employee who posted it.',
@@ -164,14 +176,16 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`finance`.`journal_entry` (
     `business_area` STRING COMMENT 'Higher‑level business area used in financial reporting.',
     `company_code` STRING COMMENT 'SAP company code representing the legal entity.',
     `created_timestamp` TIMESTAMP COMMENT 'Timestamp when the journal entry record was first created in the system.',
+    `credit_amount` DECIMAL(18,2) COMMENT '',
     `currency_code` STRING COMMENT 'Three‑letter ISO currency code of the transaction currency.',
+    `debit_amount` DECIMAL(18,2) COMMENT '',
     `document_date` DATE COMMENT 'Date on the original source document (e.g., invoice date).',
     `document_header_text` STRING COMMENT 'Header description of the journal document.',
     `document_number` STRING COMMENT 'External business identifier for the journal entry, typically the SAP document number.',
     `document_type` STRING COMMENT 'Category of the journal entry indicating its purpose (e.g., invoice, credit note).. Valid values are `invoice|credit_note|payment|adjustment|reversal|accrual`',
     `entry_date` DATE COMMENT 'Date when the journal entry was entered into the system.',
     `exchange_rate` DECIMAL(18,2) COMMENT 'Rate used to convert transaction currency to local company currency.',
-    `exchange_rate_type` STRING COMMENT 'Indicator of the exchange rate calculation method (e.g., average, spot).',
+    `exchange_rate_type` DECIMAL(18,2) COMMENT 'Indicator of the exchange rate calculation method (e.g., average, spot).',
     `fiscal_period` STRING COMMENT 'Numeric period (e.g., month) within the fiscal year for the posting.',
     `fiscal_year` STRING COMMENT 'Four‑digit fiscal year to which the posting belongs.',
     `fiscal_year_variant` STRING COMMENT 'Variant of the fiscal year used for special reporting calendars.',
@@ -188,6 +202,7 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`finance`.`journal_entry` (
     `posting_time` TIMESTAMP COMMENT 'Exact timestamp when the entry was posted to the ledger.',
     `reference_document` STRING COMMENT 'External document number referenced by this journal entry (e.g., purchase order).',
     `reversal_document_number` STRING COMMENT 'Document number of the original entry that this entry reverses.',
+    `reversal_flag` BOOLEAN COMMENT '',
     `reversal_indicator` BOOLEAN COMMENT 'True if this entry reverses a previous posting.',
     `segment` STRING COMMENT 'Segment classification for reporting (e.g., Industrial, Services).',
     `tax_amount_total` DECIMAL(18,2) COMMENT 'Aggregate tax amount calculated for the posting.',
@@ -202,6 +217,7 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`finance`.`journal_entry` (
 
 CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`finance`.`finance_budget` (
     `finance_budget_id` BIGINT COMMENT 'Unique identifier for the budget record.',
+    `company_code_id` BIGINT COMMENT '',
     `obligation_id` BIGINT COMMENT 'Foreign key linking to compliance.obligation. Business justification: Budgets are planned for specific compliance obligations; linking enables obligation‑level budget tracking.',
     `cost_center_id` BIGINT COMMENT 'Foreign key linking to finance.cost_center. Business justification: Budget is planned for a specific cost center; replace code with FK.',
     `employee_id` BIGINT COMMENT 'Identifier of the manager responsible for the budget.',
@@ -209,18 +225,24 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`finance`.`finance_budget` (
     `internal_order_id` BIGINT COMMENT 'Foreign key linking to finance.internal_order. Business justification: Budget may be tied to an internal order for project cost tracking.',
     `profit_center_id` BIGINT COMMENT 'Foreign key linking to finance.profit_center. Business justification: Budget is planned for a specific profit center; replace code with FK.',
     `project_header_id` BIGINT COMMENT 'Identifier of the project associated with the budget, if any.',
+    `actual_amount` DECIMAL(18,2) COMMENT '',
     `approval_date` DATE COMMENT 'Date when the budget was approved.',
     `approval_status` STRING COMMENT 'Current approval status of the budget.. Valid values are `pending|approved|rejected`',
-    `budget_category` STRING COMMENT 'High-level category of the budget.. Valid values are `CapEx|OpEx|Headcount|Materials|Other`',
-    `budget_code` STRING COMMENT 'Business identifier code for the budget, used for reference and reporting.',
-    `budget_name` STRING COMMENT 'Descriptive name of the budget.',
-    `budget_type` STRING COMMENT 'Classification of the budget version: original, revised, or supplemental.. Valid values are `original|revised|supplemental`',
-    `cost_element` STRING COMMENT 'Cost element classification for budgeting purposes.',
+    `approved_flag` BOOLEAN COMMENT '',
+    `budget_amount` DECIMAL(18,2) COMMENT '',
+    `budget_category` DECIMAL(18,2) COMMENT 'High-level category of the budget.',
+    `budget_code` DECIMAL(18,2) COMMENT 'Business identifier code for the budget, used for reference and reporting.',
+    `budget_name` DECIMAL(18,2) COMMENT 'Descriptive name of the budget.',
+    `budget_status` STRING COMMENT '',
+    `budget_type` DECIMAL(18,2) COMMENT 'Classification of the budget version: original, revised, or supplemental.',
+    `committed_amount` DECIMAL(18,2) COMMENT '',
+    `cost_element` DECIMAL(18,2) COMMENT 'Cost element classification for budgeting purposes.',
+    `created_timestamp` TIMESTAMP COMMENT '',
     `currency_code` STRING COMMENT 'Three-letter ISO 4217 currency code for budget amounts.',
     `department_code` STRING COMMENT 'Code of the department owning the budget.',
     `effective_end_date` DATE COMMENT 'Date when the budget expires or is superseded.',
     `effective_start_date` DATE COMMENT 'Date when the budget becomes effective.',
-    `finance_budget_status` STRING COMMENT 'Current lifecycle status of the budget.. Valid values are `draft|submitted|approved|rejected|closed`',
+    `finance_budget_status` DECIMAL(18,2) COMMENT 'Current lifecycle status of the budget.',
     `fiscal_year` STRING COMMENT 'Four-digit fiscal year to which the budget applies.',
     `forecast_method` STRING COMMENT 'Method used to generate forecasted amounts within the budget.. Valid values are `historical|statistical|managerial|none`',
     `is_active` BOOLEAN COMMENT 'Indicates whether the budget is currently active.',
@@ -237,6 +259,7 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`finance`.`finance_budget` (
     `total_planned_amount` DECIMAL(18,2) COMMENT 'Aggregate planned amount for the budget across all periods and categories.',
     `total_revised_amount` DECIMAL(18,2) COMMENT 'Aggregate revised amount after adjustments.',
     `updated_by` STRING COMMENT 'User identifier who last updated the budget record.',
+    `updated_timestamp` TIMESTAMP COMMENT '',
     `variance_threshold_percent` DECIMAL(18,2) COMMENT 'Acceptable variance percentage between planned and actual amounts.',
     `version_number` STRING COMMENT 'Sequential version number of the budget.',
     `version_timestamp` TIMESTAMP COMMENT 'Timestamp when this budget version was created or released.',
@@ -246,15 +269,18 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`finance`.`finance_budget` (
 
 CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`finance`.`internal_order` (
     `internal_order_id` BIGINT COMMENT 'System-generated unique identifier for the internal order record.',
+    `company_code_id` BIGINT COMMENT '',
+    `cost_center_id` BIGINT COMMENT '',
     `employee_id` BIGINT COMMENT 'Identifier of the employee who is accountable for the internal order execution.',
+    `profit_center_id` BIGINT COMMENT '',
     `project_header_id` BIGINT COMMENT 'Identifier of the project to which the internal order is linked, if applicable.',
+    `actual_amount` DECIMAL(18,2) COMMENT '',
     `actual_cost` DECIMAL(18,2) COMMENT 'Total costs posted to the internal order to date.',
     `approval_status` STRING COMMENT 'Current approval state of the internal order.. Valid values are `pending|approved|rejected`',
     `budget_amount` DECIMAL(18,2) COMMENT 'Planned budget allocated to the internal order.',
     `capex_flag` BOOLEAN COMMENT 'True if the internal order is classified as capital expenditure.',
     `committed_amount` DECIMAL(18,2) COMMENT 'Costs that have been committed (e.g., purchase orders) but not yet posted.',
     `controlling_area` STRING COMMENT 'Controlling area that governs the internal orders cost accounting.',
-    `cost_center_code` STRING COMMENT 'Identifier of the cost center responsible for the costs recorded against the internal order.',
     `created_timestamp` TIMESTAMP COMMENT 'System timestamp when the internal order record was first captured.',
     `currency_code` STRING COMMENT 'Three‑letter ISO 4217 code of the currency used for monetary values.',
     `internal_order_description` STRING COMMENT 'Free‑text description of the purpose, scope, or details of the internal order.',
@@ -264,12 +290,13 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`finance`.`internal_order` (
     `internal_order_status` STRING COMMENT 'Current lifecycle status of the internal order.. Valid values are `created|released|technically_completed|closed`',
     `opex_flag` BOOLEAN COMMENT 'True if the internal order is classified as operating expenditure.',
     `order_date` TIMESTAMP COMMENT 'Timestamp when the internal order was initially created in the business process.',
+    `order_description` STRING COMMENT '',
     `order_number` STRING COMMENT 'External business identifier assigned to the internal order, used in finance and controlling processes.',
+    `order_status` STRING COMMENT '',
     `order_type` STRING COMMENT 'Classification of the internal order indicating its purpose such as maintenance, capital project, research, or service.. Valid values are `maintenance|project|investment|research|service`',
     `planned_amount` DECIMAL(18,2) COMMENT 'Forecasted costs for the internal order based on planning.',
-    `profit_center_code` STRING COMMENT 'Identifier of the profit center to which the internal orders results are allocated.',
     `release_status` STRING COMMENT 'Indicates whether the internal order has been released for posting.. Valid values are `not_released|released`',
-    `responsible_cost_center` STRING COMMENT 'Cost center assigned as the primary owner for budgeting and settlement of the internal order.',
+    `responsible_cost_center` DECIMAL(18,2) COMMENT 'Cost center assigned as the primary owner for budgeting and settlement of the internal order.',
     `settlement_rule` STRING COMMENT 'Rule that defines how costs of the internal order are settled to receivers (e.g., cost centers, projects).',
     `technical_completion_date` DATE COMMENT 'Date when technical completion of the order was confirmed.',
     `updated_timestamp` TIMESTAMP COMMENT 'System timestamp of the most recent modification to the internal order record.',
@@ -285,12 +312,13 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`finance`.`cost_allocation` (
     `allocation_rule_id` BIGINT COMMENT 'Identifier of the allocation rule applied.',
     `cost_object_id` BIGINT COMMENT 'Identifier of the cost object associated with the allocation.',
     `employee_id` BIGINT COMMENT 'Identifier of the user who created or last modified the allocation record.',
-    `gl_account_id` BIGINT COMMENT 'add column gl_account_id (BIGINT) with FK to finance.gl_account.gl_account_id - cost allocations post to GL accounts for financial reporting',
+    `gl_account_id` BIGINT COMMENT '',
     `cost_center_id` BIGINT COMMENT 'Cost center from which the cost is allocated.',
     `internal_order_id` BIGINT COMMENT 'Internal order receiving the allocated cost, if applicable.',
     `profit_center_id` BIGINT COMMENT 'Profit center receiving the allocated cost, if applicable.',
     `cost_element_id` BIGINT COMMENT 'Cost element associated with the sender cost center.',
     `statistical_key_figure_id` BIGINT COMMENT 'Identifier of the statistical key figure used for allocation, if method is statistical.',
+    `tertiary_receiver_cost_center_id` BIGINT COMMENT '',
     `allocation_amount` DECIMAL(18,2) COMMENT 'Monetary amount allocated from sender to receiver.',
     `allocation_basis` STRING COMMENT 'Key figure or driver used as basis for variable or statistical allocation.',
     `allocation_category` STRING COMMENT 'Business category of the allocation (e.g., overhead, direct, indirect).',
@@ -300,9 +328,10 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`finance`.`cost_allocation` (
     `allocation_percentage` DECIMAL(18,2) COMMENT 'Percentage used when allocation method is fixed percentage.',
     `allocation_reason` STRING COMMENT 'Reason or justification for the allocation.',
     `allocation_source` STRING COMMENT 'Origin of the allocation entry.. Valid values are `system|manual|adjustment`',
+    `allocation_status` STRING COMMENT '',
     `allocation_version` STRING COMMENT 'Version number of the allocation record for change tracking.',
-    `cost_center_type` STRING COMMENT 'Classification of the cost center type.. Valid values are `production|administrative|sales|research|maintenance`',
-    `cost_object_type` STRING COMMENT 'Type of cost object linked to the allocation.. Valid values are `order|project|activity|service`',
+    `cost_center_type` DECIMAL(18,2) COMMENT 'Classification of the cost center type.',
+    `cost_object_type` DECIMAL(18,2) COMMENT 'Type of cost object linked to the allocation.',
     `created_timestamp` TIMESTAMP COMMENT 'Timestamp when the allocation record was created in the system.',
     `currency_code` STRING COMMENT 'Three-letter ISO currency code for the allocation amount.. Valid values are `[A-Z]{3}`',
     `effective_from` DATE COMMENT 'Start date when the allocation becomes effective.',
@@ -312,6 +341,7 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`finance`.`cost_allocation` (
     `internal_order_type` STRING COMMENT 'Type of internal order receiving the allocation.. Valid values are `investment|maintenance|project|service`',
     `is_manual_allocation` BOOLEAN COMMENT 'Indicates whether the allocation was entered manually (true) or generated automatically (false).',
     `line_sequence` STRING COMMENT 'Sequence number of the allocation line within the allocation cycle.',
+    `period` STRING COMMENT '',
     `posted_timestamp` TIMESTAMP COMMENT 'Timestamp when the allocation was posted to the ledger.',
     `posting_status` STRING COMMENT 'Current posting status of the allocation line.. Valid values are `posted|pending|error|reversed`',
     `profit_center_type` STRING COMMENT 'Classification of the profit center type.. Valid values are `product|service|region|segment`',
@@ -323,16 +353,17 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`finance`.`cost_allocation` (
 
 CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`finance`.`capex_request` (
     `capex_request_id` BIGINT COMMENT 'Unique system-generated identifier for the capital expenditure request.',
+    `company_code_id` BIGINT COMMENT '',
     `cost_center_id` BIGINT COMMENT 'Foreign key linking to finance.cost_center. Business justification: Capex request is associated with a cost center for cost allocation.',
-    `equipment_register_id` BIGINT COMMENT 'add column equipment_register_id (BIGINT) with FK to asset.equipment_register.equipment_register_id - CapEx requests often target specific equipment for replacement or upgrade',
     `internal_order_id` BIGINT COMMENT 'Foreign key linking to finance.internal_order. Business justification: Capex request may be linked to an internal order representing the project.',
     `employee_id` BIGINT COMMENT 'Identifier of the individual who last approved or rejected the request.',
     `project_header_id` BIGINT COMMENT 'Foreign key linking to project.project_header. Business justification: Capital‑expenditure requests are tied to a specific project for tracking spend against project budgets.',
     `requester_employee_id` BIGINT COMMENT 'Identifier of the employee who submitted the CapEx request.',
     `approval_date` TIMESTAMP COMMENT 'Date and time when the request was approved or rejected.',
     `approval_stage` STRING COMMENT 'Current approval tier the request is pending (e.g., manager, finance, executive).. Valid values are `initial|manager|finance|executive`',
+    `approved_amount` DECIMAL(18,2) COMMENT '',
     `asset_category` STRING COMMENT 'Classification of the asset to be acquired (e.g., equipment, facility, automation system).',
-    `budget_line_item` STRING COMMENT 'Specific budget line or account code to which the request will be charged.',
+    `budget_line_item` DECIMAL(18,2) COMMENT 'Specific budget line or account code to which the request will be charged.',
     `business_justification` STRING COMMENT 'Narrative explaining the strategic and financial rationale for the investment.',
     `capitalized_flag` BOOLEAN COMMENT 'Indicates whether the asset will be capitalized on the balance sheet.',
     `compliance_requirements` STRING COMMENT 'Regulatory or internal compliance constraints applicable to the request.',
@@ -352,10 +383,13 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`finance`.`capex_request` (
     `project_start_date` DATE COMMENT 'Planned start date for the capital project.',
     `regulatory_approval_needed` BOOLEAN COMMENT 'True if external regulatory sign‑off is required before proceeding.',
     `request_date` DATE COMMENT 'Date the CapEx request was initially submitted.',
+    `request_description` STRING COMMENT '',
     `request_number` STRING COMMENT 'Human‑readable reference number assigned to the CapEx request.',
     `request_status` STRING COMMENT 'Current state of the CapEx request through its approval workflow.. Valid values are `draft|submitted|under_review|approved|rejected|closed`',
+    `requested_amount` DECIMAL(18,2) COMMENT '',
     `requesting_department` STRING COMMENT 'Department that originated the CapEx request.',
     `risk_rating` STRING COMMENT 'Qualitative assessment of financial and operational risk.. Valid values are `low|medium|high`',
+    `roi_percentage` DECIMAL(18,2) COMMENT '',
     `tax_implications` STRING COMMENT 'Notes on tax treatment or benefits associated with the investment.',
     `updated_timestamp` TIMESTAMP COMMENT 'Timestamp of the most recent modification to the request record.',
     `wbs_element` STRING COMMENT 'WBS element that groups the request within project accounting.',
@@ -364,9 +398,11 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`finance`.`capex_request` (
 
 CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`finance`.`ap_invoice` (
     `ap_invoice_id` BIGINT COMMENT 'System-generated unique identifier for the accounts payable invoice record.',
+    `business_partner_id` BIGINT COMMENT '',
     `company_code_id` BIGINT COMMENT 'FK to finance.company_code',
     `cost_center_id` BIGINT COMMENT 'Foreign key linking to finance.cost_center. Business justification: AP invoice belongs to a cost center; replace string code with FK for referential integrity.',
-    `purchase_order_id` BIGINT COMMENT 'add column procurement_purchase_order_id (BIGINT) with FK to procurement.purchase_order.purchase_order_id - AP invoices must reference the purchase order for three-way matching',
+    `gl_account_id` BIGINT COMMENT '',
+    `purchase_order_id` BIGINT COMMENT 'Connect procurement.ap_invoice by adding column procurement_purchase_order_id (BIGINT) with an FK to procurement.purchase_order.purchase_order_id. P15: connect_table: procurement.ap_invoice** - add column procurement_purchase_order_id (BIGINT) with',
     `profit_center_id` BIGINT COMMENT 'Foreign key linking to finance.profit_center. Business justification: AP invoice belongs to a profit center; replace string code with FK.',
     `supplier_id` BIGINT COMMENT 'Unique identifier of the vendor that issued the invoice.',
     `approval_status` STRING COMMENT 'Current state of the invoice approval workflow.. Valid values are `pending|approved|rejected`',
@@ -376,7 +412,9 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`finance`.`ap_invoice` (
     `baseline_date` DATE COMMENT 'Date used as the starting point for payment terms calculation.',
     `cash_discount_percentage` DECIMAL(18,2) COMMENT 'Percentage discount applied when payment is made within discount period.',
     `clearing_document_number` STRING COMMENT 'Reference to the accounting document that clears the invoice.',
+    `created_timestamp` TIMESTAMP COMMENT '',
     `currency` STRING COMMENT 'Three‑letter ISO 4217 code of the currency used for the invoice amounts.',
+    `currency_code` STRING COMMENT '',
     `discount_taken` DECIMAL(18,2) COMMENT 'Monetary value of any cash discount applied.',
     `document_number` STRING COMMENT 'External invoice number assigned by the vendor or the organization.',
     `due_date` DATE COMMENT 'Date by which the invoice must be paid according to payment terms.',
@@ -384,16 +422,17 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`finance`.`ap_invoice` (
     `gross_amount` DECIMAL(18,2) COMMENT 'Total amount before taxes, discounts, and withholdings.',
     `house_bank_account` STRING COMMENT 'Bank account from which the payment will be issued.',
     `invoice_date` DATE COMMENT 'Date the vendor issued the invoice.',
+    `invoice_number` STRING COMMENT '',
     `invoice_type` STRING COMMENT 'Classification of the invoice (e.g., standard invoice, credit memo).. Valid values are `standard|credit_memo|debit_memo`',
     `net_amount` DECIMAL(18,2) COMMENT 'Amount payable after taxes, discounts, and withholdings.',
     `payment_amount` DECIMAL(18,2) COMMENT 'Amount actually paid for the invoice.',
-    `payment_block_reason` STRING COMMENT 'Reason why payment processing is blocked for this invoice.',
-    `payment_date` DATE COMMENT 'Date on which the payment was actually made.',
-    `payment_method` STRING COMMENT 'Instrument used to settle the invoice.. Valid values are `ACH|wire|check|direct_debit`',
-    `payment_reference` STRING COMMENT 'Reference number provided by the bank for the payment transaction.',
-    `payment_status` STRING COMMENT 'Current status of the payment execution.. Valid values are `scheduled|paid|failed|cancelled`',
-    `payment_terms` STRING COMMENT 'Standard terms defining when payment is due (e.g., Net 30, 2% 10 Net 30).',
-    `payment_value_date` DATE COMMENT 'Date on which the payment amount is considered effective.',
+    `payment_block_reason` DECIMAL(18,2) COMMENT 'Reason why payment processing is blocked for this invoice.',
+    `payment_date` TIMESTAMP COMMENT 'Date on which the payment was actually made.',
+    `payment_method` DECIMAL(18,2) COMMENT 'Instrument used to settle the invoice.',
+    `payment_reference` DECIMAL(18,2) COMMENT 'Reference number provided by the bank for the payment transaction.',
+    `payment_status` DECIMAL(18,2) COMMENT 'Current status of the payment execution.',
+    `payment_terms` DECIMAL(18,2) COMMENT 'Standard terms defining when payment is due (e.g., Net 30, 2% 10 Net 30).',
+    `payment_value_date` TIMESTAMP COMMENT 'Date on which the payment amount is considered effective.',
     `posting_date` DATE COMMENT 'Date the invoice was posted to the general ledger.',
     `purchase_order_number` STRING COMMENT 'Reference to the purchase order that triggered the invoice.',
     `record_audit_created` TIMESTAMP COMMENT 'Timestamp when the invoice record was first created in the system.',
@@ -410,16 +449,21 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`finance`.`ap_invoice` (
 
 CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`finance`.`ar_item` (
     `ar_item_id` BIGINT COMMENT 'System-generated unique identifier for the AR line item record.',
+    `business_partner_id` BIGINT COMMENT '',
+    `company_code_id` BIGINT COMMENT '',
     `cost_center_id` BIGINT COMMENT 'Foreign key linking to finance.cost_center. Business justification: AR item is posted to a cost center; replace string code with FK.',
     `customer_account_id` BIGINT COMMENT 'Unique identifier of the customer party to whom the invoice is issued.',
     `employee_id` BIGINT COMMENT 'Identifier of the internal employee responsible for collections on this item.',
-    `invoice_id` BIGINT COMMENT 'add column invoice_id (BIGINT) with FK to billing.invoice.invoice_id - AR items should reference the billing invoice they represent',
+    `gl_account_id` BIGINT COMMENT '',
+    `invoice_id` BIGINT COMMENT 'Connect billing.ar_item by adding column invoice_id (BIGINT) with an FK to billing.invoice.invoice_id. P16: connect_table: billing.ar_item** - add column invoice_id (BIGINT) with FK to billing.invoice.invoice_id',
     `profit_center_id` BIGINT COMMENT 'Foreign key linking to finance.profit_center. Business justification: AR item is posted to a profit center; replace string code with FK.',
     `aging_bucket` STRING COMMENT 'Categorization of the outstanding amount based on days past due.. Valid values are `0-30|31-60|61-90|90+`',
     `aging_days` STRING COMMENT 'Number of days the invoice is overdue.',
     `business_area` STRING COMMENT 'Higher‑level grouping of profit centers for consolidated reporting.',
+    `cleared_amount` DECIMAL(18,2) COMMENT '',
     `cleared_flag` BOOLEAN COMMENT 'Indicates whether the AR item has been fully settled.',
     `clearing_document_number` STRING COMMENT 'Document number of the payment or credit memo that cleared this AR item.',
+    `clearing_status` STRING COMMENT '',
     `collection_status` STRING COMMENT 'Current status of the collection effort for the AR item.. Valid values are `pending|in_progress|resolved`',
     `company_code` STRING COMMENT 'Four‑character code identifying the legal entity within the enterprise.',
     `created_timestamp` TIMESTAMP COMMENT 'Timestamp when the AR line item record was first created in the system.',
@@ -434,17 +478,18 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`finance`.`ar_item` (
     `exchange_rate` DECIMAL(18,2) COMMENT 'Rate used to convert the invoice amount to the company codes local currency.',
     `invoice_amount` DECIMAL(18,2) COMMENT 'Gross amount of the invoice in the document currency before discounts, taxes, or adjustments.',
     `invoice_description` STRING COMMENT 'Free‑text description of goods or services billed.',
+    `item_number` STRING COMMENT '',
     `last_payment_amount` DECIMAL(18,2) COMMENT 'Amount of the most recent payment applied to this AR item.',
-    `last_payment_method` STRING COMMENT 'Payment method used for the most recent payment.. Valid values are `bank_transfer|credit_card|check|cash`',
+    `last_payment_method` DECIMAL(18,2) COMMENT 'Payment method used for the most recent payment.',
     `local_currency_amount` DECIMAL(18,2) COMMENT 'Invoice amount expressed in the company codes functional currency.',
     `material_number` STRING COMMENT 'SAP material identifier for the product sold.',
     `net_amount` DECIMAL(18,2) COMMENT 'Invoice amount after discounts and taxes, representing the amount due.',
     `open_amount` DECIMAL(18,2) COMMENT 'Remaining amount still outstanding after payments and adjustments.',
     `original_amount` DECIMAL(18,2) COMMENT 'Original gross amount at invoice creation before any adjustments.',
-    `payment_date` DATE COMMENT 'Date on which the invoice was fully or partially paid.',
-    `payment_method` STRING COMMENT 'Means by which the customer remitted payment.. Valid values are `bank_transfer|credit_card|check|cash`',
-    `payment_reference` STRING COMMENT 'Reference identifier supplied by the customer for the payment transaction.',
-    `payment_terms` STRING COMMENT 'Standard payment condition (e.g., NET30, 2% 10 NET30).',
+    `payment_date` TIMESTAMP COMMENT 'Date on which the invoice was fully or partially paid.',
+    `payment_method` DECIMAL(18,2) COMMENT 'Means by which the customer remitted payment.',
+    `payment_reference` DECIMAL(18,2) COMMENT 'Reference identifier supplied by the customer for the payment transaction.',
+    `payment_terms` DECIMAL(18,2) COMMENT 'Standard payment condition (e.g., NET30, 2% 10 NET30).',
     `posting_date` DATE COMMENT 'Date the AR document was posted to the general ledger.',
     `record_status` STRING COMMENT 'Lifecycle status of the AR item indicating its processing stage.. Valid values are `open|cleared|written_off|cancelled`',
     `sales_order_number` STRING COMMENT 'Sales order that generated the invoice.',
@@ -460,10 +505,12 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`finance`.`ar_item` (
 
 CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`finance`.`fixed_asset` (
     `fixed_asset_id` BIGINT COMMENT 'System-generated unique identifier for each fixed asset record.',
-    `capex_asset_record_id` BIGINT COMMENT 'add column capex_asset_record_id (BIGINT) with FK to asset.capex_asset_record.capex_asset_record_id - fixed assets should trace back to the CapEx record that authorized them',
+    `capex_asset_record_id` BIGINT COMMENT 'Connect asset.fixed_asset by adding column capex_asset_record_id (BIGINT) with an FK to asset.capex_asset_record.capex_asset_record_id. P14: connect_table: asset.fixed_asset** - add column capex_asset_record_id (BIGINT) with FK to asset',
+    `company_code_id` BIGINT COMMENT '',
     `cost_center_id` BIGINT COMMENT 'Foreign key linking to finance.cost_center. Business justification: Fixed asset is assigned to a cost center for depreciation tracking.',
-    `equipment_register_id` BIGINT COMMENT 'add column equipment_register_id (BIGINT) with FK to asset.equipment_register.equipment_register_id - fixed assets in finance should link to the physical equipment register for reconciliation',
+    `equipment_register_id` BIGINT COMMENT 'Connect asset.fixed_asset by adding column equipment_register_id (BIGINT) with an FK to asset.equipment_register.equipment_register_id. P13: connect_table: asset.fixed_asset** - add column equipment_register_id (BIGINT) with FK to asset',
     `accumulated_depreciation` DECIMAL(18,2) COMMENT 'Total depreciation expense recorded to date.',
+    `acquisition_amount` DECIMAL(18,2) COMMENT '',
     `acquisition_cost` DECIMAL(18,2) COMMENT 'Original cost incurred to acquire the asset, recorded in functional currency.',
     `acquisition_date` DATE COMMENT 'Date the asset was acquired or placed into service.',
     `asset_class` STRING COMMENT 'High‑level classification of the asset for reporting and depreciation policy.. Valid values are `Machinery|Vehicle|Building|IT_Equipment|Tooling`',
@@ -474,6 +521,7 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`finance`.`fixed_asset` (
     `capitalized_flag` BOOLEAN COMMENT 'Indicates whether the cost has been capitalized as a fixed asset.',
     `condition_rating` STRING COMMENT 'Current physical condition of the asset as assessed by maintenance.. Valid values are `excellent|good|fair|poor`',
     `created_timestamp` TIMESTAMP COMMENT 'Date and time when the asset record was first created in the system.',
+    `currency_code` STRING COMMENT '',
     `department_responsible` STRING COMMENT 'Department that owns or manages the asset.',
     `depreciation_method` STRING COMMENT 'Method used to calculate periodic depreciation expense.. Valid values are `straight_line|declining_balance|units_of_production`',
     `depreciation_start_date` DATE COMMENT 'Date when depreciation calculations begin for the asset.',
@@ -509,13 +557,14 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`finance`.`fixed_asset` (
 
 CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`finance`.`financial_plan` (
     `financial_plan_id` BIGINT COMMENT 'Unique system-generated identifier for the financial plan record.',
+    `company_code_id` BIGINT COMMENT '',
     `cost_center_id` BIGINT COMMENT 'Foreign key linking to finance.cost_center. Business justification: Financial plan is built for a cost center; replace code with FK.',
     `employee_id` BIGINT COMMENT 'Identifier of the employee responsible for the plan.',
     `profit_center_id` BIGINT COMMENT 'Foreign key linking to finance.profit_center. Business justification: Financial plan is built for a profit center; replace code with FK.',
     `approval_status` STRING COMMENT 'Current approval state of the plan.. Valid values are `pending|approved|rejected`',
     `approved_by` STRING COMMENT 'Identifier of the employee who approved the plan.',
     `approved_timestamp` TIMESTAMP COMMENT 'Date‑time when the plan was approved.',
-    `budget_category` STRING COMMENT 'Category of budget (e.g., operational, capital) associated with the plan.',
+    `budget_category` DECIMAL(18,2) COMMENT 'Category of budget (e.g., operational, capital) associated with the plan.',
     `capex_plan_amount` DECIMAL(18,2) COMMENT 'Planned capital expenditures for the plan horizon.',
     `classification` STRING COMMENT 'High‑level classification of the plan for reporting and governance purposes.. Valid values are `budget|forecast|scenario`',
     `company_code` STRING COMMENT 'Internal code identifying the legal entity or company within the enterprise.',
@@ -539,11 +588,17 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`finance`.`financial_plan` (
     `next_review_date` DATE COMMENT 'Planned date for the next formal review of the plan.',
     `notes` STRING COMMENT 'Free‑form text field for additional comments or explanations.',
     `opex_plan_amount` DECIMAL(18,2) COMMENT 'Planned operating expenditures for the plan horizon.',
+    `plan_code` STRING COMMENT '',
     `plan_name` STRING COMMENT 'Descriptive name of the financial plan for easy identification by business users.',
     `plan_number` STRING COMMENT 'Business identifier assigned to the financial plan, used for external reference and tracking.. Valid values are `^FP-d{6}$`',
     `plan_owner_department` STRING COMMENT 'Department to which the plan owner belongs.',
+    `plan_status` STRING COMMENT '',
     `plan_type` STRING COMMENT 'Category of the plan indicating its purpose, such as annual operating plan, rolling forecast, or long‑range plan.. Valid values are `annual_operating_plan|rolling_forecast|long_range_plan`',
+    `plan_version` STRING COMMENT '',
     `plan_version_description` STRING COMMENT 'Narrative description of changes introduced in this version of the plan.',
+    `planned_cost` DECIMAL(18,2) COMMENT '',
+    `planned_profit` DECIMAL(18,2) COMMENT '',
+    `planned_revenue` DECIMAL(18,2) COMMENT '',
     `planning_horizon_years` STRING COMMENT 'Number of years covered by the plan horizon.',
     `revenue_plan_amount` DECIMAL(18,2) COMMENT 'Planned revenue amount for the period covered by the plan.',
     `risk_rating` STRING COMMENT 'Qualitative assessment of financial risk associated with the plan.. Valid values are `low|medium|high|critical`',
@@ -560,15 +615,16 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`finance`.`intercompany_transact
     `intercompany_transaction_id` BIGINT COMMENT 'System-generated unique identifier for the intercompany transaction record.',
     `employee_id` BIGINT COMMENT 'Foreign key linking to workforce.employee. Business justification: Regulatory and internal controls need the approving employee linked to each intercompany transaction.',
     `cost_center_id` BIGINT COMMENT 'Foreign key linking to finance.cost_center. Business justification: Intercompany transaction is charged to a cost center; replace code with FK.',
+    `gl_account_id` BIGINT COMMENT '',
     `agreement_id` BIGINT COMMENT 'Reference to the master agreement governing the transaction.',
-    `company_code_id` BIGINT COMMENT 'add column company_code_id (BIGINT) with FK to finance.company_code.company_code_id - intercompany transactions must identify the sending legal entity',
+    `company_code_id` BIGINT COMMENT '',
+    `intercompany_sender_company_code_id` BIGINT COMMENT '',
     `invoice_id` BIGINT COMMENT 'Invoice identifier that documents the intercompany billing.',
     `order_header_id` BIGINT COMMENT 'Sales or production order identifier associated with the transaction.',
     `profit_center_id` BIGINT COMMENT 'Foreign key linking to finance.profit_center. Business justification: Intercompany transaction is charged to a profit center; replace code with FK.',
-    `receiving_company_code_id` BIGINT COMMENT 'add column receiving_company_code_id (BIGINT) with FK to finance.company_code.company_code_id - intercompany transactions must identify the receiving legal entity',
     `project_header_id` BIGINT COMMENT 'Project identifier linked to the transaction, if applicable.',
     `reversal_transaction_intercompany_transaction_id` BIGINT COMMENT 'Identifier of the original transaction that this record reverses.',
-    `amount_currency` STRING COMMENT 'Three‑letter ISO currency code of the transaction amounts.. Valid values are `^[A-Z]{3}$`',
+    `amount_currency` DECIMAL(18,2) COMMENT 'Three‑letter ISO currency code of the transaction amounts.',
     `amount_gross` DECIMAL(18,2) COMMENT 'Total amount before taxes, fees, and adjustments.',
     `amount_net` DECIMAL(18,2) COMMENT 'Amount after tax and adjustments; the amount to be settled.',
     `amount_tax` DECIMAL(18,2) COMMENT 'Tax amount applicable to the transaction.',
@@ -576,6 +632,7 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`finance`.`intercompany_transact
     `approved_timestamp` TIMESTAMP COMMENT 'Date and time when the transaction was approved.',
     `consolidation_period` STRING COMMENT 'Fiscal period (e.g., FY2024Q1) for which the transaction is consolidated.',
     `created_timestamp` TIMESTAMP COMMENT 'Timestamp when the transaction record was first created in the system.',
+    `currency_code` STRING COMMENT '',
     `intercompany_transaction_description` STRING COMMENT 'Free‑text description or notes about the transaction.',
     `elimination_date` DATE COMMENT 'Date when the transaction was eliminated during consolidation.',
     `elimination_flag` BOOLEAN COMMENT 'Indicates whether the transaction should be eliminated in consolidation.',
@@ -589,11 +646,14 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`finance`.`intercompany_transact
     `posting_date` DATE COMMENT 'Date on which the transaction is posted to the general ledger.',
     `posting_period` STRING COMMENT 'Accounting period identifier (e.g., 2024M03) for the posting.',
     `receiving_company_code` STRING COMMENT 'Code of the legal entity receiving the intercompany amount.',
+    `reconciliation_status` STRING COMMENT '',
     `reference_document_number` STRING COMMENT 'External document number (e.g., invoice, purchase order) linked to the transaction.',
     `reversal_indicator` BOOLEAN COMMENT 'True if the transaction is a reversal of a prior transaction.',
     `sending_company_code` STRING COMMENT 'Code of the legal entity sending the intercompany amount.',
     `tax_amount` DECIMAL(18,2) COMMENT 'Calculated tax amount based on the tax code.',
     `tax_code` STRING COMMENT 'Tax code applied to the transaction for tax determination.',
+    `transaction_amount` DECIMAL(18,2) COMMENT '',
+    `transaction_date` DATE COMMENT '',
     `transaction_number` STRING COMMENT 'External business identifier assigned to the intercompany transaction.',
     `transaction_subtype` STRING COMMENT 'Additional categorisation of the transaction type when needed.',
     `transaction_timestamp` TIMESTAMP COMMENT 'Date and time when the intercompany transaction occurred in the business process.',
@@ -608,11 +668,15 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`finance`.`intercompany_transact
 
 CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`finance`.`bank_account` (
     `bank_account_id` BIGINT COMMENT 'System-generated unique identifier for the bank account record.',
+    `company_code_id` BIGINT COMMENT '',
     `gl_account_id` BIGINT COMMENT 'Foreign key linking to finance.gl_account. Business justification: Bank account is linked to a GL account for cash management.',
     `pool_header_bank_account_id` BIGINT COMMENT 'Self-referencing FK on bank_account (pool_header_bank_account_id)',
     `account_label` STRING COMMENT 'Human‑readable name or label for the bank account used in reports and UI.',
+    `account_name` STRING COMMENT '',
     `account_number` STRING COMMENT 'Primary bank account number used for payments and cash management.',
+    `account_status` STRING COMMENT '',
     `account_type` STRING COMMENT 'Classification of the bank account (checking, savings, operating, cash‑pool, loan).. Valid values are `checking|savings|operating|cash_pool|loan`',
+    `active_flag` BOOLEAN COMMENT '',
     `balance` DECIMAL(18,2) COMMENT 'Current monetary balance of the account as of the latest reconciliation.',
     `bank_account_status` STRING COMMENT 'Current lifecycle status of the bank account.. Valid values are `active|inactive|closed|suspended|pending`',
     `bank_address` STRING COMMENT 'Physical address of the bank branch.',
@@ -624,14 +688,16 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`finance`.`bank_account` (
     `cash_pool_membership` STRING COMMENT 'Indicates if the account participates in a cash‑pool (primary, secondary, or none).. Valid values are `primary|secondary|none`',
     `created_timestamp` TIMESTAMP COMMENT 'Date‑time when the bank account record was first created in the system.',
     `currency_code` STRING COMMENT 'Three‑letter ISO currency code of the account (e.g., USD, EUR).',
+    `current_balance` DECIMAL(18,2) COMMENT '',
     `daily_transaction_limit` DECIMAL(18,2) COMMENT 'Maximum aggregate amount that can be processed in a single day.',
     `effective_from` DATE COMMENT 'Date when the bank account becomes active for posting.',
     `effective_to` DATE COMMENT 'Date when the bank account is no longer active (nullable for open‑ended).',
     `iban` STRING COMMENT 'Standardized international account identifier for cross‑border transactions.',
     `internal_reference` STRING COMMENT 'Free‑form field for internal notes or reference codes.',
     `last_reconciliation_date` DATE COMMENT 'Date of the most recent bank statement reconciliation.',
-    `payment_method_eligibility` STRING COMMENT 'Supported payment methods for this account (e.g., wire, ACH).. Valid values are `wire|ach|rtgs|swift`',
+    `payment_method_eligibility` DECIMAL(18,2) COMMENT 'Supported payment methods for this account (e.g., wire, ACH).',
     `swift_bic` STRING COMMENT 'Bank Identifier Code used for international wire transfers.',
+    `swift_code` STRING COMMENT '',
     `treasury_region` STRING COMMENT 'Geographic region of the treasury unit responsible for the account.',
     `updated_timestamp` TIMESTAMP COMMENT 'Date‑time of the most recent update to the bank account record.',
     CONSTRAINT pk_bank_account PRIMARY KEY(`bank_account_id`)
@@ -647,6 +713,7 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`finance`.`business_partner` (
     `bank_name` STRING COMMENT 'Name of the bank where the partner holds the account.',
     `city` STRING COMMENT 'City of the business partners primary address.',
     `classification_code` STRING COMMENT 'Internal code used to segment partners for reporting and risk analysis.',
+    `company_code_id` BIGINT COMMENT '',
     `compliance_status` STRING COMMENT 'Current compliance status with internal and regulatory requirements.',
     `contact_person_email` STRING COMMENT 'Email address of the primary contact person.',
     `contact_person_name` STRING COMMENT 'Name of the primary contact person for the partner.',
@@ -654,6 +721,7 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`finance`.`business_partner` (
     `country_code` STRING COMMENT 'ISO 3166-1 alpha-3 country code of the business partners primary location.',
     `created_timestamp` TIMESTAMP COMMENT 'Timestamp when the partner record was first created in the system.',
     `credit_limit` DECIMAL(18,2) COMMENT 'Maximum credit amount extended to the partner.',
+    `credit_limit_amount` DECIMAL(18,2) COMMENT '',
     `currency_code` STRING COMMENT 'ISO 4217 currency code used for transactions with the partner.',
     `data_classification` STRING COMMENT 'Classification level of the partner data as per corporate policy.',
     `duns_number` STRING COMMENT 'Dun & Bradstreet unique identifier for the partner.',
@@ -666,12 +734,15 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`finance`.`business_partner` (
     `last_review_date` DATE COMMENT 'Date when the partner record was last reviewed for accuracy.',
     `business_partner_name` STRING COMMENT 'Full legal name of the business partner (individual or organization).',
     `notes` STRING COMMENT 'Free-text field for additional remarks or comments about the partner.',
+    `partner_name` STRING COMMENT '',
+    `partner_number` STRING COMMENT '',
+    `partner_status` STRING COMMENT '',
     `partner_type` STRING COMMENT 'Classification of the partner (e.g., vendor, customer, internal entity).',
-    `payment_terms` STRING COMMENT 'Standard payment terms agreed with the partner.',
+    `payment_terms` DECIMAL(18,2) COMMENT 'Standard payment terms agreed with the partner.',
     `postal_code` STRING COMMENT 'Postal code of the business partners primary address.',
     `primary_contact_email` STRING COMMENT 'Primary email address for business partner communications.',
     `primary_contact_phone` STRING COMMENT 'Primary telephone number for the business partner.',
-    `registration_number` STRING COMMENT 'Official registration number of the organization (e.g., company registration).',
+    `registration_number` DECIMAL(18,2) COMMENT 'Official registration number of the organization (e.g., company registration).',
     `risk_rating` STRING COMMENT 'Risk assessment rating for the partner.',
     `short_name` STRING COMMENT 'Abbreviated or commonly used name for the business partner.',
     `state_province` STRING COMMENT 'State or province of the business partners primary address.',
@@ -679,6 +750,7 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`finance`.`business_partner` (
     `swift_code` STRING COMMENT 'SWIFT/BIC code for international transfers to the partners bank.',
     `tax_exempt_flag` BOOLEAN COMMENT 'Indicates whether the partner is tax-exempt (true) or not (false).',
     `tax_id_number` STRING COMMENT 'Government-issued tax identifier for the partner (e.g., EIN, VAT).',
+    `tax_number` STRING COMMENT '',
     `updated_timestamp` TIMESTAMP COMMENT 'Timestamp of the most recent update to the partner record.',
     `vat_number` STRING COMMENT 'Value Added Tax registration number, if applicable.',
     `website_url` STRING COMMENT 'Public website URL of the business partner.',
@@ -687,19 +759,27 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`finance`.`business_partner` (
 
 CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`finance`.`allocation_cycle` (
     `allocation_cycle_id` BIGINT COMMENT 'Primary key for allocation_cycle',
+    `allocation_rule_id` BIGINT COMMENT '',
+    `company_code_id` BIGINT COMMENT '',
     `previous_allocation_cycle_id` BIGINT COMMENT 'Self-referencing FK on allocation_cycle (previous_allocation_cycle_id)',
     `allocation_method` STRING COMMENT 'Method used to allocate costs within the cycle.',
+    `created_timestamp` TIMESTAMP COMMENT '',
     `currency_code` STRING COMMENT 'Three‑letter ISO currency code for amounts in the cycle.',
     `cycle_code` STRING COMMENT 'External code used to identify the allocation cycle (e.g., FY2023Q1).',
     `cycle_name` STRING COMMENT 'Human‑readable name describing the allocation cycle.',
+    `cycle_status` STRING COMMENT '',
     `cycle_type` STRING COMMENT 'Classification of the cycle based on its periodicity.',
     `allocation_cycle_description` STRING COMMENT 'Detailed description of the purpose and scope of the allocation cycle.',
     `effective_from` DATE COMMENT 'Date when the allocation cycle becomes effective.',
     `effective_until` DATE COMMENT 'Date when the allocation cycle ends; null if open‑ended.',
+    `fiscal_year` STRING COMMENT '',
     `frequency` STRING COMMENT 'How often the allocation cycle repeats.',
+    `last_run_timestamp` TIMESTAMP COMMENT '',
+    `period` STRING COMMENT '',
     `record_audit_created` TIMESTAMP COMMENT 'Timestamp when the allocation cycle record was first created.',
     `record_audit_updated` TIMESTAMP COMMENT 'Timestamp of the most recent update to the allocation cycle record.',
     `allocation_cycle_status` STRING COMMENT 'Current lifecycle status of the allocation cycle.',
+    `total_allocated_amount` DECIMAL(18,2) COMMENT '',
     `total_allocation_amount` DECIMAL(18,2) COMMENT 'Aggregate monetary amount allocated in this cycle.',
     CONSTRAINT pk_allocation_cycle PRIMARY KEY(`allocation_cycle_id`)
 ) COMMENT 'Master reference table for allocation_cycle. Referenced by allocation_cycle_id.';
@@ -707,13 +787,16 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`finance`.`allocation_cycle` (
 CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`finance`.`cost_element` (
     `cost_element_id` BIGINT COMMENT 'Primary key for cost_element',
     `cost_center_id` BIGINT COMMENT 'FK to finance.cost_center',
+    `gl_account_id` BIGINT COMMENT '',
     `parent_cost_element_id` BIGINT COMMENT 'Identifier of the parent cost element in a hierarchical cost structure.',
     `profit_center_id` BIGINT COMMENT 'FK to finance.profit_center',
+    `active_flag` BOOLEAN COMMENT '',
     `allocation_method` STRING COMMENT 'Method used to allocate the cost element to cost objects.',
-    `cost_element_category` STRING COMMENT 'Category within the group that further classifies the cost element.',
+    `cost_element_category` DECIMAL(18,2) COMMENT 'Category within the group that further classifies the cost element.',
     `cost_element_code` STRING COMMENT 'Business identifier used in finance systems (e.g., SAP) to reference the cost element.',
     `confidentiality_level` STRING COMMENT 'Classification of the cost element data for internal governance.',
-    `cost_element_group` STRING COMMENT 'Higher‑level grouping of related cost elements.',
+    `controlling_area` STRING COMMENT '',
+    `cost_element_group` DECIMAL(18,2) COMMENT 'Higher‑level grouping of related cost elements.',
     `created_timestamp` TIMESTAMP COMMENT 'Timestamp when the cost element record was first created in the system.',
     `currency_code` STRING COMMENT 'Three‑letter ISO currency code for monetary values linked to the cost element.',
     `data_source` STRING COMMENT 'Name of the source system that supplied the cost element record.',
@@ -729,21 +812,25 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`finance`.`cost_element` (
     `last_review_date` DATE COMMENT 'Date when the cost element definition was last reviewed.',
     `cost_element_name` STRING COMMENT 'Human‑readable name of the cost element.',
     `notes` STRING COMMENT 'Free‑form comments or remarks about the cost element.',
-    `owner` STRING COMMENT 'Organizational department responsible for the cost element.',
-    `owner_email` STRING COMMENT 'Contact email of the owner department.',
-    `owner_phone` STRING COMMENT 'Contact phone number of the owner department.',
+    `owner` DECIMAL(18,2) COMMENT 'Organizational department responsible for the cost element.',
+    `owner_email` DECIMAL(18,2) COMMENT 'Contact email of the owner department.',
+    `owner_phone` DECIMAL(18,2) COMMENT 'Contact phone number of the owner department.',
     `review_frequency` STRING COMMENT 'How often the cost element should be reviewed for relevance and accuracy.',
     `cost_element_status` STRING COMMENT 'Current lifecycle status of the cost element.',
-    `subcategory` STRING COMMENT 'Fine‑grained subcategory for detailed reporting.',
+    `subcategory` DECIMAL(18,2) COMMENT 'Fine‑grained subcategory for detailed reporting.',
     `cost_element_type` STRING COMMENT 'Classification of the cost element for reporting and allocation.',
     `unit_of_measure` STRING COMMENT 'Standard unit used when the cost element represents a rate (e.g., hour, kilogram).',
     `updated_timestamp` TIMESTAMP COMMENT 'Timestamp of the most recent update to the cost element record.',
     `version_number` STRING COMMENT 'Version of the cost element definition for change management.',
+    `valid_from` DATE COMMENT '',
+    `valid_to` DATE COMMENT '',
     CONSTRAINT pk_cost_element PRIMARY KEY(`cost_element_id`)
 ) COMMENT 'Master reference table for cost_element. Referenced by sender_cost_element_id.';
 
 CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`finance`.`statistical_key_figure` (
     `statistical_key_figure_id` BIGINT COMMENT 'Primary key for statistical_key_figure',
+    `company_code_id` BIGINT COMMENT '',
+    `cost_center_id` BIGINT COMMENT '',
     `derived_from_statistical_key_figure_id` BIGINT COMMENT 'Self-referencing FK on statistical_key_figure (derived_from_statistical_key_figure_id)',
     `aggregation_method` STRING COMMENT 'Statistical aggregation applied when the figure is rolled up.',
     `calculation_logic` STRING COMMENT 'Textual definition of the formula or algorithm used to derive the figure.',
@@ -756,8 +843,14 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`finance`.`statistical_key_figur
     `figure_code` STRING COMMENT 'Unique alphanumeric code identifying the statistical key figure.',
     `figure_description` STRING COMMENT 'Detailed description of what the figure measures and its business purpose.',
     `figure_name` STRING COMMENT 'Human‑readable name of the statistical key figure.',
+    `fiscal_year` STRING COMMENT '',
     `frequency` STRING COMMENT 'Regularity with which the figure is calculated or reported.',
+    `key_figure_category` STRING COMMENT '',
+    `key_figure_code` STRING COMMENT '',
+    `key_figure_name` STRING COMMENT '',
+    `key_figure_value` DECIMAL(18,2) COMMENT '',
     `notes` STRING COMMENT 'Free‑form comments or additional information about the figure.',
+    `period` STRING COMMENT '',
     `regulatory_reporting_flag` BOOLEAN COMMENT 'Indicates if the figure is required for regulatory reporting.',
     `related_business_process` STRING COMMENT 'Primary business process that consumes or produces this figure.',
     `statistical_key_figure_status` STRING COMMENT 'Current lifecycle status of the figure definition.',
@@ -769,11 +862,15 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`finance`.`statistical_key_figur
 
 CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`finance`.`allocation_rule` (
     `allocation_rule_id` BIGINT COMMENT 'Primary key for allocation_rule',
+    `company_code_id` BIGINT COMMENT '',
     `cost_center_id` BIGINT COMMENT 'FK to finance.cost_center',
     `parent_allocation_rule_id` BIGINT COMMENT 'Self-referencing FK on allocation_rule (parent_allocation_rule_id)',
     `profit_center_id` BIGINT COMMENT 'FK to finance.profit_center',
     `project_header_id` BIGINT COMMENT 'Identifier of the project to which the rule applies (if project‑level allocation).',
+    `active_flag` BOOLEAN COMMENT '',
     `allocation_amount` DECIMAL(18,2) COMMENT 'Fixed monetary amount used when the rule type is fixed‑amount.',
+    `allocation_basis` STRING COMMENT '',
+    `allocation_method` STRING COMMENT '',
     `allocation_percentage` DECIMAL(18,2) COMMENT 'Percentage value used when the rule type is percentage‑based.',
     `applicability_scope` STRING COMMENT 'Scope of entities to which the rule can be applied.',
     `created_timestamp` TIMESTAMP COMMENT 'Timestamp when the allocation rule record was first created in the system.',
@@ -783,12 +880,15 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`finance`.`allocation_rule` (
     `effective_until` DATE COMMENT 'Date when the allocation rule expires or is superseded (null if open‑ended).',
     `last_review_date` DATE COMMENT 'Date when the rule was last reviewed for relevance and accuracy.',
     `notes` STRING COMMENT 'Free‑form notes or comments about the rule.',
+    `percentage_basis` DECIMAL(18,2) COMMENT '',
     `priority` STRING COMMENT 'Numeric priority determining rule evaluation order when multiple rules apply (lower number = higher priority).',
+    `receiver_rule` STRING COMMENT '',
     `reviewed_by` STRING COMMENT 'Name or identifier of the person who performed the last review.',
     `rule_code` STRING COMMENT 'Business identifier or code used to reference the allocation rule in financial systems.',
     `rule_expression` STRING COMMENT 'Textual representation of the calculation logic (e.g., formula or script).',
     `rule_name` STRING COMMENT 'Human‑readable name of the allocation rule.',
     `rule_type` STRING COMMENT 'Category of the rule defining how allocation is calculated.',
+    `sender_rule` STRING COMMENT '',
     `allocation_rule_status` STRING COMMENT 'Current lifecycle status of the allocation rule.',
     `updated_timestamp` TIMESTAMP COMMENT 'Timestamp of the most recent update to the allocation rule record.',
     `version_number` STRING COMMENT 'Version of the rule for change management and audit.',
@@ -797,16 +897,19 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`finance`.`allocation_rule` (
 
 CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`finance`.`cost_object` (
     `cost_object_id` BIGINT COMMENT 'Primary key for cost_object',
+    `cost_center_id` BIGINT COMMENT '',
     `org_unit_id` BIGINT COMMENT 'Identifier of the department that owns or is responsible for the cost object.',
     `parent_cost_object_id` BIGINT COMMENT 'Identifier of the immediate parent cost object in the hierarchy.',
+    `profit_center_id` BIGINT COMMENT '',
+    `actual_cost` DECIMAL(18,2) COMMENT '',
     `actual_cost_amount` DECIMAL(18,2) COMMENT 'Actual incurred cost recorded against the cost object.',
     `allocation_method` STRING COMMENT 'Method used to allocate costs to this object.',
     `amortization_end_date` DATE COMMENT 'Date when amortization of the cost object ends.',
     `amortization_start_date` DATE COMMENT 'Date when amortization of the cost object begins.',
     `budget_amount` DECIMAL(18,2) COMMENT 'Approved budget amount allocated to the cost object for the fiscal period.',
     `cost_object_category` STRING COMMENT 'High‑level business category for the cost object (e.g., Manufacturing, R&D, Sales).',
-    `cost_object_code` STRING COMMENT 'External code or number assigned to the cost object (e.g., cost‑center code, internal order number).',
-    `cost_nature` STRING COMMENT 'Indicates whether costs are capitalized, expensed, or classified as investment/operating.',
+    `cost_object_code` DECIMAL(18,2) COMMENT 'External code or number assigned to the cost object (e.g., cost‑center code, internal order number).',
+    `cost_nature` DECIMAL(18,2) COMMENT 'Indicates whether costs are capitalized, expensed, or classified as investment/operating.',
     `created_timestamp` TIMESTAMP COMMENT 'Timestamp when the cost object record was first created in the system.',
     `currency_code` STRING COMMENT 'Three‑letter ISO currency code for monetary amounts associated with the cost object.',
     `depreciation_method` STRING COMMENT 'Method used to depreciate assets linked to this cost object.',
@@ -818,12 +921,13 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`finance`.`cost_object` (
     `fiscal_period` STRING COMMENT 'Fiscal quarter or period for reporting purposes.',
     `hierarchy_path` STRING COMMENT 'Delimited path representing the full ancestry of the cost object (e.g., "/100/200/300").',
     `is_reportable` BOOLEAN COMMENT 'Flag indicating whether the cost object should be included in financial reporting.',
-    `cost_object_level` STRING COMMENT 'Numeric level of the cost object within the cost hierarchy (0 = top level).',
-    `manager` STRING COMMENT 'Name of the manager or person accountable for the cost object.',
+    `cost_object_level` DECIMAL(18,2) COMMENT 'Numeric level of the cost object within the cost hierarchy (0 = top level).',
+    `manager` DECIMAL(18,2) COMMENT 'Name of the manager or person accountable for the cost object.',
     `cost_object_name` STRING COMMENT 'Human‑readable name of the cost object used in reports and analyses.',
-    `owner` STRING COMMENT 'Business owner or department responsible for the cost object.',
+    `owner` DECIMAL(18,2) COMMENT 'Business owner or department responsible for the cost object.',
+    `planned_cost` DECIMAL(18,2) COMMENT '',
     `planned_cost_amount` DECIMAL(18,2) COMMENT 'Planned cost amount for the cost object before actuals are recorded.',
-    `responsible` STRING COMMENT 'Individual or role accountable for day‑to‑day cost object management.',
+    `responsible` DECIMAL(18,2) COMMENT 'Individual or role accountable for day‑to‑day cost object management.',
     `start_date` DATE COMMENT 'Date when the cost object becomes effective for cost allocation.',
     `cost_object_status` STRING COMMENT 'Current lifecycle state of the cost object.',
     `subcategory` STRING COMMENT 'More detailed sub‑category within the main category.',
@@ -838,14 +942,16 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`finance`.`cost_object` (
 CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`finance`.`ledger` (
     `ledger_id` BIGINT COMMENT 'Primary key for ledger',
     `chart_of_accounts_id` BIGINT COMMENT 'Reference to the chart of accounts associated with this ledger.',
+    `company_code_id` BIGINT COMMENT '',
     `source_ledger_id` BIGINT COMMENT 'Self-referencing FK on ledger (source_ledger_id)',
+    `accounting_principle` STRING COMMENT '',
     `audit_timestamp` TIMESTAMP COMMENT 'Timestamp of the last audit action on the ledger.',
     `audit_trail_enabled` BOOLEAN COMMENT 'Flag indicating whether audit trail is enabled for this ledger.',
     `audit_user` STRING COMMENT 'User who performed the last audit on the ledger.',
     `balance_amount` DECIMAL(18,2) COMMENT 'Current total balance amount recorded in the ledger.',
-    `balance_currency` STRING COMMENT 'Currency of the balance amount.',
+    `balance_currency` DECIMAL(18,2) COMMENT 'Currency of the balance amount.',
     `ledger_code` STRING COMMENT 'Unique business code identifying the ledger.',
-    `cost_center_code` STRING COMMENT 'Cost center code linked to the ledger for cost allocation.',
+    `cost_center_code` DECIMAL(18,2) COMMENT 'Cost center code linked to the ledger for cost allocation.',
     `created_timestamp` TIMESTAMP COMMENT 'Timestamp when the ledger record was created in the system.',
     `currency_code` STRING COMMENT 'ISO 4217 currency code for amounts recorded in the ledger.',
     `deletion_timestamp` TIMESTAMP COMMENT 'Timestamp when the ledger was logically deleted.',
@@ -854,11 +960,13 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`finance`.`ledger` (
     `effective_until` DATE COMMENT 'Date when the ledger ceases to be effective, if applicable.',
     `external_reference` STRING COMMENT 'External system reference identifier for the ledger.',
     `fiscal_year` STRING COMMENT 'Fiscal year to which the ledger belongs.',
+    `fiscal_year_variant` STRING COMMENT '',
     `is_active` BOOLEAN COMMENT 'Indicates if the ledger is currently active for posting.',
     `is_consolidated` BOOLEAN COMMENT 'Indicates whether the ledger is used for consolidation across entities.',
     `is_deleted` BOOLEAN COMMENT 'Logical delete flag indicating if the ledger record is retired.',
     `is_reportable` BOOLEAN COMMENT 'Indicates whether the ledger is included in financial reporting.',
     `last_reconciliation_date` DATE COMMENT 'Date of the most recent reconciliation performed on the ledger.',
+    `leading_ledger_flag` BOOLEAN COMMENT '',
     `ledger_type` STRING COMMENT 'Classification of the ledger based on its purpose.',
     `ledger_name` STRING COMMENT 'Human‑readable name of the ledger.',
     `period` STRING COMMENT 'Accounting period within the fiscal year.',
@@ -878,24 +986,31 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`finance`.`ledger` (
 
 CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`finance`.`cost_estimate` (
     `cost_estimate_id` BIGINT COMMENT 'Primary key for cost_estimate',
+    `company_code_id` BIGINT COMMENT '',
     `cost_center_id` BIGINT COMMENT 'Identifier of the cost center responsible for the estimate.',
     `employee_id` BIGINT COMMENT 'Identifier of the user who initially created the estimate record.',
     `cost_employee_id` BIGINT COMMENT 'Identifier of the user who approved the estimate.',
-    `material_master_id` BIGINT COMMENT 'add column material_master_id (BIGINT) with FK to inventory.material_master.material_master_id - cost estimates reference materials for standard cost calculation',
-    `sku_master_id` BIGINT COMMENT 'add column product_sku_master_id (BIGINT) with FK to product.sku_master.sku_master_id - cost estimates are typically created for specific products',
     `project_header_id` BIGINT COMMENT 'Identifier of the project or initiative the estimate supports.',
     `reference_cost_estimate_id` BIGINT COMMENT 'Self-referencing FK on cost_estimate (reference_cost_estimate_id)',
     `approval_date` DATE COMMENT 'Date on which the estimate was approved.',
     `confidence_level` STRING COMMENT 'Confidence in the accuracy of the estimate.',
-    `cost_category` STRING COMMENT 'Classification of the cost type covered by the estimate.',
+    `cost_category` DECIMAL(18,2) COMMENT 'Classification of the cost type covered by the estimate.',
+    `costing_variant` DECIMAL(18,2) COMMENT '',
+    `created_timestamp` TIMESTAMP COMMENT '',
     `currency_code` STRING COMMENT 'Three‑letter ISO 4217 code of the currency used for the estimate.',
     `cost_estimate_description` STRING COMMENT 'Free‑form text describing the scope and assumptions of the cost estimate.',
     `estimate_amount_gross` DECIMAL(18,2) COMMENT 'Total estimated cost before taxes, discounts, or adjustments.',
     `estimate_amount_net` DECIMAL(18,2) COMMENT 'Net estimated cost after tax and adjustments.',
     `estimate_date` DATE COMMENT 'Date on which the cost estimate was generated.',
+    `estimate_name` STRING COMMENT '',
     `estimate_number` STRING COMMENT 'Human‑readable identifier assigned to the cost estimate, used in finance and project communications.',
+    `estimate_status` STRING COMMENT '',
     `estimate_tax_amount` DECIMAL(18,2) COMMENT 'Estimated tax component associated with the gross amount.',
+    `estimate_type` STRING COMMENT '',
+    `labor_cost` DECIMAL(18,2) COMMENT '',
+    `material_cost` DECIMAL(18,2) COMMENT '',
     `notes` STRING COMMENT 'Additional remarks or comments captured by the estimator.',
+    `overhead_cost` DECIMAL(18,2) COMMENT '',
     `quantity` DECIMAL(18,2) COMMENT 'Number of units or hours estimated for the cost item.',
     `record_audit_created` TIMESTAMP COMMENT 'Timestamp when the estimate record was first captured in the lakehouse.',
     `record_audit_updated` TIMESTAMP COMMENT 'Timestamp of the most recent modification to the estimate record.',
@@ -912,27 +1027,35 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`finance`.`cost_estimate` (
 
 CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`finance`.`chart_of_accounts` (
     `chart_of_accounts_id` BIGINT COMMENT 'Primary key for chart_of_accounts',
-    `company_code_id` BIGINT COMMENT 'Identifier of the legal entity that owns the account.',
     `parent_account_chart_of_accounts_id` BIGINT COMMENT 'Identifier of the immediate parent GL account for hierarchical structuring.',
     `parent_chart_of_accounts_id` BIGINT COMMENT 'Self-referencing FK on chart_of_accounts (parent_chart_of_accounts_id)',
     `account_category` STRING COMMENT 'Secondary classification providing finer granularity of the account.',
     `account_code` STRING COMMENT 'Unique alphanumeric code identifying the GL account.',
     `account_description` STRING COMMENT 'Detailed description of the account purpose and usage.',
     `account_group` STRING COMMENT 'Higher-level grouping of accounts for consolidated reporting.',
+    `account_length` STRING COMMENT '',
     `account_name` STRING COMMENT 'Descriptive name of the GL account.',
     `account_type` STRING COMMENT 'Classification of the account by financial statement category.',
-    `balance_nature` STRING COMMENT 'Indicates whether the account normally carries a debit or credit balance.',
-    `cost_center_code` STRING COMMENT 'Cost center associated with the account for internal cost allocation.',
+    `active_flag` BOOLEAN COMMENT '',
+    `balance_nature` DECIMAL(18,2) COMMENT 'Indicates whether the account normally carries a debit or credit balance.',
+    `coa_code` STRING COMMENT '',
+    `coa_description` STRING COMMENT '',
+    `coa_name` STRING COMMENT '',
+    `company_code_id` STRING COMMENT 'Identifier of the legal entity that owns the account.',
+    `cost_center_code` DECIMAL(18,2) COMMENT 'Cost center associated with the account for internal cost allocation.',
     `created_timestamp` TIMESTAMP COMMENT 'Timestamp when the account record was created in the system.',
     `currency_code` STRING COMMENT 'ISO 4217 currency code in which the account is denominated.',
     `effective_from` DATE COMMENT 'Date when the account becomes effective for posting.',
     `effective_to` DATE COMMENT 'Date when the account ceases to be effective; null if open-ended.',
     `financial_reporting_level` STRING COMMENT 'Level in the financial reporting hierarchy (e.g., 1‑5).',
+    `group_coa_flag` BOOLEAN COMMENT '',
     `is_active` BOOLEAN COMMENT 'Indicates whether the account is currently active for posting.',
     `is_actual` BOOLEAN COMMENT 'True if the account records actual transactions.',
     `is_budgeted` BOOLEAN COMMENT 'True if the account is included in budgeting processes.',
     `is_consolidation_account` BOOLEAN COMMENT 'True if the account is used in corporate consolidation reporting.',
     `is_forecasted` BOOLEAN COMMENT 'True if the account is used in forecasting.',
+    `language_code` STRING COMMENT '',
+    `maintenance_language` STRING COMMENT '',
     `posting_restriction_flag` BOOLEAN COMMENT 'Indicates if posting to this account is restricted due to policy or control.',
     `profit_center_code` STRING COMMENT 'Profit center linked to the account for profitability reporting.',
     `tax_reporting_code` STRING COMMENT 'Code used for tax reporting purposes associated with the account.',
@@ -944,19 +1067,26 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`finance`.`chart_of_accounts` (
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`cost_center` ADD CONSTRAINT `fk_finance_cost_center_parent_cost_center_id` FOREIGN KEY (`parent_cost_center_id`) REFERENCES `vibe_manufacturing_v1`.`finance`.`cost_center`(`cost_center_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`profit_center` ADD CONSTRAINT `fk_finance_profit_center_cost_center_id` FOREIGN KEY (`cost_center_id`) REFERENCES `vibe_manufacturing_v1`.`finance`.`cost_center`(`cost_center_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`profit_center` ADD CONSTRAINT `fk_finance_profit_center_parent_profit_center_id` FOREIGN KEY (`parent_profit_center_id`) REFERENCES `vibe_manufacturing_v1`.`finance`.`profit_center`(`profit_center_id`);
+ALTER TABLE `vibe_manufacturing_v1`.`finance`.`gl_account` ADD CONSTRAINT `fk_finance_gl_account_chart_of_accounts_id` FOREIGN KEY (`chart_of_accounts_id`) REFERENCES `vibe_manufacturing_v1`.`finance`.`chart_of_accounts`(`chart_of_accounts_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`gl_account` ADD CONSTRAINT `fk_finance_gl_account_cost_center_id` FOREIGN KEY (`cost_center_id`) REFERENCES `vibe_manufacturing_v1`.`finance`.`cost_center`(`cost_center_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`gl_account` ADD CONSTRAINT `fk_finance_gl_account_profit_center_id` FOREIGN KEY (`profit_center_id`) REFERENCES `vibe_manufacturing_v1`.`finance`.`profit_center`(`profit_center_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`company_code` ADD CONSTRAINT `fk_finance_company_code_business_partner_id` FOREIGN KEY (`business_partner_id`) REFERENCES `vibe_manufacturing_v1`.`finance`.`business_partner`(`business_partner_id`);
+ALTER TABLE `vibe_manufacturing_v1`.`finance`.`company_code` ADD CONSTRAINT `fk_finance_company_code_chart_of_accounts_id` FOREIGN KEY (`chart_of_accounts_id`) REFERENCES `vibe_manufacturing_v1`.`finance`.`chart_of_accounts`(`chart_of_accounts_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`company_code` ADD CONSTRAINT `fk_finance_company_code_cost_center_id` FOREIGN KEY (`cost_center_id`) REFERENCES `vibe_manufacturing_v1`.`finance`.`cost_center`(`cost_center_id`);
+ALTER TABLE `vibe_manufacturing_v1`.`finance`.`journal_entry` ADD CONSTRAINT `fk_finance_journal_entry_company_code_id` FOREIGN KEY (`company_code_id`) REFERENCES `vibe_manufacturing_v1`.`finance`.`company_code`(`company_code_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`journal_entry` ADD CONSTRAINT `fk_finance_journal_entry_cost_center_id` FOREIGN KEY (`cost_center_id`) REFERENCES `vibe_manufacturing_v1`.`finance`.`cost_center`(`cost_center_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`journal_entry` ADD CONSTRAINT `fk_finance_journal_entry_gl_account_id` FOREIGN KEY (`gl_account_id`) REFERENCES `vibe_manufacturing_v1`.`finance`.`gl_account`(`gl_account_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`journal_entry` ADD CONSTRAINT `fk_finance_journal_entry_internal_order_id` FOREIGN KEY (`internal_order_id`) REFERENCES `vibe_manufacturing_v1`.`finance`.`internal_order`(`internal_order_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`journal_entry` ADD CONSTRAINT `fk_finance_journal_entry_ledger_id` FOREIGN KEY (`ledger_id`) REFERENCES `vibe_manufacturing_v1`.`finance`.`ledger`(`ledger_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`journal_entry` ADD CONSTRAINT `fk_finance_journal_entry_profit_center_id` FOREIGN KEY (`profit_center_id`) REFERENCES `vibe_manufacturing_v1`.`finance`.`profit_center`(`profit_center_id`);
+ALTER TABLE `vibe_manufacturing_v1`.`finance`.`finance_budget` ADD CONSTRAINT `fk_finance_finance_budget_company_code_id` FOREIGN KEY (`company_code_id`) REFERENCES `vibe_manufacturing_v1`.`finance`.`company_code`(`company_code_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`finance_budget` ADD CONSTRAINT `fk_finance_finance_budget_cost_center_id` FOREIGN KEY (`cost_center_id`) REFERENCES `vibe_manufacturing_v1`.`finance`.`cost_center`(`cost_center_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`finance_budget` ADD CONSTRAINT `fk_finance_finance_budget_gl_account_id` FOREIGN KEY (`gl_account_id`) REFERENCES `vibe_manufacturing_v1`.`finance`.`gl_account`(`gl_account_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`finance_budget` ADD CONSTRAINT `fk_finance_finance_budget_internal_order_id` FOREIGN KEY (`internal_order_id`) REFERENCES `vibe_manufacturing_v1`.`finance`.`internal_order`(`internal_order_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`finance_budget` ADD CONSTRAINT `fk_finance_finance_budget_profit_center_id` FOREIGN KEY (`profit_center_id`) REFERENCES `vibe_manufacturing_v1`.`finance`.`profit_center`(`profit_center_id`);
+ALTER TABLE `vibe_manufacturing_v1`.`finance`.`internal_order` ADD CONSTRAINT `fk_finance_internal_order_company_code_id` FOREIGN KEY (`company_code_id`) REFERENCES `vibe_manufacturing_v1`.`finance`.`company_code`(`company_code_id`);
+ALTER TABLE `vibe_manufacturing_v1`.`finance`.`internal_order` ADD CONSTRAINT `fk_finance_internal_order_cost_center_id` FOREIGN KEY (`cost_center_id`) REFERENCES `vibe_manufacturing_v1`.`finance`.`cost_center`(`cost_center_id`);
+ALTER TABLE `vibe_manufacturing_v1`.`finance`.`internal_order` ADD CONSTRAINT `fk_finance_internal_order_profit_center_id` FOREIGN KEY (`profit_center_id`) REFERENCES `vibe_manufacturing_v1`.`finance`.`profit_center`(`profit_center_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`cost_allocation` ADD CONSTRAINT `fk_finance_cost_allocation_allocation_cycle_id` FOREIGN KEY (`allocation_cycle_id`) REFERENCES `vibe_manufacturing_v1`.`finance`.`allocation_cycle`(`allocation_cycle_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`cost_allocation` ADD CONSTRAINT `fk_finance_cost_allocation_allocation_rule_id` FOREIGN KEY (`allocation_rule_id`) REFERENCES `vibe_manufacturing_v1`.`finance`.`allocation_rule`(`allocation_rule_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`cost_allocation` ADD CONSTRAINT `fk_finance_cost_allocation_cost_object_id` FOREIGN KEY (`cost_object_id`) REFERENCES `vibe_manufacturing_v1`.`finance`.`cost_object`(`cost_object_id`);
@@ -966,39 +1096,59 @@ ALTER TABLE `vibe_manufacturing_v1`.`finance`.`cost_allocation` ADD CONSTRAINT `
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`cost_allocation` ADD CONSTRAINT `fk_finance_cost_allocation_profit_center_id` FOREIGN KEY (`profit_center_id`) REFERENCES `vibe_manufacturing_v1`.`finance`.`profit_center`(`profit_center_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`cost_allocation` ADD CONSTRAINT `fk_finance_cost_allocation_cost_element_id` FOREIGN KEY (`cost_element_id`) REFERENCES `vibe_manufacturing_v1`.`finance`.`cost_element`(`cost_element_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`cost_allocation` ADD CONSTRAINT `fk_finance_cost_allocation_statistical_key_figure_id` FOREIGN KEY (`statistical_key_figure_id`) REFERENCES `vibe_manufacturing_v1`.`finance`.`statistical_key_figure`(`statistical_key_figure_id`);
+ALTER TABLE `vibe_manufacturing_v1`.`finance`.`cost_allocation` ADD CONSTRAINT `fk_finance_cost_allocation_tertiary_receiver_cost_center_id` FOREIGN KEY (`tertiary_receiver_cost_center_id`) REFERENCES `vibe_manufacturing_v1`.`finance`.`cost_center`(`cost_center_id`);
+ALTER TABLE `vibe_manufacturing_v1`.`finance`.`capex_request` ADD CONSTRAINT `fk_finance_capex_request_company_code_id` FOREIGN KEY (`company_code_id`) REFERENCES `vibe_manufacturing_v1`.`finance`.`company_code`(`company_code_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`capex_request` ADD CONSTRAINT `fk_finance_capex_request_cost_center_id` FOREIGN KEY (`cost_center_id`) REFERENCES `vibe_manufacturing_v1`.`finance`.`cost_center`(`cost_center_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`capex_request` ADD CONSTRAINT `fk_finance_capex_request_internal_order_id` FOREIGN KEY (`internal_order_id`) REFERENCES `vibe_manufacturing_v1`.`finance`.`internal_order`(`internal_order_id`);
+ALTER TABLE `vibe_manufacturing_v1`.`finance`.`ap_invoice` ADD CONSTRAINT `fk_finance_ap_invoice_business_partner_id` FOREIGN KEY (`business_partner_id`) REFERENCES `vibe_manufacturing_v1`.`finance`.`business_partner`(`business_partner_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`ap_invoice` ADD CONSTRAINT `fk_finance_ap_invoice_company_code_id` FOREIGN KEY (`company_code_id`) REFERENCES `vibe_manufacturing_v1`.`finance`.`company_code`(`company_code_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`ap_invoice` ADD CONSTRAINT `fk_finance_ap_invoice_cost_center_id` FOREIGN KEY (`cost_center_id`) REFERENCES `vibe_manufacturing_v1`.`finance`.`cost_center`(`cost_center_id`);
+ALTER TABLE `vibe_manufacturing_v1`.`finance`.`ap_invoice` ADD CONSTRAINT `fk_finance_ap_invoice_gl_account_id` FOREIGN KEY (`gl_account_id`) REFERENCES `vibe_manufacturing_v1`.`finance`.`gl_account`(`gl_account_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`ap_invoice` ADD CONSTRAINT `fk_finance_ap_invoice_profit_center_id` FOREIGN KEY (`profit_center_id`) REFERENCES `vibe_manufacturing_v1`.`finance`.`profit_center`(`profit_center_id`);
+ALTER TABLE `vibe_manufacturing_v1`.`finance`.`ar_item` ADD CONSTRAINT `fk_finance_ar_item_business_partner_id` FOREIGN KEY (`business_partner_id`) REFERENCES `vibe_manufacturing_v1`.`finance`.`business_partner`(`business_partner_id`);
+ALTER TABLE `vibe_manufacturing_v1`.`finance`.`ar_item` ADD CONSTRAINT `fk_finance_ar_item_company_code_id` FOREIGN KEY (`company_code_id`) REFERENCES `vibe_manufacturing_v1`.`finance`.`company_code`(`company_code_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`ar_item` ADD CONSTRAINT `fk_finance_ar_item_cost_center_id` FOREIGN KEY (`cost_center_id`) REFERENCES `vibe_manufacturing_v1`.`finance`.`cost_center`(`cost_center_id`);
+ALTER TABLE `vibe_manufacturing_v1`.`finance`.`ar_item` ADD CONSTRAINT `fk_finance_ar_item_gl_account_id` FOREIGN KEY (`gl_account_id`) REFERENCES `vibe_manufacturing_v1`.`finance`.`gl_account`(`gl_account_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`ar_item` ADD CONSTRAINT `fk_finance_ar_item_profit_center_id` FOREIGN KEY (`profit_center_id`) REFERENCES `vibe_manufacturing_v1`.`finance`.`profit_center`(`profit_center_id`);
+ALTER TABLE `vibe_manufacturing_v1`.`finance`.`fixed_asset` ADD CONSTRAINT `fk_finance_fixed_asset_company_code_id` FOREIGN KEY (`company_code_id`) REFERENCES `vibe_manufacturing_v1`.`finance`.`company_code`(`company_code_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`fixed_asset` ADD CONSTRAINT `fk_finance_fixed_asset_cost_center_id` FOREIGN KEY (`cost_center_id`) REFERENCES `vibe_manufacturing_v1`.`finance`.`cost_center`(`cost_center_id`);
+ALTER TABLE `vibe_manufacturing_v1`.`finance`.`financial_plan` ADD CONSTRAINT `fk_finance_financial_plan_company_code_id` FOREIGN KEY (`company_code_id`) REFERENCES `vibe_manufacturing_v1`.`finance`.`company_code`(`company_code_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`financial_plan` ADD CONSTRAINT `fk_finance_financial_plan_cost_center_id` FOREIGN KEY (`cost_center_id`) REFERENCES `vibe_manufacturing_v1`.`finance`.`cost_center`(`cost_center_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`financial_plan` ADD CONSTRAINT `fk_finance_financial_plan_profit_center_id` FOREIGN KEY (`profit_center_id`) REFERENCES `vibe_manufacturing_v1`.`finance`.`profit_center`(`profit_center_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`intercompany_transaction` ADD CONSTRAINT `fk_finance_intercompany_transaction_cost_center_id` FOREIGN KEY (`cost_center_id`) REFERENCES `vibe_manufacturing_v1`.`finance`.`cost_center`(`cost_center_id`);
+ALTER TABLE `vibe_manufacturing_v1`.`finance`.`intercompany_transaction` ADD CONSTRAINT `fk_finance_intercompany_transaction_gl_account_id` FOREIGN KEY (`gl_account_id`) REFERENCES `vibe_manufacturing_v1`.`finance`.`gl_account`(`gl_account_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`intercompany_transaction` ADD CONSTRAINT `fk_finance_intercompany_transaction_company_code_id` FOREIGN KEY (`company_code_id`) REFERENCES `vibe_manufacturing_v1`.`finance`.`company_code`(`company_code_id`);
+ALTER TABLE `vibe_manufacturing_v1`.`finance`.`intercompany_transaction` ADD CONSTRAINT `fk_finance_intercompany_transaction_intercompany_sender_company_code_id` FOREIGN KEY (`intercompany_sender_company_code_id`) REFERENCES `vibe_manufacturing_v1`.`finance`.`company_code`(`company_code_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`intercompany_transaction` ADD CONSTRAINT `fk_finance_intercompany_transaction_profit_center_id` FOREIGN KEY (`profit_center_id`) REFERENCES `vibe_manufacturing_v1`.`finance`.`profit_center`(`profit_center_id`);
-ALTER TABLE `vibe_manufacturing_v1`.`finance`.`intercompany_transaction` ADD CONSTRAINT `fk_finance_intercompany_transaction_receiving_company_code_id` FOREIGN KEY (`receiving_company_code_id`) REFERENCES `vibe_manufacturing_v1`.`finance`.`company_code`(`company_code_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`intercompany_transaction` ADD CONSTRAINT `fk_finance_intercompany_transaction_reversal_transaction_intercompany_transaction_id` FOREIGN KEY (`reversal_transaction_intercompany_transaction_id`) REFERENCES `vibe_manufacturing_v1`.`finance`.`intercompany_transaction`(`intercompany_transaction_id`);
+ALTER TABLE `vibe_manufacturing_v1`.`finance`.`bank_account` ADD CONSTRAINT `fk_finance_bank_account_company_code_id` FOREIGN KEY (`company_code_id`) REFERENCES `vibe_manufacturing_v1`.`finance`.`company_code`(`company_code_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`bank_account` ADD CONSTRAINT `fk_finance_bank_account_gl_account_id` FOREIGN KEY (`gl_account_id`) REFERENCES `vibe_manufacturing_v1`.`finance`.`gl_account`(`gl_account_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`bank_account` ADD CONSTRAINT `fk_finance_bank_account_pool_header_bank_account_id` FOREIGN KEY (`pool_header_bank_account_id`) REFERENCES `vibe_manufacturing_v1`.`finance`.`bank_account`(`bank_account_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`business_partner` ADD CONSTRAINT `fk_finance_business_partner_parent_business_partner_id` FOREIGN KEY (`parent_business_partner_id`) REFERENCES `vibe_manufacturing_v1`.`finance`.`business_partner`(`business_partner_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`business_partner` ADD CONSTRAINT `fk_finance_business_partner_parent_partner_id` FOREIGN KEY (`parent_partner_id`) REFERENCES `vibe_manufacturing_v1`.`finance`.`business_partner`(`business_partner_id`);
+ALTER TABLE `vibe_manufacturing_v1`.`finance`.`allocation_cycle` ADD CONSTRAINT `fk_finance_allocation_cycle_allocation_rule_id` FOREIGN KEY (`allocation_rule_id`) REFERENCES `vibe_manufacturing_v1`.`finance`.`allocation_rule`(`allocation_rule_id`);
+ALTER TABLE `vibe_manufacturing_v1`.`finance`.`allocation_cycle` ADD CONSTRAINT `fk_finance_allocation_cycle_company_code_id` FOREIGN KEY (`company_code_id`) REFERENCES `vibe_manufacturing_v1`.`finance`.`company_code`(`company_code_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`allocation_cycle` ADD CONSTRAINT `fk_finance_allocation_cycle_previous_allocation_cycle_id` FOREIGN KEY (`previous_allocation_cycle_id`) REFERENCES `vibe_manufacturing_v1`.`finance`.`allocation_cycle`(`allocation_cycle_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`cost_element` ADD CONSTRAINT `fk_finance_cost_element_cost_center_id` FOREIGN KEY (`cost_center_id`) REFERENCES `vibe_manufacturing_v1`.`finance`.`cost_center`(`cost_center_id`);
+ALTER TABLE `vibe_manufacturing_v1`.`finance`.`cost_element` ADD CONSTRAINT `fk_finance_cost_element_gl_account_id` FOREIGN KEY (`gl_account_id`) REFERENCES `vibe_manufacturing_v1`.`finance`.`gl_account`(`gl_account_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`cost_element` ADD CONSTRAINT `fk_finance_cost_element_parent_cost_element_id` FOREIGN KEY (`parent_cost_element_id`) REFERENCES `vibe_manufacturing_v1`.`finance`.`cost_element`(`cost_element_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`cost_element` ADD CONSTRAINT `fk_finance_cost_element_profit_center_id` FOREIGN KEY (`profit_center_id`) REFERENCES `vibe_manufacturing_v1`.`finance`.`profit_center`(`profit_center_id`);
+ALTER TABLE `vibe_manufacturing_v1`.`finance`.`statistical_key_figure` ADD CONSTRAINT `fk_finance_statistical_key_figure_company_code_id` FOREIGN KEY (`company_code_id`) REFERENCES `vibe_manufacturing_v1`.`finance`.`company_code`(`company_code_id`);
+ALTER TABLE `vibe_manufacturing_v1`.`finance`.`statistical_key_figure` ADD CONSTRAINT `fk_finance_statistical_key_figure_cost_center_id` FOREIGN KEY (`cost_center_id`) REFERENCES `vibe_manufacturing_v1`.`finance`.`cost_center`(`cost_center_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`statistical_key_figure` ADD CONSTRAINT `fk_finance_statistical_key_figure_derived_from_statistical_key_figure_id` FOREIGN KEY (`derived_from_statistical_key_figure_id`) REFERENCES `vibe_manufacturing_v1`.`finance`.`statistical_key_figure`(`statistical_key_figure_id`);
+ALTER TABLE `vibe_manufacturing_v1`.`finance`.`allocation_rule` ADD CONSTRAINT `fk_finance_allocation_rule_company_code_id` FOREIGN KEY (`company_code_id`) REFERENCES `vibe_manufacturing_v1`.`finance`.`company_code`(`company_code_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`allocation_rule` ADD CONSTRAINT `fk_finance_allocation_rule_cost_center_id` FOREIGN KEY (`cost_center_id`) REFERENCES `vibe_manufacturing_v1`.`finance`.`cost_center`(`cost_center_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`allocation_rule` ADD CONSTRAINT `fk_finance_allocation_rule_parent_allocation_rule_id` FOREIGN KEY (`parent_allocation_rule_id`) REFERENCES `vibe_manufacturing_v1`.`finance`.`allocation_rule`(`allocation_rule_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`allocation_rule` ADD CONSTRAINT `fk_finance_allocation_rule_profit_center_id` FOREIGN KEY (`profit_center_id`) REFERENCES `vibe_manufacturing_v1`.`finance`.`profit_center`(`profit_center_id`);
+ALTER TABLE `vibe_manufacturing_v1`.`finance`.`cost_object` ADD CONSTRAINT `fk_finance_cost_object_cost_center_id` FOREIGN KEY (`cost_center_id`) REFERENCES `vibe_manufacturing_v1`.`finance`.`cost_center`(`cost_center_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`cost_object` ADD CONSTRAINT `fk_finance_cost_object_parent_cost_object_id` FOREIGN KEY (`parent_cost_object_id`) REFERENCES `vibe_manufacturing_v1`.`finance`.`cost_object`(`cost_object_id`);
+ALTER TABLE `vibe_manufacturing_v1`.`finance`.`cost_object` ADD CONSTRAINT `fk_finance_cost_object_profit_center_id` FOREIGN KEY (`profit_center_id`) REFERENCES `vibe_manufacturing_v1`.`finance`.`profit_center`(`profit_center_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`ledger` ADD CONSTRAINT `fk_finance_ledger_chart_of_accounts_id` FOREIGN KEY (`chart_of_accounts_id`) REFERENCES `vibe_manufacturing_v1`.`finance`.`chart_of_accounts`(`chart_of_accounts_id`);
+ALTER TABLE `vibe_manufacturing_v1`.`finance`.`ledger` ADD CONSTRAINT `fk_finance_ledger_company_code_id` FOREIGN KEY (`company_code_id`) REFERENCES `vibe_manufacturing_v1`.`finance`.`company_code`(`company_code_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`ledger` ADD CONSTRAINT `fk_finance_ledger_source_ledger_id` FOREIGN KEY (`source_ledger_id`) REFERENCES `vibe_manufacturing_v1`.`finance`.`ledger`(`ledger_id`);
+ALTER TABLE `vibe_manufacturing_v1`.`finance`.`cost_estimate` ADD CONSTRAINT `fk_finance_cost_estimate_company_code_id` FOREIGN KEY (`company_code_id`) REFERENCES `vibe_manufacturing_v1`.`finance`.`company_code`(`company_code_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`cost_estimate` ADD CONSTRAINT `fk_finance_cost_estimate_cost_center_id` FOREIGN KEY (`cost_center_id`) REFERENCES `vibe_manufacturing_v1`.`finance`.`cost_center`(`cost_center_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`cost_estimate` ADD CONSTRAINT `fk_finance_cost_estimate_reference_cost_estimate_id` FOREIGN KEY (`reference_cost_estimate_id`) REFERENCES `vibe_manufacturing_v1`.`finance`.`cost_estimate`(`cost_estimate_id`);
-ALTER TABLE `vibe_manufacturing_v1`.`finance`.`chart_of_accounts` ADD CONSTRAINT `fk_finance_chart_of_accounts_company_code_id` FOREIGN KEY (`company_code_id`) REFERENCES `vibe_manufacturing_v1`.`finance`.`company_code`(`company_code_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`chart_of_accounts` ADD CONSTRAINT `fk_finance_chart_of_accounts_parent_account_chart_of_accounts_id` FOREIGN KEY (`parent_account_chart_of_accounts_id`) REFERENCES `vibe_manufacturing_v1`.`finance`.`chart_of_accounts`(`chart_of_accounts_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`chart_of_accounts` ADD CONSTRAINT `fk_finance_chart_of_accounts_parent_chart_of_accounts_id` FOREIGN KEY (`parent_chart_of_accounts_id`) REFERENCES `vibe_manufacturing_v1`.`finance`.`chart_of_accounts`(`chart_of_accounts_id`);
 
@@ -1006,7 +1156,7 @@ ALTER TABLE `vibe_manufacturing_v1`.`finance`.`chart_of_accounts` ADD CONSTRAINT
 ALTER SCHEMA `vibe_manufacturing_v1`.`finance` SET TAGS ('dbx_division' = 'corporate');
 ALTER SCHEMA `vibe_manufacturing_v1`.`finance` SET TAGS ('dbx_domain' = 'finance');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`cost_center` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_manufacturing_v1`.`finance`.`cost_center` SET TAGS ('dbx_subdomain' = 'controlling_master');
+ALTER TABLE `vibe_manufacturing_v1`.`finance`.`cost_center` SET TAGS ('dbx_subdomain' = 'controlling_structure');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`cost_center` ALTER COLUMN `cost_center_id` SET TAGS ('dbx_business_glossary_term' = 'Cost Center ID');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`cost_center` ALTER COLUMN `parent_cost_center_id` SET TAGS ('dbx_business_glossary_term' = 'Parent Cost Center ID');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`cost_center` ALTER COLUMN `actual_cost` SET TAGS ('dbx_business_glossary_term' = 'Actual Cost (AC)');
@@ -1017,9 +1167,7 @@ ALTER TABLE `vibe_manufacturing_v1`.`finance`.`cost_center` ALTER COLUMN `cost_c
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`cost_center` ALTER COLUMN `controlling_area_code` SET TAGS ('dbx_business_glossary_term' = 'Controlling Area Code (CA)');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`cost_center` ALTER COLUMN `cost_center_group` SET TAGS ('dbx_business_glossary_term' = 'Cost Center Group (CCG)');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`cost_center` ALTER COLUMN `cost_center_status` SET TAGS ('dbx_business_glossary_term' = 'Cost Center Status (CCS)');
-ALTER TABLE `vibe_manufacturing_v1`.`finance`.`cost_center` ALTER COLUMN `cost_center_status` SET TAGS ('dbx_value_regex' = 'active|inactive|planned|closed');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`cost_center` ALTER COLUMN `cost_center_type` SET TAGS ('dbx_business_glossary_term' = 'Cost Center Type (CCT)');
-ALTER TABLE `vibe_manufacturing_v1`.`finance`.`cost_center` ALTER COLUMN `cost_center_type` SET TAGS ('dbx_value_regex' = 'production|administration|research_and_development|sales|support');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`cost_center` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Creation Timestamp');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`cost_center` ALTER COLUMN `currency_code` SET TAGS ('dbx_business_glossary_term' = 'Currency Code (ISO 4217)');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`cost_center` ALTER COLUMN `currency_code` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
@@ -1030,13 +1178,15 @@ ALTER TABLE `vibe_manufacturing_v1`.`finance`.`cost_center` ALTER COLUMN `hierar
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`cost_center` ALTER COLUMN `is_overhead` SET TAGS ('dbx_business_glossary_term' = 'Is Overhead Cost Center Flag');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`cost_center` ALTER COLUMN `location_code` SET TAGS ('dbx_business_glossary_term' = 'Cost Center Location Code (LOC)');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`cost_center` ALTER COLUMN `cost_center_name` SET TAGS ('dbx_business_glossary_term' = 'Cost Center Name (CCN)');
+ALTER TABLE `vibe_manufacturing_v1`.`finance`.`cost_center` ALTER COLUMN `cost_center_name` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`finance`.`cost_center` ALTER COLUMN `cost_center_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`cost_center` ALTER COLUMN `owner_department` SET TAGS ('dbx_business_glossary_term' = 'Owner Department (OD)');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`cost_center` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Last Updated Timestamp');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`cost_center` ALTER COLUMN `variance_amount` SET TAGS ('dbx_business_glossary_term' = 'Variance Amount (VA)');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`cost_center` ALTER COLUMN `valid_from` SET TAGS ('dbx_business_glossary_term' = 'Validity Start Date (Valid From)');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`cost_center` ALTER COLUMN `valid_to` SET TAGS ('dbx_business_glossary_term' = 'Validity End Date (Valid To)');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`profit_center` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_manufacturing_v1`.`finance`.`profit_center` SET TAGS ('dbx_subdomain' = 'controlling_master');
+ALTER TABLE `vibe_manufacturing_v1`.`finance`.`profit_center` SET TAGS ('dbx_subdomain' = 'controlling_structure');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`profit_center` ALTER COLUMN `profit_center_id` SET TAGS ('dbx_business_glossary_term' = 'Profit Center ID');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`profit_center` ALTER COLUMN `cost_center_id` SET TAGS ('dbx_business_glossary_term' = 'Associated Cost Center ID');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`profit_center` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Manager Employee Id');
@@ -1058,6 +1208,8 @@ ALTER TABLE `vibe_manufacturing_v1`.`finance`.`profit_center` ALTER COLUMN `is_r
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`profit_center` ALTER COLUMN `last_review_date` SET TAGS ('dbx_business_glossary_term' = 'Last Review Date');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`profit_center` ALTER COLUMN `legal_entity_code` SET TAGS ('dbx_business_glossary_term' = 'Legal Entity Code');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`profit_center` ALTER COLUMN `profit_center_name` SET TAGS ('dbx_business_glossary_term' = 'Profit Center Name');
+ALTER TABLE `vibe_manufacturing_v1`.`finance`.`profit_center` ALTER COLUMN `profit_center_name` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`finance`.`profit_center` ALTER COLUMN `profit_center_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`profit_center` ALTER COLUMN `oee_target_percent` SET TAGS ('dbx_business_glossary_term' = 'OEE Target Percent');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`profit_center` ALTER COLUMN `owner` SET TAGS ('dbx_business_glossary_term' = 'Profit Center Owner');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`profit_center` ALTER COLUMN `planned_profit` SET TAGS ('dbx_business_glossary_term' = 'Planned Profit');
@@ -1088,16 +1240,16 @@ ALTER TABLE `vibe_manufacturing_v1`.`finance`.`gl_account` ALTER COLUMN `account
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`gl_account` ALTER COLUMN `account_group` SET TAGS ('dbx_business_glossary_term' = 'General Ledger Account Group (GL_ACCOUNT_GROUP)');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`gl_account` ALTER COLUMN `account_long_description` SET TAGS ('dbx_business_glossary_term' = 'Account Long Description (ACCOUNT_LONG_DESCRIPTION)');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`gl_account` ALTER COLUMN `account_name` SET TAGS ('dbx_business_glossary_term' = 'General Ledger Account Name (GL_ACCOUNT_NAME)');
+ALTER TABLE `vibe_manufacturing_v1`.`finance`.`gl_account` ALTER COLUMN `account_name` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`finance`.`gl_account` ALTER COLUMN `account_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`gl_account` ALTER COLUMN `account_number` SET TAGS ('dbx_business_glossary_term' = 'General Ledger Account Number (GL_ACCOUNT_NUMBER)');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`gl_account` ALTER COLUMN `account_number` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`gl_account` ALTER COLUMN `account_number` SET TAGS ('dbx_pii_financial' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`gl_account` ALTER COLUMN `account_type` SET TAGS ('dbx_business_glossary_term' = 'General Ledger Account Type (GL_ACCOUNT_TYPE)');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`gl_account` ALTER COLUMN `account_type` SET TAGS ('dbx_value_regex' = 'balance_sheet|profit_and_loss|equity|asset|liability');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`gl_account` ALTER COLUMN `balance_type` SET TAGS ('dbx_business_glossary_term' = 'Balance Type (BALANCE_TYPE)');
-ALTER TABLE `vibe_manufacturing_v1`.`finance`.`gl_account` ALTER COLUMN `balance_type` SET TAGS ('dbx_value_regex' = 'debit|credit');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`gl_account` ALTER COLUMN `consolidation_group` SET TAGS ('dbx_business_glossary_term' = 'Consolidation Group (CONSOLIDATION_GROUP)');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`gl_account` ALTER COLUMN `cost_element_category` SET TAGS ('dbx_business_glossary_term' = 'Cost Element Category (COST_ELEMENT_CATEGORY)');
-ALTER TABLE `vibe_manufacturing_v1`.`finance`.`gl_account` ALTER COLUMN `cost_element_category` SET TAGS ('dbx_value_regex' = 'primary|secondary|none');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`gl_account` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Creation Timestamp (CREATED_TIMESTAMP)');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`gl_account` ALTER COLUMN `currency_code` SET TAGS ('dbx_business_glossary_term' = 'Currency Code (ISO 4217) (CURRENCY_CODE)');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`gl_account` ALTER COLUMN `current_balance` SET TAGS ('dbx_business_glossary_term' = 'Current Balance (CURRENT_BALANCE)');
@@ -1134,12 +1286,14 @@ ALTER TABLE `vibe_manufacturing_v1`.`finance`.`company_code` SET TAGS ('dbx_subd
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`company_code` ALTER COLUMN `company_code_id` SET TAGS ('dbx_business_glossary_term' = 'Company Code Surrogate ID');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`company_code` ALTER COLUMN `business_partner_id` SET TAGS ('dbx_business_glossary_term' = 'Business Partner ID');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`company_code` ALTER COLUMN `cost_center_id` SET TAGS ('dbx_business_glossary_term' = 'Cost Center Id (Foreign Key)');
+ALTER TABLE `vibe_manufacturing_v1`.`finance`.`company_code` ALTER COLUMN `address_line` SET TAGS ('dbx_sensitivity' = 'pii');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`company_code` ALTER COLUMN `annual_revenue_local_currency` SET TAGS ('dbx_business_glossary_term' = 'Annual Revenue (Local Currency)');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`company_code` ALTER COLUMN `audit_trail_reference` SET TAGS ('dbx_business_glossary_term' = 'Audit Trail ID');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`company_code` ALTER COLUMN `chart_of_accounts` SET TAGS ('dbx_business_glossary_term' = 'Chart of Accounts Key');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`company_code` ALTER COLUMN `company_code` SET TAGS ('dbx_business_glossary_term' = 'Company Code (Legal Entity Code)');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`company_code` ALTER COLUMN `company_code_status` SET TAGS ('dbx_business_glossary_term' = 'Company Code Status');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`company_code` ALTER COLUMN `company_code_status` SET TAGS ('dbx_value_regex' = 'active|inactive|pending|closed');
+ALTER TABLE `vibe_manufacturing_v1`.`finance`.`company_code` ALTER COLUMN `company_name` SET TAGS ('dbx_sensitivity' = 'pii');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`company_code` ALTER COLUMN `consolidation_group` SET TAGS ('dbx_business_glossary_term' = 'Consolidation Group');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`company_code` ALTER COLUMN `consolidation_method` SET TAGS ('dbx_business_glossary_term' = 'Consolidation Method');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`company_code` ALTER COLUMN `controlling_area` SET TAGS ('dbx_business_glossary_term' = 'Controlling Area');
@@ -1153,6 +1307,8 @@ ALTER TABLE `vibe_manufacturing_v1`.`finance`.`company_code` ALTER COLUMN `fisca
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`company_code` ALTER COLUMN `headquarter_address_line1` SET TAGS ('dbx_business_glossary_term' = 'Headquarter Address Line 1');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`company_code` ALTER COLUMN `headquarter_address_line1` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`company_code` ALTER COLUMN `headquarter_address_line1` SET TAGS ('dbx_pii_address' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`finance`.`company_code` ALTER COLUMN `headquarter_address_line1` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`finance`.`company_code` ALTER COLUMN `headquarter_address_line1` SET TAGS ('dbx_sensitivity' = 'pii');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`company_code` ALTER COLUMN `headquarter_city` SET TAGS ('dbx_business_glossary_term' = 'Headquarter City');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`company_code` ALTER COLUMN `headquarter_city` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`company_code` ALTER COLUMN `headquarter_city` SET TAGS ('dbx_pii_address' = 'true');
@@ -1166,10 +1322,13 @@ ALTER TABLE `vibe_manufacturing_v1`.`finance`.`company_code` ALTER COLUMN `indus
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`company_code` ALTER COLUMN `is_consolidated` SET TAGS ('dbx_business_glossary_term' = 'Is Consolidated Flag');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`company_code` ALTER COLUMN `legal_form` SET TAGS ('dbx_business_glossary_term' = 'Legal Form');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`company_code` ALTER COLUMN `company_code_name` SET TAGS ('dbx_business_glossary_term' = 'Company Legal Name');
+ALTER TABLE `vibe_manufacturing_v1`.`finance`.`company_code` ALTER COLUMN `company_code_name` SET TAGS ('dbx_sensitivity' = 'pii');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`company_code` ALTER COLUMN `number_of_employees` SET TAGS ('dbx_business_glossary_term' = 'Number of Employees');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`company_code` ALTER COLUMN `primary_contact_email` SET TAGS ('dbx_business_glossary_term' = 'Primary Contact Email');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`company_code` ALTER COLUMN `primary_contact_email` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`company_code` ALTER COLUMN `primary_contact_email` SET TAGS ('dbx_pii_email' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`finance`.`company_code` ALTER COLUMN `primary_contact_email` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`finance`.`company_code` ALTER COLUMN `primary_contact_email` SET TAGS ('dbx_sensitivity' = 'pii');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`company_code` ALTER COLUMN `public_company_flag` SET TAGS ('dbx_business_glossary_term' = 'Public Company Flag');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`company_code` ALTER COLUMN `registration_number` SET TAGS ('dbx_business_glossary_term' = 'Registration Number');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`company_code` ALTER COLUMN `registration_number` SET TAGS ('dbx_restricted' = 'true');
@@ -1179,6 +1338,8 @@ ALTER TABLE `vibe_manufacturing_v1`.`finance`.`company_code` ALTER COLUMN `tax_e
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`company_code` ALTER COLUMN `tax_id_number` SET TAGS ('dbx_business_glossary_term' = 'Tax Identification Number');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`company_code` ALTER COLUMN `tax_id_number` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`company_code` ALTER COLUMN `tax_id_number` SET TAGS ('dbx_pii_identifier' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`finance`.`company_code` ALTER COLUMN `tax_id_number` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`finance`.`company_code` ALTER COLUMN `tax_id_number` SET TAGS ('dbx_sensitivity' = 'pii');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`company_code` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Update Timestamp');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`journal_entry` SET TAGS ('dbx_data_type' = 'transactional_data');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`journal_entry` SET TAGS ('dbx_subdomain' = 'ledger_accounting');
@@ -1231,7 +1392,7 @@ ALTER TABLE `vibe_manufacturing_v1`.`finance`.`journal_entry` ALTER COLUMN `tran
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`journal_entry` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Update Timestamp');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`journal_entry` ALTER COLUMN `wbs_element` SET TAGS ('dbx_business_glossary_term' = 'Work Breakdown Structure (WBS) Element');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`finance_budget` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_manufacturing_v1`.`finance`.`finance_budget` SET TAGS ('dbx_subdomain' = 'planning_budgeting');
+ALTER TABLE `vibe_manufacturing_v1`.`finance`.`finance_budget` SET TAGS ('dbx_subdomain' = 'planning_forecasting');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`finance_budget` ALTER COLUMN `finance_budget_id` SET TAGS ('dbx_business_glossary_term' = 'Budget ID');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`finance_budget` ALTER COLUMN `obligation_id` SET TAGS ('dbx_business_glossary_term' = 'Compliance Obligation Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`finance_budget` ALTER COLUMN `cost_center_id` SET TAGS ('dbx_business_glossary_term' = 'Cost Center Id (Foreign Key)');
@@ -1246,18 +1407,17 @@ ALTER TABLE `vibe_manufacturing_v1`.`finance`.`finance_budget` ALTER COLUMN `app
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`finance_budget` ALTER COLUMN `approval_status` SET TAGS ('dbx_business_glossary_term' = 'Approval Status (BGT)');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`finance_budget` ALTER COLUMN `approval_status` SET TAGS ('dbx_value_regex' = 'pending|approved|rejected');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`finance_budget` ALTER COLUMN `budget_category` SET TAGS ('dbx_business_glossary_term' = 'Budget Category (BGT)');
-ALTER TABLE `vibe_manufacturing_v1`.`finance`.`finance_budget` ALTER COLUMN `budget_category` SET TAGS ('dbx_value_regex' = 'CapEx|OpEx|Headcount|Materials|Other');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`finance_budget` ALTER COLUMN `budget_code` SET TAGS ('dbx_business_glossary_term' = 'Budget Code (BGT)');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`finance_budget` ALTER COLUMN `budget_name` SET TAGS ('dbx_business_glossary_term' = 'Budget Name (BGT)');
+ALTER TABLE `vibe_manufacturing_v1`.`finance`.`finance_budget` ALTER COLUMN `budget_name` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`finance`.`finance_budget` ALTER COLUMN `budget_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`finance_budget` ALTER COLUMN `budget_type` SET TAGS ('dbx_business_glossary_term' = 'Budget Type (BGT)');
-ALTER TABLE `vibe_manufacturing_v1`.`finance`.`finance_budget` ALTER COLUMN `budget_type` SET TAGS ('dbx_value_regex' = 'original|revised|supplemental');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`finance_budget` ALTER COLUMN `cost_element` SET TAGS ('dbx_business_glossary_term' = 'Cost Element (CE)');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`finance_budget` ALTER COLUMN `currency_code` SET TAGS ('dbx_business_glossary_term' = 'Currency Code (ISO 4217)');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`finance_budget` ALTER COLUMN `department_code` SET TAGS ('dbx_business_glossary_term' = 'Department Code (BGT)');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`finance_budget` ALTER COLUMN `effective_end_date` SET TAGS ('dbx_business_glossary_term' = 'Effective End Date (BGT)');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`finance_budget` ALTER COLUMN `effective_start_date` SET TAGS ('dbx_business_glossary_term' = 'Effective Start Date (BGT)');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`finance_budget` ALTER COLUMN `finance_budget_status` SET TAGS ('dbx_business_glossary_term' = 'Budget Status (BGT)');
-ALTER TABLE `vibe_manufacturing_v1`.`finance`.`finance_budget` ALTER COLUMN `finance_budget_status` SET TAGS ('dbx_value_regex' = 'draft|submitted|approved|rejected|closed');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`finance_budget` ALTER COLUMN `fiscal_year` SET TAGS ('dbx_business_glossary_term' = 'Fiscal Year (FY)');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`finance_budget` ALTER COLUMN `forecast_method` SET TAGS ('dbx_business_glossary_term' = 'Forecast Method (BGT)');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`finance_budget` ALTER COLUMN `forecast_method` SET TAGS ('dbx_value_regex' = 'historical|statistical|managerial|none');
@@ -1288,7 +1448,7 @@ ALTER TABLE `vibe_manufacturing_v1`.`finance`.`finance_budget` ALTER COLUMN `ver
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`finance_budget` ALTER COLUMN `version_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Budget Version Timestamp (BGT)');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`finance_budget` ALTER COLUMN `created_by` SET TAGS ('dbx_business_glossary_term' = 'Created By (BGT)');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`internal_order` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_manufacturing_v1`.`finance`.`internal_order` SET TAGS ('dbx_subdomain' = 'controlling_master');
+ALTER TABLE `vibe_manufacturing_v1`.`finance`.`internal_order` SET TAGS ('dbx_subdomain' = 'controlling_structure');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`internal_order` ALTER COLUMN `internal_order_id` SET TAGS ('dbx_business_glossary_term' = 'Internal Order ID');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`internal_order` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Responsible Person ID');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`internal_order` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
@@ -1301,7 +1461,6 @@ ALTER TABLE `vibe_manufacturing_v1`.`finance`.`internal_order` ALTER COLUMN `bud
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`internal_order` ALTER COLUMN `capex_flag` SET TAGS ('dbx_business_glossary_term' = 'CapEx Indicator');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`internal_order` ALTER COLUMN `committed_amount` SET TAGS ('dbx_business_glossary_term' = 'Committed Amount (MONETARY)');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`internal_order` ALTER COLUMN `controlling_area` SET TAGS ('dbx_business_glossary_term' = 'Controlling Area');
-ALTER TABLE `vibe_manufacturing_v1`.`finance`.`internal_order` ALTER COLUMN `cost_center_code` SET TAGS ('dbx_business_glossary_term' = 'Cost Center Code');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`internal_order` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Creation Timestamp');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`internal_order` ALTER COLUMN `currency_code` SET TAGS ('dbx_business_glossary_term' = 'Currency Code');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`internal_order` ALTER COLUMN `internal_order_description` SET TAGS ('dbx_business_glossary_term' = 'Internal Order Description');
@@ -1316,7 +1475,6 @@ ALTER TABLE `vibe_manufacturing_v1`.`finance`.`internal_order` ALTER COLUMN `ord
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`internal_order` ALTER COLUMN `order_type` SET TAGS ('dbx_business_glossary_term' = 'Internal Order Type');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`internal_order` ALTER COLUMN `order_type` SET TAGS ('dbx_value_regex' = 'maintenance|project|investment|research|service');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`internal_order` ALTER COLUMN `planned_amount` SET TAGS ('dbx_business_glossary_term' = 'Planned Amount (MONETARY)');
-ALTER TABLE `vibe_manufacturing_v1`.`finance`.`internal_order` ALTER COLUMN `profit_center_code` SET TAGS ('dbx_business_glossary_term' = 'Profit Center Code');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`internal_order` ALTER COLUMN `release_status` SET TAGS ('dbx_business_glossary_term' = 'Release Status');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`internal_order` ALTER COLUMN `release_status` SET TAGS ('dbx_value_regex' = 'not_released|released');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`internal_order` ALTER COLUMN `responsible_cost_center` SET TAGS ('dbx_business_glossary_term' = 'Responsible Cost Center');
@@ -1327,7 +1485,7 @@ ALTER TABLE `vibe_manufacturing_v1`.`finance`.`internal_order` ALTER COLUMN `var
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`internal_order` ALTER COLUMN `variance_percent` SET TAGS ('dbx_business_glossary_term' = 'Variance Percent');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`internal_order` ALTER COLUMN `wbs_element` SET TAGS ('dbx_business_glossary_term' = 'WBS Element');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`cost_allocation` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_manufacturing_v1`.`finance`.`cost_allocation` SET TAGS ('dbx_subdomain' = 'controlling_master');
+ALTER TABLE `vibe_manufacturing_v1`.`finance`.`cost_allocation` SET TAGS ('dbx_subdomain' = 'controlling_structure');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`cost_allocation` ALTER COLUMN `cost_allocation_id` SET TAGS ('dbx_business_glossary_term' = 'Cost Allocation ID');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`cost_allocation` ALTER COLUMN `allocation_cycle_id` SET TAGS ('dbx_business_glossary_term' = 'Allocation Cycle ID');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`cost_allocation` ALTER COLUMN `allocation_rule_id` SET TAGS ('dbx_business_glossary_term' = 'Allocation Rule ID');
@@ -1354,9 +1512,7 @@ ALTER TABLE `vibe_manufacturing_v1`.`finance`.`cost_allocation` ALTER COLUMN `al
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`cost_allocation` ALTER COLUMN `allocation_source` SET TAGS ('dbx_value_regex' = 'system|manual|adjustment');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`cost_allocation` ALTER COLUMN `allocation_version` SET TAGS ('dbx_business_glossary_term' = 'Allocation Version');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`cost_allocation` ALTER COLUMN `cost_center_type` SET TAGS ('dbx_business_glossary_term' = 'Cost Center Type');
-ALTER TABLE `vibe_manufacturing_v1`.`finance`.`cost_allocation` ALTER COLUMN `cost_center_type` SET TAGS ('dbx_value_regex' = 'production|administrative|sales|research|maintenance');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`cost_allocation` ALTER COLUMN `cost_object_type` SET TAGS ('dbx_business_glossary_term' = 'Cost Object Type');
-ALTER TABLE `vibe_manufacturing_v1`.`finance`.`cost_allocation` ALTER COLUMN `cost_object_type` SET TAGS ('dbx_value_regex' = 'order|project|activity|service');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`cost_allocation` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`cost_allocation` ALTER COLUMN `currency_code` SET TAGS ('dbx_business_glossary_term' = 'Currency Code (ISO 4217)');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`cost_allocation` ALTER COLUMN `currency_code` SET TAGS ('dbx_value_regex' = '[A-Z]{3}');
@@ -1377,7 +1533,7 @@ ALTER TABLE `vibe_manufacturing_v1`.`finance`.`cost_allocation` ALTER COLUMN `re
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`cost_allocation` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Updated Timestamp');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`cost_allocation` ALTER COLUMN `variable_key_figure_reference` SET TAGS ('dbx_business_glossary_term' = 'Variable Key Figure ID');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`capex_request` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_manufacturing_v1`.`finance`.`capex_request` SET TAGS ('dbx_subdomain' = 'planning_budgeting');
+ALTER TABLE `vibe_manufacturing_v1`.`finance`.`capex_request` SET TAGS ('dbx_subdomain' = 'capital_investment');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`capex_request` ALTER COLUMN `capex_request_id` SET TAGS ('dbx_business_glossary_term' = 'Capital Expenditure Request ID');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`capex_request` ALTER COLUMN `cost_center_id` SET TAGS ('dbx_business_glossary_term' = 'Cost Center Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`capex_request` ALTER COLUMN `internal_order_id` SET TAGS ('dbx_business_glossary_term' = 'Internal Order Id (Foreign Key)');
@@ -1412,6 +1568,8 @@ ALTER TABLE `vibe_manufacturing_v1`.`finance`.`capex_request` ALTER COLUMN `prio
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`capex_request` ALTER COLUMN `priority` SET TAGS ('dbx_value_regex' = 'low|medium|high|critical');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`capex_request` ALTER COLUMN `project_end_date` SET TAGS ('dbx_business_glossary_term' = 'Project End Date');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`capex_request` ALTER COLUMN `project_name` SET TAGS ('dbx_business_glossary_term' = 'Project Name');
+ALTER TABLE `vibe_manufacturing_v1`.`finance`.`capex_request` ALTER COLUMN `project_name` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`finance`.`capex_request` ALTER COLUMN `project_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`capex_request` ALTER COLUMN `project_start_date` SET TAGS ('dbx_business_glossary_term' = 'Project Start Date');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`capex_request` ALTER COLUMN `regulatory_approval_needed` SET TAGS ('dbx_business_glossary_term' = 'Regulatory Approval Needed');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`capex_request` ALTER COLUMN `request_date` SET TAGS ('dbx_business_glossary_term' = 'Request Date');
@@ -1458,10 +1616,8 @@ ALTER TABLE `vibe_manufacturing_v1`.`finance`.`ap_invoice` ALTER COLUMN `payment
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`ap_invoice` ALTER COLUMN `payment_block_reason` SET TAGS ('dbx_business_glossary_term' = 'Payment Block Reason (PAY_BLOCK_RSN)');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`ap_invoice` ALTER COLUMN `payment_date` SET TAGS ('dbx_business_glossary_term' = 'Payment Date (PAY_DATE)');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`ap_invoice` ALTER COLUMN `payment_method` SET TAGS ('dbx_business_glossary_term' = 'Payment Method (PAY_METHOD)');
-ALTER TABLE `vibe_manufacturing_v1`.`finance`.`ap_invoice` ALTER COLUMN `payment_method` SET TAGS ('dbx_value_regex' = 'ACH|wire|check|direct_debit');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`ap_invoice` ALTER COLUMN `payment_reference` SET TAGS ('dbx_business_glossary_term' = 'Payment Reference (PAY_REF)');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`ap_invoice` ALTER COLUMN `payment_status` SET TAGS ('dbx_business_glossary_term' = 'Payment Status (PAY_STATUS)');
-ALTER TABLE `vibe_manufacturing_v1`.`finance`.`ap_invoice` ALTER COLUMN `payment_status` SET TAGS ('dbx_value_regex' = 'scheduled|paid|failed|cancelled');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`ap_invoice` ALTER COLUMN `payment_terms` SET TAGS ('dbx_business_glossary_term' = 'Payment Terms (PAY_TERMS)');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`ap_invoice` ALTER COLUMN `payment_value_date` SET TAGS ('dbx_business_glossary_term' = 'Payment Value Date (PAY_VAL_DATE)');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`ap_invoice` ALTER COLUMN `posting_date` SET TAGS ('dbx_business_glossary_term' = 'Posting Date (POST_DATE)');
@@ -1510,7 +1666,6 @@ ALTER TABLE `vibe_manufacturing_v1`.`finance`.`ar_item` ALTER COLUMN `invoice_am
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`ar_item` ALTER COLUMN `invoice_description` SET TAGS ('dbx_business_glossary_term' = 'Invoice Description (INV_DESC)');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`ar_item` ALTER COLUMN `last_payment_amount` SET TAGS ('dbx_business_glossary_term' = 'Last Payment Amount (LAST_PAY_AMT)');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`ar_item` ALTER COLUMN `last_payment_method` SET TAGS ('dbx_business_glossary_term' = 'Last Payment Method (LAST_PAY_METHOD)');
-ALTER TABLE `vibe_manufacturing_v1`.`finance`.`ar_item` ALTER COLUMN `last_payment_method` SET TAGS ('dbx_value_regex' = 'bank_transfer|credit_card|check|cash');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`ar_item` ALTER COLUMN `local_currency_amount` SET TAGS ('dbx_business_glossary_term' = 'Local Currency Amount (LC_AMT)');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`ar_item` ALTER COLUMN `material_number` SET TAGS ('dbx_business_glossary_term' = 'Material Number (MAT_NO)');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`ar_item` ALTER COLUMN `net_amount` SET TAGS ('dbx_business_glossary_term' = 'Net Amount (NET_AMT)');
@@ -1518,7 +1673,6 @@ ALTER TABLE `vibe_manufacturing_v1`.`finance`.`ar_item` ALTER COLUMN `open_amoun
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`ar_item` ALTER COLUMN `original_amount` SET TAGS ('dbx_business_glossary_term' = 'Original Invoice Amount (ORIG_AMT)');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`ar_item` ALTER COLUMN `payment_date` SET TAGS ('dbx_business_glossary_term' = 'Payment Date (PAY_DATE)');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`ar_item` ALTER COLUMN `payment_method` SET TAGS ('dbx_business_glossary_term' = 'Payment Method (PAY_METHOD)');
-ALTER TABLE `vibe_manufacturing_v1`.`finance`.`ar_item` ALTER COLUMN `payment_method` SET TAGS ('dbx_value_regex' = 'bank_transfer|credit_card|check|cash');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`ar_item` ALTER COLUMN `payment_reference` SET TAGS ('dbx_business_glossary_term' = 'Payment Reference (PAY_REF)');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`ar_item` ALTER COLUMN `payment_terms` SET TAGS ('dbx_business_glossary_term' = 'Payment Terms (PAY_TERM)');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`ar_item` ALTER COLUMN `posting_date` SET TAGS ('dbx_business_glossary_term' = 'Posting Date (POST_DATE)');
@@ -1533,7 +1687,7 @@ ALTER TABLE `vibe_manufacturing_v1`.`finance`.`ar_item` ALTER COLUMN `updated_ti
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`ar_item` ALTER COLUMN `write_off_amount` SET TAGS ('dbx_business_glossary_term' = 'Write‑Off Amount (WO_AMT)');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`ar_item` ALTER COLUMN `write_off_flag` SET TAGS ('dbx_business_glossary_term' = 'Write‑Off Flag (WO_FLG)');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`fixed_asset` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_manufacturing_v1`.`finance`.`fixed_asset` SET TAGS ('dbx_subdomain' = 'asset_treasury');
+ALTER TABLE `vibe_manufacturing_v1`.`finance`.`fixed_asset` SET TAGS ('dbx_subdomain' = 'capital_investment');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`fixed_asset` ALTER COLUMN `fixed_asset_id` SET TAGS ('dbx_business_glossary_term' = 'Fixed Asset Identifier (FA_ID)');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`fixed_asset` ALTER COLUMN `cost_center_id` SET TAGS ('dbx_business_glossary_term' = 'Cost Center Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`fixed_asset` ALTER COLUMN `accumulated_depreciation` SET TAGS ('dbx_business_glossary_term' = 'Accumulated Depreciation (AD)');
@@ -1543,6 +1697,8 @@ ALTER TABLE `vibe_manufacturing_v1`.`finance`.`fixed_asset` ALTER COLUMN `asset_
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`fixed_asset` ALTER COLUMN `asset_class` SET TAGS ('dbx_value_regex' = 'Machinery|Vehicle|Building|IT_Equipment|Tooling');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`fixed_asset` ALTER COLUMN `asset_description` SET TAGS ('dbx_business_glossary_term' = 'Asset Description (AD)');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`fixed_asset` ALTER COLUMN `asset_name` SET TAGS ('dbx_business_glossary_term' = 'Asset Name (AN)');
+ALTER TABLE `vibe_manufacturing_v1`.`finance`.`fixed_asset` ALTER COLUMN `asset_name` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`finance`.`fixed_asset` ALTER COLUMN `asset_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`fixed_asset` ALTER COLUMN `asset_number` SET TAGS ('dbx_business_glossary_term' = 'Asset Number (AN)');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`fixed_asset` ALTER COLUMN `asset_origin` SET TAGS ('dbx_business_glossary_term' = 'Asset Origin (AO)');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`fixed_asset` ALTER COLUMN `asset_origin` SET TAGS ('dbx_value_regex' = 'purchased|leased|internally_built');
@@ -1583,7 +1739,7 @@ ALTER TABLE `vibe_manufacturing_v1`.`finance`.`fixed_asset` ALTER COLUMN `warran
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`fixed_asset` ALTER COLUMN `warranty_provider` SET TAGS ('dbx_business_glossary_term' = 'Warranty Provider (WP)');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`fixed_asset` ALTER COLUMN `warranty_start_date` SET TAGS ('dbx_business_glossary_term' = 'Warranty Start Date (WSD)');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`financial_plan` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_manufacturing_v1`.`finance`.`financial_plan` SET TAGS ('dbx_subdomain' = 'planning_budgeting');
+ALTER TABLE `vibe_manufacturing_v1`.`finance`.`financial_plan` SET TAGS ('dbx_subdomain' = 'planning_forecasting');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`financial_plan` ALTER COLUMN `financial_plan_id` SET TAGS ('dbx_business_glossary_term' = 'Financial Plan Identifier');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`financial_plan` ALTER COLUMN `cost_center_id` SET TAGS ('dbx_business_glossary_term' = 'Cost Center Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`financial_plan` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Plan Owner Identifier');
@@ -1624,6 +1780,8 @@ ALTER TABLE `vibe_manufacturing_v1`.`finance`.`financial_plan` ALTER COLUMN `nex
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`financial_plan` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Plan Notes');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`financial_plan` ALTER COLUMN `opex_plan_amount` SET TAGS ('dbx_business_glossary_term' = 'OPEX Plan Amount');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`financial_plan` ALTER COLUMN `plan_name` SET TAGS ('dbx_business_glossary_term' = 'Financial Plan Name');
+ALTER TABLE `vibe_manufacturing_v1`.`finance`.`financial_plan` ALTER COLUMN `plan_name` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`finance`.`financial_plan` ALTER COLUMN `plan_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`financial_plan` ALTER COLUMN `plan_number` SET TAGS ('dbx_business_glossary_term' = 'Financial Plan Number');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`financial_plan` ALTER COLUMN `plan_number` SET TAGS ('dbx_value_regex' = '^FP-d{6}$');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`financial_plan` ALTER COLUMN `plan_owner_department` SET TAGS ('dbx_business_glossary_term' = 'Plan Owner Department');
@@ -1635,6 +1793,8 @@ ALTER TABLE `vibe_manufacturing_v1`.`finance`.`financial_plan` ALTER COLUMN `rev
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`financial_plan` ALTER COLUMN `risk_rating` SET TAGS ('dbx_business_glossary_term' = 'Risk Rating');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`financial_plan` ALTER COLUMN `risk_rating` SET TAGS ('dbx_value_regex' = 'low|medium|high|critical');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`financial_plan` ALTER COLUMN `scenario_name` SET TAGS ('dbx_business_glossary_term' = 'Scenario Name');
+ALTER TABLE `vibe_manufacturing_v1`.`finance`.`financial_plan` ALTER COLUMN `scenario_name` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`finance`.`financial_plan` ALTER COLUMN `scenario_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`financial_plan` ALTER COLUMN `sensitivity_analysis_flag` SET TAGS ('dbx_business_glossary_term' = 'Sensitivity Analysis Flag');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`financial_plan` ALTER COLUMN `total_plan_amount` SET TAGS ('dbx_business_glossary_term' = 'Total Plan Amount');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`financial_plan` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Plan Updated Timestamp');
@@ -1654,7 +1814,6 @@ ALTER TABLE `vibe_manufacturing_v1`.`finance`.`intercompany_transaction` ALTER C
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`intercompany_transaction` ALTER COLUMN `project_header_id` SET TAGS ('dbx_business_glossary_term' = 'Related Project ID');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`intercompany_transaction` ALTER COLUMN `reversal_transaction_intercompany_transaction_id` SET TAGS ('dbx_business_glossary_term' = 'Reversal Transaction ID');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`intercompany_transaction` ALTER COLUMN `amount_currency` SET TAGS ('dbx_business_glossary_term' = 'Transaction Currency (ISO 4217)');
-ALTER TABLE `vibe_manufacturing_v1`.`finance`.`intercompany_transaction` ALTER COLUMN `amount_currency` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`intercompany_transaction` ALTER COLUMN `amount_gross` SET TAGS ('dbx_business_glossary_term' = 'Gross Transaction Amount');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`intercompany_transaction` ALTER COLUMN `amount_net` SET TAGS ('dbx_business_glossary_term' = 'Net Transaction Amount');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`intercompany_transaction` ALTER COLUMN `amount_tax` SET TAGS ('dbx_business_glossary_term' = 'Tax Component Amount');
@@ -1695,7 +1854,7 @@ ALTER TABLE `vibe_manufacturing_v1`.`finance`.`intercompany_transaction` ALTER C
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`intercompany_transaction` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Update Timestamp');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`intercompany_transaction` ALTER COLUMN `created_by` SET TAGS ('dbx_business_glossary_term' = 'Created By');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`bank_account` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_manufacturing_v1`.`finance`.`bank_account` SET TAGS ('dbx_subdomain' = 'asset_treasury');
+ALTER TABLE `vibe_manufacturing_v1`.`finance`.`bank_account` SET TAGS ('dbx_subdomain' = 'payables_receivables');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`bank_account` ALTER COLUMN `bank_account_id` SET TAGS ('dbx_business_glossary_term' = 'Bank Account ID');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`bank_account` ALTER COLUMN `bank_account_id` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`bank_account` ALTER COLUMN `bank_account_id` SET TAGS ('dbx_pii_financial' = 'true');
@@ -1705,6 +1864,7 @@ ALTER TABLE `vibe_manufacturing_v1`.`finance`.`bank_account` ALTER COLUMN `pool_
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`bank_account` ALTER COLUMN `pool_header_bank_account_id` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`bank_account` ALTER COLUMN `pool_header_bank_account_id` SET TAGS ('dbx_pii_financial' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`bank_account` ALTER COLUMN `account_label` SET TAGS ('dbx_business_glossary_term' = 'Account Label');
+ALTER TABLE `vibe_manufacturing_v1`.`finance`.`bank_account` ALTER COLUMN `account_name` SET TAGS ('dbx_sensitivity' = 'pii');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`bank_account` ALTER COLUMN `account_number` SET TAGS ('dbx_business_glossary_term' = 'Bank Account Number (ACCOUNT_NUMBER)');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`bank_account` ALTER COLUMN `account_number` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`bank_account` ALTER COLUMN `account_number` SET TAGS ('dbx_pii_financial' = 'true');
@@ -1718,6 +1878,8 @@ ALTER TABLE `vibe_manufacturing_v1`.`finance`.`bank_account` ALTER COLUMN `bank_
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`bank_account` ALTER COLUMN `bank_address` SET TAGS ('dbx_business_glossary_term' = 'Bank Address');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`bank_account` ALTER COLUMN `bank_address` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`bank_account` ALTER COLUMN `bank_address` SET TAGS ('dbx_pii_address' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`finance`.`bank_account` ALTER COLUMN `bank_address` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`finance`.`bank_account` ALTER COLUMN `bank_address` SET TAGS ('dbx_sensitivity' = 'pii');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`bank_account` ALTER COLUMN `bank_branch` SET TAGS ('dbx_business_glossary_term' = 'Bank Branch');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`bank_account` ALTER COLUMN `bank_city` SET TAGS ('dbx_business_glossary_term' = 'Bank City');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`bank_account` ALTER COLUMN `bank_contact_number` SET TAGS ('dbx_business_glossary_term' = 'Bank Contact Phone Number');
@@ -1725,6 +1887,8 @@ ALTER TABLE `vibe_manufacturing_v1`.`finance`.`bank_account` ALTER COLUMN `bank_
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`bank_account` ALTER COLUMN `bank_contact_number` SET TAGS ('dbx_pii_phone' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`bank_account` ALTER COLUMN `bank_country_code` SET TAGS ('dbx_business_glossary_term' = 'Bank Country Code (ISO 3166‑1 Alpha‑3)');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`bank_account` ALTER COLUMN `bank_name` SET TAGS ('dbx_business_glossary_term' = 'Bank Name');
+ALTER TABLE `vibe_manufacturing_v1`.`finance`.`bank_account` ALTER COLUMN `bank_name` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`finance`.`bank_account` ALTER COLUMN `bank_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`bank_account` ALTER COLUMN `cash_pool_membership` SET TAGS ('dbx_business_glossary_term' = 'Cash Pool Membership');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`bank_account` ALTER COLUMN `cash_pool_membership` SET TAGS ('dbx_value_regex' = 'primary|secondary|none');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`bank_account` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Creation Timestamp');
@@ -1738,13 +1902,14 @@ ALTER TABLE `vibe_manufacturing_v1`.`finance`.`bank_account` ALTER COLUMN `iban`
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`bank_account` ALTER COLUMN `internal_reference` SET TAGS ('dbx_business_glossary_term' = 'Internal Reference');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`bank_account` ALTER COLUMN `last_reconciliation_date` SET TAGS ('dbx_business_glossary_term' = 'Last Reconciliation Date');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`bank_account` ALTER COLUMN `payment_method_eligibility` SET TAGS ('dbx_business_glossary_term' = 'Payment Method Eligibility');
-ALTER TABLE `vibe_manufacturing_v1`.`finance`.`bank_account` ALTER COLUMN `payment_method_eligibility` SET TAGS ('dbx_value_regex' = 'wire|ach|rtgs|swift');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`bank_account` ALTER COLUMN `swift_bic` SET TAGS ('dbx_business_glossary_term' = 'SWIFT BIC Code');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`bank_account` ALTER COLUMN `swift_bic` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`finance`.`bank_account` ALTER COLUMN `swift_code` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`finance`.`bank_account` ALTER COLUMN `swift_code` SET TAGS ('dbx_pii_financial' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`bank_account` ALTER COLUMN `treasury_region` SET TAGS ('dbx_business_glossary_term' = 'Treasury Region');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`bank_account` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Update Timestamp');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`business_partner` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_manufacturing_v1`.`finance`.`business_partner` SET TAGS ('dbx_subdomain' = 'asset_treasury');
+ALTER TABLE `vibe_manufacturing_v1`.`finance`.`business_partner` SET TAGS ('dbx_subdomain' = 'ledger_accounting');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`business_partner` ALTER COLUMN `business_partner_id` SET TAGS ('dbx_business_glossary_term' = 'Business Partner Identifier');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`business_partner` ALTER COLUMN `parent_business_partner_id` SET TAGS ('dbx_business_glossary_term' = 'Parent Business Partner Id');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`business_partner` ALTER COLUMN `parent_business_partner_id` SET TAGS ('dbx_self_ref_fk' = 'true');
@@ -1752,13 +1917,17 @@ ALTER TABLE `vibe_manufacturing_v1`.`finance`.`business_partner` ALTER COLUMN `p
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`business_partner` ALTER COLUMN `address_line1` SET TAGS ('dbx_business_glossary_term' = 'Address Line1');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`business_partner` ALTER COLUMN `address_line1` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`business_partner` ALTER COLUMN `address_line1` SET TAGS ('dbx_pii_address' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`finance`.`business_partner` ALTER COLUMN `address_line1` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`business_partner` ALTER COLUMN `address_line2` SET TAGS ('dbx_business_glossary_term' = 'Address Line2');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`business_partner` ALTER COLUMN `address_line2` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`business_partner` ALTER COLUMN `address_line2` SET TAGS ('dbx_pii_address' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`finance`.`business_partner` ALTER COLUMN `address_line2` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`business_partner` ALTER COLUMN `bank_account_number` SET TAGS ('dbx_business_glossary_term' = 'Bank Account Number');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`business_partner` ALTER COLUMN `bank_account_number` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`business_partner` ALTER COLUMN `bank_account_number` SET TAGS ('dbx_pii_financial' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`business_partner` ALTER COLUMN `bank_name` SET TAGS ('dbx_business_glossary_term' = 'Bank Name');
+ALTER TABLE `vibe_manufacturing_v1`.`finance`.`business_partner` ALTER COLUMN `bank_name` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`finance`.`business_partner` ALTER COLUMN `bank_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`business_partner` ALTER COLUMN `city` SET TAGS ('dbx_business_glossary_term' = 'City');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`business_partner` ALTER COLUMN `city` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`business_partner` ALTER COLUMN `city` SET TAGS ('dbx_pii_address' = 'true');
@@ -1767,12 +1936,18 @@ ALTER TABLE `vibe_manufacturing_v1`.`finance`.`business_partner` ALTER COLUMN `c
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`business_partner` ALTER COLUMN `contact_person_email` SET TAGS ('dbx_business_glossary_term' = 'Contact Person Email');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`business_partner` ALTER COLUMN `contact_person_email` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`business_partner` ALTER COLUMN `contact_person_email` SET TAGS ('dbx_pii_email' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`finance`.`business_partner` ALTER COLUMN `contact_person_email` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`finance`.`business_partner` ALTER COLUMN `contact_person_email` SET TAGS ('dbx_sensitivity' = 'pii');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`business_partner` ALTER COLUMN `contact_person_name` SET TAGS ('dbx_business_glossary_term' = 'Contact Person Name');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`business_partner` ALTER COLUMN `contact_person_name` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`business_partner` ALTER COLUMN `contact_person_name` SET TAGS ('dbx_pii_name' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`finance`.`business_partner` ALTER COLUMN `contact_person_name` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`finance`.`business_partner` ALTER COLUMN `contact_person_name` SET TAGS ('dbx_sensitivity' = 'pii');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`business_partner` ALTER COLUMN `contact_person_phone` SET TAGS ('dbx_business_glossary_term' = 'Contact Person Phone');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`business_partner` ALTER COLUMN `contact_person_phone` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`business_partner` ALTER COLUMN `contact_person_phone` SET TAGS ('dbx_pii_phone' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`finance`.`business_partner` ALTER COLUMN `contact_person_phone` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`finance`.`business_partner` ALTER COLUMN `contact_person_phone` SET TAGS ('dbx_sensitivity' = 'pii');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`business_partner` ALTER COLUMN `country_code` SET TAGS ('dbx_business_glossary_term' = 'Country Code');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`business_partner` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`business_partner` ALTER COLUMN `credit_limit` SET TAGS ('dbx_business_glossary_term' = 'Credit Limit');
@@ -1793,7 +1968,9 @@ ALTER TABLE `vibe_manufacturing_v1`.`finance`.`business_partner` ALTER COLUMN `l
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`business_partner` ALTER COLUMN `business_partner_name` SET TAGS ('dbx_business_glossary_term' = 'Name');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`business_partner` ALTER COLUMN `business_partner_name` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`business_partner` ALTER COLUMN `business_partner_name` SET TAGS ('dbx_pii_name' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`finance`.`business_partner` ALTER COLUMN `business_partner_name` SET TAGS ('dbx_sensitivity' = 'pii');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`business_partner` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Notes');
+ALTER TABLE `vibe_manufacturing_v1`.`finance`.`business_partner` ALTER COLUMN `partner_name` SET TAGS ('dbx_sensitivity' = 'pii');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`business_partner` ALTER COLUMN `partner_type` SET TAGS ('dbx_business_glossary_term' = 'Partner Type');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`business_partner` ALTER COLUMN `payment_terms` SET TAGS ('dbx_business_glossary_term' = 'Payment Terms');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`business_partner` ALTER COLUMN `postal_code` SET TAGS ('dbx_business_glossary_term' = 'Postal Code');
@@ -1802,14 +1979,20 @@ ALTER TABLE `vibe_manufacturing_v1`.`finance`.`business_partner` ALTER COLUMN `p
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`business_partner` ALTER COLUMN `primary_contact_email` SET TAGS ('dbx_business_glossary_term' = 'Primary Contact Email');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`business_partner` ALTER COLUMN `primary_contact_email` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`business_partner` ALTER COLUMN `primary_contact_email` SET TAGS ('dbx_pii_email' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`finance`.`business_partner` ALTER COLUMN `primary_contact_email` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`finance`.`business_partner` ALTER COLUMN `primary_contact_email` SET TAGS ('dbx_sensitivity' = 'pii');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`business_partner` ALTER COLUMN `primary_contact_phone` SET TAGS ('dbx_business_glossary_term' = 'Primary Contact Phone');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`business_partner` ALTER COLUMN `primary_contact_phone` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`business_partner` ALTER COLUMN `primary_contact_phone` SET TAGS ('dbx_pii_phone' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`finance`.`business_partner` ALTER COLUMN `primary_contact_phone` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`finance`.`business_partner` ALTER COLUMN `primary_contact_phone` SET TAGS ('dbx_sensitivity' = 'pii');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`business_partner` ALTER COLUMN `registration_number` SET TAGS ('dbx_business_glossary_term' = 'Registration Number');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`business_partner` ALTER COLUMN `registration_number` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`business_partner` ALTER COLUMN `registration_number` SET TAGS ('dbx_pii_identifier' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`business_partner` ALTER COLUMN `risk_rating` SET TAGS ('dbx_business_glossary_term' = 'Risk Rating');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`business_partner` ALTER COLUMN `short_name` SET TAGS ('dbx_business_glossary_term' = 'Short Name');
+ALTER TABLE `vibe_manufacturing_v1`.`finance`.`business_partner` ALTER COLUMN `short_name` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`finance`.`business_partner` ALTER COLUMN `short_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`business_partner` ALTER COLUMN `state_province` SET TAGS ('dbx_business_glossary_term' = 'State Province');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`business_partner` ALTER COLUMN `state_province` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`business_partner` ALTER COLUMN `state_province` SET TAGS ('dbx_pii_address' = 'true');
@@ -1821,13 +2004,16 @@ ALTER TABLE `vibe_manufacturing_v1`.`finance`.`business_partner` ALTER COLUMN `t
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`business_partner` ALTER COLUMN `tax_id_number` SET TAGS ('dbx_business_glossary_term' = 'Tax Id Number');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`business_partner` ALTER COLUMN `tax_id_number` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`business_partner` ALTER COLUMN `tax_id_number` SET TAGS ('dbx_pii_identifier' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`finance`.`business_partner` ALTER COLUMN `tax_id_number` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`finance`.`business_partner` ALTER COLUMN `tax_id_number` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`finance`.`business_partner` ALTER COLUMN `tax_number` SET TAGS ('dbx_sensitivity' = 'pii');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`business_partner` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Updated Timestamp');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`business_partner` ALTER COLUMN `vat_number` SET TAGS ('dbx_business_glossary_term' = 'Vat Number');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`business_partner` ALTER COLUMN `vat_number` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`business_partner` ALTER COLUMN `vat_number` SET TAGS ('dbx_pii_identifier' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`business_partner` ALTER COLUMN `website_url` SET TAGS ('dbx_business_glossary_term' = 'Website Url');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`allocation_cycle` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_manufacturing_v1`.`finance`.`allocation_cycle` SET TAGS ('dbx_subdomain' = 'controlling_master');
+ALTER TABLE `vibe_manufacturing_v1`.`finance`.`allocation_cycle` SET TAGS ('dbx_subdomain' = 'controlling_structure');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`allocation_cycle` ALTER COLUMN `allocation_cycle_id` SET TAGS ('dbx_business_glossary_term' = 'Allocation Cycle Identifier');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`allocation_cycle` ALTER COLUMN `previous_allocation_cycle_id` SET TAGS ('dbx_business_glossary_term' = 'Previous Allocation Cycle Id');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`allocation_cycle` ALTER COLUMN `previous_allocation_cycle_id` SET TAGS ('dbx_self_ref_fk' = 'true');
@@ -1835,6 +2021,8 @@ ALTER TABLE `vibe_manufacturing_v1`.`finance`.`allocation_cycle` ALTER COLUMN `a
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`allocation_cycle` ALTER COLUMN `currency_code` SET TAGS ('dbx_business_glossary_term' = 'Currency Code');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`allocation_cycle` ALTER COLUMN `cycle_code` SET TAGS ('dbx_business_glossary_term' = 'Cycle Code');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`allocation_cycle` ALTER COLUMN `cycle_name` SET TAGS ('dbx_business_glossary_term' = 'Cycle Name');
+ALTER TABLE `vibe_manufacturing_v1`.`finance`.`allocation_cycle` ALTER COLUMN `cycle_name` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`finance`.`allocation_cycle` ALTER COLUMN `cycle_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`allocation_cycle` ALTER COLUMN `cycle_type` SET TAGS ('dbx_business_glossary_term' = 'Cycle Type');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`allocation_cycle` ALTER COLUMN `allocation_cycle_description` SET TAGS ('dbx_business_glossary_term' = 'Description');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`allocation_cycle` ALTER COLUMN `effective_from` SET TAGS ('dbx_business_glossary_term' = 'Effective From');
@@ -1845,7 +2033,7 @@ ALTER TABLE `vibe_manufacturing_v1`.`finance`.`allocation_cycle` ALTER COLUMN `r
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`allocation_cycle` ALTER COLUMN `allocation_cycle_status` SET TAGS ('dbx_business_glossary_term' = 'Status');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`allocation_cycle` ALTER COLUMN `total_allocation_amount` SET TAGS ('dbx_business_glossary_term' = 'Total Allocation Amount');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`cost_element` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_manufacturing_v1`.`finance`.`cost_element` SET TAGS ('dbx_subdomain' = 'controlling_master');
+ALTER TABLE `vibe_manufacturing_v1`.`finance`.`cost_element` SET TAGS ('dbx_subdomain' = 'controlling_structure');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`cost_element` ALTER COLUMN `cost_element_id` SET TAGS ('dbx_business_glossary_term' = 'Cost Element Identifier');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`cost_element` ALTER COLUMN `cost_center_id` SET TAGS ('dbx_business_glossary_term' = 'Cost Center Id');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`cost_element` ALTER COLUMN `cost_center_id` SET TAGS ('dbx_internal' = 'true');
@@ -1871,14 +2059,20 @@ ALTER TABLE `vibe_manufacturing_v1`.`finance`.`cost_element` ALTER COLUMN `is_de
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`cost_element` ALTER COLUMN `is_fixed` SET TAGS ('dbx_business_glossary_term' = 'Is Fixed');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`cost_element` ALTER COLUMN `last_review_date` SET TAGS ('dbx_business_glossary_term' = 'Last Review Date');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`cost_element` ALTER COLUMN `cost_element_name` SET TAGS ('dbx_business_glossary_term' = 'Name');
+ALTER TABLE `vibe_manufacturing_v1`.`finance`.`cost_element` ALTER COLUMN `cost_element_name` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`finance`.`cost_element` ALTER COLUMN `cost_element_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`cost_element` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Notes');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`cost_element` ALTER COLUMN `owner` SET TAGS ('dbx_business_glossary_term' = 'Cost Element Owner');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`cost_element` ALTER COLUMN `owner_email` SET TAGS ('dbx_business_glossary_term' = 'Cost Element Owner Email');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`cost_element` ALTER COLUMN `owner_email` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`cost_element` ALTER COLUMN `owner_email` SET TAGS ('dbx_pii_email' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`finance`.`cost_element` ALTER COLUMN `owner_email` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`finance`.`cost_element` ALTER COLUMN `owner_email` SET TAGS ('dbx_sensitivity' = 'pii');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`cost_element` ALTER COLUMN `owner_phone` SET TAGS ('dbx_business_glossary_term' = 'Cost Element Owner Phone');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`cost_element` ALTER COLUMN `owner_phone` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`cost_element` ALTER COLUMN `owner_phone` SET TAGS ('dbx_pii_phone' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`finance`.`cost_element` ALTER COLUMN `owner_phone` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`finance`.`cost_element` ALTER COLUMN `owner_phone` SET TAGS ('dbx_sensitivity' = 'pii');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`cost_element` ALTER COLUMN `review_frequency` SET TAGS ('dbx_business_glossary_term' = 'Review Frequency');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`cost_element` ALTER COLUMN `cost_element_status` SET TAGS ('dbx_business_glossary_term' = 'Status');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`cost_element` ALTER COLUMN `subcategory` SET TAGS ('dbx_business_glossary_term' = 'Cost Element Subcategory');
@@ -1887,7 +2081,7 @@ ALTER TABLE `vibe_manufacturing_v1`.`finance`.`cost_element` ALTER COLUMN `unit_
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`cost_element` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Updated Timestamp');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`cost_element` ALTER COLUMN `version_number` SET TAGS ('dbx_business_glossary_term' = 'Version Number');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`statistical_key_figure` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_manufacturing_v1`.`finance`.`statistical_key_figure` SET TAGS ('dbx_subdomain' = 'controlling_master');
+ALTER TABLE `vibe_manufacturing_v1`.`finance`.`statistical_key_figure` SET TAGS ('dbx_subdomain' = 'controlling_structure');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`statistical_key_figure` ALTER COLUMN `statistical_key_figure_id` SET TAGS ('dbx_business_glossary_term' = 'Statistical Key Figure Identifier');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`statistical_key_figure` ALTER COLUMN `derived_from_statistical_key_figure_id` SET TAGS ('dbx_business_glossary_term' = 'Derived From Statistical Key Figure Id');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`statistical_key_figure` ALTER COLUMN `derived_from_statistical_key_figure_id` SET TAGS ('dbx_self_ref_fk' = 'true');
@@ -1902,7 +2096,10 @@ ALTER TABLE `vibe_manufacturing_v1`.`finance`.`statistical_key_figure` ALTER COL
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`statistical_key_figure` ALTER COLUMN `figure_code` SET TAGS ('dbx_business_glossary_term' = 'Figure Code');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`statistical_key_figure` ALTER COLUMN `figure_description` SET TAGS ('dbx_business_glossary_term' = 'Figure Description');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`statistical_key_figure` ALTER COLUMN `figure_name` SET TAGS ('dbx_business_glossary_term' = 'Figure Name');
+ALTER TABLE `vibe_manufacturing_v1`.`finance`.`statistical_key_figure` ALTER COLUMN `figure_name` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`finance`.`statistical_key_figure` ALTER COLUMN `figure_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`statistical_key_figure` ALTER COLUMN `frequency` SET TAGS ('dbx_business_glossary_term' = 'Frequency');
+ALTER TABLE `vibe_manufacturing_v1`.`finance`.`statistical_key_figure` ALTER COLUMN `key_figure_name` SET TAGS ('dbx_sensitivity' = 'pii');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`statistical_key_figure` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Notes');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`statistical_key_figure` ALTER COLUMN `regulatory_reporting_flag` SET TAGS ('dbx_business_glossary_term' = 'Regulatory Reporting Flag');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`statistical_key_figure` ALTER COLUMN `related_business_process` SET TAGS ('dbx_business_glossary_term' = 'Related Business Process');
@@ -1911,7 +2108,7 @@ ALTER TABLE `vibe_manufacturing_v1`.`finance`.`statistical_key_figure` ALTER COL
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`statistical_key_figure` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Updated Timestamp');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`statistical_key_figure` ALTER COLUMN `version_number` SET TAGS ('dbx_business_glossary_term' = 'Version Number');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`allocation_rule` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_manufacturing_v1`.`finance`.`allocation_rule` SET TAGS ('dbx_subdomain' = 'controlling_master');
+ALTER TABLE `vibe_manufacturing_v1`.`finance`.`allocation_rule` SET TAGS ('dbx_subdomain' = 'controlling_structure');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`allocation_rule` ALTER COLUMN `allocation_rule_id` SET TAGS ('dbx_business_glossary_term' = 'Allocation Rule Identifier');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`allocation_rule` ALTER COLUMN `cost_center_id` SET TAGS ('dbx_business_glossary_term' = 'Cost Center Id');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`allocation_rule` ALTER COLUMN `cost_center_id` SET TAGS ('dbx_internal' = 'true');
@@ -1935,12 +2132,14 @@ ALTER TABLE `vibe_manufacturing_v1`.`finance`.`allocation_rule` ALTER COLUMN `re
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`allocation_rule` ALTER COLUMN `rule_code` SET TAGS ('dbx_business_glossary_term' = 'Rule Code');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`allocation_rule` ALTER COLUMN `rule_expression` SET TAGS ('dbx_business_glossary_term' = 'Rule Expression');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`allocation_rule` ALTER COLUMN `rule_name` SET TAGS ('dbx_business_glossary_term' = 'Rule Name');
+ALTER TABLE `vibe_manufacturing_v1`.`finance`.`allocation_rule` ALTER COLUMN `rule_name` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`finance`.`allocation_rule` ALTER COLUMN `rule_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`allocation_rule` ALTER COLUMN `rule_type` SET TAGS ('dbx_business_glossary_term' = 'Rule Type');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`allocation_rule` ALTER COLUMN `allocation_rule_status` SET TAGS ('dbx_business_glossary_term' = 'Status');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`allocation_rule` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Updated Timestamp');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`allocation_rule` ALTER COLUMN `version_number` SET TAGS ('dbx_business_glossary_term' = 'Version Number');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`cost_object` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_manufacturing_v1`.`finance`.`cost_object` SET TAGS ('dbx_subdomain' = 'controlling_master');
+ALTER TABLE `vibe_manufacturing_v1`.`finance`.`cost_object` SET TAGS ('dbx_subdomain' = 'controlling_structure');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`cost_object` ALTER COLUMN `cost_object_id` SET TAGS ('dbx_business_glossary_term' = 'Cost Object Identifier');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`cost_object` ALTER COLUMN `org_unit_id` SET TAGS ('dbx_business_glossary_term' = 'Org Unit Id');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`cost_object` ALTER COLUMN `parent_cost_object_id` SET TAGS ('dbx_business_glossary_term' = 'Parent Cost Object Id');
@@ -1966,6 +2165,8 @@ ALTER TABLE `vibe_manufacturing_v1`.`finance`.`cost_object` ALTER COLUMN `is_rep
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`cost_object` ALTER COLUMN `cost_object_level` SET TAGS ('dbx_business_glossary_term' = 'Cost Object Level');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`cost_object` ALTER COLUMN `manager` SET TAGS ('dbx_business_glossary_term' = 'Cost Object Manager');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`cost_object` ALTER COLUMN `cost_object_name` SET TAGS ('dbx_business_glossary_term' = 'Name');
+ALTER TABLE `vibe_manufacturing_v1`.`finance`.`cost_object` ALTER COLUMN `cost_object_name` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`finance`.`cost_object` ALTER COLUMN `cost_object_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`cost_object` ALTER COLUMN `owner` SET TAGS ('dbx_business_glossary_term' = 'Cost Object Owner');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`cost_object` ALTER COLUMN `planned_cost_amount` SET TAGS ('dbx_business_glossary_term' = 'Planned Cost Amount');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`cost_object` ALTER COLUMN `responsible` SET TAGS ('dbx_business_glossary_term' = 'Cost Object Responsible');
@@ -2005,6 +2206,8 @@ ALTER TABLE `vibe_manufacturing_v1`.`finance`.`ledger` ALTER COLUMN `is_reportab
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`ledger` ALTER COLUMN `last_reconciliation_date` SET TAGS ('dbx_business_glossary_term' = 'Last Reconciliation Date');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`ledger` ALTER COLUMN `ledger_type` SET TAGS ('dbx_business_glossary_term' = 'Ledger Type');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`ledger` ALTER COLUMN `ledger_name` SET TAGS ('dbx_business_glossary_term' = 'Ledger Name');
+ALTER TABLE `vibe_manufacturing_v1`.`finance`.`ledger` ALTER COLUMN `ledger_name` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`finance`.`ledger` ALTER COLUMN `ledger_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`ledger` ALTER COLUMN `period` SET TAGS ('dbx_business_glossary_term' = 'Period');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`ledger` ALTER COLUMN `posting_rule` SET TAGS ('dbx_business_glossary_term' = 'Posting Rule');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`ledger` ALTER COLUMN `profit_center_code` SET TAGS ('dbx_business_glossary_term' = 'Profit Center Code');
@@ -2018,7 +2221,7 @@ ALTER TABLE `vibe_manufacturing_v1`.`finance`.`ledger` ALTER COLUMN `updated_tim
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`ledger` ALTER COLUMN `version_number` SET TAGS ('dbx_business_glossary_term' = 'Version Number');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`ledger` ALTER COLUMN `created_by` SET TAGS ('dbx_business_glossary_term' = 'Created By');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`cost_estimate` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_manufacturing_v1`.`finance`.`cost_estimate` SET TAGS ('dbx_subdomain' = 'controlling_master');
+ALTER TABLE `vibe_manufacturing_v1`.`finance`.`cost_estimate` SET TAGS ('dbx_subdomain' = 'controlling_structure');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`cost_estimate` ALTER COLUMN `cost_estimate_id` SET TAGS ('dbx_business_glossary_term' = 'Cost Estimate Identifier');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`cost_estimate` ALTER COLUMN `cost_center_id` SET TAGS ('dbx_business_glossary_term' = 'Cost Center Id');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`cost_estimate` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Created By User Employee Id');
@@ -2038,6 +2241,7 @@ ALTER TABLE `vibe_manufacturing_v1`.`finance`.`cost_estimate` ALTER COLUMN `cost
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`cost_estimate` ALTER COLUMN `estimate_amount_gross` SET TAGS ('dbx_business_glossary_term' = 'Estimate Amount Gross');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`cost_estimate` ALTER COLUMN `estimate_amount_net` SET TAGS ('dbx_business_glossary_term' = 'Estimate Amount Net');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`cost_estimate` ALTER COLUMN `estimate_date` SET TAGS ('dbx_business_glossary_term' = 'Estimate Date');
+ALTER TABLE `vibe_manufacturing_v1`.`finance`.`cost_estimate` ALTER COLUMN `estimate_name` SET TAGS ('dbx_sensitivity' = 'pii');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`cost_estimate` ALTER COLUMN `estimate_number` SET TAGS ('dbx_business_glossary_term' = 'Estimate Number');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`cost_estimate` ALTER COLUMN `estimate_tax_amount` SET TAGS ('dbx_business_glossary_term' = 'Estimate Tax Amount');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`cost_estimate` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Notes');
@@ -2055,7 +2259,6 @@ ALTER TABLE `vibe_manufacturing_v1`.`finance`.`cost_estimate` ALTER COLUMN `vali
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`chart_of_accounts` SET TAGS ('dbx_data_type' = 'master_data');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`chart_of_accounts` SET TAGS ('dbx_subdomain' = 'ledger_accounting');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`chart_of_accounts` ALTER COLUMN `chart_of_accounts_id` SET TAGS ('dbx_business_glossary_term' = 'Chart Of Accounts Identifier');
-ALTER TABLE `vibe_manufacturing_v1`.`finance`.`chart_of_accounts` ALTER COLUMN `company_code_id` SET TAGS ('dbx_business_glossary_term' = 'Legal Entity Id');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`chart_of_accounts` ALTER COLUMN `parent_account_chart_of_accounts_id` SET TAGS ('dbx_business_glossary_term' = 'Parent Account Id');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`chart_of_accounts` ALTER COLUMN `parent_chart_of_accounts_id` SET TAGS ('dbx_business_glossary_term' = 'Parent Chart Of Accounts Id');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`chart_of_accounts` ALTER COLUMN `parent_chart_of_accounts_id` SET TAGS ('dbx_self_ref_fk' = 'true');
@@ -2064,8 +2267,12 @@ ALTER TABLE `vibe_manufacturing_v1`.`finance`.`chart_of_accounts` ALTER COLUMN `
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`chart_of_accounts` ALTER COLUMN `account_description` SET TAGS ('dbx_business_glossary_term' = 'Account Description');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`chart_of_accounts` ALTER COLUMN `account_group` SET TAGS ('dbx_business_glossary_term' = 'Account Group');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`chart_of_accounts` ALTER COLUMN `account_name` SET TAGS ('dbx_business_glossary_term' = 'Account Name');
+ALTER TABLE `vibe_manufacturing_v1`.`finance`.`chart_of_accounts` ALTER COLUMN `account_name` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`finance`.`chart_of_accounts` ALTER COLUMN `account_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`chart_of_accounts` ALTER COLUMN `account_type` SET TAGS ('dbx_business_glossary_term' = 'Account Type');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`chart_of_accounts` ALTER COLUMN `balance_nature` SET TAGS ('dbx_business_glossary_term' = 'Balance Nature');
+ALTER TABLE `vibe_manufacturing_v1`.`finance`.`chart_of_accounts` ALTER COLUMN `coa_name` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_manufacturing_v1`.`finance`.`chart_of_accounts` ALTER COLUMN `company_code_id` SET TAGS ('dbx_business_glossary_term' = 'Legal Entity Id');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`chart_of_accounts` ALTER COLUMN `cost_center_code` SET TAGS ('dbx_business_glossary_term' = 'Cost Center Code');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`chart_of_accounts` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
 ALTER TABLE `vibe_manufacturing_v1`.`finance`.`chart_of_accounts` ALTER COLUMN `currency_code` SET TAGS ('dbx_business_glossary_term' = 'Currency Code');

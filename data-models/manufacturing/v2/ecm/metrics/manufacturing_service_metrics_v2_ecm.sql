@@ -1,98 +1,71 @@
--- Metric views for domain: service | Business: Manufacturing | Version: 2 | Generated on: 2026-07-10 11:52:40
+-- Metric views for domain: service | Business: Manufacturing | Version: 2 | Generated on: 2026-07-03 05:35:52
 
 CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`service_field_service_order`
 WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Operational and financial KPIs for field service orders — covers cost efficiency, SLA adherence, revenue, and workforce utilisation across service categories and geographies."
+  comment: "Operational and financial KPIs for field service orders — tracks cost, labor efficiency, travel burden, and resolution outcomes to steer field service delivery performance."
   source: "`vibe_manufacturing_v1`.`service`.`field_service_order`"
   dimensions:
-    - name: "service_category"
-      expr: service_category
-      comment: "Service category (e.g. installation, repair, preventive maintenance) for segmenting field service performance."
     - name: "order_type"
       expr: order_type
-      comment: "Type of field service order used to distinguish break-fix, planned, and warranty work."
+      comment: "Type of field service order (e.g., installation, repair, preventive maintenance) for segmenting workload mix."
+    - name: "order_status"
+      expr: order_status
+      comment: "Current lifecycle status of the field service order for pipeline and backlog analysis."
     - name: "priority"
       expr: priority
-      comment: "Order priority level (critical, high, medium, low) for SLA and resource allocation analysis."
-    - name: "completion_status"
-      expr: completion_status
-      comment: "Final completion status of the order — drives on-time completion rate calculations."
-    - name: "lifecycle_status"
-      expr: lifecycle_status
-      comment: "Current lifecycle state of the order for pipeline and backlog reporting."
-    - name: "warranty_flag"
-      expr: warranty_flag
-      comment: "Indicates whether the order is covered under warranty — used to split billable vs warranty cost."
+      comment: "Priority level assigned to the order, enabling SLA-risk segmentation."
+    - name: "service_category"
+      expr: service_category
+      comment: "Service category (e.g., electrical, mechanical) for workload distribution analysis."
     - name: "outcome_code"
       expr: outcome_code
-      comment: "Resolution outcome code for first-time fix and repeat-visit analysis."
-    - name: "root_cause_code"
-      expr: root_cause_code
-      comment: "Root cause classification for failure pattern and reliability analysis."
-    - name: "service_level_agreement_code"
-      expr: service_level_agreement_code
-      comment: "SLA tier applied to the order — essential for SLA breach rate segmentation."
-    - name: "country"
-      expr: country
-      comment: "Country where the field service was performed for geographic performance analysis."
-    - name: "scheduled_start_month"
-      expr: DATE_TRUNC('MONTH', scheduled_start_timestamp)
-      comment: "Month the order was scheduled to start — used for trend and capacity planning."
-    - name: "actual_start_month"
-      expr: DATE_TRUNC('MONTH', actual_start_timestamp)
-      comment: "Month the order actually started — compared against scheduled for delay analysis."
+      comment: "Resolution outcome code to analyze first-time fix rates and repeat-visit patterns."
+    - name: "warranty_flag"
+      expr: warranty_flag
+      comment: "Indicates whether the order is covered under warranty, enabling warranty cost tracking."
+    - name: "scheduled_date_month"
+      expr: DATE_TRUNC('MONTH', scheduled_date)
+      comment: "Month of scheduled service date for trend analysis of order volume over time."
+    - name: "completion_status"
+      expr: completion_status
+      comment: "Completion status of the order to measure closure rates and open backlog."
   measures:
     - name: "total_field_service_orders"
       expr: COUNT(1)
       comment: "Total number of field service orders — baseline volume KPI for capacity and demand planning."
     - name: "total_labor_cost"
       expr: SUM(CAST(labor_cost AS DOUBLE))
-      comment: "Total labor cost across all field service orders — key cost driver for service P&L."
+      comment: "Total labor cost across all field service orders — key cost driver for service P&L management."
     - name: "total_parts_cost"
       expr: SUM(CAST(parts_cost AS DOUBLE))
-      comment: "Total parts cost consumed in field service — drives spare parts inventory investment decisions."
+      comment: "Total parts cost consumed in field service — informs spare parts inventory investment decisions."
     - name: "total_travel_cost"
       expr: SUM(CAST(travel_cost AS DOUBLE))
-      comment: "Total travel cost for field service — used to evaluate zone optimisation and dispatch efficiency."
-    - name: "total_gross_revenue"
-      expr: SUM(CAST(total_gross_amount AS DOUBLE))
-      comment: "Total gross revenue billed for field service orders — top-line service revenue KPI."
-    - name: "total_net_revenue"
-      expr: SUM(CAST(total_net_amount AS DOUBLE))
-      comment: "Total net revenue after discounts — used for service margin and profitability analysis."
-    - name: "total_discount_amount"
-      expr: SUM(CAST(total_discount_amount AS DOUBLE))
-      comment: "Total discounts granted on field service orders — monitors discount leakage and pricing discipline."
-    - name: "total_tax_amount"
-      expr: SUM(CAST(tax_amount AS DOUBLE))
-      comment: "Total tax collected on field service orders — required for tax compliance reporting."
-    - name: "total_labor_hours"
-      expr: SUM(CAST(labor_hours AS DOUBLE))
-      comment: "Total labor hours consumed — used for workforce utilisation and capacity planning."
+      comment: "Total travel cost incurred — used to evaluate geographic dispatch efficiency and zone optimization."
+    - name: "total_service_cost"
+      expr: SUM(CAST(total_cost AS DOUBLE))
+      comment: "Total end-to-end cost per field service order pool — primary financial KPI for service cost management."
     - name: "avg_labor_hours_per_order"
       expr: AVG(CAST(labor_hours AS DOUBLE))
-      comment: "Average labor hours per field service order — benchmark for engineer productivity and job complexity."
-    - name: "total_travel_hours"
-      expr: SUM(CAST(travel_hours AS DOUBLE))
-      comment: "Total travel hours across all orders — used to assess dispatch zone efficiency and engineer utilisation."
+      comment: "Average labor hours per field service order — measures technician productivity and job complexity."
     - name: "avg_travel_distance_km"
       expr: AVG(CAST(travel_distance_km AS DOUBLE))
-      comment: "Average travel distance per order — drives zone redesign and cost reduction initiatives."
-    - name: "avg_net_revenue_per_order"
-      expr: AVG(CAST(total_net_amount AS DOUBLE))
-      comment: "Average net revenue per field service order — used to benchmark order value and pricing strategy."
+      comment: "Average travel distance per order — drives zone design and dispatch optimization decisions."
+    - name: "avg_travel_hours_per_order"
+      expr: AVG(CAST(travel_hours AS DOUBLE))
+      comment: "Average travel time per order — quantifies non-productive time and informs territory restructuring."
+    - name: "total_tax_amount"
+      expr: SUM(CAST(tax_amount AS DOUBLE))
+      comment: "Total tax charged on field service orders — required for financial reporting and tax compliance."
     - name: "warranty_order_count"
       expr: COUNT(CASE WHEN warranty_flag = TRUE THEN 1 END)
-      comment: "Number of orders covered under warranty — used to quantify warranty cost exposure and product quality impact."
-    - name: "distinct_customers_served"
-      expr: COUNT(DISTINCT customer_account_id)
-      comment: "Number of distinct customers served — measures service reach and customer engagement breadth."
-    - name: "distinct_equipment_serviced"
-      expr: COUNT(DISTINCT equipment_register_id)
-      comment: "Number of distinct equipment assets serviced — used for installed base coverage and asset health tracking."
+      comment: "Count of orders executed under warranty coverage — measures warranty liability exposure."
+    - name: "avg_total_cost_per_order"
+      expr: AVG(CAST(total_cost AS DOUBLE))
+      comment: "Average total cost per field service order — benchmark for pricing and profitability analysis."
 $$;
 
 CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`service_request`
@@ -100,73 +73,64 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Customer service request KPIs covering volume, cost, SLA performance, and resolution quality — the primary operational dashboard for service desk and support leadership."
+  comment: "Customer service request KPIs covering volume, cost, SLA adherence, and resolution quality — core metrics for service operations steering."
   source: "`vibe_manufacturing_v1`.`service`.`request`"
   dimensions:
     - name: "request_type"
       expr: request_type
-      comment: "Type of service request (incident, change, problem, warranty) for workload segmentation."
+      comment: "Type of service request (e.g., break-fix, inquiry, complaint) for workload categorization."
     - name: "request_status"
       expr: request_status
-      comment: "Current status of the request — used for open/closed pipeline and backlog reporting."
+      comment: "Current status of the request for pipeline and backlog management."
     - name: "priority"
       expr: priority
-      comment: "Request priority level — critical for SLA breach analysis and escalation management."
+      comment: "Priority level of the request for SLA risk and escalation analysis."
     - name: "service_category"
       expr: service_category
-      comment: "Service category for the request — used to route workload and measure category-level performance."
-    - name: "sla_tier"
-      expr: sla_tier
-      comment: "SLA tier assigned to the request — essential for SLA compliance segmentation."
-    - name: "escalation_level"
-      expr: escalation_level
-      comment: "Current escalation level — used to monitor escalation rates and management intervention triggers."
+      comment: "Service category for demand segmentation and resource allocation."
     - name: "channel"
       expr: channel
-      comment: "Intake channel (phone, email, portal, chat) — used for channel mix and cost-per-channel analysis."
+      comment: "Intake channel (e.g., phone, email, portal) for channel mix and cost-to-serve analysis."
+    - name: "sla_tier"
+      expr: sla_tier
+      comment: "SLA tier assigned to the request — enables SLA compliance reporting by tier."
     - name: "warranty_flag"
       expr: warranty_flag
-      comment: "Indicates warranty-covered requests — used to split billable vs warranty service cost."
-    - name: "site_country"
-      expr: site_country
-      comment: "Country of the service site — for geographic performance and SLA compliance analysis."
+      comment: "Whether the request is covered under warranty — separates warranty vs. billable service demand."
+    - name: "escalation_level"
+      expr: escalation_level
+      comment: "Escalation level reached — identifies systemic quality or capacity issues."
     - name: "created_month"
       expr: DATE_TRUNC('MONTH', created_timestamp)
-      comment: "Month the request was created — used for volume trend and seasonality analysis."
-    - name: "closed_month"
-      expr: DATE_TRUNC('MONTH', closed_timestamp)
-      comment: "Month the request was closed — used for resolution throughput and backlog burn-down analysis."
+      comment: "Month the request was created for trend and seasonality analysis."
   measures:
     - name: "total_service_requests"
       expr: COUNT(1)
-      comment: "Total number of service requests — baseline volume KPI for support capacity and demand planning."
+      comment: "Total number of service requests — primary volume KPI for service demand planning."
     - name: "total_actual_cost"
       expr: SUM(CAST(actual_cost AS DOUBLE))
-      comment: "Total actual cost incurred to resolve service requests — key cost-to-serve metric for service P&L."
+      comment: "Total actual cost incurred to resolve service requests — key cost-of-service metric."
     - name: "total_estimated_cost"
       expr: SUM(CAST(estimated_cost AS DOUBLE))
-      comment: "Total estimated cost for open and closed requests — used for budget forecasting and cost variance analysis."
+      comment: "Total estimated cost for open requests — used for budget forecasting and resource planning."
     - name: "total_parts_cost"
       expr: SUM(CAST(parts_cost AS DOUBLE))
-      comment: "Total parts cost consumed in service requests — drives spare parts demand and inventory investment."
+      comment: "Total parts cost consumed across service requests — informs spare parts stocking strategy."
     - name: "avg_actual_cost_per_request"
       expr: AVG(CAST(actual_cost AS DOUBLE))
-      comment: "Average actual cost per service request — benchmark for cost-to-serve efficiency and pricing of support contracts."
-    - name: "total_travel_distance_km"
-      expr: SUM(CAST(travel_distance_km AS DOUBLE))
-      comment: "Total travel distance for on-site service requests — used to evaluate dispatch zone efficiency."
+      comment: "Average actual cost per service request — benchmark for pricing and profitability analysis."
+    - name: "avg_travel_distance_km"
+      expr: AVG(CAST(travel_distance_km AS DOUBLE))
+      comment: "Average travel distance per service request — informs zone and dispatch optimization."
     - name: "warranty_request_count"
       expr: COUNT(CASE WHEN warranty_flag = TRUE THEN 1 END)
-      comment: "Number of warranty-covered service requests — quantifies warranty cost exposure and product quality impact."
+      comment: "Count of warranty-covered requests — measures warranty liability and product quality signals."
     - name: "escalated_request_count"
-      expr: COUNT(CASE WHEN escalation_level IS NOT NULL AND escalation_level <> '' THEN 1 END)
-      comment: "Number of escalated service requests — high escalation rates signal SLA or quality issues requiring leadership action."
-    - name: "distinct_customers_with_requests"
+      expr: COUNT(CASE WHEN escalation_level IS NOT NULL AND escalation_level != '' THEN 1 END)
+      comment: "Count of escalated requests — leading indicator of service quality and capacity issues."
+    - name: "unique_customers_served"
       expr: COUNT(DISTINCT customer_account_id)
-      comment: "Number of distinct customers who raised service requests — measures support demand breadth and customer health risk."
-    - name: "open_request_count"
-      expr: COUNT(CASE WHEN request_status NOT IN ('Closed', 'Resolved', 'Cancelled') THEN 1 END)
-      comment: "Number of currently open service requests — primary backlog KPI for support capacity management."
+      comment: "Number of distinct customers with service requests — measures service reach and customer exposure."
 $$;
 
 CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`service_contract`
@@ -174,76 +138,64 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Service contract portfolio KPIs covering contract value, renewal performance, SLA commitments, and revenue recognition — used by service sales and operations leadership."
+  comment: "Service contract portfolio KPIs covering contract value, renewal performance, and coverage mix — essential for recurring revenue management and customer retention strategy."
   source: "`vibe_manufacturing_v1`.`service`.`service_contract`"
   dimensions:
     - name: "contract_type"
       expr: contract_type
-      comment: "Type of service contract (full-service, time-and-material, SLA-only) for portfolio segmentation."
-    - name: "contract_category"
-      expr: contract_category
-      comment: "Contract category for grouping and reporting by service offering type."
+      comment: "Type of service contract (e.g., full-service, time-and-material) for portfolio mix analysis."
+    - name: "contract_status"
+      expr: contract_status
+      comment: "Current status of the contract for active portfolio and renewal pipeline management."
     - name: "service_tier"
       expr: service_tier
-      comment: "Service tier (gold, silver, bronze) — used to analyse revenue and margin by commitment level."
-    - name: "service_contract_status"
-      expr: service_contract_status
-      comment: "Current contract status (active, expired, pending renewal) — drives renewal pipeline management."
+      comment: "Service tier (e.g., gold, silver, bronze) for revenue and margin segmentation."
+    - name: "coverage_level"
+      expr: coverage_level
+      comment: "Coverage level of the contract for entitlement and cost-to-serve analysis."
     - name: "billing_frequency"
       expr: billing_frequency
-      comment: "Billing frequency (monthly, quarterly, annual) — used for cash flow and revenue recognition analysis."
-    - name: "currency_code"
-      expr: currency_code
-      comment: "Contract currency for multi-currency revenue reporting and FX exposure analysis."
-    - name: "auto_renewal_flag"
-      expr: auto_renewal_flag
-      comment: "Indicates auto-renewal contracts — used to forecast recurring revenue and churn risk."
+      comment: "Billing frequency (monthly, annual) for cash flow and revenue recognition planning."
+    - name: "auto_renew_flag"
+      expr: auto_renew_flag
+      comment: "Whether the contract auto-renews — key metric for churn risk identification."
     - name: "warranty_included_flag"
       expr: warranty_included_flag
-      comment: "Indicates whether warranty is bundled — used to assess warranty cost embedded in contract pricing."
-    - name: "effective_start_year"
-      expr: YEAR(effective_start_date)
-      comment: "Year the contract became effective — used for cohort and vintage analysis of contract portfolio."
-    - name: "effective_end_year"
-      expr: YEAR(effective_end_date)
-      comment: "Year the contract expires — used for renewal pipeline and revenue cliff analysis."
+      comment: "Whether warranty is bundled in the contract — affects margin and cost-to-serve calculations."
+    - name: "effective_start_month"
+      expr: DATE_TRUNC('MONTH', effective_start_date)
+      comment: "Month the contract became effective for cohort and vintage analysis."
   measures:
     - name: "total_active_contracts"
       expr: COUNT(1)
-      comment: "Total number of service contracts — baseline portfolio size KPI for service sales leadership."
+      comment: "Total number of service contracts — baseline portfolio size KPI for recurring revenue management."
+    - name: "total_annual_contract_value"
+      expr: SUM(CAST(annual_contract_value AS DOUBLE))
+      comment: "Total annual contract value (ACV) across the portfolio — primary recurring revenue KPI."
     - name: "total_contract_value"
       expr: SUM(CAST(contract_value AS DOUBLE))
-      comment: "Total contract value (TCV) across the portfolio — primary revenue KPI for service business planning."
+      comment: "Total lifetime contract value across all contracts — measures total committed revenue."
     - name: "total_net_contract_value"
       expr: SUM(CAST(net_contract_value AS DOUBLE))
-      comment: "Total net contract value after discounts — used for margin and profitability analysis."
-    - name: "avg_contract_value"
-      expr: AVG(CAST(contract_value AS DOUBLE))
-      comment: "Average contract value — benchmark for deal size trends and upsell opportunity identification."
-    - name: "avg_discount_rate_pct"
+      comment: "Total net contract value after discounts — true revenue contribution of the service portfolio."
+    - name: "avg_annual_contract_value"
+      expr: AVG(CAST(annual_contract_value AS DOUBLE))
+      comment: "Average ACV per contract — benchmark for upsell opportunity sizing and pricing strategy."
+    - name: "avg_discount_rate_percent"
       expr: AVG(CAST(discount_rate_percent AS DOUBLE))
-      comment: "Average discount rate across contracts — monitors pricing discipline and discount leakage."
-    - name: "avg_uptime_guarantee_pct"
+      comment: "Average discount rate applied to contracts — monitors pricing discipline and margin erosion."
+    - name: "avg_uptime_guarantee_percent"
       expr: AVG(CAST(uptime_guarantee_percent AS DOUBLE))
-      comment: "Average uptime guarantee committed in contracts — used to assess SLA risk exposure and delivery capability."
+      comment: "Average uptime guarantee committed in contracts — measures SLA risk exposure in the portfolio."
+    - name: "auto_renew_contract_count"
+      expr: COUNT(CASE WHEN auto_renew_flag = TRUE THEN 1 END)
+      comment: "Count of contracts set to auto-renew — measures revenue retention stability."
+    - name: "unique_customers_under_contract"
+      expr: COUNT(DISTINCT customer_account_id)
+      comment: "Number of distinct customers with active service contracts — measures contracted customer base."
     - name: "avg_response_time_target_hours"
       expr: AVG(CAST(response_time_target_hours AS DOUBLE))
-      comment: "Average response time target committed across contracts — used to benchmark SLA stringency and resource requirements."
-    - name: "avg_resolution_time_target_hours"
-      expr: AVG(CAST(resolution_time_target_hours AS DOUBLE))
-      comment: "Average resolution time target committed — used to assess SLA delivery risk and engineer capacity needs."
-    - name: "auto_renewal_contract_count"
-      expr: COUNT(CASE WHEN auto_renewal_flag = TRUE THEN 1 END)
-      comment: "Number of auto-renewing contracts — quantifies predictable recurring revenue base."
-    - name: "warranty_included_contract_count"
-      expr: COUNT(CASE WHEN warranty_included_flag = TRUE THEN 1 END)
-      comment: "Number of contracts with bundled warranty — used to quantify embedded warranty cost exposure."
-    - name: "distinct_customers_under_contract"
-      expr: COUNT(DISTINCT customer_account_id)
-      comment: "Number of distinct customers with active service contracts — measures contracted customer base and retention."
-    - name: "avg_tax_rate_pct"
-      expr: AVG(CAST(tax_rate_percent AS DOUBLE))
-      comment: "Average tax rate applied to service contracts — used for tax provision and pricing compliance review."
+      comment: "Average contracted response time target — measures SLA stringency across the portfolio."
 $$;
 
 CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`service_sla_milestone`
@@ -251,49 +203,46 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "SLA milestone compliance KPIs — measures breach rates, escalation frequency, and elapsed time performance against committed service levels. Core dashboard for service operations and customer success leadership."
+  comment: "SLA compliance KPIs tracking breach rates, escalation frequency, and milestone performance — critical for customer satisfaction and contract penalty risk management."
   source: "`vibe_manufacturing_v1`.`service`.`sla_milestone`"
   dimensions:
-    - name: "milestone_name"
-      expr: milestone_name
-      comment: "Name of the SLA milestone (acknowledgement, first response, resolution) for granular compliance tracking."
-    - name: "sla_milestone_status"
-      expr: sla_milestone_status
-      comment: "Current status of the milestone — used to identify open, breached, and met milestones."
+    - name: "milestone_type"
+      expr: milestone_type
+      comment: "Type of SLA milestone (e.g., acknowledgment, first response, resolution) for compliance breakdown."
+    - name: "milestone_status"
+      expr: milestone_status
+      comment: "Current status of the milestone for open vs. closed SLA tracking."
     - name: "priority"
       expr: priority
-      comment: "Priority of the associated service request — used to analyse SLA compliance by urgency tier."
-    - name: "entitlement_tier"
-      expr: entitlement_tier
-      comment: "Customer entitlement tier — used to segment SLA performance by contract commitment level."
+      comment: "Priority of the associated service request — enables SLA breach analysis by priority tier."
     - name: "breach_flag"
       expr: breach_flag
-      comment: "Indicates whether the SLA milestone was breached — primary dimension for compliance reporting."
+      comment: "Whether the SLA milestone was breached — primary compliance indicator."
     - name: "escalated_flag"
       expr: escalated_flag
-      comment: "Indicates whether the milestone triggered an escalation — used to measure escalation rate by tier and priority."
-    - name: "assigned_team"
-      expr: assigned_team
-      comment: "Team responsible for the milestone — used for team-level SLA accountability reporting."
-    - name: "milestone_month"
-      expr: DATE_TRUNC('MONTH', target_timestamp)
-      comment: "Month of the SLA target timestamp — used for monthly SLA compliance trend analysis."
+      comment: "Whether the milestone triggered an escalation — measures escalation frequency."
+    - name: "entitlement_tier"
+      expr: entitlement_tier
+      comment: "Customer entitlement tier for SLA compliance segmentation by contract tier."
+    - name: "created_month"
+      expr: DATE_TRUNC('MONTH', created_timestamp)
+      comment: "Month the milestone was created for SLA trend analysis over time."
   measures:
     - name: "total_sla_milestones"
       expr: COUNT(1)
-      comment: "Total SLA milestones evaluated — baseline volume for SLA compliance rate calculations."
-    - name: "breached_milestone_count"
+      comment: "Total SLA milestones evaluated — baseline for SLA compliance rate calculations."
+    - name: "sla_breach_count"
       expr: COUNT(CASE WHEN breach_flag = TRUE THEN 1 END)
-      comment: "Number of SLA milestones breached — primary SLA compliance KPI; high breach counts trigger contract penalty and churn risk."
-    - name: "escalated_milestone_count"
+      comment: "Number of SLA milestones breached — primary SLA compliance KPI driving penalty and churn risk."
+    - name: "sla_escalation_count"
       expr: COUNT(CASE WHEN escalated_flag = TRUE THEN 1 END)
-      comment: "Number of milestones that triggered escalation — measures escalation rate and management intervention frequency."
-    - name: "distinct_service_requests_with_breach"
-      expr: COUNT(DISTINCT CASE WHEN breach_flag = TRUE THEN service_request_id END)
-      comment: "Number of distinct service requests with at least one SLA breach — used to measure customer impact of SLA failures."
-    - name: "distinct_service_contracts_with_breach"
-      expr: COUNT(DISTINCT CASE WHEN breach_flag = TRUE THEN service_contract_id END)
-      comment: "Number of distinct service contracts with SLA breaches — used to identify at-risk contracts and penalty exposure."
+      comment: "Number of escalated SLA milestones — measures severity of SLA failures requiring management attention."
+    - name: "sla_breach_rate_pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN breach_flag = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percentage of SLA milestones breached — headline SLA compliance KPI for executive reporting."
+    - name: "sla_escalation_rate_pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN escalated_flag = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percentage of milestones that escalated — measures systemic SLA failure severity."
 $$;
 
 CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`service_satisfaction_survey`
@@ -301,279 +250,90 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Customer satisfaction and NPS KPIs derived from post-service surveys — used by service leadership to track customer experience quality, engineer performance, and contract satisfaction."
+  comment: "Customer satisfaction KPIs measuring CSAT scores, survey response patterns, and overall service quality perception — directly linked to retention and NPS strategy."
   source: "`vibe_manufacturing_v1`.`service`.`satisfaction_survey`"
   dimensions:
     - name: "survey_type"
       expr: survey_type
-      comment: "Type of satisfaction survey (post-repair, post-installation, contract renewal) for segmented CSAT analysis."
+      comment: "Type of survey (e.g., post-repair, post-installation) for satisfaction segmentation by interaction type."
+    - name: "survey_status"
+      expr: survey_status
+      comment: "Status of the survey (completed, pending) for response rate tracking."
     - name: "survey_channel"
       expr: survey_channel
-      comment: "Channel through which the survey was collected (email, SMS, portal) — used for response rate and channel bias analysis."
+      comment: "Channel through which the survey was delivered (email, SMS, portal) for channel effectiveness analysis."
     - name: "lifecycle_status"
       expr: lifecycle_status
-      comment: "Survey lifecycle status (sent, responded, expired) — used to track response rates and survey completion."
-    - name: "language"
-      expr: language
-      comment: "Language of the survey response — used for regional and demographic satisfaction segmentation."
-    - name: "response_month"
-      expr: DATE_TRUNC('MONTH', response_timestamp)
-      comment: "Month the survey response was received — used for satisfaction trend analysis over time."
+      comment: "Lifecycle status of the survey record for data quality and completeness monitoring."
+    - name: "survey_date_month"
+      expr: DATE_TRUNC('MONTH', survey_date)
+      comment: "Month of survey completion for CSAT trend analysis over time."
   measures:
-    - name: "total_surveys_collected"
+    - name: "total_surveys_completed"
       expr: COUNT(1)
-      comment: "Total number of satisfaction surveys collected — baseline for response rate and CSAT coverage analysis."
-    - name: "avg_overall_satisfaction_score"
+      comment: "Total number of satisfaction surveys completed — baseline for response rate and CSAT calculations."
+    - name: "avg_csat_score"
+      expr: AVG(CAST(csat_score AS DOUBLE))
+      comment: "Average CSAT score across all surveys — primary customer satisfaction KPI for executive reporting."
+    - name: "avg_overall_score"
       expr: AVG(CAST(overall_score AS DOUBLE))
-      comment: "Average overall customer satisfaction score — primary CSAT KPI used in executive dashboards and QBRs."
-    - name: "total_overall_satisfaction_score"
-      expr: SUM(CAST(overall_score AS DOUBLE))
-      comment: "Sum of overall satisfaction scores — used as numerator for weighted CSAT calculations in BI tools."
-    - name: "distinct_customers_surveyed"
+      comment: "Average overall satisfaction score — composite satisfaction measure for service quality steering."
+    - name: "unique_customers_surveyed"
       expr: COUNT(DISTINCT customer_account_id)
-      comment: "Number of distinct customers who responded to surveys — measures CSAT coverage across the customer base."
-    - name: "distinct_engineers_rated"
-      expr: COUNT(DISTINCT engineer_id)
-      comment: "Number of distinct engineers rated in surveys — used for engineer performance management and coaching."
-    - name: "distinct_contracts_surveyed"
-      expr: COUNT(DISTINCT service_contract_id)
-      comment: "Number of distinct service contracts with survey responses — used to assess contract satisfaction coverage."
+      comment: "Number of distinct customers who completed surveys — measures satisfaction program reach."
+    - name: "max_csat_score"
+      expr: MAX(CAST(csat_score AS DOUBLE))
+      comment: "Maximum CSAT score achieved — benchmarks best-in-class service performance."
+    - name: "min_csat_score"
+      expr: MIN(CAST(csat_score AS DOUBLE))
+      comment: "Minimum CSAT score recorded — identifies worst service experiences requiring corrective action."
 $$;
 
-CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`service_warranty`
+CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`service_engineer_assignment`
 WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Service warranty portfolio KPIs covering coverage value, renewal rates, and claims eligibility — used by service operations and finance to manage warranty liability and revenue."
-  source: "`vibe_manufacturing_v1`.`service`.`service_warranty`"
+  comment: "Engineer utilization and scheduling KPIs measuring planned vs. actual hours, assignment efficiency, and workforce deployment — drives field workforce optimization decisions."
+  source: "`vibe_manufacturing_v1`.`service`.`engineer_assignment`"
   dimensions:
-    - name: "warranty_type"
-      expr: warranty_type
-      comment: "Type of warranty (standard, extended, on-site) for portfolio segmentation and liability analysis."
-    - name: "lifecycle_status"
-      expr: lifecycle_status
-      comment: "Current warranty lifecycle status (active, expired, pending) — used for active warranty base reporting."
-    - name: "registration_status"
-      expr: registration_status
-      comment: "Warranty registration status — used to track unregistered warranties and activation campaigns."
-    - name: "service_level"
-      expr: service_level
-      comment: "Service level committed under the warranty — used to segment warranty cost and delivery obligations."
-    - name: "currency_code"
-      expr: currency_code
-      comment: "Currency of the warranty coverage amount — used for multi-currency liability reporting."
-    - name: "renewal_flag"
-      expr: renewal_flag
-      comment: "Indicates whether the warranty is eligible for renewal — used to forecast renewal revenue pipeline."
-    - name: "claims_allowed_flag"
-      expr: claims_allowed_flag
-      comment: "Indicates whether claims are currently allowed — used to identify active claimable warranty exposure."
-    - name: "transferability_flag"
-      expr: transferability_flag
-      comment: "Indicates whether the warranty is transferable — used for secondary market and asset resale analysis."
-    - name: "effective_from_year"
-      expr: YEAR(effective_from)
-      comment: "Year the warranty became effective — used for vintage cohort analysis of warranty portfolio."
-    - name: "effective_until_year"
-      expr: YEAR(effective_until)
-      comment: "Year the warranty expires — used for expiry cliff and renewal pipeline analysis."
+    - name: "assignment_status"
+      expr: assignment_status
+      comment: "Current status of the engineer assignment for workload pipeline management."
+    - name: "assignment_role"
+      expr: assignment_role
+      comment: "Role of the engineer on the assignment (lead, support) for skill utilization analysis."
+    - name: "is_primary_flag"
+      expr: is_primary_flag
+      comment: "Whether the engineer is the primary assignee — enables primary vs. support resource analysis."
+    - name: "assignment_date_month"
+      expr: DATE_TRUNC('MONTH', assignment_date)
+      comment: "Month of assignment for workforce utilization trend analysis."
   measures:
-    - name: "total_warranties"
+    - name: "total_assignments"
       expr: COUNT(1)
-      comment: "Total number of service warranties in the portfolio — baseline for warranty coverage and liability reporting."
-    - name: "total_coverage_amount"
-      expr: SUM(CAST(coverage_amount AS DOUBLE))
-      comment: "Total warranty coverage amount — primary liability KPI for finance and risk management."
-    - name: "avg_coverage_amount"
-      expr: AVG(CAST(coverage_amount AS DOUBLE))
-      comment: "Average warranty coverage amount per warranty — used to benchmark warranty value and pricing adequacy."
-    - name: "renewable_warranty_count"
-      expr: COUNT(CASE WHEN renewal_flag = TRUE THEN 1 END)
-      comment: "Number of warranties eligible for renewal — quantifies the renewal revenue pipeline."
-    - name: "active_claimable_warranty_count"
-      expr: COUNT(CASE WHEN claims_allowed_flag = TRUE THEN 1 END)
-      comment: "Number of warranties with active claims eligibility — measures current warranty liability exposure."
-    - name: "distinct_customers_with_warranty"
-      expr: COUNT(DISTINCT customer_account_id)
-      comment: "Number of distinct customers with active warranties — measures warranty coverage breadth across the customer base."
-$$;
-
-CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`service_rma`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Return merchandise authorisation (RMA) KPIs covering return volume, refund cost, repair cost, and warranty coverage — used by service operations and quality leadership to manage product returns and cost."
-  source: "`vibe_manufacturing_v1`.`service`.`service_rma`"
-  dimensions:
-    - name: "service_rma_status"
-      expr: service_rma_status
-      comment: "Current RMA status (open, in-process, closed) — used for RMA pipeline and backlog management."
-    - name: "return_reason_code"
-      expr: return_reason_code
-      comment: "Reason code for the return — used to identify top return drivers and product quality issues."
-    - name: "disposition"
-      expr: disposition
-      comment: "Disposition decision (repair, replace, scrap, credit) — used to analyse return handling cost and policy."
-    - name: "is_under_warranty"
-      expr: is_under_warranty
-      comment: "Indicates warranty-covered returns — used to split warranty vs billable return cost."
-    - name: "is_critical"
-      expr: is_critical
-      comment: "Indicates critical RMAs requiring priority handling — used for escalation and resource prioritisation."
-    - name: "compliance_status"
-      expr: compliance_status
-      comment: "Regulatory compliance status of the RMA — used for compliance reporting and audit readiness."
-    - name: "currency_code"
-      expr: currency_code
-      comment: "Currency of the RMA financial amounts — used for multi-currency cost reporting."
-    - name: "return_shipment_method"
-      expr: return_shipment_method
-      comment: "Shipping method used for the return — used to analyse logistics cost and lead time by carrier type."
-    - name: "request_month"
-      expr: DATE_TRUNC('MONTH', request_timestamp)
-      comment: "Month the RMA was requested — used for return volume trend and seasonality analysis."
-  measures:
-    - name: "total_rma_cases"
-      expr: COUNT(1)
-      comment: "Total number of RMA cases — baseline volume KPI for return rate and quality management."
-    - name: "total_refund_amount"
-      expr: SUM(CAST(refund_amount AS DOUBLE))
-      comment: "Total refund amount issued for RMAs — primary financial liability KPI for service and finance leadership."
-    - name: "total_repair_cost"
-      expr: SUM(CAST(repair_cost AS DOUBLE))
-      comment: "Total repair cost incurred for returned units — used to assess repair vs replace economics and cost-to-serve."
-    - name: "avg_refund_amount"
-      expr: AVG(CAST(refund_amount AS DOUBLE))
-      comment: "Average refund amount per RMA — used to benchmark refund policy and identify outlier cases."
-    - name: "avg_repair_cost"
-      expr: AVG(CAST(repair_cost AS DOUBLE))
-      comment: "Average repair cost per RMA — used to evaluate repair programme efficiency and make repair vs replace decisions."
-    - name: "warranty_rma_count"
-      expr: COUNT(CASE WHEN is_under_warranty = TRUE THEN 1 END)
-      comment: "Number of warranty-covered RMAs — quantifies warranty claims volume and product reliability impact."
-    - name: "critical_rma_count"
-      expr: COUNT(CASE WHEN is_critical = TRUE THEN 1 END)
-      comment: "Number of critical RMA cases — used to prioritise resolution resources and escalate to product engineering."
-    - name: "distinct_customers_with_rma"
-      expr: COUNT(DISTINCT customer_account_id)
-      comment: "Number of distinct customers with RMA cases — measures return issue breadth and customer satisfaction risk."
-$$;
-
-CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`service_installed_base`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Installed base asset KPIs covering equipment health, maintenance frequency, reliability (MTBF/MTTR), and OEE — used by service and asset management leadership to drive proactive maintenance and upsell strategies."
-  source: "`vibe_manufacturing_v1`.`service`.`installed_base`"
-  dimensions:
-    - name: "operational_status"
-      expr: operational_status
-      comment: "Current operational status of the installed asset (active, inactive, decommissioned) — used for active base reporting."
-    - name: "product_category"
-      expr: product_category
-      comment: "Product category of the installed asset — used for category-level reliability and service demand analysis."
-    - name: "product_name"
-      expr: product_name
-      comment: "Product name of the installed asset — used for product-level performance and service demand segmentation."
-    - name: "maintenance_type"
-      expr: maintenance_type
-      comment: "Type of maintenance applied (preventive, corrective, predictive) — used to analyse maintenance strategy effectiveness."
-    - name: "installation_method"
-      expr: installation_method
-      comment: "Method used for installation — used to correlate installation quality with subsequent service demand."
-    - name: "country_code"
-      expr: country_code
-      comment: "Country where the asset is installed — used for geographic installed base and service demand analysis."
-    - name: "installation_year"
-      expr: YEAR(installation_date)
-      comment: "Year the asset was installed — used for asset age cohort analysis and lifecycle management."
-    - name: "last_service_year"
-      expr: YEAR(last_service_date)
-      comment: "Year of the last service event — used to identify assets overdue for maintenance."
-  measures:
-    - name: "total_installed_assets"
-      expr: COUNT(1)
-      comment: "Total number of installed base assets — baseline for installed base coverage and service addressable market."
-    - name: "avg_overall_equipment_effectiveness"
-      expr: AVG(CAST(overall_equipment_effectiveness AS DOUBLE))
-      comment: "Average OEE across installed assets — primary equipment performance KPI used in operational steering meetings."
-    - name: "avg_mean_time_between_failures_hours"
-      expr: AVG(CAST(mean_time_between_failures_hours AS DOUBLE))
-      comment: "Average MTBF across installed assets — key reliability KPI; declining MTBF signals product quality or maintenance issues."
-    - name: "avg_mean_time_to_repair_hours"
-      expr: AVG(CAST(mean_time_to_repair_hours AS DOUBLE))
-      comment: "Average MTTR across installed assets — measures service responsiveness and repair efficiency."
-    - name: "total_capacity_kw"
-      expr: SUM(CAST(capacity_kw AS DOUBLE))
-      comment: "Total installed capacity in kilowatts — used for energy management and capacity planning."
-    - name: "avg_power_rating_kw"
-      expr: AVG(CAST(power_rating_kw AS DOUBLE))
-      comment: "Average power rating of installed assets — used for energy consumption benchmarking and infrastructure planning."
-    - name: "distinct_customers_with_installed_base"
-      expr: COUNT(DISTINCT customer_account_id)
-      comment: "Number of distinct customers with installed assets — measures installed base customer coverage and upsell opportunity."
-$$;
-
-CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`service_capa_record`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Corrective and preventive action (CAPA) KPIs for the service domain — tracks CAPA volume, cost, closure rates, and risk levels to drive quality improvement and compliance."
-  source: "`vibe_manufacturing_v1`.`service`.`service_capa_record`"
-  dimensions:
-    - name: "service_capa_record_status"
-      expr: service_capa_record_status
-      comment: "Current CAPA status (open, in-progress, closed, verified) — used for CAPA pipeline and closure rate reporting."
-    - name: "priority"
-      expr: priority
-      comment: "CAPA priority level — used to ensure high-priority quality issues receive timely resolution."
-    - name: "severity"
-      expr: severity
-      comment: "Severity of the quality issue — used to segment CAPA cost and effort by impact level."
-    - name: "risk_level"
-      expr: risk_level
-      comment: "Risk level associated with the CAPA — used for risk-based prioritisation and regulatory reporting."
-    - name: "root_cause_category"
-      expr: root_cause_category
-      comment: "Root cause category — used to identify systemic quality issues and drive preventive action programmes."
-    - name: "compliance_status"
-      expr: compliance_status
-      comment: "Regulatory compliance status of the CAPA — used for audit readiness and regulatory submission tracking."
-    - name: "product_family"
-      expr: product_family
-      comment: "Product family affected by the CAPA — used to identify product lines with recurring quality issues."
-    - name: "source"
-      expr: source
-      comment: "Source that triggered the CAPA (customer complaint, audit, NCR) — used to analyse quality signal origins."
-    - name: "is_closed"
-      expr: is_closed
-      comment: "Indicates whether the CAPA is closed — used for open vs closed CAPA ratio reporting."
-    - name: "created_month"
-      expr: DATE_TRUNC('MONTH', created_timestamp)
-      comment: "Month the CAPA was created — used for CAPA volume trend and quality event frequency analysis."
-  measures:
-    - name: "total_capa_records"
-      expr: COUNT(1)
-      comment: "Total number of CAPA records — baseline quality management KPI for compliance and operational excellence."
-    - name: "total_actual_cost"
-      expr: SUM(CAST(cost_actual AS DOUBLE))
-      comment: "Total actual cost of CAPA resolution — used to quantify quality failure cost and justify prevention investment."
-    - name: "total_estimated_cost"
-      expr: SUM(CAST(cost_estimate AS DOUBLE))
-      comment: "Total estimated CAPA cost — used for quality budget planning and cost variance analysis."
-    - name: "avg_actual_cost_per_capa"
-      expr: AVG(CAST(cost_actual AS DOUBLE))
-      comment: "Average actual cost per CAPA — benchmarks quality resolution efficiency and identifies high-cost failure modes."
-    - name: "open_capa_count"
-      expr: COUNT(CASE WHEN is_closed = FALSE THEN 1 END)
-      comment: "Number of open CAPA records — primary backlog KPI for quality management and regulatory compliance."
-    - name: "closed_capa_count"
-      expr: COUNT(CASE WHEN is_closed = TRUE THEN 1 END)
-      comment: "Number of closed CAPA records — used to calculate closure rate and demonstrate quality programme effectiveness."
+      comment: "Total engineer assignments — baseline volume KPI for workforce demand planning."
+    - name: "total_planned_hours"
+      expr: SUM(CAST(planned_hours AS DOUBLE))
+      comment: "Total planned labor hours across all assignments — used for capacity planning and scheduling."
+    - name: "total_actual_hours"
+      expr: SUM(CAST(actual_hours AS DOUBLE))
+      comment: "Total actual hours worked on assignments — measures true labor consumption vs. plan."
+    - name: "total_estimated_hours"
+      expr: SUM(CAST(estimated_hours AS DOUBLE))
+      comment: "Total estimated hours for assignments — baseline for scheduling accuracy measurement."
+    - name: "avg_actual_hours_per_assignment"
+      expr: AVG(CAST(actual_hours AS DOUBLE))
+      comment: "Average actual hours per assignment — measures job complexity and engineer productivity."
+    - name: "avg_allocated_hours_per_assignment"
+      expr: AVG(CAST(allocated_hours AS DOUBLE))
+      comment: "Average allocated hours per assignment — measures scheduling efficiency and resource utilization."
+    - name: "unique_engineers_assigned"
+      expr: COUNT(DISTINCT primary_service_engineer_id)
+      comment: "Number of distinct engineers with active assignments — measures workforce deployment breadth."
+    - name: "hours_variance"
+      expr: SUM(CAST(actual_hours AS DOUBLE) - CAST(planned_hours AS DOUBLE))
+      comment: "Total variance between actual and planned hours — measures scheduling accuracy and over/under-run risk."
 $$;
 
 CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`service_part_consumption`
@@ -581,55 +341,379 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Service parts consumption KPIs covering spend, unit economics, and fulfillment performance — used by service operations and supply chain leadership to manage spare parts cost and availability."
+  comment: "Parts consumption KPIs for field service — tracks cost, volume, and fulfillment performance to optimize spare parts inventory and service cost management."
   source: "`vibe_manufacturing_v1`.`service`.`part_consumption`"
   dimensions:
-    - name: "fulfillment_status"
-      expr: fulfillment_status
-      comment: "Fulfillment status of the parts order (fulfilled, backordered, cancelled) — used for parts availability and service delivery risk analysis."
-    - name: "order_urgency"
-      expr: order_urgency
-      comment: "Urgency level of the parts order — used to analyse emergency vs planned parts consumption and cost premium."
     - name: "source_type"
       expr: source_type
-      comment: "Source of the part (stock, direct procurement, supplier) — used for supply chain strategy and cost analysis."
+      comment: "Source of the part (warehouse, supplier, consignment) for supply chain optimization."
+    - name: "fulfillment_status"
+      expr: fulfillment_status
+      comment: "Fulfillment status of the part order — measures parts availability and service delay risk."
+    - name: "order_urgency"
+      expr: order_urgency
+      comment: "Urgency level of the parts order — identifies emergency procurement patterns and cost premiums."
     - name: "contract_coverage_flag"
       expr: contract_coverage_flag
-      comment: "Indicates whether the part consumption is covered by a service contract — used to split billable vs contract-covered parts cost."
+      comment: "Whether parts consumption is covered by a service contract — separates billable vs. contract-covered cost."
     - name: "warranty_coverage_flag"
       expr: warranty_coverage_flag
-      comment: "Indicates whether the part is covered under warranty — used to quantify warranty parts cost exposure."
-    - name: "unit_of_measure"
-      expr: unit_of_measure
-      comment: "Unit of measure for the consumed part — used for volume normalisation in consumption analysis."
-    - name: "currency_code"
-      expr: currency_code
-      comment: "Currency of the parts transaction — used for multi-currency spend reporting."
+      comment: "Whether parts are covered under warranty — measures warranty parts cost exposure."
     - name: "consumption_month"
       expr: DATE_TRUNC('MONTH', consumption_timestamp)
-      comment: "Month of parts consumption — used for consumption trend and demand forecasting analysis."
+      comment: "Month of parts consumption for demand trend and seasonality analysis."
   measures:
     - name: "total_parts_consumption_events"
       expr: COUNT(1)
-      comment: "Total number of parts consumption events — baseline for parts demand volume and service activity analysis."
-    - name: "total_parts_spend"
+      comment: "Total parts consumption transactions — baseline volume KPI for parts demand planning."
+    - name: "total_parts_cost"
+      expr: SUM(CAST(total_cost AS DOUBLE))
+      comment: "Total cost of parts consumed in field service — primary cost driver for service margin management."
+    - name: "total_quantity_consumed"
+      expr: SUM(CAST(quantity_consumed AS DOUBLE))
+      comment: "Total quantity of parts consumed — drives inventory replenishment and stocking level decisions."
+    - name: "total_line_total_amount"
       expr: SUM(CAST(line_total_amount AS DOUBLE))
-      comment: "Total parts spend across all consumption events — primary cost KPI for service parts management and budget control."
-    - name: "avg_unit_price"
-      expr: AVG(CAST(unit_price AS DOUBLE))
-      comment: "Average unit price of consumed parts — used to monitor parts pricing trends and supplier cost management."
-    - name: "avg_line_total_amount"
-      expr: AVG(CAST(line_total_amount AS DOUBLE))
-      comment: "Average line total per consumption event — used to benchmark parts order value and identify high-cost consumption patterns."
-    - name: "warranty_covered_consumption_count"
-      expr: COUNT(CASE WHEN warranty_coverage_flag = TRUE THEN 1 END)
-      comment: "Number of warranty-covered parts consumption events — quantifies warranty parts liability and product quality cost."
-    - name: "contract_covered_consumption_count"
-      expr: COUNT(CASE WHEN contract_coverage_flag = TRUE THEN 1 END)
-      comment: "Number of contract-covered parts consumption events — used to validate contract parts entitlement utilisation."
-    - name: "distinct_spare_parts_consumed"
-      expr: COUNT(DISTINCT spare_part_id)
-      comment: "Number of distinct spare parts consumed — used for parts catalogue rationalisation and stocking strategy."
+      comment: "Total line-level parts billing amount — measures billable parts revenue from service activities."
+    - name: "avg_unit_cost"
+      expr: AVG(CAST(unit_cost AS DOUBLE))
+      comment: "Average unit cost of parts consumed — benchmarks parts pricing and supplier cost performance."
+    - name: "warranty_covered_cost"
+      expr: SUM(CASE WHEN warranty_coverage_flag = TRUE THEN CAST(total_cost AS DOUBLE) ELSE 0 END)
+      comment: "Total parts cost covered under warranty — measures warranty liability and product quality cost."
+    - name: "unique_field_orders_with_parts"
+      expr: COUNT(DISTINCT field_service_order_id)
+      comment: "Number of distinct field service orders consuming parts — measures parts-intensive job prevalence."
+$$;
+
+CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`service_warranty`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Service warranty portfolio KPIs tracking coverage value, duration, and claim exposure — essential for warranty liability management and product quality investment decisions."
+  source: "`vibe_manufacturing_v1`.`service`.`service_warranty`"
+  dimensions:
+    - name: "warranty_type"
+      expr: warranty_type
+      comment: "Type of warranty (standard, extended, on-site) for portfolio mix and cost analysis."
+    - name: "warranty_status"
+      expr: warranty_status
+      comment: "Current status of the warranty for active coverage and expiry management."
+    - name: "service_level"
+      expr: service_level
+      comment: "Service level committed under the warranty for SLA exposure analysis."
+    - name: "lifecycle_status"
+      expr: lifecycle_status
+      comment: "Lifecycle status of the warranty record for portfolio health monitoring."
+    - name: "renewal_flag"
+      expr: renewal_flag
+      comment: "Whether the warranty has been renewed — measures warranty renewal rate and revenue retention."
+    - name: "transferable_flag"
+      expr: transferable_flag
+      comment: "Whether the warranty is transferable — affects asset resale value and secondary market strategy."
+    - name: "effective_from_month"
+      expr: DATE_TRUNC('MONTH', effective_from)
+      comment: "Month warranty became effective for cohort and vintage analysis."
+  measures:
+    - name: "total_warranties"
+      expr: COUNT(1)
+      comment: "Total number of service warranties in the portfolio — baseline for warranty liability exposure."
+    - name: "total_coverage_amount"
+      expr: SUM(CAST(coverage_amount AS DOUBLE))
+      comment: "Total warranty coverage amount committed — measures maximum financial liability from warranty portfolio."
+    - name: "total_claim_limit_amount"
+      expr: SUM(CAST(claim_limit_amount AS DOUBLE))
+      comment: "Total claim limit across all warranties — caps the financial exposure from warranty claims."
+    - name: "avg_duration_months"
+      expr: AVG(CAST(duration_months AS DOUBLE))
+      comment: "Average warranty duration in months — informs warranty pricing and product reliability benchmarking."
+    - name: "avg_coverage_amount"
+      expr: AVG(CAST(coverage_amount AS DOUBLE))
+      comment: "Average coverage amount per warranty — benchmarks warranty value and pricing adequacy."
+    - name: "renewable_warranty_count"
+      expr: COUNT(CASE WHEN renewal_flag = TRUE THEN 1 END)
+      comment: "Count of warranties eligible for renewal — measures warranty renewal revenue opportunity."
+    - name: "unique_customers_with_warranty"
+      expr: COUNT(DISTINCT customer_account_id)
+      comment: "Number of distinct customers with active warranties — measures warranty program reach."
+$$;
+
+CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`service_capa_record`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Service CAPA (Corrective and Preventive Action) KPIs tracking quality issue resolution, cost of quality, and effectiveness — drives continuous improvement and risk reduction decisions."
+  source: "`vibe_manufacturing_v1`.`service`.`service_capa_record`"
+  dimensions:
+    - name: "capa_type"
+      expr: capa_type
+      comment: "Type of CAPA (corrective vs. preventive) for quality improvement portfolio analysis."
+    - name: "capa_status"
+      expr: capa_status
+      comment: "Current status of the CAPA record for open action tracking and closure rate measurement."
+    - name: "priority"
+      expr: priority
+      comment: "Priority of the CAPA for risk-weighted quality management."
+    - name: "severity"
+      expr: severity
+      comment: "Severity of the underlying issue — enables risk-stratified CAPA portfolio management."
+    - name: "root_cause_category"
+      expr: root_cause_category
+      comment: "Root cause category for systemic issue identification and prevention investment."
+    - name: "product_family"
+      expr: product_family
+      comment: "Product family affected by the CAPA — links quality issues to product lines for R&D decisions."
+    - name: "effectiveness_verified_flag"
+      expr: effectiveness_verified_flag
+      comment: "Whether the CAPA effectiveness has been verified — measures quality of corrective action closure."
+    - name: "created_month"
+      expr: DATE_TRUNC('MONTH', created_timestamp)
+      comment: "Month CAPA was created for quality trend analysis over time."
+  measures:
+    - name: "total_capa_records"
+      expr: COUNT(1)
+      comment: "Total CAPA records — baseline quality issue volume KPI for continuous improvement tracking."
+    - name: "total_capa_actual_cost"
+      expr: SUM(CAST(cost_actual AS DOUBLE))
+      comment: "Total actual cost of CAPA execution — measures cost of quality and corrective action investment."
+    - name: "total_capa_estimated_cost"
+      expr: SUM(CAST(cost_estimate AS DOUBLE))
+      comment: "Total estimated cost of open CAPAs — used for quality budget forecasting."
+    - name: "avg_capa_actual_cost"
+      expr: AVG(CAST(cost_actual AS DOUBLE))
+      comment: "Average cost per CAPA — benchmarks quality issue resolution cost efficiency."
+    - name: "verified_capa_count"
+      expr: COUNT(CASE WHEN effectiveness_verified_flag = TRUE THEN 1 END)
+      comment: "Count of CAPAs with verified effectiveness — measures quality of corrective action closure."
+    - name: "verified_effectiveness_rate_pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN effectiveness_verified_flag = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percentage of CAPAs with verified effectiveness — headline quality closure quality KPI."
+    - name: "closed_capa_count"
+      expr: COUNT(CASE WHEN is_closed = TRUE THEN 1 END)
+      comment: "Count of closed CAPA records — measures resolution throughput and backlog reduction."
+$$;
+
+CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`service_installed_base`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Installed base asset KPIs tracking operational performance, maintenance health, and reliability — foundational for service revenue forecasting and proactive maintenance strategy."
+  source: "`vibe_manufacturing_v1`.`service`.`installed_base`"
+  dimensions:
+    - name: "install_status"
+      expr: install_status
+      comment: "Installation status of the asset for active base management and service coverage planning."
+    - name: "product_category"
+      expr: product_category
+      comment: "Product category of the installed asset for service demand segmentation."
+    - name: "maintenance_type"
+      expr: maintenance_type
+      comment: "Type of maintenance applied to the asset for maintenance strategy analysis."
+    - name: "installation_method"
+      expr: installation_method
+      comment: "Method used for installation — correlates with reliability and service frequency."
+    - name: "country_code"
+      expr: country_code
+      comment: "Country where the asset is installed for geographic service coverage analysis."
+    - name: "commissioning_month"
+      expr: DATE_TRUNC('MONTH', commissioning_date)
+      comment: "Month of commissioning for installed base cohort and aging analysis."
+  measures:
+    - name: "total_installed_assets"
+      expr: COUNT(1)
+      comment: "Total installed base count — primary KPI for service addressable market sizing."
+    - name: "total_operating_hours"
+      expr: SUM(CAST(operating_hours AS DOUBLE))
+      comment: "Total operating hours across the installed base — measures asset utilization and wear exposure."
+    - name: "avg_mean_time_between_failures"
+      expr: AVG(CAST(mean_time_between_failures_hours AS DOUBLE))
+      comment: "Average MTBF across installed assets — key reliability KPI driving maintenance strategy decisions."
+    - name: "avg_mean_time_to_repair"
+      expr: AVG(CAST(mean_time_to_repair_hours AS DOUBLE))
+      comment: "Average MTTR across installed assets — measures service responsiveness and repair efficiency."
+    - name: "avg_overall_equipment_effectiveness"
+      expr: AVG(CAST(overall_equipment_effectiveness AS DOUBLE))
+      comment: "Average OEE across the installed base — composite asset performance KPI for service value demonstration."
+    - name: "avg_power_rating_kw"
+      expr: AVG(CAST(power_rating_kw AS DOUBLE))
+      comment: "Average power rating of installed assets — used for energy and capacity planning."
+    - name: "unique_customers_with_installed_assets"
+      expr: COUNT(DISTINCT customer_account_id)
+      comment: "Number of distinct customers with installed assets — measures service addressable customer base."
+$$;
+
+CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`service_remote_diagnostic_session`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Remote diagnostics KPIs measuring session efficiency, resolution rates, and field dispatch avoidance — quantifies the ROI of remote service capabilities vs. costly field dispatch."
+  source: "`vibe_manufacturing_v1`.`service`.`remote_diagnostic_session`"
+  dimensions:
+    - name: "session_type"
+      expr: session_type
+      comment: "Type of remote diagnostic session for workload categorization and tool effectiveness analysis."
+    - name: "session_status"
+      expr: session_status
+      comment: "Status of the session for completion rate and pipeline management."
+    - name: "connection_type"
+      expr: connection_type
+      comment: "Connection type used (VPN, cloud, direct) for infrastructure performance analysis."
+    - name: "diagnostic_result"
+      expr: diagnostic_result
+      comment: "Outcome of the diagnostic session for resolution effectiveness analysis."
+    - name: "field_dispatch_needed"
+      expr: field_dispatch_needed
+      comment: "Whether a field dispatch was required after the session — primary KPI for remote resolution rate."
+    - name: "resolved_flag"
+      expr: resolved_flag
+      comment: "Whether the issue was resolved remotely — measures remote fix rate and field dispatch avoidance."
+    - name: "session_month"
+      expr: DATE_TRUNC('MONTH', start_timestamp)
+      comment: "Month the session started for remote service adoption trend analysis."
+  measures:
+    - name: "total_remote_sessions"
+      expr: COUNT(1)
+      comment: "Total remote diagnostic sessions — baseline volume KPI for remote service program scale."
+    - name: "remote_resolution_count"
+      expr: COUNT(CASE WHEN resolved_flag = TRUE THEN 1 END)
+      comment: "Count of issues resolved remotely without field dispatch — measures remote service effectiveness."
+    - name: "remote_resolution_rate_pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN resolved_flag = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percentage of remote sessions that resolved the issue without field dispatch — headline ROI KPI for remote service investment."
+    - name: "field_dispatch_avoided_count"
+      expr: COUNT(CASE WHEN field_dispatch_needed = FALSE THEN 1 END)
+      comment: "Count of sessions where field dispatch was avoided — quantifies cost avoidance from remote diagnostics."
+    - name: "avg_session_duration_minutes"
+      expr: AVG(CAST(duration_minutes AS DOUBLE))
+      comment: "Average remote session duration — measures diagnostic efficiency and engineer productivity."
+    - name: "avg_bandwidth_mbps"
+      expr: AVG(CAST(bandwidth_mbps AS DOUBLE))
+      comment: "Average bandwidth used per session — informs infrastructure investment for remote service quality."
+    - name: "avg_latency_ms"
+      expr: AVG(CAST(latency_ms AS DOUBLE))
+      comment: "Average session latency — measures connectivity quality impacting remote diagnostic effectiveness."
+    - name: "total_data_volume_mb"
+      expr: SUM(CAST(data_volume_mb AS DOUBLE))
+      comment: "Total data volume transferred in remote sessions — informs network capacity planning."
+$$;
+
+CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`service_entitlement`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Service entitlement utilization KPIs tracking SLA breach rates, remaining entitlement units, and coverage health — drives entitlement portfolio management and renewal strategy."
+  source: "`vibe_manufacturing_v1`.`service`.`service_entitlement`"
+  dimensions:
+    - name: "entitlement_type"
+      expr: entitlement_type
+      comment: "Type of entitlement (e.g., incident-based, time-based) for portfolio mix analysis."
+    - name: "entitlement_status"
+      expr: entitlement_status
+      comment: "Current status of the entitlement for active coverage management."
+    - name: "coverage_level"
+      expr: coverage_level
+      comment: "Coverage level of the entitlement for SLA tier analysis."
+    - name: "priority_level"
+      expr: priority_level
+      comment: "Priority level of the entitlement for risk-weighted SLA management."
+    - name: "acknowledgment_breach_flag"
+      expr: acknowledgment_breach_flag
+      comment: "Whether the acknowledgment SLA was breached — measures first-touch responsiveness."
+    - name: "first_response_breach_flag"
+      expr: first_response_breach_flag
+      comment: "Whether the first response SLA was breached — key customer satisfaction driver."
+    - name: "resolution_breach_flag"
+      expr: resolution_breach_flag
+      comment: "Whether the resolution SLA was breached — primary contract penalty risk indicator."
+    - name: "effective_start_month"
+      expr: DATE_TRUNC('MONTH', effective_start_date)
+      comment: "Month entitlement became effective for cohort analysis."
+  measures:
+    - name: "total_entitlements"
+      expr: COUNT(1)
+      comment: "Total service entitlements — baseline for SLA compliance and coverage portfolio management."
+    - name: "total_remaining_units"
+      expr: SUM(CAST(remaining_units AS DOUBLE))
+      comment: "Total remaining entitlement units across the portfolio — measures unused service capacity."
+    - name: "total_entitlement_units"
+      expr: SUM(CAST(total_units AS DOUBLE))
+      comment: "Total entitlement units committed — measures contracted service volume."
+    - name: "avg_remaining_units"
+      expr: AVG(CAST(remaining_units AS DOUBLE))
+      comment: "Average remaining units per entitlement — measures entitlement utilization rate."
+    - name: "resolution_breach_count"
+      expr: COUNT(CASE WHEN resolution_breach_flag = TRUE THEN 1 END)
+      comment: "Count of resolution SLA breaches — primary contract penalty and churn risk KPI."
+    - name: "resolution_breach_rate_pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN resolution_breach_flag = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percentage of entitlements with resolution SLA breaches — headline SLA compliance KPI."
+    - name: "first_response_breach_rate_pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN first_response_breach_flag = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percentage of entitlements with first response SLA breaches — measures responsiveness compliance."
+    - name: "unique_customers_with_entitlements"
+      expr: COUNT(DISTINCT customer_account_id)
+      comment: "Number of distinct customers with active entitlements — measures contracted customer base coverage."
+$$;
+
+CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`service_rma`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Service RMA (Return Merchandise Authorization) KPIs tracking return volume, credit value, repair costs, and warranty coverage — drives product quality and reverse logistics decisions."
+  source: "`vibe_manufacturing_v1`.`service`.`service_rma`"
+  dimensions:
+    - name: "rma_status"
+      expr: rma_status
+      comment: "Current status of the RMA for pipeline and resolution tracking."
+    - name: "return_reason_code"
+      expr: return_reason_code
+      comment: "Reason code for the return — identifies systemic product quality or service delivery issues."
+    - name: "disposition"
+      expr: disposition
+      comment: "Disposition of the returned item (repair, replace, scrap) for reverse logistics cost analysis."
+    - name: "is_under_warranty"
+      expr: is_under_warranty
+      comment: "Whether the RMA is covered under warranty — separates warranty vs. billable return costs."
+    - name: "is_critical"
+      expr: is_critical
+      comment: "Whether the RMA is flagged as critical — prioritizes high-impact returns for expedited handling."
+    - name: "return_shipment_method"
+      expr: return_shipment_method
+      comment: "Shipping method used for the return — informs reverse logistics cost optimization."
+    - name: "request_month"
+      expr: DATE_TRUNC('MONTH', request_timestamp)
+      comment: "Month the RMA was requested for return volume trend analysis."
+  measures:
+    - name: "total_rma_records"
+      expr: COUNT(1)
+      comment: "Total RMA records — baseline return volume KPI for product quality and reverse logistics management."
+    - name: "total_credit_amount"
+      expr: SUM(CAST(credit_amount AS DOUBLE))
+      comment: "Total credit amount issued for RMAs — measures financial impact of product returns on revenue."
+    - name: "total_repair_cost"
+      expr: SUM(CAST(repair_cost AS DOUBLE))
+      comment: "Total repair cost for returned items — measures cost of quality and warranty liability."
+    - name: "total_refund_amount"
+      expr: SUM(CAST(refund_amount AS DOUBLE))
+      comment: "Total refund amount issued — measures cash outflow from product return settlements."
+    - name: "avg_repair_cost_per_rma"
+      expr: AVG(CAST(repair_cost AS DOUBLE))
+      comment: "Average repair cost per RMA — benchmarks repair efficiency and informs repair vs. replace decisions."
+    - name: "warranty_rma_count"
+      expr: COUNT(CASE WHEN is_under_warranty = TRUE THEN 1 END)
+      comment: "Count of RMAs under warranty coverage — measures warranty claim volume and product reliability."
+    - name: "warranty_rma_rate_pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN is_under_warranty = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percentage of RMAs covered under warranty — measures warranty exposure as share of total returns."
+    - name: "total_return_quantity"
+      expr: SUM(CAST(return_quantity AS DOUBLE))
+      comment: "Total quantity of units returned — measures physical return volume for reverse logistics planning."
 $$;
 
 CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`service_pm_schedule`
@@ -637,112 +721,103 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Preventive maintenance schedule KPIs covering schedule adherence, labor estimates, and compliance — used by service operations to ensure proactive maintenance execution and SLA compliance."
+  comment: "Preventive maintenance schedule KPIs tracking compliance, labor estimates, and schedule health — drives proactive maintenance strategy and asset uptime optimization."
   source: "`vibe_manufacturing_v1`.`service`.`service_pm_schedule`"
   dimensions:
     - name: "schedule_type"
       expr: schedule_type
-      comment: "Type of PM schedule (time-based, usage-based, condition-based) — used to analyse maintenance strategy mix."
-    - name: "lifecycle_status"
-      expr: lifecycle_status
-      comment: "Current lifecycle status of the PM schedule — used for active schedule portfolio management."
+      comment: "Type of PM schedule (time-based, usage-based) for maintenance strategy analysis."
     - name: "schedule_status"
       expr: schedule_status
-      comment: "Execution status of the schedule (on-track, overdue, completed) — primary adherence KPI dimension."
-    - name: "compliance_status"
-      expr: compliance_status
-      comment: "Regulatory compliance status of the PM schedule — used for audit and certification readiness."
-    - name: "priority"
-      expr: priority
-      comment: "Priority of the PM schedule — used to ensure critical maintenance is executed on time."
+      comment: "Current status of the PM schedule for compliance and backlog management."
+    - name: "frequency_type"
+      expr: frequency_type
+      comment: "Frequency type of the schedule (daily, weekly, monthly) for maintenance workload planning."
+    - name: "lifecycle_status"
+      expr: lifecycle_status
+      comment: "Lifecycle status of the PM schedule record for active schedule management."
     - name: "is_mandatory"
       expr: is_mandatory
-      comment: "Indicates mandatory PM schedules — used to track compliance with mandatory maintenance obligations."
-    - name: "interval_unit"
-      expr: interval_unit
-      comment: "Unit of the maintenance interval (days, hours, cycles) — used for schedule normalisation and comparison."
-    - name: "next_due_year"
-      expr: YEAR(next_due_date)
-      comment: "Year the next PM is due — used for maintenance workload forecasting and resource planning."
+      comment: "Whether the PM is mandatory — separates regulatory-required from optional maintenance."
+    - name: "compliance_status"
+      expr: compliance_status
+      comment: "Compliance status of the PM schedule — measures regulatory and contractual maintenance adherence."
+    - name: "next_due_month"
+      expr: DATE_TRUNC('MONTH', next_due_date)
+      comment: "Month the next PM is due for workload forecasting and resource planning."
   measures:
     - name: "total_pm_schedules"
       expr: COUNT(1)
-      comment: "Total number of PM schedules — baseline for maintenance programme coverage and workload planning."
+      comment: "Total preventive maintenance schedules — baseline for PM program scope and coverage."
     - name: "total_estimated_labor_hours"
       expr: SUM(CAST(estimated_labor_hours AS DOUBLE))
-      comment: "Total estimated labor hours for all PM schedules — used for maintenance workforce capacity planning."
-    - name: "avg_estimated_labor_hours"
-      expr: AVG(CAST(estimated_labor_hours AS DOUBLE))
-      comment: "Average estimated labor hours per PM schedule — used to benchmark maintenance job complexity and resource requirements."
+      comment: "Total estimated labor hours for PM schedules — drives workforce capacity planning for maintenance."
+    - name: "avg_estimated_duration_hours"
+      expr: AVG(CAST(estimated_duration_hours AS DOUBLE))
+      comment: "Average estimated duration per PM task — benchmarks job complexity and scheduling efficiency."
     - name: "avg_maintenance_interval"
       expr: AVG(CAST(maintenance_interval AS DOUBLE))
-      comment: "Average maintenance interval across schedules — used to assess maintenance frequency and asset care intensity."
-    - name: "mandatory_schedule_count"
+      comment: "Average maintenance interval across schedules — measures PM frequency and asset care intensity."
+    - name: "mandatory_pm_count"
       expr: COUNT(CASE WHEN is_mandatory = TRUE THEN 1 END)
-      comment: "Number of mandatory PM schedules — used to track compliance obligations and regulatory maintenance requirements."
-    - name: "overdue_schedule_count"
-      expr: COUNT(CASE WHEN next_due_date < CURRENT_DATE() AND schedule_status NOT IN ('Completed', 'Cancelled') THEN 1 END)
-      comment: "Number of PM schedules past their due date — critical operational KPI for maintenance backlog and compliance risk management."
+      comment: "Count of mandatory PM schedules — measures regulatory and contractual maintenance obligations."
+    - name: "unique_equipment_under_pm"
+      expr: COUNT(DISTINCT equipment_register_id)
+      comment: "Number of distinct equipment assets covered by PM schedules — measures PM program reach."
 $$;
 
-CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`service_engineer`
+CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`service_contract_line`
 WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Field engineer workforce KPIs covering capacity, skill coverage, labor rates, and availability — used by service operations and HR leadership for workforce planning and deployment optimisation."
-  source: "`vibe_manufacturing_v1`.`service`.`engineer`"
+  comment: "Service contract line KPIs tracking billing value, coverage scope, and SLA commitments at the line level — enables granular contract profitability and renewal analysis."
+  source: "`vibe_manufacturing_v1`.`service`.`contract_line`"
   dimensions:
-    - name: "lifecycle_status"
-      expr: lifecycle_status
-      comment: "Engineer lifecycle status (active, on-leave, terminated) — used for active headcount and availability reporting."
-    - name: "employment_type"
-      expr: employment_type
-      comment: "Employment type (full-time, part-time, contractor) — used for workforce mix and cost analysis."
-    - name: "service_region"
-      expr: service_region
-      comment: "Geographic service region assigned to the engineer — used for regional capacity and coverage analysis."
-    - name: "dispatch_zone"
-      expr: dispatch_zone
-      comment: "Dispatch zone of the engineer — used for zone-level capacity planning and SLA coverage analysis."
-    - name: "labor_classification"
-      expr: labor_classification
-      comment: "Labor classification (technician, specialist, senior engineer) — used for skill tier and cost analysis."
-    - name: "overtime_eligible"
-      expr: overtime_eligible
-      comment: "Indicates overtime eligibility — used for capacity surge planning and cost modelling."
-    - name: "travel_eligibility"
-      expr: travel_eligibility
-      comment: "Indicates whether the engineer can travel — used for deployment planning and zone coverage."
-    - name: "union_member_flag"
-      expr: union_member_flag
-      comment: "Indicates union membership — used for labor agreement compliance and workforce cost modelling."
-    - name: "hire_year"
-      expr: YEAR(hire_date)
-      comment: "Year the engineer was hired — used for tenure cohort analysis and attrition risk assessment."
+    - name: "contract_line_status"
+      expr: contract_line_status
+      comment: "Status of the contract line for active coverage and renewal pipeline management."
+    - name: "coverage_type"
+      expr: coverage_type
+      comment: "Type of coverage provided (parts, labor, full) for cost-to-serve analysis."
+    - name: "coverage_level"
+      expr: coverage_level
+      comment: "Coverage level tier for revenue and margin segmentation."
+    - name: "billing_frequency"
+      expr: billing_frequency
+      comment: "Billing frequency for cash flow and revenue recognition planning."
+    - name: "service_level"
+      expr: service_level
+      comment: "Service level committed on the contract line for SLA exposure analysis."
+    - name: "auto_renew_flag"
+      expr: auto_renew_flag
+      comment: "Whether the contract line auto-renews — measures revenue retention stability at line level."
+    - name: "start_month"
+      expr: DATE_TRUNC('MONTH', start_date)
+      comment: "Month the contract line started for cohort and vintage revenue analysis."
   measures:
-    - name: "total_engineers"
+    - name: "total_contract_lines"
       expr: COUNT(1)
-      comment: "Total number of engineers in the workforce — baseline headcount KPI for service capacity planning."
-    - name: "total_labor_rate_hourly"
-      expr: SUM(CAST(labor_rate_hourly AS DOUBLE))
-      comment: "Sum of hourly labor rates across all engineers — used as input for total workforce cost modelling."
-    - name: "avg_labor_rate_hourly"
-      expr: AVG(CAST(labor_rate_hourly AS DOUBLE))
-      comment: "Average hourly labor rate — used to benchmark engineer cost and inform service pricing decisions."
-    - name: "travel_eligible_engineer_count"
-      expr: COUNT(CASE WHEN travel_eligibility = TRUE THEN 1 END)
-      comment: "Number of travel-eligible engineers — used to assess deployable capacity for remote and multi-site service."
-    - name: "overtime_eligible_engineer_count"
-      expr: COUNT(CASE WHEN overtime_eligible = TRUE THEN 1 END)
-      comment: "Number of overtime-eligible engineers — used for surge capacity planning and SLA breach risk mitigation."
-    - name: "skill_plc_certified_count"
-      expr: COUNT(CASE WHEN skill_plc_certified = TRUE THEN 1 END)
-      comment: "Number of PLC-certified engineers — used to ensure sufficient specialist capacity for automation service demand."
-    - name: "skill_robotics_certified_count"
-      expr: COUNT(CASE WHEN skill_robotics_certified = TRUE THEN 1 END)
-      comment: "Number of robotics-certified engineers — used for robotics service capacity planning and skill gap analysis."
-    - name: "skill_scada_certified_count"
-      expr: COUNT(CASE WHEN skill_scada_certified = TRUE THEN 1 END)
-      comment: "Number of SCADA-certified engineers — used to ensure SCADA service coverage across regions and zones."
+      comment: "Total contract lines — baseline for contract portfolio granularity and coverage analysis."
+    - name: "total_billing_amount"
+      expr: SUM(CAST(billing_amount AS DOUBLE))
+      comment: "Total billing amount across contract lines — measures contracted recurring revenue at line level."
+    - name: "total_line_amount"
+      expr: SUM(CAST(line_amount AS DOUBLE))
+      comment: "Total line amount across all contract lines — measures total contracted service value."
+    - name: "total_extended_price"
+      expr: SUM(CAST(extended_price_amount AS DOUBLE))
+      comment: "Total extended price across contract lines — measures full contract line revenue commitment."
+    - name: "avg_unit_price"
+      expr: AVG(CAST(unit_price AS DOUBLE))
+      comment: "Average unit price per contract line — benchmarks pricing consistency and discount discipline."
+    - name: "avg_sla_response_hours"
+      expr: AVG(CAST(sla_response_hours AS DOUBLE))
+      comment: "Average SLA response time committed per contract line — measures SLA stringency across the portfolio."
+    - name: "avg_discount_percent"
+      expr: AVG(CAST(discount_percent AS DOUBLE))
+      comment: "Average discount applied per contract line — monitors pricing discipline and margin erosion."
+    - name: "total_entitlement_hours"
+      expr: SUM(CAST(entitlement_hours AS DOUBLE))
+      comment: "Total entitlement hours committed across contract lines — measures contracted service labor volume."
 $$;
