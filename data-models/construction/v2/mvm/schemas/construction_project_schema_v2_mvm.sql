@@ -1,5 +1,5 @@
 -- Schema for Domain: project | Business: Construction | Version: v2_mvm
--- Generated on: 2026-06-27 01:56:04
+-- Generated on: 2026-07-10 14:35:55
 
 -- ========= DATABASE =========
 CREATE DATABASE IF NOT EXISTS `vibe_construction_v1`.`project` COMMENT 'Core SSOT for all construction project lifecycle data from NTP through commissioning and handover. Owns project identity, WBS (Work Breakdown Structure), milestones, baseline scope, EVM metrics (CPI, SPI), deliverables, and project performance tracking. Central to EPC (Engineering Procurement Construction) execution and PMO (Project Management Office) governance across DB, DBB, and PPP delivery models.';
@@ -8,10 +8,9 @@ CREATE DATABASE IF NOT EXISTS `vibe_construction_v1`.`project` COMMENT 'Core SSO
 CREATE OR REPLACE TABLE `vibe_construction_v1`.`project`.`construction_project` (
     `construction_project_id` BIGINT COMMENT 'Unique surrogate identifier for a construction project record in the enterprise data platform. Primary key for the construction_project master entity.',
     `account_id` BIGINT COMMENT 'Reference to the client organisation that commissioned this project. Links to the client master entity for contract owner identification.',
-    `company_code_id` BIGINT COMMENT 'Foreign key linking to finance.company_code. Business justification: Legal entity assignment: construction projects are executed under a specific legal entity (company code) for financial reporting, tax compliance, and intercompany accounting. This is fundamental for c',
+    `firm_profile_id` BIGINT COMMENT 'Foreign key linking to bid.firm_profile. Business justification: Required for Prime Firm Management report, linking each project to its selected prime firm for oversight and contract compliance.',
     `vendor_id` BIGINT COMMENT 'Foreign key linking to procurement.vendor. Business justification: Main EPC contractor assignment for each project; required for contract management, reporting, and regulatory compliance.',
-    `master_services_agreement_id` BIGINT COMMENT 'Foreign key linking to client.master_services_agreement. Business justification: Projects executed under framework/MSA contracts must reference the governing MSA for call-off value tracking, retention terms, payment terms, and ceiling-value compliance reporting. Construction enter',
-    `opportunity_id` BIGINT COMMENT 'Foreign key linking to client.client_opportunity. Business justification: Bid-to-project traceability: every awarded construction project originates from a won opportunity. This link enables pipeline-to-revenue conversion reporting, win-rate analysis, and bid cost recovery ',
+    `contact_id` BIGINT COMMENT 'Foreign key linking to client.contact. Business justification: Required for Project Communication Plan to identify primary client contact for status reports and issue escalation.',
     `actual_completion_date` DATE COMMENT 'Date on which the project achieved practical completion and was formally handed over to the client. Triggers the start of the DLP (Defects Liability Period) and final account settlement.',
     `actual_start_date` DATE COMMENT 'Date on which physical construction activities actually commenced on site. Recorded in Oracle Primavera P6 and Procore daily logs. May differ from NTP date due to mobilisation periods.',
     `approved_budget` DECIMAL(18,2) COMMENT 'Total approved project budget including all cost codes, contingency, and approved change orders (CO). Used as the control budget for EVM (Earned Value Management) and cost performance index (CPI) calculations in SAP S/4HANA Project Systems.',
@@ -55,8 +54,7 @@ CREATE OR REPLACE TABLE `vibe_construction_v1`.`project`.`construction_project` 
 
 CREATE OR REPLACE TABLE `vibe_construction_v1`.`project`.`wbs_element` (
     `wbs_element_id` BIGINT COMMENT 'Unique surrogate identifier for the WBS element record in the silver layer lakehouse. Primary key for this entity.',
-    `cost_code_id` BIGINT COMMENT 'Foreign key linking to finance.cost_code. Business justification: Required for cost‑coding WBS elements in EVM and budget reports; experts assign a cost code to each WBS element for financial tracking.',
-    `master_id` BIGINT COMMENT 'Foreign key linking to material.material_master. Business justification: Needed for WBS Cost Estimation to identify the primary material type for each work package.',
+    `construction_project_id` BIGINT COMMENT 'Reference to the parent construction project to which this WBS element belongs. Links the WBS node to its project context for EVM rollup and PMO governance.',
     `parent_wbs_element_id` BIGINT COMMENT 'Self-referencing identifier pointing to the immediate parent WBS node, enabling hierarchical decomposition of project scope. Null for root-level WBS elements.',
     `actual_cost` DECIMAL(18,2) COMMENT 'Total actual costs incurred to date for this WBS element, sourced from SAP S/4HANA job costing and Viewpoint Vista. Used as the ACWP input in EVM calculations.',
     `actual_finish_date` DATE COMMENT 'Date on which work on this WBS element was physically completed, as recorded in Oracle Primavera P6. Null if work is still in progress. Used for schedule performance reporting and DLP (Defects Liability Period) trigger.',
@@ -97,22 +95,22 @@ CREATE OR REPLACE TABLE `vibe_construction_v1`.`project`.`wbs_element` (
     CONSTRAINT pk_wbs_element PRIMARY KEY(`wbs_element_id`)
 ) COMMENT 'Work Breakdown Structure (WBS) node representing a decomposed scope element within a construction project. Captures WBS code, level, parent-child hierarchy, scope description, responsible discipline, budgeted cost, planned quantity, unit of measure, and WBS type (summary, work package, control account). Supports EVM (Earned Value Management) rollup and cost control at granular scope levels.';
 
-CREATE OR REPLACE TABLE `vibe_construction_v1`.`project`.`milestone` (
-    `milestone_id` BIGINT COMMENT 'Unique surrogate identifier for each project milestone record in the Construction lakehouse Silver layer. Primary key for the project_milestone data product.',
+CREATE OR REPLACE TABLE `vibe_construction_v1`.`project`.`project_milestone` (
+    `project_milestone_id` BIGINT COMMENT 'Unique surrogate identifier for each project milestone record in the Construction lakehouse Silver layer. Primary key for the project_milestone data product.',
     `construction_project_id` BIGINT COMMENT 'Reference to the parent construction project to which this milestone belongs. Links the milestone to the core project master record.',
-    `permit_to_work_id` BIGINT COMMENT 'Foreign key linking to safety.permit_to_work. Business justification: Certain contractual milestones require a valid permit to work before work can commence (hot work, confined space entry, energisation milestones). project_milestone has hse_clearance_required flag but ',
-    `phase_id` BIGINT COMMENT 'Foreign key linking to project.phase. Business justification: Milestones are organized within project phases — NTP milestone belongs to pre-construction phase, substantial completion belongs to construction phase. Linking project_milestone to phase enables phase',
+    `contract_milestone_id` BIGINT COMMENT 'Foreign key linking to contract.contract_milestone. Business justification: Construction contract administration requires direct traceability between schedule milestones and contractual milestones for LD triggering, payment certification, and EOT assessment. A domain expert e',
+    `contact_id` BIGINT COMMENT 'Foreign key linking to client.contact. Business justification: Milestone owner contact needed for client notifications and acceptance sign‑off per Milestone Management process.',
+    `phase_id` BIGINT COMMENT 'Foreign key linking to project.phase. Business justification: Project milestones occur within specific project phases (e.g., design completion milestone in the engineering phase, mechanical completion in the construction phase). Adding phase_id to project_milest',
     `predecessor_milestone_project_milestone_id` BIGINT COMMENT 'Reference to the immediately preceding milestone in the project schedule logic chain. Supports Critical Path Method (CPM) analysis and schedule dependency tracking within the milestone network.',
-    `project_baseline_id` BIGINT COMMENT 'Foreign key linking to project.project_baseline. Business justification: Milestone baseline dates are established as part of the approved project baseline. The baseline_date field on project_milestone is derived from the baseline schedule. Linking project_milestone to proj',
-    `wbs_element_id` BIGINT COMMENT 'Reference to the Work Breakdown Structure (WBS) element under which this milestone is classified. Enables milestone tracking at the WBS decomposition level within the project schedule.',
+    `activity_id` BIGINT COMMENT 'The Activity ID of the corresponding milestone activity in Oracle Primavera P6, the system of record for project scheduling. Enables direct traceability between the lakehouse Silver layer record and the source scheduling system activity.',
+    `project_baseline_id` BIGINT COMMENT 'Foreign key linking to project.project_baseline. Business justification: Project milestones have baseline dates that are established in the approved project baseline. project_milestone already stores baseline_date as a denormalized field. Adding project_baseline_id FK link',
     `acceptance_criteria` STRING COMMENT 'Formal criteria that must be satisfied for the milestone to be considered achieved and accepted by the client or engineer. May reference ITP (Inspection and Test Plan) requirements, regulatory sign-offs, or contractual deliverable submissions.',
     `actual_date` DATE COMMENT 'The date on which the milestone was formally achieved and accepted. Populated only upon milestone completion and sign-off. Used for schedule variance calculation, contract administration, and LD (Liquidated Damages) trigger assessment.',
     `baseline_date` DATE COMMENT 'Approved contract baseline date for the milestone, which may differ from the original planned date if a formal baseline revision or approved EOT (Extension of Time) has been incorporated. Used as the contractual reference for LD (Liquidated Damages) exposure calculation.',
-    `milestone_category` STRING COMMENT 'Functional category grouping the milestone within the EPC (Engineering, Procurement, and Construction) project lifecycle phase. Supports schedule performance analysis by phase and PMO reporting. [ENUM-REF-CANDIDATE: design|procurement|construction|commissioning|handover|safety|financial|administrative — promote to reference product]',
-    `milestone_code` STRING COMMENT 'Externally-known alphanumeric code uniquely identifying the milestone within the project schedule, as assigned in Oracle Primavera P6 (e.g., MS-NTP001, MS-MC001). Used for cross-system referencing and contract administration.. Valid values are `^MS-[A-Z0-9]{3,20}$`',
     `completion_percentage` DECIMAL(18,2) COMMENT 'Percentage of work completed toward achieving this milestone, expressed as a value between 0.00 and 100.00. Updated during progress reporting cycles. Used for EVM (Earned Value Management) percent-complete calculations and schedule performance tracking.',
     `created_timestamp` TIMESTAMP COMMENT 'Timestamp when this milestone record was first created in the system, in ISO 8601 format (yyyy-MM-ddTHH:mm:ss.SSSXXX). Provides audit trail for data governance and lineage tracking in the Databricks lakehouse Silver layer.',
     `delivery_model` STRING COMMENT 'The project delivery model under which this milestone is defined and tracked. Determines the contractual framework and milestone obligation structure. EPC = Engineering Procurement Construction; DB = Design-Build; DBB = Design-Bid-Build; PPP = Public-Private Partnership; BOT = Build-Operate-Transfer; GMP = Guaranteed Maximum Price.. Valid values are `EPC|DB|DBB|PPP|BOT|GMP`',
+    `project_milestone_description` STRING COMMENT 'Detailed narrative description of the milestone, including the scope of work, acceptance criteria, and deliverables required to formally achieve the milestone. Sourced from the contract schedule or project execution plan.',
     `eot_days_approved` STRING COMMENT 'Total number of calendar days of approved Extension of Time (EOT) granted for this milestone under the contract. Reflects cumulative approved EOT claims that have adjusted the baseline date. Zero if no EOT has been granted.',
     `eot_reference` STRING COMMENT 'Reference number of the approved EOT (Extension of Time) claim or contract amendment that adjusted the baseline date for this milestone. Used for contract administration audit trail and dispute resolution.',
     `forecast_date` DATE COMMENT 'Current best estimate of the date on which the milestone will be achieved, updated during schedule reviews and progress reporting cycles. Reflects schedule recovery plans, approved EOT (Extension of Time) claims, and current site conditions.',
@@ -124,26 +122,28 @@ CREATE OR REPLACE TABLE `vibe_construction_v1`.`project`.`milestone` (
     `ld_currency_code` STRING COMMENT 'ISO 4217 three-letter currency code for the Liquidated Damages (LD) daily rate (e.g., USD, EUR, GBP, AED). Ensures correct financial exposure reporting in multi-currency international EPC projects.. Valid values are `^[A-Z]{3}$`',
     `ld_rate_per_day` DECIMAL(18,2) COMMENT 'The contractually agreed daily monetary rate of Liquidated Damages (LD) applicable if this milestone is not achieved by the baseline date. Expressed in the project contract currency. Populated only when is_ld_trigger = True. Sensitive commercial data.',
     `leed_related` BOOLEAN COMMENT 'Indicates whether this milestone is associated with LEED (Leadership in Energy and Environmental Design) certification requirements or green building compliance deliverables. True = milestone contributes to LEED certification pathway.',
+    `milestone_category` STRING COMMENT 'Functional category grouping the milestone within the EPC (Engineering, Procurement, and Construction) project lifecycle phase. Supports schedule performance analysis by phase and PMO reporting. [ENUM-REF-CANDIDATE: design|procurement|construction|commissioning|handover|safety|financial|administrative — promote to reference product]',
+    `milestone_code` STRING COMMENT 'Externally-known alphanumeric code uniquely identifying the milestone within the project schedule, as assigned in Oracle Primavera P6 (e.g., MS-NTP001, MS-MC001). Used for cross-system referencing and contract administration.. Valid values are `^MS-[A-Z0-9]{3,20}$`',
+    `milestone_name` STRING COMMENT 'Human-readable name of the milestone describing the key project event or deliverable (e.g., Notice to Proceed (NTP), Mechanical Completion, Substantial Completion, Final Handover). Used in schedule reports and contract documents.',
     `milestone_status` STRING COMMENT 'Current lifecycle state of the milestone tracking its progress toward completion. not_started = work not yet begun; in_progress = activities underway; completed = milestone achieved; overdue = past planned date without completion; waived = formally waived by contract amendment; deferred = postponed with approved EOT (Extension of Time).. Valid values are `not_started|in_progress|completed|overdue|waived|deferred`',
     `milestone_type` STRING COMMENT 'Classification of the milestone by its origin and obligation level. contractual = bound by contract terms (FIDIC/GMP); internal = PMO governance milestone; regulatory = required by OSHA/EPA/IBC; client = client-driven key date; financial = triggers payment or LD exposure.. Valid values are `contractual|internal|regulatory|client|financial`',
-    `milestone_name` STRING COMMENT 'Human-readable name of the milestone describing the key project event or deliverable (e.g., Notice to Proceed (NTP), Mechanical Completion, Substantial Completion, Final Handover). Used in schedule reports and contract documents.',
     `notification_advance_days` STRING COMMENT 'Number of calendar days in advance of the milestone date that formal notification must be issued to the client or engineer, as required by the contract. Applicable when notification_required = True. Supports contract compliance monitoring.',
     `notification_required` BOOLEAN COMMENT 'Indicates whether formal written notification to the client or engineer is contractually required prior to or upon achievement of this milestone. True = notification obligation exists per contract; False = no formal notification required.',
     `payment_amount` DECIMAL(18,2) COMMENT 'Contractual payment amount due upon achievement of this milestone, expressed in the project contract currency. Applicable only when is_payment_trigger = True. Used for cash flow forecasting and contract financial management.',
     `planned_date` DATE COMMENT 'Original baseline date on which the milestone was scheduled to be achieved, as established at project kick-off or NTP (Notice to Proceed). Serves as the schedule baseline reference for variance analysis and SPI (Schedule Performance Index) calculation.',
     `procore_milestone_reference` STRING COMMENT 'The corresponding milestone or schedule item identifier in Procore Construction Management platform. Supports cross-system reconciliation between the scheduling system of record (Primavera P6) and the construction management platform (Procore).',
-    `project_milestone_description` STRING COMMENT 'Detailed narrative description of the milestone, including the scope of work, acceptance criteria, and deliverables required to formally achieve the milestone. Sourced from the contract schedule or project execution plan.',
     `remarks` STRING COMMENT 'Free-text field for project team notes, status commentary, risk flags, or contextual information related to the milestone. Used during progress review meetings and PMO reporting to capture qualitative schedule narrative.',
     `responsible_party` STRING COMMENT 'The contracting party primarily responsible for achieving this milestone. Distinguishes between the General Contractor (GC), client, subcontractor, engineer/designer, Joint Venture (JV) partner, or regulatory authority. Critical for contract administration and risk allocation.. Valid values are `contractor|client|subcontractor|engineer|joint_venture|regulator`',
     `schedule_variance_days` STRING COMMENT 'Number of calendar days by which the milestone is ahead of (negative) or behind (positive) the baseline date. Calculated as forecast_date minus baseline_date for open milestones, or actual_date minus baseline_date for completed milestones. Key input for SPI (Schedule Performance Index) reporting.',
     `sign_off_document_ref` STRING COMMENT 'Reference number of the formal sign-off document, completion certificate, or taking-over certificate issued upon milestone achievement (e.g., Aconex document number, Procore submittal reference). Provides audit trail for contract administration and handover documentation.',
     `total_float_days` STRING COMMENT 'Total schedule float in calendar days available for this milestone before it impacts the project completion date, as calculated by the CPM (Critical Path Method) schedule engine in Oracle Primavera P6. Zero or negative float indicates critical or super-critical status.',
     `updated_timestamp` TIMESTAMP COMMENT 'Timestamp of the most recent update to this milestone record, in ISO 8601 format (yyyy-MM-ddTHH:mm:ss.SSSXXX). Used for change detection, incremental data loading, and audit trail maintenance in the Databricks lakehouse Silver layer.',
-    CONSTRAINT pk_milestone PRIMARY KEY(`milestone_id`)
-) COMMENT 'Key contractual and internal milestones within a construction project lifecycle, including NTP, design completion, procurement completion, construction start, mechanical completion, commissioning, and handover. Tracks planned date, forecast date, actual date, milestone type, contractual obligation flag, LD (Liquidated Damages) trigger flag, and milestone owner. Supports schedule performance and contract administration. [SSOT: distinct source of truth for project domain]';
+    CONSTRAINT pk_project_milestone PRIMARY KEY(`project_milestone_id`)
+) COMMENT 'Key contractual and internal milestones within a construction project lifecycle, including NTP, design completion, procurement completion, construction start, mechanical completion, commissioning, and handover. Tracks planned date, forecast date, actual date, milestone type, contractual obligation flag, LD (Liquidated Damages) trigger flag, and milestone owner. Supports schedule performance and contract administration.';
 
 CREATE OR REPLACE TABLE `vibe_construction_v1`.`project`.`project_baseline` (
     `project_baseline_id` BIGINT COMMENT 'Unique surrogate identifier for each approved project baseline record in the Silver Layer lakehouse. Primary key for the baseline data product.',
+    `contact_id` BIGINT COMMENT 'Foreign key linking to client.contact. Business justification: Client baseline approval is a named contractual milestone in construction — the is_client_approved flag on project_baseline implies a specific client signatory. No existing FK captures which client co',
     `construction_project_id` BIGINT COMMENT 'Reference to the parent construction project for which this baseline record was established. Links the baseline to the project master record.',
     `wbs_element_id` BIGINT COMMENT 'Reference to the Work Breakdown Structure (WBS) element at which this baseline budget and schedule snapshot is captured. Enables cost-account-level baseline tracking per EVM methodology.',
     `approval_date` DATE COMMENT 'Calendar date on which the baseline was formally approved by the designated approving authority. Marks the effective start of the approved baseline for EVM measurement and PMO reporting.',
@@ -186,12 +186,9 @@ CREATE OR REPLACE TABLE `vibe_construction_v1`.`project`.`project_baseline` (
 
 CREATE OR REPLACE TABLE `vibe_construction_v1`.`project`.`evm_period_record` (
     `evm_period_record_id` BIGINT COMMENT 'Unique surrogate identifier for each EVM period record. Primary key for the evm_period_record data product in the Databricks Silver Layer.',
-    `construction_project_id` BIGINT COMMENT 'Reference to the parent construction project for which this EVM period record is captured. Links to the project master entity.',
-    `cost_account_id` BIGINT COMMENT 'Foreign key linking to project.cost_account. Business justification: EVM is computed at the control account (cost account) level per ANSI/EIA-748 EVMS standards. Linking evm_period_record to cost_account enables control-account-level EVM reporting, which is the standar',
-    `phase_id` BIGINT COMMENT 'Foreign key linking to project.phase. Business justification: EVM period records are often reported at phase level (e.g., civil phase, MEP phase). Linking evm_period_record to phase enables phase-level EVM roll-ups and performance reporting, which is standard in',
-    `project_baseline_id` BIGINT COMMENT 'Foreign key linking to project.project_baseline. Business justification: EVM metrics (BCWS, BCWP, BAC) are always computed against a specific approved baseline. The evm_period_record.budget_at_completion and bcws values are derived from the baseline. Adding project_baselin',
-    `project_budget_id` BIGINT COMMENT 'Foreign key linking to finance.project_budget. Business justification: EVM-to-budget reconciliation: monthly EVM reporting requires BCWS/BCWP/ACWP to be reconciled against the approved project budget. Finance controllers and PMO require this link for cost performance ind',
-    `wbs_element_id` BIGINT COMMENT 'Reference to the specific WBS element at which this EVM measurement is recorded. Supports both project-level and WBS-level EVM reporting.',
+    `cost_account_id` BIGINT COMMENT 'Foreign key linking to project.cost_account. Business justification: EVM period records are produced at the cost account (control account) level in ANSI/EIA-748 compliant EVM systems. Adding cost_account_id to evm_period_record enables control-account-level EVM reporti',
+    `phase_id` BIGINT COMMENT 'Foreign key linking to project.phase. Business justification: EVM period records can be scoped to a project phase for phase-level performance reporting. Adding phase_id to evm_period_record enables phase-level CPI/SPI trending and supports phase-gate EVM reviews',
+    `schedule_baseline_id` BIGINT COMMENT 'Foreign key linking to schedule.schedule_baseline. Business justification: EVM period records compute BCWS against a specific schedule baseline data date. evm_period_record links to project_baseline but not schedule_baseline. EVM reporting standards (ANSI 748) require identi',
     `acwp` DECIMAL(18,2) COMMENT 'The cumulative actual cost incurred for work performed as of the data date. Also known as Actual Cost (AC). Sourced from SAP S/4HANA Project Systems actual postings and Viewpoint Vista job costing.',
     `approved_by` STRING COMMENT 'The name or user identifier of the PMO or project controls manager who approved this EVM period record for official reporting. Required for audit trail and progress billing certification.',
     `approved_timestamp` TIMESTAMP COMMENT 'The date and time at which this EVM period record was formally approved by the PMO approver. Establishes the official record for audit and compliance purposes.',
@@ -238,12 +235,11 @@ CREATE OR REPLACE TABLE `vibe_construction_v1`.`project`.`evm_period_record` (
 CREATE OR REPLACE TABLE `vibe_construction_v1`.`project`.`progress_measurement` (
     `progress_measurement_id` BIGINT COMMENT 'Unique surrogate identifier for each periodic physical progress measurement record. Primary key for the progress_measurement data product in the project domain Silver layer.',
     `activity_id` BIGINT COMMENT 'Reference to the specific schedule activity within the WBS element being measured. Corresponds to the Primavera P6 activity object used in CPM (Critical Path Method) scheduling.',
+    `contact_id` BIGINT COMMENT 'Foreign key linking to client.contact. Business justification: Client verification of progress claims is a named billing/payment process in construction — a client representative must sign off on measured quantities before payment certificates are issued. The pla',
     `construction_project_id` BIGINT COMMENT 'Reference to the parent construction project against which this progress measurement is recorded. Links to the project master entity.',
-    `cost_account_id` BIGINT COMMENT 'Foreign key linking to project.cost_account. Business justification: Physical progress measurements are directly tied to cost accounts (control accounts) in EVM methodology. Linking progress_measurement to cost_account enables earned value computation at the control ac',
-    `evm_period_record_id` BIGINT COMMENT 'Foreign key linking to project.evm_period_record. Business justification: Progress measurements are the raw physical progress inputs that feed into EVM period records. Linking progress_measurement to evm_period_record establishes the traceability chain from field measuremen',
-    `phase_id` BIGINT COMMENT 'Foreign key linking to project.phase. Business justification: Progress measurements are organized by project phase in construction (e.g., foundation phase, structural phase). Linking progress_measurement to phase enables phase-level progress roll-ups and support',
-    `project_baseline_id` BIGINT COMMENT 'Foreign key linking to project.project_baseline. Business justification: Progress measurements are taken against a specific approved baseline (planned percent complete is derived from the baseline). Adding project_baseline_id to progress_measurement enables variance analys',
-    `wbs_element_id` BIGINT COMMENT 'Reference to the specific Work Breakdown Structure (WBS) element or activity node at which this progress measurement is captured. Aligns with Primavera P6 WBS hierarchy.',
+    `cost_account_id` BIGINT COMMENT 'Foreign key linking to project.cost_account. Business justification: Physical progress measurements are linked to cost accounts for earned value calculation at the control account level. Adding cost_account_id to progress_measurement enables direct linkage between fiel',
+    `evm_period_record_id` BIGINT COMMENT 'Foreign key linking to project.evm_period_record. Business justification: Progress measurements are the source data that feeds EVM period records. Linking progress_measurement to evm_period_record establishes the traceability chain from individual physical progress observat',
+    `project_baseline_id` BIGINT COMMENT 'Foreign key linking to project.project_baseline. Business justification: Physical progress measurements must reference the approved baseline to compute schedule variance and earned value correctly. Adding project_baseline_id to progress_measurement links each measurement r',
     `billing_period_reference` STRING COMMENT 'Reference identifier of the progress billing certificate or payment application period to which this measurement contributes (e.g., IPC-007, PA-2024-03). Links measurement data to the contract administration billing cycle.',
     `budget_at_completion` DECIMAL(18,2) COMMENT 'Total approved budget for this WBS element or activity at the time of measurement. Denominator for earned value calculation and basis for EVM (Earned Value Management) performance indices.',
     `budgeted_quantity` DECIMAL(18,2) COMMENT 'Total planned quantity of work for this WBS element or activity as defined in the approved BOQ (Bill of Quantities) or project baseline. Denominator for units-complete percent complete calculation.',
@@ -278,21 +274,21 @@ CREATE OR REPLACE TABLE `vibe_construction_v1`.`project`.`progress_measurement` 
     `spi` DECIMAL(18,2) COMMENT 'Ratio of earned value to planned value (EV divided by PV) for this WBS element at the measurement date. SPI (Schedule Performance Index) greater than 1.0 indicates ahead of schedule; less than 1.0 indicates behind schedule.',
     `updated_timestamp` TIMESTAMP COMMENT 'Timestamp of the most recent modification to this progress measurement record, in ISO 8601 format (yyyy-MM-ddTHH:mm:ss.SSSXXX). Used for incremental data pipeline processing and audit trail in the Databricks Silver layer.',
     `verification_date` DATE COMMENT 'Date on which the verifying engineer formally approved and signed off this progress measurement record. Distinct from measurement_date (when field observation occurred) and created_timestamp (when record was entered).',
-    `verifier_name` STRING COMMENT 'Full name of the engineer or site supervisor who physically verified and signed off this progress measurement. Retained for audit trail and contractual accountability under FIDIC and ISO 9001 requirements.',
     `work_area` STRING COMMENT 'Physical site area, zone, or work front where the measured work is being performed (e.g., Zone A, Block 3, Pier 7). Aligns with site work front definitions used in HCSS HeavyJob and Procore daily logs.',
     CONSTRAINT pk_progress_measurement PRIMARY KEY(`progress_measurement_id`)
 ) COMMENT 'Periodic physical progress measurement record at WBS element or activity level, capturing percent complete, earned quantity, installed quantity, measurement method (weighted steps, milestone, units complete), measurement date, reporting period, and verifying engineer. Feeds EVM calculations and progress billing. Sourced from HCSS HeavyJob production tracking and Procore field management.';
 
-CREATE OR REPLACE TABLE `vibe_construction_v1`.`project`.`change_order` (
-    `change_order_id` BIGINT COMMENT 'Unique surrogate identifier for the change order record in the lakehouse Silver layer. Primary key for the project_change_order data product.',
+CREATE OR REPLACE TABLE `vibe_construction_v1`.`project`.`project_change_order` (
+    `project_change_order_id` BIGINT COMMENT 'Unique surrogate identifier for the change order record in the lakehouse Silver layer. Primary key for the project_change_order data product.',
+    `agreement_id` BIGINT COMMENT 'Reference to the prime contract or subcontract against which this change order is issued. Establishes the contractual basis for the CO.',
+    `contact_id` BIGINT COMMENT 'Foreign key linking to client.contact. Business justification: Client approval of variation/change orders is a named contractual process in construction. The specific client contact who approves a CO may differ from the projects primary_contact_id. No existing F',
+    `boq_line_id` BIGINT COMMENT 'Foreign key linking to bid.bid_boq_line. Business justification: Change orders in construction modify specific BOQ line items — scope change management requires tracing which BOQ line is being varied. This link supports variation order valuation, BOQ reconciliation',
     `construction_project_id` BIGINT COMMENT 'Reference to the parent project to which this change order belongs. Links the CO to the project master record.',
-    `cost_account_id` BIGINT COMMENT 'Foreign key linking to project.cost_account. Business justification: Change orders are posted to specific cost accounts (control accounts) in project cost management systems. The cost_code STRING field on project_change_order is a denormalized reference. Linking to cos',
-    `cost_code_id` BIGINT COMMENT 'Foreign key linking to finance.cost_code. Business justification: Change order budget coding: approved change orders must be classified to finance cost codes for budget amendment processing and GL posting. project_change_order.cost_code is a denormalized plain-text ',
-    `journal_entry_id` BIGINT COMMENT 'Foreign key linking to finance.journal_entry. Business justification: Change order journal posting: approved change orders trigger budget amendment journal entries in the GL. Finance auditors and project controllers require traceability from change order approval to the',
-    `milestone_id` BIGINT COMMENT 'Foreign key linking to project.project_milestone. Business justification: Change orders with EOT (Extension of Time) provisions directly affect specific contractual milestones. The eot_granted_days and is_ld_applicable fields on project_change_order are meaningless without ',
-    `phase_id` BIGINT COMMENT 'Foreign key linking to project.phase. Business justification: Change orders are scoped to specific project phases in construction. Linking project_change_order to phase enables phase-level CO impact analysis, supports gate review reporting, and allows phase budg',
-    `project_baseline_id` BIGINT COMMENT 'Foreign key linking to project.project_baseline. Business justification: Approved change orders are incorporated into specific baseline revisions. Linking project_change_order to project_baseline establishes which baseline revision incorporated this CO (co_value_incorporat',
-    `wbs_element_id` BIGINT COMMENT 'Foreign key linking to project.wbs_element. Business justification: Change orders affect specific WBS elements — this is a fundamental relationship in construction project controls. The existing wbs_code STRING field is a denormalized reference that should be replaced',
+    `contract_change_order_id` BIGINT COMMENT 'Foreign key linking to contract.contract_change_order. Business justification: Required for the Change Order Management process: each project change order must reference the contract change order that amends the agreement, enabling cost/schedule impact tracking.',
+    `drawing_id` BIGINT COMMENT 'Foreign key linking to design.drawing. Business justification: Change orders are routinely raised against specific drawings that document scope changes. The existing plain-text drawing_revision column is a denormalized reference; replacing it with a proper FK t',
+    `phase_id` BIGINT COMMENT 'Foreign key linking to project.phase. Business justification: Change orders are raised within a specific project phase and their cost/schedule impacts are attributed to that phase. Adding phase_id to project_change_order enables phase-level change order analysis',
+    `scope_id` BIGINT COMMENT 'Foreign key linking to contract.contract_scope. Business justification: Change orders in construction modify a specific contract scope section. Linking project_change_order to contract_scope enables scope-level change order tracking, scope growth analysis, and budget impa',
+    `technical_specification_id` BIGINT COMMENT 'Foreign key linking to design.technical_specification. Business justification: Specification changes (revised material requirements, workmanship standards) are a primary source of change orders. Linking CO to the triggering technical specification enables specification-driven ch',
     `aconex_mail_ref` STRING COMMENT 'Aconex correspondence or transmittal reference number for the formal change order submission and approval correspondence. Provides document management traceability.',
     `approval_date` DATE COMMENT 'Calendar date on which the change order received final approval from the authorised signatory (client, owner, or engineer). Null if not yet approved.',
     `approval_status` STRING COMMENT 'Current workflow lifecycle state of the change order. Tracks progression from initial draft through client or owner approval. Only approved COs update the project baseline.. Valid values are `draft|submitted|under_review|approved|rejected|voided`',
@@ -301,12 +297,13 @@ CREATE OR REPLACE TABLE `vibe_construction_v1`.`project`.`change_order` (
     `co_number` STRING COMMENT 'Externally-visible sequential identifier for the change order as issued on the project (e.g., CO-00042). Used in all formal correspondence, contract administration, and client reporting.. Valid values are `^CO-[0-9]{4,6}$`',
     `contingency_drawn_amount` DECIMAL(18,2) COMMENT 'Amount drawn from the project contingency reserve to fund this change order, if applicable. Tracks contingency consumption at the CO level for project financial management.',
     `contract_clause_reference` STRING COMMENT 'Specific contract clause or FIDIC sub-clause under which the change order is raised (e.g., FIDIC Clause 13.1 — Right to Vary). Establishes contractual entitlement.',
+    `cost_code` STRING COMMENT 'Project cost code or cost account to which the change order financial impact is posted. Used for job costing, budget tracking, and financial reporting in Viewpoint Vista and SAP.',
     `cost_impact_amount` DECIMAL(18,2) COMMENT 'Net monetary value of the change order representing the increase (positive) or decrease (negative) to the contract sum. Expressed in the contract currency. Core component of the MONETARY_TRIPLET for this transaction.',
     `cost_impact_currency` STRING COMMENT 'ISO 4217 three-letter currency code for the cost impact amount (e.g., USD, EUR, GBP). Required for multi-currency project environments.. Valid values are `^[A-Z]{3}$`',
     `created_timestamp` TIMESTAMP COMMENT 'System timestamp recording when the change order record was first created in the source system (Procore). Supports audit trail and data lineage requirements.',
     `delivery_model` STRING COMMENT 'Contract delivery model under which this change order is administered (e.g., EPC — Engineering Procurement Construction, DB — Design-Build, DBB — Design-Bid-Build, PPP — Public-Private Partnership). Affects entitlement rules.. Valid values are `EPC|DB|DBB|PPP|BOT|GMP`',
+    `project_change_order_description` STRING COMMENT 'Detailed narrative describing the scope of work added, reduced, or modified by this change order. Captures the full business justification and technical scope.',
     `direct_cost_amount` DECIMAL(18,2) COMMENT 'Direct labour, material, and equipment cost component of the change order before overhead and profit mark-up. Used for cost breakdown analysis and BOQ reconciliation.',
-    `drawing_revision` STRING COMMENT 'Drawing revision number or BIM (Building Information Modeling) model version that forms the basis of the change order scope. Ensures design traceability.',
     `effective_date` DATE COMMENT 'Date from which the approved change order takes contractual effect, potentially backdated to the date the change work commenced on site.',
     `eot_granted_days` STRING COMMENT 'Number of calendar days of Extension of Time formally approved and granted by the engineer or owner in response to this change order. May differ from the claimed schedule impact.',
     `is_disputed` BOOLEAN COMMENT 'Indicates whether the change order is subject to a formal dispute or claim between the contractor and the client/owner. True if disputed; False if agreed.',
@@ -316,7 +313,6 @@ CREATE OR REPLACE TABLE `vibe_construction_v1`.`project`.`change_order` (
     `overhead_and_profit_amount` DECIMAL(18,2) COMMENT 'Overhead and profit mark-up applied to the direct cost to arrive at the total cost impact. Expressed in the contract currency.',
     `priority` STRING COMMENT 'Business priority assigned to the change order indicating urgency of processing and approval. Critical COs may be on the critical path and require expedited approval.. Valid values are `critical|high|medium|low`',
     `procore_co_reference` STRING COMMENT 'Native change order identifier from the Procore Construction Management system. Used for data lineage, source system traceability, and reconciliation between the lakehouse and Procore.',
-    `project_change_order_description` STRING COMMENT 'Detailed narrative describing the scope of work added, reduced, or modified by this change order. Captures the full business justification and technical scope.',
     `reason_code` STRING COMMENT 'Standardised reason code categorising the root cause of the change (e.g., design error, owner-directed, differing site conditions, regulatory). Supports trend analysis and lessons learned. [ENUM-REF-CANDIDATE: design_error|owner_directed|differing_site_conditions|regulatory|scope_gap|value_engineering|force_majeure — promote to reference product]',
     `revision_number` STRING COMMENT 'Revision sequence of the change order document. Increments each time the CO is revised prior to final approval. Revision 0 is the original issue.',
     `sap_co_document_number` STRING COMMENT 'SAP S/4HANA project system document number generated when the approved change order is posted to the financial ledger. Enables reconciliation between project management and ERP.',
@@ -325,17 +321,17 @@ CREATE OR REPLACE TABLE `vibe_construction_v1`.`project`.`change_order` (
     `submitted_date` DATE COMMENT 'Calendar date on which the change order was formally submitted to the client or owner for review and approval. Triggers contractual response timelines per FIDIC.',
     `title` STRING COMMENT 'Short descriptive title of the change order summarising the nature of the change (e.g., Additional Piling Works — Zone B). Used in registers and dashboards.',
     `updated_timestamp` TIMESTAMP COMMENT 'System timestamp recording the most recent modification to the change order record. Used for incremental data loading, audit trails, and change tracking in the lakehouse.',
-    CONSTRAINT pk_change_order PRIMARY KEY(`change_order_id`)
-) COMMENT 'Formal change order (CO) record capturing approved scope, schedule, and cost changes to the project baseline. Tracks CO number, description, change type (scope addition, scope reduction, design change, unforeseen condition), cost impact, schedule impact (EOT — Extension of Time), originator, approval status, approval date, and contract reference. SSOT for all approved project changes. Sourced from Procore Change Orders module. [SSOT: distinct source of truth for project domain]';
+    CONSTRAINT pk_project_change_order PRIMARY KEY(`project_change_order_id`)
+) COMMENT 'Formal change order (CO) record capturing approved scope, schedule, and cost changes to the project baseline. Tracks CO number, description, change type (scope addition, scope reduction, design change, unforeseen condition), cost impact, schedule impact (EOT — Extension of Time), originator, approval status, approval date, and contract reference. SSOT for all approved project changes. Sourced from Procore Change Orders module.';
 
 CREATE OR REPLACE TABLE `vibe_construction_v1`.`project`.`cost_account` (
     `cost_account_id` BIGINT COMMENT 'Unique surrogate identifier for the project cost account (control account) record in the Databricks Silver Layer. Primary key.',
+    `agreement_id` BIGINT COMMENT 'Foreign key linking to contract.agreement. Business justification: Cost accounts in construction ERP (SAP PS, Oracle) are established per contract to track committed costs, actual costs, and earned value against a specific agreement. Contract-level cost performance r',
+    `boq_line_id` BIGINT COMMENT 'Foreign key linking to bid.bid_boq_line. Business justification: Cost accounts are mapped to BOQ line items for earned value measurement and cost performance reporting against the contract BOQ — standard construction cost control. This link enables BOQ-based cost t',
     `construction_project_id` BIGINT COMMENT 'Reference to the parent construction project to which this cost account belongs. Links cost account to the project master record for project-level cost roll-up and reporting.',
-    `cost_code_id` BIGINT COMMENT 'Foreign key linking to finance.cost_code. Business justification: Job cost reporting: cost accounts must map to finance cost codes for GL posting and cost category reporting. cost_account.cost_code is a plain-text denormalized reference. A proper FK enables cost acc',
-    `gl_account_id` BIGINT COMMENT 'Foreign key linking to finance.gl_account. Business justification: GL reconciliation: cost accounts post actuals to specific GL accounts. cost_account.gl_account_code is a denormalized plain-text reference. A proper FK enables automated GL-to-cost-account reconciliat',
-    `phase_id` BIGINT COMMENT 'Foreign key linking to project.phase. Business justification: Cost accounts are organized by project phase in construction cost management. The existing phase_code STRING field is a denormalized reference that should be replaced with a proper FK to phase. This e',
-    `project_baseline_id` BIGINT COMMENT 'Foreign key linking to project.project_baseline. Business justification: Cost accounts (control accounts) are established as part of the project baseline. The original_budget_amount and approved_budget_amount on cost_account are derived from the baseline. Linking cost_acco',
-    `wbs_element_id` BIGINT COMMENT 'Reference to the Work Breakdown Structure (WBS) element at which this cost account is positioned. The cost account represents the intersection of a WBS node and a cost code, enabling granular budget control per WBS deliverable.',
+    `phase_id` BIGINT COMMENT 'Foreign key linking to project.phase. Business justification: Cost accounts are organized by project phase in construction cost control. cost_account currently stores phase_code as a STRING. Adding phase_id FK normalizes this to the authoritative phase record, e',
+    `project_baseline_id` BIGINT COMMENT 'Foreign key linking to project.project_baseline. Business justification: Cost accounts (control accounts) are established against an approved project baseline. Adding project_baseline_id to cost_account links each control account to the specific baseline revision that auth',
+    `technical_specification_id` BIGINT COMMENT 'Foreign key linking to design.technical_specification. Business justification: Cost accounts are scoped by technical specifications that define the work content, materials, and workmanship standards being costed. Linking cost_account to technical_specification enables cost-to-sp',
     `account_description` STRING COMMENT 'Human-readable description of the cost account scope, such as Structural Concrete — Foundation Works or MEP Subcontract — Electrical Rough-In. Used in cost reports, BOQ reconciliation, and EVM reporting.',
     `account_status` STRING COMMENT 'Current lifecycle status of the cost account. Active accounts accept cost postings; on_hold accounts are temporarily frozen pending review; closed accounts are complete and locked; cancelled accounts are voided; pending_approval accounts await PMO authorization before activation.. Valid values are `active|on_hold|closed|cancelled|pending_approval`',
     `actual_cost_amount` DECIMAL(18,2) COMMENT 'Total actual cost incurred and posted to this cost account to date, including paid invoices, posted labor timesheets, and equipment charges. Equivalent to Actual Cost of Work Performed (ACWP) in EVM. Sourced from SAP S/4HANA FI/CO and Viewpoint Vista job cost ledger.',
@@ -348,6 +344,7 @@ CREATE OR REPLACE TABLE `vibe_construction_v1`.`project`.`cost_account` (
     `committed_cost_amount` DECIMAL(18,2) COMMENT 'Total value of contractual commitments against this cost account, including issued Purchase Orders (POs) and subcontract awards not yet invoiced. Represents financial obligations that will become actual costs. Critical for cash flow forecasting and cost-to-complete analysis.',
     `contingency_amount` DECIMAL(18,2) COMMENT 'Contingency budget allocated to this cost account to cover identified risks and uncertainties within the defined scope. Managed separately from the base budget and released by the project manager upon risk materialization. Supports risk-adjusted cost forecasting.',
     `cost_center_code` STRING COMMENT 'SAP Cost Center code associated with this cost account, representing the organizational unit responsible for the costs. Used for overhead allocation, departmental P&L reporting, and internal charge-back processes.. Valid values are `^[A-Z0-9]{4,12}$`',
+    `cost_code` STRING COMMENT 'Standardized cost code from the companys master cost code library, representing the work activity or resource category (e.g., 03300 for cast-in-place concrete, 16000 for electrical). Used for cross-project benchmarking and historical cost analysis. Aligns with CSI MasterFormat or company-specific coding structure.. Valid values are `^[A-Z0-9]{2,15}$`',
     `cost_to_complete_amount` DECIMAL(18,2) COMMENT 'Estimated remaining cost required to complete the scope of work for this cost account. Calculated as Forecast Cost at Completion minus Actual Cost to Date. Used by cost controllers to project future cash requirements and update project financial forecasts.',
     `cost_type` STRING COMMENT 'Primary classification of the cost account by resource type: labor (direct workforce), material (permanent and consumable materials), equipment (plant and machinery), subcontract (third-party subcontractor scope), or overhead (indirect project costs). Drives cost segregation in EVM and P&L reporting.. Valid values are `labor|material|equipment|subcontract|overhead`',
     `cost_variance_amount` DECIMAL(18,2) COMMENT 'Variance between the approved budget and the forecast cost at completion for this cost account (Approved Budget minus Forecast Cost at Completion). A negative value indicates a cost overrun; positive indicates an underspend. Key metric for project cost control reporting and PMO governance.',
@@ -358,6 +355,7 @@ CREATE OR REPLACE TABLE `vibe_construction_v1`.`project`.`cost_account` (
     `forecast_cost_at_completion` DECIMAL(18,2) COMMENT 'Project cost controllers current best estimate of the total cost to complete this cost account, including actual costs to date plus estimated cost to complete (ETC). Equivalent to Estimate at Completion (EAC) in EVM. Updated periodically during project cost reviews.',
     `forecast_finish_date` DATE COMMENT 'Current forecast completion date for the scope of work associated with this cost account. Updated during project schedule reviews. Used to assess Extension of Time (EOT) impacts and project completion forecasting.',
     `forecast_start_date` DATE COMMENT 'Current forecast start date for the scope of work associated with this cost account, updated during project schedule reviews. Compared against the baseline start date to identify schedule slippage and its cost impact.',
+    `gl_account_code` STRING COMMENT 'SAP General Ledger (GL) account code to which costs posted against this cost account are mapped for financial reporting. Ensures alignment between project cost control and the corporate chart of accounts. Required for IFRS/GAAP financial statement preparation.. Valid values are `^[0-9]{6,10}$`',
     `is_lump_sum` BOOLEAN COMMENT 'Indicates whether this cost account is priced on a lump sum basis (True) rather than a unit rate or reimbursable basis (False). Lump sum accounts are managed differently in terms of progress measurement and payment certification.',
     `is_subcontract_scope` BOOLEAN COMMENT 'Indicates whether the scope of work for this cost account is executed by a subcontractor (True) or by the General Contractors (GC) own forces (False). Drives subcontract management workflows, retention tracking, and payment certification processes.',
     `original_budget_amount` DECIMAL(18,2) COMMENT 'The baseline budget amount for this cost account as established at project sanction or Notice to Proceed (NTP). Represents the original authorized cost plan before any Change Orders (COs). Immutable once the baseline is locked. Used as the denominator for variance analysis and EVM performance measurement.',
@@ -375,23 +373,19 @@ CREATE OR REPLACE TABLE `vibe_construction_v1`.`project`.`cost_account` (
 
 CREATE OR REPLACE TABLE `vibe_construction_v1`.`project`.`deliverable` (
     `deliverable_id` BIGINT COMMENT 'Unique surrogate identifier for the project deliverable record in the silver layer lakehouse. Primary key for this entity.',
-    `activity_id` BIGINT COMMENT 'Reference to the Oracle Primavera P6 schedule activity linked to the production of this deliverable. Enables earned value management (EVM) and schedule performance index (SPI) calculation at the deliverable level.',
     `agreement_id` BIGINT COMMENT 'Reference to the contract under which this deliverable is required. Supports contractual obligation tracking and FIDIC compliance.',
-    `change_order_id` BIGINT COMMENT 'Foreign key linking to project.project_change_order. Business justification: Deliverables can be created or modified as a result of approved change orders. The existing change_order_reference STRING field is a denormalized reference that should be replaced with a proper FK to ',
     `construction_project_id` BIGINT COMMENT 'Reference to the parent project to which this deliverable belongs. Links the deliverable to the project lifecycle and Work Breakdown Structure (WBS).',
-    `itp_id` BIGINT COMMENT 'Foreign key linking to quality.itp. Business justification: Construction deliverables are governed by ITPs — each deliverable (concrete pour, structural erection, system test) must pass ITP hold/witness points before acceptance. deliverable.itp_reference is a ',
-    `master_id` BIGINT COMMENT 'Foreign key linking to material.material_master. Business justification: Ensures Deliverable Material Specification ties deliverable to the exact material master record for compliance.',
-    `milestone_id` BIGINT COMMENT 'Foreign key linking to project.project_milestone. Business justification: Deliverables are contractually linked to milestones — submission of a deliverable often triggers a milestone completion (is_payment_trigger on project_milestone). Linking deliverable to project_milest',
-    `package_id` BIGINT COMMENT 'Foreign key linking to design.package. Business justification: Contractual deliverables are grouped into submission packages for client review in construction. Design managers track which package contains each deliverable for completeness checking and client acce',
-    `phase_id` BIGINT COMMENT 'Foreign key linking to project.phase. Business justification: Deliverables are produced within specific project phases (e.g., engineering deliverables in design phase, commissioning documents in handover phase). Linking deliverable to phase enables phase-level d',
-    `project_baseline_id` BIGINT COMMENT 'Foreign key linking to project.project_baseline. Business justification: Deliverables are planned under a specific project baseline with planned_issue_date derived from the baseline schedule. Linking deliverable to project_baseline enables baseline vs. actual delivery date',
+    `cost_account_id` BIGINT COMMENT 'Foreign key linking to project.cost_account. Business justification: Deliverables are budgeted and tracked within cost accounts, particularly for engineering deliverables where man-hours and costs are controlled at the deliverable level within a cost account. Adding co',
+    `drawing_id` BIGINT COMMENT 'Foreign key linking to design.drawing. Business justification: Many contractual deliverables ARE drawings (IFC drawings, as-built drawings). Linking deliverable to drawing enables handover package compilation and contractual deliverable register reconciliation — ',
+    `phase_id` BIGINT COMMENT 'Foreign key linking to project.phase. Business justification: Deliverables are produced within a specific project phase (e.g., engineering deliverables in the design phase, commissioning documents in the handover phase). Adding phase_id to deliverable enables ph',
     `contact_id` BIGINT COMMENT 'Foreign key linking to client.contact. Business justification: Deliverable responsibility is assigned to a client contact to manage approvals and handover per Deliverable Acceptance process.',
-    `wbs_element_id` BIGINT COMMENT 'Reference to the WBS element under which this deliverable is classified. Enables hierarchical project decomposition and earned value tracking.',
+    `technical_specification_id` BIGINT COMMENT 'Foreign key linking to design.technical_specification. Business justification: Deliverables can be technical specifications (method statements, material submittals against a spec). Linking deliverable to technical_specification enables contractual deliverable register to track w',
     `acceptance_date` DATE COMMENT 'Date on which the deliverable was formally accepted by the client or approving authority. Used for handover milestone tracking and DLP commencement.',
     `acceptance_status` STRING COMMENT 'Client or reviewer acceptance status of the deliverable following formal review. Indicates whether the deliverable has been accepted, accepted with comments, or rejected and requires resubmission.. Valid values are `pending|accepted|accepted_with_comments|rejected|resubmit_required`',
     `actual_issue_date` DATE COMMENT 'Date on which the deliverable was actually issued or transmitted. Populated upon completion and used to calculate schedule variance and support DLP (Defects Liability Period) tracking.',
     `bim_model_reference` STRING COMMENT 'Reference identifier linking this deliverable to the corresponding BIM model or element in Autodesk BIM 360. Supports clash detection, design coordination, and digital handover.',
     `deliverable_category` STRING COMMENT 'High-level category grouping the deliverable within the EPC (Engineering, Procurement, and Construction) project phases. Supports phase-based reporting and PMO governance. [ENUM-REF-CANDIDATE: engineering|procurement|construction|commissioning|handover|safety|quality — 7 candidates stripped; promote to reference product]',
+    `change_order_reference` STRING COMMENT 'Reference to the Change Order (CO) that introduced or modified this deliverable. Links scope changes to affected deliverables for contract administration and cost control.',
     `deliverable_code` STRING COMMENT 'Unique alphanumeric code identifying the deliverable within the project document control system. Typically assigned by the document management system (e.g., Aconex or Procore) and used for transmittal and correspondence tracking.. Valid values are `^[A-Z0-9-.]{3,30}$`',
     `comments` STRING COMMENT 'Free-text field capturing reviewer comments, rejection reasons, or clarification notes associated with the deliverable review cycle. Supports QA/QC tracking and resubmission guidance.',
     `created_timestamp` TIMESTAMP COMMENT 'Timestamp when the deliverable record was first created in the system. Supports audit trail and data lineage requirements.',
@@ -404,6 +398,7 @@ CREATE OR REPLACE TABLE `vibe_construction_v1`.`project`.`deliverable` (
     `is_contractual` BOOLEAN COMMENT 'Indicates whether this deliverable is a contractually mandated output as defined in the contract scope of work or BOQ (Bill of Quantities). Distinguishes contractual obligations from internally generated technical documents.',
     `is_dlp_applicable` BOOLEAN COMMENT 'Indicates whether this deliverable is subject to the Defects Liability Period (DLP) obligations under the contract. Enables DLP tracking and defect notification management.',
     `is_handover_required` BOOLEAN COMMENT 'Indicates whether this deliverable must be included in the project handover package to the client. Supports commissioning and handover completeness tracking.',
+    `itp_reference` STRING COMMENT 'Reference to the Inspection and Test Plan (ITP) associated with this deliverable. Links the deliverable to its quality inspection requirements and hold/witness points.',
     `native_file_format` STRING COMMENT 'File format of the deliverable document (e.g., PDF, DWG, DXF, REVIT, IFC, XLSX). Supports document management, BIM coordination, and digital handover requirements. [ENUM-REF-CANDIDATE: PDF|DWG|DXF|REVIT|IFC|XLSX|DOCX|XML|CSV — 9 candidates stripped; promote to reference product]',
     `ncr_reference` STRING COMMENT 'Reference number of any Non-Conformance Report (NCR) raised against this deliverable. Links quality non-conformances to the affected deliverable for QA/QC tracking and corrective action management.',
     `percent_complete` DECIMAL(18,2) COMMENT 'Current percentage completion of the deliverable production, ranging from 0.00 to 100.00. Used in Earned Value Management (EVM) calculations and progress reporting.',
@@ -416,6 +411,7 @@ CREATE OR REPLACE TABLE `vibe_construction_v1`.`project`.`deliverable` (
     `storage_location_url` STRING COMMENT 'URL or path to the deliverable file stored in the document management system (e.g., Aconex, Autodesk BIM 360, or SharePoint). Provides direct access to the source document.',
     `submission_number` STRING COMMENT 'Sequential count of the number of times this deliverable has been submitted for review. Tracks resubmission cycles and supports quality performance analysis.',
     `title` STRING COMMENT 'Full descriptive title of the deliverable as defined in the contract, scope of work, or engineering register. Used for identification in reports, transmittals, and handover packages.',
+    `transmittal_number` STRING COMMENT 'Reference number of the transmittal through which the deliverable was formally issued or submitted. Links to the Aconex transmittal register for correspondence traceability.',
     `updated_timestamp` TIMESTAMP COMMENT 'Timestamp of the most recent update to the deliverable record. Supports change tracking, audit trail, and incremental data loading in the Databricks silver layer.',
     `weight_factor` DECIMAL(18,2) COMMENT 'Relative weighting of this deliverable within the project progress measurement system. Used to calculate weighted progress and Earned Value (EV) contributions at the project or WBS level.',
     CONSTRAINT pk_deliverable PRIMARY KEY(`deliverable_id`)
@@ -423,20 +419,15 @@ CREATE OR REPLACE TABLE `vibe_construction_v1`.`project`.`deliverable` (
 
 CREATE OR REPLACE TABLE `vibe_construction_v1`.`project`.`risk_register` (
     `risk_register_id` BIGINT COMMENT 'Unique surrogate identifier for each risk register entry in the project risk register. Primary key for the risk_register data product.',
-    `activity_id` BIGINT COMMENT 'Foreign key linking to schedule.activity. Business justification: Schedule risk analysis requires linking risks to specific critical-path activities. Construction PMs use this for delay risk quantification reports and Monte Carlo schedule risk analysis. risk_registe',
+    `agreement_id` BIGINT COMMENT 'Foreign key linking to contract.agreement. Business justification: Construction risks are contractually allocated via specific agreements. Risk registers must reference the agreement for contract risk allocation reporting, insurance claim linkage, and dispute resolut',
     `construction_project_id` BIGINT COMMENT 'Reference to the parent construction project to which this risk register entry belongs. Links the risk to the project master record for PMO governance and EPC execution tracking.',
-    `cost_code_id` BIGINT COMMENT 'Foreign key linking to finance.cost_code. Business justification: Risk contingency budgeting: risk register entries with contingency_cost_amount and cost_impact_amount must be coded to finance cost codes for contingency budget allocation and financial risk reporting',
-    `hazard_register_id` BIGINT COMMENT 'Foreign key linking to safety.hazard_register. Business justification: Project risks with HSE implications must be traceable to specific hazards in the site hazard register for integrated risk management and regulatory compliance. risk_register has hse_risk_flag but no F',
-    `milestone_id` BIGINT COMMENT 'Foreign key linking to project.project_milestone. Business justification: Risks in construction projects are often associated with specific contractual milestones — a risk that threatens a milestone date (schedule_impact_days on risk_register directly relates to milestone f',
-    `phase_id` BIGINT COMMENT 'Foreign key linking to project.phase. Business justification: Risks are phase-specific in construction — risks identified during design phase differ from construction phase risks. Linking risk_register to phase enables phase-level risk exposure reporting, suppor',
-    `rfi_id` BIGINT COMMENT 'Foreign key linking to design.rfi. Business justification: RFIs revealing design conflicts or ambiguities are primary risk triggers in construction. Risk managers formally log RFIs as risk evidence in the risk register. RFI-to-risk traceability is required fo',
-    `risk_assessment_id` BIGINT COMMENT 'Foreign key linking to safety.risk_assessment. Business justification: Project risks flagged as HSE risks (hse_risk_flag=true) must be formally linked to a safety risk_assessment for integrated risk reporting and regulatory compliance. Risk managers need this link to tra',
+    `delay_event_id` BIGINT COMMENT 'Foreign key linking to schedule.delay_event. Business justification: Risk materialization tracking requires linking risk register entries to the delay events they generate. Construction risk management processes (insurance claims, lessons learned, contingency drawdown ',
+    `phase_id` BIGINT COMMENT 'Foreign key linking to project.phase. Business justification: Risks are identified and managed within specific project phases. Adding phase_id to risk_register scopes each risk to its originating or most-impactful phase, enabling phase-level risk reporting, gate',
     `wbs_element_id` BIGINT COMMENT 'Reference to the specific Work Breakdown Structure (WBS) element at which this risk is identified. Enables risk attribution at sub-project or work-package level for granular PMO reporting.',
     `affected_discipline` STRING COMMENT 'Construction or engineering discipline most affected by this risk (e.g., Civil, Structural, MEP, Geotechnical, Electrical, Procurement). Supports discipline-level risk reporting and resource allocation for mitigation.',
     `closure_date` DATE COMMENT 'Calendar date on which the risk entry was formally closed, either because the risk window has passed, the risk was fully mitigated, or the risk was realized and the contingency plan executed.',
     `contingency_cost_amount` DECIMAL(18,2) COMMENT 'Monetary contingency reserve allocated to this risk entry, expressed in the project currency. Feeds into the project contingency budget managed through SAP S/4HANA Project Systems and PMO cost control.',
     `contingency_plan` STRING COMMENT 'Description of the fallback actions to be executed if the risk event is realized despite mitigation efforts. Defines trigger conditions, response steps, and responsible parties for contingency activation.',
-    `contract_clause_reference` STRING COMMENT 'Reference to the specific contract clause (e.g., FIDIC Clause 17.3, GMP provision, LD clause) that governs the allocation or treatment of this risk. Supports contract administration and legal risk management.',
     `cost_impact_amount` DECIMAL(18,2) COMMENT 'Estimated monetary value of the cost impact if the risk event is realized, expressed in the project currency. Used for contingency reserve sizing, Earned Value Management (EVM) risk exposure, and project P&L forecasting.',
     `cost_impact_rating` STRING COMMENT 'Qualitative rating of the potential cost impact if the risk event is realized, using the standard five-point PMO scale. Used in risk matrix scoring and contingency reserve determination.. Valid values are `very_low|low|medium|high|very_high`',
     `created_timestamp` TIMESTAMP COMMENT 'Timestamp when this risk register record was first created in the data platform. RECORD_AUDIT_CREATED for this entity. Used for data lineage, audit trail, and silver layer ingestion tracking.',
@@ -473,10 +464,6 @@ CREATE OR REPLACE TABLE `vibe_construction_v1`.`project`.`risk_register` (
 
 CREATE OR REPLACE TABLE `vibe_construction_v1`.`project`.`phase` (
     `phase_id` BIGINT COMMENT 'Unique surrogate identifier for a construction project lifecycle phase record in the Silver Layer lakehouse. Primary key for the phase data product.',
-    `construction_project_id` BIGINT COMMENT 'Reference to the parent construction project to which this phase belongs. Links the phase to the core project master record.',
-    `cost_center_id` BIGINT COMMENT 'Foreign key linking to finance.cost_center. Business justification: Phase-level financial reporting: construction project phases are mapped to cost centers for phase P&L reporting and overhead allocation. Finance controllers require phase-to-cost-center mapping for ph',
-    `project_baseline_id` BIGINT COMMENT 'Foreign key linking to project.project_baseline. Business justification: Project phases are defined and baselined as part of the approved project baseline. The baseline_duration_days and budgeted_cost on phase are derived from the baseline. Linking phase to project_baselin',
-    `wbs_element_id` BIGINT COMMENT 'Foreign key linking to project.wbs_element. Business justification: Project phases correspond to top-level WBS elements in construction project structures (e.g., Phase 1 = WBS Level 1 node). The existing wbs_code STRING field is a denormalized reference that should be',
     `actual_cost` DECIMAL(18,2) COMMENT 'Total actual costs incurred for work performed within this phase to date, representing the Actual Cost of Work Performed (ACWP) in EVM terminology. Sourced from SAP S/4HANA and Viewpoint Vista job costing modules.',
     `actual_finish_date` DATE COMMENT 'The date on which all work within this phase was physically completed and accepted. Populated upon phase gate approval or formal handover documentation sign-off.',
     `actual_start_date` DATE COMMENT 'The date on which work on this phase actually commenced on site or in the engineering office. Populated upon NTP (Notice to Proceed) issuance or first activity progress update in Primavera P6.',
@@ -521,13 +508,9 @@ CREATE OR REPLACE TABLE `vibe_construction_v1`.`project`.`phase` (
 
 CREATE OR REPLACE TABLE `vibe_construction_v1`.`project`.`forecast` (
     `forecast_id` BIGINT COMMENT 'Unique surrogate identifier for the rolling project cost and schedule forecast record in the Databricks Silver Layer. Primary key for the forecast data product.',
-    `change_order_id` BIGINT COMMENT 'Foreign key linking to project.project_change_order. Business justification: Forecast revisions are often triggered by approved change orders — when a CO is approved, a new forecast cycle is initiated. Linking forecast to project_change_order establishes which CO triggered the',
-    `construction_project_id` BIGINT COMMENT 'Reference to the parent construction project for which this forecast record is produced. Links to the project master entity.',
-    `cost_account_id` BIGINT COMMENT 'Foreign key linking to project.cost_account. Business justification: Forecasts (EAC, ETC) are produced at the cost account (control account) level in construction project controls. Linking forecast to cost_account enables control-account-level forecast tracking, suppor',
-    `evm_period_record_id` BIGINT COMMENT 'Foreign key linking to project.evm_period_record. Business justification: Forecasts (EAC, ETC) are derived from EVM period records — the ACWP, BCWP, and CPI from the EVM period record are the inputs to the forecast calculation. Linking forecast to evm_period_record establis',
-    `phase_id` BIGINT COMMENT 'Foreign key linking to project.phase. Business justification: Rolling forecasts are produced at the phase level in construction project reporting. Linking forecast to phase enables phase-level EAC/ETC tracking, supports phase completion cost forecasting, and all',
+    `cost_account_id` BIGINT COMMENT 'Foreign key linking to project.cost_account. Business justification: Rolling forecasts (EAC/ETC) are produced at the cost account (control account) level in EPC project controls. Adding cost_account_id to forecast enables cost-account-level forecasting, linking each fo',
+    `phase_id` BIGINT COMMENT 'Foreign key linking to project.phase. Business justification: Rolling forecasts are produced at the phase level in addition to WBS and project levels. Adding phase_id to forecast enables phase-level EAC/ETC forecasting, supporting phase-gate financial reviews an',
     `project_baseline_id` BIGINT COMMENT 'Reference to the approved project baseline against which this forecast is compared for variance analysis and Earned Value Management (EVM) reporting.',
-    `project_budget_id` BIGINT COMMENT 'Foreign key linking to finance.project_budget. Business justification: Forecast-vs-budget variance reporting: project EAC forecasts must be reconciled against the approved financial budget for client reporting and management review. Finance controllers require this direc',
     `wbs_element_id` BIGINT COMMENT 'Reference to the Work Breakdown Structure (WBS) element at which this forecast is captured. May represent the project root WBS or a specific control account level within the WBS hierarchy.',
     `actual_cost_to_date` DECIMAL(18,2) COMMENT 'Total actual cost incurred on the project or WBS element from inception through the reporting period data date. Represents the Actual Cost of Work Performed (ACWP) in EVM terminology. Sourced from SAP S/4HANA cost postings.',
     `approval_date` DATE COMMENT 'The date on which this forecast record was formally approved by the authorized PMO or project controls authority for inclusion in P&L reporting.',
@@ -570,97 +553,33 @@ CREATE OR REPLACE TABLE `vibe_construction_v1`.`project`.`forecast` (
     CONSTRAINT pk_forecast PRIMARY KEY(`forecast_id`)
 ) COMMENT 'Rolling project cost and schedule forecast record capturing EAC (Estimate at Completion), ETC (Estimate to Complete), forecast completion date, forecast final cost, cost variance, schedule variance, and narrative commentary for a given reporting period. Distinct from EVM period records — this is the forward-looking management forecast used for P&L reporting and PMO governance. Sourced from SAP S/4HANA Project Systems.';
 
-CREATE OR REPLACE TABLE `vibe_construction_v1`.`project`.`project_site` (
-    `project_site_id` BIGINT COMMENT 'Primary key for site',
-    `cost_center_id` BIGINT COMMENT 'Foreign key linking to finance.cost_center. Business justification: Site cost center mapping: construction sites are managed as cost centers for site overhead tracking, insurance cost allocation, and site-level financial reporting. project_site.cost_center_code is a d',
-    `warehouse_id` BIGINT COMMENT 'Foreign key linking to material.warehouse. Business justification: Project sites have dedicated on-site warehouses or laydown areas. Site managers need to know which warehouse serves a project site for material delivery scheduling, storage planning, and site logistic',
-    `actual_completion_date` DATE COMMENT 'Date when construction was actually completed.',
-    `actual_spend` DECIMAL(18,2) COMMENT 'Cumulative actual expenditure incurred at the site.',
-    `address_line1` STRING COMMENT 'Primary street address of the site.',
-    `address_line2` STRING COMMENT 'Secondary address information (suite, building, etc.).',
-    `area_sq_m` DOUBLE COMMENT 'Total land area of the site in square meters.',
-    `budget_amount` DECIMAL(18,2) COMMENT 'Approved budget for the site in the project currency.',
-    `city` STRING COMMENT 'City where the site is located.',
-    `country` STRING COMMENT 'ISO 3166‑1 alpha‑3 country code where the site resides.',
-    `created_timestamp` TIMESTAMP COMMENT 'Timestamp when the site record was first created.',
-    `currency_code` STRING COMMENT 'ISO 4217 currency code for monetary values.',
-    `elevation_m` DOUBLE COMMENT 'Site elevation above sea level in meters.',
-    `environmental_zone` STRING COMMENT 'Environmental compliance zone applicable to the site.',
-    `ground_condition` STRING COMMENT 'Observed condition of the ground (e.g., rocky, soft, contaminated).',
-    `insurance_expiry_date` DATE COMMENT 'Date when the site insurance coverage expires.',
-    `insurance_policy_number` STRING COMMENT 'Policy number of the insurance covering the site.',
-    `last_inspection_date` DATE COMMENT 'Date of the most recent health, safety, or regulatory inspection.',
-    `latitude` DOUBLE COMMENT 'Geographic latitude of the site in decimal degrees.',
-    `longitude` DOUBLE COMMENT 'Geographic longitude of the site in decimal degrees.',
-    `manager_email` STRING COMMENT 'Email address of the site manager for official communications.',
-    `manager_name` STRING COMMENT 'Full legal name of the person responsible for site operations.',
-    `manager_phone` STRING COMMENT 'Primary telephone number for the site manager.',
-    `number_of_floors` STRING COMMENT 'Count of building floors present on the site.',
-    `permits` STRING COMMENT 'Comma‑separated list of permits and licenses held for the site.',
-    `planned_completion_date` DATE COMMENT 'Target date for finishing construction work.',
-    `postal_code` STRING COMMENT 'Postal/ZIP code for the site address.',
-    `power_capacity_mw` DOUBLE COMMENT 'Maximum electrical power capacity available on site in megawatts.',
-    `risk_rating` STRING COMMENT 'Overall risk rating assigned to the site.',
-    `security_level` STRING COMMENT 'Security classification of the site based on risk and access controls.',
-    `site_description` STRING COMMENT 'Free‑form textual description of the site.',
-    `site_status` STRING COMMENT 'Current lifecycle state of the site.',
-    `site_type` STRING COMMENT 'Category of the site based on its primary function.',
-    `soil_type` STRING COMMENT 'Classification of soil present at the site.',
-    `start_date` DATE COMMENT 'Date when construction activities are scheduled to begin.',
-    `state` STRING COMMENT 'State or province of the site location.',
-    `updated_timestamp` TIMESTAMP COMMENT 'Timestamp of the most recent update to the site record.',
-    `utility_connection_status` STRING COMMENT 'Current status of utility (electric, water, gas) connections.',
-    `water_supply_type` STRING COMMENT 'Primary source of water for the site.',
-    CONSTRAINT pk_project_site PRIMARY KEY(`project_site_id`)
-) COMMENT 'Master reference table for site. Referenced by site_id.';
-
 -- ========= FOREIGN KEYS =========
+ALTER TABLE `vibe_construction_v1`.`project`.`wbs_element` ADD CONSTRAINT `fk_project_wbs_element_construction_project_id` FOREIGN KEY (`construction_project_id`) REFERENCES `vibe_construction_v1`.`project`.`construction_project`(`construction_project_id`);
 ALTER TABLE `vibe_construction_v1`.`project`.`wbs_element` ADD CONSTRAINT `fk_project_wbs_element_parent_wbs_element_id` FOREIGN KEY (`parent_wbs_element_id`) REFERENCES `vibe_construction_v1`.`project`.`wbs_element`(`wbs_element_id`);
-ALTER TABLE `vibe_construction_v1`.`project`.`milestone` ADD CONSTRAINT `fk_project_milestone_construction_project_id` FOREIGN KEY (`construction_project_id`) REFERENCES `vibe_construction_v1`.`project`.`construction_project`(`construction_project_id`);
-ALTER TABLE `vibe_construction_v1`.`project`.`milestone` ADD CONSTRAINT `fk_project_milestone_phase_id` FOREIGN KEY (`phase_id`) REFERENCES `vibe_construction_v1`.`project`.`phase`(`phase_id`);
-ALTER TABLE `vibe_construction_v1`.`project`.`milestone` ADD CONSTRAINT `fk_project_milestone_predecessor_milestone_project_milestone_id` FOREIGN KEY (`predecessor_milestone_project_milestone_id`) REFERENCES `vibe_construction_v1`.`project`.`milestone`(`milestone_id`);
-ALTER TABLE `vibe_construction_v1`.`project`.`milestone` ADD CONSTRAINT `fk_project_milestone_project_baseline_id` FOREIGN KEY (`project_baseline_id`) REFERENCES `vibe_construction_v1`.`project`.`project_baseline`(`project_baseline_id`);
-ALTER TABLE `vibe_construction_v1`.`project`.`milestone` ADD CONSTRAINT `fk_project_milestone_wbs_element_id` FOREIGN KEY (`wbs_element_id`) REFERENCES `vibe_construction_v1`.`project`.`wbs_element`(`wbs_element_id`);
+ALTER TABLE `vibe_construction_v1`.`project`.`project_milestone` ADD CONSTRAINT `fk_project_project_milestone_construction_project_id` FOREIGN KEY (`construction_project_id`) REFERENCES `vibe_construction_v1`.`project`.`construction_project`(`construction_project_id`);
+ALTER TABLE `vibe_construction_v1`.`project`.`project_milestone` ADD CONSTRAINT `fk_project_project_milestone_phase_id` FOREIGN KEY (`phase_id`) REFERENCES `vibe_construction_v1`.`project`.`phase`(`phase_id`);
+ALTER TABLE `vibe_construction_v1`.`project`.`project_milestone` ADD CONSTRAINT `fk_project_project_milestone_predecessor_milestone_project_milestone_id` FOREIGN KEY (`predecessor_milestone_project_milestone_id`) REFERENCES `vibe_construction_v1`.`project`.`project_milestone`(`project_milestone_id`);
+ALTER TABLE `vibe_construction_v1`.`project`.`project_milestone` ADD CONSTRAINT `fk_project_project_milestone_project_baseline_id` FOREIGN KEY (`project_baseline_id`) REFERENCES `vibe_construction_v1`.`project`.`project_baseline`(`project_baseline_id`);
 ALTER TABLE `vibe_construction_v1`.`project`.`project_baseline` ADD CONSTRAINT `fk_project_project_baseline_construction_project_id` FOREIGN KEY (`construction_project_id`) REFERENCES `vibe_construction_v1`.`project`.`construction_project`(`construction_project_id`);
 ALTER TABLE `vibe_construction_v1`.`project`.`project_baseline` ADD CONSTRAINT `fk_project_project_baseline_wbs_element_id` FOREIGN KEY (`wbs_element_id`) REFERENCES `vibe_construction_v1`.`project`.`wbs_element`(`wbs_element_id`);
-ALTER TABLE `vibe_construction_v1`.`project`.`evm_period_record` ADD CONSTRAINT `fk_project_evm_period_record_construction_project_id` FOREIGN KEY (`construction_project_id`) REFERENCES `vibe_construction_v1`.`project`.`construction_project`(`construction_project_id`);
 ALTER TABLE `vibe_construction_v1`.`project`.`evm_period_record` ADD CONSTRAINT `fk_project_evm_period_record_cost_account_id` FOREIGN KEY (`cost_account_id`) REFERENCES `vibe_construction_v1`.`project`.`cost_account`(`cost_account_id`);
 ALTER TABLE `vibe_construction_v1`.`project`.`evm_period_record` ADD CONSTRAINT `fk_project_evm_period_record_phase_id` FOREIGN KEY (`phase_id`) REFERENCES `vibe_construction_v1`.`project`.`phase`(`phase_id`);
-ALTER TABLE `vibe_construction_v1`.`project`.`evm_period_record` ADD CONSTRAINT `fk_project_evm_period_record_project_baseline_id` FOREIGN KEY (`project_baseline_id`) REFERENCES `vibe_construction_v1`.`project`.`project_baseline`(`project_baseline_id`);
-ALTER TABLE `vibe_construction_v1`.`project`.`evm_period_record` ADD CONSTRAINT `fk_project_evm_period_record_wbs_element_id` FOREIGN KEY (`wbs_element_id`) REFERENCES `vibe_construction_v1`.`project`.`wbs_element`(`wbs_element_id`);
 ALTER TABLE `vibe_construction_v1`.`project`.`progress_measurement` ADD CONSTRAINT `fk_project_progress_measurement_construction_project_id` FOREIGN KEY (`construction_project_id`) REFERENCES `vibe_construction_v1`.`project`.`construction_project`(`construction_project_id`);
 ALTER TABLE `vibe_construction_v1`.`project`.`progress_measurement` ADD CONSTRAINT `fk_project_progress_measurement_cost_account_id` FOREIGN KEY (`cost_account_id`) REFERENCES `vibe_construction_v1`.`project`.`cost_account`(`cost_account_id`);
 ALTER TABLE `vibe_construction_v1`.`project`.`progress_measurement` ADD CONSTRAINT `fk_project_progress_measurement_evm_period_record_id` FOREIGN KEY (`evm_period_record_id`) REFERENCES `vibe_construction_v1`.`project`.`evm_period_record`(`evm_period_record_id`);
-ALTER TABLE `vibe_construction_v1`.`project`.`progress_measurement` ADD CONSTRAINT `fk_project_progress_measurement_phase_id` FOREIGN KEY (`phase_id`) REFERENCES `vibe_construction_v1`.`project`.`phase`(`phase_id`);
 ALTER TABLE `vibe_construction_v1`.`project`.`progress_measurement` ADD CONSTRAINT `fk_project_progress_measurement_project_baseline_id` FOREIGN KEY (`project_baseline_id`) REFERENCES `vibe_construction_v1`.`project`.`project_baseline`(`project_baseline_id`);
-ALTER TABLE `vibe_construction_v1`.`project`.`progress_measurement` ADD CONSTRAINT `fk_project_progress_measurement_wbs_element_id` FOREIGN KEY (`wbs_element_id`) REFERENCES `vibe_construction_v1`.`project`.`wbs_element`(`wbs_element_id`);
-ALTER TABLE `vibe_construction_v1`.`project`.`change_order` ADD CONSTRAINT `fk_project_change_order_construction_project_id` FOREIGN KEY (`construction_project_id`) REFERENCES `vibe_construction_v1`.`project`.`construction_project`(`construction_project_id`);
-ALTER TABLE `vibe_construction_v1`.`project`.`change_order` ADD CONSTRAINT `fk_project_change_order_cost_account_id` FOREIGN KEY (`cost_account_id`) REFERENCES `vibe_construction_v1`.`project`.`cost_account`(`cost_account_id`);
-ALTER TABLE `vibe_construction_v1`.`project`.`change_order` ADD CONSTRAINT `fk_project_change_order_milestone_id` FOREIGN KEY (`milestone_id`) REFERENCES `vibe_construction_v1`.`project`.`milestone`(`milestone_id`);
-ALTER TABLE `vibe_construction_v1`.`project`.`change_order` ADD CONSTRAINT `fk_project_change_order_phase_id` FOREIGN KEY (`phase_id`) REFERENCES `vibe_construction_v1`.`project`.`phase`(`phase_id`);
-ALTER TABLE `vibe_construction_v1`.`project`.`change_order` ADD CONSTRAINT `fk_project_change_order_project_baseline_id` FOREIGN KEY (`project_baseline_id`) REFERENCES `vibe_construction_v1`.`project`.`project_baseline`(`project_baseline_id`);
-ALTER TABLE `vibe_construction_v1`.`project`.`change_order` ADD CONSTRAINT `fk_project_change_order_wbs_element_id` FOREIGN KEY (`wbs_element_id`) REFERENCES `vibe_construction_v1`.`project`.`wbs_element`(`wbs_element_id`);
+ALTER TABLE `vibe_construction_v1`.`project`.`project_change_order` ADD CONSTRAINT `fk_project_project_change_order_construction_project_id` FOREIGN KEY (`construction_project_id`) REFERENCES `vibe_construction_v1`.`project`.`construction_project`(`construction_project_id`);
+ALTER TABLE `vibe_construction_v1`.`project`.`project_change_order` ADD CONSTRAINT `fk_project_project_change_order_phase_id` FOREIGN KEY (`phase_id`) REFERENCES `vibe_construction_v1`.`project`.`phase`(`phase_id`);
 ALTER TABLE `vibe_construction_v1`.`project`.`cost_account` ADD CONSTRAINT `fk_project_cost_account_construction_project_id` FOREIGN KEY (`construction_project_id`) REFERENCES `vibe_construction_v1`.`project`.`construction_project`(`construction_project_id`);
 ALTER TABLE `vibe_construction_v1`.`project`.`cost_account` ADD CONSTRAINT `fk_project_cost_account_phase_id` FOREIGN KEY (`phase_id`) REFERENCES `vibe_construction_v1`.`project`.`phase`(`phase_id`);
 ALTER TABLE `vibe_construction_v1`.`project`.`cost_account` ADD CONSTRAINT `fk_project_cost_account_project_baseline_id` FOREIGN KEY (`project_baseline_id`) REFERENCES `vibe_construction_v1`.`project`.`project_baseline`(`project_baseline_id`);
-ALTER TABLE `vibe_construction_v1`.`project`.`cost_account` ADD CONSTRAINT `fk_project_cost_account_wbs_element_id` FOREIGN KEY (`wbs_element_id`) REFERENCES `vibe_construction_v1`.`project`.`wbs_element`(`wbs_element_id`);
-ALTER TABLE `vibe_construction_v1`.`project`.`deliverable` ADD CONSTRAINT `fk_project_deliverable_change_order_id` FOREIGN KEY (`change_order_id`) REFERENCES `vibe_construction_v1`.`project`.`change_order`(`change_order_id`);
 ALTER TABLE `vibe_construction_v1`.`project`.`deliverable` ADD CONSTRAINT `fk_project_deliverable_construction_project_id` FOREIGN KEY (`construction_project_id`) REFERENCES `vibe_construction_v1`.`project`.`construction_project`(`construction_project_id`);
-ALTER TABLE `vibe_construction_v1`.`project`.`deliverable` ADD CONSTRAINT `fk_project_deliverable_milestone_id` FOREIGN KEY (`milestone_id`) REFERENCES `vibe_construction_v1`.`project`.`milestone`(`milestone_id`);
+ALTER TABLE `vibe_construction_v1`.`project`.`deliverable` ADD CONSTRAINT `fk_project_deliverable_cost_account_id` FOREIGN KEY (`cost_account_id`) REFERENCES `vibe_construction_v1`.`project`.`cost_account`(`cost_account_id`);
 ALTER TABLE `vibe_construction_v1`.`project`.`deliverable` ADD CONSTRAINT `fk_project_deliverable_phase_id` FOREIGN KEY (`phase_id`) REFERENCES `vibe_construction_v1`.`project`.`phase`(`phase_id`);
-ALTER TABLE `vibe_construction_v1`.`project`.`deliverable` ADD CONSTRAINT `fk_project_deliverable_project_baseline_id` FOREIGN KEY (`project_baseline_id`) REFERENCES `vibe_construction_v1`.`project`.`project_baseline`(`project_baseline_id`);
-ALTER TABLE `vibe_construction_v1`.`project`.`deliverable` ADD CONSTRAINT `fk_project_deliverable_wbs_element_id` FOREIGN KEY (`wbs_element_id`) REFERENCES `vibe_construction_v1`.`project`.`wbs_element`(`wbs_element_id`);
 ALTER TABLE `vibe_construction_v1`.`project`.`risk_register` ADD CONSTRAINT `fk_project_risk_register_construction_project_id` FOREIGN KEY (`construction_project_id`) REFERENCES `vibe_construction_v1`.`project`.`construction_project`(`construction_project_id`);
-ALTER TABLE `vibe_construction_v1`.`project`.`risk_register` ADD CONSTRAINT `fk_project_risk_register_milestone_id` FOREIGN KEY (`milestone_id`) REFERENCES `vibe_construction_v1`.`project`.`milestone`(`milestone_id`);
 ALTER TABLE `vibe_construction_v1`.`project`.`risk_register` ADD CONSTRAINT `fk_project_risk_register_phase_id` FOREIGN KEY (`phase_id`) REFERENCES `vibe_construction_v1`.`project`.`phase`(`phase_id`);
 ALTER TABLE `vibe_construction_v1`.`project`.`risk_register` ADD CONSTRAINT `fk_project_risk_register_wbs_element_id` FOREIGN KEY (`wbs_element_id`) REFERENCES `vibe_construction_v1`.`project`.`wbs_element`(`wbs_element_id`);
-ALTER TABLE `vibe_construction_v1`.`project`.`phase` ADD CONSTRAINT `fk_project_phase_construction_project_id` FOREIGN KEY (`construction_project_id`) REFERENCES `vibe_construction_v1`.`project`.`construction_project`(`construction_project_id`);
-ALTER TABLE `vibe_construction_v1`.`project`.`phase` ADD CONSTRAINT `fk_project_phase_project_baseline_id` FOREIGN KEY (`project_baseline_id`) REFERENCES `vibe_construction_v1`.`project`.`project_baseline`(`project_baseline_id`);
-ALTER TABLE `vibe_construction_v1`.`project`.`phase` ADD CONSTRAINT `fk_project_phase_wbs_element_id` FOREIGN KEY (`wbs_element_id`) REFERENCES `vibe_construction_v1`.`project`.`wbs_element`(`wbs_element_id`);
-ALTER TABLE `vibe_construction_v1`.`project`.`forecast` ADD CONSTRAINT `fk_project_forecast_change_order_id` FOREIGN KEY (`change_order_id`) REFERENCES `vibe_construction_v1`.`project`.`change_order`(`change_order_id`);
-ALTER TABLE `vibe_construction_v1`.`project`.`forecast` ADD CONSTRAINT `fk_project_forecast_construction_project_id` FOREIGN KEY (`construction_project_id`) REFERENCES `vibe_construction_v1`.`project`.`construction_project`(`construction_project_id`);
 ALTER TABLE `vibe_construction_v1`.`project`.`forecast` ADD CONSTRAINT `fk_project_forecast_cost_account_id` FOREIGN KEY (`cost_account_id`) REFERENCES `vibe_construction_v1`.`project`.`cost_account`(`cost_account_id`);
-ALTER TABLE `vibe_construction_v1`.`project`.`forecast` ADD CONSTRAINT `fk_project_forecast_evm_period_record_id` FOREIGN KEY (`evm_period_record_id`) REFERENCES `vibe_construction_v1`.`project`.`evm_period_record`(`evm_period_record_id`);
 ALTER TABLE `vibe_construction_v1`.`project`.`forecast` ADD CONSTRAINT `fk_project_forecast_phase_id` FOREIGN KEY (`phase_id`) REFERENCES `vibe_construction_v1`.`project`.`phase`(`phase_id`);
 ALTER TABLE `vibe_construction_v1`.`project`.`forecast` ADD CONSTRAINT `fk_project_forecast_project_baseline_id` FOREIGN KEY (`project_baseline_id`) REFERENCES `vibe_construction_v1`.`project`.`project_baseline`(`project_baseline_id`);
 ALTER TABLE `vibe_construction_v1`.`project`.`forecast` ADD CONSTRAINT `fk_project_forecast_wbs_element_id` FOREIGN KEY (`wbs_element_id`) REFERENCES `vibe_construction_v1`.`project`.`wbs_element`(`wbs_element_id`);
@@ -669,19 +588,22 @@ ALTER TABLE `vibe_construction_v1`.`project`.`forecast` ADD CONSTRAINT `fk_proje
 ALTER SCHEMA `vibe_construction_v1`.`project` SET TAGS ('dbx_division' = 'operations');
 ALTER SCHEMA `vibe_construction_v1`.`project` SET TAGS ('dbx_domain' = 'project');
 ALTER TABLE `vibe_construction_v1`.`project`.`construction_project` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_construction_v1`.`project`.`construction_project` SET TAGS ('dbx_subdomain' = 'project_setup');
+ALTER TABLE `vibe_construction_v1`.`project`.`construction_project` SET TAGS ('dbx_subdomain' = 'project_structure');
 ALTER TABLE `vibe_construction_v1`.`project`.`construction_project` ALTER COLUMN `construction_project_id` SET TAGS ('dbx_business_glossary_term' = 'Construction Project ID');
 ALTER TABLE `vibe_construction_v1`.`project`.`construction_project` ALTER COLUMN `account_id` SET TAGS ('dbx_business_glossary_term' = 'Client ID');
-ALTER TABLE `vibe_construction_v1`.`project`.`construction_project` ALTER COLUMN `company_code_id` SET TAGS ('dbx_business_glossary_term' = 'Company Code Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`project`.`construction_project` ALTER COLUMN `firm_profile_id` SET TAGS ('dbx_business_glossary_term' = 'Prime Subcontractor Id (Foreign Key)');
 ALTER TABLE `vibe_construction_v1`.`project`.`construction_project` ALTER COLUMN `vendor_id` SET TAGS ('dbx_business_glossary_term' = 'Main Contractor Vendor Id (Foreign Key)');
-ALTER TABLE `vibe_construction_v1`.`project`.`construction_project` ALTER COLUMN `master_services_agreement_id` SET TAGS ('dbx_business_glossary_term' = 'Master Services Agreement Id (Foreign Key)');
-ALTER TABLE `vibe_construction_v1`.`project`.`construction_project` ALTER COLUMN `opportunity_id` SET TAGS ('dbx_business_glossary_term' = 'Client Opportunity Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`project`.`construction_project` ALTER COLUMN `vendor_id` SET TAGS ('dbx_pii_flag' = 'true');
+ALTER TABLE `vibe_construction_v1`.`project`.`construction_project` ALTER COLUMN `contact_id` SET TAGS ('dbx_business_glossary_term' = 'Primary Contact Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`project`.`construction_project` ALTER COLUMN `contact_id` SET TAGS ('dbx_pii_identifier' = 'true');
 ALTER TABLE `vibe_construction_v1`.`project`.`construction_project` ALTER COLUMN `actual_completion_date` SET TAGS ('dbx_business_glossary_term' = 'Actual Completion Date');
 ALTER TABLE `vibe_construction_v1`.`project`.`construction_project` ALTER COLUMN `actual_start_date` SET TAGS ('dbx_business_glossary_term' = 'Actual Start Date');
 ALTER TABLE `vibe_construction_v1`.`project`.`construction_project` ALTER COLUMN `approved_budget` SET TAGS ('dbx_business_glossary_term' = 'Approved Budget');
 ALTER TABLE `vibe_construction_v1`.`project`.`construction_project` ALTER COLUMN `approved_budget` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_construction_v1`.`project`.`construction_project` ALTER COLUMN `bid_number` SET TAGS ('dbx_business_glossary_term' = 'Bid Number');
 ALTER TABLE `vibe_construction_v1`.`project`.`construction_project` ALTER COLUMN `city` SET TAGS ('dbx_business_glossary_term' = 'Project City');
+ALTER TABLE `vibe_construction_v1`.`project`.`construction_project` ALTER COLUMN `city` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_construction_v1`.`project`.`construction_project` ALTER COLUMN `city` SET TAGS ('dbx_pii_address' = 'true');
 ALTER TABLE `vibe_construction_v1`.`project`.`construction_project` ALTER COLUMN `contract_currency` SET TAGS ('dbx_business_glossary_term' = 'Contract Currency');
 ALTER TABLE `vibe_construction_v1`.`project`.`construction_project` ALTER COLUMN `contract_currency` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
 ALTER TABLE `vibe_construction_v1`.`project`.`construction_project` ALTER COLUMN `contract_number` SET TAGS ('dbx_business_glossary_term' = 'Contract Number');
@@ -690,6 +612,7 @@ ALTER TABLE `vibe_construction_v1`.`project`.`construction_project` ALTER COLUMN
 ALTER TABLE `vibe_construction_v1`.`project`.`construction_project` ALTER COLUMN `contract_value` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_construction_v1`.`project`.`construction_project` ALTER COLUMN `country_code` SET TAGS ('dbx_business_glossary_term' = 'Country Code');
 ALTER TABLE `vibe_construction_v1`.`project`.`construction_project` ALTER COLUMN `country_code` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
+ALTER TABLE `vibe_construction_v1`.`project`.`construction_project` ALTER COLUMN `country_code` SET TAGS ('dbx_pii_address' = 'true');
 ALTER TABLE `vibe_construction_v1`.`project`.`construction_project` ALTER COLUMN `cpi` SET TAGS ('dbx_business_glossary_term' = 'Cost Performance Index (CPI)');
 ALTER TABLE `vibe_construction_v1`.`project`.`construction_project` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
 ALTER TABLE `vibe_construction_v1`.`project`.`construction_project` ALTER COLUMN `delivery_model` SET TAGS ('dbx_business_glossary_term' = 'Delivery Model');
@@ -715,11 +638,13 @@ ALTER TABLE `vibe_construction_v1`.`project`.`construction_project` ALTER COLUMN
 ALTER TABLE `vibe_construction_v1`.`project`.`construction_project` ALTER COLUMN `project_code` SET TAGS ('dbx_business_glossary_term' = 'Project Code');
 ALTER TABLE `vibe_construction_v1`.`project`.`construction_project` ALTER COLUMN `project_code` SET TAGS ('dbx_value_regex' = '^[A-Z0-9-]{4,20}$');
 ALTER TABLE `vibe_construction_v1`.`project`.`construction_project` ALTER COLUMN `project_name` SET TAGS ('dbx_business_glossary_term' = 'Project Name');
+ALTER TABLE `vibe_construction_v1`.`project`.`construction_project` ALTER COLUMN `project_name` SET TAGS ('dbx_pii_name' = 'true');
 ALTER TABLE `vibe_construction_v1`.`project`.`construction_project` ALTER COLUMN `project_status` SET TAGS ('dbx_business_glossary_term' = 'Project Status');
 ALTER TABLE `vibe_construction_v1`.`project`.`construction_project` ALTER COLUMN `project_status` SET TAGS ('dbx_value_regex' = 'prospect|awarded|active|on_hold|completed|cancelled');
 ALTER TABLE `vibe_construction_v1`.`project`.`construction_project` ALTER COLUMN `project_type` SET TAGS ('dbx_business_glossary_term' = 'Project Type');
 ALTER TABLE `vibe_construction_v1`.`project`.`construction_project` ALTER COLUMN `project_type` SET TAGS ('dbx_value_regex' = 'infrastructure|commercial|residential|energy|industrial');
 ALTER TABLE `vibe_construction_v1`.`project`.`construction_project` ALTER COLUMN `region` SET TAGS ('dbx_business_glossary_term' = 'Project Region');
+ALTER TABLE `vibe_construction_v1`.`project`.`construction_project` ALTER COLUMN `region` SET TAGS ('dbx_pii_address' = 'true');
 ALTER TABLE `vibe_construction_v1`.`project`.`construction_project` ALTER COLUMN `retention_pct` SET TAGS ('dbx_business_glossary_term' = 'Retention Percentage');
 ALTER TABLE `vibe_construction_v1`.`project`.`construction_project` ALTER COLUMN `retention_pct` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_construction_v1`.`project`.`construction_project` ALTER COLUMN `sap_project_definition` SET TAGS ('dbx_business_glossary_term' = 'SAP Project Definition Code');
@@ -733,11 +658,11 @@ ALTER TABLE `vibe_construction_v1`.`project`.`construction_project` ALTER COLUMN
 ALTER TABLE `vibe_construction_v1`.`project`.`construction_project` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Updated Timestamp');
 ALTER TABLE `vibe_construction_v1`.`project`.`construction_project` ALTER COLUMN `wbs_code` SET TAGS ('dbx_business_glossary_term' = 'Work Breakdown Structure (WBS) Code');
 ALTER TABLE `vibe_construction_v1`.`project`.`wbs_element` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_construction_v1`.`project`.`wbs_element` SET TAGS ('dbx_subdomain' = 'project_setup');
+ALTER TABLE `vibe_construction_v1`.`project`.`wbs_element` SET TAGS ('dbx_subdomain' = 'project_structure');
 ALTER TABLE `vibe_construction_v1`.`project`.`wbs_element` ALTER COLUMN `wbs_element_id` SET TAGS ('dbx_business_glossary_term' = 'Work Breakdown Structure (WBS) Element ID');
-ALTER TABLE `vibe_construction_v1`.`project`.`wbs_element` ALTER COLUMN `cost_code_id` SET TAGS ('dbx_business_glossary_term' = 'Finance Cost Code Id (Foreign Key)');
-ALTER TABLE `vibe_construction_v1`.`project`.`wbs_element` ALTER COLUMN `master_id` SET TAGS ('dbx_business_glossary_term' = 'Primary Material Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`project`.`wbs_element` ALTER COLUMN `construction_project_id` SET TAGS ('dbx_business_glossary_term' = 'Project ID');
 ALTER TABLE `vibe_construction_v1`.`project`.`wbs_element` ALTER COLUMN `parent_wbs_element_id` SET TAGS ('dbx_business_glossary_term' = 'Parent Work Breakdown Structure (WBS) Element ID');
+ALTER TABLE `vibe_construction_v1`.`project`.`wbs_element` ALTER COLUMN `parent_wbs_element_id` SET TAGS ('dbx_pii_contact' = 'true');
 ALTER TABLE `vibe_construction_v1`.`project`.`wbs_element` ALTER COLUMN `actual_cost` SET TAGS ('dbx_business_glossary_term' = 'Actual Cost of Work Performed (ACWP)');
 ALTER TABLE `vibe_construction_v1`.`project`.`wbs_element` ALTER COLUMN `actual_cost` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_construction_v1`.`project`.`wbs_element` ALTER COLUMN `actual_finish_date` SET TAGS ('dbx_business_glossary_term' = 'Actual Finish Date');
@@ -780,75 +705,74 @@ ALTER TABLE `vibe_construction_v1`.`project`.`wbs_element` ALTER COLUMN `scope_d
 ALTER TABLE `vibe_construction_v1`.`project`.`wbs_element` ALTER COLUMN `sort_order` SET TAGS ('dbx_business_glossary_term' = 'WBS Sort Order');
 ALTER TABLE `vibe_construction_v1`.`project`.`wbs_element` ALTER COLUMN `source_system_wbs_reference` SET TAGS ('dbx_business_glossary_term' = 'Source System WBS Element Identifier');
 ALTER TABLE `vibe_construction_v1`.`project`.`wbs_element` ALTER COLUMN `unit_of_measure` SET TAGS ('dbx_business_glossary_term' = 'Unit of Measure (UOM)');
+ALTER TABLE `vibe_construction_v1`.`project`.`wbs_element` ALTER COLUMN `unit_of_measure` SET TAGS ('dbx_pii_address' = 'true');
 ALTER TABLE `vibe_construction_v1`.`project`.`wbs_element` ALTER COLUMN `wbs_code` SET TAGS ('dbx_business_glossary_term' = 'Work Breakdown Structure (WBS) Code');
 ALTER TABLE `vibe_construction_v1`.`project`.`wbs_element` ALTER COLUMN `wbs_code` SET TAGS ('dbx_value_regex' = '^[A-Z0-9]+(.[A-Z0-9]+)*$');
 ALTER TABLE `vibe_construction_v1`.`project`.`wbs_element` ALTER COLUMN `wbs_level` SET TAGS ('dbx_business_glossary_term' = 'Work Breakdown Structure (WBS) Hierarchy Level');
 ALTER TABLE `vibe_construction_v1`.`project`.`wbs_element` ALTER COLUMN `wbs_name` SET TAGS ('dbx_business_glossary_term' = 'Work Breakdown Structure (WBS) Element Name');
+ALTER TABLE `vibe_construction_v1`.`project`.`wbs_element` ALTER COLUMN `wbs_name` SET TAGS ('dbx_pii_name' = 'true');
 ALTER TABLE `vibe_construction_v1`.`project`.`wbs_element` ALTER COLUMN `wbs_status` SET TAGS ('dbx_business_glossary_term' = 'Work Breakdown Structure (WBS) Element Status');
 ALTER TABLE `vibe_construction_v1`.`project`.`wbs_element` ALTER COLUMN `wbs_status` SET TAGS ('dbx_value_regex' = 'active|on_hold|completed|cancelled|not_started');
 ALTER TABLE `vibe_construction_v1`.`project`.`wbs_element` ALTER COLUMN `wbs_type` SET TAGS ('dbx_business_glossary_term' = 'Work Breakdown Structure (WBS) Element Type');
 ALTER TABLE `vibe_construction_v1`.`project`.`wbs_element` ALTER COLUMN `wbs_type` SET TAGS ('dbx_value_regex' = 'summary|work_package|control_account|planning_package');
-ALTER TABLE `vibe_construction_v1`.`project`.`milestone` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_construction_v1`.`project`.`milestone` SET TAGS ('dbx_subdomain' = 'project_setup');
-ALTER TABLE `vibe_construction_v1`.`project`.`milestone` ALTER COLUMN `milestone_id` SET TAGS ('dbx_business_glossary_term' = 'Project Milestone ID');
-ALTER TABLE `vibe_construction_v1`.`project`.`milestone` ALTER COLUMN `construction_project_id` SET TAGS ('dbx_business_glossary_term' = 'Project ID');
-ALTER TABLE `vibe_construction_v1`.`project`.`milestone` ALTER COLUMN `permit_to_work_id` SET TAGS ('dbx_business_glossary_term' = 'Permit To Work Id (Foreign Key)');
-ALTER TABLE `vibe_construction_v1`.`project`.`milestone` ALTER COLUMN `phase_id` SET TAGS ('dbx_business_glossary_term' = 'Phase Id (Foreign Key)');
-ALTER TABLE `vibe_construction_v1`.`project`.`milestone` ALTER COLUMN `predecessor_milestone_project_milestone_id` SET TAGS ('dbx_business_glossary_term' = 'Predecessor Milestone ID');
-ALTER TABLE `vibe_construction_v1`.`project`.`milestone` ALTER COLUMN `project_baseline_id` SET TAGS ('dbx_business_glossary_term' = 'Project Baseline Id (Foreign Key)');
-ALTER TABLE `vibe_construction_v1`.`project`.`milestone` ALTER COLUMN `wbs_element_id` SET TAGS ('dbx_business_glossary_term' = 'Work Breakdown Structure (WBS) ID');
-ALTER TABLE `vibe_construction_v1`.`project`.`milestone` ALTER COLUMN `acceptance_criteria` SET TAGS ('dbx_business_glossary_term' = 'Milestone Acceptance Criteria');
-ALTER TABLE `vibe_construction_v1`.`project`.`milestone` ALTER COLUMN `actual_date` SET TAGS ('dbx_business_glossary_term' = 'Actual Milestone Achievement Date');
-ALTER TABLE `vibe_construction_v1`.`project`.`milestone` ALTER COLUMN `actual_date` SET TAGS ('dbx_ssot_source' = 'schedule.schedule_milestone');
-ALTER TABLE `vibe_construction_v1`.`project`.`milestone` ALTER COLUMN `baseline_date` SET TAGS ('dbx_business_glossary_term' = 'Baseline Milestone Date');
-ALTER TABLE `vibe_construction_v1`.`project`.`milestone` ALTER COLUMN `baseline_date` SET TAGS ('dbx_ssot_source' = 'schedule.schedule_milestone');
-ALTER TABLE `vibe_construction_v1`.`project`.`milestone` ALTER COLUMN `milestone_category` SET TAGS ('dbx_business_glossary_term' = 'Milestone Category');
-ALTER TABLE `vibe_construction_v1`.`project`.`milestone` ALTER COLUMN `milestone_code` SET TAGS ('dbx_business_glossary_term' = 'Milestone Code');
-ALTER TABLE `vibe_construction_v1`.`project`.`milestone` ALTER COLUMN `milestone_code` SET TAGS ('dbx_value_regex' = '^MS-[A-Z0-9]{3,20}$');
-ALTER TABLE `vibe_construction_v1`.`project`.`milestone` ALTER COLUMN `completion_percentage` SET TAGS ('dbx_business_glossary_term' = 'Milestone Completion Percentage');
-ALTER TABLE `vibe_construction_v1`.`project`.`milestone` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
-ALTER TABLE `vibe_construction_v1`.`project`.`milestone` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_ssot_source' = 'schedule.schedule_milestone');
-ALTER TABLE `vibe_construction_v1`.`project`.`milestone` ALTER COLUMN `delivery_model` SET TAGS ('dbx_business_glossary_term' = 'Project Delivery Model');
-ALTER TABLE `vibe_construction_v1`.`project`.`milestone` ALTER COLUMN `delivery_model` SET TAGS ('dbx_value_regex' = 'EPC|DB|DBB|PPP|BOT|GMP');
-ALTER TABLE `vibe_construction_v1`.`project`.`milestone` ALTER COLUMN `eot_days_approved` SET TAGS ('dbx_business_glossary_term' = 'Extension of Time (EOT) Approved Days');
-ALTER TABLE `vibe_construction_v1`.`project`.`milestone` ALTER COLUMN `eot_reference` SET TAGS ('dbx_business_glossary_term' = 'Extension of Time (EOT) Reference Number');
-ALTER TABLE `vibe_construction_v1`.`project`.`milestone` ALTER COLUMN `forecast_date` SET TAGS ('dbx_business_glossary_term' = 'Forecast Milestone Date');
-ALTER TABLE `vibe_construction_v1`.`project`.`milestone` ALTER COLUMN `forecast_date` SET TAGS ('dbx_ssot_source' = 'schedule.schedule_milestone');
-ALTER TABLE `vibe_construction_v1`.`project`.`milestone` ALTER COLUMN `hse_clearance_required` SET TAGS ('dbx_business_glossary_term' = 'Health Safety Environment (HSE) Clearance Required Flag');
-ALTER TABLE `vibe_construction_v1`.`project`.`milestone` ALTER COLUMN `is_contractual` SET TAGS ('dbx_business_glossary_term' = 'Contractual Milestone Flag');
-ALTER TABLE `vibe_construction_v1`.`project`.`milestone` ALTER COLUMN `is_critical_path` SET TAGS ('dbx_business_glossary_term' = 'Critical Path Milestone Flag');
-ALTER TABLE `vibe_construction_v1`.`project`.`milestone` ALTER COLUMN `is_ld_trigger` SET TAGS ('dbx_business_glossary_term' = 'Liquidated Damages (LD) Trigger Flag');
-ALTER TABLE `vibe_construction_v1`.`project`.`milestone` ALTER COLUMN `is_payment_trigger` SET TAGS ('dbx_business_glossary_term' = 'Payment Milestone Trigger Flag');
-ALTER TABLE `vibe_construction_v1`.`project`.`milestone` ALTER COLUMN `ld_currency_code` SET TAGS ('dbx_business_glossary_term' = 'Liquidated Damages (LD) Currency Code');
-ALTER TABLE `vibe_construction_v1`.`project`.`milestone` ALTER COLUMN `ld_currency_code` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
-ALTER TABLE `vibe_construction_v1`.`project`.`milestone` ALTER COLUMN `ld_rate_per_day` SET TAGS ('dbx_business_glossary_term' = 'Liquidated Damages (LD) Daily Rate');
-ALTER TABLE `vibe_construction_v1`.`project`.`milestone` ALTER COLUMN `ld_rate_per_day` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_construction_v1`.`project`.`milestone` ALTER COLUMN `ld_rate_per_day` SET TAGS ('dbx_ssot_source' = 'schedule.schedule_milestone');
-ALTER TABLE `vibe_construction_v1`.`project`.`milestone` ALTER COLUMN `leed_related` SET TAGS ('dbx_business_glossary_term' = 'LEED Certification Related Flag');
-ALTER TABLE `vibe_construction_v1`.`project`.`milestone` ALTER COLUMN `milestone_status` SET TAGS ('dbx_business_glossary_term' = 'Milestone Status');
-ALTER TABLE `vibe_construction_v1`.`project`.`milestone` ALTER COLUMN `milestone_status` SET TAGS ('dbx_value_regex' = 'not_started|in_progress|completed|overdue|waived|deferred');
-ALTER TABLE `vibe_construction_v1`.`project`.`milestone` ALTER COLUMN `milestone_type` SET TAGS ('dbx_business_glossary_term' = 'Milestone Type');
-ALTER TABLE `vibe_construction_v1`.`project`.`milestone` ALTER COLUMN `milestone_type` SET TAGS ('dbx_value_regex' = 'contractual|internal|regulatory|client|financial');
-ALTER TABLE `vibe_construction_v1`.`project`.`milestone` ALTER COLUMN `milestone_name` SET TAGS ('dbx_business_glossary_term' = 'Milestone Name');
-ALTER TABLE `vibe_construction_v1`.`project`.`milestone` ALTER COLUMN `notification_advance_days` SET TAGS ('dbx_business_glossary_term' = 'Notification Advance Notice Days');
-ALTER TABLE `vibe_construction_v1`.`project`.`milestone` ALTER COLUMN `notification_required` SET TAGS ('dbx_business_glossary_term' = 'Client Notification Required Flag');
-ALTER TABLE `vibe_construction_v1`.`project`.`milestone` ALTER COLUMN `payment_amount` SET TAGS ('dbx_business_glossary_term' = 'Milestone Payment Amount');
-ALTER TABLE `vibe_construction_v1`.`project`.`milestone` ALTER COLUMN `payment_amount` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_construction_v1`.`project`.`milestone` ALTER COLUMN `planned_date` SET TAGS ('dbx_business_glossary_term' = 'Planned Milestone Date');
-ALTER TABLE `vibe_construction_v1`.`project`.`milestone` ALTER COLUMN `planned_date` SET TAGS ('dbx_ssot_source' = 'schedule.schedule_milestone');
-ALTER TABLE `vibe_construction_v1`.`project`.`milestone` ALTER COLUMN `procore_milestone_reference` SET TAGS ('dbx_business_glossary_term' = 'Procore Milestone ID');
-ALTER TABLE `vibe_construction_v1`.`project`.`milestone` ALTER COLUMN `project_milestone_description` SET TAGS ('dbx_business_glossary_term' = 'Milestone Description');
-ALTER TABLE `vibe_construction_v1`.`project`.`milestone` ALTER COLUMN `remarks` SET TAGS ('dbx_business_glossary_term' = 'Milestone Remarks');
-ALTER TABLE `vibe_construction_v1`.`project`.`milestone` ALTER COLUMN `responsible_party` SET TAGS ('dbx_business_glossary_term' = 'Responsible Party');
-ALTER TABLE `vibe_construction_v1`.`project`.`milestone` ALTER COLUMN `responsible_party` SET TAGS ('dbx_value_regex' = 'contractor|client|subcontractor|engineer|joint_venture|regulator');
-ALTER TABLE `vibe_construction_v1`.`project`.`milestone` ALTER COLUMN `schedule_variance_days` SET TAGS ('dbx_business_glossary_term' = 'Schedule Variance (Days)');
-ALTER TABLE `vibe_construction_v1`.`project`.`milestone` ALTER COLUMN `sign_off_document_ref` SET TAGS ('dbx_business_glossary_term' = 'Milestone Sign-Off Document Reference');
-ALTER TABLE `vibe_construction_v1`.`project`.`milestone` ALTER COLUMN `total_float_days` SET TAGS ('dbx_business_glossary_term' = 'Total Float (Days)');
-ALTER TABLE `vibe_construction_v1`.`project`.`milestone` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Last Updated Timestamp');
-ALTER TABLE `vibe_construction_v1`.`project`.`milestone` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_ssot_source' = 'schedule.schedule_milestone');
+ALTER TABLE `vibe_construction_v1`.`project`.`project_milestone` SET TAGS ('dbx_data_type' = 'master_data');
+ALTER TABLE `vibe_construction_v1`.`project`.`project_milestone` SET TAGS ('dbx_subdomain' = 'project_structure');
+ALTER TABLE `vibe_construction_v1`.`project`.`project_milestone` ALTER COLUMN `project_milestone_id` SET TAGS ('dbx_business_glossary_term' = 'Project Milestone ID');
+ALTER TABLE `vibe_construction_v1`.`project`.`project_milestone` ALTER COLUMN `construction_project_id` SET TAGS ('dbx_business_glossary_term' = 'Project ID');
+ALTER TABLE `vibe_construction_v1`.`project`.`project_milestone` ALTER COLUMN `contract_milestone_id` SET TAGS ('dbx_business_glossary_term' = 'Contract Milestone Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`project`.`project_milestone` ALTER COLUMN `contact_id` SET TAGS ('dbx_business_glossary_term' = 'Milestone Owner Contact Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`project`.`project_milestone` ALTER COLUMN `contact_id` SET TAGS ('dbx_pii_identifier' = 'true');
+ALTER TABLE `vibe_construction_v1`.`project`.`project_milestone` ALTER COLUMN `phase_id` SET TAGS ('dbx_business_glossary_term' = 'Phase Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`project`.`project_milestone` ALTER COLUMN `predecessor_milestone_project_milestone_id` SET TAGS ('dbx_business_glossary_term' = 'Predecessor Milestone ID');
+ALTER TABLE `vibe_construction_v1`.`project`.`project_milestone` ALTER COLUMN `activity_id` SET TAGS ('dbx_business_glossary_term' = 'Oracle Primavera P6 Activity ID');
+ALTER TABLE `vibe_construction_v1`.`project`.`project_milestone` ALTER COLUMN `project_baseline_id` SET TAGS ('dbx_business_glossary_term' = 'Project Baseline Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`project`.`project_milestone` ALTER COLUMN `acceptance_criteria` SET TAGS ('dbx_business_glossary_term' = 'Milestone Acceptance Criteria');
+ALTER TABLE `vibe_construction_v1`.`project`.`project_milestone` ALTER COLUMN `actual_date` SET TAGS ('dbx_business_glossary_term' = 'Actual Milestone Achievement Date');
+ALTER TABLE `vibe_construction_v1`.`project`.`project_milestone` ALTER COLUMN `baseline_date` SET TAGS ('dbx_business_glossary_term' = 'Baseline Milestone Date');
+ALTER TABLE `vibe_construction_v1`.`project`.`project_milestone` ALTER COLUMN `completion_percentage` SET TAGS ('dbx_business_glossary_term' = 'Milestone Completion Percentage');
+ALTER TABLE `vibe_construction_v1`.`project`.`project_milestone` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
+ALTER TABLE `vibe_construction_v1`.`project`.`project_milestone` ALTER COLUMN `delivery_model` SET TAGS ('dbx_business_glossary_term' = 'Project Delivery Model');
+ALTER TABLE `vibe_construction_v1`.`project`.`project_milestone` ALTER COLUMN `delivery_model` SET TAGS ('dbx_value_regex' = 'EPC|DB|DBB|PPP|BOT|GMP');
+ALTER TABLE `vibe_construction_v1`.`project`.`project_milestone` ALTER COLUMN `project_milestone_description` SET TAGS ('dbx_business_glossary_term' = 'Milestone Description');
+ALTER TABLE `vibe_construction_v1`.`project`.`project_milestone` ALTER COLUMN `eot_days_approved` SET TAGS ('dbx_business_glossary_term' = 'Extension of Time (EOT) Approved Days');
+ALTER TABLE `vibe_construction_v1`.`project`.`project_milestone` ALTER COLUMN `eot_reference` SET TAGS ('dbx_business_glossary_term' = 'Extension of Time (EOT) Reference Number');
+ALTER TABLE `vibe_construction_v1`.`project`.`project_milestone` ALTER COLUMN `forecast_date` SET TAGS ('dbx_business_glossary_term' = 'Forecast Milestone Date');
+ALTER TABLE `vibe_construction_v1`.`project`.`project_milestone` ALTER COLUMN `hse_clearance_required` SET TAGS ('dbx_business_glossary_term' = 'Health Safety Environment (HSE) Clearance Required Flag');
+ALTER TABLE `vibe_construction_v1`.`project`.`project_milestone` ALTER COLUMN `is_contractual` SET TAGS ('dbx_business_glossary_term' = 'Contractual Milestone Flag');
+ALTER TABLE `vibe_construction_v1`.`project`.`project_milestone` ALTER COLUMN `is_critical_path` SET TAGS ('dbx_business_glossary_term' = 'Critical Path Milestone Flag');
+ALTER TABLE `vibe_construction_v1`.`project`.`project_milestone` ALTER COLUMN `is_ld_trigger` SET TAGS ('dbx_business_glossary_term' = 'Liquidated Damages (LD) Trigger Flag');
+ALTER TABLE `vibe_construction_v1`.`project`.`project_milestone` ALTER COLUMN `is_payment_trigger` SET TAGS ('dbx_business_glossary_term' = 'Payment Milestone Trigger Flag');
+ALTER TABLE `vibe_construction_v1`.`project`.`project_milestone` ALTER COLUMN `ld_currency_code` SET TAGS ('dbx_business_glossary_term' = 'Liquidated Damages (LD) Currency Code');
+ALTER TABLE `vibe_construction_v1`.`project`.`project_milestone` ALTER COLUMN `ld_currency_code` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
+ALTER TABLE `vibe_construction_v1`.`project`.`project_milestone` ALTER COLUMN `ld_rate_per_day` SET TAGS ('dbx_business_glossary_term' = 'Liquidated Damages (LD) Daily Rate');
+ALTER TABLE `vibe_construction_v1`.`project`.`project_milestone` ALTER COLUMN `ld_rate_per_day` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_construction_v1`.`project`.`project_milestone` ALTER COLUMN `leed_related` SET TAGS ('dbx_business_glossary_term' = 'LEED Certification Related Flag');
+ALTER TABLE `vibe_construction_v1`.`project`.`project_milestone` ALTER COLUMN `milestone_category` SET TAGS ('dbx_business_glossary_term' = 'Milestone Category');
+ALTER TABLE `vibe_construction_v1`.`project`.`project_milestone` ALTER COLUMN `milestone_code` SET TAGS ('dbx_business_glossary_term' = 'Milestone Code');
+ALTER TABLE `vibe_construction_v1`.`project`.`project_milestone` ALTER COLUMN `milestone_code` SET TAGS ('dbx_value_regex' = '^MS-[A-Z0-9]{3,20}$');
+ALTER TABLE `vibe_construction_v1`.`project`.`project_milestone` ALTER COLUMN `milestone_name` SET TAGS ('dbx_business_glossary_term' = 'Milestone Name');
+ALTER TABLE `vibe_construction_v1`.`project`.`project_milestone` ALTER COLUMN `milestone_name` SET TAGS ('dbx_pii_name' = 'true');
+ALTER TABLE `vibe_construction_v1`.`project`.`project_milestone` ALTER COLUMN `milestone_status` SET TAGS ('dbx_business_glossary_term' = 'Milestone Status');
+ALTER TABLE `vibe_construction_v1`.`project`.`project_milestone` ALTER COLUMN `milestone_status` SET TAGS ('dbx_value_regex' = 'not_started|in_progress|completed|overdue|waived|deferred');
+ALTER TABLE `vibe_construction_v1`.`project`.`project_milestone` ALTER COLUMN `milestone_type` SET TAGS ('dbx_business_glossary_term' = 'Milestone Type');
+ALTER TABLE `vibe_construction_v1`.`project`.`project_milestone` ALTER COLUMN `milestone_type` SET TAGS ('dbx_value_regex' = 'contractual|internal|regulatory|client|financial');
+ALTER TABLE `vibe_construction_v1`.`project`.`project_milestone` ALTER COLUMN `notification_advance_days` SET TAGS ('dbx_business_glossary_term' = 'Notification Advance Notice Days');
+ALTER TABLE `vibe_construction_v1`.`project`.`project_milestone` ALTER COLUMN `notification_required` SET TAGS ('dbx_business_glossary_term' = 'Client Notification Required Flag');
+ALTER TABLE `vibe_construction_v1`.`project`.`project_milestone` ALTER COLUMN `payment_amount` SET TAGS ('dbx_business_glossary_term' = 'Milestone Payment Amount');
+ALTER TABLE `vibe_construction_v1`.`project`.`project_milestone` ALTER COLUMN `payment_amount` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_construction_v1`.`project`.`project_milestone` ALTER COLUMN `planned_date` SET TAGS ('dbx_business_glossary_term' = 'Planned Milestone Date');
+ALTER TABLE `vibe_construction_v1`.`project`.`project_milestone` ALTER COLUMN `procore_milestone_reference` SET TAGS ('dbx_business_glossary_term' = 'Procore Milestone ID');
+ALTER TABLE `vibe_construction_v1`.`project`.`project_milestone` ALTER COLUMN `remarks` SET TAGS ('dbx_business_glossary_term' = 'Milestone Remarks');
+ALTER TABLE `vibe_construction_v1`.`project`.`project_milestone` ALTER COLUMN `responsible_party` SET TAGS ('dbx_business_glossary_term' = 'Responsible Party');
+ALTER TABLE `vibe_construction_v1`.`project`.`project_milestone` ALTER COLUMN `responsible_party` SET TAGS ('dbx_value_regex' = 'contractor|client|subcontractor|engineer|joint_venture|regulator');
+ALTER TABLE `vibe_construction_v1`.`project`.`project_milestone` ALTER COLUMN `schedule_variance_days` SET TAGS ('dbx_business_glossary_term' = 'Schedule Variance (Days)');
+ALTER TABLE `vibe_construction_v1`.`project`.`project_milestone` ALTER COLUMN `sign_off_document_ref` SET TAGS ('dbx_business_glossary_term' = 'Milestone Sign-Off Document Reference');
+ALTER TABLE `vibe_construction_v1`.`project`.`project_milestone` ALTER COLUMN `total_float_days` SET TAGS ('dbx_business_glossary_term' = 'Total Float (Days)');
+ALTER TABLE `vibe_construction_v1`.`project`.`project_milestone` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Last Updated Timestamp');
 ALTER TABLE `vibe_construction_v1`.`project`.`project_baseline` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_construction_v1`.`project`.`project_baseline` SET TAGS ('dbx_subdomain' = 'cost_control');
+ALTER TABLE `vibe_construction_v1`.`project`.`project_baseline` SET TAGS ('dbx_subdomain' = 'project_structure');
 ALTER TABLE `vibe_construction_v1`.`project`.`project_baseline` ALTER COLUMN `project_baseline_id` SET TAGS ('dbx_business_glossary_term' = 'Baseline ID');
+ALTER TABLE `vibe_construction_v1`.`project`.`project_baseline` ALTER COLUMN `contact_id` SET TAGS ('dbx_business_glossary_term' = 'Client Approving Contact Id (Foreign Key)');
 ALTER TABLE `vibe_construction_v1`.`project`.`project_baseline` ALTER COLUMN `construction_project_id` SET TAGS ('dbx_business_glossary_term' = 'Project ID');
 ALTER TABLE `vibe_construction_v1`.`project`.`project_baseline` ALTER COLUMN `wbs_element_id` SET TAGS ('dbx_business_glossary_term' = 'Work Breakdown Structure (WBS) ID');
 ALTER TABLE `vibe_construction_v1`.`project`.`project_baseline` ALTER COLUMN `approval_date` SET TAGS ('dbx_business_glossary_term' = 'Baseline Approval Date');
@@ -904,15 +828,13 @@ ALTER TABLE `vibe_construction_v1`.`project`.`project_baseline` ALTER COLUMN `va
 ALTER TABLE `vibe_construction_v1`.`project`.`evm_period_record` SET TAGS ('dbx_data_type' = 'transactional_data');
 ALTER TABLE `vibe_construction_v1`.`project`.`evm_period_record` SET TAGS ('dbx_subdomain' = 'performance_tracking');
 ALTER TABLE `vibe_construction_v1`.`project`.`evm_period_record` ALTER COLUMN `evm_period_record_id` SET TAGS ('dbx_business_glossary_term' = 'Earned Value Management (EVM) Period Record ID');
-ALTER TABLE `vibe_construction_v1`.`project`.`evm_period_record` ALTER COLUMN `construction_project_id` SET TAGS ('dbx_business_glossary_term' = 'Project ID');
 ALTER TABLE `vibe_construction_v1`.`project`.`evm_period_record` ALTER COLUMN `cost_account_id` SET TAGS ('dbx_business_glossary_term' = 'Cost Account Id (Foreign Key)');
 ALTER TABLE `vibe_construction_v1`.`project`.`evm_period_record` ALTER COLUMN `phase_id` SET TAGS ('dbx_business_glossary_term' = 'Phase Id (Foreign Key)');
-ALTER TABLE `vibe_construction_v1`.`project`.`evm_period_record` ALTER COLUMN `project_baseline_id` SET TAGS ('dbx_business_glossary_term' = 'Project Baseline Id (Foreign Key)');
-ALTER TABLE `vibe_construction_v1`.`project`.`evm_period_record` ALTER COLUMN `project_budget_id` SET TAGS ('dbx_business_glossary_term' = 'Project Budget Id (Foreign Key)');
-ALTER TABLE `vibe_construction_v1`.`project`.`evm_period_record` ALTER COLUMN `wbs_element_id` SET TAGS ('dbx_business_glossary_term' = 'Work Breakdown Structure (WBS) Element ID');
+ALTER TABLE `vibe_construction_v1`.`project`.`evm_period_record` ALTER COLUMN `schedule_baseline_id` SET TAGS ('dbx_business_glossary_term' = 'Schedule Baseline Id (Foreign Key)');
 ALTER TABLE `vibe_construction_v1`.`project`.`evm_period_record` ALTER COLUMN `acwp` SET TAGS ('dbx_business_glossary_term' = 'Actual Cost of Work Performed (ACWP) / Actual Cost (AC)');
 ALTER TABLE `vibe_construction_v1`.`project`.`evm_period_record` ALTER COLUMN `acwp` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_construction_v1`.`project`.`evm_period_record` ALTER COLUMN `approved_by` SET TAGS ('dbx_business_glossary_term' = 'Approved By (PMO Approver)');
+ALTER TABLE `vibe_construction_v1`.`project`.`evm_period_record` ALTER COLUMN `approved_by` SET TAGS ('dbx_pii_identifier' = 'true');
 ALTER TABLE `vibe_construction_v1`.`project`.`evm_period_record` ALTER COLUMN `approved_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Approval Timestamp');
 ALTER TABLE `vibe_construction_v1`.`project`.`evm_period_record` ALTER COLUMN `baseline_completion_date` SET TAGS ('dbx_business_glossary_term' = 'Baseline Completion Date');
 ALTER TABLE `vibe_construction_v1`.`project`.`evm_period_record` ALTER COLUMN `bcwp` SET TAGS ('dbx_business_glossary_term' = 'Budgeted Cost of Work Performed (BCWP) / Earned Value (EV)');
@@ -955,6 +877,7 @@ ALTER TABLE `vibe_construction_v1`.`project`.`evm_period_record` ALTER COLUMN `p
 ALTER TABLE `vibe_construction_v1`.`project`.`evm_period_record` ALTER COLUMN `progress_measurement_method` SET TAGS ('dbx_business_glossary_term' = 'Physical Progress Measurement Method');
 ALTER TABLE `vibe_construction_v1`.`project`.`evm_period_record` ALTER COLUMN `progress_measurement_method` SET TAGS ('dbx_value_regex' = 'weighted_steps|milestone|units_complete|level_of_effort|percent_complete|50_50_rule');
 ALTER TABLE `vibe_construction_v1`.`project`.`evm_period_record` ALTER COLUMN `quantity_unit_of_measure` SET TAGS ('dbx_business_glossary_term' = 'Quantity Unit of Measure');
+ALTER TABLE `vibe_construction_v1`.`project`.`evm_period_record` ALTER COLUMN `quantity_unit_of_measure` SET TAGS ('dbx_pii_address' = 'true');
 ALTER TABLE `vibe_construction_v1`.`project`.`evm_period_record` ALTER COLUMN `record_status` SET TAGS ('dbx_business_glossary_term' = 'EVM Period Record Status');
 ALTER TABLE `vibe_construction_v1`.`project`.`evm_period_record` ALTER COLUMN `record_status` SET TAGS ('dbx_value_regex' = 'draft|submitted|approved|rejected|superseded');
 ALTER TABLE `vibe_construction_v1`.`project`.`evm_period_record` ALTER COLUMN `schedule_variance` SET TAGS ('dbx_business_glossary_term' = 'Schedule Variance (SV)');
@@ -969,16 +892,16 @@ ALTER TABLE `vibe_construction_v1`.`project`.`evm_period_record` ALTER COLUMN `u
 ALTER TABLE `vibe_construction_v1`.`project`.`evm_period_record` ALTER COLUMN `vac` SET TAGS ('dbx_business_glossary_term' = 'Variance at Completion (VAC)');
 ALTER TABLE `vibe_construction_v1`.`project`.`evm_period_record` ALTER COLUMN `vac` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_construction_v1`.`project`.`evm_period_record` ALTER COLUMN `verifying_engineer` SET TAGS ('dbx_business_glossary_term' = 'Verifying Engineer Name');
+ALTER TABLE `vibe_construction_v1`.`project`.`evm_period_record` ALTER COLUMN `verifying_engineer` SET TAGS ('dbx_pii_identifier' = 'true');
 ALTER TABLE `vibe_construction_v1`.`project`.`progress_measurement` SET TAGS ('dbx_data_type' = 'transactional_data');
 ALTER TABLE `vibe_construction_v1`.`project`.`progress_measurement` SET TAGS ('dbx_subdomain' = 'performance_tracking');
 ALTER TABLE `vibe_construction_v1`.`project`.`progress_measurement` ALTER COLUMN `progress_measurement_id` SET TAGS ('dbx_business_glossary_term' = 'Progress Measurement ID');
 ALTER TABLE `vibe_construction_v1`.`project`.`progress_measurement` ALTER COLUMN `activity_id` SET TAGS ('dbx_business_glossary_term' = 'Activity ID');
+ALTER TABLE `vibe_construction_v1`.`project`.`progress_measurement` ALTER COLUMN `contact_id` SET TAGS ('dbx_business_glossary_term' = 'Client Verifier Contact Id (Foreign Key)');
 ALTER TABLE `vibe_construction_v1`.`project`.`progress_measurement` ALTER COLUMN `construction_project_id` SET TAGS ('dbx_business_glossary_term' = 'Project ID');
 ALTER TABLE `vibe_construction_v1`.`project`.`progress_measurement` ALTER COLUMN `cost_account_id` SET TAGS ('dbx_business_glossary_term' = 'Cost Account Id (Foreign Key)');
 ALTER TABLE `vibe_construction_v1`.`project`.`progress_measurement` ALTER COLUMN `evm_period_record_id` SET TAGS ('dbx_business_glossary_term' = 'Evm Period Record Id (Foreign Key)');
-ALTER TABLE `vibe_construction_v1`.`project`.`progress_measurement` ALTER COLUMN `phase_id` SET TAGS ('dbx_business_glossary_term' = 'Phase Id (Foreign Key)');
 ALTER TABLE `vibe_construction_v1`.`project`.`progress_measurement` ALTER COLUMN `project_baseline_id` SET TAGS ('dbx_business_glossary_term' = 'Project Baseline Id (Foreign Key)');
-ALTER TABLE `vibe_construction_v1`.`project`.`progress_measurement` ALTER COLUMN `wbs_element_id` SET TAGS ('dbx_business_glossary_term' = 'Work Breakdown Structure (WBS) Element ID');
 ALTER TABLE `vibe_construction_v1`.`project`.`progress_measurement` ALTER COLUMN `billing_period_reference` SET TAGS ('dbx_business_glossary_term' = 'Billing Period Reference');
 ALTER TABLE `vibe_construction_v1`.`project`.`progress_measurement` ALTER COLUMN `budget_at_completion` SET TAGS ('dbx_business_glossary_term' = 'Budget at Completion (BAC)');
 ALTER TABLE `vibe_construction_v1`.`project`.`progress_measurement` ALTER COLUMN `budgeted_quantity` SET TAGS ('dbx_business_glossary_term' = 'Budgeted Quantity');
@@ -1009,6 +932,7 @@ ALTER TABLE `vibe_construction_v1`.`project`.`progress_measurement` ALTER COLUMN
 ALTER TABLE `vibe_construction_v1`.`project`.`progress_measurement` ALTER COLUMN `planned_value` SET TAGS ('dbx_business_glossary_term' = 'Planned Value (PV)');
 ALTER TABLE `vibe_construction_v1`.`project`.`progress_measurement` ALTER COLUMN `previous_percent_complete` SET TAGS ('dbx_business_glossary_term' = 'Previous Period Percent Complete');
 ALTER TABLE `vibe_construction_v1`.`project`.`progress_measurement` ALTER COLUMN `quantity_unit_of_measure` SET TAGS ('dbx_business_glossary_term' = 'Quantity Unit of Measure');
+ALTER TABLE `vibe_construction_v1`.`project`.`progress_measurement` ALTER COLUMN `quantity_unit_of_measure` SET TAGS ('dbx_pii_address' = 'true');
 ALTER TABLE `vibe_construction_v1`.`project`.`progress_measurement` ALTER COLUMN `remarks` SET TAGS ('dbx_business_glossary_term' = 'Measurement Remarks');
 ALTER TABLE `vibe_construction_v1`.`project`.`progress_measurement` ALTER COLUMN `reporting_period_code` SET TAGS ('dbx_business_glossary_term' = 'Reporting Period ID');
 ALTER TABLE `vibe_construction_v1`.`project`.`progress_measurement` ALTER COLUMN `reporting_period_end_date` SET TAGS ('dbx_business_glossary_term' = 'Reporting Period End Date');
@@ -1018,80 +942,74 @@ ALTER TABLE `vibe_construction_v1`.`project`.`progress_measurement` ALTER COLUMN
 ALTER TABLE `vibe_construction_v1`.`project`.`progress_measurement` ALTER COLUMN `spi` SET TAGS ('dbx_business_glossary_term' = 'Schedule Performance Index (SPI)');
 ALTER TABLE `vibe_construction_v1`.`project`.`progress_measurement` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Last Updated Timestamp');
 ALTER TABLE `vibe_construction_v1`.`project`.`progress_measurement` ALTER COLUMN `verification_date` SET TAGS ('dbx_business_glossary_term' = 'Verification Date');
-ALTER TABLE `vibe_construction_v1`.`project`.`progress_measurement` ALTER COLUMN `verifier_name` SET TAGS ('dbx_business_glossary_term' = 'Verifying Engineer Name');
-ALTER TABLE `vibe_construction_v1`.`project`.`progress_measurement` ALTER COLUMN `verifier_name` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_construction_v1`.`project`.`progress_measurement` ALTER COLUMN `work_area` SET TAGS ('dbx_business_glossary_term' = 'Work Area / Zone');
-ALTER TABLE `vibe_construction_v1`.`project`.`change_order` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_construction_v1`.`project`.`change_order` SET TAGS ('dbx_subdomain' = 'cost_control');
-ALTER TABLE `vibe_construction_v1`.`project`.`change_order` ALTER COLUMN `change_order_id` SET TAGS ('dbx_business_glossary_term' = 'Project Change Order (CO) ID');
-ALTER TABLE `vibe_construction_v1`.`project`.`change_order` ALTER COLUMN `construction_project_id` SET TAGS ('dbx_business_glossary_term' = 'Project ID');
-ALTER TABLE `vibe_construction_v1`.`project`.`change_order` ALTER COLUMN `cost_account_id` SET TAGS ('dbx_business_glossary_term' = 'Cost Account Id (Foreign Key)');
-ALTER TABLE `vibe_construction_v1`.`project`.`change_order` ALTER COLUMN `cost_code_id` SET TAGS ('dbx_business_glossary_term' = 'Finance Cost Code Id (Foreign Key)');
-ALTER TABLE `vibe_construction_v1`.`project`.`change_order` ALTER COLUMN `journal_entry_id` SET TAGS ('dbx_business_glossary_term' = 'Journal Entry Id (Foreign Key)');
-ALTER TABLE `vibe_construction_v1`.`project`.`change_order` ALTER COLUMN `milestone_id` SET TAGS ('dbx_business_glossary_term' = 'Project Milestone Id (Foreign Key)');
-ALTER TABLE `vibe_construction_v1`.`project`.`change_order` ALTER COLUMN `phase_id` SET TAGS ('dbx_business_glossary_term' = 'Phase Id (Foreign Key)');
-ALTER TABLE `vibe_construction_v1`.`project`.`change_order` ALTER COLUMN `project_baseline_id` SET TAGS ('dbx_business_glossary_term' = 'Project Baseline Id (Foreign Key)');
-ALTER TABLE `vibe_construction_v1`.`project`.`change_order` ALTER COLUMN `wbs_element_id` SET TAGS ('dbx_business_glossary_term' = 'Wbs Element Id (Foreign Key)');
-ALTER TABLE `vibe_construction_v1`.`project`.`change_order` ALTER COLUMN `aconex_mail_ref` SET TAGS ('dbx_business_glossary_term' = 'Aconex Mail Reference');
-ALTER TABLE `vibe_construction_v1`.`project`.`change_order` ALTER COLUMN `approval_date` SET TAGS ('dbx_business_glossary_term' = 'Change Order Approval Date');
-ALTER TABLE `vibe_construction_v1`.`project`.`change_order` ALTER COLUMN `approval_date` SET TAGS ('dbx_ssot_source' = 'subcontractor.subcontractor_change_order');
-ALTER TABLE `vibe_construction_v1`.`project`.`change_order` ALTER COLUMN `approval_status` SET TAGS ('dbx_business_glossary_term' = 'Change Order Approval Status');
-ALTER TABLE `vibe_construction_v1`.`project`.`change_order` ALTER COLUMN `approval_status` SET TAGS ('dbx_value_regex' = 'draft|submitted|under_review|approved|rejected|voided');
-ALTER TABLE `vibe_construction_v1`.`project`.`change_order` ALTER COLUMN `approval_status` SET TAGS ('dbx_ssot_source' = 'subcontractor.subcontractor_change_order');
-ALTER TABLE `vibe_construction_v1`.`project`.`change_order` ALTER COLUMN `budget_line_item_ref` SET TAGS ('dbx_business_glossary_term' = 'Budget Line Item Reference');
-ALTER TABLE `vibe_construction_v1`.`project`.`change_order` ALTER COLUMN `change_type` SET TAGS ('dbx_business_glossary_term' = 'Change Order Type');
-ALTER TABLE `vibe_construction_v1`.`project`.`change_order` ALTER COLUMN `change_type` SET TAGS ('dbx_value_regex' = 'scope_addition|scope_reduction|design_change|unforeseen_condition|client_directive|regulatory_change');
-ALTER TABLE `vibe_construction_v1`.`project`.`change_order` ALTER COLUMN `change_type` SET TAGS ('dbx_ssot_source' = 'subcontractor.subcontractor_change_order');
-ALTER TABLE `vibe_construction_v1`.`project`.`change_order` ALTER COLUMN `co_number` SET TAGS ('dbx_business_glossary_term' = 'Change Order (CO) Number');
-ALTER TABLE `vibe_construction_v1`.`project`.`change_order` ALTER COLUMN `co_number` SET TAGS ('dbx_value_regex' = '^CO-[0-9]{4,6}$');
-ALTER TABLE `vibe_construction_v1`.`project`.`change_order` ALTER COLUMN `co_number` SET TAGS ('dbx_ssot_source' = 'subcontractor.subcontractor_change_order');
-ALTER TABLE `vibe_construction_v1`.`project`.`change_order` ALTER COLUMN `contingency_drawn_amount` SET TAGS ('dbx_business_glossary_term' = 'Contingency Drawn Amount');
-ALTER TABLE `vibe_construction_v1`.`project`.`change_order` ALTER COLUMN `contingency_drawn_amount` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_construction_v1`.`project`.`change_order` ALTER COLUMN `contract_clause_reference` SET TAGS ('dbx_business_glossary_term' = 'Contract Clause Reference');
-ALTER TABLE `vibe_construction_v1`.`project`.`change_order` ALTER COLUMN `cost_impact_amount` SET TAGS ('dbx_business_glossary_term' = 'Change Order Cost Impact Amount');
-ALTER TABLE `vibe_construction_v1`.`project`.`change_order` ALTER COLUMN `cost_impact_amount` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_construction_v1`.`project`.`change_order` ALTER COLUMN `cost_impact_currency` SET TAGS ('dbx_business_glossary_term' = 'Change Order Cost Impact Currency');
-ALTER TABLE `vibe_construction_v1`.`project`.`change_order` ALTER COLUMN `cost_impact_currency` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
-ALTER TABLE `vibe_construction_v1`.`project`.`change_order` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Change Order Created Timestamp');
-ALTER TABLE `vibe_construction_v1`.`project`.`change_order` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_ssot_source' = 'subcontractor.subcontractor_change_order');
-ALTER TABLE `vibe_construction_v1`.`project`.`change_order` ALTER COLUMN `delivery_model` SET TAGS ('dbx_business_glossary_term' = 'Project Delivery Model');
-ALTER TABLE `vibe_construction_v1`.`project`.`change_order` ALTER COLUMN `delivery_model` SET TAGS ('dbx_value_regex' = 'EPC|DB|DBB|PPP|BOT|GMP');
-ALTER TABLE `vibe_construction_v1`.`project`.`change_order` ALTER COLUMN `direct_cost_amount` SET TAGS ('dbx_business_glossary_term' = 'Change Order Direct Cost Amount');
-ALTER TABLE `vibe_construction_v1`.`project`.`change_order` ALTER COLUMN `direct_cost_amount` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_construction_v1`.`project`.`change_order` ALTER COLUMN `drawing_revision` SET TAGS ('dbx_business_glossary_term' = 'Associated Drawing Revision');
-ALTER TABLE `vibe_construction_v1`.`project`.`change_order` ALTER COLUMN `effective_date` SET TAGS ('dbx_business_glossary_term' = 'Change Order Effective Date');
-ALTER TABLE `vibe_construction_v1`.`project`.`change_order` ALTER COLUMN `eot_granted_days` SET TAGS ('dbx_business_glossary_term' = 'Extension of Time (EOT) Granted Days');
-ALTER TABLE `vibe_construction_v1`.`project`.`change_order` ALTER COLUMN `is_disputed` SET TAGS ('dbx_business_glossary_term' = 'Change Order Disputed Flag');
-ALTER TABLE `vibe_construction_v1`.`project`.`change_order` ALTER COLUMN `is_ld_applicable` SET TAGS ('dbx_business_glossary_term' = 'Liquidated Damages (LD) Applicable Flag');
-ALTER TABLE `vibe_construction_v1`.`project`.`change_order` ALTER COLUMN `ld_rate_per_day` SET TAGS ('dbx_business_glossary_term' = 'Liquidated Damages (LD) Rate Per Day');
-ALTER TABLE `vibe_construction_v1`.`project`.`change_order` ALTER COLUMN `ld_rate_per_day` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_construction_v1`.`project`.`change_order` ALTER COLUMN `originator` SET TAGS ('dbx_business_glossary_term' = 'Change Order Originator');
-ALTER TABLE `vibe_construction_v1`.`project`.`change_order` ALTER COLUMN `originator` SET TAGS ('dbx_value_regex' = 'client|owner|contractor|engineer|subcontractor|regulatory_authority');
-ALTER TABLE `vibe_construction_v1`.`project`.`change_order` ALTER COLUMN `overhead_and_profit_amount` SET TAGS ('dbx_business_glossary_term' = 'Change Order Overhead and Profit (OH&P) Amount');
-ALTER TABLE `vibe_construction_v1`.`project`.`change_order` ALTER COLUMN `overhead_and_profit_amount` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_construction_v1`.`project`.`change_order` ALTER COLUMN `priority` SET TAGS ('dbx_business_glossary_term' = 'Change Order Priority');
-ALTER TABLE `vibe_construction_v1`.`project`.`change_order` ALTER COLUMN `priority` SET TAGS ('dbx_value_regex' = 'critical|high|medium|low');
-ALTER TABLE `vibe_construction_v1`.`project`.`change_order` ALTER COLUMN `procore_co_reference` SET TAGS ('dbx_business_glossary_term' = 'Procore Change Order System ID');
-ALTER TABLE `vibe_construction_v1`.`project`.`change_order` ALTER COLUMN `project_change_order_description` SET TAGS ('dbx_business_glossary_term' = 'Change Order Description');
-ALTER TABLE `vibe_construction_v1`.`project`.`change_order` ALTER COLUMN `reason_code` SET TAGS ('dbx_business_glossary_term' = 'Change Order Reason Code');
-ALTER TABLE `vibe_construction_v1`.`project`.`change_order` ALTER COLUMN `reason_code` SET TAGS ('dbx_ssot_source' = 'subcontractor.subcontractor_change_order');
-ALTER TABLE `vibe_construction_v1`.`project`.`change_order` ALTER COLUMN `revision_number` SET TAGS ('dbx_business_glossary_term' = 'Change Order Revision Number');
-ALTER TABLE `vibe_construction_v1`.`project`.`change_order` ALTER COLUMN `sap_co_document_number` SET TAGS ('dbx_business_glossary_term' = 'SAP Change Order Document Number');
-ALTER TABLE `vibe_construction_v1`.`project`.`change_order` ALTER COLUMN `schedule_impact_days` SET TAGS ('dbx_business_glossary_term' = 'Change Order Schedule Impact (Days)');
-ALTER TABLE `vibe_construction_v1`.`project`.`change_order` ALTER COLUMN `schedule_impact_days` SET TAGS ('dbx_ssot_source' = 'subcontractor.subcontractor_change_order');
-ALTER TABLE `vibe_construction_v1`.`project`.`change_order` ALTER COLUMN `scope_of_work_summary` SET TAGS ('dbx_business_glossary_term' = 'Change Order Scope of Work Summary');
-ALTER TABLE `vibe_construction_v1`.`project`.`change_order` ALTER COLUMN `submitted_date` SET TAGS ('dbx_business_glossary_term' = 'Change Order Submitted Date');
-ALTER TABLE `vibe_construction_v1`.`project`.`change_order` ALTER COLUMN `title` SET TAGS ('dbx_business_glossary_term' = 'Change Order Title');
-ALTER TABLE `vibe_construction_v1`.`project`.`change_order` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Change Order Last Updated Timestamp');
+ALTER TABLE `vibe_construction_v1`.`project`.`project_change_order` SET TAGS ('dbx_data_type' = 'transactional_data');
+ALTER TABLE `vibe_construction_v1`.`project`.`project_change_order` SET TAGS ('dbx_subdomain' = 'performance_tracking');
+ALTER TABLE `vibe_construction_v1`.`project`.`project_change_order` ALTER COLUMN `project_change_order_id` SET TAGS ('dbx_business_glossary_term' = 'Project Change Order (CO) ID');
+ALTER TABLE `vibe_construction_v1`.`project`.`project_change_order` ALTER COLUMN `agreement_id` SET TAGS ('dbx_business_glossary_term' = 'Contract ID');
+ALTER TABLE `vibe_construction_v1`.`project`.`project_change_order` ALTER COLUMN `contact_id` SET TAGS ('dbx_business_glossary_term' = 'Approving Contact Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`project`.`project_change_order` ALTER COLUMN `boq_line_id` SET TAGS ('dbx_business_glossary_term' = 'Bid Boq Line Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`project`.`project_change_order` ALTER COLUMN `construction_project_id` SET TAGS ('dbx_business_glossary_term' = 'Project ID');
+ALTER TABLE `vibe_construction_v1`.`project`.`project_change_order` ALTER COLUMN `contract_change_order_id` SET TAGS ('dbx_business_glossary_term' = 'Contract Change Order Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`project`.`project_change_order` ALTER COLUMN `drawing_id` SET TAGS ('dbx_business_glossary_term' = 'Drawing Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`project`.`project_change_order` ALTER COLUMN `phase_id` SET TAGS ('dbx_business_glossary_term' = 'Phase Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`project`.`project_change_order` ALTER COLUMN `scope_id` SET TAGS ('dbx_business_glossary_term' = 'Contract Scope Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`project`.`project_change_order` ALTER COLUMN `technical_specification_id` SET TAGS ('dbx_business_glossary_term' = 'Technical Specification Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`project`.`project_change_order` ALTER COLUMN `aconex_mail_ref` SET TAGS ('dbx_business_glossary_term' = 'Aconex Mail Reference');
+ALTER TABLE `vibe_construction_v1`.`project`.`project_change_order` ALTER COLUMN `aconex_mail_ref` SET TAGS ('dbx_pii_email' = 'true');
+ALTER TABLE `vibe_construction_v1`.`project`.`project_change_order` ALTER COLUMN `approval_date` SET TAGS ('dbx_business_glossary_term' = 'Change Order Approval Date');
+ALTER TABLE `vibe_construction_v1`.`project`.`project_change_order` ALTER COLUMN `approval_status` SET TAGS ('dbx_business_glossary_term' = 'Change Order Approval Status');
+ALTER TABLE `vibe_construction_v1`.`project`.`project_change_order` ALTER COLUMN `approval_status` SET TAGS ('dbx_value_regex' = 'draft|submitted|under_review|approved|rejected|voided');
+ALTER TABLE `vibe_construction_v1`.`project`.`project_change_order` ALTER COLUMN `budget_line_item_ref` SET TAGS ('dbx_business_glossary_term' = 'Budget Line Item Reference');
+ALTER TABLE `vibe_construction_v1`.`project`.`project_change_order` ALTER COLUMN `change_type` SET TAGS ('dbx_business_glossary_term' = 'Change Order Type');
+ALTER TABLE `vibe_construction_v1`.`project`.`project_change_order` ALTER COLUMN `change_type` SET TAGS ('dbx_value_regex' = 'scope_addition|scope_reduction|design_change|unforeseen_condition|client_directive|regulatory_change');
+ALTER TABLE `vibe_construction_v1`.`project`.`project_change_order` ALTER COLUMN `co_number` SET TAGS ('dbx_business_glossary_term' = 'Change Order (CO) Number');
+ALTER TABLE `vibe_construction_v1`.`project`.`project_change_order` ALTER COLUMN `co_number` SET TAGS ('dbx_value_regex' = '^CO-[0-9]{4,6}$');
+ALTER TABLE `vibe_construction_v1`.`project`.`project_change_order` ALTER COLUMN `contingency_drawn_amount` SET TAGS ('dbx_business_glossary_term' = 'Contingency Drawn Amount');
+ALTER TABLE `vibe_construction_v1`.`project`.`project_change_order` ALTER COLUMN `contingency_drawn_amount` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_construction_v1`.`project`.`project_change_order` ALTER COLUMN `contract_clause_reference` SET TAGS ('dbx_business_glossary_term' = 'Contract Clause Reference');
+ALTER TABLE `vibe_construction_v1`.`project`.`project_change_order` ALTER COLUMN `cost_code` SET TAGS ('dbx_business_glossary_term' = 'Cost Code');
+ALTER TABLE `vibe_construction_v1`.`project`.`project_change_order` ALTER COLUMN `cost_impact_amount` SET TAGS ('dbx_business_glossary_term' = 'Change Order Cost Impact Amount');
+ALTER TABLE `vibe_construction_v1`.`project`.`project_change_order` ALTER COLUMN `cost_impact_amount` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_construction_v1`.`project`.`project_change_order` ALTER COLUMN `cost_impact_currency` SET TAGS ('dbx_business_glossary_term' = 'Change Order Cost Impact Currency');
+ALTER TABLE `vibe_construction_v1`.`project`.`project_change_order` ALTER COLUMN `cost_impact_currency` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
+ALTER TABLE `vibe_construction_v1`.`project`.`project_change_order` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Change Order Created Timestamp');
+ALTER TABLE `vibe_construction_v1`.`project`.`project_change_order` ALTER COLUMN `delivery_model` SET TAGS ('dbx_business_glossary_term' = 'Project Delivery Model');
+ALTER TABLE `vibe_construction_v1`.`project`.`project_change_order` ALTER COLUMN `delivery_model` SET TAGS ('dbx_value_regex' = 'EPC|DB|DBB|PPP|BOT|GMP');
+ALTER TABLE `vibe_construction_v1`.`project`.`project_change_order` ALTER COLUMN `project_change_order_description` SET TAGS ('dbx_business_glossary_term' = 'Change Order Description');
+ALTER TABLE `vibe_construction_v1`.`project`.`project_change_order` ALTER COLUMN `direct_cost_amount` SET TAGS ('dbx_business_glossary_term' = 'Change Order Direct Cost Amount');
+ALTER TABLE `vibe_construction_v1`.`project`.`project_change_order` ALTER COLUMN `direct_cost_amount` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_construction_v1`.`project`.`project_change_order` ALTER COLUMN `effective_date` SET TAGS ('dbx_business_glossary_term' = 'Change Order Effective Date');
+ALTER TABLE `vibe_construction_v1`.`project`.`project_change_order` ALTER COLUMN `eot_granted_days` SET TAGS ('dbx_business_glossary_term' = 'Extension of Time (EOT) Granted Days');
+ALTER TABLE `vibe_construction_v1`.`project`.`project_change_order` ALTER COLUMN `is_disputed` SET TAGS ('dbx_business_glossary_term' = 'Change Order Disputed Flag');
+ALTER TABLE `vibe_construction_v1`.`project`.`project_change_order` ALTER COLUMN `is_ld_applicable` SET TAGS ('dbx_business_glossary_term' = 'Liquidated Damages (LD) Applicable Flag');
+ALTER TABLE `vibe_construction_v1`.`project`.`project_change_order` ALTER COLUMN `ld_rate_per_day` SET TAGS ('dbx_business_glossary_term' = 'Liquidated Damages (LD) Rate Per Day');
+ALTER TABLE `vibe_construction_v1`.`project`.`project_change_order` ALTER COLUMN `ld_rate_per_day` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_construction_v1`.`project`.`project_change_order` ALTER COLUMN `originator` SET TAGS ('dbx_business_glossary_term' = 'Change Order Originator');
+ALTER TABLE `vibe_construction_v1`.`project`.`project_change_order` ALTER COLUMN `originator` SET TAGS ('dbx_value_regex' = 'client|owner|contractor|engineer|subcontractor|regulatory_authority');
+ALTER TABLE `vibe_construction_v1`.`project`.`project_change_order` ALTER COLUMN `overhead_and_profit_amount` SET TAGS ('dbx_business_glossary_term' = 'Change Order Overhead and Profit (OH&P) Amount');
+ALTER TABLE `vibe_construction_v1`.`project`.`project_change_order` ALTER COLUMN `overhead_and_profit_amount` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_construction_v1`.`project`.`project_change_order` ALTER COLUMN `priority` SET TAGS ('dbx_business_glossary_term' = 'Change Order Priority');
+ALTER TABLE `vibe_construction_v1`.`project`.`project_change_order` ALTER COLUMN `priority` SET TAGS ('dbx_value_regex' = 'critical|high|medium|low');
+ALTER TABLE `vibe_construction_v1`.`project`.`project_change_order` ALTER COLUMN `procore_co_reference` SET TAGS ('dbx_business_glossary_term' = 'Procore Change Order System ID');
+ALTER TABLE `vibe_construction_v1`.`project`.`project_change_order` ALTER COLUMN `reason_code` SET TAGS ('dbx_business_glossary_term' = 'Change Order Reason Code');
+ALTER TABLE `vibe_construction_v1`.`project`.`project_change_order` ALTER COLUMN `revision_number` SET TAGS ('dbx_business_glossary_term' = 'Change Order Revision Number');
+ALTER TABLE `vibe_construction_v1`.`project`.`project_change_order` ALTER COLUMN `sap_co_document_number` SET TAGS ('dbx_business_glossary_term' = 'SAP Change Order Document Number');
+ALTER TABLE `vibe_construction_v1`.`project`.`project_change_order` ALTER COLUMN `schedule_impact_days` SET TAGS ('dbx_business_glossary_term' = 'Change Order Schedule Impact (Days)');
+ALTER TABLE `vibe_construction_v1`.`project`.`project_change_order` ALTER COLUMN `scope_of_work_summary` SET TAGS ('dbx_business_glossary_term' = 'Change Order Scope of Work Summary');
+ALTER TABLE `vibe_construction_v1`.`project`.`project_change_order` ALTER COLUMN `submitted_date` SET TAGS ('dbx_business_glossary_term' = 'Change Order Submitted Date');
+ALTER TABLE `vibe_construction_v1`.`project`.`project_change_order` ALTER COLUMN `title` SET TAGS ('dbx_business_glossary_term' = 'Change Order Title');
+ALTER TABLE `vibe_construction_v1`.`project`.`project_change_order` ALTER COLUMN `title` SET TAGS ('dbx_pii_name' = 'true');
+ALTER TABLE `vibe_construction_v1`.`project`.`project_change_order` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Change Order Last Updated Timestamp');
 ALTER TABLE `vibe_construction_v1`.`project`.`cost_account` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_construction_v1`.`project`.`cost_account` SET TAGS ('dbx_subdomain' = 'cost_control');
+ALTER TABLE `vibe_construction_v1`.`project`.`cost_account` SET TAGS ('dbx_subdomain' = 'project_structure');
 ALTER TABLE `vibe_construction_v1`.`project`.`cost_account` ALTER COLUMN `cost_account_id` SET TAGS ('dbx_business_glossary_term' = 'Cost Account ID');
+ALTER TABLE `vibe_construction_v1`.`project`.`cost_account` ALTER COLUMN `agreement_id` SET TAGS ('dbx_business_glossary_term' = 'Agreement Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`project`.`cost_account` ALTER COLUMN `boq_line_id` SET TAGS ('dbx_business_glossary_term' = 'Bid Boq Line Id (Foreign Key)');
 ALTER TABLE `vibe_construction_v1`.`project`.`cost_account` ALTER COLUMN `construction_project_id` SET TAGS ('dbx_business_glossary_term' = 'Project ID');
-ALTER TABLE `vibe_construction_v1`.`project`.`cost_account` ALTER COLUMN `cost_code_id` SET TAGS ('dbx_business_glossary_term' = 'Finance Cost Code Id (Foreign Key)');
-ALTER TABLE `vibe_construction_v1`.`project`.`cost_account` ALTER COLUMN `gl_account_id` SET TAGS ('dbx_business_glossary_term' = 'Gl Account Id (Foreign Key)');
 ALTER TABLE `vibe_construction_v1`.`project`.`cost_account` ALTER COLUMN `phase_id` SET TAGS ('dbx_business_glossary_term' = 'Phase Id (Foreign Key)');
 ALTER TABLE `vibe_construction_v1`.`project`.`cost_account` ALTER COLUMN `project_baseline_id` SET TAGS ('dbx_business_glossary_term' = 'Project Baseline Id (Foreign Key)');
-ALTER TABLE `vibe_construction_v1`.`project`.`cost_account` ALTER COLUMN `wbs_element_id` SET TAGS ('dbx_business_glossary_term' = 'Work Breakdown Structure (WBS) Element ID');
+ALTER TABLE `vibe_construction_v1`.`project`.`cost_account` ALTER COLUMN `technical_specification_id` SET TAGS ('dbx_business_glossary_term' = 'Technical Specification Id (Foreign Key)');
 ALTER TABLE `vibe_construction_v1`.`project`.`cost_account` ALTER COLUMN `account_description` SET TAGS ('dbx_business_glossary_term' = 'Cost Account Description');
 ALTER TABLE `vibe_construction_v1`.`project`.`cost_account` ALTER COLUMN `account_status` SET TAGS ('dbx_business_glossary_term' = 'Cost Account Status');
 ALTER TABLE `vibe_construction_v1`.`project`.`cost_account` ALTER COLUMN `account_status` SET TAGS ('dbx_value_regex' = 'active|on_hold|closed|cancelled|pending_approval');
@@ -1103,6 +1021,7 @@ ALTER TABLE `vibe_construction_v1`.`project`.`cost_account` ALTER COLUMN `baseli
 ALTER TABLE `vibe_construction_v1`.`project`.`cost_account` ALTER COLUMN `baseline_start_date` SET TAGS ('dbx_business_glossary_term' = 'Baseline Start Date');
 ALTER TABLE `vibe_construction_v1`.`project`.`cost_account` ALTER COLUMN `budget_unit_rate` SET TAGS ('dbx_business_glossary_term' = 'Budget Unit Rate');
 ALTER TABLE `vibe_construction_v1`.`project`.`cost_account` ALTER COLUMN `budget_unit_rate` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_construction_v1`.`project`.`cost_account` ALTER COLUMN `budget_unit_rate` SET TAGS ('dbx_pii_address' = 'true');
 ALTER TABLE `vibe_construction_v1`.`project`.`cost_account` ALTER COLUMN `change_order_amount` SET TAGS ('dbx_business_glossary_term' = 'Change Order (CO) Amount');
 ALTER TABLE `vibe_construction_v1`.`project`.`cost_account` ALTER COLUMN `change_order_amount` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_construction_v1`.`project`.`cost_account` ALTER COLUMN `cost_account_code` SET TAGS ('dbx_business_glossary_term' = 'Cost Account Code');
@@ -1113,6 +1032,8 @@ ALTER TABLE `vibe_construction_v1`.`project`.`cost_account` ALTER COLUMN `contin
 ALTER TABLE `vibe_construction_v1`.`project`.`cost_account` ALTER COLUMN `contingency_amount` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_construction_v1`.`project`.`cost_account` ALTER COLUMN `cost_center_code` SET TAGS ('dbx_business_glossary_term' = 'Cost Center Code');
 ALTER TABLE `vibe_construction_v1`.`project`.`cost_account` ALTER COLUMN `cost_center_code` SET TAGS ('dbx_value_regex' = '^[A-Z0-9]{4,12}$');
+ALTER TABLE `vibe_construction_v1`.`project`.`cost_account` ALTER COLUMN `cost_code` SET TAGS ('dbx_business_glossary_term' = 'Cost Code');
+ALTER TABLE `vibe_construction_v1`.`project`.`cost_account` ALTER COLUMN `cost_code` SET TAGS ('dbx_value_regex' = '^[A-Z0-9]{2,15}$');
 ALTER TABLE `vibe_construction_v1`.`project`.`cost_account` ALTER COLUMN `cost_to_complete_amount` SET TAGS ('dbx_business_glossary_term' = 'Estimate to Complete (ETC) Amount');
 ALTER TABLE `vibe_construction_v1`.`project`.`cost_account` ALTER COLUMN `cost_to_complete_amount` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_construction_v1`.`project`.`cost_account` ALTER COLUMN `cost_type` SET TAGS ('dbx_business_glossary_term' = 'Cost Type');
@@ -1129,6 +1050,8 @@ ALTER TABLE `vibe_construction_v1`.`project`.`cost_account` ALTER COLUMN `foreca
 ALTER TABLE `vibe_construction_v1`.`project`.`cost_account` ALTER COLUMN `forecast_cost_at_completion` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_construction_v1`.`project`.`cost_account` ALTER COLUMN `forecast_finish_date` SET TAGS ('dbx_business_glossary_term' = 'Forecast Finish Date');
 ALTER TABLE `vibe_construction_v1`.`project`.`cost_account` ALTER COLUMN `forecast_start_date` SET TAGS ('dbx_business_glossary_term' = 'Forecast Start Date');
+ALTER TABLE `vibe_construction_v1`.`project`.`cost_account` ALTER COLUMN `gl_account_code` SET TAGS ('dbx_business_glossary_term' = 'General Ledger (GL) Account Code');
+ALTER TABLE `vibe_construction_v1`.`project`.`cost_account` ALTER COLUMN `gl_account_code` SET TAGS ('dbx_value_regex' = '^[0-9]{6,10}$');
 ALTER TABLE `vibe_construction_v1`.`project`.`cost_account` ALTER COLUMN `is_lump_sum` SET TAGS ('dbx_business_glossary_term' = 'Lump Sum Indicator');
 ALTER TABLE `vibe_construction_v1`.`project`.`cost_account` ALTER COLUMN `is_subcontract_scope` SET TAGS ('dbx_business_glossary_term' = 'Subcontract Scope Indicator');
 ALTER TABLE `vibe_construction_v1`.`project`.`cost_account` ALTER COLUMN `original_budget_amount` SET TAGS ('dbx_business_glossary_term' = 'Original Budget Amount');
@@ -1144,28 +1067,26 @@ ALTER TABLE `vibe_construction_v1`.`project`.`cost_account` ALTER COLUMN `retent
 ALTER TABLE `vibe_construction_v1`.`project`.`cost_account` ALTER COLUMN `spi` SET TAGS ('dbx_business_glossary_term' = 'Schedule Performance Index (SPI)');
 ALTER TABLE `vibe_construction_v1`.`project`.`cost_account` ALTER COLUMN `unit_of_measure` SET TAGS ('dbx_business_glossary_term' = 'Unit of Measure');
 ALTER TABLE `vibe_construction_v1`.`project`.`cost_account` ALTER COLUMN `unit_of_measure` SET TAGS ('dbx_value_regex' = '^[A-Za-z0-9/_]{1,20}$');
+ALTER TABLE `vibe_construction_v1`.`project`.`cost_account` ALTER COLUMN `unit_of_measure` SET TAGS ('dbx_pii_address' = 'true');
 ALTER TABLE `vibe_construction_v1`.`project`.`cost_account` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Last Updated Timestamp');
 ALTER TABLE `vibe_construction_v1`.`project`.`deliverable` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_construction_v1`.`project`.`deliverable` SET TAGS ('dbx_subdomain' = 'project_setup');
+ALTER TABLE `vibe_construction_v1`.`project`.`deliverable` SET TAGS ('dbx_subdomain' = 'project_structure');
 ALTER TABLE `vibe_construction_v1`.`project`.`deliverable` ALTER COLUMN `deliverable_id` SET TAGS ('dbx_business_glossary_term' = 'Deliverable ID');
-ALTER TABLE `vibe_construction_v1`.`project`.`deliverable` ALTER COLUMN `activity_id` SET TAGS ('dbx_business_glossary_term' = 'Schedule Activity ID');
 ALTER TABLE `vibe_construction_v1`.`project`.`deliverable` ALTER COLUMN `agreement_id` SET TAGS ('dbx_business_glossary_term' = 'Contract ID');
-ALTER TABLE `vibe_construction_v1`.`project`.`deliverable` ALTER COLUMN `change_order_id` SET TAGS ('dbx_business_glossary_term' = 'Project Change Order Id (Foreign Key)');
 ALTER TABLE `vibe_construction_v1`.`project`.`deliverable` ALTER COLUMN `construction_project_id` SET TAGS ('dbx_business_glossary_term' = 'Project ID');
-ALTER TABLE `vibe_construction_v1`.`project`.`deliverable` ALTER COLUMN `itp_id` SET TAGS ('dbx_business_glossary_term' = 'Itp Id (Foreign Key)');
-ALTER TABLE `vibe_construction_v1`.`project`.`deliverable` ALTER COLUMN `master_id` SET TAGS ('dbx_business_glossary_term' = 'Material Material Master Id (Foreign Key)');
-ALTER TABLE `vibe_construction_v1`.`project`.`deliverable` ALTER COLUMN `milestone_id` SET TAGS ('dbx_business_glossary_term' = 'Project Milestone Id (Foreign Key)');
-ALTER TABLE `vibe_construction_v1`.`project`.`deliverable` ALTER COLUMN `package_id` SET TAGS ('dbx_business_glossary_term' = 'Package Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`project`.`deliverable` ALTER COLUMN `cost_account_id` SET TAGS ('dbx_business_glossary_term' = 'Cost Account Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`project`.`deliverable` ALTER COLUMN `drawing_id` SET TAGS ('dbx_business_glossary_term' = 'Drawing Id (Foreign Key)');
 ALTER TABLE `vibe_construction_v1`.`project`.`deliverable` ALTER COLUMN `phase_id` SET TAGS ('dbx_business_glossary_term' = 'Phase Id (Foreign Key)');
-ALTER TABLE `vibe_construction_v1`.`project`.`deliverable` ALTER COLUMN `project_baseline_id` SET TAGS ('dbx_business_glossary_term' = 'Project Baseline Id (Foreign Key)');
 ALTER TABLE `vibe_construction_v1`.`project`.`deliverable` ALTER COLUMN `contact_id` SET TAGS ('dbx_business_glossary_term' = 'Responsible Contact Id (Foreign Key)');
-ALTER TABLE `vibe_construction_v1`.`project`.`deliverable` ALTER COLUMN `wbs_element_id` SET TAGS ('dbx_business_glossary_term' = 'Work Breakdown Structure (WBS) Element ID');
+ALTER TABLE `vibe_construction_v1`.`project`.`deliverable` ALTER COLUMN `contact_id` SET TAGS ('dbx_pii_identifier' = 'true');
+ALTER TABLE `vibe_construction_v1`.`project`.`deliverable` ALTER COLUMN `technical_specification_id` SET TAGS ('dbx_business_glossary_term' = 'Technical Specification Id (Foreign Key)');
 ALTER TABLE `vibe_construction_v1`.`project`.`deliverable` ALTER COLUMN `acceptance_date` SET TAGS ('dbx_business_glossary_term' = 'Acceptance Date');
 ALTER TABLE `vibe_construction_v1`.`project`.`deliverable` ALTER COLUMN `acceptance_status` SET TAGS ('dbx_business_glossary_term' = 'Acceptance Status');
 ALTER TABLE `vibe_construction_v1`.`project`.`deliverable` ALTER COLUMN `acceptance_status` SET TAGS ('dbx_value_regex' = 'pending|accepted|accepted_with_comments|rejected|resubmit_required');
 ALTER TABLE `vibe_construction_v1`.`project`.`deliverable` ALTER COLUMN `actual_issue_date` SET TAGS ('dbx_business_glossary_term' = 'Actual Issue Date');
 ALTER TABLE `vibe_construction_v1`.`project`.`deliverable` ALTER COLUMN `bim_model_reference` SET TAGS ('dbx_business_glossary_term' = 'Building Information Modeling (BIM) Model Reference');
 ALTER TABLE `vibe_construction_v1`.`project`.`deliverable` ALTER COLUMN `deliverable_category` SET TAGS ('dbx_business_glossary_term' = 'Deliverable Category');
+ALTER TABLE `vibe_construction_v1`.`project`.`deliverable` ALTER COLUMN `change_order_reference` SET TAGS ('dbx_business_glossary_term' = 'Change Order (CO) Reference');
 ALTER TABLE `vibe_construction_v1`.`project`.`deliverable` ALTER COLUMN `deliverable_code` SET TAGS ('dbx_business_glossary_term' = 'Deliverable Code');
 ALTER TABLE `vibe_construction_v1`.`project`.`deliverable` ALTER COLUMN `deliverable_code` SET TAGS ('dbx_value_regex' = '^[A-Z0-9-.]{3,30}$');
 ALTER TABLE `vibe_construction_v1`.`project`.`deliverable` ALTER COLUMN `comments` SET TAGS ('dbx_business_glossary_term' = 'Review Comments');
@@ -1179,6 +1100,7 @@ ALTER TABLE `vibe_construction_v1`.`project`.`deliverable` ALTER COLUMN `forecas
 ALTER TABLE `vibe_construction_v1`.`project`.`deliverable` ALTER COLUMN `is_contractual` SET TAGS ('dbx_business_glossary_term' = 'Is Contractual Deliverable Flag');
 ALTER TABLE `vibe_construction_v1`.`project`.`deliverable` ALTER COLUMN `is_dlp_applicable` SET TAGS ('dbx_business_glossary_term' = 'Is Defects Liability Period (DLP) Applicable Flag');
 ALTER TABLE `vibe_construction_v1`.`project`.`deliverable` ALTER COLUMN `is_handover_required` SET TAGS ('dbx_business_glossary_term' = 'Is Handover Required Flag');
+ALTER TABLE `vibe_construction_v1`.`project`.`deliverable` ALTER COLUMN `itp_reference` SET TAGS ('dbx_business_glossary_term' = 'Inspection and Test Plan (ITP) Reference');
 ALTER TABLE `vibe_construction_v1`.`project`.`deliverable` ALTER COLUMN `native_file_format` SET TAGS ('dbx_business_glossary_term' = 'Native File Format');
 ALTER TABLE `vibe_construction_v1`.`project`.`deliverable` ALTER COLUMN `ncr_reference` SET TAGS ('dbx_business_glossary_term' = 'Non-Conformance Report (NCR) Reference');
 ALTER TABLE `vibe_construction_v1`.`project`.`deliverable` ALTER COLUMN `percent_complete` SET TAGS ('dbx_business_glossary_term' = 'Percent Complete');
@@ -1193,26 +1115,23 @@ ALTER TABLE `vibe_construction_v1`.`project`.`deliverable` ALTER COLUMN `revisio
 ALTER TABLE `vibe_construction_v1`.`project`.`deliverable` ALTER COLUMN `storage_location_url` SET TAGS ('dbx_business_glossary_term' = 'Storage Location URL');
 ALTER TABLE `vibe_construction_v1`.`project`.`deliverable` ALTER COLUMN `submission_number` SET TAGS ('dbx_business_glossary_term' = 'Submission Number');
 ALTER TABLE `vibe_construction_v1`.`project`.`deliverable` ALTER COLUMN `title` SET TAGS ('dbx_business_glossary_term' = 'Deliverable Title');
+ALTER TABLE `vibe_construction_v1`.`project`.`deliverable` ALTER COLUMN `title` SET TAGS ('dbx_pii_name' = 'true');
+ALTER TABLE `vibe_construction_v1`.`project`.`deliverable` ALTER COLUMN `transmittal_number` SET TAGS ('dbx_business_glossary_term' = 'Transmittal Number');
 ALTER TABLE `vibe_construction_v1`.`project`.`deliverable` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Updated Timestamp');
 ALTER TABLE `vibe_construction_v1`.`project`.`deliverable` ALTER COLUMN `weight_factor` SET TAGS ('dbx_business_glossary_term' = 'Weight Factor');
 ALTER TABLE `vibe_construction_v1`.`project`.`risk_register` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_construction_v1`.`project`.`risk_register` SET TAGS ('dbx_subdomain' = 'performance_tracking');
+ALTER TABLE `vibe_construction_v1`.`project`.`risk_register` SET TAGS ('dbx_subdomain' = 'project_structure');
 ALTER TABLE `vibe_construction_v1`.`project`.`risk_register` ALTER COLUMN `risk_register_id` SET TAGS ('dbx_business_glossary_term' = 'Risk Register ID');
-ALTER TABLE `vibe_construction_v1`.`project`.`risk_register` ALTER COLUMN `activity_id` SET TAGS ('dbx_business_glossary_term' = 'Activity Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`project`.`risk_register` ALTER COLUMN `agreement_id` SET TAGS ('dbx_business_glossary_term' = 'Agreement Id (Foreign Key)');
 ALTER TABLE `vibe_construction_v1`.`project`.`risk_register` ALTER COLUMN `construction_project_id` SET TAGS ('dbx_business_glossary_term' = 'Project ID');
-ALTER TABLE `vibe_construction_v1`.`project`.`risk_register` ALTER COLUMN `cost_code_id` SET TAGS ('dbx_business_glossary_term' = 'Finance Cost Code Id (Foreign Key)');
-ALTER TABLE `vibe_construction_v1`.`project`.`risk_register` ALTER COLUMN `hazard_register_id` SET TAGS ('dbx_business_glossary_term' = 'Hazard Register Id (Foreign Key)');
-ALTER TABLE `vibe_construction_v1`.`project`.`risk_register` ALTER COLUMN `milestone_id` SET TAGS ('dbx_business_glossary_term' = 'Project Milestone Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`project`.`risk_register` ALTER COLUMN `delay_event_id` SET TAGS ('dbx_business_glossary_term' = 'Delay Event Id (Foreign Key)');
 ALTER TABLE `vibe_construction_v1`.`project`.`risk_register` ALTER COLUMN `phase_id` SET TAGS ('dbx_business_glossary_term' = 'Phase Id (Foreign Key)');
-ALTER TABLE `vibe_construction_v1`.`project`.`risk_register` ALTER COLUMN `rfi_id` SET TAGS ('dbx_business_glossary_term' = 'Rfi Id (Foreign Key)');
-ALTER TABLE `vibe_construction_v1`.`project`.`risk_register` ALTER COLUMN `risk_assessment_id` SET TAGS ('dbx_business_glossary_term' = 'Risk Assessment Id (Foreign Key)');
 ALTER TABLE `vibe_construction_v1`.`project`.`risk_register` ALTER COLUMN `wbs_element_id` SET TAGS ('dbx_business_glossary_term' = 'Work Breakdown Structure (WBS) Element ID');
 ALTER TABLE `vibe_construction_v1`.`project`.`risk_register` ALTER COLUMN `affected_discipline` SET TAGS ('dbx_business_glossary_term' = 'Affected Discipline');
 ALTER TABLE `vibe_construction_v1`.`project`.`risk_register` ALTER COLUMN `closure_date` SET TAGS ('dbx_business_glossary_term' = 'Risk Closure Date');
 ALTER TABLE `vibe_construction_v1`.`project`.`risk_register` ALTER COLUMN `contingency_cost_amount` SET TAGS ('dbx_business_glossary_term' = 'Contingency Cost Amount');
 ALTER TABLE `vibe_construction_v1`.`project`.`risk_register` ALTER COLUMN `contingency_cost_amount` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_construction_v1`.`project`.`risk_register` ALTER COLUMN `contingency_plan` SET TAGS ('dbx_business_glossary_term' = 'Risk Contingency Plan');
-ALTER TABLE `vibe_construction_v1`.`project`.`risk_register` ALTER COLUMN `contract_clause_reference` SET TAGS ('dbx_business_glossary_term' = 'Contract Clause Reference');
 ALTER TABLE `vibe_construction_v1`.`project`.`risk_register` ALTER COLUMN `cost_impact_amount` SET TAGS ('dbx_business_glossary_term' = 'Cost Impact Amount');
 ALTER TABLE `vibe_construction_v1`.`project`.`risk_register` ALTER COLUMN `cost_impact_amount` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_construction_v1`.`project`.`risk_register` ALTER COLUMN `cost_impact_rating` SET TAGS ('dbx_business_glossary_term' = 'Cost Impact Rating');
@@ -1248,6 +1167,7 @@ ALTER TABLE `vibe_construction_v1`.`project`.`risk_register` ALTER COLUMN `risk_
 ALTER TABLE `vibe_construction_v1`.`project`.`risk_register` ALTER COLUMN `risk_status` SET TAGS ('dbx_business_glossary_term' = 'Risk Status');
 ALTER TABLE `vibe_construction_v1`.`project`.`risk_register` ALTER COLUMN `risk_status` SET TAGS ('dbx_value_regex' = 'open|mitigated|closed|realized|transferred');
 ALTER TABLE `vibe_construction_v1`.`project`.`risk_register` ALTER COLUMN `risk_title` SET TAGS ('dbx_business_glossary_term' = 'Risk Title');
+ALTER TABLE `vibe_construction_v1`.`project`.`risk_register` ALTER COLUMN `risk_title` SET TAGS ('dbx_pii_name' = 'true');
 ALTER TABLE `vibe_construction_v1`.`project`.`risk_register` ALTER COLUMN `risk_trigger` SET TAGS ('dbx_business_glossary_term' = 'Risk Trigger');
 ALTER TABLE `vibe_construction_v1`.`project`.`risk_register` ALTER COLUMN `risk_type` SET TAGS ('dbx_business_glossary_term' = 'Risk Type');
 ALTER TABLE `vibe_construction_v1`.`project`.`risk_register` ALTER COLUMN `risk_type` SET TAGS ('dbx_value_regex' = 'threat|opportunity');
@@ -1257,12 +1177,8 @@ ALTER TABLE `vibe_construction_v1`.`project`.`risk_register` ALTER COLUMN `sched
 ALTER TABLE `vibe_construction_v1`.`project`.`risk_register` ALTER COLUMN `source_system_ref` SET TAGS ('dbx_business_glossary_term' = 'Source System Reference');
 ALTER TABLE `vibe_construction_v1`.`project`.`risk_register` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Updated Timestamp');
 ALTER TABLE `vibe_construction_v1`.`project`.`phase` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_construction_v1`.`project`.`phase` SET TAGS ('dbx_subdomain' = 'project_setup');
+ALTER TABLE `vibe_construction_v1`.`project`.`phase` SET TAGS ('dbx_subdomain' = 'project_structure');
 ALTER TABLE `vibe_construction_v1`.`project`.`phase` ALTER COLUMN `phase_id` SET TAGS ('dbx_business_glossary_term' = 'Phase ID');
-ALTER TABLE `vibe_construction_v1`.`project`.`phase` ALTER COLUMN `construction_project_id` SET TAGS ('dbx_business_glossary_term' = 'Project ID');
-ALTER TABLE `vibe_construction_v1`.`project`.`phase` ALTER COLUMN `cost_center_id` SET TAGS ('dbx_business_glossary_term' = 'Cost Center Id (Foreign Key)');
-ALTER TABLE `vibe_construction_v1`.`project`.`phase` ALTER COLUMN `project_baseline_id` SET TAGS ('dbx_business_glossary_term' = 'Project Baseline Id (Foreign Key)');
-ALTER TABLE `vibe_construction_v1`.`project`.`phase` ALTER COLUMN `wbs_element_id` SET TAGS ('dbx_business_glossary_term' = 'Wbs Element Id (Foreign Key)');
 ALTER TABLE `vibe_construction_v1`.`project`.`phase` ALTER COLUMN `actual_cost` SET TAGS ('dbx_business_glossary_term' = 'Actual Cost of Work Performed (ACWP)');
 ALTER TABLE `vibe_construction_v1`.`project`.`phase` ALTER COLUMN `actual_cost` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_construction_v1`.`project`.`phase` ALTER COLUMN `actual_finish_date` SET TAGS ('dbx_business_glossary_term' = 'Actual Finish Date');
@@ -1292,6 +1208,8 @@ ALTER TABLE `vibe_construction_v1`.`project`.`phase` ALTER COLUMN `gate_approval
 ALTER TABLE `vibe_construction_v1`.`project`.`phase` ALTER COLUMN `gate_approval_status` SET TAGS ('dbx_business_glossary_term' = 'Phase Gate Approval Status');
 ALTER TABLE `vibe_construction_v1`.`project`.`phase` ALTER COLUMN `gate_approval_status` SET TAGS ('dbx_value_regex' = 'pending|approved|rejected|conditionally_approved|waived');
 ALTER TABLE `vibe_construction_v1`.`project`.`phase` ALTER COLUMN `gate_approver_name` SET TAGS ('dbx_business_glossary_term' = 'Phase Gate Approver Name');
+ALTER TABLE `vibe_construction_v1`.`project`.`phase` ALTER COLUMN `gate_approver_name` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_construction_v1`.`project`.`phase` ALTER COLUMN `gate_approver_name` SET TAGS ('dbx_pii_name' = 'true');
 ALTER TABLE `vibe_construction_v1`.`project`.`phase` ALTER COLUMN `gate_review_criteria` SET TAGS ('dbx_business_glossary_term' = 'Phase Gate Review Criteria');
 ALTER TABLE `vibe_construction_v1`.`project`.`phase` ALTER COLUMN `hse_plan_approved` SET TAGS ('dbx_business_glossary_term' = 'HSE (Health Safety and Environment) Plan Approved');
 ALTER TABLE `vibe_construction_v1`.`project`.`phase` ALTER COLUMN `is_critical_path` SET TAGS ('dbx_business_glossary_term' = 'Is Critical Path Phase');
@@ -1300,6 +1218,7 @@ ALTER TABLE `vibe_construction_v1`.`project`.`phase` ALTER COLUMN `ld_exposure_a
 ALTER TABLE `vibe_construction_v1`.`project`.`phase` ALTER COLUMN `leed_applicable` SET TAGS ('dbx_business_glossary_term' = 'LEED (Leadership in Energy and Environmental Design) Applicable');
 ALTER TABLE `vibe_construction_v1`.`project`.`phase` ALTER COLUMN `milestone_count` SET TAGS ('dbx_business_glossary_term' = 'Milestone Count');
 ALTER TABLE `vibe_construction_v1`.`project`.`phase` ALTER COLUMN `phase_name` SET TAGS ('dbx_business_glossary_term' = 'Phase Name');
+ALTER TABLE `vibe_construction_v1`.`project`.`phase` ALTER COLUMN `phase_name` SET TAGS ('dbx_pii_name' = 'true');
 ALTER TABLE `vibe_construction_v1`.`project`.`phase` ALTER COLUMN `percent_complete` SET TAGS ('dbx_business_glossary_term' = 'Percent Complete');
 ALTER TABLE `vibe_construction_v1`.`project`.`phase` ALTER COLUMN `phase_status` SET TAGS ('dbx_business_glossary_term' = 'Phase Status');
 ALTER TABLE `vibe_construction_v1`.`project`.`phase` ALTER COLUMN `phase_status` SET TAGS ('dbx_value_regex' = 'not_started|in_progress|on_hold|completed|cancelled');
@@ -1315,15 +1234,11 @@ ALTER TABLE `vibe_construction_v1`.`project`.`phase` ALTER COLUMN `schedule_vari
 ALTER TABLE `vibe_construction_v1`.`project`.`phase` ALTER COLUMN `sequence_number` SET TAGS ('dbx_business_glossary_term' = 'Phase Sequence Number');
 ALTER TABLE `vibe_construction_v1`.`project`.`phase` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Updated Timestamp');
 ALTER TABLE `vibe_construction_v1`.`project`.`forecast` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_construction_v1`.`project`.`forecast` SET TAGS ('dbx_subdomain' = 'cost_control');
+ALTER TABLE `vibe_construction_v1`.`project`.`forecast` SET TAGS ('dbx_subdomain' = 'performance_tracking');
 ALTER TABLE `vibe_construction_v1`.`project`.`forecast` ALTER COLUMN `forecast_id` SET TAGS ('dbx_business_glossary_term' = 'Forecast ID');
-ALTER TABLE `vibe_construction_v1`.`project`.`forecast` ALTER COLUMN `change_order_id` SET TAGS ('dbx_business_glossary_term' = 'Project Change Order Id (Foreign Key)');
-ALTER TABLE `vibe_construction_v1`.`project`.`forecast` ALTER COLUMN `construction_project_id` SET TAGS ('dbx_business_glossary_term' = 'Project ID');
 ALTER TABLE `vibe_construction_v1`.`project`.`forecast` ALTER COLUMN `cost_account_id` SET TAGS ('dbx_business_glossary_term' = 'Cost Account Id (Foreign Key)');
-ALTER TABLE `vibe_construction_v1`.`project`.`forecast` ALTER COLUMN `evm_period_record_id` SET TAGS ('dbx_business_glossary_term' = 'Evm Period Record Id (Foreign Key)');
 ALTER TABLE `vibe_construction_v1`.`project`.`forecast` ALTER COLUMN `phase_id` SET TAGS ('dbx_business_glossary_term' = 'Phase Id (Foreign Key)');
 ALTER TABLE `vibe_construction_v1`.`project`.`forecast` ALTER COLUMN `project_baseline_id` SET TAGS ('dbx_business_glossary_term' = 'Baseline ID');
-ALTER TABLE `vibe_construction_v1`.`project`.`forecast` ALTER COLUMN `project_budget_id` SET TAGS ('dbx_business_glossary_term' = 'Project Budget Id (Foreign Key)');
 ALTER TABLE `vibe_construction_v1`.`project`.`forecast` ALTER COLUMN `wbs_element_id` SET TAGS ('dbx_business_glossary_term' = 'Work Breakdown Structure (WBS) Element ID');
 ALTER TABLE `vibe_construction_v1`.`project`.`forecast` ALTER COLUMN `actual_cost_to_date` SET TAGS ('dbx_business_glossary_term' = 'Actual Cost to Date');
 ALTER TABLE `vibe_construction_v1`.`project`.`forecast` ALTER COLUMN `actual_cost_to_date` SET TAGS ('dbx_confidential' = 'true');
@@ -1384,63 +1299,3 @@ ALTER TABLE `vibe_construction_v1`.`project`.`forecast` ALTER COLUMN `tcpi` SET 
 ALTER TABLE `vibe_construction_v1`.`project`.`forecast` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Updated Timestamp');
 ALTER TABLE `vibe_construction_v1`.`project`.`forecast` ALTER COLUMN `variance_at_completion` SET TAGS ('dbx_business_glossary_term' = 'Variance at Completion (VAC)');
 ALTER TABLE `vibe_construction_v1`.`project`.`forecast` ALTER COLUMN `variance_at_completion` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_construction_v1`.`project`.`project_site` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_construction_v1`.`project`.`project_site` SET TAGS ('dbx_subdomain' = 'project_setup');
-ALTER TABLE `vibe_construction_v1`.`project`.`project_site` ALTER COLUMN `project_site_id` SET TAGS ('dbx_business_glossary_term' = 'Site Identifier');
-ALTER TABLE `vibe_construction_v1`.`project`.`project_site` ALTER COLUMN `cost_center_id` SET TAGS ('dbx_business_glossary_term' = 'Cost Center Id (Foreign Key)');
-ALTER TABLE `vibe_construction_v1`.`project`.`project_site` ALTER COLUMN `warehouse_id` SET TAGS ('dbx_business_glossary_term' = 'Warehouse Id (Foreign Key)');
-ALTER TABLE `vibe_construction_v1`.`project`.`project_site` ALTER COLUMN `actual_completion_date` SET TAGS ('dbx_business_glossary_term' = 'Actual Completion Date');
-ALTER TABLE `vibe_construction_v1`.`project`.`project_site` ALTER COLUMN `actual_spend` SET TAGS ('dbx_business_glossary_term' = 'Actual Spend');
-ALTER TABLE `vibe_construction_v1`.`project`.`project_site` ALTER COLUMN `address_line1` SET TAGS ('dbx_business_glossary_term' = 'Address Line1');
-ALTER TABLE `vibe_construction_v1`.`project`.`project_site` ALTER COLUMN `address_line1` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_construction_v1`.`project`.`project_site` ALTER COLUMN `address_line1` SET TAGS ('dbx_pii_address' = 'true');
-ALTER TABLE `vibe_construction_v1`.`project`.`project_site` ALTER COLUMN `address_line2` SET TAGS ('dbx_business_glossary_term' = 'Address Line2');
-ALTER TABLE `vibe_construction_v1`.`project`.`project_site` ALTER COLUMN `address_line2` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_construction_v1`.`project`.`project_site` ALTER COLUMN `address_line2` SET TAGS ('dbx_pii_address' = 'true');
-ALTER TABLE `vibe_construction_v1`.`project`.`project_site` ALTER COLUMN `area_sq_m` SET TAGS ('dbx_business_glossary_term' = 'Area Sq M');
-ALTER TABLE `vibe_construction_v1`.`project`.`project_site` ALTER COLUMN `budget_amount` SET TAGS ('dbx_business_glossary_term' = 'Budget Amount');
-ALTER TABLE `vibe_construction_v1`.`project`.`project_site` ALTER COLUMN `city` SET TAGS ('dbx_business_glossary_term' = 'City');
-ALTER TABLE `vibe_construction_v1`.`project`.`project_site` ALTER COLUMN `country` SET TAGS ('dbx_business_glossary_term' = 'Country');
-ALTER TABLE `vibe_construction_v1`.`project`.`project_site` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
-ALTER TABLE `vibe_construction_v1`.`project`.`project_site` ALTER COLUMN `currency_code` SET TAGS ('dbx_business_glossary_term' = 'Currency Code');
-ALTER TABLE `vibe_construction_v1`.`project`.`project_site` ALTER COLUMN `elevation_m` SET TAGS ('dbx_business_glossary_term' = 'Elevation M');
-ALTER TABLE `vibe_construction_v1`.`project`.`project_site` ALTER COLUMN `environmental_zone` SET TAGS ('dbx_business_glossary_term' = 'Environmental Zone');
-ALTER TABLE `vibe_construction_v1`.`project`.`project_site` ALTER COLUMN `ground_condition` SET TAGS ('dbx_business_glossary_term' = 'Ground Condition');
-ALTER TABLE `vibe_construction_v1`.`project`.`project_site` ALTER COLUMN `insurance_expiry_date` SET TAGS ('dbx_business_glossary_term' = 'Insurance Expiry Date');
-ALTER TABLE `vibe_construction_v1`.`project`.`project_site` ALTER COLUMN `insurance_policy_number` SET TAGS ('dbx_business_glossary_term' = 'Insurance Policy Number');
-ALTER TABLE `vibe_construction_v1`.`project`.`project_site` ALTER COLUMN `insurance_policy_number` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_construction_v1`.`project`.`project_site` ALTER COLUMN `insurance_policy_number` SET TAGS ('dbx_pii_financial' = 'true');
-ALTER TABLE `vibe_construction_v1`.`project`.`project_site` ALTER COLUMN `last_inspection_date` SET TAGS ('dbx_business_glossary_term' = 'Last Inspection Date');
-ALTER TABLE `vibe_construction_v1`.`project`.`project_site` ALTER COLUMN `latitude` SET TAGS ('dbx_business_glossary_term' = 'Latitude');
-ALTER TABLE `vibe_construction_v1`.`project`.`project_site` ALTER COLUMN `latitude` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_construction_v1`.`project`.`project_site` ALTER COLUMN `latitude` SET TAGS ('dbx_pii_address' = 'true');
-ALTER TABLE `vibe_construction_v1`.`project`.`project_site` ALTER COLUMN `longitude` SET TAGS ('dbx_business_glossary_term' = 'Longitude');
-ALTER TABLE `vibe_construction_v1`.`project`.`project_site` ALTER COLUMN `longitude` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_construction_v1`.`project`.`project_site` ALTER COLUMN `longitude` SET TAGS ('dbx_pii_address' = 'true');
-ALTER TABLE `vibe_construction_v1`.`project`.`project_site` ALTER COLUMN `manager_email` SET TAGS ('dbx_business_glossary_term' = 'Site Manager Email');
-ALTER TABLE `vibe_construction_v1`.`project`.`project_site` ALTER COLUMN `manager_email` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_construction_v1`.`project`.`project_site` ALTER COLUMN `manager_email` SET TAGS ('dbx_pii_email' = 'true');
-ALTER TABLE `vibe_construction_v1`.`project`.`project_site` ALTER COLUMN `manager_name` SET TAGS ('dbx_business_glossary_term' = 'Site Manager Name');
-ALTER TABLE `vibe_construction_v1`.`project`.`project_site` ALTER COLUMN `manager_name` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_construction_v1`.`project`.`project_site` ALTER COLUMN `manager_name` SET TAGS ('dbx_pii_name' = 'true');
-ALTER TABLE `vibe_construction_v1`.`project`.`project_site` ALTER COLUMN `manager_phone` SET TAGS ('dbx_business_glossary_term' = 'Site Manager Phone');
-ALTER TABLE `vibe_construction_v1`.`project`.`project_site` ALTER COLUMN `manager_phone` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_construction_v1`.`project`.`project_site` ALTER COLUMN `manager_phone` SET TAGS ('dbx_pii_phone' = 'true');
-ALTER TABLE `vibe_construction_v1`.`project`.`project_site` ALTER COLUMN `number_of_floors` SET TAGS ('dbx_business_glossary_term' = 'Number Of Floors');
-ALTER TABLE `vibe_construction_v1`.`project`.`project_site` ALTER COLUMN `permits` SET TAGS ('dbx_business_glossary_term' = 'Permits');
-ALTER TABLE `vibe_construction_v1`.`project`.`project_site` ALTER COLUMN `planned_completion_date` SET TAGS ('dbx_business_glossary_term' = 'Planned Completion Date');
-ALTER TABLE `vibe_construction_v1`.`project`.`project_site` ALTER COLUMN `postal_code` SET TAGS ('dbx_business_glossary_term' = 'Postal Code');
-ALTER TABLE `vibe_construction_v1`.`project`.`project_site` ALTER COLUMN `postal_code` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_construction_v1`.`project`.`project_site` ALTER COLUMN `postal_code` SET TAGS ('dbx_pii_address' = 'true');
-ALTER TABLE `vibe_construction_v1`.`project`.`project_site` ALTER COLUMN `power_capacity_mw` SET TAGS ('dbx_business_glossary_term' = 'Power Capacity Mw');
-ALTER TABLE `vibe_construction_v1`.`project`.`project_site` ALTER COLUMN `risk_rating` SET TAGS ('dbx_business_glossary_term' = 'Risk Rating');
-ALTER TABLE `vibe_construction_v1`.`project`.`project_site` ALTER COLUMN `security_level` SET TAGS ('dbx_business_glossary_term' = 'Security Level');
-ALTER TABLE `vibe_construction_v1`.`project`.`project_site` ALTER COLUMN `site_description` SET TAGS ('dbx_business_glossary_term' = 'Description');
-ALTER TABLE `vibe_construction_v1`.`project`.`project_site` ALTER COLUMN `site_status` SET TAGS ('dbx_business_glossary_term' = 'Status');
-ALTER TABLE `vibe_construction_v1`.`project`.`project_site` ALTER COLUMN `site_type` SET TAGS ('dbx_business_glossary_term' = 'Site Type');
-ALTER TABLE `vibe_construction_v1`.`project`.`project_site` ALTER COLUMN `soil_type` SET TAGS ('dbx_business_glossary_term' = 'Soil Type');
-ALTER TABLE `vibe_construction_v1`.`project`.`project_site` ALTER COLUMN `start_date` SET TAGS ('dbx_business_glossary_term' = 'Start Date');
-ALTER TABLE `vibe_construction_v1`.`project`.`project_site` ALTER COLUMN `state` SET TAGS ('dbx_business_glossary_term' = 'State');
-ALTER TABLE `vibe_construction_v1`.`project`.`project_site` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Updated Timestamp');
-ALTER TABLE `vibe_construction_v1`.`project`.`project_site` ALTER COLUMN `utility_connection_status` SET TAGS ('dbx_business_glossary_term' = 'Utility Connection Status');
-ALTER TABLE `vibe_construction_v1`.`project`.`project_site` ALTER COLUMN `water_supply_type` SET TAGS ('dbx_business_glossary_term' = 'Water Supply Type');

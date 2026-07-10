@@ -1,5 +1,5 @@
 -- Schema for Domain: site | Business:  | Version: v2_ecm
--- Generated on: 2026-06-27 00:09:59
+-- Generated on: 2026-07-10 12:37:14
 
 -- ========= DATABASE =========
 CREATE DATABASE IF NOT EXISTS `vibe_construction_v1`.`site` COMMENT 'Owns daily site execution data including daily logs, production tracking, work fronts, crew assignments, site logistics, mobilization/demobilization, concrete pours, earthworks volumes, and field progress measurements. Integrates with HCSS HeavyJob for cost coding and production tracking and Procore for daily logs and field management. Supports earned value computation feeding the project domain.';
@@ -7,16 +7,17 @@ CREATE DATABASE IF NOT EXISTS `vibe_construction_v1`.`site` COMMENT 'Owns daily 
 -- ========= TABLES =========
 CREATE OR REPLACE TABLE `vibe_construction_v1`.`site`.`work_front` (
     `work_front_id` BIGINT COMMENT 'Unique surrogate identifier for the work front record. Primary key for the work_front master entity in the site domain.',
+    `construction_project_id` BIGINT COMMENT 'Reference to the parent project under which this work front is executed. Enables roll-up of work front data to project-level reporting and earned value computation.',
     `design_scope_id` BIGINT COMMENT 'Foreign key linking to design.design_scope. Business justification: Each work front operates under a defined design scope package; linking supports scope‑freeze and change‑control processes.',
-    `hr_employee_id` BIGINT COMMENT 'Reference to the workforce record of the foreman assigned as the primary supervisor responsible for day-to-day execution at this work front.',
+    `employee_id` BIGINT COMMENT 'Reference to the workforce record of the foreman assigned as the primary supervisor responsible for day-to-day execution at this work front.',
     `cost_code_id` BIGINT COMMENT 'Foreign key linking to finance.cost_code. Business justification: Cost allocation reports require each work front to reference the central cost code for budgeting and variance analysis.',
-    `firm_profile_id` BIGINT COMMENT 'Reference to the subcontractor entity responsible for executing work at this work front when is_subcontracted is True. Null for self-performed work fronts.',
+    `firm_profile_id` BIGINT COMMENT 'Reference to the firm entity responsible for executing work at this work front when is_subcontracted is True. Null for self-performed work fronts.',
     `party_id` BIGINT COMMENT 'Foreign key linking to contract.contract_party. Business justification: Each work front is assigned a primary contract party (sub‑contractor or client) for responsibility, invoicing and performance tracking.',
+    `permit_to_work_id` BIGINT COMMENT 'Foreign key linking to safety.permit_to_work. Business justification: REQUIRED: Each work front must have an associated Permit to Work for safety compliance; linking enables PTW tracking per front.',
+    `site_construction_project_id` BIGINT COMMENT 'Reference to the parent construction site to which this work front belongs. Every work front must be anchored to a site.',
     `site_id` BIGINT COMMENT 'Foreign key linking to site.site. Business justification: A work front belongs to a single construction site; adding work_front.site_id creates the required parent relationship and eliminates site isolation.',
     `subcontract_id` BIGINT COMMENT 'Foreign key linking to contract.subcontract. Business justification: Work fronts are executed under specific subcontract contracts; linking enables schedule, cost and risk integration.',
     `wbs_element_id` BIGINT COMMENT 'Reference to the Work Breakdown Structure (WBS) element that governs the scope of work executed at this work front. Aligns spatial execution with the project schedule hierarchy.',
-    `construction_project_id` BIGINT COMMENT 'Reference to the parent project under which this work front is executed. Enables roll-up of work front data to project-level reporting and earned value computation.',
-    `work_site_construction_project_id` BIGINT COMMENT 'Reference to the parent construction site to which this work front belongs. Every work front must be anchored to a site.',
     `access_restriction` STRING COMMENT 'The access control classification for this work front. permit_required indicates a Permit to Work (PTW) is mandatory before entry; restricted_zone limits access to authorised personnel; exclusion_zone prohibits all non-essential access. Supports HSE compliance.. Valid values are `unrestricted|permit_required|restricted_zone|exclusion_zone`',
     `actual_crew_size` STRING COMMENT 'The actual number of direct labour workers present at this work front on the most recent reporting day. Compared against planned_crew_size to identify under-manning and productivity risks.',
     `actual_production_qty` DECIMAL(18,2) COMMENT 'Cumulative actual production quantity achieved at this work front to date, expressed in the production_unit. Sourced from HCSS HeavyJob production tracking and field measurements. Used to compute earned value.',
@@ -62,12 +63,12 @@ CREATE OR REPLACE TABLE `vibe_construction_v1`.`site`.`daily_log` (
     `daily_log_id` BIGINT COMMENT 'Unique surrogate identifier for the daily site log record. Primary key for the daily_log data product in the Databricks Silver Layer.',
     `activity_id` BIGINT COMMENT 'Foreign key linking to schedule.activity. Business justification: Daily Log records activities performed each day; linking to schedule.activity enables daily progress reports and variance analysis.',
     `agreement_id` BIGINT COMMENT 'Foreign key linking to contract.agreement. Business justification: Daily logs are billed to the governing contract; linking enables cost allocation and compliance reporting per agreement.',
-    `regulatory_permit_id` BIGINT COMMENT 'Foreign key linking to compliance.permit. Business justification: Daily logs must reference the active permit governing that days work to satisfy HSE audit trails and permit compliance verification.',
+    `compliance_permit_id` BIGINT COMMENT 'Foreign key linking to compliance.permit. Business justification: Daily logs must reference the active permit governing that days work to satisfy HSE audit trails and permit compliance verification.',
     `construction_project_id` BIGINT COMMENT 'Reference to the project this daily log belongs to. Links the site log to the master project record for earned value and cost control reporting.',
-    `daily_site_construction_project_id` BIGINT COMMENT 'Reference to the physical construction site or work front location where this daily log was recorded. Supports multi-site project tracking.',
     `drawing_id` BIGINT COMMENT 'Foreign key linking to design.drawing. Business justification: Daily Log reports reference the specific design drawing used for the days work; required for progress audit and compliance.',
     `incident_id` BIGINT COMMENT 'Foreign key linking to safety.incident. Business justification: REQUIRED: Daily logs capture any incident that occurred that day; the FK enables quick incident lookup from the log.',
-    `hr_employee_id` BIGINT COMMENT 'Reference to the site superintendent responsible for completing and signing off this daily log. The accountable party for the legal and operational record of site activity.',
+    `employee_id` BIGINT COMMENT 'Reference to the site superintendent responsible for completing and signing off this daily log. The accountable party for the legal and operational record of site activity.',
+    `site_construction_project_id` BIGINT COMMENT 'Reference to the physical construction site or work front location where this daily log was recorded. Supports multi-site project tracking.',
     `approved_timestamp` TIMESTAMP COMMENT 'Date and time when the daily log was formally approved by the project manager or designated reviewer. Marks the transition from submitted to approved status in the log lifecycle.',
     `concrete_volume_m3` DECIMAL(18,2) COMMENT 'Total volume of concrete poured on site for the log date in cubic metres. Critical production metric for structural progress tracking, QA/QC compliance (ITP), and earned value computation. Sourced from Procore and HCSS HeavyJob.',
     `cost_code` STRING COMMENT 'HCSS HeavyJob cost code assigned to the primary work activity recorded in this daily log. Enables direct integration between field production data and job costing in Viewpoint Vista and SAP S/4HANA Project Systems.',
@@ -118,7 +119,8 @@ CREATE OR REPLACE TABLE `vibe_construction_v1`.`site`.`production_entry` (
     `cost_code_id` BIGINT COMMENT 'Reference to the cost code used to classify and track the financial dimension of this production entry. Sourced from HCSS HeavyJob cost coding module and aligned with SAP S/4HANA job costing.',
     `crew_id` BIGINT COMMENT 'Reference to the crew or gang assigned to execute the production work for this entry. Links to workforce domain for labor cost and productivity analysis.',
     `daily_log_id` BIGINT COMMENT 'Foreign key linking to site.daily_log. Business justification: production_entry contains a daily_log_reference string that points to a daily log; adding a proper FK (daily_log_id) normalizes the model and eliminates the redundant column.',
-    `hr_employee_id` BIGINT COMMENT 'Foreign key linking to hr.employee. Business justification: Production entry must record the foreman responsible for the work; required for safety audit and accountability in daily production reports.',
+    `employee_id` BIGINT COMMENT 'Foreign key linking to hr.employee. Business justification: Production entry must record the foreman responsible for the work; required for safety audit and accountability in daily production reports.',
+    `purchase_order_id` BIGINT COMMENT 'Foreign key linking to procurement.purchase_order. Business justification: REQUIRED: Production entries consume materials tied to specific purchase orders, enabling material cost verification on site.',
     `technical_specification_id` BIGINT COMMENT 'Foreign key linking to design.technical_specification. Business justification: Production entries track installed quantities against technical specifications to ensure quality and contractual compliance.',
     `work_front_id` BIGINT COMMENT 'Reference to the specific work front or work zone on site where production was executed. Enables spatial breakdown of production progress across the site.',
     `approved_by` STRING COMMENT 'Name or identifier of the site engineer, superintendent, or project manager who approved this production entry. Required for audit trail and progress billing authorization.',
@@ -164,8 +166,8 @@ CREATE OR REPLACE TABLE `vibe_construction_v1`.`site`.`crew_deployment` (
     `construction_project_id` BIGINT COMMENT 'Reference to the construction project under which this crew deployment is recorded. Links deployment records to project-level earned value and cost control.',
     `daily_log_id` BIGINT COMMENT 'Foreign key linking to site.daily_log. Business justification: crew_deployment records reference a daily log via the string field daily_log_reference; converting to a proper FK (daily_log_id) enforces referential integrity and removes the redundant string column.',
     `cost_code_id` BIGINT COMMENT 'Foreign key linking to finance.cost_code. Business justification: Crew deployment cost tracking uses finance cost codes to aggregate labor costs per activity for payroll and project costing.',
-    `firm_profile_id` BIGINT COMMENT 'Reference to the subcontractor entity if this crew is supplied by a subcontractor rather than the general contractors direct workforce. Null for self-performed work. Supports subcontractor cost tracking and performance management.',
-    `hr_employee_id` BIGINT COMMENT 'Employee identifier of the lead foreman from the workforce system (SAP SuccessFactors). Enables linkage to workforce domain records without duplicating personal data.',
+    `firm_profile_id` BIGINT COMMENT 'Reference to the firm entity if this crew is supplied by a firm rather than the general contractors direct workforce. Null for self-performed work. Supports firm cost tracking and performance management.',
+    `employee_id` BIGINT COMMENT 'Employee identifier of the lead foreman from the workforce system (SAP SuccessFactors). Enables linkage to workforce domain records without duplicating personal data.',
     `work_front_id` BIGINT COMMENT 'Mandatory reference to the work front (spatial zone or work face) to which this crew is deployed. Establishes the spatial allocation of the crew on site for the given date.',
     `actual_hours` DECIMAL(18,2) COMMENT 'Total man-hours actually worked by the crew on this deployment date, as recorded in HCSS HeavyJob time tracking. Compared against planned_hours to compute productivity variance and feed EVM calculations.',
     `actual_production_qty` DECIMAL(18,2) COMMENT 'Actual quantity of work output achieved by the crew on this deployment date, as recorded in HCSS HeavyJob production tracking. Compared against planned_production_qty for productivity analysis and earned value computation.',
@@ -212,7 +214,7 @@ CREATE OR REPLACE TABLE `vibe_construction_v1`.`site`.`concrete_pour` (
     `cost_code_id` BIGINT COMMENT 'Foreign key linking to finance.cost_code. Business justification: Concrete pour entries are charged to specific cost codes; linking enables accurate cost tracking and progress billing.',
     `itp_id` BIGINT COMMENT 'Reference to the Inspection and Test Plan (ITP) record in the quality domain governing the quality hold and inspection requirements for this pour.',
     `craft_worker_id` BIGINT COMMENT 'Foreign key linking to workforce.craft_worker. Business justification: REQUIRED: Concrete pour supervision is assigned to a qualified foreman; FK supports QC, safety audit trails and traceability of pour responsibility.',
-    `hr_employee_id` BIGINT COMMENT 'Foreign key linking to hr.employee. Business justification: Concrete pour supervision is a safety‑critical role; linking to employee satisfies HSE compliance and incident investigation.',
+    `employee_id` BIGINT COMMENT 'Foreign key linking to hr.employee. Business justification: Concrete pour supervision is a safety‑critical role; linking to employee satisfies HSE compliance and incident investigation.',
     `daily_log_id` BIGINT COMMENT 'Reference identifier of the Procore daily log entry in which this pour event was recorded. Enables cross-system traceability between the lakehouse silver layer and the Procore source system.',
     `wbs_element_id` BIGINT COMMENT 'Reference to the Work Breakdown Structure (WBS) element under which this pour activity is tracked for cost and schedule control.',
     `ambient_temperature_c` DECIMAL(18,2) COMMENT 'Recorded ambient air temperature in degrees Celsius at the time of the pour. Critical for hot and cold weather concreting compliance, curing regime decisions, and QA/QC records.',
@@ -257,9 +259,9 @@ CREATE OR REPLACE TABLE `vibe_construction_v1`.`site`.`earthwork_volume` (
     `earthwork_volume_id` BIGINT COMMENT 'Unique system-generated identifier for each earthwork volume measurement record. Primary key for the earthwork_volume data product in the site domain.',
     `activity_id` BIGINT COMMENT 'Foreign key linking to schedule.activity. Business justification: Earthwork volume measurements are tied to earthwork activities in the schedule; linking supports earned‑value and quantity tracking.',
     `construction_project_id` BIGINT COMMENT 'Reference to the construction project under which this earthwork volume measurement was recorded. Links earthwork progress to project-level earned value computation.',
-    `firm_profile_id` BIGINT COMMENT 'Reference to the subcontractor responsible for executing the earthwork activity. Used for subcontractor quantity verification and progress billing reconciliation.',
+    `firm_profile_id` BIGINT COMMENT 'Reference to the firm responsible for executing the earthwork activity. Used for firm quantity verification and progress billing reconciliation.',
     `daily_log_id` BIGINT COMMENT 'Reference identifier linking this earthwork volume measurement to the corresponding daily log entry in Procore Construction Management system. Supports traceability between field measurements and daily site records.',
-    `hr_employee_id` BIGINT COMMENT 'Foreign key linking to hr.employee. Business justification: Survey data must be attributed to the responsible surveyor employee for QA/QC and regulatory reporting.',
+    `employee_id` BIGINT COMMENT 'Foreign key linking to hr.employee. Business justification: Survey data must be attributed to the responsible surveyor employee for QA/QC and regulatory reporting.',
     `wbs_element_id` BIGINT COMMENT 'Reference to the Work Breakdown Structure (WBS) element under which this earthwork activity is classified. Enables cost coding and earned value management (EVM) at the WBS level.',
     `approved_by` STRING COMMENT 'Name or employee identifier of the engineer or quantity surveyor who approved the earthwork volume measurement record for progress billing and earned value reporting.',
     `boq_item_code` STRING COMMENT 'Reference code linking this earthwork volume measurement to the corresponding Bill of Quantities (BOQ) line item in the contract. Enables direct reconciliation between measured quantities and contracted quantities for progress billing.',
@@ -305,10 +307,10 @@ CREATE OR REPLACE TABLE `vibe_construction_v1`.`site`.`earthwork_volume` (
 
 CREATE OR REPLACE TABLE `vibe_construction_v1`.`site`.`field_progress` (
     `field_progress_id` BIGINT COMMENT 'Unique surrogate identifier for each field progress measurement record in the silver layer lakehouse. Primary key for the field_progress data product.',
-    `bid_pricing_line_id` BIGINT COMMENT 'Reference to the BOQ line item from the contract or estimate against which installed quantities are measured. Enables reconciliation of field-installed quantities against contracted scope.',
+    `bid_boq_line_id` BIGINT COMMENT 'Reference to the BOQ line item from the contract or estimate against which installed quantities are measured. Enables reconciliation of field-installed quantities against contracted scope.',
     `construction_project_id` BIGINT COMMENT 'Reference to the parent project under which this field progress measurement is captured. Enables project-level aggregation of earned value and progress reporting.',
     `cost_code_id` BIGINT COMMENT 'Reference to the HCSS HeavyJob cost code associated with this progress measurement. Enables cost-to-progress reconciliation and production rate analysis by cost code.',
-    `hr_employee_id` BIGINT COMMENT 'System identifier for the field engineer who performed the measurement, referencing the workforce/employee master. Enables linkage to SAP SuccessFactors workforce records for competency and certification validation.',
+    `employee_id` BIGINT COMMENT 'System identifier for the field engineer who performed the measurement, referencing the workforce/employee master. Enables linkage to SAP SuccessFactors workforce records for competency and certification validation.',
     `itp_line_id` BIGINT COMMENT 'Reference to the ITP (Inspection and Test Plan) checkpoint that must be satisfied before this progress measurement can be approved. Ensures QA/QC hold points are cleared prior to progress being recognised in EVM.',
     `daily_log_id` BIGINT COMMENT 'The source system identifier of the Procore daily log entry from which this field progress measurement was derived or linked. Enables traceability back to the originating daily log record in Procore for audit and reconciliation purposes.',
     `production_entry_id` BIGINT COMMENT 'The source system identifier of the HCSS HeavyJob production tracking record associated with this field progress measurement. Enables reconciliation between field production data and cost coding in HeavyJob.',
@@ -354,9 +356,9 @@ CREATE OR REPLACE TABLE `vibe_construction_v1`.`site`.`site_mobilization` (
     `account_id` BIGINT COMMENT 'Foreign key linking to client.account. Business justification: Mobilization Cost & Schedule reports are generated per client account; linking site_mobilization to client.account enables billing and performance tracking.',
     `agreement_id` BIGINT COMMENT 'Reference to the contract under which this site mobilization is authorized. Ties mobilization activities to the governing contractual instrument.',
     `asset_id` BIGINT COMMENT 'Foreign key linking to equipment.asset. Business justification: Site mobilization records which equipment is moved to the site; essential for mobilization cost accounting and asset location management.',
-    `regulatory_permit_id` BIGINT COMMENT 'Foreign key linking to compliance.permit. Business justification: Site mobilization is contingent on a mobilization permit; linking tracks permit approval status against mobilization schedule.',
+    `compliance_permit_id` BIGINT COMMENT 'Foreign key linking to compliance.permit. Business justification: Site mobilization is contingent on a mobilization permit; linking tracks permit approval status against mobilization schedule.',
     `construction_project_id` BIGINT COMMENT 'Reference to the parent project for which this site mobilization record is created. Links site mobilization lifecycle to the overarching project entity.',
-    `hr_employee_id` BIGINT COMMENT 'Reference to the workforce record of the Site Manager responsible for overseeing mobilization and site operations. Accountable for HSE compliance, daily logs, and progress reporting.',
+    `employee_id` BIGINT COMMENT 'Reference to the workforce record of the Site Manager responsible for overseeing mobilization and site operations. Accountable for HSE compliance, daily logs, and progress reporting.',
     `activity_id` BIGINT COMMENT 'Activity identifier from Oracle Primavera P6 corresponding to the mobilization WBS activity. Enables direct traceability between this mobilization record and the project schedule baseline.',
     `procurement_framework_agreement_id` BIGINT COMMENT 'Foreign key linking to procurement.procurement_framework_agreement. Business justification: REQUIRED: Mobilisation activities are often covered under a framework agreement with a vendor; linking enables compliance and spend tracking.',
     `site_id` BIGINT COMMENT 'FK to site.site',
@@ -404,8 +406,9 @@ CREATE OR REPLACE TABLE `vibe_construction_v1`.`site`.`site_mobilization` (
 CREATE OR REPLACE TABLE `vibe_construction_v1`.`site`.`logistics_plan` (
     `logistics_plan_id` BIGINT COMMENT 'Unique surrogate identifier for the site logistics plan record in the Databricks Silver Layer. Primary key for this entity.',
     `account_id` BIGINT COMMENT 'Foreign key linking to client.account. Business justification: Client approval is required for site logistics plans; the FK ties the plan to the responsible client account for compliance and invoicing.',
-    `hr_employee_id` BIGINT COMMENT 'Foreign key linking to hr.employee. Business justification: Logistics plan approval requires a responsible manager; employee link provides accountability and audit of plan changes.',
+    `employee_id` BIGINT COMMENT 'Foreign key linking to hr.employee. Business justification: Logistics plan approval requires a responsible manager; employee link provides accountability and audit of plan changes.',
     `construction_project_id` BIGINT COMMENT 'Reference to the construction project this logistics plan governs. Links to the project master entity.',
+    `site_id` BIGINT COMMENT 'add column site_id (BIGINT) with FK to site.site.site_id - logistics plans govern material flow and access at a specific construction site',
     `aconex_document_reference` STRING COMMENT 'Document number assigned in the Aconex Document Management system for this logistics plan, used for formal transmittal, correspondence tracking, and revision control across project stakeholders.',
     `approved_date` DATE COMMENT 'The date on which the logistics plan was formally approved by the designated authority (e.g., HSE Manager, Project Manager, or Client Representative).',
     `bim_model_ref` STRING COMMENT 'Reference to the BIM 360 model or federated model file that contains the 3D site logistics layout, including crane positions, laydown areas, and temporary works modeled in the BIM environment.',
@@ -455,7 +458,7 @@ CREATE OR REPLACE TABLE `vibe_construction_v1`.`site`.`equipment_deployment` (
     `activity_id` BIGINT COMMENT 'Reference to the scheduled activity or Work Breakdown Structure (WBS) element in the project schedule to which this equipment deployment is assigned.',
     `asset_id` BIGINT COMMENT 'Reference to the equipment master record in the equipment domain. Identifies the specific piece of construction equipment (e.g., excavator, crane, compactor) deployed to site.',
     `construction_project_id` BIGINT COMMENT 'Reference to the project master record. Links the equipment deployment to the construction project under which the equipment is being utilized.',
-    `hr_employee_id` BIGINT COMMENT 'Reference to the workforce record of the equipment operator assigned to this deployment. Links to the workforce domain for operator qualification and certification tracking.',
+    `employee_id` BIGINT COMMENT 'Reference to the workforce record of the equipment operator assigned to this deployment. Links to the workforce domain for operator qualification and certification tracking.',
     `cost_code_id` BIGINT COMMENT 'Foreign key linking to finance.cost_code. Business justification: Equipment usage charges are posted to finance cost codes; linking enables equipment cost reporting and asset depreciation.',
     `hours_id` BIGINT COMMENT 'The source system record identifier from HCSS HeavyJob equipment hours module. Used for data lineage, reconciliation, and incremental load processing from the operational system of record.',
     `daily_log_id` BIGINT COMMENT 'Reference identifier of the Procore daily log entry from which this equipment deployment record was sourced. Enables traceability back to the source construction management system.',
@@ -501,15 +504,15 @@ CREATE OR REPLACE TABLE `vibe_construction_v1`.`site`.`material_delivery` (
     `material_delivery_id` BIGINT COMMENT 'Unique surrogate identifier for each material delivery receipt event recorded at the construction site. Primary key for this entity. Role: TRANSACTION_HEADER.',
     `activity_id` BIGINT COMMENT 'Foreign key linking to schedule.activity. Business justification: Material deliveries are scheduled against specific construction activities; the FK enables material‑to‑activity traceability for cost and progress.',
     `asset_id` BIGINT COMMENT 'Foreign key linking to equipment.asset. Business justification: Material deliveries are executed by specific vehicles; tracking the asset supports logistics, cost, and compliance audits.',
-    `regulatory_permit_id` BIGINT COMMENT 'Foreign key linking to compliance.permit. Business justification: Delivery of hazardous or regulated materials requires a specific permit; linking validates compliance before receipt.',
-    `engineering_submittal_id` BIGINT COMMENT 'Foreign key linking to design.design_submittal. Business justification: Deliveries are matched to approved design submittals to verify material compliance before acceptance.',
-    `cost_code_id` BIGINT COMMENT 'Foreign key linking to finance.cost_code. Business justification: Material delivery records must map to finance cost codes for material cost allocation and inventory valuation.',
-    `firm_profile_id` BIGINT COMMENT 'Foreign key linking to bid.firm_profile. Business justification: Materials are frequently delivered by subcontractors; linking delivery to the subcontractor enables accountability, invoicing and quality traceability.',
+    `compliance_permit_id` BIGINT COMMENT 'Foreign key linking to compliance.permit. Business justification: Delivery of hazardous or regulated materials requires a specific permit; linking validates compliance before receipt.',
     `construction_project_id` BIGINT COMMENT 'Reference to the construction project to which this material delivery belongs. Links the physical receipt event to the project context for cost coding and earned value computation.',
-    `material_site_construction_project_id` BIGINT COMMENT 'Reference to the construction site where the material delivery was physically received. Supports site-level logistics and laydown area management.',
+    `design_submittal_id` BIGINT COMMENT 'Foreign key linking to design.design_submittal. Business justification: Deliveries are matched to approved design submittals to verify material compliance before acceptance.',
+    `cost_code_id` BIGINT COMMENT 'Foreign key linking to finance.cost_code. Business justification: Material delivery records must map to finance cost codes for material cost allocation and inventory valuation.',
+    `firm_profile_id` BIGINT COMMENT 'Foreign key linking to bid.firm_profile. Business justification: Materials are frequently delivered by firms; linking delivery to the firm enables accountability, invoicing and quality traceability.',
     `vendor_id` BIGINT COMMENT 'Reference to the supplier or vendor who delivered the materials. Links to the procurement domain supplier master for vendor performance tracking.',
     `purchase_order_id` BIGINT COMMENT 'Reference to the procurement domain Purchase Order (PO) against which this delivery was made. Enables reconciliation between the physical receipt event and the contractual procurement record.',
-    `hr_employee_id` BIGINT COMMENT 'Reference to the employee record of the site personnel who received and signed off on the delivery. Links to the workforce domain for accountability and audit trail purposes.',
+    `employee_id` BIGINT COMMENT 'Reference to the employee record of the site personnel who received and signed off on the delivery. Links to the workforce domain for accountability and audit trail purposes.',
+    `site_construction_project_id` BIGINT COMMENT 'Reference to the construction site where the material delivery was physically received. Supports site-level logistics and laydown area management.',
     `batch_number` STRING COMMENT 'The manufacturers batch or lot number for the delivered material. Critical for quality traceability, enabling recall or investigation of specific production batches if non-conformance is identified post-installation.',
     `created_timestamp` TIMESTAMP COMMENT 'The date and time when this material delivery record was first created in the system. Supports audit trail and data lineage requirements.',
     `currency_code` STRING COMMENT 'The ISO 4217 three-letter currency code in which the delivery value and unit rate are expressed (e.g., USD, AUD, GBP). Required for multi-currency project financial management and IFRS/GAAP reporting.. Valid values are `^[A-Z]{3}$`',
@@ -553,12 +556,11 @@ CREATE OR REPLACE TABLE `vibe_construction_v1`.`site`.`instruction` (
     `activity_id` BIGINT COMMENT 'Foreign key linking to schedule.activity. Business justification: Site Instructions are issued for specific scheduled activities (e.g., change orders); the link supports instruction tracking against the activity schedule.',
     `agreement_id` BIGINT COMMENT 'Reference to the contract under which this site instruction is issued. Feeds the contract administration and change order process in the contract domain.',
     `change_notice_id` BIGINT COMMENT 'Foreign key linking to design.change_notice. Business justification: Site instructions often stem from formal change notices; linking tracks the originating change for audit.',
-    `regulatory_permit_id` BIGINT COMMENT 'Foreign key linking to compliance.permit. Business justification: Site instructions often stem from permit conditions; linking ties each instruction to its governing permit for traceability.',
+    `compliance_permit_id` BIGINT COMMENT 'Foreign key linking to compliance.permit. Business justification: Site instructions often stem from permit conditions; linking ties each instruction to its governing permit for traceability.',
     `construction_project_id` BIGINT COMMENT 'Reference to the construction project under which this site instruction was issued. Links to the project domain for earned value and cost control context.',
-    `firm_profile_id` BIGINT COMMENT 'Foreign key linking to bid.firm_profile. Business justification: Site instructions are issued to a designated subcontractor to carry out the work; essential for work‑order control and cost allocation.',
+    `firm_profile_id` BIGINT COMMENT 'Foreign key linking to bid.firm_profile. Business justification: Site instructions are issued to a designated firm to carry out the work; essential for work‑order control and cost allocation.',
     `craft_worker_id` BIGINT COMMENT 'Foreign key linking to workforce.craft_worker. Business justification: REQUIRED: Site instructions must be issued by a responsible craft worker (foreman/supervisor); FK provides accountability and audit trail for instruction enforcement.',
-    `hr_employee_id` BIGINT COMMENT 'Foreign key linking to hr.employee. Business justification: Internal site instructions are issued by a designated employee; linking records the issuer for traceability and compliance.',
-    `submission_id` BIGINT COMMENT 'Foreign key linking to bid.bid_submission. Business justification: Site instructions (change orders) are issued against the awarded bid; linking provides traceability of instruction impact to the original bid submission.',
+    `employee_id` BIGINT COMMENT 'Foreign key linking to hr.employee. Business justification: Internal site instructions are issued by a designated employee; linking records the issuer for traceability and compliance.',
     `work_front_id` BIGINT COMMENT 'Reference to the specific work front or site zone affected by this instruction. Supports site operations tracking and resource allocation.',
     `aconex_mail_reference` STRING COMMENT 'Reference number of the formal correspondence or transmittal in the Aconex Document Management system through which this site instruction was officially transmitted to the contractor.',
     `affected_drawing_reference` STRING COMMENT 'Reference number(s) of the engineering drawings or BIM model elements affected by this site instruction, enabling traceability to design documents and supporting RFI and submittal processes.',
@@ -604,13 +606,14 @@ CREATE OR REPLACE TABLE `vibe_construction_v1`.`site`.`lift_plan` (
     `lift_plan_id` BIGINT COMMENT 'Unique system-generated identifier for the engineered lift plan record. Primary key for the lift_plan data product in the site domain.',
     `activity_id` BIGINT COMMENT 'Foreign key linking to schedule.activity. Business justification: Lift Plans are prepared for a scheduled lift activity; associating them with schedule.activity enables lift‑safety coordination and critical‑path analysis.',
     `asset_id` BIGINT COMMENT 'Reference to the specific crane asset record in the equipment register. Links to crane certification, inspection history, and rated capacity documentation.',
-    `regulatory_permit_id` BIGINT COMMENT 'Foreign key linking to compliance.permit. Business justification: Lift plans are authorized by a lift permit; linking ensures the plan is executed under the correct regulatory permit.',
-    `craft_worker_id` BIGINT COMMENT 'Foreign key linking to workforce.craft_worker. Business justification: REQUIRED: Crane operators are skilled craft workers; linking enables equipment‑operator assignment, certification tracking and labor cost allocation.',
-    `firm_profile_id` BIGINT COMMENT 'Foreign key linking to bid.firm_profile. Business justification: Lift plans are prepared/executed by a specific subcontractor providing crane services; required for safety compliance, cost tracking, and contract billing.',
+    `compliance_permit_id` BIGINT COMMENT 'Foreign key linking to compliance.permit. Business justification: Lift plans are authorized by a lift permit; linking ensures the plan is executed under the correct regulatory permit.',
     `construction_project_id` BIGINT COMMENT 'Reference to the construction project under which this lift plan is executed. Links the lift plan to project cost, schedule, and WBS context.',
-    `lift_site_construction_project_id` BIGINT COMMENT 'Reference to the physical construction site where the crane and rigging operation is to be performed.',
-    `hr_employee_id` BIGINT COMMENT 'Reference to the workforce record of the appointed person responsible for the lift plan. Used to verify competency certification and training records.',
+    `craft_worker_id` BIGINT COMMENT 'Foreign key linking to workforce.craft_worker. Business justification: REQUIRED: Crane operators are skilled craft workers; linking enables equipment‑operator assignment, certification tracking and labor cost allocation.',
+    `firm_profile_id` BIGINT COMMENT 'Foreign key linking to bid.firm_profile. Business justification: Lift plans are prepared/executed by a specific firm providing crane services; required for safety compliance, cost tracking, and contract billing.',
+    `employee_id` BIGINT COMMENT 'Reference to the workforce record of the appointed person responsible for the lift plan. Used to verify competency certification and training records.',
     `purchase_order_id` BIGINT COMMENT 'Foreign key linking to procurement.purchase_order. Business justification: REQUIRED: Lift plans reference crane rental purchase orders; the link is needed for safety permits and financial tracking.',
+    `quaternary_lift_approved_by_employee_id` BIGINT COMMENT 'Reference to the workforce record of the authorising manager or HSE officer who approved the lift plan. Required before permit-to-lift can be issued.',
+    `site_construction_project_id` BIGINT COMMENT 'Reference to the physical construction site where the crane and rigging operation is to be performed.',
     `swms_id` BIGINT COMMENT 'Foreign key linking to safety.swms. Business justification: REQUIRED: Lift plans are executed only when a Safe Work Method Statement is approved; the FK ties the plan to its SWMS.',
     `tertiary_lift_rigger_in_charge_employee_id` BIGINT COMMENT 'Reference to the workforce record of the qualified rigger-in-charge responsible for rigging the load and directing the lift operation.',
     `appointed_person_name` STRING COMMENT 'Full name of the appointed person (lift supervisor or lift director) who is responsible for planning and supervising the crane lift operation. Required under ASME P30.1 and OSHA regulations.',
@@ -655,13 +658,13 @@ CREATE OR REPLACE TABLE `vibe_construction_v1`.`site`.`lift_plan` (
 
 CREATE OR REPLACE TABLE `vibe_construction_v1`.`site`.`shift_report` (
     `shift_report_id` BIGINT COMMENT 'Unique system-generated identifier for the shift report record. Primary key for the shift_report data product in the site domain. Entity role: TRANSACTION_HEADER.',
-    `regulatory_permit_id` BIGINT COMMENT 'Foreign key linking to compliance.permit. Business justification: Shift reports capture permit‑related delays; linking provides direct reference to the permit affecting the shift.',
+    `compliance_permit_id` BIGINT COMMENT 'Foreign key linking to compliance.permit. Business justification: Shift reports capture permit‑related delays; linking provides direct reference to the permit affecting the shift.',
+    `construction_project_id` BIGINT COMMENT 'Reference to the construction project this shift report belongs to. Links shift-level operational data to the parent project for earned value and cost control reporting.',
     `daily_log_id` BIGINT COMMENT 'Reference to the parent daily log record that this shift report rolls up into. Multiple shift reports (day/night/swing) may feed a single daily log for 24-hour continuous operations such as tunnel boring or continuous concrete pours.',
-    `hr_employee_id` BIGINT COMMENT 'Reference to the shift supervisor responsible for overseeing all activities, safety, and production during this shift. Accountable party for shift handover and sign-off.',
+    `employee_id` BIGINT COMMENT 'Reference to the shift supervisor responsible for overseeing all activities, safety, and production during this shift. Accountable party for shift handover and sign-off.',
     `cost_code_id` BIGINT COMMENT 'Foreign key linking to finance.cost_code. Business justification: Shift reports feed daily cost roll‑ups; associating each shift with a finance cost code supports daily cost variance analysis.',
     `incident_id` BIGINT COMMENT 'Foreign key linking to safety.incident. Business justification: REQUIRED: Shift reports record incidents during the shift; linking provides direct reference to the incident record.',
-    `construction_project_id` BIGINT COMMENT 'Reference to the construction project this shift report belongs to. Links shift-level operational data to the parent project for earned value and cost control reporting.',
-    `shift_site_construction_project_id` BIGINT COMMENT 'Reference to the physical construction site where this shift was executed. Supports site-level aggregation and logistics reporting.',
+    `site_construction_project_id` BIGINT COMMENT 'Reference to the physical construction site where this shift was executed. Supports site-level aggregation and logistics reporting.',
     `work_front_id` BIGINT COMMENT 'Reference to the specific work front or work zone where shift activities were executed. Enables production tracking and resource allocation analysis by work front.',
     `activities_narrative` STRING COMMENT 'Free-text description of the principal work activities performed during the shift, including scope completed, methods used, and notable observations. Sourced from HCSS HeavyJob field notes and Procore daily log entries.',
     `approved_timestamp` TIMESTAMP COMMENT 'Date and time when the shift report was formally approved by the authorised reviewer (typically the site superintendent or project manager). Marks the record as authoritative for earned value and cost reporting.',
@@ -709,10 +712,10 @@ CREATE OR REPLACE TABLE `vibe_construction_v1`.`site`.`site_permit` (
     `site_permit_id` BIGINT COMMENT 'System generated unique identifier for the site permit record.',
     `account_id` BIGINT COMMENT 'Foreign key linking to client.account. Business justification: Permit compliance and cost allocation are reported against the owning client account; linking permits to client.account provides traceability.',
     `activity_id` BIGINT COMMENT 'Foreign key linking to schedule.activity. Business justification: Permits (e.g., crane, excavation) are required for particular scheduled activities; linking permits to activity supports compliance reporting.',
-    `regulatory_permit_id` BIGINT COMMENT 'Foreign key linking to compliance.permit. Business justification: Required for regulatory reporting: each internal site permit record must be linked to the official regulatory permit to synchronize status, conditions, and renewal tracking.',
-    `firm_profile_id` BIGINT COMMENT 'Foreign key linking to bid.firm_profile. Business justification: Permits are generally obtained by the subcontractor responsible for the work front; required for regulatory compliance tracking and reporting.',
+    `compliance_permit_id` BIGINT COMMENT 'Foreign key linking to compliance.permit. Business justification: Required for regulatory reporting: each internal site permit record must be linked to the official regulatory permit to synchronize status, conditions, and renewal tracking.',
+    `firm_profile_id` BIGINT COMMENT 'Foreign key linking to bid.firm_profile. Business justification: Permits are generally obtained by the firm responsible for the work front; required for regulatory compliance tracking and reporting.',
     `permit_to_work_id` BIGINT COMMENT 'Foreign key linking to safety.permit_to_work. Business justification: REQUIRED: Site permits are recorded in the central PTW system; linking ensures consistency and auditability.',
-    `hr_employee_id` BIGINT COMMENT 'Identifier of the person accountable for compliance with the permit.',
+    `employee_id` BIGINT COMMENT 'Identifier of the person accountable for compliance with the permit.',
     `renewed_site_permit_id` BIGINT COMMENT 'Self-referencing FK on site_permit (renewed_site_permit_id)',
     `submission_id` BIGINT COMMENT 'Foreign key linking to bid.bid_submission. Business justification: Permits are typically obtained after award; associating each permit with the winning bid_submission supports regulatory compliance reporting and audit.',
     `tertiary_site_close_out_by_employee_id` BIGINT COMMENT 'Identifier of the person who signed off the permit close‑out.',
@@ -745,50 +748,25 @@ CREATE OR REPLACE TABLE `vibe_construction_v1`.`site`.`site_permit` (
     `updated_timestamp` TIMESTAMP COMMENT 'Timestamp of the most recent modification to the permit record.',
     `version` STRING COMMENT 'Alphanumeric version label (e.g., v1, v2a).',
     CONSTRAINT pk_site_permit PRIMARY KEY(`site_permit_id`)
-) COMMENT 'Regulatory permit or access authorization record governing permission to execute specific work activities on a construction site. Captures permit type (hot work, excavation, confined space entry, crane operation, road closure, environmental discharge, noise variance), permit number, issuing authority, application date, approval date, expiry date, conditions/restrictions, associated work front, responsible person, permit status (applied/active/suspended/closed), and close-out sign-off. Required under OSHA 29 CFR 1926, local building codes, and environmental regulations. Provides the compliance gate that must be satisfied before work commences on regulated activities. [SSOT: distinct source of truth for site domain]';
+) COMMENT 'Regulatory permit or access authorization record governing permission to execute specific work activities on a construction site. Captures permit type (hot work, excavation, confined space entry, crane operation, road closure, environmental discharge, noise variance), permit number, issuing authority, application date, approval date, expiry date, conditions/restrictions, associated work front, responsible person, permit status (applied/active/suspended/closed), and close-out sign-off. Required under OSHA 29 CFR 1926, local building codes, and environmental regulations. Provides the compliance gate that must be satisfied before work commences on regulated activities.';
 
 CREATE OR REPLACE TABLE `vibe_construction_v1`.`site`.`work_front_assignment` (
     `work_front_assignment_id` BIGINT COMMENT 'Primary key for the work_front_assignment association',
-    `construction_project_id` BIGINT COMMENT 'add column construction_project_id (BIGINT) with FK to project.construction_project.construction_project_id - work front assignments must scope to a project',
+    `construction_project_id` BIGINT COMMENT 'add column construction_project_id (BIGINT) with FK to project.construction_project.construction_project_id - work front assignments are project-specific crew deployments',
     `craft_worker_id` BIGINT COMMENT 'Foreign key linking to the craft worker',
-    `crew_id` BIGINT COMMENT 'add column crew_id (BIGINT) with FK to workforce.crew.crew_id - crew assignments to work fronts are core to the entity',
     `work_front_id` BIGINT COMMENT 'Foreign key linking to the work front',
-    `actual_finish` DATE COMMENT '',
-    `actual_hours` DECIMAL(18,2) COMMENT 'Actual labor hours recorded.',
-    `actual_start` DATE COMMENT '',
-    `allocated_hours` DECIMAL(18,2) COMMENT 'Hours allocated.',
-    `allocation_percentage` DECIMAL(18,2) COMMENT '',
-    `assigned_quantity` DECIMAL(18,2) COMMENT '',
-    `assignment_date` DATE COMMENT '',
     `assignment_end_date` DATE COMMENT 'Date the workers assignment to the work front ends',
     `assignment_start_date` DATE COMMENT 'Date the workers assignment to the work front begins',
-    `assignment_status` STRING COMMENT '',
-    `completion_pct` DECIMAL(18,2) COMMENT '',
-    `created_timestamp` TIMESTAMP COMMENT 'Record creation timestamp.',
-    `is_active` BOOLEAN COMMENT 'Whether the assignment is currently active.',
-    `notes` STRING COMMENT '',
-    `planned_finish` DATE COMMENT '',
-    `planned_hours` DECIMAL(18,2) COMMENT 'Planned hours for the assignment.',
-    `planned_start` DATE COMMENT '',
-    `priority` STRING COMMENT '',
-    `progress_percent` DECIMAL(18,2) COMMENT '',
-    `remarks` STRING COMMENT '',
     `role` STRING COMMENT 'The workers role on the work front (e.g., foreman, electrician, plumber)',
-    `shift` STRING COMMENT 'Shift assigned.',
-    `supervisor_name` STRING COMMENT 'Supervising person.',
-    `unit_of_measure` STRING COMMENT '',
-    `uom` STRING COMMENT '',
-    `updated_timestamp` TIMESTAMP COMMENT 'Record update timestamp.',
-    `work_front_assignment_status` STRING COMMENT '',
     CONSTRAINT pk_work_front_assignment PRIMARY KEY(`work_front_assignment_id`)
 ) COMMENT 'This association records the staffing of craft workers on work fronts. Each record links one work_front to one craft_worker and captures the assignments start date, end date, and the workers role on that front.. Existence Justification: A work front can have multiple craft workers (foremen, tradespeople) assigned at the same time, and a craft worker can be assigned to multiple work fronts across projects or shifts. The assignment is actively managed by scheduling teams and includes start/end dates and a role for each worker on a front.';
 
 CREATE OR REPLACE TABLE `vibe_construction_v1`.`site`.`site` (
     `site_id` BIGINT COMMENT 'Primary key for site',
-    `construction_project_id` BIGINT COMMENT 'Identifier of the construction project to which the site belongs.',
     `current_location_site_id` BIGINT COMMENT 'Self-referencing FK on site (current_location_site_id)',
-    `hr_employee_id` BIGINT COMMENT 'Unique identifier of the person responsible for site management.',
-    `site_manager_employee_id` BIGINT COMMENT 'FK to hr.employee',
+    `employee_id` BIGINT COMMENT 'Unique identifier of the person responsible for site management.',
+    `manager_employee_id` BIGINT COMMENT 'FK to hr.employee',
+    `construction_project_id` BIGINT COMMENT 'Identifier of the construction project to which the site belongs.',
     `address_line1` STRING COMMENT 'Primary street address of the site.',
     `address_line2` STRING COMMENT 'Secondary address information (e.g., suite or building).',
     `area_sqft` DECIMAL(18,2) COMMENT 'Total built‑up area of the site in square feet.',
@@ -816,19 +794,19 @@ CREATE OR REPLACE TABLE `vibe_construction_v1`.`site`.`site` (
     `postal_code` STRING COMMENT 'Postal or ZIP code for the site address.',
     `region` STRING COMMENT 'Broad geographic region where the site is located.',
     `safety_incident_count` STRING COMMENT 'Cumulative number of safety incidents recorded at the site.',
-    `site_status` STRING COMMENT 'Current lifecycle state of the site.',
-    `site_type` STRING COMMENT 'Classification of the site based on its primary function.',
     `start_date` DATE COMMENT 'Date when the site became operational or was mobilized.',
     `state` STRING COMMENT 'State or province of the site location.',
+    `site_status` STRING COMMENT 'Current lifecycle state of the site.',
+    `site_type` STRING COMMENT 'Classification of the site based on its primary function.',
     `updated_timestamp` TIMESTAMP COMMENT 'Timestamp of the most recent update to the site record.',
     CONSTRAINT pk_site PRIMARY KEY(`site_id`)
 ) COMMENT 'Master reference table for site. Referenced by current_location_site_id.';
 
 CREATE OR REPLACE TABLE `vibe_construction_v1`.`site`.`site_location` (
     `site_location_id` BIGINT COMMENT 'Primary key for site_location',
-    `construction_project_id` BIGINT COMMENT 'Identifier of the project to which the site belongs.',
-    `hr_employee_id` BIGINT COMMENT 'Identifier of the employee managing the site.',
+    `employee_id` BIGINT COMMENT 'Identifier of the employee managing the site.',
     `parent_site_location_id` BIGINT COMMENT 'Self-referencing FK on site_location (parent_site_location_id)',
+    `construction_project_id` BIGINT COMMENT 'Identifier of the project to which the site belongs.',
     `site_id` BIGINT COMMENT 'Foreign key linking to site.site. Business justification: A site location is defined within a specific site; adding site_location.site_id links locations to their parent site, removing the silo.',
     `address_line1` STRING COMMENT 'Primary street address of the site.',
     `address_line2` STRING COMMENT 'Secondary address information (e.g., suite, building).',
@@ -860,10 +838,10 @@ CREATE OR REPLACE TABLE `vibe_construction_v1`.`site`.`site_location` (
     `site_category` STRING COMMENT 'Broad classification of the site based on its usage.',
     `site_classification` STRING COMMENT 'Risk or importance classification of the site.',
     `site_description` STRING COMMENT 'Free-text description of the site, including notable features.',
-    `site_location_status` STRING COMMENT 'Current operational status of the site.',
     `site_owner` STRING COMMENT 'Legal owner entity of the site.',
     `site_type` STRING COMMENT 'Category of the site based on its primary function.',
     `state_province` STRING COMMENT 'State or province of the site.',
+    `site_location_status` STRING COMMENT 'Current operational status of the site.',
     `timezone` STRING COMMENT 'IANA time zone identifier for the site.',
     `updated_timestamp` TIMESTAMP COMMENT 'Timestamp of the most recent update to the site record.',
     `utility_provider` STRING COMMENT 'Primary utility provider for the site (e.g., electricity, water).',
@@ -883,6 +861,7 @@ ALTER TABLE `vibe_construction_v1`.`site`.`earthwork_volume` ADD CONSTRAINT `fk_
 ALTER TABLE `vibe_construction_v1`.`site`.`field_progress` ADD CONSTRAINT `fk_site_field_progress_daily_log_id` FOREIGN KEY (`daily_log_id`) REFERENCES `vibe_construction_v1`.`site`.`daily_log`(`daily_log_id`);
 ALTER TABLE `vibe_construction_v1`.`site`.`field_progress` ADD CONSTRAINT `fk_site_field_progress_production_entry_id` FOREIGN KEY (`production_entry_id`) REFERENCES `vibe_construction_v1`.`site`.`production_entry`(`production_entry_id`);
 ALTER TABLE `vibe_construction_v1`.`site`.`site_mobilization` ADD CONSTRAINT `fk_site_site_mobilization_site_id` FOREIGN KEY (`site_id`) REFERENCES `vibe_construction_v1`.`site`.`site`(`site_id`);
+ALTER TABLE `vibe_construction_v1`.`site`.`logistics_plan` ADD CONSTRAINT `fk_site_logistics_plan_site_id` FOREIGN KEY (`site_id`) REFERENCES `vibe_construction_v1`.`site`.`site`(`site_id`);
 ALTER TABLE `vibe_construction_v1`.`site`.`equipment_deployment` ADD CONSTRAINT `fk_site_equipment_deployment_daily_log_id` FOREIGN KEY (`daily_log_id`) REFERENCES `vibe_construction_v1`.`site`.`daily_log`(`daily_log_id`);
 ALTER TABLE `vibe_construction_v1`.`site`.`equipment_deployment` ADD CONSTRAINT `fk_site_equipment_deployment_work_front_id` FOREIGN KEY (`work_front_id`) REFERENCES `vibe_construction_v1`.`site`.`work_front`(`work_front_id`);
 ALTER TABLE `vibe_construction_v1`.`site`.`instruction` ADD CONSTRAINT `fk_site_instruction_work_front_id` FOREIGN KEY (`work_front_id`) REFERENCES `vibe_construction_v1`.`site`.`work_front`(`work_front_id`);
@@ -896,1114 +875,1090 @@ ALTER TABLE `vibe_construction_v1`.`site`.`site_location` ADD CONSTRAINT `fk_sit
 ALTER TABLE `vibe_construction_v1`.`site`.`site_location` ADD CONSTRAINT `fk_site_site_location_site_id` FOREIGN KEY (`site_id`) REFERENCES `vibe_construction_v1`.`site`.`site`(`site_id`);
 
 -- ========= TAGS =========
-ALTER SCHEMA `vibe_construction_v1`.`site` SET TAGS ('pii_division' = 'operations');
-ALTER SCHEMA `vibe_construction_v1`.`site` SET TAGS ('pii_domain' = 'site');
-ALTER TABLE `vibe_construction_v1`.`site`.`work_front` SET TAGS ('pii_data_type' = 'master_data');
-ALTER TABLE `vibe_construction_v1`.`site`.`work_front` SET TAGS ('pii_subdomain' = 'field_operations');
-ALTER TABLE `vibe_construction_v1`.`site`.`work_front` SET TAGS ('pii_required_structure' = 'v2');
-ALTER TABLE `vibe_construction_v1`.`site`.`work_front` SET TAGS ('pii_ecm_structure' = 'preserved_v2');
-ALTER TABLE `vibe_construction_v1`.`site`.`work_front` SET TAGS ('pii_industry' = 'construction');
-ALTER TABLE `vibe_construction_v1`.`site`.`work_front` SET TAGS ('pii_preserved' = 'required-structure');
-ALTER TABLE `vibe_construction_v1`.`site`.`work_front` SET TAGS ('pii_structure_required' = 'true');
-ALTER TABLE `vibe_construction_v1`.`site`.`work_front` ALTER COLUMN `work_front_id` SET TAGS ('pii_business_glossary_term' = 'Work Front ID');
-ALTER TABLE `vibe_construction_v1`.`site`.`work_front` ALTER COLUMN `design_scope_id` SET TAGS ('pii_business_glossary_term' = 'Design Scope Id (Foreign Key)');
-ALTER TABLE `vibe_construction_v1`.`site`.`work_front` ALTER COLUMN `hr_employee_id` SET TAGS ('pii_business_glossary_term' = 'Foreman ID');
-ALTER TABLE `vibe_construction_v1`.`site`.`work_front` ALTER COLUMN `hr_employee_id` SET TAGS ('pii_confidential' = 'true');
-ALTER TABLE `vibe_construction_v1`.`site`.`work_front` ALTER COLUMN `hr_employee_id` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_construction_v1`.`site`.`work_front` ALTER COLUMN `cost_code_id` SET TAGS ('pii_business_glossary_term' = 'Finance Cost Code Id (Foreign Key)');
-ALTER TABLE `vibe_construction_v1`.`site`.`work_front` ALTER COLUMN `firm_profile_id` SET TAGS ('pii_business_glossary_term' = 'Subcontractor ID');
-ALTER TABLE `vibe_construction_v1`.`site`.`work_front` ALTER COLUMN `party_id` SET TAGS ('pii_business_glossary_term' = 'Contract Party Id (Foreign Key)');
-ALTER TABLE `vibe_construction_v1`.`site`.`work_front` ALTER COLUMN `site_id` SET TAGS ('pii_business_glossary_term' = 'Site Id (Foreign Key)');
-ALTER TABLE `vibe_construction_v1`.`site`.`work_front` ALTER COLUMN `subcontract_id` SET TAGS ('pii_business_glossary_term' = 'Subcontract Id (Foreign Key)');
-ALTER TABLE `vibe_construction_v1`.`site`.`work_front` ALTER COLUMN `wbs_element_id` SET TAGS ('pii_business_glossary_term' = 'Work Breakdown Structure (WBS) Element ID');
-ALTER TABLE `vibe_construction_v1`.`site`.`work_front` ALTER COLUMN `construction_project_id` SET TAGS ('pii_business_glossary_term' = 'Project ID');
-ALTER TABLE `vibe_construction_v1`.`site`.`work_front` ALTER COLUMN `work_site_construction_project_id` SET TAGS ('pii_business_glossary_term' = 'Site ID');
-ALTER TABLE `vibe_construction_v1`.`site`.`work_front` ALTER COLUMN `access_restriction` SET TAGS ('pii_business_glossary_term' = 'Access Restriction Level');
-ALTER TABLE `vibe_construction_v1`.`site`.`work_front` ALTER COLUMN `access_restriction` SET TAGS ('pii_value_regex' = 'unrestricted|permit_required|restricted_zone|exclusion_zone');
-ALTER TABLE `vibe_construction_v1`.`site`.`work_front` ALTER COLUMN `actual_crew_size` SET TAGS ('pii_business_glossary_term' = 'Actual Crew Size');
-ALTER TABLE `vibe_construction_v1`.`site`.`work_front` ALTER COLUMN `actual_production_qty` SET TAGS ('pii_business_glossary_term' = 'Actual Production Quantity');
-ALTER TABLE `vibe_construction_v1`.`site`.`work_front` ALTER COLUMN `actual_start_date` SET TAGS ('pii_business_glossary_term' = 'Actual Start Date');
-ALTER TABLE `vibe_construction_v1`.`site`.`work_front` ALTER COLUMN `area_sqm` SET TAGS ('pii_business_glossary_term' = 'Work Front Area (Square Metres)');
-ALTER TABLE `vibe_construction_v1`.`site`.`work_front` ALTER COLUMN `bim_model_reference` SET TAGS ('pii_business_glossary_term' = 'Building Information Modeling (BIM) Model Reference');
-ALTER TABLE `vibe_construction_v1`.`site`.`work_front` ALTER COLUMN `created_timestamp` SET TAGS ('pii_business_glossary_term' = 'Record Created Timestamp');
-ALTER TABLE `vibe_construction_v1`.`site`.`work_front` ALTER COLUMN `current_phase` SET TAGS ('pii_business_glossary_term' = 'Current Construction Phase');
-ALTER TABLE `vibe_construction_v1`.`site`.`work_front` ALTER COLUMN `demobilization_date` SET TAGS ('pii_business_glossary_term' = 'Demobilization Date');
-ALTER TABLE `vibe_construction_v1`.`site`.`work_front` ALTER COLUMN `drawing_reference` SET TAGS ('pii_business_glossary_term' = 'Engineering Drawing Reference');
-ALTER TABLE `vibe_construction_v1`.`site`.`work_front` ALTER COLUMN `elevation_m` SET TAGS ('pii_business_glossary_term' = 'Elevation (Metres)');
-ALTER TABLE `vibe_construction_v1`.`site`.`work_front` ALTER COLUMN `environmental_sensitivity` SET TAGS ('pii_business_glossary_term' = 'Environmental Sensitivity Classification');
-ALTER TABLE `vibe_construction_v1`.`site`.`work_front` ALTER COLUMN `environmental_sensitivity` SET TAGS ('pii_value_regex' = 'standard|sensitive|protected|remediation_required');
-ALTER TABLE `vibe_construction_v1`.`site`.`work_front` ALTER COLUMN `forecast_finish_date` SET TAGS ('pii_business_glossary_term' = 'Forecast Finish Date');
-ALTER TABLE `vibe_construction_v1`.`site`.`work_front` ALTER COLUMN `front_code` SET TAGS ('pii_business_glossary_term' = 'Work Front Code');
-ALTER TABLE `vibe_construction_v1`.`site`.`work_front` ALTER COLUMN `front_code` SET TAGS ('pii_value_regex' = '^[A-Z0-9-]{2,20}$');
-ALTER TABLE `vibe_construction_v1`.`site`.`work_front` ALTER COLUMN `front_name` SET TAGS ('pii_business_glossary_term' = 'Work Front Name');
-ALTER TABLE `vibe_construction_v1`.`site`.`work_front` ALTER COLUMN `front_status` SET TAGS ('pii_business_glossary_term' = 'Work Front Status');
-ALTER TABLE `vibe_construction_v1`.`site`.`work_front` ALTER COLUMN `front_status` SET TAGS ('pii_value_regex' = 'active|inactive|mobilizing|demobilized|suspended|completed');
-ALTER TABLE `vibe_construction_v1`.`site`.`work_front` ALTER COLUMN `front_type` SET TAGS ('pii_business_glossary_term' = 'Work Front Type');
-ALTER TABLE `vibe_construction_v1`.`site`.`work_front` ALTER COLUMN `grid_reference` SET TAGS ('pii_business_glossary_term' = 'Site Grid Reference');
-ALTER TABLE `vibe_construction_v1`.`site`.`work_front` ALTER COLUMN `heavyjob_cost_center` SET TAGS ('pii_business_glossary_term' = 'HCSS HeavyJob Cost Center');
-ALTER TABLE `vibe_construction_v1`.`site`.`work_front` ALTER COLUMN `hse_risk_level` SET TAGS ('pii_business_glossary_term' = 'Health Safety and Environment (HSE) Risk Level');
-ALTER TABLE `vibe_construction_v1`.`site`.`work_front` ALTER COLUMN `hse_risk_level` SET TAGS ('pii_value_regex' = 'low|medium|high|critical');
-ALTER TABLE `vibe_construction_v1`.`site`.`work_front` ALTER COLUMN `is_critical_path` SET TAGS ('pii_business_glossary_term' = 'Critical Path Method (CPM) Flag');
-ALTER TABLE `vibe_construction_v1`.`site`.`work_front` ALTER COLUMN `is_subcontracted` SET TAGS ('pii_business_glossary_term' = 'Subcontracted Flag');
-ALTER TABLE `vibe_construction_v1`.`site`.`work_front` ALTER COLUMN `last_updated_timestamp` SET TAGS ('pii_business_glossary_term' = 'Record Last Updated Timestamp');
-ALTER TABLE `vibe_construction_v1`.`site`.`work_front` ALTER COLUMN `latitude` SET TAGS ('pii_business_glossary_term' = 'GPS Latitude Coordinate');
-ALTER TABLE `vibe_construction_v1`.`site`.`work_front` ALTER COLUMN `latitude` SET TAGS ('pii_restricted' = 'true');
-ALTER TABLE `vibe_construction_v1`.`site`.`work_front` ALTER COLUMN `latitude` SET TAGS ('pii_address' = 'true');
-ALTER TABLE `vibe_construction_v1`.`site`.`work_front` ALTER COLUMN `longitude` SET TAGS ('pii_business_glossary_term' = 'GPS Longitude Coordinate');
-ALTER TABLE `vibe_construction_v1`.`site`.`work_front` ALTER COLUMN `longitude` SET TAGS ('pii_restricted' = 'true');
-ALTER TABLE `vibe_construction_v1`.`site`.`work_front` ALTER COLUMN `longitude` SET TAGS ('pii_address' = 'true');
-ALTER TABLE `vibe_construction_v1`.`site`.`work_front` ALTER COLUMN `mobilization_date` SET TAGS ('pii_business_glossary_term' = 'Mobilization Date');
-ALTER TABLE `vibe_construction_v1`.`site`.`work_front` ALTER COLUMN `percent_complete` SET TAGS ('pii_business_glossary_term' = 'Percent Complete');
-ALTER TABLE `vibe_construction_v1`.`site`.`work_front` ALTER COLUMN `planned_crew_size` SET TAGS ('pii_business_glossary_term' = 'Planned Crew Size');
-ALTER TABLE `vibe_construction_v1`.`site`.`work_front` ALTER COLUMN `planned_finish_date` SET TAGS ('pii_business_glossary_term' = 'Planned Finish Date');
-ALTER TABLE `vibe_construction_v1`.`site`.`work_front` ALTER COLUMN `planned_production_qty` SET TAGS ('pii_business_glossary_term' = 'Planned Production Quantity');
-ALTER TABLE `vibe_construction_v1`.`site`.`work_front` ALTER COLUMN `planned_start_date` SET TAGS ('pii_business_glossary_term' = 'Planned Start Date');
-ALTER TABLE `vibe_construction_v1`.`site`.`work_front` ALTER COLUMN `procore_location_reference` SET TAGS ('pii_business_glossary_term' = 'Procore Location ID');
-ALTER TABLE `vibe_construction_v1`.`site`.`work_front` ALTER COLUMN `production_unit` SET TAGS ('pii_business_glossary_term' = 'Production Unit of Measure');
-ALTER TABLE `vibe_construction_v1`.`site`.`work_front` ALTER COLUMN `quality_itp_reference` SET TAGS ('pii_business_glossary_term' = 'Inspection and Test Plan (ITP) Reference');
-ALTER TABLE `vibe_construction_v1`.`site`.`work_front` ALTER COLUMN `shift_pattern` SET TAGS ('pii_business_glossary_term' = 'Shift Pattern');
-ALTER TABLE `vibe_construction_v1`.`site`.`work_front` ALTER COLUMN `shift_pattern` SET TAGS ('pii_value_regex' = 'single|double|rotating|night_only|continuous');
-ALTER TABLE `vibe_construction_v1`.`site`.`work_front` ALTER COLUMN `swms_reference` SET TAGS ('pii_business_glossary_term' = 'Safe Work Method Statement (SWMS) Reference');
-ALTER TABLE `vibe_construction_v1`.`site`.`work_front` ALTER COLUMN `weather_sensitivity` SET TAGS ('pii_business_glossary_term' = 'Weather Sensitivity Classification');
-ALTER TABLE `vibe_construction_v1`.`site`.`work_front` ALTER COLUMN `weather_sensitivity` SET TAGS ('pii_value_regex' = 'low|medium|high');
-ALTER TABLE `vibe_construction_v1`.`site`.`work_front` ALTER COLUMN `zone_classification` SET TAGS ('pii_business_glossary_term' = 'Zone Classification');
-ALTER TABLE `vibe_construction_v1`.`site`.`daily_log` SET TAGS ('pii_data_type' = 'transactional_data');
-ALTER TABLE `vibe_construction_v1`.`site`.`daily_log` SET TAGS ('pii_subdomain' = 'field_operations');
-ALTER TABLE `vibe_construction_v1`.`site`.`daily_log` SET TAGS ('pii_required_structure' = 'v2');
-ALTER TABLE `vibe_construction_v1`.`site`.`daily_log` SET TAGS ('pii_ecm_structure' = 'preserved_v2');
-ALTER TABLE `vibe_construction_v1`.`site`.`daily_log` SET TAGS ('pii_industry' = 'construction');
-ALTER TABLE `vibe_construction_v1`.`site`.`daily_log` SET TAGS ('pii_preserved' = 'required-structure');
-ALTER TABLE `vibe_construction_v1`.`site`.`daily_log` SET TAGS ('pii_structure_required' = 'true');
-ALTER TABLE `vibe_construction_v1`.`site`.`daily_log` ALTER COLUMN `daily_log_id` SET TAGS ('pii_business_glossary_term' = 'Daily Log ID');
-ALTER TABLE `vibe_construction_v1`.`site`.`daily_log` ALTER COLUMN `activity_id` SET TAGS ('pii_business_glossary_term' = 'Activity Id (Foreign Key)');
-ALTER TABLE `vibe_construction_v1`.`site`.`daily_log` ALTER COLUMN `agreement_id` SET TAGS ('pii_business_glossary_term' = 'Agreement Id (Foreign Key)');
-ALTER TABLE `vibe_construction_v1`.`site`.`daily_log` ALTER COLUMN `regulatory_permit_id` SET TAGS ('pii_business_glossary_term' = 'Permit Id (Foreign Key)');
-ALTER TABLE `vibe_construction_v1`.`site`.`daily_log` ALTER COLUMN `construction_project_id` SET TAGS ('pii_business_glossary_term' = 'Project ID');
-ALTER TABLE `vibe_construction_v1`.`site`.`daily_log` ALTER COLUMN `daily_site_construction_project_id` SET TAGS ('pii_business_glossary_term' = 'Site ID');
-ALTER TABLE `vibe_construction_v1`.`site`.`daily_log` ALTER COLUMN `drawing_id` SET TAGS ('pii_business_glossary_term' = 'Drawing Id (Foreign Key)');
-ALTER TABLE `vibe_construction_v1`.`site`.`daily_log` ALTER COLUMN `incident_id` SET TAGS ('pii_business_glossary_term' = 'Incident Id (Foreign Key)');
-ALTER TABLE `vibe_construction_v1`.`site`.`daily_log` ALTER COLUMN `hr_employee_id` SET TAGS ('pii_business_glossary_term' = 'Superintendent ID');
-ALTER TABLE `vibe_construction_v1`.`site`.`daily_log` ALTER COLUMN `hr_employee_id` SET TAGS ('pii_confidential' = 'true');
-ALTER TABLE `vibe_construction_v1`.`site`.`daily_log` ALTER COLUMN `hr_employee_id` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_construction_v1`.`site`.`daily_log` ALTER COLUMN `approved_timestamp` SET TAGS ('pii_business_glossary_term' = 'Approval Timestamp');
-ALTER TABLE `vibe_construction_v1`.`site`.`daily_log` ALTER COLUMN `concrete_volume_m3` SET TAGS ('pii_business_glossary_term' = 'Concrete Pour Volume (Cubic Metres)');
-ALTER TABLE `vibe_construction_v1`.`site`.`daily_log` ALTER COLUMN `cost_code` SET TAGS ('pii_business_glossary_term' = 'Cost Code');
-ALTER TABLE `vibe_construction_v1`.`site`.`daily_log` ALTER COLUMN `cost_impact_flag` SET TAGS ('pii_business_glossary_term' = 'Cost Impact Flag');
-ALTER TABLE `vibe_construction_v1`.`site`.`daily_log` ALTER COLUMN `created_timestamp` SET TAGS ('pii_business_glossary_term' = 'Record Created Timestamp');
-ALTER TABLE `vibe_construction_v1`.`site`.`daily_log` ALTER COLUMN `direct_labour_count` SET TAGS ('pii_business_glossary_term' = 'Direct Labour Headcount');
-ALTER TABLE `vibe_construction_v1`.`site`.`daily_log` ALTER COLUMN `earthworks_volume_m3` SET TAGS ('pii_business_glossary_term' = 'Earthworks Volume (Cubic Metres)');
-ALTER TABLE `vibe_construction_v1`.`site`.`daily_log` ALTER COLUMN `eot_impact_flag` SET TAGS ('pii_business_glossary_term' = 'Extension of Time (EOT) Impact Flag');
-ALTER TABLE `vibe_construction_v1`.`site`.`daily_log` ALTER COLUMN `equipment_count` SET TAGS ('pii_business_glossary_term' = 'Equipment Count On Site');
-ALTER TABLE `vibe_construction_v1`.`site`.`daily_log` ALTER COLUMN `event_count` SET TAGS ('pii_business_glossary_term' = 'Line-Item Event Count');
-ALTER TABLE `vibe_construction_v1`.`site`.`daily_log` ALTER COLUMN `has_delay_event` SET TAGS ('pii_business_glossary_term' = 'Has Delay Event Flag');
-ALTER TABLE `vibe_construction_v1`.`site`.`daily_log` ALTER COLUMN `has_safety_observation` SET TAGS ('pii_business_glossary_term' = 'Has Safety Observation Flag');
-ALTER TABLE `vibe_construction_v1`.`site`.`daily_log` ALTER COLUMN `hcss_log_reference` SET TAGS ('pii_business_glossary_term' = 'HCSS HeavyJob Log Reference');
-ALTER TABLE `vibe_construction_v1`.`site`.`daily_log` ALTER COLUMN `log_date` SET TAGS ('pii_business_glossary_term' = 'Log Date');
-ALTER TABLE `vibe_construction_v1`.`site`.`daily_log` ALTER COLUMN `log_number` SET TAGS ('pii_business_glossary_term' = 'Daily Log Number');
-ALTER TABLE `vibe_construction_v1`.`site`.`daily_log` ALTER COLUMN `log_number` SET TAGS ('pii_value_regex' = '^DL-[A-Z0-9]+-[0-9]{4}-[0-9]{5}$');
-ALTER TABLE `vibe_construction_v1`.`site`.`daily_log` ALTER COLUMN `log_status` SET TAGS ('pii_business_glossary_term' = 'Daily Log Status');
-ALTER TABLE `vibe_construction_v1`.`site`.`daily_log` ALTER COLUMN `log_status` SET TAGS ('pii_value_regex' = 'draft|submitted|approved|rejected|void');
-ALTER TABLE `vibe_construction_v1`.`site`.`daily_log` ALTER COLUMN `lti_occurred_flag` SET TAGS ('pii_business_glossary_term' = 'Lost Time Injury (LTI) Occurred Flag');
-ALTER TABLE `vibe_construction_v1`.`site`.`daily_log` ALTER COLUMN `ncr_raised_flag` SET TAGS ('pii_business_glossary_term' = 'Non-Conformance Report (NCR) Raised Flag');
-ALTER TABLE `vibe_construction_v1`.`site`.`daily_log` ALTER COLUMN `overall_site_status` SET TAGS ('pii_business_glossary_term' = 'Overall Site Status');
-ALTER TABLE `vibe_construction_v1`.`site`.`daily_log` ALTER COLUMN `overall_site_status` SET TAGS ('pii_value_regex' = 'productive|partially_productive|non_productive|shutdown');
-ALTER TABLE `vibe_construction_v1`.`site`.`daily_log` ALTER COLUMN `permit_to_work_count` SET TAGS ('pii_business_glossary_term' = 'Permit to Work Count');
-ALTER TABLE `vibe_construction_v1`.`site`.`daily_log` ALTER COLUMN `planned_activities_narrative` SET TAGS ('pii_business_glossary_term' = 'Planned Activities Narrative');
-ALTER TABLE `vibe_construction_v1`.`site`.`daily_log` ALTER COLUMN `precipitation_mm` SET TAGS ('pii_business_glossary_term' = 'Precipitation (Millimetres)');
-ALTER TABLE `vibe_construction_v1`.`site`.`daily_log` ALTER COLUMN `procore_log_reference` SET TAGS ('pii_business_glossary_term' = 'Procore Daily Log ID');
-ALTER TABLE `vibe_construction_v1`.`site`.`daily_log` ALTER COLUMN `remarks` SET TAGS ('pii_business_glossary_term' = 'Superintendent Remarks');
-ALTER TABLE `vibe_construction_v1`.`site`.`daily_log` ALTER COLUMN `shift_type` SET TAGS ('pii_business_glossary_term' = 'Shift Type');
-ALTER TABLE `vibe_construction_v1`.`site`.`daily_log` ALTER COLUMN `shift_type` SET TAGS ('pii_value_regex' = 'day|night|double_shift|split');
-ALTER TABLE `vibe_construction_v1`.`site`.`daily_log` ALTER COLUMN `site_access_status` SET TAGS ('pii_business_glossary_term' = 'Site Access Status');
-ALTER TABLE `vibe_construction_v1`.`site`.`daily_log` ALTER COLUMN `site_access_status` SET TAGS ('pii_value_regex' = 'open|restricted|closed|partial');
-ALTER TABLE `vibe_construction_v1`.`site`.`daily_log` ALTER COLUMN `subcontractor_count` SET TAGS ('pii_business_glossary_term' = 'Subcontractor Headcount');
-ALTER TABLE `vibe_construction_v1`.`site`.`daily_log` ALTER COLUMN `superintendent_sign_off_timestamp` SET TAGS ('pii_business_glossary_term' = 'Superintendent Sign-Off Timestamp');
-ALTER TABLE `vibe_construction_v1`.`site`.`daily_log` ALTER COLUMN `tbm_conducted_flag` SET TAGS ('pii_business_glossary_term' = 'Toolbox Meeting (TBM) Conducted Flag');
-ALTER TABLE `vibe_construction_v1`.`site`.`daily_log` ALTER COLUMN `temperature_high_c` SET TAGS ('pii_business_glossary_term' = 'Maximum Temperature (Celsius)');
-ALTER TABLE `vibe_construction_v1`.`site`.`daily_log` ALTER COLUMN `temperature_low_c` SET TAGS ('pii_business_glossary_term' = 'Minimum Temperature (Celsius)');
-ALTER TABLE `vibe_construction_v1`.`site`.`daily_log` ALTER COLUMN `total_delay_duration_hrs` SET TAGS ('pii_business_glossary_term' = 'Total Delay Duration (Hours)');
-ALTER TABLE `vibe_construction_v1`.`site`.`daily_log` ALTER COLUMN `total_manpower_count` SET TAGS ('pii_business_glossary_term' = 'Total Manpower Headcount');
-ALTER TABLE `vibe_construction_v1`.`site`.`daily_log` ALTER COLUMN `updated_timestamp` SET TAGS ('pii_business_glossary_term' = 'Record Last Updated Timestamp');
-ALTER TABLE `vibe_construction_v1`.`site`.`daily_log` ALTER COLUMN `visitor_count` SET TAGS ('pii_business_glossary_term' = 'Site Visitor Count');
-ALTER TABLE `vibe_construction_v1`.`site`.`daily_log` ALTER COLUMN `wbs_code` SET TAGS ('pii_business_glossary_term' = 'Work Breakdown Structure (WBS) Code');
-ALTER TABLE `vibe_construction_v1`.`site`.`daily_log` ALTER COLUMN `weather_condition` SET TAGS ('pii_business_glossary_term' = 'Weather Condition');
-ALTER TABLE `vibe_construction_v1`.`site`.`daily_log` ALTER COLUMN `wind_speed_kmh` SET TAGS ('pii_business_glossary_term' = 'Wind Speed (Kilometres per Hour)');
-ALTER TABLE `vibe_construction_v1`.`site`.`daily_log` ALTER COLUMN `work_performed_narrative` SET TAGS ('pii_business_glossary_term' = 'Work Performed Narrative');
-ALTER TABLE `vibe_construction_v1`.`site`.`production_entry` SET TAGS ('pii_data_type' = 'transactional_data');
-ALTER TABLE `vibe_construction_v1`.`site`.`production_entry` SET TAGS ('pii_subdomain' = 'field_operations');
-ALTER TABLE `vibe_construction_v1`.`site`.`production_entry` SET TAGS ('pii_required_structure' = 'v2');
-ALTER TABLE `vibe_construction_v1`.`site`.`production_entry` SET TAGS ('pii_ecm_structure' = 'preserved_v2');
-ALTER TABLE `vibe_construction_v1`.`site`.`production_entry` SET TAGS ('pii_industry' = 'construction');
-ALTER TABLE `vibe_construction_v1`.`site`.`production_entry` SET TAGS ('pii_preserved' = 'required-structure');
-ALTER TABLE `vibe_construction_v1`.`site`.`production_entry` SET TAGS ('pii_structure_required' = 'true');
-ALTER TABLE `vibe_construction_v1`.`site`.`production_entry` ALTER COLUMN `production_entry_id` SET TAGS ('pii_business_glossary_term' = 'Production Entry ID');
-ALTER TABLE `vibe_construction_v1`.`site`.`production_entry` ALTER COLUMN `activity_id` SET TAGS ('pii_business_glossary_term' = 'Activity ID');
-ALTER TABLE `vibe_construction_v1`.`site`.`production_entry` ALTER COLUMN `asset_id` SET TAGS ('pii_business_glossary_term' = 'Asset Id (Foreign Key)');
-ALTER TABLE `vibe_construction_v1`.`site`.`production_entry` ALTER COLUMN `construction_project_id` SET TAGS ('pii_business_glossary_term' = 'Project ID');
-ALTER TABLE `vibe_construction_v1`.`site`.`production_entry` ALTER COLUMN `cost_code_id` SET TAGS ('pii_business_glossary_term' = 'Cost Code ID');
-ALTER TABLE `vibe_construction_v1`.`site`.`production_entry` ALTER COLUMN `crew_id` SET TAGS ('pii_business_glossary_term' = 'Crew ID');
-ALTER TABLE `vibe_construction_v1`.`site`.`production_entry` ALTER COLUMN `daily_log_id` SET TAGS ('pii_business_glossary_term' = 'Daily Log Id (Foreign Key)');
-ALTER TABLE `vibe_construction_v1`.`site`.`production_entry` ALTER COLUMN `hr_employee_id` SET TAGS ('pii_business_glossary_term' = 'Foreman Employee Id (Foreign Key)');
-ALTER TABLE `vibe_construction_v1`.`site`.`production_entry` ALTER COLUMN `hr_employee_id` SET TAGS ('pii_confidential' = 'true');
-ALTER TABLE `vibe_construction_v1`.`site`.`production_entry` ALTER COLUMN `hr_employee_id` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_construction_v1`.`site`.`production_entry` ALTER COLUMN `technical_specification_id` SET TAGS ('pii_business_glossary_term' = 'Technical Specification Id (Foreign Key)');
-ALTER TABLE `vibe_construction_v1`.`site`.`production_entry` ALTER COLUMN `work_front_id` SET TAGS ('pii_business_glossary_term' = 'Work Front ID');
-ALTER TABLE `vibe_construction_v1`.`site`.`production_entry` ALTER COLUMN `approved_by` SET TAGS ('pii_business_glossary_term' = 'Approved By');
-ALTER TABLE `vibe_construction_v1`.`site`.`production_entry` ALTER COLUMN `approved_timestamp` SET TAGS ('pii_business_glossary_term' = 'Approved Timestamp');
-ALTER TABLE `vibe_construction_v1`.`site`.`production_entry` ALTER COLUMN `budgeted_production_rate` SET TAGS ('pii_business_glossary_term' = 'Budgeted Production Rate (Units per Hour)');
-ALTER TABLE `vibe_construction_v1`.`site`.`production_entry` ALTER COLUMN `budgeted_quantity` SET TAGS ('pii_business_glossary_term' = 'Budgeted Quantity');
-ALTER TABLE `vibe_construction_v1`.`site`.`production_entry` ALTER COLUMN `change_order_reference` SET TAGS ('pii_business_glossary_term' = 'Change Order (CO) Reference');
-ALTER TABLE `vibe_construction_v1`.`site`.`production_entry` ALTER COLUMN `cost_code` SET TAGS ('pii_business_glossary_term' = 'Cost Code');
-ALTER TABLE `vibe_construction_v1`.`site`.`production_entry` ALTER COLUMN `created_timestamp` SET TAGS ('pii_business_glossary_term' = 'Record Created Timestamp');
-ALTER TABLE `vibe_construction_v1`.`site`.`production_entry` ALTER COLUMN `crew_size` SET TAGS ('pii_business_glossary_term' = 'Crew Size');
-ALTER TABLE `vibe_construction_v1`.`site`.`production_entry` ALTER COLUMN `cumulative_quantity` SET TAGS ('pii_business_glossary_term' = 'Cumulative Installed Quantity');
-ALTER TABLE `vibe_construction_v1`.`site`.`production_entry` ALTER COLUMN `entry_date` SET TAGS ('pii_business_glossary_term' = 'Production Entry Date');
-ALTER TABLE `vibe_construction_v1`.`site`.`production_entry` ALTER COLUMN `entry_number` SET TAGS ('pii_business_glossary_term' = 'Production Entry Number');
-ALTER TABLE `vibe_construction_v1`.`site`.`production_entry` ALTER COLUMN `entry_status` SET TAGS ('pii_business_glossary_term' = 'Production Entry Status');
-ALTER TABLE `vibe_construction_v1`.`site`.`production_entry` ALTER COLUMN `entry_status` SET TAGS ('pii_value_regex' = 'draft|submitted|approved|rejected|voided');
-ALTER TABLE `vibe_construction_v1`.`site`.`production_entry` ALTER COLUMN `equipment_hours` SET TAGS ('pii_business_glossary_term' = 'Equipment Hours');
-ALTER TABLE `vibe_construction_v1`.`site`.`production_entry` ALTER COLUMN `installed_quantity` SET TAGS ('pii_business_glossary_term' = 'Installed Quantity');
-ALTER TABLE `vibe_construction_v1`.`site`.`production_entry` ALTER COLUMN `is_baseline_revision` SET TAGS ('pii_business_glossary_term' = 'Is Baseline Revision Flag');
-ALTER TABLE `vibe_construction_v1`.`site`.`production_entry` ALTER COLUMN `is_rework` SET TAGS ('pii_business_glossary_term' = 'Is Rework Flag');
-ALTER TABLE `vibe_construction_v1`.`site`.`production_entry` ALTER COLUMN `itp_reference` SET TAGS ('pii_business_glossary_term' = 'Inspection and Test Plan (ITP) Reference');
-ALTER TABLE `vibe_construction_v1`.`site`.`production_entry` ALTER COLUMN `labor_hours` SET TAGS ('pii_business_glossary_term' = 'Labor Hours');
-ALTER TABLE `vibe_construction_v1`.`site`.`production_entry` ALTER COLUMN `ncr_reference` SET TAGS ('pii_business_glossary_term' = 'Non-Conformance Report (NCR) Reference');
-ALTER TABLE `vibe_construction_v1`.`site`.`production_entry` ALTER COLUMN `percent_complete` SET TAGS ('pii_business_glossary_term' = 'Percent Complete (%)');
-ALTER TABLE `vibe_construction_v1`.`site`.`production_entry` ALTER COLUMN `production_rate` SET TAGS ('pii_business_glossary_term' = 'Production Rate (Units per Hour)');
-ALTER TABLE `vibe_construction_v1`.`site`.`production_entry` ALTER COLUMN `production_type` SET TAGS ('pii_business_glossary_term' = 'Production Type');
-ALTER TABLE `vibe_construction_v1`.`site`.`production_entry` ALTER COLUMN `remarks` SET TAGS ('pii_business_glossary_term' = 'Production Remarks');
-ALTER TABLE `vibe_construction_v1`.`site`.`production_entry` ALTER COLUMN `shift_type` SET TAGS ('pii_business_glossary_term' = 'Shift Type');
-ALTER TABLE `vibe_construction_v1`.`site`.`production_entry` ALTER COLUMN `shift_type` SET TAGS ('pii_value_regex' = 'day|night|swing|overtime');
-ALTER TABLE `vibe_construction_v1`.`site`.`production_entry` ALTER COLUMN `source_record_reference` SET TAGS ('pii_business_glossary_term' = 'Source System Record ID');
-ALTER TABLE `vibe_construction_v1`.`site`.`production_entry` ALTER COLUMN `submitted_timestamp` SET TAGS ('pii_business_glossary_term' = 'Submitted Timestamp');
-ALTER TABLE `vibe_construction_v1`.`site`.`production_entry` ALTER COLUMN `temperature_c` SET TAGS ('pii_business_glossary_term' = 'Ambient Temperature (Celsius)');
-ALTER TABLE `vibe_construction_v1`.`site`.`production_entry` ALTER COLUMN `unit_of_measure` SET TAGS ('pii_business_glossary_term' = 'Unit of Measure (UOM)');
-ALTER TABLE `vibe_construction_v1`.`site`.`production_entry` ALTER COLUMN `updated_timestamp` SET TAGS ('pii_business_glossary_term' = 'Record Updated Timestamp');
-ALTER TABLE `vibe_construction_v1`.`site`.`production_entry` ALTER COLUMN `wbs_code` SET TAGS ('pii_business_glossary_term' = 'Work Breakdown Structure (WBS) Code');
-ALTER TABLE `vibe_construction_v1`.`site`.`production_entry` ALTER COLUMN `weather_condition` SET TAGS ('pii_business_glossary_term' = 'Weather Condition');
-ALTER TABLE `vibe_construction_v1`.`site`.`production_entry` ALTER COLUMN `work_front_location` SET TAGS ('pii_business_glossary_term' = 'Work Front Location');
-ALTER TABLE `vibe_construction_v1`.`site`.`production_entry` ALTER COLUMN `work_item_description` SET TAGS ('pii_business_glossary_term' = 'Work Item Description');
-ALTER TABLE `vibe_construction_v1`.`site`.`crew_deployment` SET TAGS ('pii_data_type' = 'transactional_data');
-ALTER TABLE `vibe_construction_v1`.`site`.`crew_deployment` SET TAGS ('pii_subdomain' = 'field_operations');
-ALTER TABLE `vibe_construction_v1`.`site`.`crew_deployment` SET TAGS ('pii_required_structure' = 'v2');
-ALTER TABLE `vibe_construction_v1`.`site`.`crew_deployment` SET TAGS ('pii_ecm_structure' = 'preserved_v2');
-ALTER TABLE `vibe_construction_v1`.`site`.`crew_deployment` SET TAGS ('pii_industry' = 'construction');
-ALTER TABLE `vibe_construction_v1`.`site`.`crew_deployment` SET TAGS ('pii_preserved' = 'required-structure');
-ALTER TABLE `vibe_construction_v1`.`site`.`crew_deployment` SET TAGS ('pii_structure_required' = 'true');
-ALTER TABLE `vibe_construction_v1`.`site`.`crew_deployment` ALTER COLUMN `crew_deployment_id` SET TAGS ('pii_business_glossary_term' = 'Crew Deployment ID');
-ALTER TABLE `vibe_construction_v1`.`site`.`crew_deployment` ALTER COLUMN `activity_id` SET TAGS ('pii_business_glossary_term' = 'Activity ID');
-ALTER TABLE `vibe_construction_v1`.`site`.`crew_deployment` ALTER COLUMN `asset_id` SET TAGS ('pii_business_glossary_term' = 'Asset Id (Foreign Key)');
-ALTER TABLE `vibe_construction_v1`.`site`.`crew_deployment` ALTER COLUMN `construction_project_id` SET TAGS ('pii_business_glossary_term' = 'Project ID');
-ALTER TABLE `vibe_construction_v1`.`site`.`crew_deployment` ALTER COLUMN `daily_log_id` SET TAGS ('pii_business_glossary_term' = 'Daily Log Id (Foreign Key)');
-ALTER TABLE `vibe_construction_v1`.`site`.`crew_deployment` ALTER COLUMN `cost_code_id` SET TAGS ('pii_business_glossary_term' = 'Finance Cost Code Id (Foreign Key)');
-ALTER TABLE `vibe_construction_v1`.`site`.`crew_deployment` ALTER COLUMN `firm_profile_id` SET TAGS ('pii_business_glossary_term' = 'Subcontractor ID');
-ALTER TABLE `vibe_construction_v1`.`site`.`crew_deployment` ALTER COLUMN `hr_employee_id` SET TAGS ('pii_business_glossary_term' = 'Lead Foreman Employee ID');
-ALTER TABLE `vibe_construction_v1`.`site`.`crew_deployment` ALTER COLUMN `hr_employee_id` SET TAGS ('pii_confidential' = 'true');
-ALTER TABLE `vibe_construction_v1`.`site`.`crew_deployment` ALTER COLUMN `hr_employee_id` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_construction_v1`.`site`.`crew_deployment` ALTER COLUMN `work_front_id` SET TAGS ('pii_business_glossary_term' = 'Work Front ID');
-ALTER TABLE `vibe_construction_v1`.`site`.`crew_deployment` ALTER COLUMN `actual_hours` SET TAGS ('pii_business_glossary_term' = 'Actual Hours');
-ALTER TABLE `vibe_construction_v1`.`site`.`crew_deployment` ALTER COLUMN `actual_production_qty` SET TAGS ('pii_business_glossary_term' = 'Actual Production Quantity');
-ALTER TABLE `vibe_construction_v1`.`site`.`crew_deployment` ALTER COLUMN `created_timestamp` SET TAGS ('pii_business_glossary_term' = 'Record Created Timestamp');
-ALTER TABLE `vibe_construction_v1`.`site`.`crew_deployment` ALTER COLUMN `crew_code` SET TAGS ('pii_business_glossary_term' = 'Crew Code');
-ALTER TABLE `vibe_construction_v1`.`site`.`crew_deployment` ALTER COLUMN `crew_name` SET TAGS ('pii_business_glossary_term' = 'Crew Name');
-ALTER TABLE `vibe_construction_v1`.`site`.`crew_deployment` ALTER COLUMN `crew_size` SET TAGS ('pii_business_glossary_term' = 'Crew Size');
-ALTER TABLE `vibe_construction_v1`.`site`.`crew_deployment` ALTER COLUMN `crew_type` SET TAGS ('pii_business_glossary_term' = 'Crew Type');
-ALTER TABLE `vibe_construction_v1`.`site`.`crew_deployment` ALTER COLUMN `delay_reason_code` SET TAGS ('pii_business_glossary_term' = 'Delay Reason Code');
-ALTER TABLE `vibe_construction_v1`.`site`.`crew_deployment` ALTER COLUMN `deployment_date` SET TAGS ('pii_business_glossary_term' = 'Deployment Date');
-ALTER TABLE `vibe_construction_v1`.`site`.`crew_deployment` ALTER COLUMN `deployment_number` SET TAGS ('pii_business_glossary_term' = 'Deployment Number');
-ALTER TABLE `vibe_construction_v1`.`site`.`crew_deployment` ALTER COLUMN `deployment_status` SET TAGS ('pii_business_glossary_term' = 'Deployment Status');
-ALTER TABLE `vibe_construction_v1`.`site`.`crew_deployment` ALTER COLUMN `deployment_status` SET TAGS ('pii_value_regex' = 'planned|active|completed|cancelled|suspended');
-ALTER TABLE `vibe_construction_v1`.`site`.`crew_deployment` ALTER COLUMN `hse_toolbox_meeting_held` SET TAGS ('pii_business_glossary_term' = 'Health Safety and Environment (HSE) Toolbox Meeting (TBM) Held Flag');
-ALTER TABLE `vibe_construction_v1`.`site`.`crew_deployment` ALTER COLUMN `is_overtime` SET TAGS ('pii_business_glossary_term' = 'Overtime Flag');
-ALTER TABLE `vibe_construction_v1`.`site`.`crew_deployment` ALTER COLUMN `is_subcontractor_crew` SET TAGS ('pii_business_glossary_term' = 'Subcontractor Crew Flag');
-ALTER TABLE `vibe_construction_v1`.`site`.`crew_deployment` ALTER COLUMN `is_weather_impacted` SET TAGS ('pii_business_glossary_term' = 'Weather Impact Flag');
-ALTER TABLE `vibe_construction_v1`.`site`.`crew_deployment` ALTER COLUMN `lead_foreman_name` SET TAGS ('pii_business_glossary_term' = 'Lead Foreman Name');
-ALTER TABLE `vibe_construction_v1`.`site`.`crew_deployment` ALTER COLUMN `lead_foreman_name` SET TAGS ('pii_confidential' = 'true');
-ALTER TABLE `vibe_construction_v1`.`site`.`crew_deployment` ALTER COLUMN `mobilization_status` SET TAGS ('pii_business_glossary_term' = 'Mobilization Status');
-ALTER TABLE `vibe_construction_v1`.`site`.`crew_deployment` ALTER COLUMN `mobilization_status` SET TAGS ('pii_value_regex' = 'mobilizing|on_site|demobilizing|demobilized');
-ALTER TABLE `vibe_construction_v1`.`site`.`crew_deployment` ALTER COLUMN `overtime_hours` SET TAGS ('pii_business_glossary_term' = 'Overtime Hours');
-ALTER TABLE `vibe_construction_v1`.`site`.`crew_deployment` ALTER COLUMN `permit_to_work_number` SET TAGS ('pii_business_glossary_term' = 'Permit to Work Number');
-ALTER TABLE `vibe_construction_v1`.`site`.`crew_deployment` ALTER COLUMN `planned_hours` SET TAGS ('pii_business_glossary_term' = 'Planned Hours');
-ALTER TABLE `vibe_construction_v1`.`site`.`crew_deployment` ALTER COLUMN `planned_production_qty` SET TAGS ('pii_business_glossary_term' = 'Planned Production Quantity');
-ALTER TABLE `vibe_construction_v1`.`site`.`crew_deployment` ALTER COLUMN `ppe_compliance` SET TAGS ('pii_business_glossary_term' = 'Personal Protective Equipment (PPE) Compliance Flag');
-ALTER TABLE `vibe_construction_v1`.`site`.`crew_deployment` ALTER COLUMN `production_unit_of_measure` SET TAGS ('pii_business_glossary_term' = 'Production Unit of Measure');
-ALTER TABLE `vibe_construction_v1`.`site`.`crew_deployment` ALTER COLUMN `productivity_notes` SET TAGS ('pii_business_glossary_term' = 'Productivity Notes');
-ALTER TABLE `vibe_construction_v1`.`site`.`crew_deployment` ALTER COLUMN `productivity_rate` SET TAGS ('pii_business_glossary_term' = 'Productivity Rate');
-ALTER TABLE `vibe_construction_v1`.`site`.`crew_deployment` ALTER COLUMN `shift_end_time` SET TAGS ('pii_business_glossary_term' = 'Shift End Time');
-ALTER TABLE `vibe_construction_v1`.`site`.`crew_deployment` ALTER COLUMN `shift_start_time` SET TAGS ('pii_business_glossary_term' = 'Shift Start Time');
-ALTER TABLE `vibe_construction_v1`.`site`.`crew_deployment` ALTER COLUMN `shift_type` SET TAGS ('pii_business_glossary_term' = 'Shift Type');
-ALTER TABLE `vibe_construction_v1`.`site`.`crew_deployment` ALTER COLUMN `shift_type` SET TAGS ('pii_value_regex' = 'day|night|swing|weekend');
-ALTER TABLE `vibe_construction_v1`.`site`.`crew_deployment` ALTER COLUMN `source_record_reference` SET TAGS ('pii_business_glossary_term' = 'Source Record ID');
-ALTER TABLE `vibe_construction_v1`.`site`.`crew_deployment` ALTER COLUMN `swms_reference` SET TAGS ('pii_business_glossary_term' = 'Safe Work Method Statement (SWMS) Reference');
-ALTER TABLE `vibe_construction_v1`.`site`.`crew_deployment` ALTER COLUMN `updated_timestamp` SET TAGS ('pii_business_glossary_term' = 'Record Updated Timestamp');
-ALTER TABLE `vibe_construction_v1`.`site`.`crew_deployment` ALTER COLUMN `wbs_code` SET TAGS ('pii_business_glossary_term' = 'Work Breakdown Structure (WBS) Code');
-ALTER TABLE `vibe_construction_v1`.`site`.`crew_deployment` ALTER COLUMN `weather_condition` SET TAGS ('pii_business_glossary_term' = 'Weather Condition');
-ALTER TABLE `vibe_construction_v1`.`site`.`concrete_pour` SET TAGS ('pii_data_type' = 'transactional_data');
-ALTER TABLE `vibe_construction_v1`.`site`.`concrete_pour` SET TAGS ('pii_subdomain' = 'construction_activity');
-ALTER TABLE `vibe_construction_v1`.`site`.`concrete_pour` SET TAGS ('pii_required_structure' = 'v2');
-ALTER TABLE `vibe_construction_v1`.`site`.`concrete_pour` SET TAGS ('pii_ecm_structure' = 'preserved_v2');
-ALTER TABLE `vibe_construction_v1`.`site`.`concrete_pour` SET TAGS ('pii_industry' = 'construction');
-ALTER TABLE `vibe_construction_v1`.`site`.`concrete_pour` SET TAGS ('pii_preserved' = 'required-structure');
-ALTER TABLE `vibe_construction_v1`.`site`.`concrete_pour` SET TAGS ('pii_structure_required' = 'true');
-ALTER TABLE `vibe_construction_v1`.`site`.`concrete_pour` ALTER COLUMN `concrete_pour_id` SET TAGS ('pii_business_glossary_term' = 'Concrete Pour ID');
-ALTER TABLE `vibe_construction_v1`.`site`.`concrete_pour` ALTER COLUMN `activity_id` SET TAGS ('pii_business_glossary_term' = 'Schedule Activity ID');
-ALTER TABLE `vibe_construction_v1`.`site`.`concrete_pour` ALTER COLUMN `asset_id` SET TAGS ('pii_business_glossary_term' = 'Asset Id (Foreign Key)');
-ALTER TABLE `vibe_construction_v1`.`site`.`concrete_pour` ALTER COLUMN `construction_project_id` SET TAGS ('pii_business_glossary_term' = 'Project ID');
-ALTER TABLE `vibe_construction_v1`.`site`.`concrete_pour` ALTER COLUMN `drawing_id` SET TAGS ('pii_business_glossary_term' = 'Drawing Id (Foreign Key)');
-ALTER TABLE `vibe_construction_v1`.`site`.`concrete_pour` ALTER COLUMN `cost_code_id` SET TAGS ('pii_business_glossary_term' = 'Finance Cost Code Id (Foreign Key)');
-ALTER TABLE `vibe_construction_v1`.`site`.`concrete_pour` ALTER COLUMN `itp_id` SET TAGS ('pii_business_glossary_term' = 'Inspection and Test Plan (ITP) ID');
-ALTER TABLE `vibe_construction_v1`.`site`.`concrete_pour` ALTER COLUMN `craft_worker_id` SET TAGS ('pii_business_glossary_term' = 'Pour Supervisor Craft Worker Id (Foreign Key)');
-ALTER TABLE `vibe_construction_v1`.`site`.`concrete_pour` ALTER COLUMN `hr_employee_id` SET TAGS ('pii_business_glossary_term' = 'Pour Supervisor Employee Id (Foreign Key)');
-ALTER TABLE `vibe_construction_v1`.`site`.`concrete_pour` ALTER COLUMN `hr_employee_id` SET TAGS ('pii_confidential' = 'true');
-ALTER TABLE `vibe_construction_v1`.`site`.`concrete_pour` ALTER COLUMN `hr_employee_id` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_construction_v1`.`site`.`concrete_pour` ALTER COLUMN `daily_log_id` SET TAGS ('pii_business_glossary_term' = 'Procore Daily Log ID');
-ALTER TABLE `vibe_construction_v1`.`site`.`concrete_pour` ALTER COLUMN `wbs_element_id` SET TAGS ('pii_business_glossary_term' = 'Work Breakdown Structure (WBS) ID');
-ALTER TABLE `vibe_construction_v1`.`site`.`concrete_pour` ALTER COLUMN `ambient_temperature_c` SET TAGS ('pii_business_glossary_term' = 'Ambient Temperature (°C)');
-ALTER TABLE `vibe_construction_v1`.`site`.`concrete_pour` ALTER COLUMN `batch_plant_name` SET TAGS ('pii_business_glossary_term' = 'Batch Plant Name');
-ALTER TABLE `vibe_construction_v1`.`site`.`concrete_pour` ALTER COLUMN `concrete_temperature_c` SET TAGS ('pii_business_glossary_term' = 'Concrete Temperature at Delivery (°C)');
-ALTER TABLE `vibe_construction_v1`.`site`.`concrete_pour` ALTER COLUMN `created_timestamp` SET TAGS ('pii_business_glossary_term' = 'Record Created Timestamp');
-ALTER TABLE `vibe_construction_v1`.`site`.`concrete_pour` ALTER COLUMN `curing_method` SET TAGS ('pii_business_glossary_term' = 'Concrete Curing Method');
-ALTER TABLE `vibe_construction_v1`.`site`.`concrete_pour` ALTER COLUMN `curing_method` SET TAGS ('pii_value_regex' = 'wet_hessian|curing_compound|ponding|steam|membrane|other');
-ALTER TABLE `vibe_construction_v1`.`site`.`concrete_pour` ALTER COLUMN `curing_start_time` SET TAGS ('pii_business_glossary_term' = 'Curing Start Timestamp');
-ALTER TABLE `vibe_construction_v1`.`site`.`concrete_pour` ALTER COLUMN `cylinder_set_reference` SET TAGS ('pii_business_glossary_term' = 'Test Cylinder Set Reference');
-ALTER TABLE `vibe_construction_v1`.`site`.`concrete_pour` ALTER COLUMN `delivery_docket_numbers` SET TAGS ('pii_business_glossary_term' = 'Delivery Docket Numbers');
-ALTER TABLE `vibe_construction_v1`.`site`.`concrete_pour` ALTER COLUMN `formwork_drawing_ref` SET TAGS ('pii_business_glossary_term' = 'Formwork Drawing Reference');
-ALTER TABLE `vibe_construction_v1`.`site`.`concrete_pour` ALTER COLUMN `grid_reference` SET TAGS ('pii_business_glossary_term' = 'Grid Reference');
-ALTER TABLE `vibe_construction_v1`.`site`.`concrete_pour` ALTER COLUMN `hcss_production_code` SET TAGS ('pii_business_glossary_term' = 'HCSS HeavyJob Production Record ID');
-ALTER TABLE `vibe_construction_v1`.`site`.`concrete_pour` ALTER COLUMN `mix_design_code` SET TAGS ('pii_business_glossary_term' = 'Concrete Mix Design Code');
-ALTER TABLE `vibe_construction_v1`.`site`.`concrete_pour` ALTER COLUMN `mix_design_code` SET TAGS ('pii_value_regex' = '^[A-Z0-9]{2,20}$');
-ALTER TABLE `vibe_construction_v1`.`site`.`concrete_pour` ALTER COLUMN `ncr_number` SET TAGS ('pii_business_glossary_term' = 'Non-Conformance Report (NCR) Number');
-ALTER TABLE `vibe_construction_v1`.`site`.`concrete_pour` ALTER COLUMN `placement_method` SET TAGS ('pii_business_glossary_term' = 'Concrete Placement Method');
-ALTER TABLE `vibe_construction_v1`.`site`.`concrete_pour` ALTER COLUMN `placement_method` SET TAGS ('pii_value_regex' = 'pump|crane_bucket|conveyor|direct_chute|other');
-ALTER TABLE `vibe_construction_v1`.`site`.`concrete_pour` ALTER COLUMN `pour_date` SET TAGS ('pii_business_glossary_term' = 'Concrete Pour Date');
-ALTER TABLE `vibe_construction_v1`.`site`.`concrete_pour` ALTER COLUMN `pour_end_time` SET TAGS ('pii_business_glossary_term' = 'Pour End Timestamp');
-ALTER TABLE `vibe_construction_v1`.`site`.`concrete_pour` ALTER COLUMN `pour_number` SET TAGS ('pii_business_glossary_term' = 'Concrete Pour Number');
-ALTER TABLE `vibe_construction_v1`.`site`.`concrete_pour` ALTER COLUMN `pour_number` SET TAGS ('pii_value_regex' = '^PC-[A-Z0-9]{2,10}-[0-9]{4,6}$');
-ALTER TABLE `vibe_construction_v1`.`site`.`concrete_pour` ALTER COLUMN `pour_start_time` SET TAGS ('pii_business_glossary_term' = 'Pour Start Timestamp');
-ALTER TABLE `vibe_construction_v1`.`site`.`concrete_pour` ALTER COLUMN `pour_status` SET TAGS ('pii_business_glossary_term' = 'Concrete Pour Status');
-ALTER TABLE `vibe_construction_v1`.`site`.`concrete_pour` ALTER COLUMN `pour_status` SET TAGS ('pii_value_regex' = 'planned|in_progress|completed|on_hold|cancelled|rejected');
-ALTER TABLE `vibe_construction_v1`.`site`.`concrete_pour` ALTER COLUMN `pour_type` SET TAGS ('pii_business_glossary_term' = 'Concrete Pour Type');
-ALTER TABLE `vibe_construction_v1`.`site`.`concrete_pour` ALTER COLUMN `qc_hold_status` SET TAGS ('pii_business_glossary_term' = 'Quality Control (QC) Hold Status');
-ALTER TABLE `vibe_construction_v1`.`site`.`concrete_pour` ALTER COLUMN `qc_hold_status` SET TAGS ('pii_value_regex' = 'no_hold|hold_applied|hold_released|rejected');
-ALTER TABLE `vibe_construction_v1`.`site`.`concrete_pour` ALTER COLUMN `qc_inspector` SET TAGS ('pii_business_glossary_term' = 'Quality Control (QC) Inspector Name');
-ALTER TABLE `vibe_construction_v1`.`site`.`concrete_pour` ALTER COLUMN `relative_humidity_pct` SET TAGS ('pii_business_glossary_term' = 'Relative Humidity Percentage (%)');
-ALTER TABLE `vibe_construction_v1`.`site`.`concrete_pour` ALTER COLUMN `slump_compliant` SET TAGS ('pii_business_glossary_term' = 'Slump Test Compliance Flag');
-ALTER TABLE `vibe_construction_v1`.`site`.`concrete_pour` ALTER COLUMN `slump_specified_max_mm` SET TAGS ('pii_business_glossary_term' = 'Specified Maximum Slump (mm)');
-ALTER TABLE `vibe_construction_v1`.`site`.`concrete_pour` ALTER COLUMN `slump_specified_min_mm` SET TAGS ('pii_business_glossary_term' = 'Specified Minimum Slump (mm)');
-ALTER TABLE `vibe_construction_v1`.`site`.`concrete_pour` ALTER COLUMN `slump_test_result_mm` SET TAGS ('pii_business_glossary_term' = 'Slump Test Result (mm)');
-ALTER TABLE `vibe_construction_v1`.`site`.`concrete_pour` ALTER COLUMN `specified_strength_mpa` SET TAGS ('pii_business_glossary_term' = 'Specified Compressive Strength (MPa)');
-ALTER TABLE `vibe_construction_v1`.`site`.`concrete_pour` ALTER COLUMN `structure_element` SET TAGS ('pii_business_glossary_term' = 'Structure Element');
-ALTER TABLE `vibe_construction_v1`.`site`.`concrete_pour` ALTER COLUMN `test_cylinders_cast` SET TAGS ('pii_business_glossary_term' = 'Test Cylinders Cast Count');
-ALTER TABLE `vibe_construction_v1`.`site`.`concrete_pour` ALTER COLUMN `truck_load_count` SET TAGS ('pii_business_glossary_term' = 'Concrete Truck Load Count');
-ALTER TABLE `vibe_construction_v1`.`site`.`concrete_pour` ALTER COLUMN `updated_timestamp` SET TAGS ('pii_business_glossary_term' = 'Record Last Updated Timestamp');
-ALTER TABLE `vibe_construction_v1`.`site`.`concrete_pour` ALTER COLUMN `volume_poured_m3` SET TAGS ('pii_business_glossary_term' = 'Volume Poured (m³)');
-ALTER TABLE `vibe_construction_v1`.`site`.`concrete_pour` ALTER COLUMN `weather_condition` SET TAGS ('pii_business_glossary_term' = 'Weather Condition at Pour');
-ALTER TABLE `vibe_construction_v1`.`site`.`concrete_pour` ALTER COLUMN `weather_condition` SET TAGS ('pii_value_regex' = 'clear|cloudy|rain|high_wind|extreme_heat|extreme_cold');
-ALTER TABLE `vibe_construction_v1`.`site`.`concrete_pour` ALTER COLUMN `wind_speed_kmh` SET TAGS ('pii_business_glossary_term' = 'Wind Speed (km/h)');
-ALTER TABLE `vibe_construction_v1`.`site`.`earthwork_volume` SET TAGS ('pii_data_type' = 'transactional_data');
-ALTER TABLE `vibe_construction_v1`.`site`.`earthwork_volume` SET TAGS ('pii_subdomain' = 'construction_activity');
-ALTER TABLE `vibe_construction_v1`.`site`.`earthwork_volume` SET TAGS ('pii_required_structure' = 'v2');
-ALTER TABLE `vibe_construction_v1`.`site`.`earthwork_volume` SET TAGS ('pii_ecm_structure' = 'preserved_v2');
-ALTER TABLE `vibe_construction_v1`.`site`.`earthwork_volume` SET TAGS ('pii_industry' = 'construction');
-ALTER TABLE `vibe_construction_v1`.`site`.`earthwork_volume` SET TAGS ('pii_preserved' = 'required-structure');
-ALTER TABLE `vibe_construction_v1`.`site`.`earthwork_volume` SET TAGS ('pii_structure_required' = 'true');
-ALTER TABLE `vibe_construction_v1`.`site`.`earthwork_volume` ALTER COLUMN `earthwork_volume_id` SET TAGS ('pii_business_glossary_term' = 'Earthwork Volume ID');
-ALTER TABLE `vibe_construction_v1`.`site`.`earthwork_volume` ALTER COLUMN `activity_id` SET TAGS ('pii_business_glossary_term' = 'Activity Id (Foreign Key)');
-ALTER TABLE `vibe_construction_v1`.`site`.`earthwork_volume` ALTER COLUMN `construction_project_id` SET TAGS ('pii_business_glossary_term' = 'Project ID');
-ALTER TABLE `vibe_construction_v1`.`site`.`earthwork_volume` ALTER COLUMN `firm_profile_id` SET TAGS ('pii_business_glossary_term' = 'Subcontractor ID');
-ALTER TABLE `vibe_construction_v1`.`site`.`earthwork_volume` ALTER COLUMN `daily_log_id` SET TAGS ('pii_business_glossary_term' = 'Procore Daily Log ID');
-ALTER TABLE `vibe_construction_v1`.`site`.`earthwork_volume` ALTER COLUMN `hr_employee_id` SET TAGS ('pii_business_glossary_term' = 'Surveyor Employee Id (Foreign Key)');
-ALTER TABLE `vibe_construction_v1`.`site`.`earthwork_volume` ALTER COLUMN `hr_employee_id` SET TAGS ('pii_confidential' = 'true');
-ALTER TABLE `vibe_construction_v1`.`site`.`earthwork_volume` ALTER COLUMN `hr_employee_id` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_construction_v1`.`site`.`earthwork_volume` ALTER COLUMN `wbs_element_id` SET TAGS ('pii_business_glossary_term' = 'Work Breakdown Structure (WBS) ID');
-ALTER TABLE `vibe_construction_v1`.`site`.`earthwork_volume` ALTER COLUMN `approved_by` SET TAGS ('pii_business_glossary_term' = 'Approved By');
-ALTER TABLE `vibe_construction_v1`.`site`.`earthwork_volume` ALTER COLUMN `boq_item_code` SET TAGS ('pii_business_glossary_term' = 'Bill of Quantities (BOQ) Item Code');
-ALTER TABLE `vibe_construction_v1`.`site`.`earthwork_volume` ALTER COLUMN `change_order_reference` SET TAGS ('pii_business_glossary_term' = 'Change Order (CO) Reference');
-ALTER TABLE `vibe_construction_v1`.`site`.`earthwork_volume` ALTER COLUMN `compaction_factor` SET TAGS ('pii_business_glossary_term' = 'Compaction Factor');
-ALTER TABLE `vibe_construction_v1`.`site`.`earthwork_volume` ALTER COLUMN `contracted_volume_m3` SET TAGS ('pii_business_glossary_term' = 'Contracted Volume (m³)');
-ALTER TABLE `vibe_construction_v1`.`site`.`earthwork_volume` ALTER COLUMN `coordinate_easting` SET TAGS ('pii_business_glossary_term' = 'Coordinate Easting');
-ALTER TABLE `vibe_construction_v1`.`site`.`earthwork_volume` ALTER COLUMN `coordinate_northing` SET TAGS ('pii_business_glossary_term' = 'Coordinate Northing');
-ALTER TABLE `vibe_construction_v1`.`site`.`earthwork_volume` ALTER COLUMN `created_timestamp` SET TAGS ('pii_business_glossary_term' = 'Record Created Timestamp');
-ALTER TABLE `vibe_construction_v1`.`site`.`earthwork_volume` ALTER COLUMN `cumulative_cut_volume_m3` SET TAGS ('pii_business_glossary_term' = 'Cumulative Cut Volume (m³)');
-ALTER TABLE `vibe_construction_v1`.`site`.`earthwork_volume` ALTER COLUMN `cumulative_fill_volume_m3` SET TAGS ('pii_business_glossary_term' = 'Cumulative Fill Volume (m³)');
-ALTER TABLE `vibe_construction_v1`.`site`.`earthwork_volume` ALTER COLUMN `cut_volume_m3` SET TAGS ('pii_business_glossary_term' = 'Cut Volume (m³)');
-ALTER TABLE `vibe_construction_v1`.`site`.`earthwork_volume` ALTER COLUMN `disposal_distance_km` SET TAGS ('pii_business_glossary_term' = 'Disposal Haul Distance (km)');
-ALTER TABLE `vibe_construction_v1`.`site`.`earthwork_volume` ALTER COLUMN `disposal_site_reference` SET TAGS ('pii_business_glossary_term' = 'Disposal Site Reference');
-ALTER TABLE `vibe_construction_v1`.`site`.`earthwork_volume` ALTER COLUMN `engineer_approval_timestamp` SET TAGS ('pii_business_glossary_term' = 'Engineer Approval Timestamp');
-ALTER TABLE `vibe_construction_v1`.`site`.`earthwork_volume` ALTER COLUMN `fill_volume_m3` SET TAGS ('pii_business_glossary_term' = 'Fill Volume (m³)');
-ALTER TABLE `vibe_construction_v1`.`site`.`earthwork_volume` ALTER COLUMN `heavyjob_cost_code` SET TAGS ('pii_business_glossary_term' = 'HCSS HeavyJob Cost Code');
-ALTER TABLE `vibe_construction_v1`.`site`.`earthwork_volume` ALTER COLUMN `is_variation_order` SET TAGS ('pii_business_glossary_term' = 'Is Variation Order (CO) Flag');
-ALTER TABLE `vibe_construction_v1`.`site`.`earthwork_volume` ALTER COLUMN `itp_reference` SET TAGS ('pii_business_glossary_term' = 'Inspection and Test Plan (ITP) Reference');
-ALTER TABLE `vibe_construction_v1`.`site`.`earthwork_volume` ALTER COLUMN `material_classification` SET TAGS ('pii_business_glossary_term' = 'Material Classification');
-ALTER TABLE `vibe_construction_v1`.`site`.`earthwork_volume` ALTER COLUMN `material_classification` SET TAGS ('pii_value_regex' = 'topsoil|clay|rock|sand|gravel|mixed');
-ALTER TABLE `vibe_construction_v1`.`site`.`earthwork_volume` ALTER COLUMN `measurement_accuracy_m` SET TAGS ('pii_business_glossary_term' = 'Measurement Accuracy (m)');
-ALTER TABLE `vibe_construction_v1`.`site`.`earthwork_volume` ALTER COLUMN `measurement_date` SET TAGS ('pii_business_glossary_term' = 'Measurement Date');
-ALTER TABLE `vibe_construction_v1`.`site`.`earthwork_volume` ALTER COLUMN `measurement_reference_number` SET TAGS ('pii_business_glossary_term' = 'Measurement Reference Number');
-ALTER TABLE `vibe_construction_v1`.`site`.`earthwork_volume` ALTER COLUMN `measurement_status` SET TAGS ('pii_business_glossary_term' = 'Measurement Status');
-ALTER TABLE `vibe_construction_v1`.`site`.`earthwork_volume` ALTER COLUMN `measurement_status` SET TAGS ('pii_value_regex' = 'draft|submitted|under_review|approved|rejected|certified');
-ALTER TABLE `vibe_construction_v1`.`site`.`earthwork_volume` ALTER COLUMN `ncr_reference` SET TAGS ('pii_business_glossary_term' = 'Non-Conformance Report (NCR) Reference');
-ALTER TABLE `vibe_construction_v1`.`site`.`earthwork_volume` ALTER COLUMN `net_movement_m3` SET TAGS ('pii_business_glossary_term' = 'Net Movement Volume (m³)');
-ALTER TABLE `vibe_construction_v1`.`site`.`earthwork_volume` ALTER COLUMN `rejection_reason` SET TAGS ('pii_business_glossary_term' = 'Rejection Reason');
-ALTER TABLE `vibe_construction_v1`.`site`.`earthwork_volume` ALTER COLUMN `remarks` SET TAGS ('pii_business_glossary_term' = 'Remarks');
-ALTER TABLE `vibe_construction_v1`.`site`.`earthwork_volume` ALTER COLUMN `reporting_period_end` SET TAGS ('pii_business_glossary_term' = 'Reporting Period End Date');
-ALTER TABLE `vibe_construction_v1`.`site`.`earthwork_volume` ALTER COLUMN `reporting_period_start` SET TAGS ('pii_business_glossary_term' = 'Reporting Period Start Date');
-ALTER TABLE `vibe_construction_v1`.`site`.`earthwork_volume` ALTER COLUMN `spoil_volume_m3` SET TAGS ('pii_business_glossary_term' = 'Spoil Volume (m³)');
-ALTER TABLE `vibe_construction_v1`.`site`.`earthwork_volume` ALTER COLUMN `survey_instrument_code` SET TAGS ('pii_business_glossary_term' = 'Survey Instrument ID');
-ALTER TABLE `vibe_construction_v1`.`site`.`earthwork_volume` ALTER COLUMN `survey_method` SET TAGS ('pii_business_glossary_term' = 'Survey Method');
-ALTER TABLE `vibe_construction_v1`.`site`.`earthwork_volume` ALTER COLUMN `survey_method` SET TAGS ('pii_value_regex' = 'GPS|drone_photogrammetry|total_station|LiDAR|manual_survey|cross_section');
-ALTER TABLE `vibe_construction_v1`.`site`.`earthwork_volume` ALTER COLUMN `surveyor_license_number` SET TAGS ('pii_business_glossary_term' = 'Surveyor License Number');
-ALTER TABLE `vibe_construction_v1`.`site`.`earthwork_volume` ALTER COLUMN `surveyor_license_number` SET TAGS ('pii_confidential' = 'true');
-ALTER TABLE `vibe_construction_v1`.`site`.`earthwork_volume` ALTER COLUMN `surveyor_signoff_timestamp` SET TAGS ('pii_business_glossary_term' = 'Surveyor Sign-Off Timestamp');
-ALTER TABLE `vibe_construction_v1`.`site`.`earthwork_volume` ALTER COLUMN `swell_factor` SET TAGS ('pii_business_glossary_term' = 'Swell Factor');
-ALTER TABLE `vibe_construction_v1`.`site`.`earthwork_volume` ALTER COLUMN `updated_timestamp` SET TAGS ('pii_business_glossary_term' = 'Record Updated Timestamp');
-ALTER TABLE `vibe_construction_v1`.`site`.`earthwork_volume` ALTER COLUMN `weather_conditions` SET TAGS ('pii_business_glossary_term' = 'Weather Conditions');
-ALTER TABLE `vibe_construction_v1`.`site`.`earthwork_volume` ALTER COLUMN `work_area_code` SET TAGS ('pii_business_glossary_term' = 'Work Area Code');
-ALTER TABLE `vibe_construction_v1`.`site`.`earthwork_volume` ALTER COLUMN `work_area_description` SET TAGS ('pii_business_glossary_term' = 'Work Area Description');
-ALTER TABLE `vibe_construction_v1`.`site`.`field_progress` SET TAGS ('pii_data_type' = 'transactional_data');
-ALTER TABLE `vibe_construction_v1`.`site`.`field_progress` SET TAGS ('pii_subdomain' = 'construction_activity');
-ALTER TABLE `vibe_construction_v1`.`site`.`field_progress` SET TAGS ('pii_required_structure' = 'v2');
-ALTER TABLE `vibe_construction_v1`.`site`.`field_progress` SET TAGS ('pii_ecm_structure' = 'preserved_v2');
-ALTER TABLE `vibe_construction_v1`.`site`.`field_progress` SET TAGS ('pii_industry' = 'construction');
-ALTER TABLE `vibe_construction_v1`.`site`.`field_progress` SET TAGS ('pii_preserved' = 'required-structure');
-ALTER TABLE `vibe_construction_v1`.`site`.`field_progress` SET TAGS ('pii_structure_required' = 'true');
-ALTER TABLE `vibe_construction_v1`.`site`.`field_progress` ALTER COLUMN `field_progress_id` SET TAGS ('pii_business_glossary_term' = 'Field Progress ID');
-ALTER TABLE `vibe_construction_v1`.`site`.`field_progress` ALTER COLUMN `bid_pricing_line_id` SET TAGS ('pii_business_glossary_term' = 'Bill of Quantities (BOQ) Line Item ID');
-ALTER TABLE `vibe_construction_v1`.`site`.`field_progress` ALTER COLUMN `construction_project_id` SET TAGS ('pii_business_glossary_term' = 'Project ID');
-ALTER TABLE `vibe_construction_v1`.`site`.`field_progress` ALTER COLUMN `cost_code_id` SET TAGS ('pii_business_glossary_term' = 'Cost Code ID');
-ALTER TABLE `vibe_construction_v1`.`site`.`field_progress` ALTER COLUMN `hr_employee_id` SET TAGS ('pii_business_glossary_term' = 'Field Engineer Employee ID');
-ALTER TABLE `vibe_construction_v1`.`site`.`field_progress` ALTER COLUMN `hr_employee_id` SET TAGS ('pii_confidential' = 'true');
-ALTER TABLE `vibe_construction_v1`.`site`.`field_progress` ALTER COLUMN `hr_employee_id` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_construction_v1`.`site`.`field_progress` ALTER COLUMN `itp_line_id` SET TAGS ('pii_business_glossary_term' = 'Inspection and Test Plan (ITP) Checkpoint ID');
-ALTER TABLE `vibe_construction_v1`.`site`.`field_progress` ALTER COLUMN `daily_log_id` SET TAGS ('pii_business_glossary_term' = 'Procore Daily Log ID');
-ALTER TABLE `vibe_construction_v1`.`site`.`field_progress` ALTER COLUMN `production_entry_id` SET TAGS ('pii_business_glossary_term' = 'HCSS HeavyJob Production Record ID');
-ALTER TABLE `vibe_construction_v1`.`site`.`field_progress` ALTER COLUMN `activity_id` SET TAGS ('pii_business_glossary_term' = 'Work Breakdown Structure (WBS) Activity ID');
-ALTER TABLE `vibe_construction_v1`.`site`.`field_progress` ALTER COLUMN `activity_type` SET TAGS ('pii_business_glossary_term' = 'Activity Type / Discipline');
-ALTER TABLE `vibe_construction_v1`.`site`.`field_progress` ALTER COLUMN `approval_status` SET TAGS ('pii_business_glossary_term' = 'Approval Status');
-ALTER TABLE `vibe_construction_v1`.`site`.`field_progress` ALTER COLUMN `approval_status` SET TAGS ('pii_value_regex' = 'draft|submitted|approved|rejected|revised');
-ALTER TABLE `vibe_construction_v1`.`site`.`field_progress` ALTER COLUMN `approved_timestamp` SET TAGS ('pii_business_glossary_term' = 'Approval Timestamp');
-ALTER TABLE `vibe_construction_v1`.`site`.`field_progress` ALTER COLUMN `approver_name` SET TAGS ('pii_business_glossary_term' = 'Approver Name');
-ALTER TABLE `vibe_construction_v1`.`site`.`field_progress` ALTER COLUMN `approver_name` SET TAGS ('pii_confidential' = 'true');
-ALTER TABLE `vibe_construction_v1`.`site`.`field_progress` ALTER COLUMN `approver_name` SET TAGS ('pii_identifier' = 'true');
-ALTER TABLE `vibe_construction_v1`.`site`.`field_progress` ALTER COLUMN `bcwp` SET TAGS ('pii_business_glossary_term' = 'Budgeted Cost of Work Performed (BCWP)');
-ALTER TABLE `vibe_construction_v1`.`site`.`field_progress` ALTER COLUMN `bim_element_reference` SET TAGS ('pii_business_glossary_term' = 'Building Information Modeling (BIM) Element ID');
-ALTER TABLE `vibe_construction_v1`.`site`.`field_progress` ALTER COLUMN `budget_at_completion` SET TAGS ('pii_business_glossary_term' = 'Budget at Completion (BAC)');
-ALTER TABLE `vibe_construction_v1`.`site`.`field_progress` ALTER COLUMN `budget_at_completion` SET TAGS ('pii_confidential' = 'true');
-ALTER TABLE `vibe_construction_v1`.`site`.`field_progress` ALTER COLUMN `created_timestamp` SET TAGS ('pii_business_glossary_term' = 'Record Created Timestamp');
-ALTER TABLE `vibe_construction_v1`.`site`.`field_progress` ALTER COLUMN `crew_size` SET TAGS ('pii_business_glossary_term' = 'Crew Size (Headcount)');
-ALTER TABLE `vibe_construction_v1`.`site`.`field_progress` ALTER COLUMN `data_date` SET TAGS ('pii_business_glossary_term' = 'Data Date (Progress Cut-Off Date)');
-ALTER TABLE `vibe_construction_v1`.`site`.`field_progress` ALTER COLUMN `equipment_hours` SET TAGS ('pii_business_glossary_term' = 'Equipment Hours');
-ALTER TABLE `vibe_construction_v1`.`site`.`field_progress` ALTER COLUMN `field_engineer_name` SET TAGS ('pii_business_glossary_term' = 'Field Engineer Name');
-ALTER TABLE `vibe_construction_v1`.`site`.`field_progress` ALTER COLUMN `field_engineer_name` SET TAGS ('pii_confidential' = 'true');
-ALTER TABLE `vibe_construction_v1`.`site`.`field_progress` ALTER COLUMN `field_engineer_name` SET TAGS ('pii_identifier' = 'true');
-ALTER TABLE `vibe_construction_v1`.`site`.`field_progress` ALTER COLUMN `installed_quantity` SET TAGS ('pii_business_glossary_term' = 'Installed Quantity');
-ALTER TABLE `vibe_construction_v1`.`site`.`field_progress` ALTER COLUMN `is_critical_path` SET TAGS ('pii_business_glossary_term' = 'Is Critical Path (CPM) Flag');
-ALTER TABLE `vibe_construction_v1`.`site`.`field_progress` ALTER COLUMN `is_milestone` SET TAGS ('pii_business_glossary_term' = 'Is Milestone Flag');
-ALTER TABLE `vibe_construction_v1`.`site`.`field_progress` ALTER COLUMN `measurement_date` SET TAGS ('pii_business_glossary_term' = 'Field Measurement Date');
-ALTER TABLE `vibe_construction_v1`.`site`.`field_progress` ALTER COLUMN `measurement_method` SET TAGS ('pii_business_glossary_term' = 'Field Measurement Method');
-ALTER TABLE `vibe_construction_v1`.`site`.`field_progress` ALTER COLUMN `measurement_method` SET TAGS ('pii_value_regex' = 'visual_estimate|quantity_survey|milestone_completion|3d_scan_comparison|weighted_steps');
-ALTER TABLE `vibe_construction_v1`.`site`.`field_progress` ALTER COLUMN `measurement_notes` SET TAGS ('pii_business_glossary_term' = 'Measurement Notes');
-ALTER TABLE `vibe_construction_v1`.`site`.`field_progress` ALTER COLUMN `measurement_number` SET TAGS ('pii_business_glossary_term' = 'Field Progress Measurement Number');
-ALTER TABLE `vibe_construction_v1`.`site`.`field_progress` ALTER COLUMN `measurement_period_type` SET TAGS ('pii_business_glossary_term' = 'Measurement Period Type');
-ALTER TABLE `vibe_construction_v1`.`site`.`field_progress` ALTER COLUMN `measurement_period_type` SET TAGS ('pii_value_regex' = 'daily|weekly|fortnightly|monthly');
-ALTER TABLE `vibe_construction_v1`.`site`.`field_progress` ALTER COLUMN `ncr_reference` SET TAGS ('pii_business_glossary_term' = 'Non-Conformance Report (NCR) Reference');
-ALTER TABLE `vibe_construction_v1`.`site`.`field_progress` ALTER COLUMN `period_installed_quantity` SET TAGS ('pii_business_glossary_term' = 'Period Installed Quantity');
-ALTER TABLE `vibe_construction_v1`.`site`.`field_progress` ALTER COLUMN `planned_quantity` SET TAGS ('pii_business_glossary_term' = 'Planned Quantity');
-ALTER TABLE `vibe_construction_v1`.`site`.`field_progress` ALTER COLUMN `previous_percent_complete` SET TAGS ('pii_business_glossary_term' = 'Previous Percent Complete');
-ALTER TABLE `vibe_construction_v1`.`site`.`field_progress` ALTER COLUMN `progress_delta` SET TAGS ('pii_business_glossary_term' = 'Progress Delta (Incremental Percent Complete)');
-ALTER TABLE `vibe_construction_v1`.`site`.`field_progress` ALTER COLUMN `quantity_unit_of_measure` SET TAGS ('pii_business_glossary_term' = 'Quantity Unit of Measure');
-ALTER TABLE `vibe_construction_v1`.`site`.`field_progress` ALTER COLUMN `rejection_reason` SET TAGS ('pii_business_glossary_term' = 'Rejection Reason');
-ALTER TABLE `vibe_construction_v1`.`site`.`field_progress` ALTER COLUMN `reported_percent_complete` SET TAGS ('pii_business_glossary_term' = 'Reported Percent Complete');
-ALTER TABLE `vibe_construction_v1`.`site`.`field_progress` ALTER COLUMN `revision_number` SET TAGS ('pii_business_glossary_term' = 'Revision Number');
-ALTER TABLE `vibe_construction_v1`.`site`.`field_progress` ALTER COLUMN `submission_timestamp` SET TAGS ('pii_business_glossary_term' = 'Submission Timestamp');
-ALTER TABLE `vibe_construction_v1`.`site`.`field_progress` ALTER COLUMN `updated_timestamp` SET TAGS ('pii_business_glossary_term' = 'Record Updated Timestamp');
-ALTER TABLE `vibe_construction_v1`.`site`.`field_progress` ALTER COLUMN `weather_condition` SET TAGS ('pii_business_glossary_term' = 'Weather Condition at Measurement');
-ALTER TABLE `vibe_construction_v1`.`site`.`field_progress` ALTER COLUMN `work_front` SET TAGS ('pii_business_glossary_term' = 'Work Front / Work Zone');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_mobilization` SET TAGS ('pii_data_type' = 'master_data');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_mobilization` SET TAGS ('pii_subdomain' = 'site_setup');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_mobilization` SET TAGS ('pii_required_structure' = 'v2');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_mobilization` SET TAGS ('pii_ecm_structure' = 'preserved_v2');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_mobilization` SET TAGS ('pii_industry' = 'construction');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_mobilization` SET TAGS ('pii_preserved' = 'required-structure');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_mobilization` SET TAGS ('pii_structure_required' = 'true');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_mobilization` ALTER COLUMN `site_mobilization_id` SET TAGS ('pii_business_glossary_term' = 'Site Mobilization ID');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_mobilization` ALTER COLUMN `account_id` SET TAGS ('pii_business_glossary_term' = 'Account Id (Foreign Key)');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_mobilization` ALTER COLUMN `agreement_id` SET TAGS ('pii_business_glossary_term' = 'Contract ID');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_mobilization` ALTER COLUMN `asset_id` SET TAGS ('pii_business_glossary_term' = 'Asset Id (Foreign Key)');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_mobilization` ALTER COLUMN `regulatory_permit_id` SET TAGS ('pii_business_glossary_term' = 'Permit Id (Foreign Key)');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_mobilization` ALTER COLUMN `construction_project_id` SET TAGS ('pii_business_glossary_term' = 'Project ID');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_mobilization` ALTER COLUMN `hr_employee_id` SET TAGS ('pii_business_glossary_term' = 'Site Manager ID');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_mobilization` ALTER COLUMN `hr_employee_id` SET TAGS ('pii_confidential' = 'true');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_mobilization` ALTER COLUMN `hr_employee_id` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_mobilization` ALTER COLUMN `activity_id` SET TAGS ('pii_business_glossary_term' = 'Oracle Primavera P6 Activity ID');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_mobilization` ALTER COLUMN `procurement_framework_agreement_id` SET TAGS ('pii_business_glossary_term' = 'Procurement Framework Agreement Id (Foreign Key)');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_mobilization` ALTER COLUMN `site_id` SET TAGS ('pii_business_glossary_term' = 'Site Id');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_mobilization` ALTER COLUMN `site_id` SET TAGS ('pii_internal' = 'true');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_mobilization` ALTER COLUMN `submission_id` SET TAGS ('pii_business_glossary_term' = 'Bid Submission Id (Foreign Key)');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_mobilization` ALTER COLUMN `access_road_established` SET TAGS ('pii_business_glossary_term' = 'Access Road Established');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_mobilization` ALTER COLUMN `actual_demobilization_date` SET TAGS ('pii_business_glossary_term' = 'Actual Demobilization Date');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_mobilization` ALTER COLUMN `actual_mobilization_date` SET TAGS ('pii_business_glossary_term' = 'Actual Mobilization Date');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_mobilization` ALTER COLUMN `building_permit_number` SET TAGS ('pii_business_glossary_term' = 'Building Permit Number');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_mobilization` ALTER COLUMN `cost_actual` SET TAGS ('pii_business_glossary_term' = 'Mobilization Cost Actual');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_mobilization` ALTER COLUMN `cost_actual` SET TAGS ('pii_confidential' = 'true');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_mobilization` ALTER COLUMN `cost_budget` SET TAGS ('pii_business_glossary_term' = 'Mobilization Cost Budget');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_mobilization` ALTER COLUMN `cost_budget` SET TAGS ('pii_confidential' = 'true');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_mobilization` ALTER COLUMN `country_code` SET TAGS ('pii_business_glossary_term' = 'Country Code');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_mobilization` ALTER COLUMN `country_code` SET TAGS ('pii_value_regex' = '^[A-Z]{3}$');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_mobilization` ALTER COLUMN `created_timestamp` SET TAGS ('pii_business_glossary_term' = 'Record Created Timestamp');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_mobilization` ALTER COLUMN `currency_code` SET TAGS ('pii_business_glossary_term' = 'Currency Code');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_mobilization` ALTER COLUMN `currency_code` SET TAGS ('pii_value_regex' = '^[A-Z]{3}$');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_mobilization` ALTER COLUMN `dlp_end_date` SET TAGS ('pii_business_glossary_term' = 'Defects Liability Period (DLP) End Date');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_mobilization` ALTER COLUMN `environmental_permit_number` SET TAGS ('pii_business_glossary_term' = 'Environmental Permit Number');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_mobilization` ALTER COLUMN `environmental_permit_obtained` SET TAGS ('pii_business_glossary_term' = 'Environmental Permit Obtained');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_mobilization` ALTER COLUMN `hse_plan_approval_date` SET TAGS ('pii_business_glossary_term' = 'Health Safety and Environment (HSE) Plan Approval Date');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_mobilization` ALTER COLUMN `hse_plan_approved` SET TAGS ('pii_business_glossary_term' = 'Health Safety and Environment (HSE) Plan Approved');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_mobilization` ALTER COLUMN `laydown_area_established` SET TAGS ('pii_business_glossary_term' = 'Laydown Area Established');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_mobilization` ALTER COLUMN `leed_certification_target` SET TAGS ('pii_business_glossary_term' = 'Leadership in Energy and Environmental Design (LEED) Certification Target');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_mobilization` ALTER COLUMN `leed_certification_target` SET TAGS ('pii_value_regex' = 'certified|silver|gold|platinum|none');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_mobilization` ALTER COLUMN `mobilization_number` SET TAGS ('pii_business_glossary_term' = 'Mobilization Number');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_mobilization` ALTER COLUMN `mobilization_number` SET TAGS ('pii_value_regex' = '^MOB-[A-Z0-9]{3,20}$');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_mobilization` ALTER COLUMN `mobilization_status` SET TAGS ('pii_business_glossary_term' = 'Mobilization Status');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_mobilization` ALTER COLUMN `mobilization_status` SET TAGS ('pii_value_regex' = 'planned|in_progress|completed|demobilized|cancelled|on_hold');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_mobilization` ALTER COLUMN `mobilization_type` SET TAGS ('pii_business_glossary_term' = 'Mobilization Type');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_mobilization` ALTER COLUMN `mobilization_type` SET TAGS ('pii_value_regex' = 'full_site|work_package|temporary_camp|equipment_only|partial');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_mobilization` ALTER COLUMN `notes` SET TAGS ('pii_business_glossary_term' = 'Mobilization Notes');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_mobilization` ALTER COLUMN `ntp_date` SET TAGS ('pii_business_glossary_term' = 'Notice to Proceed (NTP) Date');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_mobilization` ALTER COLUMN `peak_workforce_actual` SET TAGS ('pii_business_glossary_term' = 'Peak Workforce Actual');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_mobilization` ALTER COLUMN `peak_workforce_planned` SET TAGS ('pii_business_glossary_term' = 'Peak Workforce Planned');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_mobilization` ALTER COLUMN `planned_demobilization_date` SET TAGS ('pii_business_glossary_term' = 'Planned Demobilization Date');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_mobilization` ALTER COLUMN `planned_mobilization_date` SET TAGS ('pii_business_glossary_term' = 'Planned Mobilization Date');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_mobilization` ALTER COLUMN `procore_project_reference` SET TAGS ('pii_business_glossary_term' = 'Procore Project ID');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_mobilization` ALTER COLUMN `schedule_variance_days` SET TAGS ('pii_business_glossary_term' = 'Mobilization Schedule Variance (Days)');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_mobilization` ALTER COLUMN `site_address` SET TAGS ('pii_business_glossary_term' = 'Site Address');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_mobilization` ALTER COLUMN `site_address` SET TAGS ('pii_confidential' = 'true');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_mobilization` ALTER COLUMN `site_address` SET TAGS ('pii_address' = 'true');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_mobilization` ALTER COLUMN `site_area_sqm` SET TAGS ('pii_business_glossary_term' = 'Site Area (Square Metres)');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_mobilization` ALTER COLUMN `site_closure_signoff_date` SET TAGS ('pii_business_glossary_term' = 'Site Closure Sign-Off Date');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_mobilization` ALTER COLUMN `site_fencing_complete` SET TAGS ('pii_business_glossary_term' = 'Site Fencing Complete');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_mobilization` ALTER COLUMN `site_latitude` SET TAGS ('pii_business_glossary_term' = 'Site Latitude');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_mobilization` ALTER COLUMN `site_latitude` SET TAGS ('pii_restricted' = 'true');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_mobilization` ALTER COLUMN `site_latitude` SET TAGS ('pii_address' = 'true');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_mobilization` ALTER COLUMN `site_longitude` SET TAGS ('pii_business_glossary_term' = 'Site Longitude');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_mobilization` ALTER COLUMN `site_longitude` SET TAGS ('pii_restricted' = 'true');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_mobilization` ALTER COLUMN `site_longitude` SET TAGS ('pii_address' = 'true');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_mobilization` ALTER COLUMN `site_office_established` SET TAGS ('pii_business_glossary_term' = 'Site Office Established');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_mobilization` ALTER COLUMN `temporary_utilities_connected` SET TAGS ('pii_business_glossary_term' = 'Temporary Utilities Connected');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_mobilization` ALTER COLUMN `updated_timestamp` SET TAGS ('pii_business_glossary_term' = 'Record Updated Timestamp');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_mobilization` ALTER COLUMN `wbs_code` SET TAGS ('pii_business_glossary_term' = 'Work Breakdown Structure (WBS) Code');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_mobilization` ALTER COLUMN `wbs_code` SET TAGS ('pii_value_regex' = '^[A-Z0-9.-]{3,30}$');
-ALTER TABLE `vibe_construction_v1`.`site`.`logistics_plan` SET TAGS ('pii_data_type' = 'master_data');
-ALTER TABLE `vibe_construction_v1`.`site`.`logistics_plan` SET TAGS ('pii_subdomain' = 'site_setup');
-ALTER TABLE `vibe_construction_v1`.`site`.`logistics_plan` SET TAGS ('pii_required_structure' = 'v2');
-ALTER TABLE `vibe_construction_v1`.`site`.`logistics_plan` SET TAGS ('pii_ecm_structure' = 'preserved_v2');
-ALTER TABLE `vibe_construction_v1`.`site`.`logistics_plan` SET TAGS ('pii_industry' = 'construction');
-ALTER TABLE `vibe_construction_v1`.`site`.`logistics_plan` SET TAGS ('pii_preserved' = 'required-structure');
-ALTER TABLE `vibe_construction_v1`.`site`.`logistics_plan` SET TAGS ('pii_structure_required' = 'true');
-ALTER TABLE `vibe_construction_v1`.`site`.`logistics_plan` ALTER COLUMN `logistics_plan_id` SET TAGS ('pii_business_glossary_term' = 'Site Logistics Plan ID');
-ALTER TABLE `vibe_construction_v1`.`site`.`logistics_plan` ALTER COLUMN `account_id` SET TAGS ('pii_business_glossary_term' = 'Account Id (Foreign Key)');
-ALTER TABLE `vibe_construction_v1`.`site`.`logistics_plan` ALTER COLUMN `hr_employee_id` SET TAGS ('pii_business_glossary_term' = 'Approved By Employee Id (Foreign Key)');
-ALTER TABLE `vibe_construction_v1`.`site`.`logistics_plan` ALTER COLUMN `hr_employee_id` SET TAGS ('pii_confidential' = 'true');
-ALTER TABLE `vibe_construction_v1`.`site`.`logistics_plan` ALTER COLUMN `hr_employee_id` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_construction_v1`.`site`.`logistics_plan` ALTER COLUMN `construction_project_id` SET TAGS ('pii_business_glossary_term' = 'Project ID');
-ALTER TABLE `vibe_construction_v1`.`site`.`logistics_plan` ALTER COLUMN `aconex_document_reference` SET TAGS ('pii_business_glossary_term' = 'Aconex Document ID');
-ALTER TABLE `vibe_construction_v1`.`site`.`logistics_plan` ALTER COLUMN `approved_date` SET TAGS ('pii_business_glossary_term' = 'Plan Approved Date');
-ALTER TABLE `vibe_construction_v1`.`site`.`logistics_plan` ALTER COLUMN `bim_model_ref` SET TAGS ('pii_business_glossary_term' = 'Building Information Modeling (BIM) Model Reference');
-ALTER TABLE `vibe_construction_v1`.`site`.`logistics_plan` ALTER COLUMN `client_approval_required` SET TAGS ('pii_business_glossary_term' = 'Client Approval Required Flag');
-ALTER TABLE `vibe_construction_v1`.`site`.`logistics_plan` ALTER COLUMN `client_approved_date` SET TAGS ('pii_business_glossary_term' = 'Client Approved Date');
-ALTER TABLE `vibe_construction_v1`.`site`.`logistics_plan` ALTER COLUMN `concrete_washout_area_included` SET TAGS ('pii_business_glossary_term' = 'Concrete Washout Area Included Flag');
-ALTER TABLE `vibe_construction_v1`.`site`.`logistics_plan` ALTER COLUMN `construction_phase` SET TAGS ('pii_business_glossary_term' = 'Construction Phase');
-ALTER TABLE `vibe_construction_v1`.`site`.`logistics_plan` ALTER COLUMN `crane_lift_zone_count` SET TAGS ('pii_business_glossary_term' = 'Crane Lift Zone Count');
-ALTER TABLE `vibe_construction_v1`.`site`.`logistics_plan` ALTER COLUMN `created_timestamp` SET TAGS ('pii_business_glossary_term' = 'Record Created Timestamp');
-ALTER TABLE `vibe_construction_v1`.`site`.`logistics_plan` ALTER COLUMN `delivery_time_window_end` SET TAGS ('pii_business_glossary_term' = 'Delivery Time Window End');
-ALTER TABLE `vibe_construction_v1`.`site`.`logistics_plan` ALTER COLUMN `delivery_time_window_end` SET TAGS ('pii_value_regex' = '^([01][0-9]|2[0-3]):[0-5][0-9]$');
-ALTER TABLE `vibe_construction_v1`.`site`.`logistics_plan` ALTER COLUMN `delivery_time_window_start` SET TAGS ('pii_business_glossary_term' = 'Delivery Time Window Start');
-ALTER TABLE `vibe_construction_v1`.`site`.`logistics_plan` ALTER COLUMN `delivery_time_window_start` SET TAGS ('pii_value_regex' = '^([01][0-9]|2[0-3]):[0-5][0-9]$');
-ALTER TABLE `vibe_construction_v1`.`site`.`logistics_plan` ALTER COLUMN `effective_date` SET TAGS ('pii_business_glossary_term' = 'Plan Effective Date');
-ALTER TABLE `vibe_construction_v1`.`site`.`logistics_plan` ALTER COLUMN `emergency_egress_route_count` SET TAGS ('pii_business_glossary_term' = 'Emergency Egress Route Count');
-ALTER TABLE `vibe_construction_v1`.`site`.`logistics_plan` ALTER COLUMN `expiry_date` SET TAGS ('pii_business_glossary_term' = 'Plan Expiry Date');
-ALTER TABLE `vibe_construction_v1`.`site`.`logistics_plan` ALTER COLUMN `first_aid_facility_count` SET TAGS ('pii_business_glossary_term' = 'First Aid Facility Count');
-ALTER TABLE `vibe_construction_v1`.`site`.`logistics_plan` ALTER COLUMN `fuel_storage_included` SET TAGS ('pii_business_glossary_term' = 'Fuel Storage Included Flag');
-ALTER TABLE `vibe_construction_v1`.`site`.`logistics_plan` ALTER COLUMN `hoarding_perimeter_m` SET TAGS ('pii_business_glossary_term' = 'Hoarding Perimeter Length (Metres)');
-ALTER TABLE `vibe_construction_v1`.`site`.`logistics_plan` ALTER COLUMN `hse_risk_level` SET TAGS ('pii_business_glossary_term' = 'Health Safety and Environment (HSE) Risk Level');
-ALTER TABLE `vibe_construction_v1`.`site`.`logistics_plan` ALTER COLUMN `hse_risk_level` SET TAGS ('pii_value_regex' = 'low|medium|high|critical');
-ALTER TABLE `vibe_construction_v1`.`site`.`logistics_plan` ALTER COLUMN `last_updated_timestamp` SET TAGS ('pii_business_glossary_term' = 'Record Last Updated Timestamp');
-ALTER TABLE `vibe_construction_v1`.`site`.`logistics_plan` ALTER COLUMN `laydown_area_count` SET TAGS ('pii_business_glossary_term' = 'Laydown Area Count');
-ALTER TABLE `vibe_construction_v1`.`site`.`logistics_plan` ALTER COLUMN `material_staging_zones` SET TAGS ('pii_business_glossary_term' = 'Material Staging Zones Description');
-ALTER TABLE `vibe_construction_v1`.`site`.`logistics_plan` ALTER COLUMN `max_vehicle_speed_kmh` SET TAGS ('pii_business_glossary_term' = 'Maximum Vehicle Speed (km/h)');
-ALTER TABLE `vibe_construction_v1`.`site`.`logistics_plan` ALTER COLUMN `peak_workforce_headcount` SET TAGS ('pii_business_glossary_term' = 'Peak Workforce Headcount');
-ALTER TABLE `vibe_construction_v1`.`site`.`logistics_plan` ALTER COLUMN `plan_number` SET TAGS ('pii_business_glossary_term' = 'Site Logistics Plan Number');
-ALTER TABLE `vibe_construction_v1`.`site`.`logistics_plan` ALTER COLUMN `plan_number` SET TAGS ('pii_value_regex' = '^SLP-[A-Z0-9]{3,10}-[0-9]{3,6}$');
-ALTER TABLE `vibe_construction_v1`.`site`.`logistics_plan` ALTER COLUMN `plan_status` SET TAGS ('pii_business_glossary_term' = 'Site Logistics Plan Status');
-ALTER TABLE `vibe_construction_v1`.`site`.`logistics_plan` ALTER COLUMN `plan_status` SET TAGS ('pii_value_regex' = 'draft|under_review|approved|superseded|void');
-ALTER TABLE `vibe_construction_v1`.`site`.`logistics_plan` ALTER COLUMN `plan_title` SET TAGS ('pii_business_glossary_term' = 'Site Logistics Plan Title');
-ALTER TABLE `vibe_construction_v1`.`site`.`logistics_plan` ALTER COLUMN `plan_type` SET TAGS ('pii_business_glossary_term' = 'Site Logistics Plan Type');
-ALTER TABLE `vibe_construction_v1`.`site`.`logistics_plan` ALTER COLUMN `plan_type` SET TAGS ('pii_value_regex' = 'initial|phase_specific|emergency|temporary_works|revised');
-ALTER TABLE `vibe_construction_v1`.`site`.`logistics_plan` ALTER COLUMN `prepared_by` SET TAGS ('pii_business_glossary_term' = 'Prepared By');
-ALTER TABLE `vibe_construction_v1`.`site`.`logistics_plan` ALTER COLUMN `procore_submittal_reference` SET TAGS ('pii_business_glossary_term' = 'Procore Submittal ID');
-ALTER TABLE `vibe_construction_v1`.`site`.`logistics_plan` ALTER COLUMN `revision_description` SET TAGS ('pii_business_glossary_term' = 'Plan Revision Description');
-ALTER TABLE `vibe_construction_v1`.`site`.`logistics_plan` ALTER COLUMN `revision_number` SET TAGS ('pii_business_glossary_term' = 'Plan Revision Number');
-ALTER TABLE `vibe_construction_v1`.`site`.`logistics_plan` ALTER COLUMN `revision_number` SET TAGS ('pii_value_regex' = '^[A-Z0-9]{1,5}$');
-ALTER TABLE `vibe_construction_v1`.`site`.`logistics_plan` ALTER COLUMN `site_area_sqm` SET TAGS ('pii_business_glossary_term' = 'Site Area (Square Metres)');
-ALTER TABLE `vibe_construction_v1`.`site`.`logistics_plan` ALTER COLUMN `site_gate_count` SET TAGS ('pii_business_glossary_term' = 'Site Gate Count');
-ALTER TABLE `vibe_construction_v1`.`site`.`logistics_plan` ALTER COLUMN `site_layout_drawing_ref` SET TAGS ('pii_business_glossary_term' = 'Site Layout Drawing Reference');
-ALTER TABLE `vibe_construction_v1`.`site`.`logistics_plan` ALTER COLUMN `swms_reference` SET TAGS ('pii_business_glossary_term' = 'Safe Work Method Statement (SWMS) Reference');
-ALTER TABLE `vibe_construction_v1`.`site`.`logistics_plan` ALTER COLUMN `temp_access_road_count` SET TAGS ('pii_business_glossary_term' = 'Temporary Access Road Count');
-ALTER TABLE `vibe_construction_v1`.`site`.`logistics_plan` ALTER COLUMN `temporary_works_included` SET TAGS ('pii_business_glossary_term' = 'Temporary Works Included Flag');
-ALTER TABLE `vibe_construction_v1`.`site`.`logistics_plan` ALTER COLUMN `temporary_works_ref` SET TAGS ('pii_business_glossary_term' = 'Temporary Works Reference');
-ALTER TABLE `vibe_construction_v1`.`site`.`logistics_plan` ALTER COLUMN `traffic_management_scheme` SET TAGS ('pii_business_glossary_term' = 'Traffic Management Scheme');
-ALTER TABLE `vibe_construction_v1`.`site`.`logistics_plan` ALTER COLUMN `traffic_management_scheme` SET TAGS ('pii_value_regex' = 'one_way|two_way|segregated|controlled_crossing|mixed');
-ALTER TABLE `vibe_construction_v1`.`site`.`logistics_plan` ALTER COLUMN `waste_management_zone_count` SET TAGS ('pii_business_glossary_term' = 'Waste Management Zone Count');
-ALTER TABLE `vibe_construction_v1`.`site`.`logistics_plan` ALTER COLUMN `welfare_facility_count` SET TAGS ('pii_business_glossary_term' = 'Welfare Facility Count');
-ALTER TABLE `vibe_construction_v1`.`site`.`equipment_deployment` SET TAGS ('pii_data_type' = 'transactional_data');
-ALTER TABLE `vibe_construction_v1`.`site`.`equipment_deployment` SET TAGS ('pii_subdomain' = 'construction_activity');
-ALTER TABLE `vibe_construction_v1`.`site`.`equipment_deployment` SET TAGS ('pii_required_structure' = 'v2');
-ALTER TABLE `vibe_construction_v1`.`site`.`equipment_deployment` SET TAGS ('pii_ecm_structure' = 'preserved_v2');
-ALTER TABLE `vibe_construction_v1`.`site`.`equipment_deployment` SET TAGS ('pii_industry' = 'construction');
-ALTER TABLE `vibe_construction_v1`.`site`.`equipment_deployment` SET TAGS ('pii_preserved' = 'required-structure');
-ALTER TABLE `vibe_construction_v1`.`site`.`equipment_deployment` SET TAGS ('pii_structure_required' = 'true');
-ALTER TABLE `vibe_construction_v1`.`site`.`equipment_deployment` ALTER COLUMN `equipment_deployment_id` SET TAGS ('pii_business_glossary_term' = 'Equipment Deployment ID');
-ALTER TABLE `vibe_construction_v1`.`site`.`equipment_deployment` ALTER COLUMN `activity_id` SET TAGS ('pii_business_glossary_term' = 'Activity ID');
-ALTER TABLE `vibe_construction_v1`.`site`.`equipment_deployment` ALTER COLUMN `asset_id` SET TAGS ('pii_business_glossary_term' = 'Equipment ID');
-ALTER TABLE `vibe_construction_v1`.`site`.`equipment_deployment` ALTER COLUMN `construction_project_id` SET TAGS ('pii_business_glossary_term' = 'Project ID');
-ALTER TABLE `vibe_construction_v1`.`site`.`equipment_deployment` ALTER COLUMN `hr_employee_id` SET TAGS ('pii_business_glossary_term' = 'Operator ID');
-ALTER TABLE `vibe_construction_v1`.`site`.`equipment_deployment` ALTER COLUMN `hr_employee_id` SET TAGS ('pii_confidential' = 'true');
-ALTER TABLE `vibe_construction_v1`.`site`.`equipment_deployment` ALTER COLUMN `hr_employee_id` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_construction_v1`.`site`.`equipment_deployment` ALTER COLUMN `cost_code_id` SET TAGS ('pii_business_glossary_term' = 'Finance Cost Code Id (Foreign Key)');
-ALTER TABLE `vibe_construction_v1`.`site`.`equipment_deployment` ALTER COLUMN `hours_id` SET TAGS ('pii_business_glossary_term' = 'HCSS HeavyJob Equipment Hours ID');
-ALTER TABLE `vibe_construction_v1`.`site`.`equipment_deployment` ALTER COLUMN `daily_log_id` SET TAGS ('pii_business_glossary_term' = 'Procore Daily Log ID');
-ALTER TABLE `vibe_construction_v1`.`site`.`equipment_deployment` ALTER COLUMN `purchase_order_id` SET TAGS ('pii_business_glossary_term' = 'Purchase Order Id (Foreign Key)');
-ALTER TABLE `vibe_construction_v1`.`site`.`equipment_deployment` ALTER COLUMN `work_front_id` SET TAGS ('pii_business_glossary_term' = 'Work Front ID');
-ALTER TABLE `vibe_construction_v1`.`site`.`equipment_deployment` ALTER COLUMN `breakdown_description` SET TAGS ('pii_business_glossary_term' = 'Breakdown Description');
-ALTER TABLE `vibe_construction_v1`.`site`.`equipment_deployment` ALTER COLUMN `breakdown_flag` SET TAGS ('pii_business_glossary_term' = 'Breakdown Flag');
-ALTER TABLE `vibe_construction_v1`.`site`.`equipment_deployment` ALTER COLUMN `breakdown_hours` SET TAGS ('pii_business_glossary_term' = 'Breakdown Hours');
-ALTER TABLE `vibe_construction_v1`.`site`.`equipment_deployment` ALTER COLUMN `currency_code` SET TAGS ('pii_business_glossary_term' = 'Currency Code');
-ALTER TABLE `vibe_construction_v1`.`site`.`equipment_deployment` ALTER COLUMN `currency_code` SET TAGS ('pii_value_regex' = '^[A-Z]{3}$');
-ALTER TABLE `vibe_construction_v1`.`site`.`equipment_deployment` ALTER COLUMN `deployment_date` SET TAGS ('pii_business_glossary_term' = 'Deployment Date');
-ALTER TABLE `vibe_construction_v1`.`site`.`equipment_deployment` ALTER COLUMN `deployment_reference_number` SET TAGS ('pii_business_glossary_term' = 'Deployment Reference Number');
-ALTER TABLE `vibe_construction_v1`.`site`.`equipment_deployment` ALTER COLUMN `deployment_status` SET TAGS ('pii_business_glossary_term' = 'Deployment Status');
-ALTER TABLE `vibe_construction_v1`.`site`.`equipment_deployment` ALTER COLUMN `deployment_status` SET TAGS ('pii_value_regex' = 'active|idle|breakdown|demobilized|standby|transferred');
-ALTER TABLE `vibe_construction_v1`.`site`.`equipment_deployment` ALTER COLUMN `equipment_type` SET TAGS ('pii_business_glossary_term' = 'Equipment Type');
-ALTER TABLE `vibe_construction_v1`.`site`.`equipment_deployment` ALTER COLUMN `fuel_consumption_liters` SET TAGS ('pii_business_glossary_term' = 'Fuel Consumption (Liters)');
-ALTER TABLE `vibe_construction_v1`.`site`.`equipment_deployment` ALTER COLUMN `fuel_type` SET TAGS ('pii_business_glossary_term' = 'Fuel Type');
-ALTER TABLE `vibe_construction_v1`.`site`.`equipment_deployment` ALTER COLUMN `fuel_type` SET TAGS ('pii_value_regex' = 'diesel|petrol|lpg|electric|hybrid');
-ALTER TABLE `vibe_construction_v1`.`site`.`equipment_deployment` ALTER COLUMN `hourly_rate` SET TAGS ('pii_business_glossary_term' = 'Hourly Rate');
-ALTER TABLE `vibe_construction_v1`.`site`.`equipment_deployment` ALTER COLUMN `hourly_rate` SET TAGS ('pii_confidential' = 'true');
-ALTER TABLE `vibe_construction_v1`.`site`.`equipment_deployment` ALTER COLUMN `hse_permit_number` SET TAGS ('pii_business_glossary_term' = 'Health Safety and Environment (HSE) Permit Number');
-ALTER TABLE `vibe_construction_v1`.`site`.`equipment_deployment` ALTER COLUMN `idle_hours` SET TAGS ('pii_business_glossary_term' = 'Idle Hours');
-ALTER TABLE `vibe_construction_v1`.`site`.`equipment_deployment` ALTER COLUMN `maintenance_order_number` SET TAGS ('pii_business_glossary_term' = 'Maintenance Order Number');
-ALTER TABLE `vibe_construction_v1`.`site`.`equipment_deployment` ALTER COLUMN `operating_hours` SET TAGS ('pii_business_glossary_term' = 'Operating Hours');
-ALTER TABLE `vibe_construction_v1`.`site`.`equipment_deployment` ALTER COLUMN `operator_license_number` SET TAGS ('pii_business_glossary_term' = 'Operator License Number');
-ALTER TABLE `vibe_construction_v1`.`site`.`equipment_deployment` ALTER COLUMN `operator_license_number` SET TAGS ('pii_confidential' = 'true');
-ALTER TABLE `vibe_construction_v1`.`site`.`equipment_deployment` ALTER COLUMN `operator_license_number` SET TAGS ('pii_identifier' = 'true');
-ALTER TABLE `vibe_construction_v1`.`site`.`equipment_deployment` ALTER COLUMN `operator_name` SET TAGS ('pii_business_glossary_term' = 'Operator Name');
-ALTER TABLE `vibe_construction_v1`.`site`.`equipment_deployment` ALTER COLUMN `operator_name` SET TAGS ('pii_confidential' = 'true');
-ALTER TABLE `vibe_construction_v1`.`site`.`equipment_deployment` ALTER COLUMN `operator_name` SET TAGS ('pii_identifier' = 'true');
-ALTER TABLE `vibe_construction_v1`.`site`.`equipment_deployment` ALTER COLUMN `ownership_type` SET TAGS ('pii_business_glossary_term' = 'Ownership Type');
-ALTER TABLE `vibe_construction_v1`.`site`.`equipment_deployment` ALTER COLUMN `ownership_type` SET TAGS ('pii_value_regex' = 'owned|rented|leased|subcontractor');
-ALTER TABLE `vibe_construction_v1`.`site`.`equipment_deployment` ALTER COLUMN `planned_production_quantity` SET TAGS ('pii_business_glossary_term' = 'Planned Production Quantity');
-ALTER TABLE `vibe_construction_v1`.`site`.`equipment_deployment` ALTER COLUMN `pre_start_check_flag` SET TAGS ('pii_business_glossary_term' = 'Pre-Start Check Flag');
-ALTER TABLE `vibe_construction_v1`.`site`.`equipment_deployment` ALTER COLUMN `production_quantity` SET TAGS ('pii_business_glossary_term' = 'Production Quantity');
-ALTER TABLE `vibe_construction_v1`.`site`.`equipment_deployment` ALTER COLUMN `production_unit_of_measure` SET TAGS ('pii_business_glossary_term' = 'Production Unit of Measure');
-ALTER TABLE `vibe_construction_v1`.`site`.`equipment_deployment` ALTER COLUMN `record_created_timestamp` SET TAGS ('pii_business_glossary_term' = 'Record Created Timestamp');
-ALTER TABLE `vibe_construction_v1`.`site`.`equipment_deployment` ALTER COLUMN `record_updated_timestamp` SET TAGS ('pii_business_glossary_term' = 'Record Updated Timestamp');
-ALTER TABLE `vibe_construction_v1`.`site`.`equipment_deployment` ALTER COLUMN `release_date` SET TAGS ('pii_business_glossary_term' = 'Release Date');
-ALTER TABLE `vibe_construction_v1`.`site`.`equipment_deployment` ALTER COLUMN `remarks` SET TAGS ('pii_business_glossary_term' = 'Deployment Remarks');
-ALTER TABLE `vibe_construction_v1`.`site`.`equipment_deployment` ALTER COLUMN `rental_order_number` SET TAGS ('pii_business_glossary_term' = 'Rental Order Number');
-ALTER TABLE `vibe_construction_v1`.`site`.`equipment_deployment` ALTER COLUMN `shift_date` SET TAGS ('pii_business_glossary_term' = 'Shift Date');
-ALTER TABLE `vibe_construction_v1`.`site`.`equipment_deployment` ALTER COLUMN `shift_type` SET TAGS ('pii_business_glossary_term' = 'Shift Type');
-ALTER TABLE `vibe_construction_v1`.`site`.`equipment_deployment` ALTER COLUMN `shift_type` SET TAGS ('pii_value_regex' = 'day|night|swing|double');
-ALTER TABLE `vibe_construction_v1`.`site`.`equipment_deployment` ALTER COLUMN `site_location_description` SET TAGS ('pii_business_glossary_term' = 'Site Location Description');
-ALTER TABLE `vibe_construction_v1`.`site`.`equipment_deployment` ALTER COLUMN `standby_hours` SET TAGS ('pii_business_glossary_term' = 'Standby Hours');
-ALTER TABLE `vibe_construction_v1`.`site`.`equipment_deployment` ALTER COLUMN `supplier_name` SET TAGS ('pii_business_glossary_term' = 'Supplier Name');
-ALTER TABLE `vibe_construction_v1`.`site`.`equipment_deployment` ALTER COLUMN `weather_condition` SET TAGS ('pii_business_glossary_term' = 'Weather Condition');
-ALTER TABLE `vibe_construction_v1`.`site`.`material_delivery` SET TAGS ('pii_data_type' = 'transactional_data');
-ALTER TABLE `vibe_construction_v1`.`site`.`material_delivery` SET TAGS ('pii_subdomain' = 'permit_compliance');
-ALTER TABLE `vibe_construction_v1`.`site`.`material_delivery` SET TAGS ('pii_required_structure' = 'v2');
-ALTER TABLE `vibe_construction_v1`.`site`.`material_delivery` SET TAGS ('pii_ecm_structure' = 'preserved_v2');
-ALTER TABLE `vibe_construction_v1`.`site`.`material_delivery` SET TAGS ('pii_industry' = 'construction');
-ALTER TABLE `vibe_construction_v1`.`site`.`material_delivery` SET TAGS ('pii_preserved' = 'required-structure');
-ALTER TABLE `vibe_construction_v1`.`site`.`material_delivery` SET TAGS ('pii_structure_required' = 'true');
-ALTER TABLE `vibe_construction_v1`.`site`.`material_delivery` ALTER COLUMN `material_delivery_id` SET TAGS ('pii_business_glossary_term' = 'Material Delivery ID');
-ALTER TABLE `vibe_construction_v1`.`site`.`material_delivery` ALTER COLUMN `activity_id` SET TAGS ('pii_business_glossary_term' = 'Activity Id (Foreign Key)');
-ALTER TABLE `vibe_construction_v1`.`site`.`material_delivery` ALTER COLUMN `asset_id` SET TAGS ('pii_business_glossary_term' = 'Asset Id (Foreign Key)');
-ALTER TABLE `vibe_construction_v1`.`site`.`material_delivery` ALTER COLUMN `regulatory_permit_id` SET TAGS ('pii_business_glossary_term' = 'Permit Id (Foreign Key)');
-ALTER TABLE `vibe_construction_v1`.`site`.`material_delivery` ALTER COLUMN `engineering_submittal_id` SET TAGS ('pii_business_glossary_term' = 'Design Submittal Id (Foreign Key)');
-ALTER TABLE `vibe_construction_v1`.`site`.`material_delivery` ALTER COLUMN `cost_code_id` SET TAGS ('pii_business_glossary_term' = 'Finance Cost Code Id (Foreign Key)');
-ALTER TABLE `vibe_construction_v1`.`site`.`material_delivery` ALTER COLUMN `firm_profile_id` SET TAGS ('pii_business_glossary_term' = 'Sub Firm Id (Foreign Key)');
-ALTER TABLE `vibe_construction_v1`.`site`.`material_delivery` ALTER COLUMN `construction_project_id` SET TAGS ('pii_business_glossary_term' = 'Project ID');
-ALTER TABLE `vibe_construction_v1`.`site`.`material_delivery` ALTER COLUMN `material_site_construction_project_id` SET TAGS ('pii_business_glossary_term' = 'Site ID');
-ALTER TABLE `vibe_construction_v1`.`site`.`material_delivery` ALTER COLUMN `vendor_id` SET TAGS ('pii_business_glossary_term' = 'Supplier ID');
-ALTER TABLE `vibe_construction_v1`.`site`.`material_delivery` ALTER COLUMN `purchase_order_id` SET TAGS ('pii_business_glossary_term' = 'Purchase Order (PO) ID');
-ALTER TABLE `vibe_construction_v1`.`site`.`material_delivery` ALTER COLUMN `hr_employee_id` SET TAGS ('pii_business_glossary_term' = 'Receiver Employee ID');
-ALTER TABLE `vibe_construction_v1`.`site`.`material_delivery` ALTER COLUMN `hr_employee_id` SET TAGS ('pii_confidential' = 'true');
-ALTER TABLE `vibe_construction_v1`.`site`.`material_delivery` ALTER COLUMN `hr_employee_id` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_construction_v1`.`site`.`material_delivery` ALTER COLUMN `batch_number` SET TAGS ('pii_business_glossary_term' = 'Material Batch Number');
-ALTER TABLE `vibe_construction_v1`.`site`.`material_delivery` ALTER COLUMN `created_timestamp` SET TAGS ('pii_business_glossary_term' = 'Record Created Timestamp');
-ALTER TABLE `vibe_construction_v1`.`site`.`material_delivery` ALTER COLUMN `currency_code` SET TAGS ('pii_business_glossary_term' = 'Currency Code');
-ALTER TABLE `vibe_construction_v1`.`site`.`material_delivery` ALTER COLUMN `currency_code` SET TAGS ('pii_value_regex' = '^[A-Z]{3}$');
-ALTER TABLE `vibe_construction_v1`.`site`.`material_delivery` ALTER COLUMN `delivery_date` SET TAGS ('pii_business_glossary_term' = 'Delivery Date');
-ALTER TABLE `vibe_construction_v1`.`site`.`material_delivery` ALTER COLUMN `delivery_status` SET TAGS ('pii_business_glossary_term' = 'Delivery Receipt Status');
-ALTER TABLE `vibe_construction_v1`.`site`.`material_delivery` ALTER COLUMN `delivery_status` SET TAGS ('pii_value_regex' = 'accepted|rejected|partial|pending_inspection|on_hold');
-ALTER TABLE `vibe_construction_v1`.`site`.`material_delivery` ALTER COLUMN `delivery_timestamp` SET TAGS ('pii_business_glossary_term' = 'Delivery Arrival Timestamp');
-ALTER TABLE `vibe_construction_v1`.`site`.`material_delivery` ALTER COLUMN `delivery_value` SET TAGS ('pii_business_glossary_term' = 'Delivery Value');
-ALTER TABLE `vibe_construction_v1`.`site`.`material_delivery` ALTER COLUMN `delivery_value` SET TAGS ('pii_confidential' = 'true');
-ALTER TABLE `vibe_construction_v1`.`site`.`material_delivery` ALTER COLUMN `discrepancy_notes` SET TAGS ('pii_business_glossary_term' = 'Delivery Discrepancy Notes');
-ALTER TABLE `vibe_construction_v1`.`site`.`material_delivery` ALTER COLUMN `docket_number` SET TAGS ('pii_business_glossary_term' = 'Delivery Docket Number');
-ALTER TABLE `vibe_construction_v1`.`site`.`material_delivery` ALTER COLUMN `driver_name` SET TAGS ('pii_business_glossary_term' = 'Delivery Driver Name');
-ALTER TABLE `vibe_construction_v1`.`site`.`material_delivery` ALTER COLUMN `driver_name` SET TAGS ('pii_confidential' = 'true');
-ALTER TABLE `vibe_construction_v1`.`site`.`material_delivery` ALTER COLUMN `driver_name` SET TAGS ('pii_name' = 'true');
-ALTER TABLE `vibe_construction_v1`.`site`.`material_delivery` ALTER COLUMN `expected_delivery_date` SET TAGS ('pii_business_glossary_term' = 'Expected Delivery Date');
-ALTER TABLE `vibe_construction_v1`.`site`.`material_delivery` ALTER COLUMN `goods_receipt_number` SET TAGS ('pii_business_glossary_term' = 'Goods Receipt (GR) Number');
-ALTER TABLE `vibe_construction_v1`.`site`.`material_delivery` ALTER COLUMN `hazardous_material` SET TAGS ('pii_business_glossary_term' = 'Hazardous Material Flag');
-ALTER TABLE `vibe_construction_v1`.`site`.`material_delivery` ALTER COLUMN `itp_reference` SET TAGS ('pii_business_glossary_term' = 'Inspection and Test Plan (ITP) Reference');
-ALTER TABLE `vibe_construction_v1`.`site`.`material_delivery` ALTER COLUMN `laydown_zone` SET TAGS ('pii_business_glossary_term' = 'Laydown Zone');
-ALTER TABLE `vibe_construction_v1`.`site`.`material_delivery` ALTER COLUMN `material_category` SET TAGS ('pii_business_glossary_term' = 'Material Category');
-ALTER TABLE `vibe_construction_v1`.`site`.`material_delivery` ALTER COLUMN `material_code` SET TAGS ('pii_business_glossary_term' = 'Material Code');
-ALTER TABLE `vibe_construction_v1`.`site`.`material_delivery` ALTER COLUMN `material_description` SET TAGS ('pii_business_glossary_term' = 'Material Description');
-ALTER TABLE `vibe_construction_v1`.`site`.`material_delivery` ALTER COLUMN `msds_verified` SET TAGS ('pii_business_glossary_term' = 'Material Safety Data Sheet (MSDS) Verified Flag');
-ALTER TABLE `vibe_construction_v1`.`site`.`material_delivery` ALTER COLUMN `ncr_reference` SET TAGS ('pii_business_glossary_term' = 'Non-Conformance Report (NCR) Reference');
-ALTER TABLE `vibe_construction_v1`.`site`.`material_delivery` ALTER COLUMN `po_line_number` SET TAGS ('pii_business_glossary_term' = 'Purchase Order (PO) Line Number');
-ALTER TABLE `vibe_construction_v1`.`site`.`material_delivery` ALTER COLUMN `procore_log_reference` SET TAGS ('pii_business_glossary_term' = 'Procore Daily Log Reference ID');
-ALTER TABLE `vibe_construction_v1`.`site`.`material_delivery` ALTER COLUMN `quantity_accepted` SET TAGS ('pii_business_glossary_term' = 'Quantity Accepted');
-ALTER TABLE `vibe_construction_v1`.`site`.`material_delivery` ALTER COLUMN `quantity_delivered` SET TAGS ('pii_business_glossary_term' = 'Quantity Delivered');
-ALTER TABLE `vibe_construction_v1`.`site`.`material_delivery` ALTER COLUMN `quantity_ordered` SET TAGS ('pii_business_glossary_term' = 'Quantity Ordered');
-ALTER TABLE `vibe_construction_v1`.`site`.`material_delivery` ALTER COLUMN `quantity_rejected` SET TAGS ('pii_business_glossary_term' = 'Quantity Rejected');
-ALTER TABLE `vibe_construction_v1`.`site`.`material_delivery` ALTER COLUMN `receipt_condition` SET TAGS ('pii_business_glossary_term' = 'Material Receipt Condition');
-ALTER TABLE `vibe_construction_v1`.`site`.`material_delivery` ALTER COLUMN `receipt_condition` SET TAGS ('pii_value_regex' = 'good|damaged|wet|contaminated|incorrect_spec|short_delivered');
-ALTER TABLE `vibe_construction_v1`.`site`.`material_delivery` ALTER COLUMN `receiving_inspector` SET TAGS ('pii_business_glossary_term' = 'Receiving Inspector Name');
-ALTER TABLE `vibe_construction_v1`.`site`.`material_delivery` ALTER COLUMN `receiving_inspector` SET TAGS ('pii_confidential' = 'true');
-ALTER TABLE `vibe_construction_v1`.`site`.`material_delivery` ALTER COLUMN `temperature_sensitive` SET TAGS ('pii_business_glossary_term' = 'Temperature-Sensitive Storage Flag');
-ALTER TABLE `vibe_construction_v1`.`site`.`material_delivery` ALTER COLUMN `test_certificate_number` SET TAGS ('pii_business_glossary_term' = 'Material Test Certificate Number');
-ALTER TABLE `vibe_construction_v1`.`site`.`material_delivery` ALTER COLUMN `unit_of_measure` SET TAGS ('pii_business_glossary_term' = 'Unit of Measure (UOM)');
-ALTER TABLE `vibe_construction_v1`.`site`.`material_delivery` ALTER COLUMN `unit_rate` SET TAGS ('pii_business_glossary_term' = 'Material Unit Rate');
-ALTER TABLE `vibe_construction_v1`.`site`.`material_delivery` ALTER COLUMN `unit_rate` SET TAGS ('pii_confidential' = 'true');
-ALTER TABLE `vibe_construction_v1`.`site`.`material_delivery` ALTER COLUMN `updated_timestamp` SET TAGS ('pii_business_glossary_term' = 'Record Last Updated Timestamp');
-ALTER TABLE `vibe_construction_v1`.`site`.`material_delivery` ALTER COLUMN `vehicle_registration` SET TAGS ('pii_business_glossary_term' = 'Delivery Vehicle Registration Number');
-ALTER TABLE `vibe_construction_v1`.`site`.`material_delivery` ALTER COLUMN `wbs_code` SET TAGS ('pii_business_glossary_term' = 'Work Breakdown Structure (WBS) Code');
-ALTER TABLE `vibe_construction_v1`.`site`.`instruction` SET TAGS ('pii_data_type' = 'transactional_data');
-ALTER TABLE `vibe_construction_v1`.`site`.`instruction` SET TAGS ('pii_subdomain' = 'permit_compliance');
-ALTER TABLE `vibe_construction_v1`.`site`.`instruction` SET TAGS ('pii_required_structure' = 'v2');
-ALTER TABLE `vibe_construction_v1`.`site`.`instruction` SET TAGS ('pii_ecm_structure' = 'preserved_v2');
-ALTER TABLE `vibe_construction_v1`.`site`.`instruction` SET TAGS ('pii_industry' = 'construction');
-ALTER TABLE `vibe_construction_v1`.`site`.`instruction` SET TAGS ('pii_preserved' = 'required-structure');
-ALTER TABLE `vibe_construction_v1`.`site`.`instruction` SET TAGS ('pii_structure_required' = 'true');
-ALTER TABLE `vibe_construction_v1`.`site`.`instruction` ALTER COLUMN `instruction_id` SET TAGS ('pii_business_glossary_term' = 'Site Instruction ID');
-ALTER TABLE `vibe_construction_v1`.`site`.`instruction` ALTER COLUMN `activity_id` SET TAGS ('pii_business_glossary_term' = 'Activity Id (Foreign Key)');
-ALTER TABLE `vibe_construction_v1`.`site`.`instruction` ALTER COLUMN `agreement_id` SET TAGS ('pii_business_glossary_term' = 'Contract ID');
-ALTER TABLE `vibe_construction_v1`.`site`.`instruction` ALTER COLUMN `change_notice_id` SET TAGS ('pii_business_glossary_term' = 'Change Notice Id (Foreign Key)');
-ALTER TABLE `vibe_construction_v1`.`site`.`instruction` ALTER COLUMN `regulatory_permit_id` SET TAGS ('pii_business_glossary_term' = 'Permit Id (Foreign Key)');
-ALTER TABLE `vibe_construction_v1`.`site`.`instruction` ALTER COLUMN `construction_project_id` SET TAGS ('pii_business_glossary_term' = 'Project ID');
-ALTER TABLE `vibe_construction_v1`.`site`.`instruction` ALTER COLUMN `firm_profile_id` SET TAGS ('pii_business_glossary_term' = 'Sub Firm Id (Foreign Key)');
-ALTER TABLE `vibe_construction_v1`.`site`.`instruction` ALTER COLUMN `craft_worker_id` SET TAGS ('pii_business_glossary_term' = 'Issuing Authority Craft Worker Id (Foreign Key)');
-ALTER TABLE `vibe_construction_v1`.`site`.`instruction` ALTER COLUMN `hr_employee_id` SET TAGS ('pii_business_glossary_term' = 'Issuing Authority Employee Id (Foreign Key)');
-ALTER TABLE `vibe_construction_v1`.`site`.`instruction` ALTER COLUMN `hr_employee_id` SET TAGS ('pii_confidential' = 'true');
-ALTER TABLE `vibe_construction_v1`.`site`.`instruction` ALTER COLUMN `hr_employee_id` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_construction_v1`.`site`.`instruction` ALTER COLUMN `submission_id` SET TAGS ('pii_business_glossary_term' = 'Bid Submission Id (Foreign Key)');
-ALTER TABLE `vibe_construction_v1`.`site`.`instruction` ALTER COLUMN `work_front_id` SET TAGS ('pii_business_glossary_term' = 'Work Front ID');
-ALTER TABLE `vibe_construction_v1`.`site`.`instruction` ALTER COLUMN `aconex_mail_reference` SET TAGS ('pii_business_glossary_term' = 'Aconex Mail Register Reference');
-ALTER TABLE `vibe_construction_v1`.`site`.`instruction` ALTER COLUMN `affected_drawing_reference` SET TAGS ('pii_business_glossary_term' = 'Affected Drawing Reference');
-ALTER TABLE `vibe_construction_v1`.`site`.`instruction` ALTER COLUMN `affected_wbs_code` SET TAGS ('pii_business_glossary_term' = 'Affected Work Breakdown Structure (WBS) Code');
-ALTER TABLE `vibe_construction_v1`.`site`.`instruction` ALTER COLUMN `contractor_acknowledgment_date` SET TAGS ('pii_business_glossary_term' = 'Contractor Acknowledgment Date');
-ALTER TABLE `vibe_construction_v1`.`site`.`instruction` ALTER COLUMN `contractor_dispute_flag` SET TAGS ('pii_business_glossary_term' = 'Contractor Dispute Flag');
-ALTER TABLE `vibe_construction_v1`.`site`.`instruction` ALTER COLUMN `contractor_response_date` SET TAGS ('pii_business_glossary_term' = 'Contractor Response Date');
-ALTER TABLE `vibe_construction_v1`.`site`.`instruction` ALTER COLUMN `contractor_response_due_date` SET TAGS ('pii_business_glossary_term' = 'Contractor Response Due Date');
-ALTER TABLE `vibe_construction_v1`.`site`.`instruction` ALTER COLUMN `cost_impact_flag` SET TAGS ('pii_business_glossary_term' = 'Cost Impact Flag');
-ALTER TABLE `vibe_construction_v1`.`site`.`instruction` ALTER COLUMN `created_timestamp` SET TAGS ('pii_business_glossary_term' = 'Record Created Timestamp');
-ALTER TABLE `vibe_construction_v1`.`site`.`instruction` ALTER COLUMN `currency_code` SET TAGS ('pii_business_glossary_term' = 'Currency Code');
-ALTER TABLE `vibe_construction_v1`.`site`.`instruction` ALTER COLUMN `currency_code` SET TAGS ('pii_value_regex' = '^[A-Z]{3}$');
-ALTER TABLE `vibe_construction_v1`.`site`.`instruction` ALTER COLUMN `instruction_description` SET TAGS ('pii_business_glossary_term' = 'Site Instruction Description');
-ALTER TABLE `vibe_construction_v1`.`site`.`instruction` ALTER COLUMN `dispute_reason` SET TAGS ('pii_business_glossary_term' = 'Dispute Reason');
-ALTER TABLE `vibe_construction_v1`.`site`.`instruction` ALTER COLUMN `document_revision` SET TAGS ('pii_business_glossary_term' = 'Document Revision');
-ALTER TABLE `vibe_construction_v1`.`site`.`instruction` ALTER COLUMN `document_revision` SET TAGS ('pii_value_regex' = '^[A-Z0-9]{1,5}$');
-ALTER TABLE `vibe_construction_v1`.`site`.`instruction` ALTER COLUMN `estimated_cost_impact_amount` SET TAGS ('pii_business_glossary_term' = 'Estimated Cost Impact Amount');
-ALTER TABLE `vibe_construction_v1`.`site`.`instruction` ALTER COLUMN `estimated_cost_impact_amount` SET TAGS ('pii_confidential' = 'true');
-ALTER TABLE `vibe_construction_v1`.`site`.`instruction` ALTER COLUMN `estimated_time_impact_days` SET TAGS ('pii_business_glossary_term' = 'Estimated Time Impact (Days)');
-ALTER TABLE `vibe_construction_v1`.`site`.`instruction` ALTER COLUMN `hse_implication_flag` SET TAGS ('pii_business_glossary_term' = 'Health Safety and Environment (HSE) Implication Flag');
-ALTER TABLE `vibe_construction_v1`.`site`.`instruction` ALTER COLUMN `implementation_completion_date` SET TAGS ('pii_business_glossary_term' = 'Implementation Completion Date');
-ALTER TABLE `vibe_construction_v1`.`site`.`instruction` ALTER COLUMN `implementation_start_date` SET TAGS ('pii_business_glossary_term' = 'Implementation Start Date');
-ALTER TABLE `vibe_construction_v1`.`site`.`instruction` ALTER COLUMN `instruction_number` SET TAGS ('pii_business_glossary_term' = 'Site Instruction Number');
-ALTER TABLE `vibe_construction_v1`.`site`.`instruction` ALTER COLUMN `instruction_number` SET TAGS ('pii_value_regex' = '^SI-[A-Z0-9]{2,10}-[0-9]{4,6}$');
-ALTER TABLE `vibe_construction_v1`.`site`.`instruction` ALTER COLUMN `instruction_status` SET TAGS ('pii_business_glossary_term' = 'Site Instruction Status');
-ALTER TABLE `vibe_construction_v1`.`site`.`instruction` ALTER COLUMN `instruction_type` SET TAGS ('pii_business_glossary_term' = 'Site Instruction Type');
-ALTER TABLE `vibe_construction_v1`.`site`.`instruction` ALTER COLUMN `issue_date` SET TAGS ('pii_business_glossary_term' = 'Issue Date');
-ALTER TABLE `vibe_construction_v1`.`site`.`instruction` ALTER COLUMN `issued_timestamp` SET TAGS ('pii_business_glossary_term' = 'Issued Timestamp');
-ALTER TABLE `vibe_construction_v1`.`site`.`instruction` ALTER COLUMN `issuing_authority_role` SET TAGS ('pii_business_glossary_term' = 'Issuing Authority Role');
-ALTER TABLE `vibe_construction_v1`.`site`.`instruction` ALTER COLUMN `issuing_authority_role` SET TAGS ('pii_value_regex' = 'engineer|client_representative|resident_engineer|project_manager|site_supervisor|clerk_of_works');
-ALTER TABLE `vibe_construction_v1`.`site`.`instruction` ALTER COLUMN `issuing_organisation` SET TAGS ('pii_business_glossary_term' = 'Issuing Organisation');
-ALTER TABLE `vibe_construction_v1`.`site`.`instruction` ALTER COLUMN `last_updated_timestamp` SET TAGS ('pii_business_glossary_term' = 'Record Last Updated Timestamp');
-ALTER TABLE `vibe_construction_v1`.`site`.`instruction` ALTER COLUMN `linked_change_order_number` SET TAGS ('pii_business_glossary_term' = 'Linked Change Order (CO) Number');
-ALTER TABLE `vibe_construction_v1`.`site`.`instruction` ALTER COLUMN `linked_rfi_number` SET TAGS ('pii_business_glossary_term' = 'Linked Request for Information (RFI) Number');
-ALTER TABLE `vibe_construction_v1`.`site`.`instruction` ALTER COLUMN `ncr_reference` SET TAGS ('pii_business_glossary_term' = 'Non-Conformance Report (NCR) Reference');
-ALTER TABLE `vibe_construction_v1`.`site`.`instruction` ALTER COLUMN `physical_location_description` SET TAGS ('pii_business_glossary_term' = 'Physical Location Description');
-ALTER TABLE `vibe_construction_v1`.`site`.`instruction` ALTER COLUMN `procore_instruction_reference` SET TAGS ('pii_business_glossary_term' = 'Procore Site Instruction ID');
-ALTER TABLE `vibe_construction_v1`.`site`.`instruction` ALTER COLUMN `quality_hold_required` SET TAGS ('pii_business_glossary_term' = 'Quality Hold Required Flag');
-ALTER TABLE `vibe_construction_v1`.`site`.`instruction` ALTER COLUMN `specification_clause_reference` SET TAGS ('pii_business_glossary_term' = 'Specification Clause Reference');
-ALTER TABLE `vibe_construction_v1`.`site`.`instruction` ALTER COLUMN `superseded_by_instruction_number` SET TAGS ('pii_business_glossary_term' = 'Superseded By Instruction Number');
-ALTER TABLE `vibe_construction_v1`.`site`.`instruction` ALTER COLUMN `time_impact_flag` SET TAGS ('pii_business_glossary_term' = 'Time Impact Flag');
-ALTER TABLE `vibe_construction_v1`.`site`.`instruction` ALTER COLUMN `title` SET TAGS ('pii_business_glossary_term' = 'Site Instruction Title');
-ALTER TABLE `vibe_construction_v1`.`site`.`instruction` ALTER COLUMN `urgency_classification` SET TAGS ('pii_business_glossary_term' = 'Urgency Classification');
-ALTER TABLE `vibe_construction_v1`.`site`.`instruction` ALTER COLUMN `urgency_classification` SET TAGS ('pii_value_regex' = 'routine|urgent|emergency');
-ALTER TABLE `vibe_construction_v1`.`site`.`lift_plan` SET TAGS ('pii_data_type' = 'master_data');
-ALTER TABLE `vibe_construction_v1`.`site`.`lift_plan` SET TAGS ('pii_subdomain' = 'site_setup');
-ALTER TABLE `vibe_construction_v1`.`site`.`lift_plan` SET TAGS ('pii_required_structure' = 'v2');
-ALTER TABLE `vibe_construction_v1`.`site`.`lift_plan` SET TAGS ('pii_ecm_structure' = 'preserved_v2');
-ALTER TABLE `vibe_construction_v1`.`site`.`lift_plan` SET TAGS ('pii_industry' = 'construction');
-ALTER TABLE `vibe_construction_v1`.`site`.`lift_plan` SET TAGS ('pii_preserved' = 'required-structure');
-ALTER TABLE `vibe_construction_v1`.`site`.`lift_plan` SET TAGS ('pii_structure_required' = 'true');
-ALTER TABLE `vibe_construction_v1`.`site`.`lift_plan` ALTER COLUMN `lift_plan_id` SET TAGS ('pii_business_glossary_term' = 'Lift Plan ID');
-ALTER TABLE `vibe_construction_v1`.`site`.`lift_plan` ALTER COLUMN `activity_id` SET TAGS ('pii_business_glossary_term' = 'Activity Id (Foreign Key)');
-ALTER TABLE `vibe_construction_v1`.`site`.`lift_plan` ALTER COLUMN `asset_id` SET TAGS ('pii_business_glossary_term' = 'Crane Equipment ID');
-ALTER TABLE `vibe_construction_v1`.`site`.`lift_plan` ALTER COLUMN `regulatory_permit_id` SET TAGS ('pii_business_glossary_term' = 'Permit Id (Foreign Key)');
-ALTER TABLE `vibe_construction_v1`.`site`.`lift_plan` ALTER COLUMN `craft_worker_id` SET TAGS ('pii_business_glossary_term' = 'Crane Operator Craft Worker Id (Foreign Key)');
-ALTER TABLE `vibe_construction_v1`.`site`.`lift_plan` ALTER COLUMN `firm_profile_id` SET TAGS ('pii_business_glossary_term' = 'Sub Firm Id (Foreign Key)');
-ALTER TABLE `vibe_construction_v1`.`site`.`lift_plan` ALTER COLUMN `construction_project_id` SET TAGS ('pii_business_glossary_term' = 'Project ID');
-ALTER TABLE `vibe_construction_v1`.`site`.`lift_plan` ALTER COLUMN `lift_site_construction_project_id` SET TAGS ('pii_business_glossary_term' = 'Site ID');
-ALTER TABLE `vibe_construction_v1`.`site`.`lift_plan` ALTER COLUMN `hr_employee_id` SET TAGS ('pii_business_glossary_term' = 'Appointed Person Worker ID');
-ALTER TABLE `vibe_construction_v1`.`site`.`lift_plan` ALTER COLUMN `hr_employee_id` SET TAGS ('pii_confidential' = 'true');
-ALTER TABLE `vibe_construction_v1`.`site`.`lift_plan` ALTER COLUMN `hr_employee_id` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_construction_v1`.`site`.`lift_plan` ALTER COLUMN `purchase_order_id` SET TAGS ('pii_business_glossary_term' = 'Purchase Order Id (Foreign Key)');
-ALTER TABLE `vibe_construction_v1`.`site`.`lift_plan` ALTER COLUMN `swms_id` SET TAGS ('pii_business_glossary_term' = 'Swms Id (Foreign Key)');
-ALTER TABLE `vibe_construction_v1`.`site`.`lift_plan` ALTER COLUMN `tertiary_lift_rigger_in_charge_employee_id` SET TAGS ('pii_business_glossary_term' = 'Rigger-in-Charge Worker ID');
-ALTER TABLE `vibe_construction_v1`.`site`.`lift_plan` ALTER COLUMN `tertiary_lift_rigger_in_charge_employee_id` SET TAGS ('pii_confidential' = 'true');
-ALTER TABLE `vibe_construction_v1`.`site`.`lift_plan` ALTER COLUMN `tertiary_lift_rigger_in_charge_employee_id` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_construction_v1`.`site`.`lift_plan` ALTER COLUMN `appointed_person_name` SET TAGS ('pii_business_glossary_term' = 'Appointed Person Name');
-ALTER TABLE `vibe_construction_v1`.`site`.`lift_plan` ALTER COLUMN `appointed_person_name` SET TAGS ('pii_confidential' = 'true');
-ALTER TABLE `vibe_construction_v1`.`site`.`lift_plan` ALTER COLUMN `approval_status` SET TAGS ('pii_business_glossary_term' = 'Lift Plan Approval Status');
-ALTER TABLE `vibe_construction_v1`.`site`.`lift_plan` ALTER COLUMN `approval_status` SET TAGS ('pii_value_regex' = 'draft|submitted|approved|rejected|cancelled|superseded');
-ALTER TABLE `vibe_construction_v1`.`site`.`lift_plan` ALTER COLUMN `approved_timestamp` SET TAGS ('pii_business_glossary_term' = 'Lift Plan Approved Timestamp');
-ALTER TABLE `vibe_construction_v1`.`site`.`lift_plan` ALTER COLUMN `boom_length_m` SET TAGS ('pii_business_glossary_term' = 'Boom Length (Metres)');
-ALTER TABLE `vibe_construction_v1`.`site`.`lift_plan` ALTER COLUMN `capacity_utilisation_pct` SET TAGS ('pii_business_glossary_term' = 'Crane Capacity Utilisation Percentage');
-ALTER TABLE `vibe_construction_v1`.`site`.`lift_plan` ALTER COLUMN `crane_make` SET TAGS ('pii_business_glossary_term' = 'Crane Make');
-ALTER TABLE `vibe_construction_v1`.`site`.`lift_plan` ALTER COLUMN `crane_model` SET TAGS ('pii_business_glossary_term' = 'Crane Model');
-ALTER TABLE `vibe_construction_v1`.`site`.`lift_plan` ALTER COLUMN `crane_rated_capacity_t` SET TAGS ('pii_business_glossary_term' = 'Crane Rated Capacity (Tonnes)');
-ALTER TABLE `vibe_construction_v1`.`site`.`lift_plan` ALTER COLUMN `crane_type` SET TAGS ('pii_business_glossary_term' = 'Crane Type');
-ALTER TABLE `vibe_construction_v1`.`site`.`lift_plan` ALTER COLUMN `created_timestamp` SET TAGS ('pii_business_glossary_term' = 'Record Created Timestamp');
-ALTER TABLE `vibe_construction_v1`.`site`.`lift_plan` ALTER COLUMN `exclusion_zone_radius_m` SET TAGS ('pii_business_glossary_term' = 'Exclusion Zone Radius (Metres)');
-ALTER TABLE `vibe_construction_v1`.`site`.`lift_plan` ALTER COLUMN `ground_bearing_capacity_kpa` SET TAGS ('pii_business_glossary_term' = 'Ground Bearing Capacity (kPa)');
-ALTER TABLE `vibe_construction_v1`.`site`.`lift_plan` ALTER COLUMN `ground_bearing_pressure_kpa` SET TAGS ('pii_business_glossary_term' = 'Ground Bearing Pressure (kPa)');
-ALTER TABLE `vibe_construction_v1`.`site`.`lift_plan` ALTER COLUMN `hook_height_m` SET TAGS ('pii_business_glossary_term' = 'Hook Height (Metres)');
-ALTER TABLE `vibe_construction_v1`.`site`.`lift_plan` ALTER COLUMN `hse_risk_level` SET TAGS ('pii_business_glossary_term' = 'Health Safety and Environment (HSE) Risk Level');
-ALTER TABLE `vibe_construction_v1`.`site`.`lift_plan` ALTER COLUMN `hse_risk_level` SET TAGS ('pii_value_regex' = 'low|medium|high|extreme');
-ALTER TABLE `vibe_construction_v1`.`site`.`lift_plan` ALTER COLUMN `lift_date` SET TAGS ('pii_business_glossary_term' = 'Lift Date');
-ALTER TABLE `vibe_construction_v1`.`site`.`lift_plan` ALTER COLUMN `lift_description` SET TAGS ('pii_business_glossary_term' = 'Lift Description');
-ALTER TABLE `vibe_construction_v1`.`site`.`lift_plan` ALTER COLUMN `lift_drawing_reference` SET TAGS ('pii_business_glossary_term' = 'Lift Drawing Reference');
-ALTER TABLE `vibe_construction_v1`.`site`.`lift_plan` ALTER COLUMN `lift_end_time` SET TAGS ('pii_business_glossary_term' = 'Lift End Timestamp');
-ALTER TABLE `vibe_construction_v1`.`site`.`lift_plan` ALTER COLUMN `lift_radius_m` SET TAGS ('pii_business_glossary_term' = 'Lift Radius (Metres)');
-ALTER TABLE `vibe_construction_v1`.`site`.`lift_plan` ALTER COLUMN `lift_start_time` SET TAGS ('pii_business_glossary_term' = 'Lift Start Timestamp');
-ALTER TABLE `vibe_construction_v1`.`site`.`lift_plan` ALTER COLUMN `lift_type` SET TAGS ('pii_business_glossary_term' = 'Lift Type');
-ALTER TABLE `vibe_construction_v1`.`site`.`lift_plan` ALTER COLUMN `lift_type` SET TAGS ('pii_value_regex' = 'routine|critical|complex|tandem|blind');
-ALTER TABLE `vibe_construction_v1`.`site`.`lift_plan` ALTER COLUMN `load_weight_t` SET TAGS ('pii_business_glossary_term' = 'Load Weight (Tonnes)');
-ALTER TABLE `vibe_construction_v1`.`site`.`lift_plan` ALTER COLUMN `method_statement_reference` SET TAGS ('pii_business_glossary_term' = 'Safe Work Method Statement (SWMS) Reference');
-ALTER TABLE `vibe_construction_v1`.`site`.`lift_plan` ALTER COLUMN `outrigger_mat_required` SET TAGS ('pii_business_glossary_term' = 'Outrigger Mat Required Flag');
-ALTER TABLE `vibe_construction_v1`.`site`.`lift_plan` ALTER COLUMN `overhead_obstruction_present` SET TAGS ('pii_business_glossary_term' = 'Overhead Obstruction Present Flag');
-ALTER TABLE `vibe_construction_v1`.`site`.`lift_plan` ALTER COLUMN `permit_to_lift_number` SET TAGS ('pii_business_glossary_term' = 'Permit-to-Lift (PTL) Number');
-ALTER TABLE `vibe_construction_v1`.`site`.`lift_plan` ALTER COLUMN `pick_point_description` SET TAGS ('pii_business_glossary_term' = 'Pick Point Description');
-ALTER TABLE `vibe_construction_v1`.`site`.`lift_plan` ALTER COLUMN `plan_number` SET TAGS ('pii_business_glossary_term' = 'Lift Plan Number');
-ALTER TABLE `vibe_construction_v1`.`site`.`lift_plan` ALTER COLUMN `plan_number` SET TAGS ('pii_value_regex' = '^LP-[A-Z0-9]{2,10}-[0-9]{4,6}$');
-ALTER TABLE `vibe_construction_v1`.`site`.`lift_plan` ALTER COLUMN `power_line_clearance_m` SET TAGS ('pii_business_glossary_term' = 'Power Line Clearance (Metres)');
-ALTER TABLE `vibe_construction_v1`.`site`.`lift_plan` ALTER COLUMN `procore_lift_plan_reference` SET TAGS ('pii_business_glossary_term' = 'Procore Lift Plan Reference ID');
-ALTER TABLE `vibe_construction_v1`.`site`.`lift_plan` ALTER COLUMN `rigging_configuration` SET TAGS ('pii_business_glossary_term' = 'Rigging Configuration');
-ALTER TABLE `vibe_construction_v1`.`site`.`lift_plan` ALTER COLUMN `set_point_description` SET TAGS ('pii_business_glossary_term' = 'Set Point Description');
-ALTER TABLE `vibe_construction_v1`.`site`.`lift_plan` ALTER COLUMN `sling_type` SET TAGS ('pii_business_glossary_term' = 'Sling Type');
-ALTER TABLE `vibe_construction_v1`.`site`.`lift_plan` ALTER COLUMN `sling_type` SET TAGS ('pii_value_regex' = 'wire_rope|chain|synthetic_web|synthetic_round|shackle_only|spreader_bar');
-ALTER TABLE `vibe_construction_v1`.`site`.`lift_plan` ALTER COLUMN `updated_timestamp` SET TAGS ('pii_business_glossary_term' = 'Record Last Updated Timestamp');
-ALTER TABLE `vibe_construction_v1`.`site`.`lift_plan` ALTER COLUMN `wbs_code` SET TAGS ('pii_business_glossary_term' = 'Work Breakdown Structure (WBS) Code');
-ALTER TABLE `vibe_construction_v1`.`site`.`lift_plan` ALTER COLUMN `wind_speed_limit_kmh` SET TAGS ('pii_business_glossary_term' = 'Maximum Wind Speed Limit (km/h)');
-ALTER TABLE `vibe_construction_v1`.`site`.`shift_report` SET TAGS ('pii_data_type' = 'transactional_data');
-ALTER TABLE `vibe_construction_v1`.`site`.`shift_report` SET TAGS ('pii_subdomain' = 'site_setup');
-ALTER TABLE `vibe_construction_v1`.`site`.`shift_report` SET TAGS ('pii_required_structure' = 'v2');
-ALTER TABLE `vibe_construction_v1`.`site`.`shift_report` SET TAGS ('pii_ecm_structure' = 'preserved_v2');
-ALTER TABLE `vibe_construction_v1`.`site`.`shift_report` SET TAGS ('pii_industry' = 'construction');
-ALTER TABLE `vibe_construction_v1`.`site`.`shift_report` SET TAGS ('pii_preserved' = 'required-structure');
-ALTER TABLE `vibe_construction_v1`.`site`.`shift_report` SET TAGS ('pii_structure_required' = 'true');
-ALTER TABLE `vibe_construction_v1`.`site`.`shift_report` ALTER COLUMN `shift_report_id` SET TAGS ('pii_business_glossary_term' = 'Shift Report ID');
-ALTER TABLE `vibe_construction_v1`.`site`.`shift_report` ALTER COLUMN `regulatory_permit_id` SET TAGS ('pii_business_glossary_term' = 'Permit Id (Foreign Key)');
-ALTER TABLE `vibe_construction_v1`.`site`.`shift_report` ALTER COLUMN `daily_log_id` SET TAGS ('pii_business_glossary_term' = 'Daily Log ID');
-ALTER TABLE `vibe_construction_v1`.`site`.`shift_report` ALTER COLUMN `hr_employee_id` SET TAGS ('pii_business_glossary_term' = 'Shift Supervisor ID');
-ALTER TABLE `vibe_construction_v1`.`site`.`shift_report` ALTER COLUMN `hr_employee_id` SET TAGS ('pii_confidential' = 'true');
-ALTER TABLE `vibe_construction_v1`.`site`.`shift_report` ALTER COLUMN `hr_employee_id` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_construction_v1`.`site`.`shift_report` ALTER COLUMN `cost_code_id` SET TAGS ('pii_business_glossary_term' = 'Finance Cost Code Id (Foreign Key)');
-ALTER TABLE `vibe_construction_v1`.`site`.`shift_report` ALTER COLUMN `incident_id` SET TAGS ('pii_business_glossary_term' = 'Incident Id (Foreign Key)');
-ALTER TABLE `vibe_construction_v1`.`site`.`shift_report` ALTER COLUMN `construction_project_id` SET TAGS ('pii_business_glossary_term' = 'Project ID');
-ALTER TABLE `vibe_construction_v1`.`site`.`shift_report` ALTER COLUMN `shift_site_construction_project_id` SET TAGS ('pii_business_glossary_term' = 'Site ID');
-ALTER TABLE `vibe_construction_v1`.`site`.`shift_report` ALTER COLUMN `work_front_id` SET TAGS ('pii_business_glossary_term' = 'Work Front ID');
-ALTER TABLE `vibe_construction_v1`.`site`.`shift_report` ALTER COLUMN `activities_narrative` SET TAGS ('pii_business_glossary_term' = 'Shift Activities Narrative');
-ALTER TABLE `vibe_construction_v1`.`site`.`shift_report` ALTER COLUMN `approved_timestamp` SET TAGS ('pii_business_glossary_term' = 'Approval Timestamp');
-ALTER TABLE `vibe_construction_v1`.`site`.`shift_report` ALTER COLUMN `concrete_volume_m3` SET TAGS ('pii_business_glossary_term' = 'Concrete Pour Volume (m³)');
-ALTER TABLE `vibe_construction_v1`.`site`.`shift_report` ALTER COLUMN `created_timestamp` SET TAGS ('pii_business_glossary_term' = 'Record Created Timestamp');
-ALTER TABLE `vibe_construction_v1`.`site`.`shift_report` ALTER COLUMN `delay_cause` SET TAGS ('pii_business_glossary_term' = 'Delay Cause Category');
-ALTER TABLE `vibe_construction_v1`.`site`.`shift_report` ALTER COLUMN `delay_duration_hrs` SET TAGS ('pii_business_glossary_term' = 'Delay Duration (Hours)');
-ALTER TABLE `vibe_construction_v1`.`site`.`shift_report` ALTER COLUMN `direct_labour_count` SET TAGS ('pii_business_glossary_term' = 'Direct Labour Headcount');
-ALTER TABLE `vibe_construction_v1`.`site`.`shift_report` ALTER COLUMN `earthworks_volume_m3` SET TAGS ('pii_business_glossary_term' = 'Earthworks Volume (m³)');
-ALTER TABLE `vibe_construction_v1`.`site`.`shift_report` ALTER COLUMN `equipment_count` SET TAGS ('pii_business_glossary_term' = 'Equipment Count');
-ALTER TABLE `vibe_construction_v1`.`site`.`shift_report` ALTER COLUMN `equipment_utilisation_pct` SET TAGS ('pii_business_glossary_term' = 'Equipment Utilisation Percentage');
-ALTER TABLE `vibe_construction_v1`.`site`.`shift_report` ALTER COLUMN `handover_notes` SET TAGS ('pii_business_glossary_term' = 'Shift Handover Notes');
-ALTER TABLE `vibe_construction_v1`.`site`.`shift_report` ALTER COLUMN `hcss_shift_reference` SET TAGS ('pii_business_glossary_term' = 'HCSS HeavyJob Shift Reference');
-ALTER TABLE `vibe_construction_v1`.`site`.`shift_report` ALTER COLUMN `incident_count` SET TAGS ('pii_business_glossary_term' = 'Incident Count');
-ALTER TABLE `vibe_construction_v1`.`site`.`shift_report` ALTER COLUMN `issues_count` SET TAGS ('pii_business_glossary_term' = 'Open Issues Count');
-ALTER TABLE `vibe_construction_v1`.`site`.`shift_report` ALTER COLUMN `lti_flag` SET TAGS ('pii_business_glossary_term' = 'Lost Time Injury (LTI) Flag');
-ALTER TABLE `vibe_construction_v1`.`site`.`shift_report` ALTER COLUMN `ncr_raised_flag` SET TAGS ('pii_business_glossary_term' = 'Non-Conformance Report (NCR) Raised Flag');
-ALTER TABLE `vibe_construction_v1`.`site`.`shift_report` ALTER COLUMN `permit_to_work_number` SET TAGS ('pii_business_glossary_term' = 'Permit to Work (PTW) Number');
-ALTER TABLE `vibe_construction_v1`.`site`.`shift_report` ALTER COLUMN `planned_end_timestamp` SET TAGS ('pii_business_glossary_term' = 'Planned Shift End Timestamp');
-ALTER TABLE `vibe_construction_v1`.`site`.`shift_report` ALTER COLUMN `planned_production_quantity` SET TAGS ('pii_business_glossary_term' = 'Planned Production Quantity');
-ALTER TABLE `vibe_construction_v1`.`site`.`shift_report` ALTER COLUMN `planned_start_timestamp` SET TAGS ('pii_business_glossary_term' = 'Planned Shift Start Timestamp');
-ALTER TABLE `vibe_construction_v1`.`site`.`shift_report` ALTER COLUMN `procore_log_reference` SET TAGS ('pii_business_glossary_term' = 'Procore Log Reference');
-ALTER TABLE `vibe_construction_v1`.`site`.`shift_report` ALTER COLUMN `production_quantity` SET TAGS ('pii_business_glossary_term' = 'Production Quantity');
-ALTER TABLE `vibe_construction_v1`.`site`.`shift_report` ALTER COLUMN `production_unit` SET TAGS ('pii_business_glossary_term' = 'Production Unit of Measure');
-ALTER TABLE `vibe_construction_v1`.`site`.`shift_report` ALTER COLUMN `report_number` SET TAGS ('pii_business_glossary_term' = 'Shift Report Number');
-ALTER TABLE `vibe_construction_v1`.`site`.`shift_report` ALTER COLUMN `report_number` SET TAGS ('pii_value_regex' = '^SR-[A-Z0-9]{3,10}-[0-9]{4}-[0-9]{3}$');
-ALTER TABLE `vibe_construction_v1`.`site`.`shift_report` ALTER COLUMN `report_status` SET TAGS ('pii_business_glossary_term' = 'Shift Report Status');
-ALTER TABLE `vibe_construction_v1`.`site`.`shift_report` ALTER COLUMN `report_status` SET TAGS ('pii_value_regex' = 'draft|submitted|reviewed|approved|rejected');
-ALTER TABLE `vibe_construction_v1`.`site`.`shift_report` ALTER COLUMN `safety_observation_count` SET TAGS ('pii_business_glossary_term' = 'Safety Observation Count');
-ALTER TABLE `vibe_construction_v1`.`site`.`shift_report` ALTER COLUMN `shift_date` SET TAGS ('pii_business_glossary_term' = 'Shift Date');
-ALTER TABLE `vibe_construction_v1`.`site`.`shift_report` ALTER COLUMN `shift_end_timestamp` SET TAGS ('pii_business_glossary_term' = 'Shift End Timestamp');
-ALTER TABLE `vibe_construction_v1`.`site`.`shift_report` ALTER COLUMN `shift_start_timestamp` SET TAGS ('pii_business_glossary_term' = 'Shift Start Timestamp');
-ALTER TABLE `vibe_construction_v1`.`site`.`shift_report` ALTER COLUMN `shift_type` SET TAGS ('pii_business_glossary_term' = 'Shift Type');
-ALTER TABLE `vibe_construction_v1`.`site`.`shift_report` ALTER COLUMN `shift_type` SET TAGS ('pii_value_regex' = 'day|night|swing|extended');
-ALTER TABLE `vibe_construction_v1`.`site`.`shift_report` ALTER COLUMN `subcontractor_count` SET TAGS ('pii_business_glossary_term' = 'Subcontractor Headcount');
-ALTER TABLE `vibe_construction_v1`.`site`.`shift_report` ALTER COLUMN `supervisor_sign_off_timestamp` SET TAGS ('pii_business_glossary_term' = 'Supervisor Sign-Off Timestamp');
-ALTER TABLE `vibe_construction_v1`.`site`.`shift_report` ALTER COLUMN `tbm_conducted_flag` SET TAGS ('pii_business_glossary_term' = 'Toolbox Meeting (TBM) Conducted Flag');
-ALTER TABLE `vibe_construction_v1`.`site`.`shift_report` ALTER COLUMN `temperature_c` SET TAGS ('pii_business_glossary_term' = 'Ambient Temperature (°C)');
-ALTER TABLE `vibe_construction_v1`.`site`.`shift_report` ALTER COLUMN `total_headcount` SET TAGS ('pii_business_glossary_term' = 'Total Shift Headcount');
-ALTER TABLE `vibe_construction_v1`.`site`.`shift_report` ALTER COLUMN `total_labour_hours` SET TAGS ('pii_business_glossary_term' = 'Total Labour Hours');
-ALTER TABLE `vibe_construction_v1`.`site`.`shift_report` ALTER COLUMN `updated_timestamp` SET TAGS ('pii_business_glossary_term' = 'Record Updated Timestamp');
-ALTER TABLE `vibe_construction_v1`.`site`.`shift_report` ALTER COLUMN `wbs_code` SET TAGS ('pii_business_glossary_term' = 'Work Breakdown Structure (WBS) Code');
-ALTER TABLE `vibe_construction_v1`.`site`.`shift_report` ALTER COLUMN `weather_condition` SET TAGS ('pii_business_glossary_term' = 'Weather Condition');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_permit` SET TAGS ('pii_data_type' = 'master_data');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_permit` SET TAGS ('pii_subdomain' = 'permit_compliance');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_permit` SET TAGS ('pii_required_structure' = 'v2');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_permit` SET TAGS ('pii_ecm_structure' = 'preserved_v2');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_permit` SET TAGS ('pii_industry' = 'construction');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_permit` SET TAGS ('pii_preserved' = 'required-structure');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_permit` SET TAGS ('pii_ssot_role' = 'reference');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_permit` SET TAGS ('pii_ssot_master' = 'compliance.compliance_permit');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_permit` SET TAGS ('pii_ssot' = 'site.site_permit');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_permit` SET TAGS ('pii_ssot_distinct' = 'true');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_permit` SET TAGS ('pii_ssot_scope' = 'site');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_permit` SET TAGS ('pii_ssot_counterpart' = 'compliance.compliance_permit');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_permit` SET TAGS ('pii_ssot_resolved' = 'true');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_permit` SET TAGS ('pii_structure_required' = 'true');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_permit` ALTER COLUMN `site_permit_id` SET TAGS ('pii_business_glossary_term' = 'Site Permit ID');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_permit` ALTER COLUMN `account_id` SET TAGS ('pii_business_glossary_term' = 'Account Id (Foreign Key)');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_permit` ALTER COLUMN `activity_id` SET TAGS ('pii_business_glossary_term' = 'Activity Id (Foreign Key)');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_permit` ALTER COLUMN `regulatory_permit_id` SET TAGS ('pii_business_glossary_term' = 'Permit Id (Foreign Key)');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_permit` ALTER COLUMN `regulatory_permit_id` SET TAGS ('pii_ssot_reference' = 'true');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_permit` ALTER COLUMN `regulatory_permit_id` SET TAGS ('pii_ssot' = 'compliance.compliance_permit');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_permit` ALTER COLUMN `firm_profile_id` SET TAGS ('pii_business_glossary_term' = 'Sub Firm Id (Foreign Key)');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_permit` ALTER COLUMN `permit_to_work_id` SET TAGS ('pii_business_glossary_term' = 'Permit To Work Id (Foreign Key)');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_permit` ALTER COLUMN `hr_employee_id` SET TAGS ('pii_business_glossary_term' = 'Responsible Person ID');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_permit` ALTER COLUMN `hr_employee_id` SET TAGS ('pii_confidential' = 'true');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_permit` ALTER COLUMN `hr_employee_id` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_permit` ALTER COLUMN `renewed_site_permit_id` SET TAGS ('pii_business_glossary_term' = 'Renewed Site Permit Id');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_permit` ALTER COLUMN `renewed_site_permit_id` SET TAGS ('pii_self_ref_fk' = 'true');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_permit` ALTER COLUMN `submission_id` SET TAGS ('pii_business_glossary_term' = 'Bid Submission Id (Foreign Key)');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_permit` ALTER COLUMN `tertiary_site_close_out_by_employee_id` SET TAGS ('pii_business_glossary_term' = 'Close‑out By ID');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_permit` ALTER COLUMN `tertiary_site_close_out_by_employee_id` SET TAGS ('pii_confidential' = 'true');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_permit` ALTER COLUMN `tertiary_site_close_out_by_employee_id` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_permit` ALTER COLUMN `work_front_id` SET TAGS ('pii_business_glossary_term' = 'Work Front ID');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_permit` ALTER COLUMN `application_date` SET TAGS ('pii_business_glossary_term' = 'Application Date');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_permit` ALTER COLUMN `approval_date` SET TAGS ('pii_business_glossary_term' = 'Approval Date');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_permit` ALTER COLUMN `attached_document_reference` SET TAGS ('pii_business_glossary_term' = 'Attached Document Reference');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_permit` ALTER COLUMN `change_order_number` SET TAGS ('pii_business_glossary_term' = 'Change Order Number');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_permit` ALTER COLUMN `close_out_timestamp` SET TAGS ('pii_business_glossary_term' = 'Close‑out Timestamp');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_permit` ALTER COLUMN `compliance_reference` SET TAGS ('pii_business_glossary_term' = 'Compliance Reference');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_permit` ALTER COLUMN `conditions` SET TAGS ('pii_business_glossary_term' = 'Permit Conditions');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_permit` ALTER COLUMN `cost_center_code` SET TAGS ('pii_business_glossary_term' = 'Cost Center Code');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_permit` ALTER COLUMN `created_timestamp` SET TAGS ('pii_business_glossary_term' = 'Record Creation Timestamp');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_permit` ALTER COLUMN `expiration_notice_sent` SET TAGS ('pii_business_glossary_term' = 'Expiration Notice Sent Flag');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_permit` ALTER COLUMN `expiry_date` SET TAGS ('pii_business_glossary_term' = 'Expiry Date');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_permit` ALTER COLUMN `extension_approved_date` SET TAGS ('pii_business_glossary_term' = 'Extension Approved Date');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_permit` ALTER COLUMN `extension_requested` SET TAGS ('pii_business_glossary_term' = 'Extension Requested Flag');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_permit` ALTER COLUMN `fee_amount` SET TAGS ('pii_business_glossary_term' = 'Permit Fee Amount');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_permit` ALTER COLUMN `fee_currency` SET TAGS ('pii_business_glossary_term' = 'Fee Currency');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_permit` ALTER COLUMN `is_environmental` SET TAGS ('pii_business_glossary_term' = 'Environmental Permit Flag');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_permit` ALTER COLUMN `is_safety_critical` SET TAGS ('pii_business_glossary_term' = 'Safety Critical Flag');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_permit` ALTER COLUMN `issuing_authority` SET TAGS ('pii_business_glossary_term' = 'Issuing Authority');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_permit` ALTER COLUMN `issuing_authority` SET TAGS ('pii_value_regex' = 'OSHA|local_building_department|environmental_agency|other');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_permit` ALTER COLUMN `permit_category` SET TAGS ('pii_business_glossary_term' = 'Permit Category');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_permit` ALTER COLUMN `permit_category` SET TAGS ('pii_value_regex' = 'safety|environment|operational');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_permit` ALTER COLUMN `permit_number` SET TAGS ('pii_business_glossary_term' = 'Permit Number');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_permit` ALTER COLUMN `permit_type` SET TAGS ('pii_business_glossary_term' = 'Permit Type');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_permit` ALTER COLUMN `permit_type` SET TAGS ('pii_value_regex' = 'hot_work|excavation|confined_space|crane_operation|road_closure|environmental_discharge');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_permit` ALTER COLUMN `restrictions` SET TAGS ('pii_business_glossary_term' = 'Permit Restrictions');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_permit` ALTER COLUMN `revision_number` SET TAGS ('pii_business_glossary_term' = 'Permit Revision Number');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_permit` ALTER COLUMN `scope_description` SET TAGS ('pii_business_glossary_term' = 'Permit Scope Description');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_permit` ALTER COLUMN `site_permit_status` SET TAGS ('pii_business_glossary_term' = 'Permit Status');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_permit` ALTER COLUMN `site_permit_status` SET TAGS ('pii_value_regex' = 'applied|active|suspended|closed|revoked');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_permit` ALTER COLUMN `updated_timestamp` SET TAGS ('pii_business_glossary_term' = 'Record Update Timestamp');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_permit` ALTER COLUMN `version` SET TAGS ('pii_business_glossary_term' = 'Permit Version');
-ALTER TABLE `vibe_construction_v1`.`site`.`work_front_assignment` SET TAGS ('pii_data_type' = 'association_data');
-ALTER TABLE `vibe_construction_v1`.`site`.`work_front_assignment` SET TAGS ('pii_subdomain' = 'permit_compliance');
-ALTER TABLE `vibe_construction_v1`.`site`.`work_front_assignment` SET TAGS ('pii_association_edges' = 'site.work_front,workforce.craft_worker');
-ALTER TABLE `vibe_construction_v1`.`site`.`work_front_assignment` SET TAGS ('pii_required_structure' = 'v2');
-ALTER TABLE `vibe_construction_v1`.`site`.`work_front_assignment` SET TAGS ('pii_ecm_structure' = 'preserved_v2');
-ALTER TABLE `vibe_construction_v1`.`site`.`work_front_assignment` SET TAGS ('pii_industry' = 'construction');
-ALTER TABLE `vibe_construction_v1`.`site`.`work_front_assignment` SET TAGS ('pii_preserved' = 'required-structure');
-ALTER TABLE `vibe_construction_v1`.`site`.`work_front_assignment` SET TAGS ('pii_structure_required' = 'true');
-ALTER TABLE `vibe_construction_v1`.`site`.`work_front_assignment` ALTER COLUMN `work_front_assignment_id` SET TAGS ('pii_business_glossary_term' = 'Work Front Assignment - Work Front Assignment Id');
-ALTER TABLE `vibe_construction_v1`.`site`.`work_front_assignment` ALTER COLUMN `craft_worker_id` SET TAGS ('pii_business_glossary_term' = 'Work Front Assignment - Craft Worker Id');
-ALTER TABLE `vibe_construction_v1`.`site`.`work_front_assignment` ALTER COLUMN `work_front_id` SET TAGS ('pii_business_glossary_term' = 'Work Front Assignment - Work Front Id');
-ALTER TABLE `vibe_construction_v1`.`site`.`work_front_assignment` ALTER COLUMN `actual_finish` SET TAGS ('pii_business_glossary_term' = 'Actual Finish');
-ALTER TABLE `vibe_construction_v1`.`site`.`work_front_assignment` ALTER COLUMN `actual_hours` SET TAGS ('pii_business_glossary_term' = 'Actual Hours');
-ALTER TABLE `vibe_construction_v1`.`site`.`work_front_assignment` ALTER COLUMN `actual_start` SET TAGS ('pii_business_glossary_term' = 'Actual Start');
-ALTER TABLE `vibe_construction_v1`.`site`.`work_front_assignment` ALTER COLUMN `allocated_hours` SET TAGS ('pii_business_glossary_term' = 'Allocated Hours');
-ALTER TABLE `vibe_construction_v1`.`site`.`work_front_assignment` ALTER COLUMN `allocation_percentage` SET TAGS ('pii_business_glossary_term' = 'Allocation Percentage');
-ALTER TABLE `vibe_construction_v1`.`site`.`work_front_assignment` ALTER COLUMN `assigned_quantity` SET TAGS ('pii_business_glossary_term' = 'Assigned Quantity');
-ALTER TABLE `vibe_construction_v1`.`site`.`work_front_assignment` ALTER COLUMN `assignment_date` SET TAGS ('pii_business_glossary_term' = 'Assignment Date');
-ALTER TABLE `vibe_construction_v1`.`site`.`work_front_assignment` ALTER COLUMN `assignment_end_date` SET TAGS ('pii_business_glossary_term' = 'Work Front Assignment - Assignment End Date');
-ALTER TABLE `vibe_construction_v1`.`site`.`work_front_assignment` ALTER COLUMN `assignment_start_date` SET TAGS ('pii_business_glossary_term' = 'Work Front Assignment - Assignment Start Date');
-ALTER TABLE `vibe_construction_v1`.`site`.`work_front_assignment` ALTER COLUMN `assignment_status` SET TAGS ('pii_business_glossary_term' = 'Assignment Status');
-ALTER TABLE `vibe_construction_v1`.`site`.`work_front_assignment` ALTER COLUMN `completion_pct` SET TAGS ('pii_business_glossary_term' = 'Completion Pct');
-ALTER TABLE `vibe_construction_v1`.`site`.`work_front_assignment` ALTER COLUMN `created_timestamp` SET TAGS ('pii_business_glossary_term' = 'Created Timestamp');
-ALTER TABLE `vibe_construction_v1`.`site`.`work_front_assignment` ALTER COLUMN `is_active` SET TAGS ('pii_business_glossary_term' = 'Is Active');
-ALTER TABLE `vibe_construction_v1`.`site`.`work_front_assignment` ALTER COLUMN `notes` SET TAGS ('pii_business_glossary_term' = 'Notes');
-ALTER TABLE `vibe_construction_v1`.`site`.`work_front_assignment` ALTER COLUMN `planned_finish` SET TAGS ('pii_business_glossary_term' = 'Planned Finish');
-ALTER TABLE `vibe_construction_v1`.`site`.`work_front_assignment` ALTER COLUMN `planned_hours` SET TAGS ('pii_business_glossary_term' = 'Planned Hours');
-ALTER TABLE `vibe_construction_v1`.`site`.`work_front_assignment` ALTER COLUMN `planned_start` SET TAGS ('pii_business_glossary_term' = 'Planned Start');
-ALTER TABLE `vibe_construction_v1`.`site`.`work_front_assignment` ALTER COLUMN `priority` SET TAGS ('pii_business_glossary_term' = 'Priority');
-ALTER TABLE `vibe_construction_v1`.`site`.`work_front_assignment` ALTER COLUMN `progress_percent` SET TAGS ('pii_business_glossary_term' = 'Progress Percent');
-ALTER TABLE `vibe_construction_v1`.`site`.`work_front_assignment` ALTER COLUMN `remarks` SET TAGS ('pii_business_glossary_term' = 'Remarks');
-ALTER TABLE `vibe_construction_v1`.`site`.`work_front_assignment` ALTER COLUMN `role` SET TAGS ('pii_business_glossary_term' = 'Work Front Assignment - Role');
-ALTER TABLE `vibe_construction_v1`.`site`.`work_front_assignment` ALTER COLUMN `shift` SET TAGS ('pii_business_glossary_term' = 'Shift');
-ALTER TABLE `vibe_construction_v1`.`site`.`work_front_assignment` ALTER COLUMN `supervisor_name` SET TAGS ('pii_business_glossary_term' = 'Supervisor Name');
-ALTER TABLE `vibe_construction_v1`.`site`.`work_front_assignment` ALTER COLUMN `unit_of_measure` SET TAGS ('pii_business_glossary_term' = 'Unit Of Measure');
-ALTER TABLE `vibe_construction_v1`.`site`.`work_front_assignment` ALTER COLUMN `uom` SET TAGS ('pii_business_glossary_term' = 'Uom');
-ALTER TABLE `vibe_construction_v1`.`site`.`work_front_assignment` ALTER COLUMN `updated_timestamp` SET TAGS ('pii_business_glossary_term' = 'Updated Timestamp');
-ALTER TABLE `vibe_construction_v1`.`site`.`work_front_assignment` ALTER COLUMN `work_front_assignment_status` SET TAGS ('pii_business_glossary_term' = 'Work Front Assignment Status');
-ALTER TABLE `vibe_construction_v1`.`site`.`site` SET TAGS ('pii_data_type' = 'master_data');
-ALTER TABLE `vibe_construction_v1`.`site`.`site` SET TAGS ('pii_subdomain' = 'location_reference');
-ALTER TABLE `vibe_construction_v1`.`site`.`site` SET TAGS ('pii_required_structure' = 'v2');
-ALTER TABLE `vibe_construction_v1`.`site`.`site` SET TAGS ('pii_ecm_structure' = 'preserved_v2');
-ALTER TABLE `vibe_construction_v1`.`site`.`site` SET TAGS ('pii_industry' = 'construction');
-ALTER TABLE `vibe_construction_v1`.`site`.`site` SET TAGS ('pii_preserved' = 'required-structure');
-ALTER TABLE `vibe_construction_v1`.`site`.`site` SET TAGS ('pii_structure_required' = 'true');
-ALTER TABLE `vibe_construction_v1`.`site`.`site` ALTER COLUMN `site_id` SET TAGS ('pii_business_glossary_term' = 'Site Identifier');
-ALTER TABLE `vibe_construction_v1`.`site`.`site` ALTER COLUMN `construction_project_id` SET TAGS ('pii_business_glossary_term' = 'Project Id');
-ALTER TABLE `vibe_construction_v1`.`site`.`site` ALTER COLUMN `current_location_site_id` SET TAGS ('pii_business_glossary_term' = 'Current Location Site Id');
-ALTER TABLE `vibe_construction_v1`.`site`.`site` ALTER COLUMN `current_location_site_id` SET TAGS ('pii_self_ref_fk' = 'true');
-ALTER TABLE `vibe_construction_v1`.`site`.`site` ALTER COLUMN `hr_employee_id` SET TAGS ('pii_business_glossary_term' = 'Employee Id');
-ALTER TABLE `vibe_construction_v1`.`site`.`site` ALTER COLUMN `hr_employee_id` SET TAGS ('pii_confidential' = 'true');
-ALTER TABLE `vibe_construction_v1`.`site`.`site` ALTER COLUMN `hr_employee_id` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_construction_v1`.`site`.`site` ALTER COLUMN `site_manager_employee_id` SET TAGS ('pii_business_glossary_term' = 'Manager Employee Id');
-ALTER TABLE `vibe_construction_v1`.`site`.`site` ALTER COLUMN `site_manager_employee_id` SET TAGS ('pii_internal' = 'true');
-ALTER TABLE `vibe_construction_v1`.`site`.`site` ALTER COLUMN `address_line1` SET TAGS ('pii_business_glossary_term' = 'Address Line1');
-ALTER TABLE `vibe_construction_v1`.`site`.`site` ALTER COLUMN `address_line1` SET TAGS ('pii_confidential' = 'true');
-ALTER TABLE `vibe_construction_v1`.`site`.`site` ALTER COLUMN `address_line1` SET TAGS ('pii_address' = 'true');
-ALTER TABLE `vibe_construction_v1`.`site`.`site` ALTER COLUMN `address_line2` SET TAGS ('pii_business_glossary_term' = 'Address Line2');
-ALTER TABLE `vibe_construction_v1`.`site`.`site` ALTER COLUMN `address_line2` SET TAGS ('pii_confidential' = 'true');
-ALTER TABLE `vibe_construction_v1`.`site`.`site` ALTER COLUMN `address_line2` SET TAGS ('pii_address' = 'true');
-ALTER TABLE `vibe_construction_v1`.`site`.`site` ALTER COLUMN `area_sqft` SET TAGS ('pii_business_glossary_term' = 'Area Sqft');
-ALTER TABLE `vibe_construction_v1`.`site`.`site` ALTER COLUMN `site_category` SET TAGS ('pii_business_glossary_term' = 'Site Category');
-ALTER TABLE `vibe_construction_v1`.`site`.`site` ALTER COLUMN `city` SET TAGS ('pii_business_glossary_term' = 'City');
-ALTER TABLE `vibe_construction_v1`.`site`.`site` ALTER COLUMN `city` SET TAGS ('pii_confidential' = 'true');
-ALTER TABLE `vibe_construction_v1`.`site`.`site` ALTER COLUMN `city` SET TAGS ('pii_address' = 'true');
-ALTER TABLE `vibe_construction_v1`.`site`.`site` ALTER COLUMN `site_code` SET TAGS ('pii_business_glossary_term' = 'Code');
-ALTER TABLE `vibe_construction_v1`.`site`.`site` ALTER COLUMN `cost_center_code` SET TAGS ('pii_business_glossary_term' = 'Cost Center Code');
-ALTER TABLE `vibe_construction_v1`.`site`.`site` ALTER COLUMN `country_code` SET TAGS ('pii_business_glossary_term' = 'Country Code');
-ALTER TABLE `vibe_construction_v1`.`site`.`site` ALTER COLUMN `created_timestamp` SET TAGS ('pii_business_glossary_term' = 'Created Timestamp');
-ALTER TABLE `vibe_construction_v1`.`site`.`site` ALTER COLUMN `crew_capacity` SET TAGS ('pii_business_glossary_term' = 'Crew Capacity');
-ALTER TABLE `vibe_construction_v1`.`site`.`site` ALTER COLUMN `demobilization_date` SET TAGS ('pii_business_glossary_term' = 'Demobilization Date');
-ALTER TABLE `vibe_construction_v1`.`site`.`site` ALTER COLUMN `site_description` SET TAGS ('pii_business_glossary_term' = 'Description');
-ALTER TABLE `vibe_construction_v1`.`site`.`site` ALTER COLUMN `end_date` SET TAGS ('pii_business_glossary_term' = 'End Date');
-ALTER TABLE `vibe_construction_v1`.`site`.`site` ALTER COLUMN `environmental_permit_number` SET TAGS ('pii_business_glossary_term' = 'Environmental Permit Number');
-ALTER TABLE `vibe_construction_v1`.`site`.`site` ALTER COLUMN `gps_accuracy_m` SET TAGS ('pii_business_glossary_term' = 'Gps Accuracy M');
-ALTER TABLE `vibe_construction_v1`.`site`.`site` ALTER COLUMN `inspection_status` SET TAGS ('pii_business_glossary_term' = 'Inspection Status');
-ALTER TABLE `vibe_construction_v1`.`site`.`site` ALTER COLUMN `is_mobilized` SET TAGS ('pii_business_glossary_term' = 'Is Mobilized');
-ALTER TABLE `vibe_construction_v1`.`site`.`site` ALTER COLUMN `last_inspection_date` SET TAGS ('pii_business_glossary_term' = 'Last Inspection Date');
-ALTER TABLE `vibe_construction_v1`.`site`.`site` ALTER COLUMN `latitude` SET TAGS ('pii_business_glossary_term' = 'Latitude');
-ALTER TABLE `vibe_construction_v1`.`site`.`site` ALTER COLUMN `latitude` SET TAGS ('pii_restricted' = 'true');
-ALTER TABLE `vibe_construction_v1`.`site`.`site` ALTER COLUMN `latitude` SET TAGS ('pii_address' = 'true');
-ALTER TABLE `vibe_construction_v1`.`site`.`site` ALTER COLUMN `longitude` SET TAGS ('pii_business_glossary_term' = 'Longitude');
-ALTER TABLE `vibe_construction_v1`.`site`.`site` ALTER COLUMN `longitude` SET TAGS ('pii_restricted' = 'true');
-ALTER TABLE `vibe_construction_v1`.`site`.`site` ALTER COLUMN `longitude` SET TAGS ('pii_address' = 'true');
-ALTER TABLE `vibe_construction_v1`.`site`.`site` ALTER COLUMN `mobilization_date` SET TAGS ('pii_business_glossary_term' = 'Mobilization Date');
-ALTER TABLE `vibe_construction_v1`.`site`.`site` ALTER COLUMN `site_name` SET TAGS ('pii_business_glossary_term' = 'Name');
-ALTER TABLE `vibe_construction_v1`.`site`.`site` ALTER COLUMN `owner` SET TAGS ('pii_business_glossary_term' = 'Site Owner');
-ALTER TABLE `vibe_construction_v1`.`site`.`site` ALTER COLUMN `permit_expiry_date` SET TAGS ('pii_business_glossary_term' = 'Permit Expiry Date');
-ALTER TABLE `vibe_construction_v1`.`site`.`site` ALTER COLUMN `postal_code` SET TAGS ('pii_business_glossary_term' = 'Postal Code');
-ALTER TABLE `vibe_construction_v1`.`site`.`site` ALTER COLUMN `postal_code` SET TAGS ('pii_confidential' = 'true');
-ALTER TABLE `vibe_construction_v1`.`site`.`site` ALTER COLUMN `postal_code` SET TAGS ('pii_address' = 'true');
-ALTER TABLE `vibe_construction_v1`.`site`.`site` ALTER COLUMN `region` SET TAGS ('pii_business_glossary_term' = 'Region');
-ALTER TABLE `vibe_construction_v1`.`site`.`site` ALTER COLUMN `safety_incident_count` SET TAGS ('pii_business_glossary_term' = 'Safety Incident Count');
-ALTER TABLE `vibe_construction_v1`.`site`.`site` ALTER COLUMN `site_status` SET TAGS ('pii_business_glossary_term' = 'Status');
-ALTER TABLE `vibe_construction_v1`.`site`.`site` ALTER COLUMN `site_type` SET TAGS ('pii_business_glossary_term' = 'Type');
-ALTER TABLE `vibe_construction_v1`.`site`.`site` ALTER COLUMN `start_date` SET TAGS ('pii_business_glossary_term' = 'Start Date');
-ALTER TABLE `vibe_construction_v1`.`site`.`site` ALTER COLUMN `state` SET TAGS ('pii_business_glossary_term' = 'State');
-ALTER TABLE `vibe_construction_v1`.`site`.`site` ALTER COLUMN `state` SET TAGS ('pii_confidential' = 'true');
-ALTER TABLE `vibe_construction_v1`.`site`.`site` ALTER COLUMN `state` SET TAGS ('pii_address' = 'true');
-ALTER TABLE `vibe_construction_v1`.`site`.`site` ALTER COLUMN `updated_timestamp` SET TAGS ('pii_business_glossary_term' = 'Updated Timestamp');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_location` SET TAGS ('pii_data_type' = 'master_data');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_location` SET TAGS ('pii_subdomain' = 'location_reference');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_location` SET TAGS ('pii_required_structure' = 'v2');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_location` SET TAGS ('pii_ecm_structure' = 'preserved_v2');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_location` SET TAGS ('pii_industry' = 'construction');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_location` SET TAGS ('pii_preserved' = 'required-structure');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_location` SET TAGS ('pii_structure_required' = 'true');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_location` ALTER COLUMN `site_location_id` SET TAGS ('pii_business_glossary_term' = 'Site Location Identifier');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_location` ALTER COLUMN `construction_project_id` SET TAGS ('pii_business_glossary_term' = 'Project Id');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_location` ALTER COLUMN `hr_employee_id` SET TAGS ('pii_business_glossary_term' = 'Employee Id');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_location` ALTER COLUMN `hr_employee_id` SET TAGS ('pii_confidential' = 'true');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_location` ALTER COLUMN `hr_employee_id` SET TAGS ('pii_pii' = 'true');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_location` ALTER COLUMN `parent_site_location_id` SET TAGS ('pii_business_glossary_term' = 'Parent Site Location Id');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_location` ALTER COLUMN `parent_site_location_id` SET TAGS ('pii_self_ref_fk' = 'true');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_location` ALTER COLUMN `site_id` SET TAGS ('pii_business_glossary_term' = 'Site Id (Foreign Key)');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_location` ALTER COLUMN `address_line1` SET TAGS ('pii_business_glossary_term' = 'Address Line1');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_location` ALTER COLUMN `address_line1` SET TAGS ('pii_confidential' = 'true');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_location` ALTER COLUMN `address_line1` SET TAGS ('pii_address' = 'true');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_location` ALTER COLUMN `address_line2` SET TAGS ('pii_business_glossary_term' = 'Address Line2');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_location` ALTER COLUMN `address_line2` SET TAGS ('pii_confidential' = 'true');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_location` ALTER COLUMN `address_line2` SET TAGS ('pii_address' = 'true');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_location` ALTER COLUMN `area_sqft` SET TAGS ('pii_business_glossary_term' = 'Area Sqft');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_location` ALTER COLUMN `city` SET TAGS ('pii_business_glossary_term' = 'City');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_location` ALTER COLUMN `city` SET TAGS ('pii_confidential' = 'true');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_location` ALTER COLUMN `city` SET TAGS ('pii_address' = 'true');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_location` ALTER COLUMN `construction_end_date` SET TAGS ('pii_business_glossary_term' = 'Construction End Date');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_location` ALTER COLUMN `construction_start_date` SET TAGS ('pii_business_glossary_term' = 'Construction Start Date');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_location` ALTER COLUMN `country_code` SET TAGS ('pii_business_glossary_term' = 'Country Code');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_location` ALTER COLUMN `country_code` SET TAGS ('pii_confidential' = 'true');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_location` ALTER COLUMN `country_code` SET TAGS ('pii_address' = 'true');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_location` ALTER COLUMN `created_timestamp` SET TAGS ('pii_business_glossary_term' = 'Created Timestamp');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_location` ALTER COLUMN `effective_from` SET TAGS ('pii_business_glossary_term' = 'Effective From');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_location` ALTER COLUMN `effective_until` SET TAGS ('pii_business_glossary_term' = 'Effective Until');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_location` ALTER COLUMN `environmental_zone` SET TAGS ('pii_business_glossary_term' = 'Environmental Zone');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_location` ALTER COLUMN `gps_accuracy_m` SET TAGS ('pii_business_glossary_term' = 'Gps Accuracy M');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_location` ALTER COLUMN `has_security_system` SET TAGS ('pii_business_glossary_term' = 'Has Security System');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_location` ALTER COLUMN `inspection_status` SET TAGS ('pii_business_glossary_term' = 'Inspection Status');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_location` ALTER COLUMN `is_active` SET TAGS ('pii_business_glossary_term' = 'Is Active');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_location` ALTER COLUMN `is_remote` SET TAGS ('pii_business_glossary_term' = 'Is Remote');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_location` ALTER COLUMN `last_inspection_date` SET TAGS ('pii_business_glossary_term' = 'Last Inspection Date');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_location` ALTER COLUMN `latitude` SET TAGS ('pii_business_glossary_term' = 'Latitude');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_location` ALTER COLUMN `latitude` SET TAGS ('pii_restricted' = 'true');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_location` ALTER COLUMN `latitude` SET TAGS ('pii_address' = 'true');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_location` ALTER COLUMN `longitude` SET TAGS ('pii_business_glossary_term' = 'Longitude');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_location` ALTER COLUMN `longitude` SET TAGS ('pii_restricted' = 'true');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_location` ALTER COLUMN `longitude` SET TAGS ('pii_address' = 'true');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_location` ALTER COLUMN `site_location_name` SET TAGS ('pii_business_glossary_term' = 'Name');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_location` ALTER COLUMN `number_of_floors` SET TAGS ('pii_business_glossary_term' = 'Number Of Floors');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_location` ALTER COLUMN `postal_code` SET TAGS ('pii_business_glossary_term' = 'Postal Code');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_location` ALTER COLUMN `postal_code` SET TAGS ('pii_confidential' = 'true');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_location` ALTER COLUMN `postal_code` SET TAGS ('pii_address' = 'true');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_location` ALTER COLUMN `power_capacity_kw` SET TAGS ('pii_business_glossary_term' = 'Power Capacity Kw');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_location` ALTER COLUMN `primary_contact_email` SET TAGS ('pii_business_glossary_term' = 'Primary Contact Email');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_location` ALTER COLUMN `primary_contact_email` SET TAGS ('pii_restricted' = 'true');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_location` ALTER COLUMN `primary_contact_email` SET TAGS ('pii_email' = 'true');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_location` ALTER COLUMN `primary_contact_name` SET TAGS ('pii_business_glossary_term' = 'Primary Contact Name');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_location` ALTER COLUMN `primary_contact_name` SET TAGS ('pii_restricted' = 'true');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_location` ALTER COLUMN `primary_contact_name` SET TAGS ('pii_identifier' = 'true');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_location` ALTER COLUMN `primary_contact_phone` SET TAGS ('pii_business_glossary_term' = 'Primary Contact Phone');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_location` ALTER COLUMN `primary_contact_phone` SET TAGS ('pii_restricted' = 'true');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_location` ALTER COLUMN `primary_contact_phone` SET TAGS ('pii_phone' = 'true');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_location` ALTER COLUMN `security_system_type` SET TAGS ('pii_business_glossary_term' = 'Security System Type');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_location` ALTER COLUMN `site_category` SET TAGS ('pii_business_glossary_term' = 'Site Category');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_location` ALTER COLUMN `site_classification` SET TAGS ('pii_business_glossary_term' = 'Site Classification');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_location` ALTER COLUMN `site_description` SET TAGS ('pii_business_glossary_term' = 'Site Description');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_location` ALTER COLUMN `site_location_status` SET TAGS ('pii_business_glossary_term' = 'Status');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_location` ALTER COLUMN `site_owner` SET TAGS ('pii_business_glossary_term' = 'Site Owner');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_location` ALTER COLUMN `site_type` SET TAGS ('pii_business_glossary_term' = 'Site Type');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_location` ALTER COLUMN `state_province` SET TAGS ('pii_business_glossary_term' = 'State Province');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_location` ALTER COLUMN `state_province` SET TAGS ('pii_confidential' = 'true');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_location` ALTER COLUMN `state_province` SET TAGS ('pii_address' = 'true');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_location` ALTER COLUMN `timezone` SET TAGS ('pii_business_glossary_term' = 'Timezone');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_location` ALTER COLUMN `updated_timestamp` SET TAGS ('pii_business_glossary_term' = 'Updated Timestamp');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_location` ALTER COLUMN `utility_provider` SET TAGS ('pii_business_glossary_term' = 'Utility Provider');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_location` ALTER COLUMN `waste_management_plan` SET TAGS ('pii_business_glossary_term' = 'Waste Management Plan');
-ALTER TABLE `vibe_construction_v1`.`site`.`site_location` ALTER COLUMN `water_supply_type` SET TAGS ('pii_business_glossary_term' = 'Water Supply Type');
+ALTER SCHEMA `vibe_construction_v1`.`site` SET TAGS ('dbx_division' = 'operations');
+ALTER SCHEMA `vibe_construction_v1`.`site` SET TAGS ('dbx_domain' = 'site');
+ALTER TABLE `vibe_construction_v1`.`site`.`work_front` SET TAGS ('dbx_data_type' = 'master_data');
+ALTER TABLE `vibe_construction_v1`.`site`.`work_front` SET TAGS ('dbx_subdomain' = 'field_operations');
+ALTER TABLE `vibe_construction_v1`.`site`.`work_front` ALTER COLUMN `work_front_id` SET TAGS ('dbx_business_glossary_term' = 'Work Front ID');
+ALTER TABLE `vibe_construction_v1`.`site`.`work_front` ALTER COLUMN `construction_project_id` SET TAGS ('dbx_business_glossary_term' = 'Project ID');
+ALTER TABLE `vibe_construction_v1`.`site`.`work_front` ALTER COLUMN `design_scope_id` SET TAGS ('dbx_business_glossary_term' = 'Design Scope Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`site`.`work_front` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Foreman ID');
+ALTER TABLE `vibe_construction_v1`.`site`.`work_front` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`work_front` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`work_front` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii_flag' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`work_front` ALTER COLUMN `cost_code_id` SET TAGS ('dbx_business_glossary_term' = 'Finance Cost Code Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`site`.`work_front` ALTER COLUMN `firm_profile_id` SET TAGS ('dbx_business_glossary_term' = 'Subcontractor ID');
+ALTER TABLE `vibe_construction_v1`.`site`.`work_front` ALTER COLUMN `party_id` SET TAGS ('dbx_business_glossary_term' = 'Contract Party Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`site`.`work_front` ALTER COLUMN `permit_to_work_id` SET TAGS ('dbx_business_glossary_term' = 'Permit To Work Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`site`.`work_front` ALTER COLUMN `site_construction_project_id` SET TAGS ('dbx_business_glossary_term' = 'Site ID');
+ALTER TABLE `vibe_construction_v1`.`site`.`work_front` ALTER COLUMN `site_id` SET TAGS ('dbx_business_glossary_term' = 'Site Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`site`.`work_front` ALTER COLUMN `subcontract_id` SET TAGS ('dbx_business_glossary_term' = 'Subcontract Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`site`.`work_front` ALTER COLUMN `wbs_element_id` SET TAGS ('dbx_business_glossary_term' = 'Work Breakdown Structure (WBS) Element ID');
+ALTER TABLE `vibe_construction_v1`.`site`.`work_front` ALTER COLUMN `access_restriction` SET TAGS ('dbx_business_glossary_term' = 'Access Restriction Level');
+ALTER TABLE `vibe_construction_v1`.`site`.`work_front` ALTER COLUMN `access_restriction` SET TAGS ('dbx_value_regex' = 'unrestricted|permit_required|restricted_zone|exclusion_zone');
+ALTER TABLE `vibe_construction_v1`.`site`.`work_front` ALTER COLUMN `actual_crew_size` SET TAGS ('dbx_business_glossary_term' = 'Actual Crew Size');
+ALTER TABLE `vibe_construction_v1`.`site`.`work_front` ALTER COLUMN `actual_production_qty` SET TAGS ('dbx_business_glossary_term' = 'Actual Production Quantity');
+ALTER TABLE `vibe_construction_v1`.`site`.`work_front` ALTER COLUMN `actual_start_date` SET TAGS ('dbx_business_glossary_term' = 'Actual Start Date');
+ALTER TABLE `vibe_construction_v1`.`site`.`work_front` ALTER COLUMN `area_sqm` SET TAGS ('dbx_business_glossary_term' = 'Work Front Area (Square Metres)');
+ALTER TABLE `vibe_construction_v1`.`site`.`work_front` ALTER COLUMN `bim_model_reference` SET TAGS ('dbx_business_glossary_term' = 'Building Information Modeling (BIM) Model Reference');
+ALTER TABLE `vibe_construction_v1`.`site`.`work_front` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
+ALTER TABLE `vibe_construction_v1`.`site`.`work_front` ALTER COLUMN `current_phase` SET TAGS ('dbx_business_glossary_term' = 'Current Construction Phase');
+ALTER TABLE `vibe_construction_v1`.`site`.`work_front` ALTER COLUMN `demobilization_date` SET TAGS ('dbx_business_glossary_term' = 'Demobilization Date');
+ALTER TABLE `vibe_construction_v1`.`site`.`work_front` ALTER COLUMN `drawing_reference` SET TAGS ('dbx_business_glossary_term' = 'Engineering Drawing Reference');
+ALTER TABLE `vibe_construction_v1`.`site`.`work_front` ALTER COLUMN `elevation_m` SET TAGS ('dbx_business_glossary_term' = 'Elevation (Metres)');
+ALTER TABLE `vibe_construction_v1`.`site`.`work_front` ALTER COLUMN `environmental_sensitivity` SET TAGS ('dbx_business_glossary_term' = 'Environmental Sensitivity Classification');
+ALTER TABLE `vibe_construction_v1`.`site`.`work_front` ALTER COLUMN `environmental_sensitivity` SET TAGS ('dbx_value_regex' = 'standard|sensitive|protected|remediation_required');
+ALTER TABLE `vibe_construction_v1`.`site`.`work_front` ALTER COLUMN `forecast_finish_date` SET TAGS ('dbx_business_glossary_term' = 'Forecast Finish Date');
+ALTER TABLE `vibe_construction_v1`.`site`.`work_front` ALTER COLUMN `front_code` SET TAGS ('dbx_business_glossary_term' = 'Work Front Code');
+ALTER TABLE `vibe_construction_v1`.`site`.`work_front` ALTER COLUMN `front_code` SET TAGS ('dbx_value_regex' = '^[A-Z0-9-]{2,20}$');
+ALTER TABLE `vibe_construction_v1`.`site`.`work_front` ALTER COLUMN `front_name` SET TAGS ('dbx_business_glossary_term' = 'Work Front Name');
+ALTER TABLE `vibe_construction_v1`.`site`.`work_front` ALTER COLUMN `front_name` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`work_front` ALTER COLUMN `front_name` SET TAGS ('dbx_pii_name' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`work_front` ALTER COLUMN `front_status` SET TAGS ('dbx_business_glossary_term' = 'Work Front Status');
+ALTER TABLE `vibe_construction_v1`.`site`.`work_front` ALTER COLUMN `front_status` SET TAGS ('dbx_value_regex' = 'active|inactive|mobilizing|demobilized|suspended|completed');
+ALTER TABLE `vibe_construction_v1`.`site`.`work_front` ALTER COLUMN `front_type` SET TAGS ('dbx_business_glossary_term' = 'Work Front Type');
+ALTER TABLE `vibe_construction_v1`.`site`.`work_front` ALTER COLUMN `grid_reference` SET TAGS ('dbx_business_glossary_term' = 'Site Grid Reference');
+ALTER TABLE `vibe_construction_v1`.`site`.`work_front` ALTER COLUMN `heavyjob_cost_center` SET TAGS ('dbx_business_glossary_term' = 'HCSS HeavyJob Cost Center');
+ALTER TABLE `vibe_construction_v1`.`site`.`work_front` ALTER COLUMN `hse_risk_level` SET TAGS ('dbx_business_glossary_term' = 'Health Safety and Environment (HSE) Risk Level');
+ALTER TABLE `vibe_construction_v1`.`site`.`work_front` ALTER COLUMN `hse_risk_level` SET TAGS ('dbx_value_regex' = 'low|medium|high|critical');
+ALTER TABLE `vibe_construction_v1`.`site`.`work_front` ALTER COLUMN `is_critical_path` SET TAGS ('dbx_business_glossary_term' = 'Critical Path Method (CPM) Flag');
+ALTER TABLE `vibe_construction_v1`.`site`.`work_front` ALTER COLUMN `is_subcontracted` SET TAGS ('dbx_business_glossary_term' = 'Subcontracted Flag');
+ALTER TABLE `vibe_construction_v1`.`site`.`work_front` ALTER COLUMN `last_updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Last Updated Timestamp');
+ALTER TABLE `vibe_construction_v1`.`site`.`work_front` ALTER COLUMN `latitude` SET TAGS ('dbx_business_glossary_term' = 'GPS Latitude Coordinate');
+ALTER TABLE `vibe_construction_v1`.`site`.`work_front` ALTER COLUMN `latitude` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`work_front` ALTER COLUMN `latitude` SET TAGS ('dbx_pii_address' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`work_front` ALTER COLUMN `longitude` SET TAGS ('dbx_business_glossary_term' = 'GPS Longitude Coordinate');
+ALTER TABLE `vibe_construction_v1`.`site`.`work_front` ALTER COLUMN `longitude` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`work_front` ALTER COLUMN `longitude` SET TAGS ('dbx_pii_address' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`work_front` ALTER COLUMN `mobilization_date` SET TAGS ('dbx_business_glossary_term' = 'Mobilization Date');
+ALTER TABLE `vibe_construction_v1`.`site`.`work_front` ALTER COLUMN `percent_complete` SET TAGS ('dbx_business_glossary_term' = 'Percent Complete');
+ALTER TABLE `vibe_construction_v1`.`site`.`work_front` ALTER COLUMN `planned_crew_size` SET TAGS ('dbx_business_glossary_term' = 'Planned Crew Size');
+ALTER TABLE `vibe_construction_v1`.`site`.`work_front` ALTER COLUMN `planned_finish_date` SET TAGS ('dbx_business_glossary_term' = 'Planned Finish Date');
+ALTER TABLE `vibe_construction_v1`.`site`.`work_front` ALTER COLUMN `planned_production_qty` SET TAGS ('dbx_business_glossary_term' = 'Planned Production Quantity');
+ALTER TABLE `vibe_construction_v1`.`site`.`work_front` ALTER COLUMN `planned_start_date` SET TAGS ('dbx_business_glossary_term' = 'Planned Start Date');
+ALTER TABLE `vibe_construction_v1`.`site`.`work_front` ALTER COLUMN `procore_location_reference` SET TAGS ('dbx_business_glossary_term' = 'Procore Location ID');
+ALTER TABLE `vibe_construction_v1`.`site`.`work_front` ALTER COLUMN `production_unit` SET TAGS ('dbx_business_glossary_term' = 'Production Unit of Measure');
+ALTER TABLE `vibe_construction_v1`.`site`.`work_front` ALTER COLUMN `production_unit` SET TAGS ('dbx_pii_address' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`work_front` ALTER COLUMN `quality_itp_reference` SET TAGS ('dbx_business_glossary_term' = 'Inspection and Test Plan (ITP) Reference');
+ALTER TABLE `vibe_construction_v1`.`site`.`work_front` ALTER COLUMN `shift_pattern` SET TAGS ('dbx_business_glossary_term' = 'Shift Pattern');
+ALTER TABLE `vibe_construction_v1`.`site`.`work_front` ALTER COLUMN `shift_pattern` SET TAGS ('dbx_value_regex' = 'single|double|rotating|night_only|continuous');
+ALTER TABLE `vibe_construction_v1`.`site`.`work_front` ALTER COLUMN `swms_reference` SET TAGS ('dbx_business_glossary_term' = 'Safe Work Method Statement (SWMS) Reference');
+ALTER TABLE `vibe_construction_v1`.`site`.`work_front` ALTER COLUMN `weather_sensitivity` SET TAGS ('dbx_business_glossary_term' = 'Weather Sensitivity Classification');
+ALTER TABLE `vibe_construction_v1`.`site`.`work_front` ALTER COLUMN `weather_sensitivity` SET TAGS ('dbx_value_regex' = 'low|medium|high');
+ALTER TABLE `vibe_construction_v1`.`site`.`work_front` ALTER COLUMN `zone_classification` SET TAGS ('dbx_business_glossary_term' = 'Zone Classification');
+ALTER TABLE `vibe_construction_v1`.`site`.`daily_log` SET TAGS ('dbx_data_type' = 'transactional_data');
+ALTER TABLE `vibe_construction_v1`.`site`.`daily_log` SET TAGS ('dbx_subdomain' = 'field_operations');
+ALTER TABLE `vibe_construction_v1`.`site`.`daily_log` ALTER COLUMN `daily_log_id` SET TAGS ('dbx_business_glossary_term' = 'Daily Log ID');
+ALTER TABLE `vibe_construction_v1`.`site`.`daily_log` ALTER COLUMN `activity_id` SET TAGS ('dbx_business_glossary_term' = 'Activity Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`site`.`daily_log` ALTER COLUMN `agreement_id` SET TAGS ('dbx_business_glossary_term' = 'Agreement Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`site`.`daily_log` ALTER COLUMN `compliance_permit_id` SET TAGS ('dbx_business_glossary_term' = 'Permit Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`site`.`daily_log` ALTER COLUMN `construction_project_id` SET TAGS ('dbx_business_glossary_term' = 'Project ID');
+ALTER TABLE `vibe_construction_v1`.`site`.`daily_log` ALTER COLUMN `drawing_id` SET TAGS ('dbx_business_glossary_term' = 'Drawing Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`site`.`daily_log` ALTER COLUMN `incident_id` SET TAGS ('dbx_business_glossary_term' = 'Incident Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`site`.`daily_log` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Superintendent ID');
+ALTER TABLE `vibe_construction_v1`.`site`.`daily_log` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`daily_log` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`daily_log` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii_flag' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`daily_log` ALTER COLUMN `site_construction_project_id` SET TAGS ('dbx_business_glossary_term' = 'Site ID');
+ALTER TABLE `vibe_construction_v1`.`site`.`daily_log` ALTER COLUMN `approved_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Approval Timestamp');
+ALTER TABLE `vibe_construction_v1`.`site`.`daily_log` ALTER COLUMN `concrete_volume_m3` SET TAGS ('dbx_business_glossary_term' = 'Concrete Pour Volume (Cubic Metres)');
+ALTER TABLE `vibe_construction_v1`.`site`.`daily_log` ALTER COLUMN `cost_code` SET TAGS ('dbx_business_glossary_term' = 'Cost Code');
+ALTER TABLE `vibe_construction_v1`.`site`.`daily_log` ALTER COLUMN `cost_impact_flag` SET TAGS ('dbx_business_glossary_term' = 'Cost Impact Flag');
+ALTER TABLE `vibe_construction_v1`.`site`.`daily_log` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
+ALTER TABLE `vibe_construction_v1`.`site`.`daily_log` ALTER COLUMN `direct_labour_count` SET TAGS ('dbx_business_glossary_term' = 'Direct Labour Headcount');
+ALTER TABLE `vibe_construction_v1`.`site`.`daily_log` ALTER COLUMN `earthworks_volume_m3` SET TAGS ('dbx_business_glossary_term' = 'Earthworks Volume (Cubic Metres)');
+ALTER TABLE `vibe_construction_v1`.`site`.`daily_log` ALTER COLUMN `eot_impact_flag` SET TAGS ('dbx_business_glossary_term' = 'Extension of Time (EOT) Impact Flag');
+ALTER TABLE `vibe_construction_v1`.`site`.`daily_log` ALTER COLUMN `equipment_count` SET TAGS ('dbx_business_glossary_term' = 'Equipment Count On Site');
+ALTER TABLE `vibe_construction_v1`.`site`.`daily_log` ALTER COLUMN `event_count` SET TAGS ('dbx_business_glossary_term' = 'Line-Item Event Count');
+ALTER TABLE `vibe_construction_v1`.`site`.`daily_log` ALTER COLUMN `has_delay_event` SET TAGS ('dbx_business_glossary_term' = 'Has Delay Event Flag');
+ALTER TABLE `vibe_construction_v1`.`site`.`daily_log` ALTER COLUMN `has_safety_observation` SET TAGS ('dbx_business_glossary_term' = 'Has Safety Observation Flag');
+ALTER TABLE `vibe_construction_v1`.`site`.`daily_log` ALTER COLUMN `hcss_log_reference` SET TAGS ('dbx_business_glossary_term' = 'HCSS HeavyJob Log Reference');
+ALTER TABLE `vibe_construction_v1`.`site`.`daily_log` ALTER COLUMN `log_date` SET TAGS ('dbx_business_glossary_term' = 'Log Date');
+ALTER TABLE `vibe_construction_v1`.`site`.`daily_log` ALTER COLUMN `log_number` SET TAGS ('dbx_business_glossary_term' = 'Daily Log Number');
+ALTER TABLE `vibe_construction_v1`.`site`.`daily_log` ALTER COLUMN `log_number` SET TAGS ('dbx_value_regex' = '^DL-[A-Z0-9]+-[0-9]{4}-[0-9]{5}$');
+ALTER TABLE `vibe_construction_v1`.`site`.`daily_log` ALTER COLUMN `log_status` SET TAGS ('dbx_business_glossary_term' = 'Daily Log Status');
+ALTER TABLE `vibe_construction_v1`.`site`.`daily_log` ALTER COLUMN `log_status` SET TAGS ('dbx_value_regex' = 'draft|submitted|approved|rejected|void');
+ALTER TABLE `vibe_construction_v1`.`site`.`daily_log` ALTER COLUMN `lti_occurred_flag` SET TAGS ('dbx_business_glossary_term' = 'Lost Time Injury (LTI) Occurred Flag');
+ALTER TABLE `vibe_construction_v1`.`site`.`daily_log` ALTER COLUMN `ncr_raised_flag` SET TAGS ('dbx_business_glossary_term' = 'Non-Conformance Report (NCR) Raised Flag');
+ALTER TABLE `vibe_construction_v1`.`site`.`daily_log` ALTER COLUMN `overall_site_status` SET TAGS ('dbx_business_glossary_term' = 'Overall Site Status');
+ALTER TABLE `vibe_construction_v1`.`site`.`daily_log` ALTER COLUMN `overall_site_status` SET TAGS ('dbx_value_regex' = 'productive|partially_productive|non_productive|shutdown');
+ALTER TABLE `vibe_construction_v1`.`site`.`daily_log` ALTER COLUMN `permit_to_work_count` SET TAGS ('dbx_business_glossary_term' = 'Permit to Work Count');
+ALTER TABLE `vibe_construction_v1`.`site`.`daily_log` ALTER COLUMN `planned_activities_narrative` SET TAGS ('dbx_business_glossary_term' = 'Planned Activities Narrative');
+ALTER TABLE `vibe_construction_v1`.`site`.`daily_log` ALTER COLUMN `precipitation_mm` SET TAGS ('dbx_business_glossary_term' = 'Precipitation (Millimetres)');
+ALTER TABLE `vibe_construction_v1`.`site`.`daily_log` ALTER COLUMN `procore_log_reference` SET TAGS ('dbx_business_glossary_term' = 'Procore Daily Log ID');
+ALTER TABLE `vibe_construction_v1`.`site`.`daily_log` ALTER COLUMN `remarks` SET TAGS ('dbx_business_glossary_term' = 'Superintendent Remarks');
+ALTER TABLE `vibe_construction_v1`.`site`.`daily_log` ALTER COLUMN `shift_type` SET TAGS ('dbx_business_glossary_term' = 'Shift Type');
+ALTER TABLE `vibe_construction_v1`.`site`.`daily_log` ALTER COLUMN `shift_type` SET TAGS ('dbx_value_regex' = 'day|night|double_shift|split');
+ALTER TABLE `vibe_construction_v1`.`site`.`daily_log` ALTER COLUMN `site_access_status` SET TAGS ('dbx_business_glossary_term' = 'Site Access Status');
+ALTER TABLE `vibe_construction_v1`.`site`.`daily_log` ALTER COLUMN `site_access_status` SET TAGS ('dbx_value_regex' = 'open|restricted|closed|partial');
+ALTER TABLE `vibe_construction_v1`.`site`.`daily_log` ALTER COLUMN `subcontractor_count` SET TAGS ('dbx_business_glossary_term' = 'Subcontractor Headcount');
+ALTER TABLE `vibe_construction_v1`.`site`.`daily_log` ALTER COLUMN `subcontractor_count` SET TAGS ('dbx_pii_flag' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`daily_log` ALTER COLUMN `superintendent_sign_off_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Superintendent Sign-Off Timestamp');
+ALTER TABLE `vibe_construction_v1`.`site`.`daily_log` ALTER COLUMN `superintendent_sign_off_timestamp` SET TAGS ('dbx_pii_flag' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`daily_log` ALTER COLUMN `tbm_conducted_flag` SET TAGS ('dbx_business_glossary_term' = 'Toolbox Meeting (TBM) Conducted Flag');
+ALTER TABLE `vibe_construction_v1`.`site`.`daily_log` ALTER COLUMN `temperature_high_c` SET TAGS ('dbx_business_glossary_term' = 'Maximum Temperature (Celsius)');
+ALTER TABLE `vibe_construction_v1`.`site`.`daily_log` ALTER COLUMN `temperature_low_c` SET TAGS ('dbx_business_glossary_term' = 'Minimum Temperature (Celsius)');
+ALTER TABLE `vibe_construction_v1`.`site`.`daily_log` ALTER COLUMN `total_delay_duration_hrs` SET TAGS ('dbx_business_glossary_term' = 'Total Delay Duration (Hours)');
+ALTER TABLE `vibe_construction_v1`.`site`.`daily_log` ALTER COLUMN `total_manpower_count` SET TAGS ('dbx_business_glossary_term' = 'Total Manpower Headcount');
+ALTER TABLE `vibe_construction_v1`.`site`.`daily_log` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Last Updated Timestamp');
+ALTER TABLE `vibe_construction_v1`.`site`.`daily_log` ALTER COLUMN `visitor_count` SET TAGS ('dbx_business_glossary_term' = 'Site Visitor Count');
+ALTER TABLE `vibe_construction_v1`.`site`.`daily_log` ALTER COLUMN `wbs_code` SET TAGS ('dbx_business_glossary_term' = 'Work Breakdown Structure (WBS) Code');
+ALTER TABLE `vibe_construction_v1`.`site`.`daily_log` ALTER COLUMN `weather_condition` SET TAGS ('dbx_business_glossary_term' = 'Weather Condition');
+ALTER TABLE `vibe_construction_v1`.`site`.`daily_log` ALTER COLUMN `weather_condition` SET TAGS ('dbx_pii_health' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`daily_log` ALTER COLUMN `wind_speed_kmh` SET TAGS ('dbx_business_glossary_term' = 'Wind Speed (Kilometres per Hour)');
+ALTER TABLE `vibe_construction_v1`.`site`.`daily_log` ALTER COLUMN `work_performed_narrative` SET TAGS ('dbx_business_glossary_term' = 'Work Performed Narrative');
+ALTER TABLE `vibe_construction_v1`.`site`.`production_entry` SET TAGS ('dbx_data_type' = 'transactional_data');
+ALTER TABLE `vibe_construction_v1`.`site`.`production_entry` SET TAGS ('dbx_subdomain' = 'field_operations');
+ALTER TABLE `vibe_construction_v1`.`site`.`production_entry` ALTER COLUMN `production_entry_id` SET TAGS ('dbx_business_glossary_term' = 'Production Entry ID');
+ALTER TABLE `vibe_construction_v1`.`site`.`production_entry` ALTER COLUMN `activity_id` SET TAGS ('dbx_business_glossary_term' = 'Activity ID');
+ALTER TABLE `vibe_construction_v1`.`site`.`production_entry` ALTER COLUMN `asset_id` SET TAGS ('dbx_business_glossary_term' = 'Asset Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`site`.`production_entry` ALTER COLUMN `construction_project_id` SET TAGS ('dbx_business_glossary_term' = 'Project ID');
+ALTER TABLE `vibe_construction_v1`.`site`.`production_entry` ALTER COLUMN `cost_code_id` SET TAGS ('dbx_business_glossary_term' = 'Cost Code ID');
+ALTER TABLE `vibe_construction_v1`.`site`.`production_entry` ALTER COLUMN `crew_id` SET TAGS ('dbx_business_glossary_term' = 'Crew ID');
+ALTER TABLE `vibe_construction_v1`.`site`.`production_entry` ALTER COLUMN `daily_log_id` SET TAGS ('dbx_business_glossary_term' = 'Daily Log Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`site`.`production_entry` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Foreman Employee Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`site`.`production_entry` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`production_entry` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`production_entry` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii_flag' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`production_entry` ALTER COLUMN `purchase_order_id` SET TAGS ('dbx_business_glossary_term' = 'Purchase Order Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`site`.`production_entry` ALTER COLUMN `technical_specification_id` SET TAGS ('dbx_business_glossary_term' = 'Technical Specification Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`site`.`production_entry` ALTER COLUMN `work_front_id` SET TAGS ('dbx_business_glossary_term' = 'Work Front ID');
+ALTER TABLE `vibe_construction_v1`.`site`.`production_entry` ALTER COLUMN `approved_by` SET TAGS ('dbx_business_glossary_term' = 'Approved By');
+ALTER TABLE `vibe_construction_v1`.`site`.`production_entry` ALTER COLUMN `approved_by` SET TAGS ('dbx_pii_identifier' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`production_entry` ALTER COLUMN `approved_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Approved Timestamp');
+ALTER TABLE `vibe_construction_v1`.`site`.`production_entry` ALTER COLUMN `budgeted_production_rate` SET TAGS ('dbx_business_glossary_term' = 'Budgeted Production Rate (Units per Hour)');
+ALTER TABLE `vibe_construction_v1`.`site`.`production_entry` ALTER COLUMN `budgeted_quantity` SET TAGS ('dbx_business_glossary_term' = 'Budgeted Quantity');
+ALTER TABLE `vibe_construction_v1`.`site`.`production_entry` ALTER COLUMN `change_order_reference` SET TAGS ('dbx_business_glossary_term' = 'Change Order (CO) Reference');
+ALTER TABLE `vibe_construction_v1`.`site`.`production_entry` ALTER COLUMN `cost_code` SET TAGS ('dbx_business_glossary_term' = 'Cost Code');
+ALTER TABLE `vibe_construction_v1`.`site`.`production_entry` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
+ALTER TABLE `vibe_construction_v1`.`site`.`production_entry` ALTER COLUMN `crew_size` SET TAGS ('dbx_business_glossary_term' = 'Crew Size');
+ALTER TABLE `vibe_construction_v1`.`site`.`production_entry` ALTER COLUMN `cumulative_quantity` SET TAGS ('dbx_business_glossary_term' = 'Cumulative Installed Quantity');
+ALTER TABLE `vibe_construction_v1`.`site`.`production_entry` ALTER COLUMN `entry_date` SET TAGS ('dbx_business_glossary_term' = 'Production Entry Date');
+ALTER TABLE `vibe_construction_v1`.`site`.`production_entry` ALTER COLUMN `entry_number` SET TAGS ('dbx_business_glossary_term' = 'Production Entry Number');
+ALTER TABLE `vibe_construction_v1`.`site`.`production_entry` ALTER COLUMN `entry_status` SET TAGS ('dbx_business_glossary_term' = 'Production Entry Status');
+ALTER TABLE `vibe_construction_v1`.`site`.`production_entry` ALTER COLUMN `entry_status` SET TAGS ('dbx_value_regex' = 'draft|submitted|approved|rejected|voided');
+ALTER TABLE `vibe_construction_v1`.`site`.`production_entry` ALTER COLUMN `equipment_hours` SET TAGS ('dbx_business_glossary_term' = 'Equipment Hours');
+ALTER TABLE `vibe_construction_v1`.`site`.`production_entry` ALTER COLUMN `installed_quantity` SET TAGS ('dbx_business_glossary_term' = 'Installed Quantity');
+ALTER TABLE `vibe_construction_v1`.`site`.`production_entry` ALTER COLUMN `is_baseline_revision` SET TAGS ('dbx_business_glossary_term' = 'Is Baseline Revision Flag');
+ALTER TABLE `vibe_construction_v1`.`site`.`production_entry` ALTER COLUMN `is_rework` SET TAGS ('dbx_business_glossary_term' = 'Is Rework Flag');
+ALTER TABLE `vibe_construction_v1`.`site`.`production_entry` ALTER COLUMN `itp_reference` SET TAGS ('dbx_business_glossary_term' = 'Inspection and Test Plan (ITP) Reference');
+ALTER TABLE `vibe_construction_v1`.`site`.`production_entry` ALTER COLUMN `labor_hours` SET TAGS ('dbx_business_glossary_term' = 'Labor Hours');
+ALTER TABLE `vibe_construction_v1`.`site`.`production_entry` ALTER COLUMN `ncr_reference` SET TAGS ('dbx_business_glossary_term' = 'Non-Conformance Report (NCR) Reference');
+ALTER TABLE `vibe_construction_v1`.`site`.`production_entry` ALTER COLUMN `percent_complete` SET TAGS ('dbx_business_glossary_term' = 'Percent Complete (%)');
+ALTER TABLE `vibe_construction_v1`.`site`.`production_entry` ALTER COLUMN `production_rate` SET TAGS ('dbx_business_glossary_term' = 'Production Rate (Units per Hour)');
+ALTER TABLE `vibe_construction_v1`.`site`.`production_entry` ALTER COLUMN `production_type` SET TAGS ('dbx_business_glossary_term' = 'Production Type');
+ALTER TABLE `vibe_construction_v1`.`site`.`production_entry` ALTER COLUMN `remarks` SET TAGS ('dbx_business_glossary_term' = 'Production Remarks');
+ALTER TABLE `vibe_construction_v1`.`site`.`production_entry` ALTER COLUMN `shift_type` SET TAGS ('dbx_business_glossary_term' = 'Shift Type');
+ALTER TABLE `vibe_construction_v1`.`site`.`production_entry` ALTER COLUMN `shift_type` SET TAGS ('dbx_value_regex' = 'day|night|swing|overtime');
+ALTER TABLE `vibe_construction_v1`.`site`.`production_entry` ALTER COLUMN `source_record_reference` SET TAGS ('dbx_business_glossary_term' = 'Source System Record ID');
+ALTER TABLE `vibe_construction_v1`.`site`.`production_entry` ALTER COLUMN `submitted_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Submitted Timestamp');
+ALTER TABLE `vibe_construction_v1`.`site`.`production_entry` ALTER COLUMN `temperature_c` SET TAGS ('dbx_business_glossary_term' = 'Ambient Temperature (Celsius)');
+ALTER TABLE `vibe_construction_v1`.`site`.`production_entry` ALTER COLUMN `unit_of_measure` SET TAGS ('dbx_business_glossary_term' = 'Unit of Measure (UOM)');
+ALTER TABLE `vibe_construction_v1`.`site`.`production_entry` ALTER COLUMN `unit_of_measure` SET TAGS ('dbx_pii_address' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`production_entry` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Updated Timestamp');
+ALTER TABLE `vibe_construction_v1`.`site`.`production_entry` ALTER COLUMN `wbs_code` SET TAGS ('dbx_business_glossary_term' = 'Work Breakdown Structure (WBS) Code');
+ALTER TABLE `vibe_construction_v1`.`site`.`production_entry` ALTER COLUMN `weather_condition` SET TAGS ('dbx_business_glossary_term' = 'Weather Condition');
+ALTER TABLE `vibe_construction_v1`.`site`.`production_entry` ALTER COLUMN `weather_condition` SET TAGS ('dbx_pii_health' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`production_entry` ALTER COLUMN `work_front_location` SET TAGS ('dbx_business_glossary_term' = 'Work Front Location');
+ALTER TABLE `vibe_construction_v1`.`site`.`production_entry` ALTER COLUMN `work_item_description` SET TAGS ('dbx_business_glossary_term' = 'Work Item Description');
+ALTER TABLE `vibe_construction_v1`.`site`.`crew_deployment` SET TAGS ('dbx_data_type' = 'transactional_data');
+ALTER TABLE `vibe_construction_v1`.`site`.`crew_deployment` SET TAGS ('dbx_subdomain' = 'field_operations');
+ALTER TABLE `vibe_construction_v1`.`site`.`crew_deployment` ALTER COLUMN `crew_deployment_id` SET TAGS ('dbx_business_glossary_term' = 'Crew Deployment ID');
+ALTER TABLE `vibe_construction_v1`.`site`.`crew_deployment` ALTER COLUMN `activity_id` SET TAGS ('dbx_business_glossary_term' = 'Activity ID');
+ALTER TABLE `vibe_construction_v1`.`site`.`crew_deployment` ALTER COLUMN `asset_id` SET TAGS ('dbx_business_glossary_term' = 'Asset Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`site`.`crew_deployment` ALTER COLUMN `construction_project_id` SET TAGS ('dbx_business_glossary_term' = 'Project ID');
+ALTER TABLE `vibe_construction_v1`.`site`.`crew_deployment` ALTER COLUMN `daily_log_id` SET TAGS ('dbx_business_glossary_term' = 'Daily Log Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`site`.`crew_deployment` ALTER COLUMN `cost_code_id` SET TAGS ('dbx_business_glossary_term' = 'Finance Cost Code Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`site`.`crew_deployment` ALTER COLUMN `firm_profile_id` SET TAGS ('dbx_business_glossary_term' = 'Subcontractor ID');
+ALTER TABLE `vibe_construction_v1`.`site`.`crew_deployment` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Lead Foreman Employee ID');
+ALTER TABLE `vibe_construction_v1`.`site`.`crew_deployment` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`crew_deployment` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`crew_deployment` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii_flag' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`crew_deployment` ALTER COLUMN `work_front_id` SET TAGS ('dbx_business_glossary_term' = 'Work Front ID');
+ALTER TABLE `vibe_construction_v1`.`site`.`crew_deployment` ALTER COLUMN `actual_hours` SET TAGS ('dbx_business_glossary_term' = 'Actual Hours');
+ALTER TABLE `vibe_construction_v1`.`site`.`crew_deployment` ALTER COLUMN `actual_production_qty` SET TAGS ('dbx_business_glossary_term' = 'Actual Production Quantity');
+ALTER TABLE `vibe_construction_v1`.`site`.`crew_deployment` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
+ALTER TABLE `vibe_construction_v1`.`site`.`crew_deployment` ALTER COLUMN `crew_code` SET TAGS ('dbx_business_glossary_term' = 'Crew Code');
+ALTER TABLE `vibe_construction_v1`.`site`.`crew_deployment` ALTER COLUMN `crew_name` SET TAGS ('dbx_business_glossary_term' = 'Crew Name');
+ALTER TABLE `vibe_construction_v1`.`site`.`crew_deployment` ALTER COLUMN `crew_name` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`crew_deployment` ALTER COLUMN `crew_name` SET TAGS ('dbx_pii_name' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`crew_deployment` ALTER COLUMN `crew_size` SET TAGS ('dbx_business_glossary_term' = 'Crew Size');
+ALTER TABLE `vibe_construction_v1`.`site`.`crew_deployment` ALTER COLUMN `crew_type` SET TAGS ('dbx_business_glossary_term' = 'Crew Type');
+ALTER TABLE `vibe_construction_v1`.`site`.`crew_deployment` ALTER COLUMN `delay_reason_code` SET TAGS ('dbx_business_glossary_term' = 'Delay Reason Code');
+ALTER TABLE `vibe_construction_v1`.`site`.`crew_deployment` ALTER COLUMN `deployment_date` SET TAGS ('dbx_business_glossary_term' = 'Deployment Date');
+ALTER TABLE `vibe_construction_v1`.`site`.`crew_deployment` ALTER COLUMN `deployment_number` SET TAGS ('dbx_business_glossary_term' = 'Deployment Number');
+ALTER TABLE `vibe_construction_v1`.`site`.`crew_deployment` ALTER COLUMN `deployment_status` SET TAGS ('dbx_business_glossary_term' = 'Deployment Status');
+ALTER TABLE `vibe_construction_v1`.`site`.`crew_deployment` ALTER COLUMN `deployment_status` SET TAGS ('dbx_value_regex' = 'planned|active|completed|cancelled|suspended');
+ALTER TABLE `vibe_construction_v1`.`site`.`crew_deployment` ALTER COLUMN `hse_toolbox_meeting_held` SET TAGS ('dbx_business_glossary_term' = 'Health Safety and Environment (HSE) Toolbox Meeting (TBM) Held Flag');
+ALTER TABLE `vibe_construction_v1`.`site`.`crew_deployment` ALTER COLUMN `is_overtime` SET TAGS ('dbx_business_glossary_term' = 'Overtime Flag');
+ALTER TABLE `vibe_construction_v1`.`site`.`crew_deployment` ALTER COLUMN `is_subcontractor_crew` SET TAGS ('dbx_business_glossary_term' = 'Subcontractor Crew Flag');
+ALTER TABLE `vibe_construction_v1`.`site`.`crew_deployment` ALTER COLUMN `is_subcontractor_crew` SET TAGS ('dbx_pii_flag' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`crew_deployment` ALTER COLUMN `is_weather_impacted` SET TAGS ('dbx_business_glossary_term' = 'Weather Impact Flag');
+ALTER TABLE `vibe_construction_v1`.`site`.`crew_deployment` ALTER COLUMN `lead_foreman_name` SET TAGS ('dbx_business_glossary_term' = 'Lead Foreman Name');
+ALTER TABLE `vibe_construction_v1`.`site`.`crew_deployment` ALTER COLUMN `lead_foreman_name` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`crew_deployment` ALTER COLUMN `lead_foreman_name` SET TAGS ('dbx_pii_name' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`crew_deployment` ALTER COLUMN `mobilization_status` SET TAGS ('dbx_business_glossary_term' = 'Mobilization Status');
+ALTER TABLE `vibe_construction_v1`.`site`.`crew_deployment` ALTER COLUMN `mobilization_status` SET TAGS ('dbx_value_regex' = 'mobilizing|on_site|demobilizing|demobilized');
+ALTER TABLE `vibe_construction_v1`.`site`.`crew_deployment` ALTER COLUMN `overtime_hours` SET TAGS ('dbx_business_glossary_term' = 'Overtime Hours');
+ALTER TABLE `vibe_construction_v1`.`site`.`crew_deployment` ALTER COLUMN `permit_to_work_number` SET TAGS ('dbx_business_glossary_term' = 'Permit to Work Number');
+ALTER TABLE `vibe_construction_v1`.`site`.`crew_deployment` ALTER COLUMN `planned_hours` SET TAGS ('dbx_business_glossary_term' = 'Planned Hours');
+ALTER TABLE `vibe_construction_v1`.`site`.`crew_deployment` ALTER COLUMN `planned_production_qty` SET TAGS ('dbx_business_glossary_term' = 'Planned Production Quantity');
+ALTER TABLE `vibe_construction_v1`.`site`.`crew_deployment` ALTER COLUMN `ppe_compliance` SET TAGS ('dbx_business_glossary_term' = 'Personal Protective Equipment (PPE) Compliance Flag');
+ALTER TABLE `vibe_construction_v1`.`site`.`crew_deployment` ALTER COLUMN `production_unit_of_measure` SET TAGS ('dbx_business_glossary_term' = 'Production Unit of Measure');
+ALTER TABLE `vibe_construction_v1`.`site`.`crew_deployment` ALTER COLUMN `production_unit_of_measure` SET TAGS ('dbx_pii_address' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`crew_deployment` ALTER COLUMN `productivity_notes` SET TAGS ('dbx_business_glossary_term' = 'Productivity Notes');
+ALTER TABLE `vibe_construction_v1`.`site`.`crew_deployment` ALTER COLUMN `productivity_rate` SET TAGS ('dbx_business_glossary_term' = 'Productivity Rate');
+ALTER TABLE `vibe_construction_v1`.`site`.`crew_deployment` ALTER COLUMN `shift_end_time` SET TAGS ('dbx_business_glossary_term' = 'Shift End Time');
+ALTER TABLE `vibe_construction_v1`.`site`.`crew_deployment` ALTER COLUMN `shift_start_time` SET TAGS ('dbx_business_glossary_term' = 'Shift Start Time');
+ALTER TABLE `vibe_construction_v1`.`site`.`crew_deployment` ALTER COLUMN `shift_type` SET TAGS ('dbx_business_glossary_term' = 'Shift Type');
+ALTER TABLE `vibe_construction_v1`.`site`.`crew_deployment` ALTER COLUMN `shift_type` SET TAGS ('dbx_value_regex' = 'day|night|swing|weekend');
+ALTER TABLE `vibe_construction_v1`.`site`.`crew_deployment` ALTER COLUMN `source_record_reference` SET TAGS ('dbx_business_glossary_term' = 'Source Record ID');
+ALTER TABLE `vibe_construction_v1`.`site`.`crew_deployment` ALTER COLUMN `swms_reference` SET TAGS ('dbx_business_glossary_term' = 'Safe Work Method Statement (SWMS) Reference');
+ALTER TABLE `vibe_construction_v1`.`site`.`crew_deployment` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Updated Timestamp');
+ALTER TABLE `vibe_construction_v1`.`site`.`crew_deployment` ALTER COLUMN `wbs_code` SET TAGS ('dbx_business_glossary_term' = 'Work Breakdown Structure (WBS) Code');
+ALTER TABLE `vibe_construction_v1`.`site`.`crew_deployment` ALTER COLUMN `weather_condition` SET TAGS ('dbx_business_glossary_term' = 'Weather Condition');
+ALTER TABLE `vibe_construction_v1`.`site`.`crew_deployment` ALTER COLUMN `weather_condition` SET TAGS ('dbx_pii_health' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`concrete_pour` SET TAGS ('dbx_data_type' = 'transactional_data');
+ALTER TABLE `vibe_construction_v1`.`site`.`concrete_pour` SET TAGS ('dbx_subdomain' = 'field_operations');
+ALTER TABLE `vibe_construction_v1`.`site`.`concrete_pour` ALTER COLUMN `concrete_pour_id` SET TAGS ('dbx_business_glossary_term' = 'Concrete Pour ID');
+ALTER TABLE `vibe_construction_v1`.`site`.`concrete_pour` ALTER COLUMN `activity_id` SET TAGS ('dbx_business_glossary_term' = 'Schedule Activity ID');
+ALTER TABLE `vibe_construction_v1`.`site`.`concrete_pour` ALTER COLUMN `asset_id` SET TAGS ('dbx_business_glossary_term' = 'Asset Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`site`.`concrete_pour` ALTER COLUMN `construction_project_id` SET TAGS ('dbx_business_glossary_term' = 'Project ID');
+ALTER TABLE `vibe_construction_v1`.`site`.`concrete_pour` ALTER COLUMN `drawing_id` SET TAGS ('dbx_business_glossary_term' = 'Drawing Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`site`.`concrete_pour` ALTER COLUMN `cost_code_id` SET TAGS ('dbx_business_glossary_term' = 'Finance Cost Code Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`site`.`concrete_pour` ALTER COLUMN `itp_id` SET TAGS ('dbx_business_glossary_term' = 'Inspection and Test Plan (ITP) ID');
+ALTER TABLE `vibe_construction_v1`.`site`.`concrete_pour` ALTER COLUMN `craft_worker_id` SET TAGS ('dbx_business_glossary_term' = 'Pour Supervisor Craft Worker Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`site`.`concrete_pour` ALTER COLUMN `craft_worker_id` SET TAGS ('dbx_pii_identifier' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`concrete_pour` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Pour Supervisor Employee Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`site`.`concrete_pour` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`concrete_pour` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`concrete_pour` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii_flag' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`concrete_pour` ALTER COLUMN `daily_log_id` SET TAGS ('dbx_business_glossary_term' = 'Procore Daily Log ID');
+ALTER TABLE `vibe_construction_v1`.`site`.`concrete_pour` ALTER COLUMN `wbs_element_id` SET TAGS ('dbx_business_glossary_term' = 'Work Breakdown Structure (WBS) ID');
+ALTER TABLE `vibe_construction_v1`.`site`.`concrete_pour` ALTER COLUMN `ambient_temperature_c` SET TAGS ('dbx_business_glossary_term' = 'Ambient Temperature (°C)');
+ALTER TABLE `vibe_construction_v1`.`site`.`concrete_pour` ALTER COLUMN `batch_plant_name` SET TAGS ('dbx_business_glossary_term' = 'Batch Plant Name');
+ALTER TABLE `vibe_construction_v1`.`site`.`concrete_pour` ALTER COLUMN `batch_plant_name` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`concrete_pour` ALTER COLUMN `batch_plant_name` SET TAGS ('dbx_pii_name' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`concrete_pour` ALTER COLUMN `concrete_temperature_c` SET TAGS ('dbx_business_glossary_term' = 'Concrete Temperature at Delivery (°C)');
+ALTER TABLE `vibe_construction_v1`.`site`.`concrete_pour` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
+ALTER TABLE `vibe_construction_v1`.`site`.`concrete_pour` ALTER COLUMN `curing_method` SET TAGS ('dbx_business_glossary_term' = 'Concrete Curing Method');
+ALTER TABLE `vibe_construction_v1`.`site`.`concrete_pour` ALTER COLUMN `curing_method` SET TAGS ('dbx_value_regex' = 'wet_hessian|curing_compound|ponding|steam|membrane|other');
+ALTER TABLE `vibe_construction_v1`.`site`.`concrete_pour` ALTER COLUMN `curing_start_time` SET TAGS ('dbx_business_glossary_term' = 'Curing Start Timestamp');
+ALTER TABLE `vibe_construction_v1`.`site`.`concrete_pour` ALTER COLUMN `cylinder_set_reference` SET TAGS ('dbx_business_glossary_term' = 'Test Cylinder Set Reference');
+ALTER TABLE `vibe_construction_v1`.`site`.`concrete_pour` ALTER COLUMN `delivery_docket_numbers` SET TAGS ('dbx_business_glossary_term' = 'Delivery Docket Numbers');
+ALTER TABLE `vibe_construction_v1`.`site`.`concrete_pour` ALTER COLUMN `formwork_drawing_ref` SET TAGS ('dbx_business_glossary_term' = 'Formwork Drawing Reference');
+ALTER TABLE `vibe_construction_v1`.`site`.`concrete_pour` ALTER COLUMN `grid_reference` SET TAGS ('dbx_business_glossary_term' = 'Grid Reference');
+ALTER TABLE `vibe_construction_v1`.`site`.`concrete_pour` ALTER COLUMN `hcss_production_code` SET TAGS ('dbx_business_glossary_term' = 'HCSS HeavyJob Production Record ID');
+ALTER TABLE `vibe_construction_v1`.`site`.`concrete_pour` ALTER COLUMN `mix_design_code` SET TAGS ('dbx_business_glossary_term' = 'Concrete Mix Design Code');
+ALTER TABLE `vibe_construction_v1`.`site`.`concrete_pour` ALTER COLUMN `mix_design_code` SET TAGS ('dbx_value_regex' = '^[A-Z0-9]{2,20}$');
+ALTER TABLE `vibe_construction_v1`.`site`.`concrete_pour` ALTER COLUMN `ncr_number` SET TAGS ('dbx_business_glossary_term' = 'Non-Conformance Report (NCR) Number');
+ALTER TABLE `vibe_construction_v1`.`site`.`concrete_pour` ALTER COLUMN `placement_method` SET TAGS ('dbx_business_glossary_term' = 'Concrete Placement Method');
+ALTER TABLE `vibe_construction_v1`.`site`.`concrete_pour` ALTER COLUMN `placement_method` SET TAGS ('dbx_value_regex' = 'pump|crane_bucket|conveyor|direct_chute|other');
+ALTER TABLE `vibe_construction_v1`.`site`.`concrete_pour` ALTER COLUMN `pour_date` SET TAGS ('dbx_business_glossary_term' = 'Concrete Pour Date');
+ALTER TABLE `vibe_construction_v1`.`site`.`concrete_pour` ALTER COLUMN `pour_end_time` SET TAGS ('dbx_business_glossary_term' = 'Pour End Timestamp');
+ALTER TABLE `vibe_construction_v1`.`site`.`concrete_pour` ALTER COLUMN `pour_number` SET TAGS ('dbx_business_glossary_term' = 'Concrete Pour Number');
+ALTER TABLE `vibe_construction_v1`.`site`.`concrete_pour` ALTER COLUMN `pour_number` SET TAGS ('dbx_value_regex' = '^PC-[A-Z0-9]{2,10}-[0-9]{4,6}$');
+ALTER TABLE `vibe_construction_v1`.`site`.`concrete_pour` ALTER COLUMN `pour_start_time` SET TAGS ('dbx_business_glossary_term' = 'Pour Start Timestamp');
+ALTER TABLE `vibe_construction_v1`.`site`.`concrete_pour` ALTER COLUMN `pour_status` SET TAGS ('dbx_business_glossary_term' = 'Concrete Pour Status');
+ALTER TABLE `vibe_construction_v1`.`site`.`concrete_pour` ALTER COLUMN `pour_status` SET TAGS ('dbx_value_regex' = 'planned|in_progress|completed|on_hold|cancelled|rejected');
+ALTER TABLE `vibe_construction_v1`.`site`.`concrete_pour` ALTER COLUMN `pour_type` SET TAGS ('dbx_business_glossary_term' = 'Concrete Pour Type');
+ALTER TABLE `vibe_construction_v1`.`site`.`concrete_pour` ALTER COLUMN `qc_hold_status` SET TAGS ('dbx_business_glossary_term' = 'Quality Control (QC) Hold Status');
+ALTER TABLE `vibe_construction_v1`.`site`.`concrete_pour` ALTER COLUMN `qc_hold_status` SET TAGS ('dbx_value_regex' = 'no_hold|hold_applied|hold_released|rejected');
+ALTER TABLE `vibe_construction_v1`.`site`.`concrete_pour` ALTER COLUMN `qc_inspector` SET TAGS ('dbx_business_glossary_term' = 'Quality Control (QC) Inspector Name');
+ALTER TABLE `vibe_construction_v1`.`site`.`concrete_pour` ALTER COLUMN `qc_inspector` SET TAGS ('dbx_pii_identifier' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`concrete_pour` ALTER COLUMN `relative_humidity_pct` SET TAGS ('dbx_business_glossary_term' = 'Relative Humidity Percentage (%)');
+ALTER TABLE `vibe_construction_v1`.`site`.`concrete_pour` ALTER COLUMN `slump_compliant` SET TAGS ('dbx_business_glossary_term' = 'Slump Test Compliance Flag');
+ALTER TABLE `vibe_construction_v1`.`site`.`concrete_pour` ALTER COLUMN `slump_specified_max_mm` SET TAGS ('dbx_business_glossary_term' = 'Specified Maximum Slump (mm)');
+ALTER TABLE `vibe_construction_v1`.`site`.`concrete_pour` ALTER COLUMN `slump_specified_min_mm` SET TAGS ('dbx_business_glossary_term' = 'Specified Minimum Slump (mm)');
+ALTER TABLE `vibe_construction_v1`.`site`.`concrete_pour` ALTER COLUMN `slump_test_result_mm` SET TAGS ('dbx_business_glossary_term' = 'Slump Test Result (mm)');
+ALTER TABLE `vibe_construction_v1`.`site`.`concrete_pour` ALTER COLUMN `specified_strength_mpa` SET TAGS ('dbx_business_glossary_term' = 'Specified Compressive Strength (MPa)');
+ALTER TABLE `vibe_construction_v1`.`site`.`concrete_pour` ALTER COLUMN `structure_element` SET TAGS ('dbx_business_glossary_term' = 'Structure Element');
+ALTER TABLE `vibe_construction_v1`.`site`.`concrete_pour` ALTER COLUMN `test_cylinders_cast` SET TAGS ('dbx_business_glossary_term' = 'Test Cylinders Cast Count');
+ALTER TABLE `vibe_construction_v1`.`site`.`concrete_pour` ALTER COLUMN `truck_load_count` SET TAGS ('dbx_business_glossary_term' = 'Concrete Truck Load Count');
+ALTER TABLE `vibe_construction_v1`.`site`.`concrete_pour` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Last Updated Timestamp');
+ALTER TABLE `vibe_construction_v1`.`site`.`concrete_pour` ALTER COLUMN `volume_poured_m3` SET TAGS ('dbx_business_glossary_term' = 'Volume Poured (m³)');
+ALTER TABLE `vibe_construction_v1`.`site`.`concrete_pour` ALTER COLUMN `weather_condition` SET TAGS ('dbx_business_glossary_term' = 'Weather Condition at Pour');
+ALTER TABLE `vibe_construction_v1`.`site`.`concrete_pour` ALTER COLUMN `weather_condition` SET TAGS ('dbx_value_regex' = 'clear|cloudy|rain|high_wind|extreme_heat|extreme_cold');
+ALTER TABLE `vibe_construction_v1`.`site`.`concrete_pour` ALTER COLUMN `weather_condition` SET TAGS ('dbx_pii_health' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`concrete_pour` ALTER COLUMN `wind_speed_kmh` SET TAGS ('dbx_business_glossary_term' = 'Wind Speed (km/h)');
+ALTER TABLE `vibe_construction_v1`.`site`.`earthwork_volume` SET TAGS ('dbx_data_type' = 'transactional_data');
+ALTER TABLE `vibe_construction_v1`.`site`.`earthwork_volume` SET TAGS ('dbx_subdomain' = 'field_operations');
+ALTER TABLE `vibe_construction_v1`.`site`.`earthwork_volume` ALTER COLUMN `earthwork_volume_id` SET TAGS ('dbx_business_glossary_term' = 'Earthwork Volume ID');
+ALTER TABLE `vibe_construction_v1`.`site`.`earthwork_volume` ALTER COLUMN `activity_id` SET TAGS ('dbx_business_glossary_term' = 'Activity Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`site`.`earthwork_volume` ALTER COLUMN `construction_project_id` SET TAGS ('dbx_business_glossary_term' = 'Project ID');
+ALTER TABLE `vibe_construction_v1`.`site`.`earthwork_volume` ALTER COLUMN `firm_profile_id` SET TAGS ('dbx_business_glossary_term' = 'Subcontractor ID');
+ALTER TABLE `vibe_construction_v1`.`site`.`earthwork_volume` ALTER COLUMN `daily_log_id` SET TAGS ('dbx_business_glossary_term' = 'Procore Daily Log ID');
+ALTER TABLE `vibe_construction_v1`.`site`.`earthwork_volume` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Surveyor Employee Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`site`.`earthwork_volume` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`earthwork_volume` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`earthwork_volume` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii_flag' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`earthwork_volume` ALTER COLUMN `wbs_element_id` SET TAGS ('dbx_business_glossary_term' = 'Work Breakdown Structure (WBS) ID');
+ALTER TABLE `vibe_construction_v1`.`site`.`earthwork_volume` ALTER COLUMN `approved_by` SET TAGS ('dbx_business_glossary_term' = 'Approved By');
+ALTER TABLE `vibe_construction_v1`.`site`.`earthwork_volume` ALTER COLUMN `approved_by` SET TAGS ('dbx_pii_identifier' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`earthwork_volume` ALTER COLUMN `boq_item_code` SET TAGS ('dbx_business_glossary_term' = 'Bill of Quantities (BOQ) Item Code');
+ALTER TABLE `vibe_construction_v1`.`site`.`earthwork_volume` ALTER COLUMN `change_order_reference` SET TAGS ('dbx_business_glossary_term' = 'Change Order (CO) Reference');
+ALTER TABLE `vibe_construction_v1`.`site`.`earthwork_volume` ALTER COLUMN `compaction_factor` SET TAGS ('dbx_business_glossary_term' = 'Compaction Factor');
+ALTER TABLE `vibe_construction_v1`.`site`.`earthwork_volume` ALTER COLUMN `contracted_volume_m3` SET TAGS ('dbx_business_glossary_term' = 'Contracted Volume (m³)');
+ALTER TABLE `vibe_construction_v1`.`site`.`earthwork_volume` ALTER COLUMN `coordinate_easting` SET TAGS ('dbx_business_glossary_term' = 'Coordinate Easting');
+ALTER TABLE `vibe_construction_v1`.`site`.`earthwork_volume` ALTER COLUMN `coordinate_northing` SET TAGS ('dbx_business_glossary_term' = 'Coordinate Northing');
+ALTER TABLE `vibe_construction_v1`.`site`.`earthwork_volume` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
+ALTER TABLE `vibe_construction_v1`.`site`.`earthwork_volume` ALTER COLUMN `cumulative_cut_volume_m3` SET TAGS ('dbx_business_glossary_term' = 'Cumulative Cut Volume (m³)');
+ALTER TABLE `vibe_construction_v1`.`site`.`earthwork_volume` ALTER COLUMN `cumulative_fill_volume_m3` SET TAGS ('dbx_business_glossary_term' = 'Cumulative Fill Volume (m³)');
+ALTER TABLE `vibe_construction_v1`.`site`.`earthwork_volume` ALTER COLUMN `cut_volume_m3` SET TAGS ('dbx_business_glossary_term' = 'Cut Volume (m³)');
+ALTER TABLE `vibe_construction_v1`.`site`.`earthwork_volume` ALTER COLUMN `disposal_distance_km` SET TAGS ('dbx_business_glossary_term' = 'Disposal Haul Distance (km)');
+ALTER TABLE `vibe_construction_v1`.`site`.`earthwork_volume` ALTER COLUMN `disposal_site_reference` SET TAGS ('dbx_business_glossary_term' = 'Disposal Site Reference');
+ALTER TABLE `vibe_construction_v1`.`site`.`earthwork_volume` ALTER COLUMN `engineer_approval_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Engineer Approval Timestamp');
+ALTER TABLE `vibe_construction_v1`.`site`.`earthwork_volume` ALTER COLUMN `engineer_approval_timestamp` SET TAGS ('dbx_pii_identifier' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`earthwork_volume` ALTER COLUMN `fill_volume_m3` SET TAGS ('dbx_business_glossary_term' = 'Fill Volume (m³)');
+ALTER TABLE `vibe_construction_v1`.`site`.`earthwork_volume` ALTER COLUMN `heavyjob_cost_code` SET TAGS ('dbx_business_glossary_term' = 'HCSS HeavyJob Cost Code');
+ALTER TABLE `vibe_construction_v1`.`site`.`earthwork_volume` ALTER COLUMN `is_variation_order` SET TAGS ('dbx_business_glossary_term' = 'Is Variation Order (CO) Flag');
+ALTER TABLE `vibe_construction_v1`.`site`.`earthwork_volume` ALTER COLUMN `itp_reference` SET TAGS ('dbx_business_glossary_term' = 'Inspection and Test Plan (ITP) Reference');
+ALTER TABLE `vibe_construction_v1`.`site`.`earthwork_volume` ALTER COLUMN `material_classification` SET TAGS ('dbx_business_glossary_term' = 'Material Classification');
+ALTER TABLE `vibe_construction_v1`.`site`.`earthwork_volume` ALTER COLUMN `material_classification` SET TAGS ('dbx_value_regex' = 'topsoil|clay|rock|sand|gravel|mixed');
+ALTER TABLE `vibe_construction_v1`.`site`.`earthwork_volume` ALTER COLUMN `measurement_accuracy_m` SET TAGS ('dbx_business_glossary_term' = 'Measurement Accuracy (m)');
+ALTER TABLE `vibe_construction_v1`.`site`.`earthwork_volume` ALTER COLUMN `measurement_date` SET TAGS ('dbx_business_glossary_term' = 'Measurement Date');
+ALTER TABLE `vibe_construction_v1`.`site`.`earthwork_volume` ALTER COLUMN `measurement_reference_number` SET TAGS ('dbx_business_glossary_term' = 'Measurement Reference Number');
+ALTER TABLE `vibe_construction_v1`.`site`.`earthwork_volume` ALTER COLUMN `measurement_status` SET TAGS ('dbx_business_glossary_term' = 'Measurement Status');
+ALTER TABLE `vibe_construction_v1`.`site`.`earthwork_volume` ALTER COLUMN `measurement_status` SET TAGS ('dbx_value_regex' = 'draft|submitted|under_review|approved|rejected|certified');
+ALTER TABLE `vibe_construction_v1`.`site`.`earthwork_volume` ALTER COLUMN `ncr_reference` SET TAGS ('dbx_business_glossary_term' = 'Non-Conformance Report (NCR) Reference');
+ALTER TABLE `vibe_construction_v1`.`site`.`earthwork_volume` ALTER COLUMN `net_movement_m3` SET TAGS ('dbx_business_glossary_term' = 'Net Movement Volume (m³)');
+ALTER TABLE `vibe_construction_v1`.`site`.`earthwork_volume` ALTER COLUMN `rejection_reason` SET TAGS ('dbx_business_glossary_term' = 'Rejection Reason');
+ALTER TABLE `vibe_construction_v1`.`site`.`earthwork_volume` ALTER COLUMN `remarks` SET TAGS ('dbx_business_glossary_term' = 'Remarks');
+ALTER TABLE `vibe_construction_v1`.`site`.`earthwork_volume` ALTER COLUMN `reporting_period_end` SET TAGS ('dbx_business_glossary_term' = 'Reporting Period End Date');
+ALTER TABLE `vibe_construction_v1`.`site`.`earthwork_volume` ALTER COLUMN `reporting_period_start` SET TAGS ('dbx_business_glossary_term' = 'Reporting Period Start Date');
+ALTER TABLE `vibe_construction_v1`.`site`.`earthwork_volume` ALTER COLUMN `spoil_volume_m3` SET TAGS ('dbx_business_glossary_term' = 'Spoil Volume (m³)');
+ALTER TABLE `vibe_construction_v1`.`site`.`earthwork_volume` ALTER COLUMN `survey_instrument_code` SET TAGS ('dbx_business_glossary_term' = 'Survey Instrument ID');
+ALTER TABLE `vibe_construction_v1`.`site`.`earthwork_volume` ALTER COLUMN `survey_method` SET TAGS ('dbx_business_glossary_term' = 'Survey Method');
+ALTER TABLE `vibe_construction_v1`.`site`.`earthwork_volume` ALTER COLUMN `survey_method` SET TAGS ('dbx_value_regex' = 'GPS|drone_photogrammetry|total_station|LiDAR|manual_survey|cross_section');
+ALTER TABLE `vibe_construction_v1`.`site`.`earthwork_volume` ALTER COLUMN `surveyor_license_number` SET TAGS ('dbx_business_glossary_term' = 'Surveyor License Number');
+ALTER TABLE `vibe_construction_v1`.`site`.`earthwork_volume` ALTER COLUMN `surveyor_license_number` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`earthwork_volume` ALTER COLUMN `surveyor_license_number` SET TAGS ('dbx_pii_national_id' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`earthwork_volume` ALTER COLUMN `surveyor_signoff_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Surveyor Sign-Off Timestamp');
+ALTER TABLE `vibe_construction_v1`.`site`.`earthwork_volume` ALTER COLUMN `swell_factor` SET TAGS ('dbx_business_glossary_term' = 'Swell Factor');
+ALTER TABLE `vibe_construction_v1`.`site`.`earthwork_volume` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Updated Timestamp');
+ALTER TABLE `vibe_construction_v1`.`site`.`earthwork_volume` ALTER COLUMN `weather_conditions` SET TAGS ('dbx_business_glossary_term' = 'Weather Conditions');
+ALTER TABLE `vibe_construction_v1`.`site`.`earthwork_volume` ALTER COLUMN `work_area_code` SET TAGS ('dbx_business_glossary_term' = 'Work Area Code');
+ALTER TABLE `vibe_construction_v1`.`site`.`earthwork_volume` ALTER COLUMN `work_area_code` SET TAGS ('dbx_pii_address' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`earthwork_volume` ALTER COLUMN `work_area_description` SET TAGS ('dbx_business_glossary_term' = 'Work Area Description');
+ALTER TABLE `vibe_construction_v1`.`site`.`field_progress` SET TAGS ('dbx_data_type' = 'transactional_data');
+ALTER TABLE `vibe_construction_v1`.`site`.`field_progress` SET TAGS ('dbx_subdomain' = 'field_operations');
+ALTER TABLE `vibe_construction_v1`.`site`.`field_progress` ALTER COLUMN `field_progress_id` SET TAGS ('dbx_business_glossary_term' = 'Field Progress ID');
+ALTER TABLE `vibe_construction_v1`.`site`.`field_progress` ALTER COLUMN `bid_boq_line_id` SET TAGS ('dbx_business_glossary_term' = 'Bill of Quantities (BOQ) Line Item ID');
+ALTER TABLE `vibe_construction_v1`.`site`.`field_progress` ALTER COLUMN `construction_project_id` SET TAGS ('dbx_business_glossary_term' = 'Project ID');
+ALTER TABLE `vibe_construction_v1`.`site`.`field_progress` ALTER COLUMN `cost_code_id` SET TAGS ('dbx_business_glossary_term' = 'Cost Code ID');
+ALTER TABLE `vibe_construction_v1`.`site`.`field_progress` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Field Engineer Employee ID');
+ALTER TABLE `vibe_construction_v1`.`site`.`field_progress` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`field_progress` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`field_progress` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii_flag' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`field_progress` ALTER COLUMN `itp_line_id` SET TAGS ('dbx_business_glossary_term' = 'Inspection and Test Plan (ITP) Checkpoint ID');
+ALTER TABLE `vibe_construction_v1`.`site`.`field_progress` ALTER COLUMN `daily_log_id` SET TAGS ('dbx_business_glossary_term' = 'Procore Daily Log ID');
+ALTER TABLE `vibe_construction_v1`.`site`.`field_progress` ALTER COLUMN `production_entry_id` SET TAGS ('dbx_business_glossary_term' = 'HCSS HeavyJob Production Record ID');
+ALTER TABLE `vibe_construction_v1`.`site`.`field_progress` ALTER COLUMN `activity_id` SET TAGS ('dbx_business_glossary_term' = 'Work Breakdown Structure (WBS) Activity ID');
+ALTER TABLE `vibe_construction_v1`.`site`.`field_progress` ALTER COLUMN `activity_type` SET TAGS ('dbx_business_glossary_term' = 'Activity Type / Discipline');
+ALTER TABLE `vibe_construction_v1`.`site`.`field_progress` ALTER COLUMN `approval_status` SET TAGS ('dbx_business_glossary_term' = 'Approval Status');
+ALTER TABLE `vibe_construction_v1`.`site`.`field_progress` ALTER COLUMN `approval_status` SET TAGS ('dbx_value_regex' = 'draft|submitted|approved|rejected|revised');
+ALTER TABLE `vibe_construction_v1`.`site`.`field_progress` ALTER COLUMN `approved_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Approval Timestamp');
+ALTER TABLE `vibe_construction_v1`.`site`.`field_progress` ALTER COLUMN `approver_name` SET TAGS ('dbx_business_glossary_term' = 'Approver Name');
+ALTER TABLE `vibe_construction_v1`.`site`.`field_progress` ALTER COLUMN `approver_name` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`field_progress` ALTER COLUMN `approver_name` SET TAGS ('dbx_pii_identifier' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`field_progress` ALTER COLUMN `bcwp` SET TAGS ('dbx_business_glossary_term' = 'Budgeted Cost of Work Performed (BCWP)');
+ALTER TABLE `vibe_construction_v1`.`site`.`field_progress` ALTER COLUMN `bim_element_reference` SET TAGS ('dbx_business_glossary_term' = 'Building Information Modeling (BIM) Element ID');
+ALTER TABLE `vibe_construction_v1`.`site`.`field_progress` ALTER COLUMN `budget_at_completion` SET TAGS ('dbx_business_glossary_term' = 'Budget at Completion (BAC)');
+ALTER TABLE `vibe_construction_v1`.`site`.`field_progress` ALTER COLUMN `budget_at_completion` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`field_progress` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
+ALTER TABLE `vibe_construction_v1`.`site`.`field_progress` ALTER COLUMN `crew_size` SET TAGS ('dbx_business_glossary_term' = 'Crew Size (Headcount)');
+ALTER TABLE `vibe_construction_v1`.`site`.`field_progress` ALTER COLUMN `data_date` SET TAGS ('dbx_business_glossary_term' = 'Data Date (Progress Cut-Off Date)');
+ALTER TABLE `vibe_construction_v1`.`site`.`field_progress` ALTER COLUMN `equipment_hours` SET TAGS ('dbx_business_glossary_term' = 'Equipment Hours');
+ALTER TABLE `vibe_construction_v1`.`site`.`field_progress` ALTER COLUMN `field_engineer_name` SET TAGS ('dbx_business_glossary_term' = 'Field Engineer Name');
+ALTER TABLE `vibe_construction_v1`.`site`.`field_progress` ALTER COLUMN `field_engineer_name` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`field_progress` ALTER COLUMN `field_engineer_name` SET TAGS ('dbx_pii_identifier' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`field_progress` ALTER COLUMN `installed_quantity` SET TAGS ('dbx_business_glossary_term' = 'Installed Quantity');
+ALTER TABLE `vibe_construction_v1`.`site`.`field_progress` ALTER COLUMN `is_critical_path` SET TAGS ('dbx_business_glossary_term' = 'Is Critical Path (CPM) Flag');
+ALTER TABLE `vibe_construction_v1`.`site`.`field_progress` ALTER COLUMN `is_milestone` SET TAGS ('dbx_business_glossary_term' = 'Is Milestone Flag');
+ALTER TABLE `vibe_construction_v1`.`site`.`field_progress` ALTER COLUMN `measurement_date` SET TAGS ('dbx_business_glossary_term' = 'Field Measurement Date');
+ALTER TABLE `vibe_construction_v1`.`site`.`field_progress` ALTER COLUMN `measurement_method` SET TAGS ('dbx_business_glossary_term' = 'Field Measurement Method');
+ALTER TABLE `vibe_construction_v1`.`site`.`field_progress` ALTER COLUMN `measurement_method` SET TAGS ('dbx_value_regex' = 'visual_estimate|quantity_survey|milestone_completion|3d_scan_comparison|weighted_steps');
+ALTER TABLE `vibe_construction_v1`.`site`.`field_progress` ALTER COLUMN `measurement_notes` SET TAGS ('dbx_business_glossary_term' = 'Measurement Notes');
+ALTER TABLE `vibe_construction_v1`.`site`.`field_progress` ALTER COLUMN `measurement_number` SET TAGS ('dbx_business_glossary_term' = 'Field Progress Measurement Number');
+ALTER TABLE `vibe_construction_v1`.`site`.`field_progress` ALTER COLUMN `measurement_period_type` SET TAGS ('dbx_business_glossary_term' = 'Measurement Period Type');
+ALTER TABLE `vibe_construction_v1`.`site`.`field_progress` ALTER COLUMN `measurement_period_type` SET TAGS ('dbx_value_regex' = 'daily|weekly|fortnightly|monthly');
+ALTER TABLE `vibe_construction_v1`.`site`.`field_progress` ALTER COLUMN `ncr_reference` SET TAGS ('dbx_business_glossary_term' = 'Non-Conformance Report (NCR) Reference');
+ALTER TABLE `vibe_construction_v1`.`site`.`field_progress` ALTER COLUMN `period_installed_quantity` SET TAGS ('dbx_business_glossary_term' = 'Period Installed Quantity');
+ALTER TABLE `vibe_construction_v1`.`site`.`field_progress` ALTER COLUMN `planned_quantity` SET TAGS ('dbx_business_glossary_term' = 'Planned Quantity');
+ALTER TABLE `vibe_construction_v1`.`site`.`field_progress` ALTER COLUMN `previous_percent_complete` SET TAGS ('dbx_business_glossary_term' = 'Previous Percent Complete');
+ALTER TABLE `vibe_construction_v1`.`site`.`field_progress` ALTER COLUMN `progress_delta` SET TAGS ('dbx_business_glossary_term' = 'Progress Delta (Incremental Percent Complete)');
+ALTER TABLE `vibe_construction_v1`.`site`.`field_progress` ALTER COLUMN `quantity_unit_of_measure` SET TAGS ('dbx_business_glossary_term' = 'Quantity Unit of Measure');
+ALTER TABLE `vibe_construction_v1`.`site`.`field_progress` ALTER COLUMN `quantity_unit_of_measure` SET TAGS ('dbx_pii_address' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`field_progress` ALTER COLUMN `rejection_reason` SET TAGS ('dbx_business_glossary_term' = 'Rejection Reason');
+ALTER TABLE `vibe_construction_v1`.`site`.`field_progress` ALTER COLUMN `reported_percent_complete` SET TAGS ('dbx_business_glossary_term' = 'Reported Percent Complete');
+ALTER TABLE `vibe_construction_v1`.`site`.`field_progress` ALTER COLUMN `revision_number` SET TAGS ('dbx_business_glossary_term' = 'Revision Number');
+ALTER TABLE `vibe_construction_v1`.`site`.`field_progress` ALTER COLUMN `submission_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Submission Timestamp');
+ALTER TABLE `vibe_construction_v1`.`site`.`field_progress` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Updated Timestamp');
+ALTER TABLE `vibe_construction_v1`.`site`.`field_progress` ALTER COLUMN `weather_condition` SET TAGS ('dbx_business_glossary_term' = 'Weather Condition at Measurement');
+ALTER TABLE `vibe_construction_v1`.`site`.`field_progress` ALTER COLUMN `weather_condition` SET TAGS ('dbx_pii_health' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`field_progress` ALTER COLUMN `work_front` SET TAGS ('dbx_business_glossary_term' = 'Work Front / Work Zone');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_mobilization` SET TAGS ('dbx_data_type' = 'master_data');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_mobilization` SET TAGS ('dbx_subdomain' = 'site_management');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_mobilization` ALTER COLUMN `site_mobilization_id` SET TAGS ('dbx_business_glossary_term' = 'Site Mobilization ID');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_mobilization` ALTER COLUMN `account_id` SET TAGS ('dbx_business_glossary_term' = 'Account Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_mobilization` ALTER COLUMN `agreement_id` SET TAGS ('dbx_business_glossary_term' = 'Contract ID');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_mobilization` ALTER COLUMN `asset_id` SET TAGS ('dbx_business_glossary_term' = 'Asset Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_mobilization` ALTER COLUMN `compliance_permit_id` SET TAGS ('dbx_business_glossary_term' = 'Permit Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_mobilization` ALTER COLUMN `construction_project_id` SET TAGS ('dbx_business_glossary_term' = 'Project ID');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_mobilization` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Site Manager ID');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_mobilization` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_mobilization` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_mobilization` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii_flag' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_mobilization` ALTER COLUMN `activity_id` SET TAGS ('dbx_business_glossary_term' = 'Oracle Primavera P6 Activity ID');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_mobilization` ALTER COLUMN `procurement_framework_agreement_id` SET TAGS ('dbx_business_glossary_term' = 'Procurement Framework Agreement Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_mobilization` ALTER COLUMN `site_id` SET TAGS ('dbx_business_glossary_term' = 'Site Id');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_mobilization` ALTER COLUMN `site_id` SET TAGS ('dbx_internal' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_mobilization` ALTER COLUMN `submission_id` SET TAGS ('dbx_business_glossary_term' = 'Bid Submission Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_mobilization` ALTER COLUMN `access_road_established` SET TAGS ('dbx_business_glossary_term' = 'Access Road Established');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_mobilization` ALTER COLUMN `actual_demobilization_date` SET TAGS ('dbx_business_glossary_term' = 'Actual Demobilization Date');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_mobilization` ALTER COLUMN `actual_mobilization_date` SET TAGS ('dbx_business_glossary_term' = 'Actual Mobilization Date');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_mobilization` ALTER COLUMN `building_permit_number` SET TAGS ('dbx_business_glossary_term' = 'Building Permit Number');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_mobilization` ALTER COLUMN `building_permit_number` SET TAGS ('dbx_pii_address' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_mobilization` ALTER COLUMN `cost_actual` SET TAGS ('dbx_business_glossary_term' = 'Mobilization Cost Actual');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_mobilization` ALTER COLUMN `cost_actual` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_mobilization` ALTER COLUMN `cost_budget` SET TAGS ('dbx_business_glossary_term' = 'Mobilization Cost Budget');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_mobilization` ALTER COLUMN `cost_budget` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_mobilization` ALTER COLUMN `country_code` SET TAGS ('dbx_business_glossary_term' = 'Country Code');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_mobilization` ALTER COLUMN `country_code` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_mobilization` ALTER COLUMN `country_code` SET TAGS ('dbx_pii_address' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_mobilization` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_mobilization` ALTER COLUMN `currency_code` SET TAGS ('dbx_business_glossary_term' = 'Currency Code');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_mobilization` ALTER COLUMN `currency_code` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_mobilization` ALTER COLUMN `dlp_end_date` SET TAGS ('dbx_business_glossary_term' = 'Defects Liability Period (DLP) End Date');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_mobilization` ALTER COLUMN `environmental_permit_number` SET TAGS ('dbx_business_glossary_term' = 'Environmental Permit Number');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_mobilization` ALTER COLUMN `environmental_permit_obtained` SET TAGS ('dbx_business_glossary_term' = 'Environmental Permit Obtained');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_mobilization` ALTER COLUMN `hse_plan_approval_date` SET TAGS ('dbx_business_glossary_term' = 'Health Safety and Environment (HSE) Plan Approval Date');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_mobilization` ALTER COLUMN `hse_plan_approved` SET TAGS ('dbx_business_glossary_term' = 'Health Safety and Environment (HSE) Plan Approved');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_mobilization` ALTER COLUMN `laydown_area_established` SET TAGS ('dbx_business_glossary_term' = 'Laydown Area Established');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_mobilization` ALTER COLUMN `leed_certification_target` SET TAGS ('dbx_business_glossary_term' = 'Leadership in Energy and Environmental Design (LEED) Certification Target');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_mobilization` ALTER COLUMN `leed_certification_target` SET TAGS ('dbx_value_regex' = 'certified|silver|gold|platinum|none');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_mobilization` ALTER COLUMN `mobilization_number` SET TAGS ('dbx_business_glossary_term' = 'Mobilization Number');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_mobilization` ALTER COLUMN `mobilization_number` SET TAGS ('dbx_value_regex' = '^MOB-[A-Z0-9]{3,20}$');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_mobilization` ALTER COLUMN `mobilization_status` SET TAGS ('dbx_business_glossary_term' = 'Mobilization Status');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_mobilization` ALTER COLUMN `mobilization_status` SET TAGS ('dbx_value_regex' = 'planned|in_progress|completed|demobilized|cancelled|on_hold');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_mobilization` ALTER COLUMN `mobilization_type` SET TAGS ('dbx_business_glossary_term' = 'Mobilization Type');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_mobilization` ALTER COLUMN `mobilization_type` SET TAGS ('dbx_value_regex' = 'full_site|work_package|temporary_camp|equipment_only|partial');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_mobilization` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Mobilization Notes');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_mobilization` ALTER COLUMN `ntp_date` SET TAGS ('dbx_business_glossary_term' = 'Notice to Proceed (NTP) Date');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_mobilization` ALTER COLUMN `peak_workforce_actual` SET TAGS ('dbx_business_glossary_term' = 'Peak Workforce Actual');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_mobilization` ALTER COLUMN `peak_workforce_planned` SET TAGS ('dbx_business_glossary_term' = 'Peak Workforce Planned');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_mobilization` ALTER COLUMN `planned_demobilization_date` SET TAGS ('dbx_business_glossary_term' = 'Planned Demobilization Date');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_mobilization` ALTER COLUMN `planned_mobilization_date` SET TAGS ('dbx_business_glossary_term' = 'Planned Mobilization Date');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_mobilization` ALTER COLUMN `procore_project_reference` SET TAGS ('dbx_business_glossary_term' = 'Procore Project ID');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_mobilization` ALTER COLUMN `schedule_variance_days` SET TAGS ('dbx_business_glossary_term' = 'Mobilization Schedule Variance (Days)');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_mobilization` ALTER COLUMN `site_address` SET TAGS ('dbx_business_glossary_term' = 'Site Address');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_mobilization` ALTER COLUMN `site_address` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_mobilization` ALTER COLUMN `site_address` SET TAGS ('dbx_pii_address' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_mobilization` ALTER COLUMN `site_area_sqm` SET TAGS ('dbx_business_glossary_term' = 'Site Area (Square Metres)');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_mobilization` ALTER COLUMN `site_closure_signoff_date` SET TAGS ('dbx_business_glossary_term' = 'Site Closure Sign-Off Date');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_mobilization` ALTER COLUMN `site_fencing_complete` SET TAGS ('dbx_business_glossary_term' = 'Site Fencing Complete');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_mobilization` ALTER COLUMN `site_latitude` SET TAGS ('dbx_business_glossary_term' = 'Site Latitude');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_mobilization` ALTER COLUMN `site_latitude` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_mobilization` ALTER COLUMN `site_latitude` SET TAGS ('dbx_pii_address' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_mobilization` ALTER COLUMN `site_longitude` SET TAGS ('dbx_business_glossary_term' = 'Site Longitude');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_mobilization` ALTER COLUMN `site_longitude` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_mobilization` ALTER COLUMN `site_longitude` SET TAGS ('dbx_pii_address' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_mobilization` ALTER COLUMN `site_office_established` SET TAGS ('dbx_business_glossary_term' = 'Site Office Established');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_mobilization` ALTER COLUMN `temporary_utilities_connected` SET TAGS ('dbx_business_glossary_term' = 'Temporary Utilities Connected');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_mobilization` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Updated Timestamp');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_mobilization` ALTER COLUMN `wbs_code` SET TAGS ('dbx_business_glossary_term' = 'Work Breakdown Structure (WBS) Code');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_mobilization` ALTER COLUMN `wbs_code` SET TAGS ('dbx_value_regex' = '^[A-Z0-9.-]{3,30}$');
+ALTER TABLE `vibe_construction_v1`.`site`.`logistics_plan` SET TAGS ('dbx_data_type' = 'master_data');
+ALTER TABLE `vibe_construction_v1`.`site`.`logistics_plan` SET TAGS ('dbx_subdomain' = 'site_management');
+ALTER TABLE `vibe_construction_v1`.`site`.`logistics_plan` ALTER COLUMN `logistics_plan_id` SET TAGS ('dbx_business_glossary_term' = 'Site Logistics Plan ID');
+ALTER TABLE `vibe_construction_v1`.`site`.`logistics_plan` ALTER COLUMN `account_id` SET TAGS ('dbx_business_glossary_term' = 'Account Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`site`.`logistics_plan` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Approved By Employee Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`site`.`logistics_plan` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`logistics_plan` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`logistics_plan` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii_flag' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`logistics_plan` ALTER COLUMN `construction_project_id` SET TAGS ('dbx_business_glossary_term' = 'Project ID');
+ALTER TABLE `vibe_construction_v1`.`site`.`logistics_plan` ALTER COLUMN `aconex_document_reference` SET TAGS ('dbx_business_glossary_term' = 'Aconex Document ID');
+ALTER TABLE `vibe_construction_v1`.`site`.`logistics_plan` ALTER COLUMN `approved_date` SET TAGS ('dbx_business_glossary_term' = 'Plan Approved Date');
+ALTER TABLE `vibe_construction_v1`.`site`.`logistics_plan` ALTER COLUMN `bim_model_ref` SET TAGS ('dbx_business_glossary_term' = 'Building Information Modeling (BIM) Model Reference');
+ALTER TABLE `vibe_construction_v1`.`site`.`logistics_plan` ALTER COLUMN `client_approval_required` SET TAGS ('dbx_business_glossary_term' = 'Client Approval Required Flag');
+ALTER TABLE `vibe_construction_v1`.`site`.`logistics_plan` ALTER COLUMN `client_approved_date` SET TAGS ('dbx_business_glossary_term' = 'Client Approved Date');
+ALTER TABLE `vibe_construction_v1`.`site`.`logistics_plan` ALTER COLUMN `concrete_washout_area_included` SET TAGS ('dbx_business_glossary_term' = 'Concrete Washout Area Included Flag');
+ALTER TABLE `vibe_construction_v1`.`site`.`logistics_plan` ALTER COLUMN `construction_phase` SET TAGS ('dbx_business_glossary_term' = 'Construction Phase');
+ALTER TABLE `vibe_construction_v1`.`site`.`logistics_plan` ALTER COLUMN `crane_lift_zone_count` SET TAGS ('dbx_business_glossary_term' = 'Crane Lift Zone Count');
+ALTER TABLE `vibe_construction_v1`.`site`.`logistics_plan` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
+ALTER TABLE `vibe_construction_v1`.`site`.`logistics_plan` ALTER COLUMN `delivery_time_window_end` SET TAGS ('dbx_business_glossary_term' = 'Delivery Time Window End');
+ALTER TABLE `vibe_construction_v1`.`site`.`logistics_plan` ALTER COLUMN `delivery_time_window_end` SET TAGS ('dbx_value_regex' = '^([01][0-9]|2[0-3]):[0-5][0-9]$');
+ALTER TABLE `vibe_construction_v1`.`site`.`logistics_plan` ALTER COLUMN `delivery_time_window_start` SET TAGS ('dbx_business_glossary_term' = 'Delivery Time Window Start');
+ALTER TABLE `vibe_construction_v1`.`site`.`logistics_plan` ALTER COLUMN `delivery_time_window_start` SET TAGS ('dbx_value_regex' = '^([01][0-9]|2[0-3]):[0-5][0-9]$');
+ALTER TABLE `vibe_construction_v1`.`site`.`logistics_plan` ALTER COLUMN `effective_date` SET TAGS ('dbx_business_glossary_term' = 'Plan Effective Date');
+ALTER TABLE `vibe_construction_v1`.`site`.`logistics_plan` ALTER COLUMN `emergency_egress_route_count` SET TAGS ('dbx_business_glossary_term' = 'Emergency Egress Route Count');
+ALTER TABLE `vibe_construction_v1`.`site`.`logistics_plan` ALTER COLUMN `emergency_egress_route_count` SET TAGS ('dbx_pii_contact' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`logistics_plan` ALTER COLUMN `expiry_date` SET TAGS ('dbx_business_glossary_term' = 'Plan Expiry Date');
+ALTER TABLE `vibe_construction_v1`.`site`.`logistics_plan` ALTER COLUMN `expiry_date` SET TAGS ('dbx_pii_financial' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`logistics_plan` ALTER COLUMN `first_aid_facility_count` SET TAGS ('dbx_business_glossary_term' = 'First Aid Facility Count');
+ALTER TABLE `vibe_construction_v1`.`site`.`logistics_plan` ALTER COLUMN `fuel_storage_included` SET TAGS ('dbx_business_glossary_term' = 'Fuel Storage Included Flag');
+ALTER TABLE `vibe_construction_v1`.`site`.`logistics_plan` ALTER COLUMN `hoarding_perimeter_m` SET TAGS ('dbx_business_glossary_term' = 'Hoarding Perimeter Length (Metres)');
+ALTER TABLE `vibe_construction_v1`.`site`.`logistics_plan` ALTER COLUMN `hse_risk_level` SET TAGS ('dbx_business_glossary_term' = 'Health Safety and Environment (HSE) Risk Level');
+ALTER TABLE `vibe_construction_v1`.`site`.`logistics_plan` ALTER COLUMN `hse_risk_level` SET TAGS ('dbx_value_regex' = 'low|medium|high|critical');
+ALTER TABLE `vibe_construction_v1`.`site`.`logistics_plan` ALTER COLUMN `last_updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Last Updated Timestamp');
+ALTER TABLE `vibe_construction_v1`.`site`.`logistics_plan` ALTER COLUMN `laydown_area_count` SET TAGS ('dbx_business_glossary_term' = 'Laydown Area Count');
+ALTER TABLE `vibe_construction_v1`.`site`.`logistics_plan` ALTER COLUMN `material_staging_zones` SET TAGS ('dbx_business_glossary_term' = 'Material Staging Zones Description');
+ALTER TABLE `vibe_construction_v1`.`site`.`logistics_plan` ALTER COLUMN `max_vehicle_speed_kmh` SET TAGS ('dbx_business_glossary_term' = 'Maximum Vehicle Speed (km/h)');
+ALTER TABLE `vibe_construction_v1`.`site`.`logistics_plan` ALTER COLUMN `peak_workforce_headcount` SET TAGS ('dbx_business_glossary_term' = 'Peak Workforce Headcount');
+ALTER TABLE `vibe_construction_v1`.`site`.`logistics_plan` ALTER COLUMN `plan_number` SET TAGS ('dbx_business_glossary_term' = 'Site Logistics Plan Number');
+ALTER TABLE `vibe_construction_v1`.`site`.`logistics_plan` ALTER COLUMN `plan_number` SET TAGS ('dbx_value_regex' = '^SLP-[A-Z0-9]{3,10}-[0-9]{3,6}$');
+ALTER TABLE `vibe_construction_v1`.`site`.`logistics_plan` ALTER COLUMN `plan_status` SET TAGS ('dbx_business_glossary_term' = 'Site Logistics Plan Status');
+ALTER TABLE `vibe_construction_v1`.`site`.`logistics_plan` ALTER COLUMN `plan_status` SET TAGS ('dbx_value_regex' = 'draft|under_review|approved|superseded|void');
+ALTER TABLE `vibe_construction_v1`.`site`.`logistics_plan` ALTER COLUMN `plan_title` SET TAGS ('dbx_business_glossary_term' = 'Site Logistics Plan Title');
+ALTER TABLE `vibe_construction_v1`.`site`.`logistics_plan` ALTER COLUMN `plan_title` SET TAGS ('dbx_pii_name' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`logistics_plan` ALTER COLUMN `plan_type` SET TAGS ('dbx_business_glossary_term' = 'Site Logistics Plan Type');
+ALTER TABLE `vibe_construction_v1`.`site`.`logistics_plan` ALTER COLUMN `plan_type` SET TAGS ('dbx_value_regex' = 'initial|phase_specific|emergency|temporary_works|revised');
+ALTER TABLE `vibe_construction_v1`.`site`.`logistics_plan` ALTER COLUMN `prepared_by` SET TAGS ('dbx_business_glossary_term' = 'Prepared By');
+ALTER TABLE `vibe_construction_v1`.`site`.`logistics_plan` ALTER COLUMN `prepared_by` SET TAGS ('dbx_pii_identifier' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`logistics_plan` ALTER COLUMN `procore_submittal_reference` SET TAGS ('dbx_business_glossary_term' = 'Procore Submittal ID');
+ALTER TABLE `vibe_construction_v1`.`site`.`logistics_plan` ALTER COLUMN `revision_description` SET TAGS ('dbx_business_glossary_term' = 'Plan Revision Description');
+ALTER TABLE `vibe_construction_v1`.`site`.`logistics_plan` ALTER COLUMN `revision_number` SET TAGS ('dbx_business_glossary_term' = 'Plan Revision Number');
+ALTER TABLE `vibe_construction_v1`.`site`.`logistics_plan` ALTER COLUMN `revision_number` SET TAGS ('dbx_value_regex' = '^[A-Z0-9]{1,5}$');
+ALTER TABLE `vibe_construction_v1`.`site`.`logistics_plan` ALTER COLUMN `site_area_sqm` SET TAGS ('dbx_business_glossary_term' = 'Site Area (Square Metres)');
+ALTER TABLE `vibe_construction_v1`.`site`.`logistics_plan` ALTER COLUMN `site_gate_count` SET TAGS ('dbx_business_glossary_term' = 'Site Gate Count');
+ALTER TABLE `vibe_construction_v1`.`site`.`logistics_plan` ALTER COLUMN `site_layout_drawing_ref` SET TAGS ('dbx_business_glossary_term' = 'Site Layout Drawing Reference');
+ALTER TABLE `vibe_construction_v1`.`site`.`logistics_plan` ALTER COLUMN `swms_reference` SET TAGS ('dbx_business_glossary_term' = 'Safe Work Method Statement (SWMS) Reference');
+ALTER TABLE `vibe_construction_v1`.`site`.`logistics_plan` ALTER COLUMN `temp_access_road_count` SET TAGS ('dbx_business_glossary_term' = 'Temporary Access Road Count');
+ALTER TABLE `vibe_construction_v1`.`site`.`logistics_plan` ALTER COLUMN `temporary_works_included` SET TAGS ('dbx_business_glossary_term' = 'Temporary Works Included Flag');
+ALTER TABLE `vibe_construction_v1`.`site`.`logistics_plan` ALTER COLUMN `temporary_works_ref` SET TAGS ('dbx_business_glossary_term' = 'Temporary Works Reference');
+ALTER TABLE `vibe_construction_v1`.`site`.`logistics_plan` ALTER COLUMN `traffic_management_scheme` SET TAGS ('dbx_business_glossary_term' = 'Traffic Management Scheme');
+ALTER TABLE `vibe_construction_v1`.`site`.`logistics_plan` ALTER COLUMN `traffic_management_scheme` SET TAGS ('dbx_value_regex' = 'one_way|two_way|segregated|controlled_crossing|mixed');
+ALTER TABLE `vibe_construction_v1`.`site`.`logistics_plan` ALTER COLUMN `waste_management_zone_count` SET TAGS ('dbx_business_glossary_term' = 'Waste Management Zone Count');
+ALTER TABLE `vibe_construction_v1`.`site`.`logistics_plan` ALTER COLUMN `welfare_facility_count` SET TAGS ('dbx_business_glossary_term' = 'Welfare Facility Count');
+ALTER TABLE `vibe_construction_v1`.`site`.`equipment_deployment` SET TAGS ('dbx_data_type' = 'transactional_data');
+ALTER TABLE `vibe_construction_v1`.`site`.`equipment_deployment` SET TAGS ('dbx_subdomain' = 'site_management');
+ALTER TABLE `vibe_construction_v1`.`site`.`equipment_deployment` ALTER COLUMN `equipment_deployment_id` SET TAGS ('dbx_business_glossary_term' = 'Equipment Deployment ID');
+ALTER TABLE `vibe_construction_v1`.`site`.`equipment_deployment` ALTER COLUMN `activity_id` SET TAGS ('dbx_business_glossary_term' = 'Activity ID');
+ALTER TABLE `vibe_construction_v1`.`site`.`equipment_deployment` ALTER COLUMN `asset_id` SET TAGS ('dbx_business_glossary_term' = 'Equipment ID');
+ALTER TABLE `vibe_construction_v1`.`site`.`equipment_deployment` ALTER COLUMN `construction_project_id` SET TAGS ('dbx_business_glossary_term' = 'Project ID');
+ALTER TABLE `vibe_construction_v1`.`site`.`equipment_deployment` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Operator ID');
+ALTER TABLE `vibe_construction_v1`.`site`.`equipment_deployment` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`equipment_deployment` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`equipment_deployment` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii_flag' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`equipment_deployment` ALTER COLUMN `cost_code_id` SET TAGS ('dbx_business_glossary_term' = 'Finance Cost Code Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`site`.`equipment_deployment` ALTER COLUMN `hours_id` SET TAGS ('dbx_business_glossary_term' = 'HCSS HeavyJob Equipment Hours ID');
+ALTER TABLE `vibe_construction_v1`.`site`.`equipment_deployment` ALTER COLUMN `daily_log_id` SET TAGS ('dbx_business_glossary_term' = 'Procore Daily Log ID');
+ALTER TABLE `vibe_construction_v1`.`site`.`equipment_deployment` ALTER COLUMN `purchase_order_id` SET TAGS ('dbx_business_glossary_term' = 'Purchase Order Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`site`.`equipment_deployment` ALTER COLUMN `work_front_id` SET TAGS ('dbx_business_glossary_term' = 'Work Front ID');
+ALTER TABLE `vibe_construction_v1`.`site`.`equipment_deployment` ALTER COLUMN `breakdown_description` SET TAGS ('dbx_business_glossary_term' = 'Breakdown Description');
+ALTER TABLE `vibe_construction_v1`.`site`.`equipment_deployment` ALTER COLUMN `breakdown_flag` SET TAGS ('dbx_business_glossary_term' = 'Breakdown Flag');
+ALTER TABLE `vibe_construction_v1`.`site`.`equipment_deployment` ALTER COLUMN `breakdown_hours` SET TAGS ('dbx_business_glossary_term' = 'Breakdown Hours');
+ALTER TABLE `vibe_construction_v1`.`site`.`equipment_deployment` ALTER COLUMN `currency_code` SET TAGS ('dbx_business_glossary_term' = 'Currency Code');
+ALTER TABLE `vibe_construction_v1`.`site`.`equipment_deployment` ALTER COLUMN `currency_code` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
+ALTER TABLE `vibe_construction_v1`.`site`.`equipment_deployment` ALTER COLUMN `deployment_date` SET TAGS ('dbx_business_glossary_term' = 'Deployment Date');
+ALTER TABLE `vibe_construction_v1`.`site`.`equipment_deployment` ALTER COLUMN `deployment_reference_number` SET TAGS ('dbx_business_glossary_term' = 'Deployment Reference Number');
+ALTER TABLE `vibe_construction_v1`.`site`.`equipment_deployment` ALTER COLUMN `deployment_status` SET TAGS ('dbx_business_glossary_term' = 'Deployment Status');
+ALTER TABLE `vibe_construction_v1`.`site`.`equipment_deployment` ALTER COLUMN `deployment_status` SET TAGS ('dbx_value_regex' = 'active|idle|breakdown|demobilized|standby|transferred');
+ALTER TABLE `vibe_construction_v1`.`site`.`equipment_deployment` ALTER COLUMN `equipment_type` SET TAGS ('dbx_business_glossary_term' = 'Equipment Type');
+ALTER TABLE `vibe_construction_v1`.`site`.`equipment_deployment` ALTER COLUMN `fuel_consumption_liters` SET TAGS ('dbx_business_glossary_term' = 'Fuel Consumption (Liters)');
+ALTER TABLE `vibe_construction_v1`.`site`.`equipment_deployment` ALTER COLUMN `fuel_type` SET TAGS ('dbx_business_glossary_term' = 'Fuel Type');
+ALTER TABLE `vibe_construction_v1`.`site`.`equipment_deployment` ALTER COLUMN `fuel_type` SET TAGS ('dbx_value_regex' = 'diesel|petrol|lpg|electric|hybrid');
+ALTER TABLE `vibe_construction_v1`.`site`.`equipment_deployment` ALTER COLUMN `hourly_rate` SET TAGS ('dbx_business_glossary_term' = 'Hourly Rate');
+ALTER TABLE `vibe_construction_v1`.`site`.`equipment_deployment` ALTER COLUMN `hourly_rate` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`equipment_deployment` ALTER COLUMN `hse_permit_number` SET TAGS ('dbx_business_glossary_term' = 'Health Safety and Environment (HSE) Permit Number');
+ALTER TABLE `vibe_construction_v1`.`site`.`equipment_deployment` ALTER COLUMN `idle_hours` SET TAGS ('dbx_business_glossary_term' = 'Idle Hours');
+ALTER TABLE `vibe_construction_v1`.`site`.`equipment_deployment` ALTER COLUMN `maintenance_order_number` SET TAGS ('dbx_business_glossary_term' = 'Maintenance Order Number');
+ALTER TABLE `vibe_construction_v1`.`site`.`equipment_deployment` ALTER COLUMN `operating_hours` SET TAGS ('dbx_business_glossary_term' = 'Operating Hours');
+ALTER TABLE `vibe_construction_v1`.`site`.`equipment_deployment` ALTER COLUMN `operator_license_number` SET TAGS ('dbx_business_glossary_term' = 'Operator License Number');
+ALTER TABLE `vibe_construction_v1`.`site`.`equipment_deployment` ALTER COLUMN `operator_license_number` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`equipment_deployment` ALTER COLUMN `operator_license_number` SET TAGS ('dbx_pii_identifier' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`equipment_deployment` ALTER COLUMN `operator_name` SET TAGS ('dbx_business_glossary_term' = 'Operator Name');
+ALTER TABLE `vibe_construction_v1`.`site`.`equipment_deployment` ALTER COLUMN `operator_name` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`equipment_deployment` ALTER COLUMN `operator_name` SET TAGS ('dbx_pii_identifier' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`equipment_deployment` ALTER COLUMN `ownership_type` SET TAGS ('dbx_business_glossary_term' = 'Ownership Type');
+ALTER TABLE `vibe_construction_v1`.`site`.`equipment_deployment` ALTER COLUMN `ownership_type` SET TAGS ('dbx_value_regex' = 'owned|rented|leased|subcontractor');
+ALTER TABLE `vibe_construction_v1`.`site`.`equipment_deployment` ALTER COLUMN `planned_production_quantity` SET TAGS ('dbx_business_glossary_term' = 'Planned Production Quantity');
+ALTER TABLE `vibe_construction_v1`.`site`.`equipment_deployment` ALTER COLUMN `pre_start_check_flag` SET TAGS ('dbx_business_glossary_term' = 'Pre-Start Check Flag');
+ALTER TABLE `vibe_construction_v1`.`site`.`equipment_deployment` ALTER COLUMN `production_quantity` SET TAGS ('dbx_business_glossary_term' = 'Production Quantity');
+ALTER TABLE `vibe_construction_v1`.`site`.`equipment_deployment` ALTER COLUMN `production_unit_of_measure` SET TAGS ('dbx_business_glossary_term' = 'Production Unit of Measure');
+ALTER TABLE `vibe_construction_v1`.`site`.`equipment_deployment` ALTER COLUMN `production_unit_of_measure` SET TAGS ('dbx_pii_address' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`equipment_deployment` ALTER COLUMN `record_created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
+ALTER TABLE `vibe_construction_v1`.`site`.`equipment_deployment` ALTER COLUMN `record_updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Updated Timestamp');
+ALTER TABLE `vibe_construction_v1`.`site`.`equipment_deployment` ALTER COLUMN `release_date` SET TAGS ('dbx_business_glossary_term' = 'Release Date');
+ALTER TABLE `vibe_construction_v1`.`site`.`equipment_deployment` ALTER COLUMN `remarks` SET TAGS ('dbx_business_glossary_term' = 'Deployment Remarks');
+ALTER TABLE `vibe_construction_v1`.`site`.`equipment_deployment` ALTER COLUMN `rental_order_number` SET TAGS ('dbx_business_glossary_term' = 'Rental Order Number');
+ALTER TABLE `vibe_construction_v1`.`site`.`equipment_deployment` ALTER COLUMN `shift_date` SET TAGS ('dbx_business_glossary_term' = 'Shift Date');
+ALTER TABLE `vibe_construction_v1`.`site`.`equipment_deployment` ALTER COLUMN `shift_type` SET TAGS ('dbx_business_glossary_term' = 'Shift Type');
+ALTER TABLE `vibe_construction_v1`.`site`.`equipment_deployment` ALTER COLUMN `shift_type` SET TAGS ('dbx_value_regex' = 'day|night|swing|double');
+ALTER TABLE `vibe_construction_v1`.`site`.`equipment_deployment` ALTER COLUMN `site_location_description` SET TAGS ('dbx_business_glossary_term' = 'Site Location Description');
+ALTER TABLE `vibe_construction_v1`.`site`.`equipment_deployment` ALTER COLUMN `standby_hours` SET TAGS ('dbx_business_glossary_term' = 'Standby Hours');
+ALTER TABLE `vibe_construction_v1`.`site`.`equipment_deployment` ALTER COLUMN `supplier_name` SET TAGS ('dbx_business_glossary_term' = 'Supplier Name');
+ALTER TABLE `vibe_construction_v1`.`site`.`equipment_deployment` ALTER COLUMN `supplier_name` SET TAGS ('dbx_pii_name' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`equipment_deployment` ALTER COLUMN `weather_condition` SET TAGS ('dbx_business_glossary_term' = 'Weather Condition');
+ALTER TABLE `vibe_construction_v1`.`site`.`equipment_deployment` ALTER COLUMN `weather_condition` SET TAGS ('dbx_pii_health' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`material_delivery` SET TAGS ('dbx_data_type' = 'transactional_data');
+ALTER TABLE `vibe_construction_v1`.`site`.`material_delivery` SET TAGS ('dbx_subdomain' = 'site_management');
+ALTER TABLE `vibe_construction_v1`.`site`.`material_delivery` ALTER COLUMN `material_delivery_id` SET TAGS ('dbx_business_glossary_term' = 'Material Delivery ID');
+ALTER TABLE `vibe_construction_v1`.`site`.`material_delivery` ALTER COLUMN `activity_id` SET TAGS ('dbx_business_glossary_term' = 'Activity Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`site`.`material_delivery` ALTER COLUMN `asset_id` SET TAGS ('dbx_business_glossary_term' = 'Asset Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`site`.`material_delivery` ALTER COLUMN `compliance_permit_id` SET TAGS ('dbx_business_glossary_term' = 'Permit Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`site`.`material_delivery` ALTER COLUMN `construction_project_id` SET TAGS ('dbx_business_glossary_term' = 'Project ID');
+ALTER TABLE `vibe_construction_v1`.`site`.`material_delivery` ALTER COLUMN `design_submittal_id` SET TAGS ('dbx_business_glossary_term' = 'Design Submittal Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`site`.`material_delivery` ALTER COLUMN `cost_code_id` SET TAGS ('dbx_business_glossary_term' = 'Finance Cost Code Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`site`.`material_delivery` ALTER COLUMN `firm_profile_id` SET TAGS ('dbx_business_glossary_term' = 'Sub Firm Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`site`.`material_delivery` ALTER COLUMN `vendor_id` SET TAGS ('dbx_business_glossary_term' = 'Supplier ID');
+ALTER TABLE `vibe_construction_v1`.`site`.`material_delivery` ALTER COLUMN `purchase_order_id` SET TAGS ('dbx_business_glossary_term' = 'Purchase Order (PO) ID');
+ALTER TABLE `vibe_construction_v1`.`site`.`material_delivery` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Receiver Employee ID');
+ALTER TABLE `vibe_construction_v1`.`site`.`material_delivery` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`material_delivery` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`material_delivery` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii_flag' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`material_delivery` ALTER COLUMN `site_construction_project_id` SET TAGS ('dbx_business_glossary_term' = 'Site ID');
+ALTER TABLE `vibe_construction_v1`.`site`.`material_delivery` ALTER COLUMN `batch_number` SET TAGS ('dbx_business_glossary_term' = 'Material Batch Number');
+ALTER TABLE `vibe_construction_v1`.`site`.`material_delivery` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
+ALTER TABLE `vibe_construction_v1`.`site`.`material_delivery` ALTER COLUMN `currency_code` SET TAGS ('dbx_business_glossary_term' = 'Currency Code');
+ALTER TABLE `vibe_construction_v1`.`site`.`material_delivery` ALTER COLUMN `currency_code` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
+ALTER TABLE `vibe_construction_v1`.`site`.`material_delivery` ALTER COLUMN `delivery_date` SET TAGS ('dbx_business_glossary_term' = 'Delivery Date');
+ALTER TABLE `vibe_construction_v1`.`site`.`material_delivery` ALTER COLUMN `delivery_status` SET TAGS ('dbx_business_glossary_term' = 'Delivery Receipt Status');
+ALTER TABLE `vibe_construction_v1`.`site`.`material_delivery` ALTER COLUMN `delivery_status` SET TAGS ('dbx_value_regex' = 'accepted|rejected|partial|pending_inspection|on_hold');
+ALTER TABLE `vibe_construction_v1`.`site`.`material_delivery` ALTER COLUMN `delivery_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Delivery Arrival Timestamp');
+ALTER TABLE `vibe_construction_v1`.`site`.`material_delivery` ALTER COLUMN `delivery_value` SET TAGS ('dbx_business_glossary_term' = 'Delivery Value');
+ALTER TABLE `vibe_construction_v1`.`site`.`material_delivery` ALTER COLUMN `delivery_value` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`material_delivery` ALTER COLUMN `discrepancy_notes` SET TAGS ('dbx_business_glossary_term' = 'Delivery Discrepancy Notes');
+ALTER TABLE `vibe_construction_v1`.`site`.`material_delivery` ALTER COLUMN `docket_number` SET TAGS ('dbx_business_glossary_term' = 'Delivery Docket Number');
+ALTER TABLE `vibe_construction_v1`.`site`.`material_delivery` ALTER COLUMN `driver_name` SET TAGS ('dbx_business_glossary_term' = 'Delivery Driver Name');
+ALTER TABLE `vibe_construction_v1`.`site`.`material_delivery` ALTER COLUMN `driver_name` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`material_delivery` ALTER COLUMN `driver_name` SET TAGS ('dbx_pii_name' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`material_delivery` ALTER COLUMN `expected_delivery_date` SET TAGS ('dbx_business_glossary_term' = 'Expected Delivery Date');
+ALTER TABLE `vibe_construction_v1`.`site`.`material_delivery` ALTER COLUMN `goods_receipt_number` SET TAGS ('dbx_business_glossary_term' = 'Goods Receipt (GR) Number');
+ALTER TABLE `vibe_construction_v1`.`site`.`material_delivery` ALTER COLUMN `hazardous_material` SET TAGS ('dbx_business_glossary_term' = 'Hazardous Material Flag');
+ALTER TABLE `vibe_construction_v1`.`site`.`material_delivery` ALTER COLUMN `itp_reference` SET TAGS ('dbx_business_glossary_term' = 'Inspection and Test Plan (ITP) Reference');
+ALTER TABLE `vibe_construction_v1`.`site`.`material_delivery` ALTER COLUMN `laydown_zone` SET TAGS ('dbx_business_glossary_term' = 'Laydown Zone');
+ALTER TABLE `vibe_construction_v1`.`site`.`material_delivery` ALTER COLUMN `material_category` SET TAGS ('dbx_business_glossary_term' = 'Material Category');
+ALTER TABLE `vibe_construction_v1`.`site`.`material_delivery` ALTER COLUMN `material_code` SET TAGS ('dbx_business_glossary_term' = 'Material Code');
+ALTER TABLE `vibe_construction_v1`.`site`.`material_delivery` ALTER COLUMN `material_description` SET TAGS ('dbx_business_glossary_term' = 'Material Description');
+ALTER TABLE `vibe_construction_v1`.`site`.`material_delivery` ALTER COLUMN `msds_verified` SET TAGS ('dbx_business_glossary_term' = 'Material Safety Data Sheet (MSDS) Verified Flag');
+ALTER TABLE `vibe_construction_v1`.`site`.`material_delivery` ALTER COLUMN `ncr_reference` SET TAGS ('dbx_business_glossary_term' = 'Non-Conformance Report (NCR) Reference');
+ALTER TABLE `vibe_construction_v1`.`site`.`material_delivery` ALTER COLUMN `po_line_number` SET TAGS ('dbx_business_glossary_term' = 'Purchase Order (PO) Line Number');
+ALTER TABLE `vibe_construction_v1`.`site`.`material_delivery` ALTER COLUMN `procore_log_reference` SET TAGS ('dbx_business_glossary_term' = 'Procore Daily Log Reference ID');
+ALTER TABLE `vibe_construction_v1`.`site`.`material_delivery` ALTER COLUMN `quantity_accepted` SET TAGS ('dbx_business_glossary_term' = 'Quantity Accepted');
+ALTER TABLE `vibe_construction_v1`.`site`.`material_delivery` ALTER COLUMN `quantity_delivered` SET TAGS ('dbx_business_glossary_term' = 'Quantity Delivered');
+ALTER TABLE `vibe_construction_v1`.`site`.`material_delivery` ALTER COLUMN `quantity_ordered` SET TAGS ('dbx_business_glossary_term' = 'Quantity Ordered');
+ALTER TABLE `vibe_construction_v1`.`site`.`material_delivery` ALTER COLUMN `quantity_rejected` SET TAGS ('dbx_business_glossary_term' = 'Quantity Rejected');
+ALTER TABLE `vibe_construction_v1`.`site`.`material_delivery` ALTER COLUMN `receipt_condition` SET TAGS ('dbx_business_glossary_term' = 'Material Receipt Condition');
+ALTER TABLE `vibe_construction_v1`.`site`.`material_delivery` ALTER COLUMN `receipt_condition` SET TAGS ('dbx_value_regex' = 'good|damaged|wet|contaminated|incorrect_spec|short_delivered');
+ALTER TABLE `vibe_construction_v1`.`site`.`material_delivery` ALTER COLUMN `receipt_condition` SET TAGS ('dbx_pii_health' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`material_delivery` ALTER COLUMN `receiving_inspector` SET TAGS ('dbx_business_glossary_term' = 'Receiving Inspector Name');
+ALTER TABLE `vibe_construction_v1`.`site`.`material_delivery` ALTER COLUMN `receiving_inspector` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`material_delivery` ALTER COLUMN `receiving_inspector` SET TAGS ('dbx_pii_identifier' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`material_delivery` ALTER COLUMN `temperature_sensitive` SET TAGS ('dbx_business_glossary_term' = 'Temperature-Sensitive Storage Flag');
+ALTER TABLE `vibe_construction_v1`.`site`.`material_delivery` ALTER COLUMN `test_certificate_number` SET TAGS ('dbx_business_glossary_term' = 'Material Test Certificate Number');
+ALTER TABLE `vibe_construction_v1`.`site`.`material_delivery` ALTER COLUMN `unit_of_measure` SET TAGS ('dbx_business_glossary_term' = 'Unit of Measure (UOM)');
+ALTER TABLE `vibe_construction_v1`.`site`.`material_delivery` ALTER COLUMN `unit_of_measure` SET TAGS ('dbx_pii_address' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`material_delivery` ALTER COLUMN `unit_rate` SET TAGS ('dbx_business_glossary_term' = 'Material Unit Rate');
+ALTER TABLE `vibe_construction_v1`.`site`.`material_delivery` ALTER COLUMN `unit_rate` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`material_delivery` ALTER COLUMN `unit_rate` SET TAGS ('dbx_pii_address' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`material_delivery` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Last Updated Timestamp');
+ALTER TABLE `vibe_construction_v1`.`site`.`material_delivery` ALTER COLUMN `vehicle_registration` SET TAGS ('dbx_business_glossary_term' = 'Delivery Vehicle Registration Number');
+ALTER TABLE `vibe_construction_v1`.`site`.`material_delivery` ALTER COLUMN `wbs_code` SET TAGS ('dbx_business_glossary_term' = 'Work Breakdown Structure (WBS) Code');
+ALTER TABLE `vibe_construction_v1`.`site`.`instruction` SET TAGS ('dbx_data_type' = 'transactional_data');
+ALTER TABLE `vibe_construction_v1`.`site`.`instruction` SET TAGS ('dbx_subdomain' = 'site_management');
+ALTER TABLE `vibe_construction_v1`.`site`.`instruction` ALTER COLUMN `instruction_id` SET TAGS ('dbx_business_glossary_term' = 'Site Instruction ID');
+ALTER TABLE `vibe_construction_v1`.`site`.`instruction` ALTER COLUMN `activity_id` SET TAGS ('dbx_business_glossary_term' = 'Activity Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`site`.`instruction` ALTER COLUMN `agreement_id` SET TAGS ('dbx_business_glossary_term' = 'Contract ID');
+ALTER TABLE `vibe_construction_v1`.`site`.`instruction` ALTER COLUMN `change_notice_id` SET TAGS ('dbx_business_glossary_term' = 'Change Notice Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`site`.`instruction` ALTER COLUMN `compliance_permit_id` SET TAGS ('dbx_business_glossary_term' = 'Permit Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`site`.`instruction` ALTER COLUMN `construction_project_id` SET TAGS ('dbx_business_glossary_term' = 'Project ID');
+ALTER TABLE `vibe_construction_v1`.`site`.`instruction` ALTER COLUMN `firm_profile_id` SET TAGS ('dbx_business_glossary_term' = 'Sub Firm Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`site`.`instruction` ALTER COLUMN `craft_worker_id` SET TAGS ('dbx_business_glossary_term' = 'Issuing Authority Craft Worker Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`site`.`instruction` ALTER COLUMN `craft_worker_id` SET TAGS ('dbx_pii_identifier' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`instruction` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Issuing Authority Employee Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`site`.`instruction` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`instruction` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`instruction` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii_flag' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`instruction` ALTER COLUMN `work_front_id` SET TAGS ('dbx_business_glossary_term' = 'Work Front ID');
+ALTER TABLE `vibe_construction_v1`.`site`.`instruction` ALTER COLUMN `aconex_mail_reference` SET TAGS ('dbx_business_glossary_term' = 'Aconex Mail Register Reference');
+ALTER TABLE `vibe_construction_v1`.`site`.`instruction` ALTER COLUMN `aconex_mail_reference` SET TAGS ('dbx_pii_email' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`instruction` ALTER COLUMN `affected_drawing_reference` SET TAGS ('dbx_business_glossary_term' = 'Affected Drawing Reference');
+ALTER TABLE `vibe_construction_v1`.`site`.`instruction` ALTER COLUMN `affected_wbs_code` SET TAGS ('dbx_business_glossary_term' = 'Affected Work Breakdown Structure (WBS) Code');
+ALTER TABLE `vibe_construction_v1`.`site`.`instruction` ALTER COLUMN `contractor_acknowledgment_date` SET TAGS ('dbx_business_glossary_term' = 'Contractor Acknowledgment Date');
+ALTER TABLE `vibe_construction_v1`.`site`.`instruction` ALTER COLUMN `contractor_acknowledgment_date` SET TAGS ('dbx_pii_flag' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`instruction` ALTER COLUMN `contractor_dispute_flag` SET TAGS ('dbx_business_glossary_term' = 'Contractor Dispute Flag');
+ALTER TABLE `vibe_construction_v1`.`site`.`instruction` ALTER COLUMN `contractor_dispute_flag` SET TAGS ('dbx_pii_flag' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`instruction` ALTER COLUMN `contractor_response_date` SET TAGS ('dbx_business_glossary_term' = 'Contractor Response Date');
+ALTER TABLE `vibe_construction_v1`.`site`.`instruction` ALTER COLUMN `contractor_response_date` SET TAGS ('dbx_pii_flag' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`instruction` ALTER COLUMN `contractor_response_due_date` SET TAGS ('dbx_business_glossary_term' = 'Contractor Response Due Date');
+ALTER TABLE `vibe_construction_v1`.`site`.`instruction` ALTER COLUMN `contractor_response_due_date` SET TAGS ('dbx_pii_flag' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`instruction` ALTER COLUMN `cost_impact_flag` SET TAGS ('dbx_business_glossary_term' = 'Cost Impact Flag');
+ALTER TABLE `vibe_construction_v1`.`site`.`instruction` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
+ALTER TABLE `vibe_construction_v1`.`site`.`instruction` ALTER COLUMN `currency_code` SET TAGS ('dbx_business_glossary_term' = 'Currency Code');
+ALTER TABLE `vibe_construction_v1`.`site`.`instruction` ALTER COLUMN `currency_code` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
+ALTER TABLE `vibe_construction_v1`.`site`.`instruction` ALTER COLUMN `instruction_description` SET TAGS ('dbx_business_glossary_term' = 'Site Instruction Description');
+ALTER TABLE `vibe_construction_v1`.`site`.`instruction` ALTER COLUMN `dispute_reason` SET TAGS ('dbx_business_glossary_term' = 'Dispute Reason');
+ALTER TABLE `vibe_construction_v1`.`site`.`instruction` ALTER COLUMN `document_revision` SET TAGS ('dbx_business_glossary_term' = 'Document Revision');
+ALTER TABLE `vibe_construction_v1`.`site`.`instruction` ALTER COLUMN `document_revision` SET TAGS ('dbx_value_regex' = '^[A-Z0-9]{1,5}$');
+ALTER TABLE `vibe_construction_v1`.`site`.`instruction` ALTER COLUMN `estimated_cost_impact_amount` SET TAGS ('dbx_business_glossary_term' = 'Estimated Cost Impact Amount');
+ALTER TABLE `vibe_construction_v1`.`site`.`instruction` ALTER COLUMN `estimated_cost_impact_amount` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`instruction` ALTER COLUMN `estimated_time_impact_days` SET TAGS ('dbx_business_glossary_term' = 'Estimated Time Impact (Days)');
+ALTER TABLE `vibe_construction_v1`.`site`.`instruction` ALTER COLUMN `hse_implication_flag` SET TAGS ('dbx_business_glossary_term' = 'Health Safety and Environment (HSE) Implication Flag');
+ALTER TABLE `vibe_construction_v1`.`site`.`instruction` ALTER COLUMN `implementation_completion_date` SET TAGS ('dbx_business_glossary_term' = 'Implementation Completion Date');
+ALTER TABLE `vibe_construction_v1`.`site`.`instruction` ALTER COLUMN `implementation_start_date` SET TAGS ('dbx_business_glossary_term' = 'Implementation Start Date');
+ALTER TABLE `vibe_construction_v1`.`site`.`instruction` ALTER COLUMN `instruction_number` SET TAGS ('dbx_business_glossary_term' = 'Site Instruction Number');
+ALTER TABLE `vibe_construction_v1`.`site`.`instruction` ALTER COLUMN `instruction_number` SET TAGS ('dbx_value_regex' = '^SI-[A-Z0-9]{2,10}-[0-9]{4,6}$');
+ALTER TABLE `vibe_construction_v1`.`site`.`instruction` ALTER COLUMN `instruction_status` SET TAGS ('dbx_business_glossary_term' = 'Site Instruction Status');
+ALTER TABLE `vibe_construction_v1`.`site`.`instruction` ALTER COLUMN `instruction_type` SET TAGS ('dbx_business_glossary_term' = 'Site Instruction Type');
+ALTER TABLE `vibe_construction_v1`.`site`.`instruction` ALTER COLUMN `issue_date` SET TAGS ('dbx_business_glossary_term' = 'Issue Date');
+ALTER TABLE `vibe_construction_v1`.`site`.`instruction` ALTER COLUMN `issued_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Issued Timestamp');
+ALTER TABLE `vibe_construction_v1`.`site`.`instruction` ALTER COLUMN `issuing_authority_role` SET TAGS ('dbx_business_glossary_term' = 'Issuing Authority Role');
+ALTER TABLE `vibe_construction_v1`.`site`.`instruction` ALTER COLUMN `issuing_authority_role` SET TAGS ('dbx_value_regex' = 'engineer|client_representative|resident_engineer|project_manager|site_supervisor|clerk_of_works');
+ALTER TABLE `vibe_construction_v1`.`site`.`instruction` ALTER COLUMN `issuing_organisation` SET TAGS ('dbx_business_glossary_term' = 'Issuing Organisation');
+ALTER TABLE `vibe_construction_v1`.`site`.`instruction` ALTER COLUMN `last_updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Last Updated Timestamp');
+ALTER TABLE `vibe_construction_v1`.`site`.`instruction` ALTER COLUMN `linked_change_order_number` SET TAGS ('dbx_business_glossary_term' = 'Linked Change Order (CO) Number');
+ALTER TABLE `vibe_construction_v1`.`site`.`instruction` ALTER COLUMN `linked_rfi_number` SET TAGS ('dbx_business_glossary_term' = 'Linked Request for Information (RFI) Number');
+ALTER TABLE `vibe_construction_v1`.`site`.`instruction` ALTER COLUMN `ncr_reference` SET TAGS ('dbx_business_glossary_term' = 'Non-Conformance Report (NCR) Reference');
+ALTER TABLE `vibe_construction_v1`.`site`.`instruction` ALTER COLUMN `physical_location_description` SET TAGS ('dbx_business_glossary_term' = 'Physical Location Description');
+ALTER TABLE `vibe_construction_v1`.`site`.`instruction` ALTER COLUMN `procore_instruction_reference` SET TAGS ('dbx_business_glossary_term' = 'Procore Site Instruction ID');
+ALTER TABLE `vibe_construction_v1`.`site`.`instruction` ALTER COLUMN `quality_hold_required` SET TAGS ('dbx_business_glossary_term' = 'Quality Hold Required Flag');
+ALTER TABLE `vibe_construction_v1`.`site`.`instruction` ALTER COLUMN `specification_clause_reference` SET TAGS ('dbx_business_glossary_term' = 'Specification Clause Reference');
+ALTER TABLE `vibe_construction_v1`.`site`.`instruction` ALTER COLUMN `superseded_by_instruction_number` SET TAGS ('dbx_business_glossary_term' = 'Superseded By Instruction Number');
+ALTER TABLE `vibe_construction_v1`.`site`.`instruction` ALTER COLUMN `superseded_by_instruction_number` SET TAGS ('dbx_pii_identifier' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`instruction` ALTER COLUMN `time_impact_flag` SET TAGS ('dbx_business_glossary_term' = 'Time Impact Flag');
+ALTER TABLE `vibe_construction_v1`.`site`.`instruction` ALTER COLUMN `title` SET TAGS ('dbx_business_glossary_term' = 'Site Instruction Title');
+ALTER TABLE `vibe_construction_v1`.`site`.`instruction` ALTER COLUMN `title` SET TAGS ('dbx_pii_name' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`instruction` ALTER COLUMN `urgency_classification` SET TAGS ('dbx_business_glossary_term' = 'Urgency Classification');
+ALTER TABLE `vibe_construction_v1`.`site`.`instruction` ALTER COLUMN `urgency_classification` SET TAGS ('dbx_value_regex' = 'routine|urgent|emergency');
+ALTER TABLE `vibe_construction_v1`.`site`.`lift_plan` SET TAGS ('dbx_data_type' = 'master_data');
+ALTER TABLE `vibe_construction_v1`.`site`.`lift_plan` SET TAGS ('dbx_subdomain' = 'site_management');
+ALTER TABLE `vibe_construction_v1`.`site`.`lift_plan` ALTER COLUMN `lift_plan_id` SET TAGS ('dbx_business_glossary_term' = 'Lift Plan ID');
+ALTER TABLE `vibe_construction_v1`.`site`.`lift_plan` ALTER COLUMN `activity_id` SET TAGS ('dbx_business_glossary_term' = 'Activity Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`site`.`lift_plan` ALTER COLUMN `asset_id` SET TAGS ('dbx_business_glossary_term' = 'Crane Equipment ID');
+ALTER TABLE `vibe_construction_v1`.`site`.`lift_plan` ALTER COLUMN `compliance_permit_id` SET TAGS ('dbx_business_glossary_term' = 'Permit Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`site`.`lift_plan` ALTER COLUMN `construction_project_id` SET TAGS ('dbx_business_glossary_term' = 'Project ID');
+ALTER TABLE `vibe_construction_v1`.`site`.`lift_plan` ALTER COLUMN `craft_worker_id` SET TAGS ('dbx_business_glossary_term' = 'Crane Operator Craft Worker Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`site`.`lift_plan` ALTER COLUMN `craft_worker_id` SET TAGS ('dbx_pii_identifier' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`lift_plan` ALTER COLUMN `firm_profile_id` SET TAGS ('dbx_business_glossary_term' = 'Sub Firm Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`site`.`lift_plan` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Appointed Person Worker ID');
+ALTER TABLE `vibe_construction_v1`.`site`.`lift_plan` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`lift_plan` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`lift_plan` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii_flag' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`lift_plan` ALTER COLUMN `purchase_order_id` SET TAGS ('dbx_business_glossary_term' = 'Purchase Order Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`site`.`lift_plan` ALTER COLUMN `quaternary_lift_approved_by_employee_id` SET TAGS ('dbx_business_glossary_term' = 'Approved By Worker ID');
+ALTER TABLE `vibe_construction_v1`.`site`.`lift_plan` ALTER COLUMN `quaternary_lift_approved_by_employee_id` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`lift_plan` ALTER COLUMN `quaternary_lift_approved_by_employee_id` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`lift_plan` ALTER COLUMN `quaternary_lift_approved_by_employee_id` SET TAGS ('dbx_pii_flag' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`lift_plan` ALTER COLUMN `site_construction_project_id` SET TAGS ('dbx_business_glossary_term' = 'Site ID');
+ALTER TABLE `vibe_construction_v1`.`site`.`lift_plan` ALTER COLUMN `swms_id` SET TAGS ('dbx_business_glossary_term' = 'Swms Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`site`.`lift_plan` ALTER COLUMN `tertiary_lift_rigger_in_charge_employee_id` SET TAGS ('dbx_business_glossary_term' = 'Rigger-in-Charge Worker ID');
+ALTER TABLE `vibe_construction_v1`.`site`.`lift_plan` ALTER COLUMN `tertiary_lift_rigger_in_charge_employee_id` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`lift_plan` ALTER COLUMN `tertiary_lift_rigger_in_charge_employee_id` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`lift_plan` ALTER COLUMN `tertiary_lift_rigger_in_charge_employee_id` SET TAGS ('dbx_pii_flag' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`lift_plan` ALTER COLUMN `appointed_person_name` SET TAGS ('dbx_business_glossary_term' = 'Appointed Person Name');
+ALTER TABLE `vibe_construction_v1`.`site`.`lift_plan` ALTER COLUMN `appointed_person_name` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`lift_plan` ALTER COLUMN `appointed_person_name` SET TAGS ('dbx_pii_name' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`lift_plan` ALTER COLUMN `approval_status` SET TAGS ('dbx_business_glossary_term' = 'Lift Plan Approval Status');
+ALTER TABLE `vibe_construction_v1`.`site`.`lift_plan` ALTER COLUMN `approval_status` SET TAGS ('dbx_value_regex' = 'draft|submitted|approved|rejected|cancelled|superseded');
+ALTER TABLE `vibe_construction_v1`.`site`.`lift_plan` ALTER COLUMN `approved_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Lift Plan Approved Timestamp');
+ALTER TABLE `vibe_construction_v1`.`site`.`lift_plan` ALTER COLUMN `boom_length_m` SET TAGS ('dbx_business_glossary_term' = 'Boom Length (Metres)');
+ALTER TABLE `vibe_construction_v1`.`site`.`lift_plan` ALTER COLUMN `capacity_utilisation_pct` SET TAGS ('dbx_business_glossary_term' = 'Crane Capacity Utilisation Percentage');
+ALTER TABLE `vibe_construction_v1`.`site`.`lift_plan` ALTER COLUMN `capacity_utilisation_pct` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`lift_plan` ALTER COLUMN `capacity_utilisation_pct` SET TAGS ('dbx_pii_address' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`lift_plan` ALTER COLUMN `crane_make` SET TAGS ('dbx_business_glossary_term' = 'Crane Make');
+ALTER TABLE `vibe_construction_v1`.`site`.`lift_plan` ALTER COLUMN `crane_model` SET TAGS ('dbx_business_glossary_term' = 'Crane Model');
+ALTER TABLE `vibe_construction_v1`.`site`.`lift_plan` ALTER COLUMN `crane_rated_capacity_t` SET TAGS ('dbx_business_glossary_term' = 'Crane Rated Capacity (Tonnes)');
+ALTER TABLE `vibe_construction_v1`.`site`.`lift_plan` ALTER COLUMN `crane_rated_capacity_t` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`lift_plan` ALTER COLUMN `crane_rated_capacity_t` SET TAGS ('dbx_pii_address' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`lift_plan` ALTER COLUMN `crane_type` SET TAGS ('dbx_business_glossary_term' = 'Crane Type');
+ALTER TABLE `vibe_construction_v1`.`site`.`lift_plan` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
+ALTER TABLE `vibe_construction_v1`.`site`.`lift_plan` ALTER COLUMN `exclusion_zone_radius_m` SET TAGS ('dbx_business_glossary_term' = 'Exclusion Zone Radius (Metres)');
+ALTER TABLE `vibe_construction_v1`.`site`.`lift_plan` ALTER COLUMN `ground_bearing_capacity_kpa` SET TAGS ('dbx_business_glossary_term' = 'Ground Bearing Capacity (kPa)');
+ALTER TABLE `vibe_construction_v1`.`site`.`lift_plan` ALTER COLUMN `ground_bearing_capacity_kpa` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`lift_plan` ALTER COLUMN `ground_bearing_capacity_kpa` SET TAGS ('dbx_pii_address' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`lift_plan` ALTER COLUMN `ground_bearing_pressure_kpa` SET TAGS ('dbx_business_glossary_term' = 'Ground Bearing Pressure (kPa)');
+ALTER TABLE `vibe_construction_v1`.`site`.`lift_plan` ALTER COLUMN `hook_height_m` SET TAGS ('dbx_business_glossary_term' = 'Hook Height (Metres)');
+ALTER TABLE `vibe_construction_v1`.`site`.`lift_plan` ALTER COLUMN `hse_risk_level` SET TAGS ('dbx_business_glossary_term' = 'Health Safety and Environment (HSE) Risk Level');
+ALTER TABLE `vibe_construction_v1`.`site`.`lift_plan` ALTER COLUMN `hse_risk_level` SET TAGS ('dbx_value_regex' = 'low|medium|high|extreme');
+ALTER TABLE `vibe_construction_v1`.`site`.`lift_plan` ALTER COLUMN `lift_date` SET TAGS ('dbx_business_glossary_term' = 'Lift Date');
+ALTER TABLE `vibe_construction_v1`.`site`.`lift_plan` ALTER COLUMN `lift_description` SET TAGS ('dbx_business_glossary_term' = 'Lift Description');
+ALTER TABLE `vibe_construction_v1`.`site`.`lift_plan` ALTER COLUMN `lift_drawing_reference` SET TAGS ('dbx_business_glossary_term' = 'Lift Drawing Reference');
+ALTER TABLE `vibe_construction_v1`.`site`.`lift_plan` ALTER COLUMN `lift_end_time` SET TAGS ('dbx_business_glossary_term' = 'Lift End Timestamp');
+ALTER TABLE `vibe_construction_v1`.`site`.`lift_plan` ALTER COLUMN `lift_radius_m` SET TAGS ('dbx_business_glossary_term' = 'Lift Radius (Metres)');
+ALTER TABLE `vibe_construction_v1`.`site`.`lift_plan` ALTER COLUMN `lift_start_time` SET TAGS ('dbx_business_glossary_term' = 'Lift Start Timestamp');
+ALTER TABLE `vibe_construction_v1`.`site`.`lift_plan` ALTER COLUMN `lift_type` SET TAGS ('dbx_business_glossary_term' = 'Lift Type');
+ALTER TABLE `vibe_construction_v1`.`site`.`lift_plan` ALTER COLUMN `lift_type` SET TAGS ('dbx_value_regex' = 'routine|critical|complex|tandem|blind');
+ALTER TABLE `vibe_construction_v1`.`site`.`lift_plan` ALTER COLUMN `load_weight_t` SET TAGS ('dbx_business_glossary_term' = 'Load Weight (Tonnes)');
+ALTER TABLE `vibe_construction_v1`.`site`.`lift_plan` ALTER COLUMN `method_statement_reference` SET TAGS ('dbx_business_glossary_term' = 'Safe Work Method Statement (SWMS) Reference');
+ALTER TABLE `vibe_construction_v1`.`site`.`lift_plan` ALTER COLUMN `method_statement_reference` SET TAGS ('dbx_pii_address' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`lift_plan` ALTER COLUMN `outrigger_mat_required` SET TAGS ('dbx_business_glossary_term' = 'Outrigger Mat Required Flag');
+ALTER TABLE `vibe_construction_v1`.`site`.`lift_plan` ALTER COLUMN `overhead_obstruction_present` SET TAGS ('dbx_business_glossary_term' = 'Overhead Obstruction Present Flag');
+ALTER TABLE `vibe_construction_v1`.`site`.`lift_plan` ALTER COLUMN `permit_to_lift_number` SET TAGS ('dbx_business_glossary_term' = 'Permit-to-Lift (PTL) Number');
+ALTER TABLE `vibe_construction_v1`.`site`.`lift_plan` ALTER COLUMN `pick_point_description` SET TAGS ('dbx_business_glossary_term' = 'Pick Point Description');
+ALTER TABLE `vibe_construction_v1`.`site`.`lift_plan` ALTER COLUMN `plan_number` SET TAGS ('dbx_business_glossary_term' = 'Lift Plan Number');
+ALTER TABLE `vibe_construction_v1`.`site`.`lift_plan` ALTER COLUMN `plan_number` SET TAGS ('dbx_value_regex' = '^LP-[A-Z0-9]{2,10}-[0-9]{4,6}$');
+ALTER TABLE `vibe_construction_v1`.`site`.`lift_plan` ALTER COLUMN `power_line_clearance_m` SET TAGS ('dbx_business_glossary_term' = 'Power Line Clearance (Metres)');
+ALTER TABLE `vibe_construction_v1`.`site`.`lift_plan` ALTER COLUMN `procore_lift_plan_reference` SET TAGS ('dbx_business_glossary_term' = 'Procore Lift Plan Reference ID');
+ALTER TABLE `vibe_construction_v1`.`site`.`lift_plan` ALTER COLUMN `rigging_configuration` SET TAGS ('dbx_business_glossary_term' = 'Rigging Configuration');
+ALTER TABLE `vibe_construction_v1`.`site`.`lift_plan` ALTER COLUMN `set_point_description` SET TAGS ('dbx_business_glossary_term' = 'Set Point Description');
+ALTER TABLE `vibe_construction_v1`.`site`.`lift_plan` ALTER COLUMN `sling_type` SET TAGS ('dbx_business_glossary_term' = 'Sling Type');
+ALTER TABLE `vibe_construction_v1`.`site`.`lift_plan` ALTER COLUMN `sling_type` SET TAGS ('dbx_value_regex' = 'wire_rope|chain|synthetic_web|synthetic_round|shackle_only|spreader_bar');
+ALTER TABLE `vibe_construction_v1`.`site`.`lift_plan` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Last Updated Timestamp');
+ALTER TABLE `vibe_construction_v1`.`site`.`lift_plan` ALTER COLUMN `wbs_code` SET TAGS ('dbx_business_glossary_term' = 'Work Breakdown Structure (WBS) Code');
+ALTER TABLE `vibe_construction_v1`.`site`.`lift_plan` ALTER COLUMN `wind_speed_limit_kmh` SET TAGS ('dbx_business_glossary_term' = 'Maximum Wind Speed Limit (km/h)');
+ALTER TABLE `vibe_construction_v1`.`site`.`shift_report` SET TAGS ('dbx_data_type' = 'transactional_data');
+ALTER TABLE `vibe_construction_v1`.`site`.`shift_report` SET TAGS ('dbx_subdomain' = 'field_operations');
+ALTER TABLE `vibe_construction_v1`.`site`.`shift_report` ALTER COLUMN `shift_report_id` SET TAGS ('dbx_business_glossary_term' = 'Shift Report ID');
+ALTER TABLE `vibe_construction_v1`.`site`.`shift_report` ALTER COLUMN `compliance_permit_id` SET TAGS ('dbx_business_glossary_term' = 'Permit Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`site`.`shift_report` ALTER COLUMN `construction_project_id` SET TAGS ('dbx_business_glossary_term' = 'Project ID');
+ALTER TABLE `vibe_construction_v1`.`site`.`shift_report` ALTER COLUMN `daily_log_id` SET TAGS ('dbx_business_glossary_term' = 'Daily Log ID');
+ALTER TABLE `vibe_construction_v1`.`site`.`shift_report` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Shift Supervisor ID');
+ALTER TABLE `vibe_construction_v1`.`site`.`shift_report` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`shift_report` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`shift_report` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii_flag' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`shift_report` ALTER COLUMN `cost_code_id` SET TAGS ('dbx_business_glossary_term' = 'Finance Cost Code Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`site`.`shift_report` ALTER COLUMN `incident_id` SET TAGS ('dbx_business_glossary_term' = 'Incident Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`site`.`shift_report` ALTER COLUMN `site_construction_project_id` SET TAGS ('dbx_business_glossary_term' = 'Site ID');
+ALTER TABLE `vibe_construction_v1`.`site`.`shift_report` ALTER COLUMN `work_front_id` SET TAGS ('dbx_business_glossary_term' = 'Work Front ID');
+ALTER TABLE `vibe_construction_v1`.`site`.`shift_report` ALTER COLUMN `activities_narrative` SET TAGS ('dbx_business_glossary_term' = 'Shift Activities Narrative');
+ALTER TABLE `vibe_construction_v1`.`site`.`shift_report` ALTER COLUMN `approved_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Approval Timestamp');
+ALTER TABLE `vibe_construction_v1`.`site`.`shift_report` ALTER COLUMN `concrete_volume_m3` SET TAGS ('dbx_business_glossary_term' = 'Concrete Pour Volume (m³)');
+ALTER TABLE `vibe_construction_v1`.`site`.`shift_report` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
+ALTER TABLE `vibe_construction_v1`.`site`.`shift_report` ALTER COLUMN `delay_cause` SET TAGS ('dbx_business_glossary_term' = 'Delay Cause Category');
+ALTER TABLE `vibe_construction_v1`.`site`.`shift_report` ALTER COLUMN `delay_duration_hrs` SET TAGS ('dbx_business_glossary_term' = 'Delay Duration (Hours)');
+ALTER TABLE `vibe_construction_v1`.`site`.`shift_report` ALTER COLUMN `direct_labour_count` SET TAGS ('dbx_business_glossary_term' = 'Direct Labour Headcount');
+ALTER TABLE `vibe_construction_v1`.`site`.`shift_report` ALTER COLUMN `earthworks_volume_m3` SET TAGS ('dbx_business_glossary_term' = 'Earthworks Volume (m³)');
+ALTER TABLE `vibe_construction_v1`.`site`.`shift_report` ALTER COLUMN `equipment_count` SET TAGS ('dbx_business_glossary_term' = 'Equipment Count');
+ALTER TABLE `vibe_construction_v1`.`site`.`shift_report` ALTER COLUMN `equipment_utilisation_pct` SET TAGS ('dbx_business_glossary_term' = 'Equipment Utilisation Percentage');
+ALTER TABLE `vibe_construction_v1`.`site`.`shift_report` ALTER COLUMN `handover_notes` SET TAGS ('dbx_business_glossary_term' = 'Shift Handover Notes');
+ALTER TABLE `vibe_construction_v1`.`site`.`shift_report` ALTER COLUMN `hcss_shift_reference` SET TAGS ('dbx_business_glossary_term' = 'HCSS HeavyJob Shift Reference');
+ALTER TABLE `vibe_construction_v1`.`site`.`shift_report` ALTER COLUMN `incident_count` SET TAGS ('dbx_business_glossary_term' = 'Incident Count');
+ALTER TABLE `vibe_construction_v1`.`site`.`shift_report` ALTER COLUMN `issues_count` SET TAGS ('dbx_business_glossary_term' = 'Open Issues Count');
+ALTER TABLE `vibe_construction_v1`.`site`.`shift_report` ALTER COLUMN `lti_flag` SET TAGS ('dbx_business_glossary_term' = 'Lost Time Injury (LTI) Flag');
+ALTER TABLE `vibe_construction_v1`.`site`.`shift_report` ALTER COLUMN `ncr_raised_flag` SET TAGS ('dbx_business_glossary_term' = 'Non-Conformance Report (NCR) Raised Flag');
+ALTER TABLE `vibe_construction_v1`.`site`.`shift_report` ALTER COLUMN `permit_to_work_number` SET TAGS ('dbx_business_glossary_term' = 'Permit to Work (PTW) Number');
+ALTER TABLE `vibe_construction_v1`.`site`.`shift_report` ALTER COLUMN `planned_end_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Planned Shift End Timestamp');
+ALTER TABLE `vibe_construction_v1`.`site`.`shift_report` ALTER COLUMN `planned_production_quantity` SET TAGS ('dbx_business_glossary_term' = 'Planned Production Quantity');
+ALTER TABLE `vibe_construction_v1`.`site`.`shift_report` ALTER COLUMN `planned_start_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Planned Shift Start Timestamp');
+ALTER TABLE `vibe_construction_v1`.`site`.`shift_report` ALTER COLUMN `procore_log_reference` SET TAGS ('dbx_business_glossary_term' = 'Procore Log Reference');
+ALTER TABLE `vibe_construction_v1`.`site`.`shift_report` ALTER COLUMN `production_quantity` SET TAGS ('dbx_business_glossary_term' = 'Production Quantity');
+ALTER TABLE `vibe_construction_v1`.`site`.`shift_report` ALTER COLUMN `production_unit` SET TAGS ('dbx_business_glossary_term' = 'Production Unit of Measure');
+ALTER TABLE `vibe_construction_v1`.`site`.`shift_report` ALTER COLUMN `production_unit` SET TAGS ('dbx_pii_address' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`shift_report` ALTER COLUMN `report_number` SET TAGS ('dbx_business_glossary_term' = 'Shift Report Number');
+ALTER TABLE `vibe_construction_v1`.`site`.`shift_report` ALTER COLUMN `report_number` SET TAGS ('dbx_value_regex' = '^SR-[A-Z0-9]{3,10}-[0-9]{4}-[0-9]{3}$');
+ALTER TABLE `vibe_construction_v1`.`site`.`shift_report` ALTER COLUMN `report_status` SET TAGS ('dbx_business_glossary_term' = 'Shift Report Status');
+ALTER TABLE `vibe_construction_v1`.`site`.`shift_report` ALTER COLUMN `report_status` SET TAGS ('dbx_value_regex' = 'draft|submitted|reviewed|approved|rejected');
+ALTER TABLE `vibe_construction_v1`.`site`.`shift_report` ALTER COLUMN `safety_observation_count` SET TAGS ('dbx_business_glossary_term' = 'Safety Observation Count');
+ALTER TABLE `vibe_construction_v1`.`site`.`shift_report` ALTER COLUMN `shift_date` SET TAGS ('dbx_business_glossary_term' = 'Shift Date');
+ALTER TABLE `vibe_construction_v1`.`site`.`shift_report` ALTER COLUMN `shift_end_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Shift End Timestamp');
+ALTER TABLE `vibe_construction_v1`.`site`.`shift_report` ALTER COLUMN `shift_start_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Shift Start Timestamp');
+ALTER TABLE `vibe_construction_v1`.`site`.`shift_report` ALTER COLUMN `shift_type` SET TAGS ('dbx_business_glossary_term' = 'Shift Type');
+ALTER TABLE `vibe_construction_v1`.`site`.`shift_report` ALTER COLUMN `shift_type` SET TAGS ('dbx_value_regex' = 'day|night|swing|extended');
+ALTER TABLE `vibe_construction_v1`.`site`.`shift_report` ALTER COLUMN `subcontractor_count` SET TAGS ('dbx_business_glossary_term' = 'Subcontractor Headcount');
+ALTER TABLE `vibe_construction_v1`.`site`.`shift_report` ALTER COLUMN `subcontractor_count` SET TAGS ('dbx_pii_flag' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`shift_report` ALTER COLUMN `supervisor_sign_off_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Supervisor Sign-Off Timestamp');
+ALTER TABLE `vibe_construction_v1`.`site`.`shift_report` ALTER COLUMN `supervisor_sign_off_timestamp` SET TAGS ('dbx_pii_identifier' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`shift_report` ALTER COLUMN `tbm_conducted_flag` SET TAGS ('dbx_business_glossary_term' = 'Toolbox Meeting (TBM) Conducted Flag');
+ALTER TABLE `vibe_construction_v1`.`site`.`shift_report` ALTER COLUMN `temperature_c` SET TAGS ('dbx_business_glossary_term' = 'Ambient Temperature (°C)');
+ALTER TABLE `vibe_construction_v1`.`site`.`shift_report` ALTER COLUMN `total_headcount` SET TAGS ('dbx_business_glossary_term' = 'Total Shift Headcount');
+ALTER TABLE `vibe_construction_v1`.`site`.`shift_report` ALTER COLUMN `total_labour_hours` SET TAGS ('dbx_business_glossary_term' = 'Total Labour Hours');
+ALTER TABLE `vibe_construction_v1`.`site`.`shift_report` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Updated Timestamp');
+ALTER TABLE `vibe_construction_v1`.`site`.`shift_report` ALTER COLUMN `wbs_code` SET TAGS ('dbx_business_glossary_term' = 'Work Breakdown Structure (WBS) Code');
+ALTER TABLE `vibe_construction_v1`.`site`.`shift_report` ALTER COLUMN `weather_condition` SET TAGS ('dbx_business_glossary_term' = 'Weather Condition');
+ALTER TABLE `vibe_construction_v1`.`site`.`shift_report` ALTER COLUMN `weather_condition` SET TAGS ('dbx_pii_health' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_permit` SET TAGS ('dbx_data_type' = 'master_data');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_permit` SET TAGS ('dbx_subdomain' = 'site_management');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_permit` ALTER COLUMN `site_permit_id` SET TAGS ('dbx_business_glossary_term' = 'Site Permit ID');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_permit` ALTER COLUMN `account_id` SET TAGS ('dbx_business_glossary_term' = 'Account Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_permit` ALTER COLUMN `activity_id` SET TAGS ('dbx_business_glossary_term' = 'Activity Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_permit` ALTER COLUMN `compliance_permit_id` SET TAGS ('dbx_business_glossary_term' = 'Permit Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_permit` ALTER COLUMN `firm_profile_id` SET TAGS ('dbx_business_glossary_term' = 'Sub Firm Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_permit` ALTER COLUMN `permit_to_work_id` SET TAGS ('dbx_business_glossary_term' = 'Permit To Work Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_permit` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Responsible Person ID');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_permit` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_permit` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_permit` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii_flag' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_permit` ALTER COLUMN `renewed_site_permit_id` SET TAGS ('dbx_business_glossary_term' = 'Renewed Site Permit Id');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_permit` ALTER COLUMN `renewed_site_permit_id` SET TAGS ('dbx_self_ref_fk' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_permit` ALTER COLUMN `submission_id` SET TAGS ('dbx_business_glossary_term' = 'Bid Submission Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_permit` ALTER COLUMN `tertiary_site_close_out_by_employee_id` SET TAGS ('dbx_business_glossary_term' = 'Close‑out By ID');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_permit` ALTER COLUMN `tertiary_site_close_out_by_employee_id` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_permit` ALTER COLUMN `tertiary_site_close_out_by_employee_id` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_permit` ALTER COLUMN `tertiary_site_close_out_by_employee_id` SET TAGS ('dbx_pii_flag' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_permit` ALTER COLUMN `work_front_id` SET TAGS ('dbx_business_glossary_term' = 'Work Front ID');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_permit` ALTER COLUMN `application_date` SET TAGS ('dbx_business_glossary_term' = 'Application Date');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_permit` ALTER COLUMN `approval_date` SET TAGS ('dbx_business_glossary_term' = 'Approval Date');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_permit` ALTER COLUMN `attached_document_reference` SET TAGS ('dbx_business_glossary_term' = 'Attached Document Reference');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_permit` ALTER COLUMN `change_order_number` SET TAGS ('dbx_business_glossary_term' = 'Change Order Number');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_permit` ALTER COLUMN `close_out_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Close‑out Timestamp');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_permit` ALTER COLUMN `compliance_reference` SET TAGS ('dbx_business_glossary_term' = 'Compliance Reference');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_permit` ALTER COLUMN `conditions` SET TAGS ('dbx_business_glossary_term' = 'Permit Conditions');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_permit` ALTER COLUMN `cost_center_code` SET TAGS ('dbx_business_glossary_term' = 'Cost Center Code');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_permit` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Creation Timestamp');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_permit` ALTER COLUMN `expiration_notice_sent` SET TAGS ('dbx_business_glossary_term' = 'Expiration Notice Sent Flag');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_permit` ALTER COLUMN `expiry_date` SET TAGS ('dbx_business_glossary_term' = 'Expiry Date');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_permit` ALTER COLUMN `expiry_date` SET TAGS ('dbx_pii_financial' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_permit` ALTER COLUMN `extension_approved_date` SET TAGS ('dbx_business_glossary_term' = 'Extension Approved Date');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_permit` ALTER COLUMN `extension_requested` SET TAGS ('dbx_business_glossary_term' = 'Extension Requested Flag');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_permit` ALTER COLUMN `fee_amount` SET TAGS ('dbx_business_glossary_term' = 'Permit Fee Amount');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_permit` ALTER COLUMN `fee_currency` SET TAGS ('dbx_business_glossary_term' = 'Fee Currency');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_permit` ALTER COLUMN `is_environmental` SET TAGS ('dbx_business_glossary_term' = 'Environmental Permit Flag');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_permit` ALTER COLUMN `is_safety_critical` SET TAGS ('dbx_business_glossary_term' = 'Safety Critical Flag');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_permit` ALTER COLUMN `issuing_authority` SET TAGS ('dbx_business_glossary_term' = 'Issuing Authority');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_permit` ALTER COLUMN `issuing_authority` SET TAGS ('dbx_value_regex' = 'OSHA|local_building_department|environmental_agency|other');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_permit` ALTER COLUMN `permit_category` SET TAGS ('dbx_business_glossary_term' = 'Permit Category');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_permit` ALTER COLUMN `permit_category` SET TAGS ('dbx_value_regex' = 'safety|environment|operational');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_permit` ALTER COLUMN `permit_number` SET TAGS ('dbx_business_glossary_term' = 'Permit Number');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_permit` ALTER COLUMN `permit_type` SET TAGS ('dbx_business_glossary_term' = 'Permit Type');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_permit` ALTER COLUMN `permit_type` SET TAGS ('dbx_value_regex' = 'hot_work|excavation|confined_space|crane_operation|road_closure|environmental_discharge');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_permit` ALTER COLUMN `restrictions` SET TAGS ('dbx_business_glossary_term' = 'Permit Restrictions');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_permit` ALTER COLUMN `revision_number` SET TAGS ('dbx_business_glossary_term' = 'Permit Revision Number');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_permit` ALTER COLUMN `scope_description` SET TAGS ('dbx_business_glossary_term' = 'Permit Scope Description');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_permit` ALTER COLUMN `site_permit_status` SET TAGS ('dbx_business_glossary_term' = 'Permit Status');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_permit` ALTER COLUMN `site_permit_status` SET TAGS ('dbx_value_regex' = 'applied|active|suspended|closed|revoked');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_permit` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Update Timestamp');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_permit` ALTER COLUMN `version` SET TAGS ('dbx_business_glossary_term' = 'Permit Version');
+ALTER TABLE `vibe_construction_v1`.`site`.`work_front_assignment` SET TAGS ('dbx_data_type' = 'association_data');
+ALTER TABLE `vibe_construction_v1`.`site`.`work_front_assignment` SET TAGS ('dbx_subdomain' = 'field_operations');
+ALTER TABLE `vibe_construction_v1`.`site`.`work_front_assignment` SET TAGS ('dbx_association_edges' = 'site.work_front,workforce.craft_worker');
+ALTER TABLE `vibe_construction_v1`.`site`.`work_front_assignment` ALTER COLUMN `work_front_assignment_id` SET TAGS ('dbx_business_glossary_term' = 'Work Front Assignment - Work Front Assignment Id');
+ALTER TABLE `vibe_construction_v1`.`site`.`work_front_assignment` ALTER COLUMN `craft_worker_id` SET TAGS ('dbx_business_glossary_term' = 'Work Front Assignment - Craft Worker Id');
+ALTER TABLE `vibe_construction_v1`.`site`.`work_front_assignment` ALTER COLUMN `craft_worker_id` SET TAGS ('dbx_pii_identifier' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`work_front_assignment` ALTER COLUMN `work_front_id` SET TAGS ('dbx_business_glossary_term' = 'Work Front Assignment - Work Front Id');
+ALTER TABLE `vibe_construction_v1`.`site`.`work_front_assignment` ALTER COLUMN `assignment_end_date` SET TAGS ('dbx_business_glossary_term' = 'Work Front Assignment - Assignment End Date');
+ALTER TABLE `vibe_construction_v1`.`site`.`work_front_assignment` ALTER COLUMN `assignment_start_date` SET TAGS ('dbx_business_glossary_term' = 'Work Front Assignment - Assignment Start Date');
+ALTER TABLE `vibe_construction_v1`.`site`.`work_front_assignment` ALTER COLUMN `role` SET TAGS ('dbx_business_glossary_term' = 'Work Front Assignment - Role');
+ALTER TABLE `vibe_construction_v1`.`site`.`site` SET TAGS ('dbx_data_type' = 'master_data');
+ALTER TABLE `vibe_construction_v1`.`site`.`site` SET TAGS ('dbx_subdomain' = 'site_management');
+ALTER TABLE `vibe_construction_v1`.`site`.`site` ALTER COLUMN `site_id` SET TAGS ('dbx_business_glossary_term' = 'Site Identifier');
+ALTER TABLE `vibe_construction_v1`.`site`.`site` ALTER COLUMN `current_location_site_id` SET TAGS ('dbx_business_glossary_term' = 'Current Location Site Id');
+ALTER TABLE `vibe_construction_v1`.`site`.`site` ALTER COLUMN `current_location_site_id` SET TAGS ('dbx_self_ref_fk' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`site` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Employee Id');
+ALTER TABLE `vibe_construction_v1`.`site`.`site` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii_identifier' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`site` ALTER COLUMN `manager_employee_id` SET TAGS ('dbx_business_glossary_term' = 'Manager Employee Id');
+ALTER TABLE `vibe_construction_v1`.`site`.`site` ALTER COLUMN `manager_employee_id` SET TAGS ('dbx_internal' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`site` ALTER COLUMN `manager_employee_id` SET TAGS ('dbx_pii_identifier' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`site` ALTER COLUMN `construction_project_id` SET TAGS ('dbx_business_glossary_term' = 'Project Id');
+ALTER TABLE `vibe_construction_v1`.`site`.`site` ALTER COLUMN `address_line1` SET TAGS ('dbx_business_glossary_term' = 'Address Line1');
+ALTER TABLE `vibe_construction_v1`.`site`.`site` ALTER COLUMN `address_line1` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`site` ALTER COLUMN `address_line1` SET TAGS ('dbx_pii_address' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`site` ALTER COLUMN `address_line2` SET TAGS ('dbx_business_glossary_term' = 'Address Line2');
+ALTER TABLE `vibe_construction_v1`.`site`.`site` ALTER COLUMN `address_line2` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`site` ALTER COLUMN `address_line2` SET TAGS ('dbx_pii_address' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`site` ALTER COLUMN `area_sqft` SET TAGS ('dbx_business_glossary_term' = 'Area Sqft');
+ALTER TABLE `vibe_construction_v1`.`site`.`site` ALTER COLUMN `site_category` SET TAGS ('dbx_business_glossary_term' = 'Site Category');
+ALTER TABLE `vibe_construction_v1`.`site`.`site` ALTER COLUMN `city` SET TAGS ('dbx_business_glossary_term' = 'City');
+ALTER TABLE `vibe_construction_v1`.`site`.`site` ALTER COLUMN `city` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`site` ALTER COLUMN `city` SET TAGS ('dbx_pii_address' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`site` ALTER COLUMN `site_code` SET TAGS ('dbx_business_glossary_term' = 'Code');
+ALTER TABLE `vibe_construction_v1`.`site`.`site` ALTER COLUMN `cost_center_code` SET TAGS ('dbx_business_glossary_term' = 'Cost Center Code');
+ALTER TABLE `vibe_construction_v1`.`site`.`site` ALTER COLUMN `country_code` SET TAGS ('dbx_business_glossary_term' = 'Country Code');
+ALTER TABLE `vibe_construction_v1`.`site`.`site` ALTER COLUMN `country_code` SET TAGS ('dbx_pii_address' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`site` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
+ALTER TABLE `vibe_construction_v1`.`site`.`site` ALTER COLUMN `crew_capacity` SET TAGS ('dbx_business_glossary_term' = 'Crew Capacity');
+ALTER TABLE `vibe_construction_v1`.`site`.`site` ALTER COLUMN `crew_capacity` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`site` ALTER COLUMN `crew_capacity` SET TAGS ('dbx_pii_address' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`site` ALTER COLUMN `demobilization_date` SET TAGS ('dbx_business_glossary_term' = 'Demobilization Date');
+ALTER TABLE `vibe_construction_v1`.`site`.`site` ALTER COLUMN `site_description` SET TAGS ('dbx_business_glossary_term' = 'Description');
+ALTER TABLE `vibe_construction_v1`.`site`.`site` ALTER COLUMN `end_date` SET TAGS ('dbx_business_glossary_term' = 'End Date');
+ALTER TABLE `vibe_construction_v1`.`site`.`site` ALTER COLUMN `environmental_permit_number` SET TAGS ('dbx_business_glossary_term' = 'Environmental Permit Number');
+ALTER TABLE `vibe_construction_v1`.`site`.`site` ALTER COLUMN `gps_accuracy_m` SET TAGS ('dbx_business_glossary_term' = 'Gps Accuracy M');
+ALTER TABLE `vibe_construction_v1`.`site`.`site` ALTER COLUMN `gps_accuracy_m` SET TAGS ('dbx_pii_location' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`site` ALTER COLUMN `inspection_status` SET TAGS ('dbx_business_glossary_term' = 'Inspection Status');
+ALTER TABLE `vibe_construction_v1`.`site`.`site` ALTER COLUMN `is_mobilized` SET TAGS ('dbx_business_glossary_term' = 'Is Mobilized');
+ALTER TABLE `vibe_construction_v1`.`site`.`site` ALTER COLUMN `last_inspection_date` SET TAGS ('dbx_business_glossary_term' = 'Last Inspection Date');
+ALTER TABLE `vibe_construction_v1`.`site`.`site` ALTER COLUMN `latitude` SET TAGS ('dbx_business_glossary_term' = 'Latitude');
+ALTER TABLE `vibe_construction_v1`.`site`.`site` ALTER COLUMN `latitude` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`site` ALTER COLUMN `latitude` SET TAGS ('dbx_pii_location' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`site` ALTER COLUMN `longitude` SET TAGS ('dbx_business_glossary_term' = 'Longitude');
+ALTER TABLE `vibe_construction_v1`.`site`.`site` ALTER COLUMN `longitude` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`site` ALTER COLUMN `longitude` SET TAGS ('dbx_pii_location' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`site` ALTER COLUMN `mobilization_date` SET TAGS ('dbx_business_glossary_term' = 'Mobilization Date');
+ALTER TABLE `vibe_construction_v1`.`site`.`site` ALTER COLUMN `site_name` SET TAGS ('dbx_business_glossary_term' = 'Name');
+ALTER TABLE `vibe_construction_v1`.`site`.`site` ALTER COLUMN `site_name` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`site` ALTER COLUMN `site_name` SET TAGS ('dbx_pii_name' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`site` ALTER COLUMN `owner` SET TAGS ('dbx_business_glossary_term' = 'Site Owner');
+ALTER TABLE `vibe_construction_v1`.`site`.`site` ALTER COLUMN `owner` SET TAGS ('dbx_pii_identifier' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`site` ALTER COLUMN `permit_expiry_date` SET TAGS ('dbx_business_glossary_term' = 'Permit Expiry Date');
+ALTER TABLE `vibe_construction_v1`.`site`.`site` ALTER COLUMN `permit_expiry_date` SET TAGS ('dbx_pii_financial' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`site` ALTER COLUMN `postal_code` SET TAGS ('dbx_business_glossary_term' = 'Postal Code');
+ALTER TABLE `vibe_construction_v1`.`site`.`site` ALTER COLUMN `postal_code` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`site` ALTER COLUMN `postal_code` SET TAGS ('dbx_pii_address' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`site` ALTER COLUMN `region` SET TAGS ('dbx_business_glossary_term' = 'Region');
+ALTER TABLE `vibe_construction_v1`.`site`.`site` ALTER COLUMN `region` SET TAGS ('dbx_pii_address' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`site` ALTER COLUMN `safety_incident_count` SET TAGS ('dbx_business_glossary_term' = 'Safety Incident Count');
+ALTER TABLE `vibe_construction_v1`.`site`.`site` ALTER COLUMN `start_date` SET TAGS ('dbx_business_glossary_term' = 'Start Date');
+ALTER TABLE `vibe_construction_v1`.`site`.`site` ALTER COLUMN `state` SET TAGS ('dbx_business_glossary_term' = 'State');
+ALTER TABLE `vibe_construction_v1`.`site`.`site` ALTER COLUMN `state` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`site` ALTER COLUMN `state` SET TAGS ('dbx_pii_address' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`site` ALTER COLUMN `site_status` SET TAGS ('dbx_business_glossary_term' = 'Status');
+ALTER TABLE `vibe_construction_v1`.`site`.`site` ALTER COLUMN `site_type` SET TAGS ('dbx_business_glossary_term' = 'Type');
+ALTER TABLE `vibe_construction_v1`.`site`.`site` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Updated Timestamp');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_location` SET TAGS ('dbx_data_type' = 'master_data');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_location` SET TAGS ('dbx_subdomain' = 'site_management');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_location` ALTER COLUMN `site_location_id` SET TAGS ('dbx_business_glossary_term' = 'Site Location Identifier');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_location` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Employee Id');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_location` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii_identifier' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_location` ALTER COLUMN `parent_site_location_id` SET TAGS ('dbx_business_glossary_term' = 'Parent Site Location Id');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_location` ALTER COLUMN `parent_site_location_id` SET TAGS ('dbx_self_ref_fk' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_location` ALTER COLUMN `parent_site_location_id` SET TAGS ('dbx_pii_contact' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_location` ALTER COLUMN `construction_project_id` SET TAGS ('dbx_business_glossary_term' = 'Project Id');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_location` ALTER COLUMN `site_id` SET TAGS ('dbx_business_glossary_term' = 'Site Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_location` ALTER COLUMN `address_line1` SET TAGS ('dbx_business_glossary_term' = 'Address Line1');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_location` ALTER COLUMN `address_line1` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_location` ALTER COLUMN `address_line1` SET TAGS ('dbx_pii_address' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_location` ALTER COLUMN `address_line2` SET TAGS ('dbx_business_glossary_term' = 'Address Line2');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_location` ALTER COLUMN `address_line2` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_location` ALTER COLUMN `address_line2` SET TAGS ('dbx_pii_address' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_location` ALTER COLUMN `area_sqft` SET TAGS ('dbx_business_glossary_term' = 'Area Sqft');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_location` ALTER COLUMN `city` SET TAGS ('dbx_business_glossary_term' = 'City');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_location` ALTER COLUMN `city` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_location` ALTER COLUMN `city` SET TAGS ('dbx_pii_address' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_location` ALTER COLUMN `construction_end_date` SET TAGS ('dbx_business_glossary_term' = 'Construction End Date');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_location` ALTER COLUMN `construction_start_date` SET TAGS ('dbx_business_glossary_term' = 'Construction Start Date');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_location` ALTER COLUMN `country_code` SET TAGS ('dbx_business_glossary_term' = 'Country Code');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_location` ALTER COLUMN `country_code` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_location` ALTER COLUMN `country_code` SET TAGS ('dbx_pii_address' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_location` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_location` ALTER COLUMN `effective_from` SET TAGS ('dbx_business_glossary_term' = 'Effective From');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_location` ALTER COLUMN `effective_until` SET TAGS ('dbx_business_glossary_term' = 'Effective Until');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_location` ALTER COLUMN `environmental_zone` SET TAGS ('dbx_business_glossary_term' = 'Environmental Zone');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_location` ALTER COLUMN `gps_accuracy_m` SET TAGS ('dbx_business_glossary_term' = 'Gps Accuracy M');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_location` ALTER COLUMN `gps_accuracy_m` SET TAGS ('dbx_pii_location' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_location` ALTER COLUMN `has_security_system` SET TAGS ('dbx_business_glossary_term' = 'Has Security System');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_location` ALTER COLUMN `inspection_status` SET TAGS ('dbx_business_glossary_term' = 'Inspection Status');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_location` ALTER COLUMN `is_active` SET TAGS ('dbx_business_glossary_term' = 'Is Active');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_location` ALTER COLUMN `is_remote` SET TAGS ('dbx_business_glossary_term' = 'Is Remote');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_location` ALTER COLUMN `last_inspection_date` SET TAGS ('dbx_business_glossary_term' = 'Last Inspection Date');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_location` ALTER COLUMN `latitude` SET TAGS ('dbx_business_glossary_term' = 'Latitude');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_location` ALTER COLUMN `latitude` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_location` ALTER COLUMN `latitude` SET TAGS ('dbx_pii_location' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_location` ALTER COLUMN `longitude` SET TAGS ('dbx_business_glossary_term' = 'Longitude');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_location` ALTER COLUMN `longitude` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_location` ALTER COLUMN `longitude` SET TAGS ('dbx_pii_location' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_location` ALTER COLUMN `site_location_name` SET TAGS ('dbx_business_glossary_term' = 'Name');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_location` ALTER COLUMN `site_location_name` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_location` ALTER COLUMN `site_location_name` SET TAGS ('dbx_pii_name' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_location` ALTER COLUMN `number_of_floors` SET TAGS ('dbx_business_glossary_term' = 'Number Of Floors');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_location` ALTER COLUMN `postal_code` SET TAGS ('dbx_business_glossary_term' = 'Postal Code');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_location` ALTER COLUMN `postal_code` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_location` ALTER COLUMN `postal_code` SET TAGS ('dbx_pii_address' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_location` ALTER COLUMN `power_capacity_kw` SET TAGS ('dbx_business_glossary_term' = 'Power Capacity Kw');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_location` ALTER COLUMN `power_capacity_kw` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_location` ALTER COLUMN `power_capacity_kw` SET TAGS ('dbx_pii_address' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_location` ALTER COLUMN `primary_contact_email` SET TAGS ('dbx_business_glossary_term' = 'Primary Contact Email');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_location` ALTER COLUMN `primary_contact_email` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_location` ALTER COLUMN `primary_contact_email` SET TAGS ('dbx_pii_email' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_location` ALTER COLUMN `primary_contact_name` SET TAGS ('dbx_business_glossary_term' = 'Primary Contact Name');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_location` ALTER COLUMN `primary_contact_name` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_location` ALTER COLUMN `primary_contact_name` SET TAGS ('dbx_pii_name' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_location` ALTER COLUMN `primary_contact_phone` SET TAGS ('dbx_business_glossary_term' = 'Primary Contact Phone');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_location` ALTER COLUMN `primary_contact_phone` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_location` ALTER COLUMN `primary_contact_phone` SET TAGS ('dbx_pii_phone' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_location` ALTER COLUMN `security_system_type` SET TAGS ('dbx_business_glossary_term' = 'Security System Type');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_location` ALTER COLUMN `site_category` SET TAGS ('dbx_business_glossary_term' = 'Site Category');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_location` ALTER COLUMN `site_classification` SET TAGS ('dbx_business_glossary_term' = 'Site Classification');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_location` ALTER COLUMN `site_description` SET TAGS ('dbx_business_glossary_term' = 'Site Description');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_location` ALTER COLUMN `site_owner` SET TAGS ('dbx_business_glossary_term' = 'Site Owner');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_location` ALTER COLUMN `site_owner` SET TAGS ('dbx_pii_identifier' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_location` ALTER COLUMN `site_type` SET TAGS ('dbx_business_glossary_term' = 'Site Type');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_location` ALTER COLUMN `state_province` SET TAGS ('dbx_business_glossary_term' = 'State Province');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_location` ALTER COLUMN `state_province` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_location` ALTER COLUMN `state_province` SET TAGS ('dbx_pii_address' = 'true');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_location` ALTER COLUMN `site_location_status` SET TAGS ('dbx_business_glossary_term' = 'Status');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_location` ALTER COLUMN `timezone` SET TAGS ('dbx_business_glossary_term' = 'Timezone');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_location` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Updated Timestamp');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_location` ALTER COLUMN `utility_provider` SET TAGS ('dbx_business_glossary_term' = 'Utility Provider');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_location` ALTER COLUMN `waste_management_plan` SET TAGS ('dbx_business_glossary_term' = 'Waste Management Plan');
+ALTER TABLE `vibe_construction_v1`.`site`.`site_location` ALTER COLUMN `water_supply_type` SET TAGS ('dbx_business_glossary_term' = 'Water Supply Type');

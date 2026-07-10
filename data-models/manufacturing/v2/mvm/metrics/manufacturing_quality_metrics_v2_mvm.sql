@@ -1,176 +1,193 @@
--- Metric views for domain: quality | Business: Manufacturing | Version: 2 | Generated on: 2026-07-03 07:49:38
+-- Metric views for domain: quality | Business: Manufacturing | Version: 2 | Generated on: 2026-07-10 14:39:56
+
+CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`quality_ncr`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Non-Conformance Report (NCR) metrics tracking quality issues, defect rates, containment effectiveness, and regulatory compliance across production, procurement, and customer-facing operations."
+  source: "`vibe_manufacturing_v1`.`quality`.`ncr`"
+  dimensions:
+    - name: "ncr_status"
+      expr: ncr_status
+      comment: "Current status of the non-conformance report (open, closed, pending disposition, etc.)"
+    - name: "ncr_type"
+      expr: ncr_type
+      comment: "Classification of non-conformance (supplier, internal, customer, field failure, etc.)"
+    - name: "severity"
+      expr: severity
+      comment: "Severity level of the non-conformance (critical, major, minor)"
+    - name: "disposition"
+      expr: disposition
+      comment: "Disposition decision (use-as-is, rework, scrap, return to supplier, etc.)"
+    - name: "root_cause_category"
+      expr: root_cause_category
+      comment: "High-level category of root cause (material, process, equipment, human error, design, etc.)"
+    - name: "detection_source"
+      expr: detection_source
+      comment: "Where the non-conformance was detected (incoming inspection, in-process, final inspection, customer site, etc.)"
+    - name: "defect_code"
+      expr: defect_code
+      comment: "Standardized defect code for categorization and trend analysis"
+    - name: "regulatory_reportable"
+      expr: regulatory_reportable
+      comment: "Whether this NCR requires regulatory reporting (True/False)"
+    - name: "is_8d_required"
+      expr: is_8d_required
+      comment: "Whether an 8D problem-solving report is required (True/False)"
+    - name: "customer_notification_required"
+      expr: customer_notification_required
+      comment: "Whether customer notification is required (True/False)"
+    - name: "detection_month"
+      expr: DATE_TRUNC('MONTH', detection_timestamp)
+      comment: "Month when the non-conformance was detected"
+    - name: "detection_quarter"
+      expr: DATE_TRUNC('QUARTER', detection_timestamp)
+      comment: "Quarter when the non-conformance was detected"
+    - name: "detection_year"
+      expr: YEAR(detection_timestamp)
+      comment: "Year when the non-conformance was detected"
+    - name: "closure_month"
+      expr: DATE_TRUNC('MONTH', actual_closure_date)
+      comment: "Month when the NCR was closed"
+  measures:
+    - name: "total_ncr_count"
+      expr: COUNT(1)
+      comment: "Total number of non-conformance reports"
+    - name: "total_nonconforming_quantity"
+      expr: SUM(CAST(nonconforming_qty AS DOUBLE))
+      comment: "Total quantity of nonconforming units across all NCRs"
+    - name: "avg_nonconforming_quantity"
+      expr: AVG(CAST(nonconforming_qty AS DOUBLE))
+      comment: "Average quantity of nonconforming units per NCR"
+    - name: "critical_ncr_count"
+      expr: COUNT(CASE WHEN severity = 'Critical' THEN 1 END)
+      comment: "Count of NCRs classified as critical severity"
+    - name: "regulatory_reportable_count"
+      expr: COUNT(CASE WHEN regulatory_reportable = TRUE THEN 1 END)
+      comment: "Count of NCRs requiring regulatory reporting"
+    - name: "customer_notification_count"
+      expr: COUNT(CASE WHEN customer_notification_required = TRUE THEN 1 END)
+      comment: "Count of NCRs requiring customer notification"
+    - name: "eight_d_required_count"
+      expr: COUNT(CASE WHEN is_8d_required = TRUE THEN 1 END)
+      comment: "Count of NCRs requiring 8D problem-solving methodology"
+    - name: "containment_completed_count"
+      expr: COUNT(CASE WHEN containment_completed_date IS NOT NULL THEN 1 END)
+      comment: "Count of NCRs with completed containment actions"
+    - name: "closed_ncr_count"
+      expr: COUNT(CASE WHEN actual_closure_date IS NOT NULL THEN 1 END)
+      comment: "Count of NCRs that have been closed"
+    - name: "avg_days_to_containment"
+      expr: AVG(DATEDIFF(containment_completed_date, detection_timestamp))
+      comment: "Average number of days from detection to containment completion"
+    - name: "avg_days_to_closure"
+      expr: AVG(DATEDIFF(actual_closure_date, detection_timestamp))
+      comment: "Average number of days from detection to NCR closure"
+    - name: "overdue_ncr_count"
+      expr: COUNT(CASE WHEN target_closure_date < CURRENT_DATE() AND actual_closure_date IS NULL THEN 1 END)
+      comment: "Count of NCRs past their target closure date and still open"
+$$;
 
 CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`quality_capa`
 WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Capa business metrics"
+  comment: "Corrective and Preventive Action (CAPA) metrics tracking quality improvement initiatives, root cause resolution effectiveness, and continuous improvement program performance."
   source: "`vibe_manufacturing_v1`.`quality`.`capa`"
   dimensions:
-    - name: "Action Implementation Date"
-      expr: action_implementation_date
-    - name: "Actual Closure Date"
-      expr: actual_closure_date
-    - name: "Affected Process Code"
-      expr: affected_process_code
-    - name: "Approval Date"
-      expr: approval_date
-    - name: "Capa Number"
-      expr: capa_number
-    - name: "Capa Status"
+    - name: "capa_status"
       expr: capa_status
-    - name: "Capa Type"
+      comment: "Current status of the CAPA (open, in progress, closed, verified, etc.)"
+    - name: "capa_type"
       expr: capa_type
-    - name: "Containment Completion Date"
-      expr: containment_completion_date
-    - name: "Corrective Action Plan"
-      expr: corrective_action_plan
-    - name: "Created Timestamp"
-      expr: created_timestamp
-    - name: "Customer Notification Date"
-      expr: customer_notification_date
-    - name: "Customer Notification Required"
-      expr: customer_notification_required
-    - name: "Department Code"
+      comment: "Type of action (corrective, preventive, or both)"
+    - name: "priority"
+      expr: priority
+      comment: "Priority level of the CAPA (high, medium, low)"
+    - name: "root_cause_category"
+      expr: root_cause_category
+      comment: "High-level category of root cause identified"
+    - name: "root_cause_analysis_method"
+      expr: root_cause_analysis_method
+      comment: "Method used for root cause analysis (5-Why, Fishbone, FMEA, etc.)"
+    - name: "source_type"
+      expr: source_type
+      comment: "Source that triggered the CAPA (NCR, customer complaint, audit, internal review, etc.)"
+    - name: "affected_process_code"
+      expr: affected_process_code
+      comment: "Process area affected by the issue"
+    - name: "department_code"
       expr: department_code
-    - name: "Effectiveness Verification Date"
-      expr: effectiveness_verification_date
-    - name: "Effectiveness Verification Method"
-      expr: effectiveness_verification_method
-    - name: "Effectiveness Verified"
+      comment: "Department responsible for the CAPA"
+    - name: "effectiveness_verified"
       expr: effectiveness_verified
+      comment: "Whether the CAPA effectiveness has been verified (True/False)"
+    - name: "effectiveness_verification_method"
+      expr: effectiveness_verification_method
+      comment: "Method used to verify CAPA effectiveness"
+    - name: "regulatory_impact_flag"
+      expr: regulatory_impact_flag
+      comment: "Whether the CAPA has regulatory implications (True/False)"
+    - name: "ppap_impact_flag"
+      expr: ppap_impact_flag
+      comment: "Whether the CAPA impacts Production Part Approval Process (True/False)"
+    - name: "recurrence_flag"
+      expr: recurrence_flag
+      comment: "Whether this is a recurring issue (True/False)"
+    - name: "customer_notification_required"
+      expr: customer_notification_required
+      comment: "Whether customer notification is required (True/False)"
+    - name: "initiated_month"
+      expr: DATE_TRUNC('MONTH', initiated_date)
+      comment: "Month when the CAPA was initiated"
+    - name: "initiated_quarter"
+      expr: DATE_TRUNC('QUARTER', initiated_date)
+      comment: "Quarter when the CAPA was initiated"
+    - name: "initiated_year"
+      expr: YEAR(initiated_date)
+      comment: "Year when the CAPA was initiated"
   measures:
-    - name: "Row Count"
+    - name: "total_capa_count"
       expr: COUNT(1)
-    - name: "Distinct Capa"
-      expr: COUNT(DISTINCT capa_id)
-$$;
-
-CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`quality_certificate_of_conformance`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Certificate Of Conformance business metrics"
-  source: "`vibe_manufacturing_v1`.`quality`.`certificate_of_conformance`"
-  dimensions:
-    - name: "Applicable Standard"
-      expr: applicable_standard
-    - name: "Authorized Signatory Name"
-      expr: authorized_signatory_name
-    - name: "Authorized Signatory Title"
-      expr: authorized_signatory_title
-    - name: "Certificate Language"
-      expr: certificate_language
-    - name: "Certificate Number"
-      expr: certificate_number
-    - name: "Certificate Status"
-      expr: certificate_status
-    - name: "Certificate Type"
-      expr: certificate_type
-    - name: "Conformance Statement"
-      expr: conformance_statement
-    - name: "Created Timestamp"
-      expr: created_timestamp
-    - name: "Customer Name"
-      expr: customer_name
-    - name: "Customer Order Number"
-      expr: customer_order_number
-    - name: "Customer Part Number"
-      expr: customer_part_number
-    - name: "Customer Specific Requirements"
-      expr: customer_specific_requirements
-    - name: "Delivery Number"
-      expr: delivery_number
-    - name: "Digital Signature Reference"
-      expr: digital_signature_reference
-    - name: "Document Url"
-      expr: document_url
-  measures:
-    - name: "Row Count"
-      expr: COUNT(1)
-    - name: "Distinct Certificate Of Conformance"
-      expr: COUNT(DISTINCT certificate_of_conformance_id)
-    - name: "Total Lot Quantity"
-      expr: SUM(lot_quantity)
-    - name: "Average Lot Quantity"
-      expr: AVG(lot_quantity)
-    - name: "Total Ppap Level"
-      expr: SUM(ppap_level)
-    - name: "Average Ppap Level"
-      expr: AVG(ppap_level)
-    - name: "Total Quantity Certified"
-      expr: SUM(quantity_certified)
-    - name: "Average Quantity Certified"
-      expr: AVG(quantity_certified)
-$$;
-
-CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`quality_control_plan`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Control Plan business metrics"
-  source: "`vibe_manufacturing_v1`.`quality`.`control_plan`"
-  dimensions:
-    - name: "Approved By"
-      expr: approved_by
-    - name: "Approved Timestamp"
-      expr: approved_timestamp
-    - name: "Control Method"
-      expr: control_method
-    - name: "Control Type"
-      expr: control_type
-    - name: "Cpk Minimum Required"
-      expr: cpk_minimum_required
-    - name: "Created Timestamp"
-      expr: created_timestamp
-    - name: "Effective Date"
-      expr: effective_date
-    - name: "Error Proofing Method"
-      expr: error_proofing_method
-    - name: "Expiry Date"
-      expr: expiry_date
-    - name: "Gauge Type"
-      expr: gauge_type
-    - name: "Is Ctq"
-      expr: is_ctq
-    - name: "Is Regulatory Requirement"
-      expr: is_regulatory_requirement
-    - name: "Is Safety Characteristic"
-      expr: is_safety_characteristic
-    - name: "Last Updated Timestamp"
-      expr: last_updated_timestamp
-    - name: "Measurement Method"
-      expr: measurement_method
-    - name: "Plan Number"
-      expr: plan_number
-  measures:
-    - name: "Row Count"
-      expr: COUNT(1)
-    - name: "Distinct Control Plan"
-      expr: COUNT(DISTINCT control_plan_id)
-    - name: "Total Lower Control Limit"
-      expr: SUM(lower_control_limit)
-    - name: "Average Lower Control Limit"
-      expr: AVG(lower_control_limit)
-    - name: "Total Lower Spec Limit"
-      expr: SUM(lower_spec_limit)
-    - name: "Average Lower Spec Limit"
-      expr: AVG(lower_spec_limit)
-    - name: "Total Nominal Value"
-      expr: SUM(nominal_value)
-    - name: "Average Nominal Value"
-      expr: AVG(nominal_value)
-    - name: "Total Upper Control Limit"
-      expr: SUM(upper_control_limit)
-    - name: "Average Upper Control Limit"
-      expr: AVG(upper_control_limit)
-    - name: "Total Upper Spec Limit"
-      expr: SUM(upper_spec_limit)
-    - name: "Average Upper Spec Limit"
-      expr: AVG(upper_spec_limit)
+      comment: "Total number of CAPA records"
+    - name: "open_capa_count"
+      expr: COUNT(CASE WHEN actual_closure_date IS NULL THEN 1 END)
+      comment: "Count of CAPAs that are still open"
+    - name: "closed_capa_count"
+      expr: COUNT(CASE WHEN actual_closure_date IS NOT NULL THEN 1 END)
+      comment: "Count of CAPAs that have been closed"
+    - name: "effectiveness_verified_count"
+      expr: COUNT(CASE WHEN effectiveness_verified = TRUE THEN 1 END)
+      comment: "Count of CAPAs with verified effectiveness"
+    - name: "recurrence_count"
+      expr: COUNT(CASE WHEN recurrence_flag = TRUE THEN 1 END)
+      comment: "Count of CAPAs addressing recurring issues"
+    - name: "regulatory_impact_count"
+      expr: COUNT(CASE WHEN regulatory_impact_flag = TRUE THEN 1 END)
+      comment: "Count of CAPAs with regulatory impact"
+    - name: "ppap_impact_count"
+      expr: COUNT(CASE WHEN ppap_impact_flag = TRUE THEN 1 END)
+      comment: "Count of CAPAs impacting PPAP"
+    - name: "avg_days_to_closure"
+      expr: AVG(DATEDIFF(actual_closure_date, initiated_date))
+      comment: "Average number of days from CAPA initiation to closure"
+    - name: "avg_days_to_action_implementation"
+      expr: AVG(DATEDIFF(action_implementation_date, initiated_date))
+      comment: "Average number of days from initiation to action implementation"
+    - name: "avg_days_to_effectiveness_verification"
+      expr: AVG(DATEDIFF(effectiveness_verification_date, action_implementation_date))
+      comment: "Average number of days from action implementation to effectiveness verification"
+    - name: "overdue_capa_count"
+      expr: COUNT(CASE WHEN target_closure_date < CURRENT_DATE() AND actual_closure_date IS NULL THEN 1 END)
+      comment: "Count of CAPAs past their target closure date and still open"
+    - name: "containment_completed_count"
+      expr: COUNT(CASE WHEN containment_completion_date IS NOT NULL THEN 1 END)
+      comment: "Count of CAPAs with completed containment actions"
+    - name: "avg_days_to_containment"
+      expr: AVG(DATEDIFF(containment_completion_date, initiated_date))
+      comment: "Average number of days from initiation to containment completion"
 $$;
 
 CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`quality_customer_complaint`
@@ -178,318 +195,97 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Customer Complaint business metrics"
+  comment: "Customer complaint metrics tracking external quality issues, customer satisfaction impact, response effectiveness, and field failure patterns."
   source: "`vibe_manufacturing_v1`.`quality`.`customer_complaint`"
   dimensions:
-    - name: "Affected Serial Number"
-      expr: affected_serial_number
-    - name: "Closure Date"
-      expr: closure_date
-    - name: "Complaint Description"
-      expr: complaint_description
-    - name: "Complaint Number"
-      expr: complaint_number
-    - name: "Complaint Source"
-      expr: complaint_source
-    - name: "Complaint Status"
+    - name: "complaint_status"
       expr: complaint_status
-    - name: "Complaint Title"
-      expr: complaint_title
-    - name: "Complaint Type"
+      comment: "Current status of the customer complaint"
+    - name: "complaint_type"
       expr: complaint_type
-    - name: "Containment Action"
-      expr: containment_action
-    - name: "Containment Date"
-      expr: containment_date
-    - name: "Corrective Action Completed Date"
-      expr: corrective_action_completed_date
-    - name: "Corrective Action Description"
-      expr: corrective_action_description
-    - name: "Corrective Action Due Date"
-      expr: corrective_action_due_date
-    - name: "Created Timestamp"
-      expr: created_timestamp
-    - name: "Customer Acceptance Status"
-      expr: customer_acceptance_status
-    - name: "Customer Order Number"
-      expr: customer_order_number
-  measures:
-    - name: "Row Count"
-      expr: COUNT(1)
-    - name: "Distinct Customer Complaint"
-      expr: COUNT(DISTINCT customer_complaint_id)
-    - name: "Total Severity Level"
-      expr: SUM(severity_level)
-    - name: "Average Severity Level"
-      expr: AVG(severity_level)
-$$;
-
-CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`quality_fmea`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Fmea business metrics"
-  source: "`vibe_manufacturing_v1`.`quality`.`fmea`"
-  dimensions:
-    - name: "Action Priority"
-      expr: action_priority
-    - name: "Action Taken"
-      expr: action_taken
-    - name: "Actual Completion Date"
-      expr: actual_completion_date
-    - name: "Approved Date"
-      expr: approved_date
-    - name: "Created Timestamp"
-      expr: created_timestamp
-    - name: "Current Detection Controls"
-      expr: current_detection_controls
-    - name: "Current Prevention Controls"
-      expr: current_prevention_controls
-    - name: "Detection Rating"
-      expr: detection_rating
-    - name: "Failure Cause"
-      expr: failure_cause
-    - name: "Failure Effect"
-      expr: failure_effect
-    - name: "Failure Mode"
+      comment: "Type or category of customer complaint"
+    - name: "complaint_source"
+      expr: complaint_source
+      comment: "Source channel of the complaint (phone, email, web portal, field service, etc.)"
+    - name: "severity_level"
+      expr: severity_level
+      comment: "Severity level of the complaint (critical, high, medium, low)"
+    - name: "failure_mode"
       expr: failure_mode
-    - name: "Fmea Number"
-      expr: fmea_number
-    - name: "Fmea Status"
-      expr: fmea_status
-    - name: "Fmea Type"
-      expr: fmea_type
-    - name: "Function Description"
-      expr: function_description
-    - name: "Initiated Date"
-      expr: initiated_date
+      comment: "Mode of failure reported by customer"
+    - name: "failure_code"
+      expr: failure_code
+      comment: "Standardized failure code for categorization"
+    - name: "root_cause_category"
+      expr: root_cause_category
+      comment: "High-level category of root cause identified"
+    - name: "resolution_type"
+      expr: resolution_type
+      comment: "Type of resolution provided (replacement, repair, refund, credit, etc.)"
+    - name: "customer_acceptance_status"
+      expr: customer_acceptance_status
+      comment: "Whether customer accepted the resolution"
+    - name: "is_safety_related"
+      expr: is_safety_related
+      comment: "Whether the complaint involves safety concerns (True/False)"
+    - name: "is_regulatory_reportable"
+      expr: is_regulatory_reportable
+      comment: "Whether the complaint requires regulatory reporting (True/False)"
+    - name: "defect_location"
+      expr: defect_location
+      comment: "Location or component where defect was found"
+    - name: "reported_month"
+      expr: DATE_TRUNC('MONTH', reported_date)
+      comment: "Month when the complaint was reported"
+    - name: "reported_quarter"
+      expr: DATE_TRUNC('QUARTER', reported_date)
+      comment: "Quarter when the complaint was reported"
+    - name: "reported_year"
+      expr: YEAR(reported_date)
+      comment: "Year when the complaint was reported"
   measures:
-    - name: "Row Count"
+    - name: "total_complaint_count"
       expr: COUNT(1)
-    - name: "Distinct Fmea"
-      expr: COUNT(DISTINCT fmea_id)
-$$;
-
-CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`quality_inspection_characteristic`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Inspection Characteristic business metrics"
-  source: "`vibe_manufacturing_v1`.`quality`.`inspection_characteristic`"
-  dimensions:
-    - name: "Characteristic Class"
-      expr: characteristic_class
-    - name: "Characteristic Code"
-      expr: characteristic_code
-    - name: "Characteristic Name"
-      expr: characteristic_name
-    - name: "Characteristic Number"
-      expr: characteristic_number
-    - name: "Characteristic Type"
-      expr: characteristic_type
-    - name: "Code"
-      expr: code
-    - name: "Control Indicator"
-      expr: control_indicator
-    - name: "Created Timestamp"
-      expr: created_timestamp
-    - name: "Data Collection System"
-      expr: data_collection_system
-    - name: "Description"
-      expr: description
-    - name: "Effective From"
-      expr: effective_from
-    - name: "Effective Until"
-      expr: effective_until
-    - name: "Frequency Per Shift"
-      expr: frequency_per_shift
-    - name: "Inspection Method"
-      expr: inspection_method
-    - name: "Inspection Method Code"
-      expr: inspection_method_code
-    - name: "Is Critical"
-      expr: is_critical
-  measures:
-    - name: "Row Count"
-      expr: COUNT(1)
-    - name: "Distinct Inspection Characteristic"
-      expr: COUNT(DISTINCT inspection_characteristic_id)
-    - name: "Total Criticality Level"
-      expr: SUM(criticality_level)
-    - name: "Average Criticality Level"
-      expr: AVG(criticality_level)
-    - name: "Total Lower Spec Limit"
-      expr: SUM(lower_spec_limit)
-    - name: "Average Lower Spec Limit"
-      expr: AVG(lower_spec_limit)
-    - name: "Total Nominal Value"
-      expr: SUM(nominal_value)
-    - name: "Average Nominal Value"
-      expr: AVG(nominal_value)
-    - name: "Total Operation Number"
-      expr: SUM(operation_number)
-    - name: "Average Operation Number"
-      expr: AVG(operation_number)
-    - name: "Total Target Value"
-      expr: SUM(target_value)
-    - name: "Average Target Value"
-      expr: AVG(target_value)
-    - name: "Total Tolerance"
-      expr: SUM(tolerance)
-    - name: "Average Tolerance"
-      expr: AVG(tolerance)
-    - name: "Total Tolerance Lower"
-      expr: SUM(tolerance_lower)
-    - name: "Average Tolerance Lower"
-      expr: AVG(tolerance_lower)
-    - name: "Total Tolerance Upper"
-      expr: SUM(tolerance_upper)
-    - name: "Average Tolerance Upper"
-      expr: AVG(tolerance_upper)
-    - name: "Total Upper Spec Limit"
-      expr: SUM(upper_spec_limit)
-    - name: "Average Upper Spec Limit"
-      expr: AVG(upper_spec_limit)
-$$;
-
-CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`quality_inspection_lot`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Inspection Lot business metrics"
-  source: "`vibe_manufacturing_v1`.`quality`.`inspection_lot`"
-  dimensions:
-    - name: "Certificate Number"
-      expr: certificate_number
-    - name: "Certificate Of Conformance Required"
-      expr: certificate_of_conformance_required
-    - name: "Created Timestamp"
-      expr: created_timestamp
-    - name: "Defect Count"
-      expr: defect_count
-    - name: "Disposition By"
-      expr: disposition_by
-    - name: "Disposition Code"
-      expr: disposition_code
-    - name: "Disposition Decision"
-      expr: disposition_decision
-    - name: "Disposition Timestamp"
-      expr: disposition_timestamp
-    - name: "Dynamic Modification Rule"
-      expr: dynamic_modification_rule
-    - name: "Inspection End Timestamp"
-      expr: inspection_end_timestamp
-    - name: "Inspection Method"
-      expr: inspection_method
-    - name: "Inspection Start Timestamp"
-      expr: inspection_start_timestamp
-    - name: "Inspection Type Code"
-      expr: inspection_type_code
-    - name: "Inspection Type Description"
-      expr: inspection_type_description
-    - name: "Lot Origin Timestamp"
-      expr: lot_origin_timestamp
-    - name: "Lot Quantity Uom"
-      expr: lot_quantity_uom
-  measures:
-    - name: "Row Count"
-      expr: COUNT(1)
-    - name: "Distinct Inspection Lot"
-      expr: COUNT(DISTINCT inspection_lot_id)
-    - name: "Total Inspection Level"
-      expr: SUM(inspection_level)
-    - name: "Average Inspection Level"
-      expr: AVG(inspection_level)
-    - name: "Total Lot Quantity"
-      expr: SUM(lot_quantity)
-    - name: "Average Lot Quantity"
-      expr: AVG(lot_quantity)
-    - name: "Total Nonconforming Quantity"
-      expr: SUM(nonconforming_quantity)
-    - name: "Average Nonconforming Quantity"
-      expr: AVG(nonconforming_quantity)
-    - name: "Total Sample Size"
-      expr: SUM(sample_size)
-    - name: "Average Sample Size"
-      expr: AVG(sample_size)
-$$;
-
-CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`quality_inspection_plan`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Inspection Plan business metrics"
-  source: "`vibe_manufacturing_v1`.`quality`.`inspection_plan`"
-  dimensions:
-    - name: "Approved Timestamp"
-      expr: approved_timestamp
-    - name: "Apqp Phase"
-      expr: apqp_phase
-    - name: "Characteristic Count"
-      expr: characteristic_count
-    - name: "Characteristic Unit"
-      expr: characteristic_unit
-    - name: "Control Method Code"
-      expr: control_method_code
-    - name: "Control Plan Reference"
-      expr: control_plan_reference
-    - name: "Created Timestamp"
-      expr: created_timestamp
-    - name: "Customer Specific Requirement"
-      expr: customer_specific_requirement
-    - name: "Effective From"
-      expr: effective_from
-    - name: "Effective Until"
-      expr: effective_until
-    - name: "Equipment Category"
-      expr: equipment_category
-    - name: "Inspection Method Code"
-      expr: inspection_method_code
-    - name: "Inspection Scope"
-      expr: inspection_scope
-    - name: "Inspection Stage"
-      expr: inspection_stage
-    - name: "Last Modified Timestamp"
-      expr: last_modified_timestamp
-    - name: "Long Text Description"
-      expr: long_text_description
-  measures:
-    - name: "Row Count"
-      expr: COUNT(1)
-    - name: "Distinct Inspection Plan"
-      expr: COUNT(DISTINCT inspection_plan_id)
-    - name: "Total Aql Level"
-      expr: SUM(aql_level)
-    - name: "Average Aql Level"
-      expr: AVG(aql_level)
-    - name: "Total Cpk Minimum"
-      expr: SUM(cpk_minimum)
-    - name: "Average Cpk Minimum"
-      expr: AVG(cpk_minimum)
-    - name: "Total Lower Tolerance Limit"
-      expr: SUM(lower_tolerance_limit)
-    - name: "Average Lower Tolerance Limit"
-      expr: AVG(lower_tolerance_limit)
-    - name: "Total Operation Number"
-      expr: SUM(operation_number)
-    - name: "Average Operation Number"
-      expr: AVG(operation_number)
-    - name: "Total Ppap Level"
-      expr: SUM(ppap_level)
-    - name: "Average Ppap Level"
-      expr: AVG(ppap_level)
-    - name: "Total Target Value"
-      expr: SUM(target_value)
-    - name: "Average Target Value"
-      expr: AVG(target_value)
-    - name: "Total Upper Tolerance Limit"
-      expr: SUM(upper_tolerance_limit)
-    - name: "Average Upper Tolerance Limit"
-      expr: AVG(upper_tolerance_limit)
+      comment: "Total number of customer complaints"
+    - name: "open_complaint_count"
+      expr: COUNT(CASE WHEN closure_date IS NULL THEN 1 END)
+      comment: "Count of customer complaints still open"
+    - name: "closed_complaint_count"
+      expr: COUNT(CASE WHEN closure_date IS NOT NULL THEN 1 END)
+      comment: "Count of customer complaints that have been closed"
+    - name: "safety_related_count"
+      expr: COUNT(CASE WHEN is_safety_related = TRUE THEN 1 END)
+      comment: "Count of complaints involving safety concerns"
+    - name: "regulatory_reportable_count"
+      expr: COUNT(CASE WHEN is_regulatory_reportable = TRUE THEN 1 END)
+      comment: "Count of complaints requiring regulatory reporting"
+    - name: "critical_severity_count"
+      expr: COUNT(CASE WHEN severity_level = 'Critical' THEN 1 END)
+      comment: "Count of complaints with critical severity"
+    - name: "customer_accepted_count"
+      expr: COUNT(CASE WHEN customer_acceptance_status = 'Accepted' THEN 1 END)
+      comment: "Count of complaints where customer accepted the resolution"
+    - name: "containment_completed_count"
+      expr: COUNT(CASE WHEN containment_date IS NOT NULL THEN 1 END)
+      comment: "Count of complaints with completed containment actions"
+    - name: "corrective_action_completed_count"
+      expr: COUNT(CASE WHEN corrective_action_completed_date IS NOT NULL THEN 1 END)
+      comment: "Count of complaints with completed corrective actions"
+    - name: "avg_days_to_response"
+      expr: AVG(DATEDIFF(customer_response_date, reported_date))
+      comment: "Average number of days from complaint reported to customer response"
+    - name: "avg_days_to_containment"
+      expr: AVG(DATEDIFF(containment_date, reported_date))
+      comment: "Average number of days from complaint reported to containment"
+    - name: "avg_days_to_closure"
+      expr: AVG(DATEDIFF(closure_date, reported_date))
+      comment: "Average number of days from complaint reported to closure"
+    - name: "avg_days_to_corrective_action"
+      expr: AVG(DATEDIFF(corrective_action_completed_date, reported_date))
+      comment: "Average number of days from complaint reported to corrective action completion"
+    - name: "overdue_corrective_action_count"
+      expr: COUNT(CASE WHEN corrective_action_due_date < CURRENT_DATE() AND corrective_action_completed_date IS NULL THEN 1 END)
+      comment: "Count of complaints with overdue corrective actions"
 $$;
 
 CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`quality_inspection_result`
@@ -497,241 +293,291 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Inspection Result business metrics"
+  comment: "Inspection result metrics tracking quality control performance, process capability, defect rates, and statistical process control effectiveness across production and procurement."
   source: "`vibe_manufacturing_v1`.`quality`.`inspection_result`"
   dimensions:
-    - name: "Attribute Result"
-      expr: attribute_result
-    - name: "Calibration Due Date"
-      expr: calibration_due_date
-    - name: "Characteristic Type"
-      expr: characteristic_type
-    - name: "Created Timestamp"
-      expr: created_timestamp
-    - name: "Defect Code"
-      expr: defect_code
-    - name: "Defect Count"
-      expr: defect_count
-    - name: "Defect Description"
-      expr: defect_description
-    - name: "Inspection Date"
-      expr: inspection_date
-    - name: "Inspection Method"
-      expr: inspection_method
-    - name: "Inspection Stage"
-      expr: inspection_stage
-    - name: "Inspection Timestamp"
-      expr: inspection_timestamp
-    - name: "Is Out Of Control"
-      expr: is_out_of_control
-    - name: "Is Out Of Spec"
-      expr: is_out_of_spec
-    - name: "Plant Code"
-      expr: plant_code
-    - name: "Remarks"
-      expr: remarks
-    - name: "Result Status"
+    - name: "result_status"
       expr: result_status
-  measures:
-    - name: "Row Count"
-      expr: COUNT(1)
-    - name: "Distinct Inspection Result"
-      expr: COUNT(DISTINCT inspection_result_id)
-    - name: "Total Cp Index"
-      expr: SUM(cp_index)
-    - name: "Average Cp Index"
-      expr: AVG(cp_index)
-    - name: "Total Cpk Index"
-      expr: SUM(cpk_index)
-    - name: "Average Cpk Index"
-      expr: AVG(cpk_index)
-    - name: "Total Lower Control Limit"
-      expr: SUM(lower_control_limit)
-    - name: "Average Lower Control Limit"
-      expr: AVG(lower_control_limit)
-    - name: "Total Lower Spec Limit"
-      expr: SUM(lower_spec_limit)
-    - name: "Average Lower Spec Limit"
-      expr: AVG(lower_spec_limit)
-    - name: "Total Measured Value"
-      expr: SUM(measured_value)
-    - name: "Average Measured Value"
-      expr: AVG(measured_value)
-    - name: "Total Nominal Value"
-      expr: SUM(nominal_value)
-    - name: "Average Nominal Value"
-      expr: AVG(nominal_value)
-    - name: "Total Upper Control Limit"
-      expr: SUM(upper_control_limit)
-    - name: "Average Upper Control Limit"
-      expr: AVG(upper_control_limit)
-    - name: "Total Upper Spec Limit"
-      expr: SUM(upper_spec_limit)
-    - name: "Average Upper Spec Limit"
-      expr: AVG(upper_spec_limit)
-$$;
-
-CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`quality_ncr`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Ncr business metrics"
-  source: "`vibe_manufacturing_v1`.`quality`.`ncr`"
-  dimensions:
-    - name: "Actual Closure Date"
-      expr: actual_closure_date
-    - name: "Containment Action"
-      expr: containment_action
-    - name: "Containment Completed Date"
-      expr: containment_completed_date
-    - name: "Created Timestamp"
-      expr: created_timestamp
-    - name: "Customer Complaint Number"
-      expr: customer_complaint_number
-    - name: "Customer Notification Required"
-      expr: customer_notification_required
-    - name: "Defect Code"
+      comment: "Status of the inspection result (pass, fail, conditional, etc.)"
+    - name: "inspection_stage"
+      expr: inspection_stage
+      comment: "Stage of inspection (incoming, in-process, final, etc.)"
+    - name: "inspection_method"
+      expr: inspection_method
+      comment: "Method used for inspection (visual, dimensional, functional, etc.)"
+    - name: "characteristic_type"
+      expr: characteristic_type
+      comment: "Type of characteristic inspected (variable, attribute, etc.)"
+    - name: "usage_decision_code"
+      expr: usage_decision_code
+      comment: "Decision code for material usage (accept, reject, rework, etc.)"
+    - name: "defect_code"
       expr: defect_code
-    - name: "Defect Location"
-      expr: defect_location
-    - name: "Detection Source"
-      expr: detection_source
-    - name: "Detection Timestamp"
-      expr: detection_timestamp
-    - name: "Disposition"
-      expr: disposition
-    - name: "Disposition Authority"
-      expr: disposition_authority
-    - name: "Disposition Timestamp"
-      expr: disposition_timestamp
-    - name: "Eight D Report Number"
-      expr: eight_d_report_number
-    - name: "Is 8d Required"
-      expr: is_8d_required
-    - name: "Material Description"
-      expr: material_description
+      comment: "Standardized defect code when defects are found"
+    - name: "is_out_of_spec"
+      expr: is_out_of_spec
+      comment: "Whether the result is out of specification limits (True/False)"
+    - name: "is_out_of_control"
+      expr: is_out_of_control
+      comment: "Whether the result is out of statistical control limits (True/False)"
+    - name: "spc_chart_type"
+      expr: spc_chart_type
+      comment: "Type of SPC chart used (X-bar, R, p-chart, c-chart, etc.)"
+    - name: "shift_code"
+      expr: shift_code
+      comment: "Production shift when inspection was performed"
+    - name: "sampling_procedure"
+      expr: sampling_procedure
+      comment: "Sampling procedure used for inspection"
+    - name: "inspection_month"
+      expr: DATE_TRUNC('MONTH', inspection_date)
+      comment: "Month when inspection was performed"
+    - name: "inspection_quarter"
+      expr: DATE_TRUNC('QUARTER', inspection_date)
+      comment: "Quarter when inspection was performed"
+    - name: "inspection_year"
+      expr: YEAR(inspection_date)
+      comment: "Year when inspection was performed"
   measures:
-    - name: "Row Count"
+    - name: "total_inspection_count"
       expr: COUNT(1)
-    - name: "Distinct Ncr"
-      expr: COUNT(DISTINCT ncr_id)
-    - name: "Total Nonconforming Qty"
-      expr: SUM(nonconforming_qty)
-    - name: "Average Nonconforming Qty"
-      expr: AVG(nonconforming_qty)
+      comment: "Total number of inspection results"
+    - name: "passed_inspection_count"
+      expr: COUNT(CASE WHEN result_status = 'Pass' THEN 1 END)
+      comment: "Count of inspections that passed"
+    - name: "failed_inspection_count"
+      expr: COUNT(CASE WHEN result_status = 'Fail' THEN 1 END)
+      comment: "Count of inspections that failed"
+    - name: "out_of_spec_count"
+      expr: COUNT(CASE WHEN is_out_of_spec = TRUE THEN 1 END)
+      comment: "Count of results outside specification limits"
+    - name: "out_of_control_count"
+      expr: COUNT(CASE WHEN is_out_of_control = TRUE THEN 1 END)
+      comment: "Count of results outside statistical control limits"
+    - name: "rejected_count"
+      expr: COUNT(CASE WHEN usage_decision_code = 'Reject' THEN 1 END)
+      comment: "Count of inspection results leading to rejection"
+    - name: "rework_count"
+      expr: COUNT(CASE WHEN usage_decision_code = 'Rework' THEN 1 END)
+      comment: "Count of inspection results requiring rework"
+    - name: "total_defect_count"
+      expr: SUM(CAST(defect_count AS DOUBLE))
+      comment: "Total number of defects found across all inspections"
+    - name: "avg_defect_count"
+      expr: AVG(CAST(defect_count AS DOUBLE))
+      comment: "Average number of defects per inspection"
+    - name: "avg_measured_value"
+      expr: AVG(CAST(measured_value AS DOUBLE))
+      comment: "Average measured value across all inspections"
+    - name: "avg_cp_index"
+      expr: AVG(CAST(cp_index AS DOUBLE))
+      comment: "Average process capability index (Cp) across inspections"
+    - name: "avg_cpk_index"
+      expr: AVG(CAST(cpk_index AS DOUBLE))
+      comment: "Average process capability index (Cpk) across inspections"
+    - name: "min_cpk_index"
+      expr: MIN(CAST(cpk_index AS DOUBLE))
+      comment: "Minimum process capability index (Cpk) observed"
+    - name: "capable_process_count"
+      expr: COUNT(CASE WHEN CAST(cpk_index AS DOUBLE) >= 1.33 THEN 1 END)
+      comment: "Count of inspections where Cpk meets capability threshold (>=1.33)"
+    - name: "total_sample_size"
+      expr: SUM(CAST(sample_size AS DOUBLE))
+      comment: "Total sample size across all inspections"
 $$;
 
-CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`quality_ppap_submission`
+CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`quality_inspection_lot`
 WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Ppap Submission business metrics"
-  source: "`vibe_manufacturing_v1`.`quality`.`ppap_submission`"
+  comment: "Inspection lot metrics tracking batch-level quality performance, lot disposition effectiveness, and material acceptance rates across incoming, in-process, and final inspection stages."
+  source: "`vibe_manufacturing_v1`.`quality`.`inspection_lot`"
   dimensions:
-    - name: "Annual Production Volume"
-      expr: annual_production_volume
-    - name: "Appearance Approval Status"
-      expr: appearance_approval_status
-    - name: "Apqp Phase"
-      expr: apqp_phase
-    - name: "Bulk Material Checklist Status"
-      expr: bulk_material_checklist_status
-    - name: "Checking Aids Status"
-      expr: checking_aids_status
-    - name: "Created Timestamp"
-      expr: created_timestamp
-    - name: "Customer Approval Date"
-      expr: customer_approval_date
-    - name: "Customer Approver Name"
-      expr: customer_approver_name
-    - name: "Customer Part Number"
-      expr: customer_part_number
-    - name: "Customer Specific Requirements Status"
-      expr: customer_specific_requirements_status
-    - name: "Design Record Number"
-      expr: design_record_number
-    - name: "Dimensional Results Status"
-      expr: dimensional_results_status
-    - name: "Imds Submission Reference"
-      expr: imds_submission_reference
-    - name: "Initial Process Study Number"
-      expr: initial_process_study_number
-    - name: "Interim Approval Expiry Date"
-      expr: interim_approval_expiry_date
-    - name: "Is Safety Critical Part"
-      expr: is_safety_critical_part
-  measures:
-    - name: "Row Count"
-      expr: COUNT(1)
-    - name: "Distinct Ppap Submission"
-      expr: COUNT(DISTINCT ppap_submission_id)
-    - name: "Total Cpk Minimum"
-      expr: SUM(cpk_minimum)
-    - name: "Average Cpk Minimum"
-      expr: AVG(cpk_minimum)
-$$;
-
-CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`quality_rma_disposition`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Rma Disposition business metrics"
-  source: "`vibe_manufacturing_v1`.`quality`.`rma_disposition`"
-  dimensions:
-    - name: "Batch Number"
-      expr: batch_number
-    - name: "Capa Required Flag"
-      expr: capa_required_flag
-    - name: "Created Timestamp"
-      expr: created_timestamp
-    - name: "Credit Currency Code"
-      expr: credit_currency_code
-    - name: "Currency Code"
-      expr: currency_code
-    - name: "Customer Reference Number"
-      expr: customer_reference_number
-    - name: "Disposition Code"
+    - name: "lot_status"
+      expr: lot_status
+      comment: "Current status of the inspection lot"
+    - name: "inspection_type_code"
+      expr: inspection_type_code
+      comment: "Code representing the type of inspection"
+    - name: "inspection_type_description"
+      expr: inspection_type_description
+      comment: "Description of the inspection type"
+    - name: "inspection_level"
+      expr: inspection_level
+      comment: "Inspection level (normal, reduced, tightened, etc.)"
+    - name: "inspection_method"
+      expr: inspection_method
+      comment: "Method used for inspection"
+    - name: "disposition_code"
       expr: disposition_code
-    - name: "Disposition Decision"
+      comment: "Code representing the disposition decision"
+    - name: "disposition_decision"
       expr: disposition_decision
-    - name: "Disposition Notes"
-      expr: disposition_notes
-    - name: "Disposition Reason"
-      expr: disposition_reason
-    - name: "Disposition Status"
-      expr: disposition_status
-    - name: "Disposition Timestamp"
-      expr: disposition_timestamp
-    - name: "Disposition Type"
-      expr: disposition_type
-    - name: "Failure Code Confirmed"
-      expr: failure_code_confirmed
-    - name: "Failure Code Reported"
-      expr: failure_code_reported
-    - name: "Failure Description Confirmed"
-      expr: failure_description_confirmed
+      comment: "Final disposition decision (accept, reject, conditional, etc.)"
+    - name: "overall_result"
+      expr: overall_result
+      comment: "Overall result of the inspection lot (pass, fail, etc.)"
+    - name: "ncr_triggered"
+      expr: ncr_triggered
+      comment: "Whether an NCR was triggered by this lot (True/False)"
+    - name: "certificate_of_conformance_required"
+      expr: certificate_of_conformance_required
+      comment: "Whether a certificate of conformance is required (True/False)"
+    - name: "sample_drawing_procedure"
+      expr: sample_drawing_procedure
+      comment: "Procedure used for sample drawing"
+    - name: "dynamic_modification_rule"
+      expr: dynamic_modification_rule
+      comment: "Dynamic modification rule applied to inspection"
+    - name: "inspection_start_month"
+      expr: DATE_TRUNC('MONTH', inspection_start_timestamp)
+      comment: "Month when inspection started"
+    - name: "inspection_start_quarter"
+      expr: DATE_TRUNC('QUARTER', inspection_start_timestamp)
+      comment: "Quarter when inspection started"
+    - name: "inspection_start_year"
+      expr: YEAR(inspection_start_timestamp)
+      comment: "Year when inspection started"
   measures:
-    - name: "Row Count"
+    - name: "total_lot_count"
       expr: COUNT(1)
-    - name: "Distinct Rma Disposition"
-      expr: COUNT(DISTINCT rma_disposition_id)
-    - name: "Total Credit Amount"
-      expr: SUM(credit_amount)
-    - name: "Average Credit Amount"
-      expr: AVG(credit_amount)
-    - name: "Total Quantity Disposed"
-      expr: SUM(quantity_disposed)
-    - name: "Average Quantity Disposed"
-      expr: AVG(quantity_disposed)
-    - name: "Total Quantity Returned"
-      expr: SUM(quantity_returned)
-    - name: "Average Quantity Returned"
-      expr: AVG(quantity_returned)
-    - name: "Total Returned Quantity"
-      expr: SUM(returned_quantity)
-    - name: "Average Returned Quantity"
-      expr: AVG(returned_quantity)
+      comment: "Total number of inspection lots"
+    - name: "accepted_lot_count"
+      expr: COUNT(CASE WHEN disposition_decision = 'Accept' THEN 1 END)
+      comment: "Count of inspection lots accepted"
+    - name: "rejected_lot_count"
+      expr: COUNT(CASE WHEN disposition_decision = 'Reject' THEN 1 END)
+      comment: "Count of inspection lots rejected"
+    - name: "passed_lot_count"
+      expr: COUNT(CASE WHEN overall_result = 'Pass' THEN 1 END)
+      comment: "Count of inspection lots that passed"
+    - name: "failed_lot_count"
+      expr: COUNT(CASE WHEN overall_result = 'Fail' THEN 1 END)
+      comment: "Count of inspection lots that failed"
+    - name: "ncr_triggered_count"
+      expr: COUNT(CASE WHEN ncr_triggered = TRUE THEN 1 END)
+      comment: "Count of inspection lots that triggered an NCR"
+    - name: "total_lot_quantity"
+      expr: SUM(CAST(lot_quantity AS DOUBLE))
+      comment: "Total quantity across all inspection lots"
+    - name: "total_nonconforming_quantity"
+      expr: SUM(CAST(nonconforming_quantity AS DOUBLE))
+      comment: "Total nonconforming quantity across all inspection lots"
+    - name: "avg_lot_quantity"
+      expr: AVG(CAST(lot_quantity AS DOUBLE))
+      comment: "Average lot quantity per inspection lot"
+    - name: "avg_sample_size"
+      expr: AVG(CAST(sample_size AS DOUBLE))
+      comment: "Average sample size per inspection lot"
+    - name: "total_defect_count"
+      expr: SUM(CAST(defect_count AS DOUBLE))
+      comment: "Total defect count across all inspection lots"
+    - name: "avg_defect_count"
+      expr: AVG(CAST(defect_count AS DOUBLE))
+      comment: "Average defect count per inspection lot"
+    - name: "avg_inspection_duration_hours"
+      expr: AVG((UNIX_TIMESTAMP(inspection_end_timestamp) - UNIX_TIMESTAMP(inspection_start_timestamp)) / 3600.0)
+      comment: "Average inspection duration in hours from start to end"
+    - name: "coc_required_count"
+      expr: COUNT(CASE WHEN certificate_of_conformance_required = TRUE THEN 1 END)
+      comment: "Count of inspection lots requiring certificate of conformance"
+$$;
+
+CREATE OR REPLACE VIEW `vibe_manufacturing_v1`.`_metrics`.`quality_compliance_test`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Compliance test metrics tracking regulatory testing performance, certification status, test pass rates, and compliance cost effectiveness for product and process validation."
+  source: "`vibe_manufacturing_v1`.`quality`.`compliance_test`"
+  dimensions:
+    - name: "test_status"
+      expr: test_status
+      comment: "Current status of the compliance test"
+    - name: "test_type"
+      expr: test_type
+      comment: "Type of compliance test (safety, environmental, performance, etc.)"
+    - name: "test_result"
+      expr: test_result
+      comment: "Result of the compliance test (pass, fail, conditional, etc.)"
+    - name: "test_scope"
+      expr: test_scope
+      comment: "Scope of the compliance test"
+    - name: "applicable_standard"
+      expr: applicable_standard
+      comment: "Applicable regulatory or industry standard"
+    - name: "regulation_reference"
+      expr: regulation_reference
+      comment: "Reference to specific regulation or requirement"
+    - name: "ppap_submission_level"
+      expr: ppap_submission_level
+      comment: "PPAP submission level (1-5) if applicable"
+    - name: "corrective_action_required"
+      expr: corrective_action_required
+      comment: "Whether corrective action is required (True/False)"
+    - name: "retest_required"
+      expr: retest_required
+      comment: "Whether retest is required (True/False)"
+    - name: "customer_notification_required"
+      expr: customer_notification_required
+      comment: "Whether customer notification is required (True/False)"
+    - name: "regulatory_impact_flag"
+      expr: regulatory_impact_flag
+      comment: "Whether the test has regulatory impact (True/False)"
+    - name: "laboratory_accreditation_number"
+      expr: laboratory_accreditation_number
+      comment: "Accreditation number of the testing laboratory"
+    - name: "test_cost_currency_code"
+      expr: test_cost_currency_code
+      comment: "Currency code for test cost"
+    - name: "test_start_month"
+      expr: DATE_TRUNC('MONTH', test_start_date)
+      comment: "Month when test started"
+    - name: "test_start_quarter"
+      expr: DATE_TRUNC('QUARTER', test_start_date)
+      comment: "Quarter when test started"
+    - name: "test_start_year"
+      expr: YEAR(test_start_date)
+      comment: "Year when test started"
+  measures:
+    - name: "total_test_count"
+      expr: COUNT(1)
+      comment: "Total number of compliance tests"
+    - name: "passed_test_count"
+      expr: COUNT(CASE WHEN test_result = 'Pass' THEN 1 END)
+      comment: "Count of compliance tests that passed"
+    - name: "failed_test_count"
+      expr: COUNT(CASE WHEN test_result = 'Fail' THEN 1 END)
+      comment: "Count of compliance tests that failed"
+    - name: "completed_test_count"
+      expr: COUNT(CASE WHEN test_completion_date IS NOT NULL THEN 1 END)
+      comment: "Count of compliance tests that have been completed"
+    - name: "corrective_action_required_count"
+      expr: COUNT(CASE WHEN corrective_action_required = TRUE THEN 1 END)
+      comment: "Count of tests requiring corrective action"
+    - name: "retest_required_count"
+      expr: COUNT(CASE WHEN retest_required = TRUE THEN 1 END)
+      comment: "Count of tests requiring retest"
+    - name: "regulatory_impact_count"
+      expr: COUNT(CASE WHEN regulatory_impact_flag = TRUE THEN 1 END)
+      comment: "Count of tests with regulatory impact"
+    - name: "customer_notification_count"
+      expr: COUNT(CASE WHEN customer_notification_required = TRUE THEN 1 END)
+      comment: "Count of tests requiring customer notification"
+    - name: "total_test_cost"
+      expr: SUM(CAST(test_cost_amount AS DOUBLE))
+      comment: "Total cost of all compliance tests"
+    - name: "avg_test_cost"
+      expr: AVG(CAST(test_cost_amount AS DOUBLE))
+      comment: "Average cost per compliance test"
+    - name: "avg_test_duration_days"
+      expr: AVG(DATEDIFF(test_completion_date, test_start_date))
+      comment: "Average duration in days from test start to completion"
+    - name: "certificate_issued_count"
+      expr: COUNT(CASE WHEN certificate_issued_date IS NOT NULL THEN 1 END)
+      comment: "Count of tests where certificate was issued"
+    - name: "avg_days_to_certificate"
+      expr: AVG(DATEDIFF(certificate_issued_date, test_completion_date))
+      comment: "Average number of days from test completion to certificate issuance"
 $$;

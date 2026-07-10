@@ -1,5 +1,5 @@
 -- Schema for Domain: finance | Business: Construction | Version: v2_mvm
--- Generated on: 2026-06-27 01:56:03
+-- Generated on: 2026-07-10 14:35:54
 
 -- ========= DATABASE =========
 CREATE DATABASE IF NOT EXISTS `vibe_construction_v1`.`finance` COMMENT 'SSOT for all project and corporate financial data including job costing, budget vs. actual, GL/AP/AR entries, progress billing, revenue recognition (percentage of completion), cost codes, cost centers, WBS-linked budgets, EVM financial outputs (CPI), cash flow forecasting, P&L (Profit and Loss), and EBITDA reporting. Integrates with SAP S/4HANA and Viewpoint Vista for construction accounting and IFRS/GAAP compliance.';
@@ -8,7 +8,7 @@ CREATE DATABASE IF NOT EXISTS `vibe_construction_v1`.`finance` COMMENT 'SSOT for
 CREATE OR REPLACE TABLE `vibe_construction_v1`.`finance`.`cost_code` (
     `cost_code_id` BIGINT COMMENT 'Primary key for cost_code',
     `cost_center_id` BIGINT COMMENT 'FK to finance.cost_center',
-    `gl_account_id` BIGINT COMMENT 'Foreign key linking to finance.gl_account. Business justification: cost_code has a gl_account_code STRING column but no FK to the gl_account master. In construction accounting, each cost code maps to a specific GL account for financial posting (e.g., CSI division 03 ',
+    `gl_account_id` BIGINT COMMENT 'Foreign key linking to finance.gl_account. Business justification: cost_code currently stores gl_account_code as a STRING, which is a denormalized reference to the GL account master. Adding a proper FK gl_account_id -> gl_account.gl_account_id normalizes this relatio',
     `approval_required_flag` BOOLEAN COMMENT 'Boolean indicator (True/False) specifying whether cost postings to this code require additional approval workflow beyond standard posting authorization. Used for high-risk or high-value cost categories.',
     `budget_allocation_flag` BOOLEAN COMMENT 'Boolean indicator (True/False) specifying whether this cost code can have budget allocated to it. Typically True for leaf-level codes and False for parent/rollup codes.',
     `capitalization_flag` BOOLEAN COMMENT 'Boolean indicator (True/False) specifying whether costs posted to this code should be capitalized as assets on the balance sheet rather than expensed. Critical for Engineering Procurement and Construction (EPC) projects and asset-intensive developments.',
@@ -30,7 +30,6 @@ CREATE OR REPLACE TABLE `vibe_construction_v1`.`finance`.`cost_code` (
     `cost_code_level` STRING COMMENT 'The hierarchical level of this cost code within the Cost Breakdown Structure (CBS). Typically ranges from 1 (top-level category) to 4 (detailed line item). Level 1 might be Labor, Level 2 Structural Labor, Level 3 Steel Erection Labor.',
     `cost_code_name` STRING COMMENT 'The full descriptive name of the cost code providing human-readable identification of the cost category (e.g., Structural Steel Erection, Concrete Formwork Labor, Electrical Conduit Installation).',
     `notes` STRING COMMENT 'Free-text field for additional notes, usage guidelines, or special instructions related to this cost code. Provides context for proper application and interpretation.',
-    `parent_cost_code` STRING COMMENT 'The cost code of the parent category in the hierarchical Cost Breakdown Structure (CBS). Null for top-level cost codes. Enables roll-up reporting and hierarchical budget analysis.',
     `rate_currency_code` STRING COMMENT 'The three-letter ISO 4217 currency code for the standard rate (e.g., USD, EUR, GBP). Required for multi-currency projects and international joint ventures.. Valid values are `^[A-Z]{3}$`',
     `revenue_recognition_method` STRING COMMENT 'The accounting method used for revenue recognition associated with this cost code. Percentage of completion is the most common method for construction projects under IFRS 15 and ASC 606.. Valid values are `percentage_of_completion|completed_contract|cost_to_cost|units_of_delivery`',
     `source_system_code` STRING COMMENT 'Identifier of the operational system of record from which this cost code was originally sourced or is mastered. Supports multi-system integration and data lineage tracking.. Valid values are `SAP_S4HANA|VIEWPOINT_VISTA|PRIMAVERA_P6|PROCORE|MANUAL`',
@@ -45,7 +44,6 @@ CREATE OR REPLACE TABLE `vibe_construction_v1`.`finance`.`cost_code` (
 CREATE OR REPLACE TABLE `vibe_construction_v1`.`finance`.`cost_center` (
     `cost_center_id` BIGINT COMMENT 'Primary key for cost_center',
     `account_id` BIGINT COMMENT 'Foreign key linking to client.account. Business justification: Required for Cost Center Allocation Report per client, enabling profitability analysis by linking each cost center to the client account it serves.',
-    `company_code_id` BIGINT COMMENT 'Foreign key linking to finance.company_code. Business justification: cost_center has a company_code STRING column but no FK to the company_code master. In SAP controlling (CO), every cost center belongs to exactly one company code (legal entity). This is a fundamental ',
     `parent_cost_center_id` BIGINT COMMENT 'Identifier of the parent cost center in the organizational hierarchy. Enables roll-up reporting for regional, divisional, and corporate-level P&L (Profit and Loss) and EBITDA (Earnings Before Interest Taxes Depreciation and Amortization) analysis. Nullable for top-level cost centers.',
     `allocation_method` STRING COMMENT 'The methodology used to allocate or distribute costs from this cost center to other cost objects (projects, WBS (Work Breakdown Structure) elements, or profit centers). Direct charge posts costs explicitly; activity-based uses cost drivers; headcount and square footage are common overhead allocation bases; revenue-based allocates proportionally to project revenue; none indicates no allocation (terminal cost center).. Valid values are `direct_charge|activity_based|headcount|square_footage|revenue_based|none`',
     `budget_amount` DECIMAL(18,2) COMMENT 'The approved annual or period budget allocated to this cost center. Used for budget vs. actual variance reporting, CPI (Cost Performance Index) calculation in EVM (Earned Value Management), and financial forecasting.',
@@ -53,7 +51,8 @@ CREATE OR REPLACE TABLE `vibe_construction_v1`.`finance`.`cost_center` (
     `business_area` STRING COMMENT 'The business segment or division to which this cost center is assigned (e.g., Infrastructure, Energy, Commercial, Residential). Used for segment reporting under IFRS 8 and internal divisional P&L (Profit and Loss) analysis.. Valid values are `^[A-Z0-9]{4}$`',
     `cost_center_category` STRING COMMENT 'Accounting classification of the cost center for financial treatment. Direct centers charge costs to specific projects or WBS (Work Breakdown Structure) elements; indirect centers allocate costs via overhead rates; overhead centers represent corporate G&A (General and Administrative); capitalized centers accumulate costs for asset creation; expensed centers flow directly to P&L (Profit and Loss).. Valid values are `direct|indirect|overhead|capitalized|expensed`',
     `cost_center_code` STRING COMMENT 'The externally-known alphanumeric code identifying the cost center in financial systems and reports. Used in SAP S/4HANA CO-CCA (Cost Center Accounting) for posting and reporting. Typically follows organizational coding standards (e.g., project-based, regional, functional).. Valid values are `^[A-Z0-9]{4,12}$`',
-    `controlling_area` STRING COMMENT 'The SAP S/4HANA Controlling (CO) area to which this cost center belongs. Controlling areas represent organizational units for internal management accounting and can span multiple company codes. Used for cross-company cost center reporting and consolidation.. Valid values are `^[A-Z0-9]{4}$`',
+    `company_code` STRING COMMENT 'The legal entity or company code to which this cost center belongs, as defined in SAP S/4HANA Financial Accounting (FI). Used for statutory reporting, intercompany eliminations, and IFRS/GAAP compliance.. Valid values are `^[A-Z0-9]{4}$`',
+    `controlling_area` STRING COMMENT 'The SAP S/4HANA Controlling (CO) area to which this cost center belongs. Controlling areas represent organizational units for internal management accounting and can span multiple company codes. Used for cost center reporting and consolidation.. Valid values are `^[A-Z0-9]{4}$`',
     `cost_center_group` STRING COMMENT 'A user-defined grouping or classification for aggregating related cost centers in reports (e.g., all regional offices, all project cost centers for a specific client, all MEP (Mechanical Electrical and Plumbing) cost centers). Used for flexible reporting hierarchies beyond the standard organizational structure.',
     `cost_center_status` STRING COMMENT 'Current lifecycle status of the cost center. Active centers accept postings; inactive centers are temporarily disabled; planned centers are approved but not yet operational; closed centers are archived and no longer accept transactions; suspended centers are on hold pending review or restructuring.. Valid values are `active|inactive|planned|closed|suspended`',
     `cost_center_type` STRING COMMENT 'Classification of the cost center by its primary business function. Project cost centers track job-specific costs; regional offices track geographic operations; corporate overhead captures non-project administrative costs; shared services represent centralized functions (IT, HR, Finance); support functions include PMO (Project Management Office), procurement, and QA/QC (Quality Assurance/Quality Control); operational centers track site-level or equipment-based activities.. Valid values are `project|regional_office|corporate_overhead|shared_service|support_function|operational`',
@@ -71,7 +70,6 @@ CREATE OR REPLACE TABLE `vibe_construction_v1`.`finance`.`cost_center` (
     `cost_center_name` STRING COMMENT 'The full descriptive name of the cost center, used for human-readable identification in financial reports, dashboards, and P&L (Profit and Loss) statements.',
     `overhead_rate_percentage` DECIMAL(18,2) COMMENT 'The standard overhead rate (as a percentage) applied to direct costs posted to this cost center. Used for indirect cost allocation, GMP (Guaranteed Maximum Price) contract pricing, and full absorption costing. Nullable for cost centers that do not apply overhead rates.',
     `region_code` STRING COMMENT 'Three-letter code representing the geographic region or country where this cost center operates (e.g., USA, GBR, ARE). Used for regional P&L (Profit and Loss) reporting, tax jurisdiction mapping, and geographic segment analysis.. Valid values are `^[A-Z]{3}$`',
-    `site_location` STRING COMMENT 'The physical site, office, or facility location associated with this cost center. Used for site-level cost tracking, field operations reporting, and HSE (Health Safety and Environment) cost allocation.',
     `valid_from_date` DATE COMMENT 'The date from which this cost center becomes effective and can accept financial postings. Used for time-dependent cost center master data and period-based reporting.',
     `valid_to_date` DATE COMMENT 'The date until which this cost center remains effective. Nullable for open-ended cost centers. Used to manage cost center lifecycle, project closeout, and organizational restructuring.',
     CONSTRAINT pk_cost_center PRIMARY KEY(`cost_center_id`)
@@ -79,8 +77,6 @@ CREATE OR REPLACE TABLE `vibe_construction_v1`.`finance`.`cost_center` (
 
 CREATE OR REPLACE TABLE `vibe_construction_v1`.`finance`.`gl_account` (
     `gl_account_id` BIGINT COMMENT 'Primary key for gl_account',
-    `chart_of_accounts_id` BIGINT COMMENT 'Reference to the chart of accounts framework to which this account belongs (e.g., Corporate COA, IFRS COA, Local Statutory COA).',
-    `company_code_id` BIGINT COMMENT 'Reference to the company code (legal entity) to which this account belongs. Supports multi-entity chart of accounts.',
     `account_class` STRING COMMENT 'High-level classification indicating whether the account appears on the balance sheet, Profit and Loss (P&L) statement, or is a statistical (non-financial) account.. Valid values are `balance_sheet|profit_and_loss|statistical`',
     `account_group` STRING COMMENT 'Grouping code used to aggregate accounts for reporting and analysis (e.g., Direct Construction Costs, Overhead, Operating Expenses, Current Assets).',
     `account_name` STRING COMMENT 'The full descriptive name of the account (e.g., Construction Materials - Direct Costs, Accounts Payable - Trade, Revenue - EPC Contracts).',
@@ -91,7 +87,7 @@ CREATE OR REPLACE TABLE `vibe_construction_v1`.`finance`.`gl_account` (
     `alternative_account_number` STRING COMMENT 'Alternative or legacy account number used for cross-reference, migration mapping, or external reporting (e.g., statutory chart of accounts).',
     `balance_sheet_classification` STRING COMMENT 'Detailed balance sheet line item classification (e.g., Current Assets - Cash, Non-Current Liabilities - Long-Term Debt, Equity - Retained Earnings). Null for P&L accounts.',
     `cash_flow_classification` STRING COMMENT 'Classification for cash flow statement reporting: operating activities, investing activities, financing activities, or not applicable for non-cash accounts.. Valid values are `operating|investing|financing|not_applicable`',
-    `consolidation_account_number` STRING COMMENT 'The corresponding account number in the group consolidation chart of accounts. Used for mapping local entity accounts to group reporting structure.',
+    `consolidation_account_number` STRING COMMENT 'The corresponding account number in the group consolidation chart of accounts. Used for mapping local entity accounts to structure.',
     `cost_center_required_indicator` BOOLEAN COMMENT 'Flag indicating whether a cost center must be specified when posting to this account. Enforces cost allocation discipline.',
     `cost_element_category` STRING COMMENT 'Classification of the cost element: primary (direct posting from FI), secondary (internal allocation), revenue, or not applicable if not a cost element.. Valid values are `primary|secondary|revenue|not_applicable`',
     `cost_element_indicator` BOOLEAN COMMENT 'Flag indicating whether this account is also a cost element in the controlling (CO) module, enabling integration with project costing and Work Breakdown Structure (WBS) budgets.',
@@ -122,15 +118,14 @@ CREATE OR REPLACE TABLE `vibe_construction_v1`.`finance`.`gl_account` (
 
 CREATE OR REPLACE TABLE `vibe_construction_v1`.`finance`.`journal_entry` (
     `journal_entry_id` BIGINT COMMENT 'Unique identifier for the journal entry document. Primary key for the journal entry record.',
-    `account_id` BIGINT COMMENT 'Foreign key linking to client.account. Business justification: AR subledger journal entries for revenue recognition, retainage accruals, and client billing adjustments must reference the client account for AR reconciliation and aged-debtor reporting. Construction',
-    `company_code_id` BIGINT COMMENT 'Foreign key linking to finance.company_code. Business justification: journal_entry has a company_code STRING column but no FK to the company_code master. In SAP S/4HANA-aligned construction accounting, every journal entry belongs to exactly one company code (legal enti',
-    `cost_center_id` BIGINT COMMENT 'Foreign key linking to finance.cost_center. Business justification: journal_entry carries a cost_center_code STRING column but has no FK to the cost_center master. In SAP-style construction accounting, every journal entry is posted to a cost center for management acco',
-    `cost_code_id` BIGINT COMMENT 'Foreign key linking to finance.cost_code. Business justification: journal_entry has a cost_code STRING column but no FK to the cost_code master. Construction journal entries are classified by cost code for job costing and WBS alignment. Adding cost_code_id normalize',
+    `agreement_id` BIGINT COMMENT 'Foreign key linking to contract.agreement. Business justification: Revenue recognition journal entries under IFRS 15/ASC 606 must be posted against specific contracts. The percentage_of_completion and revenue_recognition_method fields on journal_entry require contrac',
+    `cost_code_id` BIGINT COMMENT 'Foreign key linking to finance.cost_code. Business justification: journal_entry currently stores cost_code as a STRING, which is a denormalized reference to the cost code master. Adding a proper FK cost_code_id -> cost_code.cost_code_id normalizes this relationship.',
+    `evm_period_record_id` BIGINT COMMENT 'Foreign key linking to project.evm_period_record. Business justification: EVM period records drive period-end accrual journal entries in construction accounting (BCWP-based revenue recognition). Finance teams post accruals based on EVM data. Linking journal entries to EVM r',
     `gl_account_id` BIGINT COMMENT 'Foreign key linking to finance.gl_account. Business justification: Journal entry posts to a specific GL account; linking to gl_account master eliminates code duplication and enables consistent account attributes.',
-    `timesheet_id` BIGINT COMMENT 'Foreign key linking to workforce.timesheet. Business justification: Payroll journal entry posting process: payroll accruals and labor cost journal entries are generated from approved timesheet batches. This FK enables GL auditors to trace payroll journal entries back ',
-    `vendor_invoice_id` BIGINT COMMENT 'Foreign key linking to procurement.vendor_invoice. Business justification: Construction AP journal entries are posted from vendor invoices. A direct FK from journal_entry to vendor_invoice enables GL-to-source-document audit traceability, a standard requirement for construct',
+    `wbs_element_id` BIGINT COMMENT 'Foreign key linking to project.wbs_element. Business justification: journal_entry has wbs_element_code as plain text — a denormalized reference to project.wbs_element. WBS-level GL reporting and cost posting validation requires a proper FK. Construction finance contro',
     `assignment_field` STRING COMMENT 'Free-form assignment field used for additional sorting, grouping, or reconciliation purposes (e.g., invoice number, payment reference).',
-    `business_area_code` STRING COMMENT 'The business area or division for cross-company code reporting and segment analysis.',
+    `business_area_code` STRING COMMENT 'The business area or division for code reporting and segment analysis.',
+    `company_code` STRING COMMENT 'The legal entity or company code to which this journal entry belongs. Used for consolidation and statutory reporting.',
     `created_timestamp` TIMESTAMP COMMENT 'The date and time when this journal entry record was first created in the system. Used for audit trail and compliance.',
     `credit_amount` DECIMAL(18,2) COMMENT 'The credit amount for this journal entry line in the document currency. Zero if this is a debit entry.',
     `currency_code` STRING COMMENT 'The three-letter ISO 4217 currency code in which the journal entry amounts are denominated.. Valid values are `^[A-Z]{3}$`',
@@ -160,7 +155,6 @@ CREATE OR REPLACE TABLE `vibe_construction_v1`.`finance`.`journal_entry` (
     `revenue_recognition_method` STRING COMMENT 'The method used to calculate percentage of completion for revenue recognition. Cost-to-cost=based on costs incurred, Units-delivered=based on deliverables, Milestones=based on project milestones, Time-elapsed=based on time.. Valid values are `cost_to_cost|units_delivered|milestones|time_elapsed`',
     `reversal_indicator` BOOLEAN COMMENT 'Flag indicating whether this journal entry is a reversal of a previous entry. True if this is a reversal document.',
     `reversal_reason_code` STRING COMMENT 'Code indicating the reason for reversal. 01=Error Correction, 02=Period-End Adjustment, 03=Accrual Reversal, 04=Reclassification, 05=Other.. Valid values are `01|02|03|04|05`',
-    `reversed_document_number` STRING COMMENT 'The document number of the original journal entry that this entry reverses. Populated only when reversal_indicator is true.',
     `tax_amount` DECIMAL(18,2) COMMENT 'The calculated tax amount for this journal entry line in the document currency.',
     `tax_code` STRING COMMENT 'The tax code applied to this journal entry line, determining the tax rate and tax account for automatic tax calculation.',
     `trading_partner_code` STRING COMMENT 'The trading partner company code for intercompany transactions, used for consolidation and elimination entries.',
@@ -172,12 +166,11 @@ CREATE OR REPLACE TABLE `vibe_construction_v1`.`finance`.`journal_entry_line` (
     `journal_entry_line_id` BIGINT COMMENT 'Unique identifier for the journal entry line item. Primary key for this entity representing one leg of a double-entry accounting transaction.',
     `construction_project_id` BIGINT COMMENT 'Reference to the construction project to which this financial transaction is allocated. Links financial data to project master data for job costing and project P&L.',
     `cost_center_id` BIGINT COMMENT 'Foreign key linking to finance.cost_center. Business justification: Journal entry lines need to be allocated to a cost center; replace the existing cost_center_code string with a proper foreign key.',
-    `cost_code_id` BIGINT COMMENT 'Foreign key linking to finance.cost_code. Business justification: journal_entry_line has a cost_code STRING column but no FK to the cost_code master. Individual debit/credit line items in construction accounting are classified by cost code for granular job costing. ',
+    `cost_code_id` BIGINT COMMENT 'Foreign key linking to finance.cost_code. Business justification: journal_entry_line currently stores cost_code as a STRING, which is a denormalized reference to the cost code master. Adding a proper FK cost_code_id -> cost_code.cost_code_id normalizes this relation',
     `gl_account_id` BIGINT COMMENT 'Foreign key linking to finance.gl_account. Business justification: Journal entry line items reference GL accounts; FK provides authoritative account details.',
     `journal_entry_id` BIGINT COMMENT 'Reference to the parent journal entry header that contains this line item. Links this line to the overall transaction batch and posting context.',
-    `timesheet_line_id` BIGINT COMMENT 'Foreign key linking to workforce.timesheet_line. Business justification: Payroll journal line audit trail: individual journal entry lines for labor costs must be traceable to the specific timesheet line that originated them. This supports line-level payroll reconciliation ',
     `vendor_id` BIGINT COMMENT 'Reference to the vendor or subcontractor associated with this line item, if applicable. Used for accounts payable reconciliation and vendor spend analysis.',
-    `wbs_element_id` BIGINT COMMENT 'Foreign key linking to project.wbs_element. Business justification: Line-level WBS cost allocation: individual journal entry lines are coded to WBS elements for granular cost tracking. journal_entry_line.wbs_element_code is denormalized. This FK enables line-item WBS ',
+    `wbs_element_id` BIGINT COMMENT 'Foreign key linking to project.wbs_element. Business justification: journal_entry_line has wbs_element_code as plain text — denormalized reference to project.wbs_element. WBS-level GL line item reporting and cost allocation requires proper FK. Construction cost accoun',
     `amount_local_currency` DECIMAL(18,2) COMMENT 'The monetary amount of this journal entry line in the local reporting currency of the entity. Used for financial statement preparation and local statutory reporting.',
     `amount_transaction_currency` DECIMAL(18,2) COMMENT 'The monetary amount of this journal entry line in the original transaction currency, before any currency conversion. Enables multi-currency accounting and foreign exchange analysis.',
     `assignment_reference` STRING COMMENT 'Additional reference field used for payment allocation, clearing, and reconciliation. Often contains check numbers, wire transfer references, or clearing document numbers.',
@@ -212,9 +205,15 @@ CREATE OR REPLACE TABLE `vibe_construction_v1`.`finance`.`journal_entry_line` (
 
 CREATE OR REPLACE TABLE `vibe_construction_v1`.`finance`.`project_budget` (
     `project_budget_id` BIGINT COMMENT 'Unique identifier for the project budget record. Primary key for this entity.',
+    `agreement_id` BIGINT COMMENT 'Foreign key linking to contract.agreement. Business justification: Needed to tie budget allocations directly to the governing contract, enabling cost control and variance reporting per agreement.',
+    `contract_change_order_id` BIGINT COMMENT 'Foreign key linking to contract.contract_change_order. Business justification: Approved contract change orders trigger budget revisions in construction. Linking project_budget to contract_change_order enables change order cost impact tracking, budget revision audit trails, and a',
+    `cost_account_id` BIGINT COMMENT 'Foreign key linking to project.cost_account. Business justification: Project budgets are allocated at cost account level in construction EVM systems. Budget vs actual reporting at cost account level is a core construction finance control. Cost account is the EVM contro',
     `cost_center_id` BIGINT COMMENT 'Foreign key linking to finance.cost_center. Business justification: Project budgets are associated with a cost center; replace the free‑text cost_center column with a foreign key.',
     `cost_code_id` BIGINT COMMENT 'Foreign key linking to finance.cost_code. Business justification: Project budgets reference a cost code; replace the free‑text cost_code column with a foreign key to the cost_code master.',
+    `phase_id` BIGINT COMMENT 'Foreign key linking to project.phase. Business justification: Construction project budgets are structured by phase (design, procurement, construction, commissioning). Phase-level budget allocation and variance reporting is a core construction finance control. Bu',
     `previous_budget_project_budget_id` BIGINT COMMENT 'Reference to the prior version of this budget record if this is a revision. Enables historical tracking and variance analysis across budget versions.',
+    `schedule_baseline_id` BIGINT COMMENT 'Foreign key linking to schedule.schedule_baseline. Business justification: The approved project budget is time-phased against the schedule baseline (BCWS). Linking project_budget to schedule_baseline is foundational for EVM setup, budget-to-baseline reconciliation, and chang',
+    `scope_id` BIGINT COMMENT 'Foreign key linking to contract.contract_scope. Business justification: Construction project budgets are allocated against specific contract scopes (BOQ line items, work packages). Budget-to-scope alignment is required for earned value management, cost-at-completion forec',
     `actual_cost_amount` DECIMAL(18,2) COMMENT 'Total actual costs incurred to date against this budget. Includes invoiced amounts and accrued costs. Used for EVM Actual Cost of Work Performed (ACWP).',
     `approval_date` DATE COMMENT 'Date when this budget record was formally approved by authorized stakeholders. Triggers budget activation and commitment authority.',
     `approved_by` STRING COMMENT 'Name or identifier of the person who approved this budget. Used for audit trail and accountability.',
@@ -251,15 +250,21 @@ CREATE OR REPLACE TABLE `vibe_construction_v1`.`finance`.`project_budget` (
 
 CREATE OR REPLACE TABLE `vibe_construction_v1`.`finance`.`job_cost_transaction` (
     `job_cost_transaction_id` BIGINT COMMENT 'Unique identifier for the job cost transaction record. Primary key for this entity.',
-    `cost_account_id` BIGINT COMMENT 'Foreign key linking to project.cost_account. Business justification: Cost account posting: job cost transactions post to project cost accounts — this is the fundamental cost accumulation relationship in construction job costing. Cost controllers require this link to ag',
+    `activity_id` BIGINT COMMENT 'Foreign key linking to schedule.activity. Business justification: Job cost transactions must be traceable to the schedule activity that generated the cost for activity-level actual-vs-planned cost reporting. Construction project controls systems (e.g., Primavera, Pr',
+    `agreement_id` BIGINT COMMENT 'Foreign key linking to contract.agreement. Business justification: Contract cost-to-date reporting and earned value management require linking job cost transactions to the specific contract agreement. Construction finance teams run contract profitability reports that',
+    `asset_id` BIGINT COMMENT 'Reference to the equipment asset used or charged in this transaction. Applicable for equipment usage and rental cost transactions.',
+    `construction_project_id` BIGINT COMMENT 'Foreign key linking to project.site. Business justification: Job cost transactions are posted at site level for multi-site project cost segregation and site-level cost reporting. Construction projects with multiple sites require site-level actual cost accumulat',
+    `cost_account_id` BIGINT COMMENT 'Foreign key linking to project.cost_account. Business justification: Job cost transactions must post to cost accounts for EVM cost control. Cost engineers reconcile actual costs at cost account level daily. cost_account is the EVM control account — distinct from cost_c',
     `cost_center_id` BIGINT COMMENT 'Foreign key linking to finance.cost_center. Business justification: Job cost transactions are charged to a cost center; FK enforces valid cost center reference.',
-    `cost_code_id` BIGINT COMMENT 'Foreign key linking to finance.cost_code. Business justification: job_cost_transaction has a cost_code STRING column but no FK to the cost_code master. Every job cost transaction must be classified by a cost code — this is the core of construction job costing (e.g.,',
-    `gl_account_id` BIGINT COMMENT 'Foreign key linking to finance.gl_account. Business justification: job_cost_transaction has a gl_account_code STRING column but no FK to the gl_account master. Job cost transactions post to GL accounts for financial reporting (IFRS/GAAP compliance). Adding gl_account',
-    `phase_id` BIGINT COMMENT 'Foreign key linking to project.phase. Business justification: Phase-level cost tracking: job cost transactions must be attributable to project phases for phase cost reporting and gate review financial analysis. Construction cost controllers require phase-level a',
+    `cost_code_id` BIGINT COMMENT 'Foreign key linking to finance.cost_code. Business justification: job_cost_transaction currently stores cost_code as a STRING, which is a denormalized reference to the cost code master. Adding a proper FK cost_code_id -> cost_code.cost_code_id normalizes this critic',
+    `gl_account_id` BIGINT COMMENT 'Foreign key linking to finance.gl_account. Business justification: job_cost_transaction currently stores gl_account_code as a STRING, which is a denormalized reference to the GL account master. Adding a proper FK gl_account_id -> gl_account.gl_account_id normalizes t',
+    `invoice_id` BIGINT COMMENT 'Foreign key linking to finance.invoice. Business justification: job_cost_transaction currently stores invoice_number as a STRING, which is a denormalized reference to the AP invoice. Adding a proper FK invoice_id -> invoice.invoice_id normalizes this relationship ',
+    `phase_id` BIGINT COMMENT 'Foreign key linking to project.phase. Business justification: Job cost transactions must be posted against project phases for phase-level cost control reporting. Cost controllers accumulate actual costs by phase for gate review reporting and phase budget vs actu',
+    `project_change_order_id` BIGINT COMMENT 'Reference to the project change order that authorized this cost, if applicable. Links cost transactions to scope changes and contract modifications.',
+    `resource_id` BIGINT COMMENT 'Reference to the commitment line item (from purchase order or subcontract) against which this cost is drawn. Used for commitment vs. actual cost tracking.',
     `reversed_transaction_job_cost_transaction_id` BIGINT COMMENT 'Reference to the original job cost transaction that this record reverses or corrects. Null for original transactions.',
-    `timesheet_line_id` BIGINT COMMENT 'Foreign key linking to workforce.timesheet_line. Business justification: Labor job cost posting process: each posted timesheet line generates a job_cost_transaction. This FK enables labor cost audit traceability — auditors and project controllers must trace every job cost ',
+    `subcontract_id` BIGINT COMMENT 'Foreign key linking to contract.subcontract. Business justification: Subcontractor cost transactions must be traceable to the specific subcontract for subcontract cost-to-date reporting, retention tracking, and subcontract final account preparation — a standard quantit',
     `vendor_id` BIGINT COMMENT 'Reference to the vendor or subcontractor who provided the goods or services for this transaction. Applicable for material, equipment rental, and subcontractor costs.',
-    `vendor_invoice_id` BIGINT COMMENT 'Foreign key linking to procurement.vendor_invoice. Business justification: Construction job cost transactions are triggered by vendor invoice postings. A direct FK from job_cost_transaction to vendor_invoice enables cost-posting-to-source-invoice traceability for audit, thre',
     `approval_status` STRING COMMENT 'The approval workflow status of this cost transaction: pending (awaiting review), approved (validated and committed), or rejected (not accepted).. Valid values are `pending|approved|rejected`',
     `approved_by` STRING COMMENT 'The name or identifier of the person who approved this cost transaction. Used for audit trail and accountability.',
     `approved_timestamp` TIMESTAMP COMMENT 'The date and time when this cost transaction was approved. Used for audit trail and workflow tracking.',
@@ -276,6 +281,7 @@ CREATE OR REPLACE TABLE `vibe_construction_v1`.`finance`.`job_cost_transaction` 
     `modified_timestamp` TIMESTAMP COMMENT 'The date and time when this cost transaction record was last modified. Used for audit trail and data governance.',
     `notes` STRING COMMENT 'Additional free-text notes or comments about this cost transaction, including justifications, clarifications, or special handling instructions.',
     `posting_date` DATE COMMENT 'The date when the transaction was posted to the financial system. May differ from transaction_date due to approval or processing delays.',
+    `purchase_order_number` STRING COMMENT 'The purchase order number associated with this cost transaction, linking it to procurement commitments and contract management.',
     `quantity` DECIMAL(18,2) COMMENT 'The quantity of the resource consumed or work performed (e.g., labor hours, material units, equipment hours). Used for unit cost analysis.',
     `reversal_flag` BOOLEAN COMMENT 'Indicates whether this transaction is a reversal or correction of a previously posted cost (true) or an original transaction (false).',
     `source_transaction_reference` STRING COMMENT 'The unique transaction identifier in the source system. Enables traceability back to the originating record for audit and reconciliation.',
@@ -293,14 +299,12 @@ CREATE OR REPLACE TABLE `vibe_construction_v1`.`finance`.`progress_billing` (
     `progress_billing_id` BIGINT COMMENT 'Unique identifier for the progress billing record. Primary key for the progress billing entity.',
     `account_id` BIGINT COMMENT 'Reference to the client account being billed for this progress payment.',
     `agreement_id` BIGINT COMMENT 'Reference to the contract under which this progress billing is issued.',
-    `construction_project_id` BIGINT COMMENT 'Reference to the construction project for which this progress billing is issued.',
+    `cost_account_id` BIGINT COMMENT 'Foreign key linking to project.cost_account. Business justification: Progress billing applications are structured at cost account level in construction. Payment application preparation requires cost-account-level billing breakdown for schedule of values reconciliation.',
     `cost_center_id` BIGINT COMMENT 'Foreign key linking to finance.cost_center. Business justification: Progress billing amounts are charged to a cost center for cost tracking.',
-    `invoice_id` BIGINT COMMENT 'Foreign key linking to finance.invoice. Business justification: progress_billing has an invoice_number STRING column but no FK to the invoice master. In construction, a progress billing / payment application generates a formal AR invoice. Linking progress_billing ',
-    `master_services_agreement_id` BIGINT COMMENT 'Foreign key linking to client.master_services_agreement. Business justification: Progress billing applications in construction are governed by MSA payment terms, retention clauses, and milestone schedules. Payment certificate processing and retention release calculations require d',
-    `milestone_id` BIGINT COMMENT 'Foreign key linking to project.project_milestone. Business justification: Milestone-triggered billing: progress billing applications in construction are triggered by milestone completion certification. Linking progress_billing to the triggering project_milestone enables pay',
-    `payment_certificate_id` BIGINT COMMENT 'Foreign key linking to contract.payment_certificate. Business justification: Progress billing applications are raised after engineer payment certificates are issued. Linking them enables billing-to-certification reconciliation — a mandatory process in construction contract adm',
-    `progress_update_id` BIGINT COMMENT 'Foreign key linking to schedule.progress_update. Business justification: Progress billing applications are directly derived from schedule progress updates — the percentage_complete and period data in progress_update is the contractual basis for the billing claim. Quantity ',
+    `payment_certificate_id` BIGINT COMMENT 'Foreign key linking to contract.payment_certificate. Business justification: Progress billing in construction is certified via a payment certificate before invoicing. Linking progress_billing to payment_certificate enables the billing-to-certification workflow, supports disput',
+    `phase_id` BIGINT COMMENT 'Foreign key linking to project.phase. Business justification: Progress billing applications in construction are structured by phase (billing for phase completion). Phased billing is common in EPC and design-build contracts. Finance teams need phase-level billing',
     `project_budget_id` BIGINT COMMENT 'Foreign key linking to finance.project_budget. Business justification: Progress billing should be associated with the underlying project budget for variance analysis.',
+    `project_engagement_id` BIGINT COMMENT 'Foreign key linking to client.project_engagement. Business justification: Progress billing in construction is raised against a specific client contract engagement. Linking progress_billing to project_engagement enables retention tracking, payment application reconciliation,',
     `wbs_element_id` BIGINT COMMENT 'Reference to the WBS element for which this progress billing is being claimed.',
     `aging_bucket` STRING COMMENT 'Accounts receivable aging classification based on days past due: current (not yet due), 1-30 days, 31-60 days, 61-90 days, over 90 days.. Valid values are `current|1_30_days|31_60_days|61_90_days|over_90_days`',
     `amount_received` DECIMAL(18,2) COMMENT 'Total amount received from the client against this invoice, including partial payments.',
@@ -316,6 +320,7 @@ CREATE OR REPLACE TABLE `vibe_construction_v1`.`finance`.`progress_billing` (
     `gross_amount_due` DECIMAL(18,2) COMMENT 'Gross amount due before retention and taxes, equal to current_period_claim.',
     `invoice_date` DATE COMMENT 'Date when the formal AR invoice was issued to the client.',
     `invoice_due_date` DATE COMMENT 'Payment due date for the invoice, typically calculated as invoice_date plus contract payment terms (e.g., Net 30, Net 60).',
+    `invoice_number` STRING COMMENT 'Formal accounts receivable (AR) tax invoice number issued after payment certificate approval, used for financial accounting and collection tracking.',
     `materials_stored_on_site` DECIMAL(18,2) COMMENT 'Value of materials delivered and stored on-site but not yet incorporated into the work, eligible for billing per contract terms.',
     `modified_timestamp` TIMESTAMP COMMENT 'Timestamp when this progress billing record was last modified or updated.',
     `net_amount_due` DECIMAL(18,2) COMMENT 'Net amount due after deducting retention, calculated as gross_amount_due minus retention_amount.',
@@ -340,8 +345,9 @@ CREATE OR REPLACE TABLE `vibe_construction_v1`.`finance`.`progress_billing` (
 
 CREATE OR REPLACE TABLE `vibe_construction_v1`.`finance`.`invoice` (
     `invoice_id` BIGINT COMMENT 'Primary key for invoice',
-    `activity_resource_assignment_id` BIGINT COMMENT 'Foreign key linking to schedule.activity_resource_assignment. Business justification: Subcontractor and supplier invoices are validated against the activity resource assignment that authorized the work. Three-way matching (assignment → PO → invoice) is a standard construction AP contro',
+    `agreement_id` BIGINT COMMENT 'Foreign key linking to contract.agreement. Business justification: AP invoice processing in construction requires three-way matching against the contract agreement, purchase order, and delivery. Contract administrators verify invoices against agreement terms (retenti',
     `cost_center_id` BIGINT COMMENT 'Foreign key linking to finance.cost_center. Business justification: Accounts payable invoices must be assigned to a cost center for budget control and reporting.',
+    `deliverable_id` BIGINT COMMENT 'Foreign key linking to project.deliverable. Business justification: Subcontractor invoices in engineering/design contracts are tied to specific deliverable submissions and acceptance. AP three-way match in engineering contracts includes deliverable acceptance status. ',
     `cost_code_id` BIGINT COMMENT 'Foreign key linking to finance.cost_code. Business justification: Invoice cost_code column is denormalized; linking to cost_code table enables accurate cost‑code reporting and variance analysis.',
     `gl_account_id` BIGINT COMMENT 'Foreign key linking to finance.gl_account. Business justification: Accounts payable invoice must be associated with a GL account for posting; FK replaces code string.',
     `vendor_id` BIGINT COMMENT 'Reference to the vendor or subcontractor who issued this invoice. Links to the vendor master data in the procurement domain.',
@@ -379,18 +385,72 @@ CREATE OR REPLACE TABLE `vibe_construction_v1`.`finance`.`invoice` (
     CONSTRAINT pk_invoice PRIMARY KEY(`invoice_id`)
 ) COMMENT 'Vendor and subcontractor invoice record in the Accounts Payable (AP) ledger, capturing the full supplier billing lifecycle from receipt through approval to payment. Records invoice number, vendor/subcontractor reference, PO/subcontract reference, invoice date, due date, gross amount, tax/VAT amount, retention withheld, net payable, payment terms, approval workflow status, three-way match status (PO-GR-Invoice), and dispute/hold flags. Sourced from SAP S/4HANA FI-AP and Viewpoint Vista AP module. Covers supplier invoices for materials, equipment hire, professional services, and subcontractor progress claims. The authoritative SSOT for all accounts payable obligations in the construction enterprise.';
 
+CREATE OR REPLACE TABLE `vibe_construction_v1`.`finance`.`accounts_receivable_invoice` (
+    `accounts_receivable_invoice_id` BIGINT COMMENT 'Unique identifier for the accounts receivable invoice record. Primary key.',
+    `account_id` BIGINT COMMENT 'Reference to the client (project owner) to whom this invoice is issued. Links to the client master data product.',
+    `agreement_id` BIGINT COMMENT 'Reference to the construction contract under which this invoice is raised. Links to the contract master agreement product.',
+    `construction_project_id` BIGINT COMMENT 'Reference to the construction project for which work is being billed. Links to the construction project master data product.',
+    `cost_account_id` BIGINT COMMENT 'Foreign key linking to project.cost_account. Business justification: AR invoices in construction EVM contracts are raised at cost account level for revenue recognition. Percentage-of-completion revenue recognition by cost account is required under IFRS 15 and ASC 606 f',
+    `cost_center_id` BIGINT COMMENT 'Foreign key linking to finance.cost_center. Business justification: Accounts receivable invoices should be linked to a cost center for reporting and allocation purposes.',
+    `deliverable_id` BIGINT COMMENT 'Foreign key linking to project.deliverable. Business justification: Client invoices for engineering/design contracts are raised upon deliverable acceptance. Revenue recognition for deliverable-based contracts (lump-sum engineering) requires linking AR invoices to acce',
+    `gl_account_id` BIGINT COMMENT 'Foreign key linking to finance.gl_account. Business justification: Accounts receivable invoice posts to GL; FK provides authoritative account data.',
+    `payment_certificate_id` BIGINT COMMENT 'Foreign key linking to contract.payment_certificate. Business justification: AR invoices in construction are raised against certified payment certificates. The existing payment_certificate_date and payment_certificate_number columns are denormalized from payment_certificate. A',
+    `phase_id` BIGINT COMMENT 'Foreign key linking to project.phase. Business justification: AR invoices are raised per phase completion in phased construction contracts. Phase-level revenue recognition and invoice tracking is required for percentage-of-completion accounting and client billin',
+    `progress_billing_id` BIGINT COMMENT 'Foreign key linking to finance.progress_billing. Business justification: In construction, AR invoices are generated from certified progress billing/payment applications. The accounts_receivable_invoice should reference its source progress_billing record via a FK progress_b',
+    `progress_measurement_id` BIGINT COMMENT 'Foreign key linking to project.progress_measurement. Business justification: AR invoices for construction work are raised based on certified progress measurements. Revenue recognition under percentage-of-completion requires linking AR invoices to verified physical progress mea',
+    `project_change_order_id` BIGINT COMMENT 'Foreign key linking to project.project_change_order. Business justification: Client AR invoices are raised for approved change order amounts in construction. Revenue recognition for change order work and client billing for variation orders requires linking AR invoices to the a',
+    `project_engagement_id` BIGINT COMMENT 'Foreign key linking to client.project_engagement. Business justification: AR invoices in construction are issued under a specific client engagement contract. This link supports engagement-level AR aging reports, dispute management tied to contract terms (LD clauses, retenti',
+    `schedule_milestone_id` BIGINT COMMENT 'Foreign key linking to schedule.schedule_milestone. Business justification: In milestone-based construction contracts, AR invoices are raised upon milestone certification. Linking accounts_receivable_invoice to schedule_milestone provides the audit trail from milestone achiev',
+    `wbs_element_id` BIGINT COMMENT 'Reference to the specific WBS element being billed. Enables detailed cost tracking and revenue allocation at the work package level.',
+    `aging_bucket` STRING COMMENT 'Classification of the invoice based on the number of days past the due date. Used for accounts receivable aging analysis and collection prioritization.. Valid values are `current|1_30_days|31_60_days|61_90_days|over_90_days`',
+    `amount_paid_to_date` DECIMAL(18,2) COMMENT 'Cumulative amount received from the client against this invoice. Updated as partial or full payments are applied.',
+    `billing_period_end_date` DATE COMMENT 'End date of the work period covered by this invoice. Defines the cutoff for work included in this billing cycle.',
+    `billing_period_start_date` DATE COMMENT 'Start date of the work period covered by this invoice. Used for progress billing and percentage-of-completion revenue recognition.',
+    `client_reference_number` STRING COMMENT 'Client-provided reference number or purchase order number that must appear on the invoice for their accounts payable processing.',
+    `created_timestamp` TIMESTAMP COMMENT 'Timestamp when this invoice record was first created in the system. Used for audit trail and data lineage.',
+    `currency_code` STRING COMMENT 'Three-letter ISO 4217 currency code for all monetary amounts on this invoice (e.g., USD, EUR, GBP, AED).. Valid values are `^[A-Z]{3}$`',
+    `days_past_due` STRING COMMENT 'Number of calendar days the invoice is overdue. Calculated as current date minus due date for unpaid invoices past their due date.',
+    `dispute_date` DATE COMMENT 'Date the client formally raised a dispute against this invoice. Null if no dispute exists.',
+    `dispute_flag` BOOLEAN COMMENT 'Indicates whether the invoice is currently under dispute by the client. True if disputed, False otherwise.',
+    `dispute_reason` STRING COMMENT 'Description of the reason the client has disputed this invoice. Null if no dispute exists.',
+    `due_date` DATE COMMENT 'The contractual date by which payment is expected from the client. Used for aging bucket classification and late payment penalty calculations.',
+    `gl_document_number` STRING COMMENT 'Document number assigned by the ERP system when the invoice was posted to the general ledger. Used for audit trail and reconciliation.',
+    `gl_posting_date` DATE COMMENT 'Date the invoice was posted to the general ledger in the ERP system. Used for financial period reconciliation.',
+    `gross_amount` DECIMAL(18,2) COMMENT 'Total invoice amount before tax and retention deductions. Represents the certified value of work completed or milestone achieved.',
+    `invoice_date` DATE COMMENT 'The date the invoice was formally issued to the client. This is the principal business event timestamp for revenue recognition and aging calculations.',
+    `invoice_description` STRING COMMENT 'Detailed description of the work or milestone being billed. Provides context for the invoice line items and supports client review.',
+    `invoice_number` STRING COMMENT 'Externally-known unique invoice number issued to the client. This is the business identifier printed on the invoice document and referenced in payment correspondence.. Valid values are `^[A-Z0-9]{6,20}$`',
+    `invoice_status` STRING COMMENT 'Current lifecycle status of the invoice in the accounts receivable workflow. Tracks progression from draft through payment to closure or dispute resolution. [ENUM-REF-CANDIDATE: draft|issued|partially_paid|paid|overdue|disputed|cancelled|written_off — 8 candidates stripped; promote to reference product]',
+    `invoice_type` STRING COMMENT 'Classification of the invoice based on the billing trigger and contract terms. Distinguishes between regular progress claims, milestone payments, variation orders, and retention releases. [ENUM-REF-CANDIDATE: progress_billing|milestone|advance_payment|retention_release|variation_order|final_account|credit_note|debit_note — 8 candidates stripped; promote to reference product]',
+    `last_payment_date` DATE COMMENT 'Date of the most recent payment received against this invoice. Null if no payments have been received.',
+    `modified_timestamp` TIMESTAMP COMMENT 'Timestamp when this invoice record was last modified. Updated whenever any field changes. Used for audit trail and change tracking.',
+    `net_receivable_amount` DECIMAL(18,2) COMMENT 'Net amount receivable from the client after deducting retention and adding tax. This is the amount expected to be paid by the due date.',
+    `outstanding_balance` DECIMAL(18,2) COMMENT 'Remaining unpaid balance on the invoice. Calculated as net receivable amount minus amount paid to date.',
+    `payment_method` STRING COMMENT 'The payment instrument or method used by the client to settle this invoice (e.g., bank transfer, wire transfer, check, letter of credit).. Valid values are `bank_transfer|wire_transfer|check|letter_of_credit|direct_debit|cash`',
+    `payment_terms` STRING COMMENT 'Contractual payment terms agreed with the client, defining the number of days from invoice date to due date (e.g., Net 30 means payment due within 30 days). [ENUM-REF-CANDIDATE: net_7|net_15|net_30|net_45|net_60|net_90|due_on_receipt|custom — 8 candidates stripped; promote to reference product]',
+    `retention_amount` DECIMAL(18,2) COMMENT 'Amount withheld by the client as retention per contract terms. Typically a percentage of the gross amount held until project completion or defects liability period (DLP) expiry.',
+    `retention_rate_percent` DECIMAL(18,2) COMMENT 'The percentage of the gross amount withheld as retention. Typically ranges from 5% to 10% per FIDIC standard contract terms.',
+    `revenue_recognition_method` STRING COMMENT 'Accounting method used for revenue recognition on this invoice. Construction typically uses percentage-of-completion per IFRS 15 and GAAP ASC 606.. Valid values are `percentage_of_completion|completed_contract|milestone|point_in_time`',
+    `revenue_recognized_amount` DECIMAL(18,2) COMMENT 'Amount of revenue recognized in the financial statements for this invoice. May differ from gross amount based on revenue recognition method and contract terms.',
+    `tax_amount` DECIMAL(18,2) COMMENT 'Total tax (VAT, GST, or sales tax) applied to the invoice. Calculated based on applicable tax rates and jurisdictional rules.',
+    `tax_rate_percent` DECIMAL(18,2) COMMENT 'The tax rate percentage applied to calculate the tax amount. Varies by jurisdiction and project location.',
+    `write_off_amount` DECIMAL(18,2) COMMENT 'Amount written off as uncollectible bad debt. Null if not written off.',
+    `write_off_date` DATE COMMENT 'Date the outstanding balance was written off as bad debt. Null if not written off.',
+    `write_off_flag` BOOLEAN COMMENT 'Indicates whether the outstanding balance has been written off as uncollectible. True if written off, False otherwise.',
+    CONSTRAINT pk_accounts_receivable_invoice PRIMARY KEY(`accounts_receivable_invoice_id`)
+) COMMENT 'Client-facing AR (Accounts Receivable) invoice record issued to project owners/clients for certified work, milestone payments, or variation orders. Captures invoice number, client reference, contract reference, invoice date, due date, gross amount, VAT/tax, retention deducted, net receivable, payment status, and aging bucket. Sourced from SAP S/4HANA FI-AR. Distinct from progress_billing (the claim submitted) — this is the formal tax invoice raised after payment certificate approval.';
+
 CREATE OR REPLACE TABLE `vibe_construction_v1`.`finance`.`payment_record` (
     `payment_record_id` BIGINT COMMENT 'Unique identifier for the payment transaction record. Primary key for the payment_record product.',
+    `accounts_receivable_invoice_id` BIGINT COMMENT 'Foreign key linking to finance.accounts_receivable_invoice. Business justification: payment_record captures both outgoing AP payments (already linked via invoice_accounts_payable_invoice_id -> invoice) and incoming AR payments from clients. Adding a FK accounts_receivable_invoice_id ',
+    `asset_id` BIGINT COMMENT 'Foreign key linking to equipment.asset. Business justification: Payments for carbon offsets need to reference the specific offset transaction for reconciliation.',
     `construction_project_id` BIGINT COMMENT 'Reference to the construction project for which this payment is made or received, enabling project-level cash flow tracking.',
     `cost_center_id` BIGINT COMMENT 'Foreign key linking to finance.cost_center. Business justification: Payments are allocated to cost centers for cash‑flow forecasting and cost‑center performance tracking.',
-    `cost_code_id` BIGINT COMMENT 'Foreign key linking to finance.cost_code. Business justification: payment_record has a cost_code STRING column but no FK to the cost_code master. Payments in construction are classified by cost code for job costing and budget variance tracking. Adding cost_code_id n',
-    `gl_account_id` BIGINT COMMENT 'Foreign key linking to finance.gl_account. Business justification: payment_record has a gl_account_code STRING column but no FK to the gl_account master. Payment transactions clear against specific GL accounts (AP clearing, bank accounts). Adding gl_account_id normal',
+    `gl_account_id` BIGINT COMMENT 'Foreign key linking to finance.gl_account. Business justification: payment_record currently stores gl_account_code as a STRING, which is a denormalized reference to the GL account master. Adding a proper FK gl_account_id -> gl_account.gl_account_id normalizes this re',
     `invoice_id` BIGINT COMMENT 'Foreign key linking to finance.invoice. Business justification: Payments are applied to a specific AP invoice; FK provides direct linkage for reconciliation.',
-    `milestone_id` BIGINT COMMENT 'Foreign key linking to project.project_milestone. Business justification: Milestone payment tracking: payment records for milestone-based construction contracts must reference the triggering milestone for payment certification compliance and retention release tracking. Cont',
-    `payment_certificate_id` BIGINT COMMENT 'Foreign key linking to contract.payment_certificate. Business justification: Finance payment records track actual disbursements; payment certificates authorize those disbursements. Linking them enables certified-vs-paid reconciliation reports — a mandatory contract administrat',
-    `payment_schedule_id` BIGINT COMMENT 'Foreign key linking to contract.payment_schedule. Business justification: Contract payment schedules define due dates and amounts; finance payment records track actuals. This link enables scheduled-vs-actual payment variance analysis — a standard contract financial performa',
-    `progress_billing_id` BIGINT COMMENT 'Foreign key linking to finance.progress_billing. Business justification: payment_record captures both AP (vendor) and AR (client) payments. For AR payments, the payment should be linked to the progress billing / payment application it settles. progress_billing tracks outst',
-    `subcontract_payment_id` BIGINT COMMENT 'Foreign key linking to contract.subcontract_payment. Business justification: Subcontract payment records in finance must reconcile to subcontract payment obligations in the contract domain. This link supports subcontractor payment reconciliation reporting and audit trail requi',
+    `payment_certificate_id` BIGINT COMMENT 'Foreign key linking to contract.payment_certificate. Business justification: In construction, every cash disbursement must be traceable to an authorized payment certificate. Auditors and contract managers require the payment_record → payment_certificate link to verify that no ',
+    `project_engagement_id` BIGINT COMMENT 'Foreign key linking to client.project_engagement. Business justification: Client payments in construction are reconciled against specific project engagements for retention release tracking, final account settlement, and cash receipt allocation. Linking payment_record to pro',
+    `project_milestone_id` BIGINT COMMENT 'Foreign key linking to project.project_milestone. Business justification: Payment records in construction are released upon milestone achievement (milestone-based payment release). Treasury teams link payment releases to triggering milestones for contractual compliance, aud',
     `vendor_id` BIGINT COMMENT 'Reference to the vendor or subcontractor receiving the outgoing payment (AP disbursement). Null for incoming payments.',
     `advance_payment_flag` BOOLEAN COMMENT 'Indicates whether this payment is an advance payment made before work completion or goods delivery.',
     `approval_date` DATE COMMENT 'Date when the payment was approved by the authorized approver, marking a key lifecycle event.',
@@ -399,6 +459,7 @@ CREATE OR REPLACE TABLE `vibe_construction_v1`.`finance`.`payment_record` (
     `bank_reference_number` STRING COMMENT 'Unique reference number assigned by the bank for the payment transaction, used for bank reconciliation and clearing.. Valid values are `^[A-Z0-9]{10,35}$`',
     `clearing_date` DATE COMMENT 'Date when the payment was cleared and confirmed by the bank, indicating successful fund transfer.',
     `clearing_status` STRING COMMENT 'Status of the payment in the bank clearing process, indicating whether funds have been successfully transferred.. Valid values are `not_cleared|cleared|partially_cleared|rejected`',
+    `cost_code` STRING COMMENT 'Construction cost code for categorizing the payment within the project cost structure and WBS (Work Breakdown Structure).. Valid values are `^[A-Z0-9]{4,12}$`',
     `created_timestamp` TIMESTAMP COMMENT 'Timestamp when this payment record was first created in the system, for audit trail and data lineage.',
     `currency_code` STRING COMMENT 'Three-letter ISO 4217 currency code for the payment transaction (e.g., USD, EUR, GBP).. Valid values are `^[A-Z]{3}$`',
     `discount_amount` DECIMAL(18,2) COMMENT 'Early payment discount or cash discount amount deducted from the gross payment amount, if applicable.',
@@ -434,15 +495,16 @@ CREATE OR REPLACE TABLE `vibe_construction_v1`.`finance`.`payment_record` (
 CREATE OR REPLACE TABLE `vibe_construction_v1`.`finance`.`cash_flow_forecast` (
     `cash_flow_forecast_id` BIGINT COMMENT 'Unique identifier for the cash flow forecast record.',
     `agreement_id` BIGINT COMMENT 'Foreign key linking to contract.agreement. Business justification: Required for cash flow forecasting per contract to align financing with project cash needs; contracts define payment terms used in cash flow models.',
-    `construction_project_id` BIGINT COMMENT 'Reference to the construction project for which this cash flow forecast is prepared. Null for corporate-level forecasts.',
-    `cost_center_id` BIGINT COMMENT 'Foreign key linking to finance.cost_center. Business justification: Cash flow forecasts are prepared per cost center to track cash impact of cost allocations.',
-    `lookahead_plan_id` BIGINT COMMENT 'Foreign key linking to schedule.lookahead_plan. Business justification: Short-term cash flow forecasts (4–6 week horizon) are built directly from the lookahead plan — planned activities drive projected labor, material, and subcontractor outflows. Project accountants updat',
-    `milestone_id` BIGINT COMMENT 'Foreign key linking to project.project_milestone. Business justification: Milestone-driven cash flow: construction cash flow forecasts are structured around milestone payment dates. cash_flow_forecast.milestone_payment_amount signals this relationship. Finance teams model i',
-    `payment_schedule_id` BIGINT COMMENT 'Foreign key linking to contract.payment_schedule. Business justification: Cash flow forecasts in construction are built from contract payment schedules. Linking forecast periods to specific payment schedule installments enables automated S-curve population and forecast-vs-s',
-    `phase_id` BIGINT COMMENT 'Foreign key linking to project.phase. Business justification: Phase-structured cash flow: construction cash flow forecasts are organized by project phase for S-curve analysis and phase-level funding requirement planning. Finance directors require phase-level cas',
-    `project_budget_id` BIGINT COMMENT 'Foreign key linking to finance.project_budget. Business justification: cash_flow_forecast is a forward-looking projection that should be anchored to the authoritative project budget. The project_budget contains the approved contract value, forecast at completion, and bud',
-    `schedule_baseline_id` BIGINT COMMENT 'Foreign key linking to schedule.schedule_baseline. Business justification: Long-range cash flow forecasts and S-curves are generated from the schedule baseline (BCWS time-phasing). The s_curve_profile_indicator on cash_flow_forecast signals this dependency. Project finance t',
-    `staffing_plan_id` BIGINT COMMENT 'Foreign key linking to workforce.staffing_plan. Business justification: Payroll cash flow forecasting process: cash_flow_forecast.payroll_amount is derived from staffing plan headcount and labor rates. Finance teams link cash flow forecasts to staffing plans to project we',
+    `cost_account_id` BIGINT COMMENT 'Foreign key linking to project.cost_account. Business justification: Cash flow forecasts are built from cost account level ETC/EAC values in construction EVM. Finance teams need cost-account-level cash flow projections for working capital management and lender reportin',
+    `lookahead_plan_id` BIGINT COMMENT 'Foreign key linking to schedule.lookahead_plan. Business justification: Short-interval lookahead plans (3–6 week windows) are the primary input to near-term cash outflow forecasts in construction. Finance managers use planned activity costs from lookahead plans to project',
+    `payment_schedule_id` BIGINT COMMENT 'Foreign key linking to contract.payment_schedule. Business justification: Construction cash flow forecasts are built directly from contractual payment schedules. The milestone_payment_amount on cash_flow_forecast is driven by payment_schedule installments. This link enables',
+    `phase_id` BIGINT COMMENT 'Foreign key linking to project.phase. Business justification: Cash flow forecasts are prepared at phase level in construction (S-curves per phase). Finance teams produce phase-level cash flow reports for client, lender, and PMO reporting. Phase-level cash flow i',
+    `project_baseline_id` BIGINT COMMENT 'Foreign key linking to project.project_baseline. Business justification: Cash flow forecasts reference a specific project baseline for variance analysis. Baseline vs forecast cash flow variance reporting is a standard construction finance deliverable for PMO and client rep',
+    `project_budget_id` BIGINT COMMENT 'Foreign key linking to finance.project_budget. Business justification: Cash flow forecasts in construction are calibrated against approved project budgets. Adding a FK project_budget_id -> project_budget.project_budget_id links each forecast to the authoritative budget i',
+    `project_engagement_id` BIGINT COMMENT 'Foreign key linking to client.project_engagement. Business justification: Construction cash flow forecasts are built from contractual milestone payment schedules, NTP dates, and retention release terms — all defined at the project_engagement level. This link enables engagem',
+    `forecast_id` BIGINT COMMENT 'Foreign key linking to project.forecast. Business justification: Project cost forecasts (EAC) feed directly into financial cash flow forecasts. Finance teams reconcile project EAC forecasts with cash flow projections for period-end reporting. Role-prefixed project_',
+    `project_milestone_id` BIGINT COMMENT 'Foreign key linking to project.project_milestone. Business justification: Cash flow forecasts in construction are built around milestone payment schedules. cash_flow_forecast has milestone_payment_amount but no FK to project_milestone. Forecasting teams need to link forecas',
+    `risk_register_id` BIGINT COMMENT 'Foreign key linking to project.risk_register. Business justification: Risk provisions and contingency amounts in cash flow forecasts are derived from risk register entries. cash_flow_forecast has risk_provision_amount but no FK to risk_register. Risk-adjusted cash flow ',
     `wbs_element_id` BIGINT COMMENT 'Reference to the specific WBS element if the forecast is prepared at a granular work package level. Null for project-level or corporate-level forecasts.',
     `advance_drawdown_amount` DECIMAL(18,2) COMMENT 'Forecasted drawdown of advance payments or mobilization advances from the client, typically secured by advance payment guarantees.',
     `approval_date` DATE COMMENT 'Date on which the forecast was formally approved for use in financial planning and decision-making.',
@@ -462,7 +524,7 @@ CREATE OR REPLACE TABLE `vibe_construction_v1`.`finance`.`cash_flow_forecast` (
     `forecast_period_end_date` DATE COMMENT 'The end date of the period covered by this cash flow forecast.',
     `forecast_period_start_date` DATE COMMENT 'The start date of the period covered by this cash flow forecast.',
     `forecast_status` STRING COMMENT 'Current lifecycle status of the forecast: draft for work-in-progress, submitted for review, approved for active use, superseded when replaced by a newer version, or archived for historical reference.. Valid values are `draft|submitted|approved|superseded|archived`',
-    `forecast_type` STRING COMMENT 'Classification of the forecast scope: project-level for individual construction projects, corporate-level for enterprise-wide treasury forecasting, WBS-level for granular work package forecasts, or contract-level for specific contract cash management.. Valid values are `project_level|corporate_level|wbs_level|contract_level`',
+    `forecast_type` STRING COMMENT 'Classification of the forecast scope: project-level for individual construction projects, corporate-level for treasury forecasting, WBS-level for granular work package forecasts, or contract-level for specific contract cash management.. Valid values are `project_level|corporate_level|wbs_level|contract_level`',
     `forecast_version` STRING COMMENT 'Version number of the forecast, incremented with each revision to track forecast evolution and variance analysis over time.',
     `forecasted_inflow_amount` DECIMAL(18,2) COMMENT 'Total projected cash inflows for the forecast period, including client milestone payments, retention releases, advance drawdowns, and other receipts.',
     `forecasted_outflow_amount` DECIMAL(18,2) COMMENT 'Total projected cash outflows for the forecast period, including subcontractor payments, material procurement, payroll, equipment hire, bond premiums, and other disbursements.',
@@ -484,83 +546,10 @@ CREATE OR REPLACE TABLE `vibe_construction_v1`.`finance`.`cash_flow_forecast` (
     CONSTRAINT pk_cash_flow_forecast PRIMARY KEY(`cash_flow_forecast_id`)
 ) COMMENT 'Forward-looking cash flow projection record for construction projects and the corporate entity, capturing forecast inflows (client milestone payments, retention releases, advance drawdowns) and outflows (subcontractor payments, material procurement, payroll, equipment hire, bond premiums) by period (weekly/monthly). Includes S-curve cash flow profile, cumulative cash position, peak funding requirement, working capital gap analysis, and variance to prior forecast. Supports both project-level forecasting for contract cash management and corporate-level treasury forecasting for bonding capacity and credit facility utilization.';
 
-CREATE OR REPLACE TABLE `vibe_construction_v1`.`finance`.`company_code` (
-    `company_code_id` BIGINT COMMENT 'Primary key for company_code',
-    `parent_company_code_id` BIGINT COMMENT 'Self-referencing FK on company_code (parent_company_code_id)',
-    `address_line1` STRING COMMENT 'Primary street address of the company location.',
-    `address_line2` STRING COMMENT 'Secondary address information (suite, floor, etc.).',
-    `business_area` STRING COMMENT 'Higher‑level business area classification for reporting.',
-    `chart_of_accounts` STRING COMMENT 'Reference to the chart of accounts used by the entity.',
-    `city` STRING COMMENT 'City where the company is located.',
-    `classification` STRING COMMENT 'Category describing the legal relationship of the entity within the corporate group.',
-    `company_code_code` STRING COMMENT 'Unique alphanumeric identifier assigned to the legal entity for accounting and reporting.',
-    `company_code_status` STRING COMMENT 'Current lifecycle state of the company entity.',
-    `cost_center` STRING COMMENT 'Identifier of the cost center associated with the entity.',
-    `country_code` STRING COMMENT 'Three‑letter ISO country code of the company location.',
-    `created_timestamp` TIMESTAMP COMMENT 'Timestamp when the company code record was first created in the system.',
-    `currency_code` STRING COMMENT 'ISO 4217 currency code used for reporting for this company.',
-    `company_code_description` STRING COMMENT 'Free‑text description of the companys primary activities and scope.',
-    `dissolution_date` DATE COMMENT 'Date the entity was legally dissolved, if applicable.',
-    `effective_from` DATE COMMENT 'Date when the company code became effective for accounting purposes.',
-    `effective_to` DATE COMMENT 'Date when the company code ceased to be effective (null if still active).',
-    `external_reference_number` STRING COMMENT 'Identifier used by external partner or regulatory systems to reference this entity.',
-    `financial_reporting_standard` STRING COMMENT 'Accounting framework applied to the entitys financial statements.',
-    `incorporation_date` DATE COMMENT 'Date the entity was legally incorporated.',
-    `industry_code` STRING COMMENT 'Standard industry code (e.g., NAICS) describing the primary business activity.',
-    `is_consolidated` BOOLEAN COMMENT 'Indicates whether the entity is included in group financial consolidation.',
-    `legal_form` STRING COMMENT 'Legal structure of the entity.',
-    `company_code_name` STRING COMMENT 'Legal name of the company entity.',
-    `parent_company_code` STRING COMMENT 'Company code of the immediate parent legal entity, if any.',
-    `postal_code` STRING COMMENT 'Postal/ZIP code of the company address.',
-    `primary_contact_email` STRING COMMENT 'Email address of the primary contact person.',
-    `primary_contact_name` STRING COMMENT 'Name of the primary person to contact for the company.',
-    `primary_contact_phone` STRING COMMENT 'Phone number of the primary contact person.',
-    `profit_center` STRING COMMENT 'Identifier of the profit center to which the entity reports.',
-    `segment` STRING COMMENT 'Business segment to which the entity belongs for strategic reporting.',
-    `state_province` STRING COMMENT 'State or province of the company location.',
-    `tax_number` STRING COMMENT 'Government‑issued tax identifier for the legal entity.',
-    `updated_timestamp` TIMESTAMP COMMENT 'Timestamp of the most recent update to the company code record.',
-    CONSTRAINT pk_company_code PRIMARY KEY(`company_code_id`)
-) COMMENT 'Master reference table for company_code. Referenced by company_code_id.';
-
-CREATE OR REPLACE TABLE `vibe_construction_v1`.`finance`.`chart_of_accounts` (
-    `chart_of_accounts_id` BIGINT COMMENT 'Primary key for chart_of_accounts',
-    `company_code_id` BIGINT COMMENT 'add column company_code_id (BIGINT) with FK to finance.company_code.company_code_id - charts of accounts are owned by company codes',
-    `parent_chart_of_accounts_id` BIGINT COMMENT 'Self-referencing FK on chart_of_accounts (parent_chart_of_accounts_id)',
-    `account_hierarchy_level` STRING COMMENT 'Numeric level indicating the depth of the account within the chart hierarchy (e.g., 1 = top‑level, 2 = sub‑account).',
-    `account_name` STRING COMMENT 'Human‑readable name of the account as displayed in financial statements and reports.',
-    `account_number` STRING COMMENT 'Unique alphanumeric code assigned to the account, used in financial postings and reporting.',
-    `account_type` STRING COMMENT 'Category of the account defining its role in the balance sheet or income statement.',
-    `chart_of_accounts_status` STRING COMMENT 'Current lifecycle state of the account (e.g., active for posting, inactive for archival).',
-    `cost_center_code` STRING COMMENT 'Code linking the account to a cost center for internal cost allocation.',
-    `created_timestamp` TIMESTAMP COMMENT 'Date‑time when the chart of accounts record was first created in the system.',
-    `currency_code` STRING COMMENT 'Three‑letter ISO 4217 code of the currency in which the account is denominated.',
-    `chart_of_accounts_description` STRING COMMENT 'Extended textual description providing context or usage notes for the account.',
-    `effective_from` DATE COMMENT 'Date when the account becomes valid for posting.',
-    `effective_to` DATE COMMENT 'Date when the account is retired or becomes invalid; null if still active.',
-    `financial_reporting_code` STRING COMMENT 'Code that maps the account to external financial reporting standards (e.g., IFRS, GAAP).',
-    `is_budgetable` BOOLEAN COMMENT 'True if the account is included in budgeting and forecasting processes.',
-    `is_cash_account` BOOLEAN COMMENT 'True if the account represents cash or cash equivalents.',
-    `is_consolidation_account` BOOLEAN COMMENT 'True if the account is used in corporate consolidation reporting.',
-    `is_external` BOOLEAN COMMENT 'True if the account is used for external parties (e.g., vendors, customers).',
-    `is_intercompany` BOOLEAN COMMENT 'True if the account records intercompany transactions.',
-    `normal_balance` STRING COMMENT 'Indicates whether the account normally carries a debit or credit balance.',
-    `opening_balance` DECIMAL(18,2) COMMENT 'Balance of the account at the start of the fiscal period, expressed in the accounts currency.',
-    `profit_center_code` STRING COMMENT 'Code linking the account to a profit center for profitability analysis.',
-    `tax_reporting_code` STRING COMMENT 'Code used for tax reporting and compliance purposes.',
-    `updated_timestamp` TIMESTAMP COMMENT 'Date‑time of the most recent modification to the chart of accounts record.',
-    CONSTRAINT pk_chart_of_accounts PRIMARY KEY(`chart_of_accounts_id`)
-) COMMENT 'Master reference table for chart_of_accounts. Referenced by chart_of_accounts_id.';
-
 -- ========= FOREIGN KEYS =========
 ALTER TABLE `vibe_construction_v1`.`finance`.`cost_code` ADD CONSTRAINT `fk_finance_cost_code_cost_center_id` FOREIGN KEY (`cost_center_id`) REFERENCES `vibe_construction_v1`.`finance`.`cost_center`(`cost_center_id`);
 ALTER TABLE `vibe_construction_v1`.`finance`.`cost_code` ADD CONSTRAINT `fk_finance_cost_code_gl_account_id` FOREIGN KEY (`gl_account_id`) REFERENCES `vibe_construction_v1`.`finance`.`gl_account`(`gl_account_id`);
-ALTER TABLE `vibe_construction_v1`.`finance`.`cost_center` ADD CONSTRAINT `fk_finance_cost_center_company_code_id` FOREIGN KEY (`company_code_id`) REFERENCES `vibe_construction_v1`.`finance`.`company_code`(`company_code_id`);
 ALTER TABLE `vibe_construction_v1`.`finance`.`cost_center` ADD CONSTRAINT `fk_finance_cost_center_parent_cost_center_id` FOREIGN KEY (`parent_cost_center_id`) REFERENCES `vibe_construction_v1`.`finance`.`cost_center`(`cost_center_id`);
-ALTER TABLE `vibe_construction_v1`.`finance`.`gl_account` ADD CONSTRAINT `fk_finance_gl_account_chart_of_accounts_id` FOREIGN KEY (`chart_of_accounts_id`) REFERENCES `vibe_construction_v1`.`finance`.`chart_of_accounts`(`chart_of_accounts_id`);
-ALTER TABLE `vibe_construction_v1`.`finance`.`gl_account` ADD CONSTRAINT `fk_finance_gl_account_company_code_id` FOREIGN KEY (`company_code_id`) REFERENCES `vibe_construction_v1`.`finance`.`company_code`(`company_code_id`);
-ALTER TABLE `vibe_construction_v1`.`finance`.`journal_entry` ADD CONSTRAINT `fk_finance_journal_entry_company_code_id` FOREIGN KEY (`company_code_id`) REFERENCES `vibe_construction_v1`.`finance`.`company_code`(`company_code_id`);
-ALTER TABLE `vibe_construction_v1`.`finance`.`journal_entry` ADD CONSTRAINT `fk_finance_journal_entry_cost_center_id` FOREIGN KEY (`cost_center_id`) REFERENCES `vibe_construction_v1`.`finance`.`cost_center`(`cost_center_id`);
 ALTER TABLE `vibe_construction_v1`.`finance`.`journal_entry` ADD CONSTRAINT `fk_finance_journal_entry_cost_code_id` FOREIGN KEY (`cost_code_id`) REFERENCES `vibe_construction_v1`.`finance`.`cost_code`(`cost_code_id`);
 ALTER TABLE `vibe_construction_v1`.`finance`.`journal_entry` ADD CONSTRAINT `fk_finance_journal_entry_gl_account_id` FOREIGN KEY (`gl_account_id`) REFERENCES `vibe_construction_v1`.`finance`.`gl_account`(`gl_account_id`);
 ALTER TABLE `vibe_construction_v1`.`finance`.`journal_entry_line` ADD CONSTRAINT `fk_finance_journal_entry_line_cost_center_id` FOREIGN KEY (`cost_center_id`) REFERENCES `vibe_construction_v1`.`finance`.`cost_center`(`cost_center_id`);
@@ -573,29 +562,27 @@ ALTER TABLE `vibe_construction_v1`.`finance`.`project_budget` ADD CONSTRAINT `fk
 ALTER TABLE `vibe_construction_v1`.`finance`.`job_cost_transaction` ADD CONSTRAINT `fk_finance_job_cost_transaction_cost_center_id` FOREIGN KEY (`cost_center_id`) REFERENCES `vibe_construction_v1`.`finance`.`cost_center`(`cost_center_id`);
 ALTER TABLE `vibe_construction_v1`.`finance`.`job_cost_transaction` ADD CONSTRAINT `fk_finance_job_cost_transaction_cost_code_id` FOREIGN KEY (`cost_code_id`) REFERENCES `vibe_construction_v1`.`finance`.`cost_code`(`cost_code_id`);
 ALTER TABLE `vibe_construction_v1`.`finance`.`job_cost_transaction` ADD CONSTRAINT `fk_finance_job_cost_transaction_gl_account_id` FOREIGN KEY (`gl_account_id`) REFERENCES `vibe_construction_v1`.`finance`.`gl_account`(`gl_account_id`);
+ALTER TABLE `vibe_construction_v1`.`finance`.`job_cost_transaction` ADD CONSTRAINT `fk_finance_job_cost_transaction_invoice_id` FOREIGN KEY (`invoice_id`) REFERENCES `vibe_construction_v1`.`finance`.`invoice`(`invoice_id`);
 ALTER TABLE `vibe_construction_v1`.`finance`.`job_cost_transaction` ADD CONSTRAINT `fk_finance_job_cost_transaction_reversed_transaction_job_cost_transaction_id` FOREIGN KEY (`reversed_transaction_job_cost_transaction_id`) REFERENCES `vibe_construction_v1`.`finance`.`job_cost_transaction`(`job_cost_transaction_id`);
 ALTER TABLE `vibe_construction_v1`.`finance`.`progress_billing` ADD CONSTRAINT `fk_finance_progress_billing_cost_center_id` FOREIGN KEY (`cost_center_id`) REFERENCES `vibe_construction_v1`.`finance`.`cost_center`(`cost_center_id`);
-ALTER TABLE `vibe_construction_v1`.`finance`.`progress_billing` ADD CONSTRAINT `fk_finance_progress_billing_invoice_id` FOREIGN KEY (`invoice_id`) REFERENCES `vibe_construction_v1`.`finance`.`invoice`(`invoice_id`);
 ALTER TABLE `vibe_construction_v1`.`finance`.`progress_billing` ADD CONSTRAINT `fk_finance_progress_billing_project_budget_id` FOREIGN KEY (`project_budget_id`) REFERENCES `vibe_construction_v1`.`finance`.`project_budget`(`project_budget_id`);
 ALTER TABLE `vibe_construction_v1`.`finance`.`invoice` ADD CONSTRAINT `fk_finance_invoice_cost_center_id` FOREIGN KEY (`cost_center_id`) REFERENCES `vibe_construction_v1`.`finance`.`cost_center`(`cost_center_id`);
 ALTER TABLE `vibe_construction_v1`.`finance`.`invoice` ADD CONSTRAINT `fk_finance_invoice_cost_code_id` FOREIGN KEY (`cost_code_id`) REFERENCES `vibe_construction_v1`.`finance`.`cost_code`(`cost_code_id`);
 ALTER TABLE `vibe_construction_v1`.`finance`.`invoice` ADD CONSTRAINT `fk_finance_invoice_gl_account_id` FOREIGN KEY (`gl_account_id`) REFERENCES `vibe_construction_v1`.`finance`.`gl_account`(`gl_account_id`);
+ALTER TABLE `vibe_construction_v1`.`finance`.`accounts_receivable_invoice` ADD CONSTRAINT `fk_finance_accounts_receivable_invoice_cost_center_id` FOREIGN KEY (`cost_center_id`) REFERENCES `vibe_construction_v1`.`finance`.`cost_center`(`cost_center_id`);
+ALTER TABLE `vibe_construction_v1`.`finance`.`accounts_receivable_invoice` ADD CONSTRAINT `fk_finance_accounts_receivable_invoice_gl_account_id` FOREIGN KEY (`gl_account_id`) REFERENCES `vibe_construction_v1`.`finance`.`gl_account`(`gl_account_id`);
+ALTER TABLE `vibe_construction_v1`.`finance`.`accounts_receivable_invoice` ADD CONSTRAINT `fk_finance_accounts_receivable_invoice_progress_billing_id` FOREIGN KEY (`progress_billing_id`) REFERENCES `vibe_construction_v1`.`finance`.`progress_billing`(`progress_billing_id`);
+ALTER TABLE `vibe_construction_v1`.`finance`.`payment_record` ADD CONSTRAINT `fk_finance_payment_record_accounts_receivable_invoice_id` FOREIGN KEY (`accounts_receivable_invoice_id`) REFERENCES `vibe_construction_v1`.`finance`.`accounts_receivable_invoice`(`accounts_receivable_invoice_id`);
 ALTER TABLE `vibe_construction_v1`.`finance`.`payment_record` ADD CONSTRAINT `fk_finance_payment_record_cost_center_id` FOREIGN KEY (`cost_center_id`) REFERENCES `vibe_construction_v1`.`finance`.`cost_center`(`cost_center_id`);
-ALTER TABLE `vibe_construction_v1`.`finance`.`payment_record` ADD CONSTRAINT `fk_finance_payment_record_cost_code_id` FOREIGN KEY (`cost_code_id`) REFERENCES `vibe_construction_v1`.`finance`.`cost_code`(`cost_code_id`);
 ALTER TABLE `vibe_construction_v1`.`finance`.`payment_record` ADD CONSTRAINT `fk_finance_payment_record_gl_account_id` FOREIGN KEY (`gl_account_id`) REFERENCES `vibe_construction_v1`.`finance`.`gl_account`(`gl_account_id`);
 ALTER TABLE `vibe_construction_v1`.`finance`.`payment_record` ADD CONSTRAINT `fk_finance_payment_record_invoice_id` FOREIGN KEY (`invoice_id`) REFERENCES `vibe_construction_v1`.`finance`.`invoice`(`invoice_id`);
-ALTER TABLE `vibe_construction_v1`.`finance`.`payment_record` ADD CONSTRAINT `fk_finance_payment_record_progress_billing_id` FOREIGN KEY (`progress_billing_id`) REFERENCES `vibe_construction_v1`.`finance`.`progress_billing`(`progress_billing_id`);
-ALTER TABLE `vibe_construction_v1`.`finance`.`cash_flow_forecast` ADD CONSTRAINT `fk_finance_cash_flow_forecast_cost_center_id` FOREIGN KEY (`cost_center_id`) REFERENCES `vibe_construction_v1`.`finance`.`cost_center`(`cost_center_id`);
 ALTER TABLE `vibe_construction_v1`.`finance`.`cash_flow_forecast` ADD CONSTRAINT `fk_finance_cash_flow_forecast_project_budget_id` FOREIGN KEY (`project_budget_id`) REFERENCES `vibe_construction_v1`.`finance`.`project_budget`(`project_budget_id`);
-ALTER TABLE `vibe_construction_v1`.`finance`.`company_code` ADD CONSTRAINT `fk_finance_company_code_parent_company_code_id` FOREIGN KEY (`parent_company_code_id`) REFERENCES `vibe_construction_v1`.`finance`.`company_code`(`company_code_id`);
-ALTER TABLE `vibe_construction_v1`.`finance`.`chart_of_accounts` ADD CONSTRAINT `fk_finance_chart_of_accounts_company_code_id` FOREIGN KEY (`company_code_id`) REFERENCES `vibe_construction_v1`.`finance`.`company_code`(`company_code_id`);
-ALTER TABLE `vibe_construction_v1`.`finance`.`chart_of_accounts` ADD CONSTRAINT `fk_finance_chart_of_accounts_parent_chart_of_accounts_id` FOREIGN KEY (`parent_chart_of_accounts_id`) REFERENCES `vibe_construction_v1`.`finance`.`chart_of_accounts`(`chart_of_accounts_id`);
 
 -- ========= TAGS =========
 ALTER SCHEMA `vibe_construction_v1`.`finance` SET TAGS ('dbx_division' = 'corporate');
 ALTER SCHEMA `vibe_construction_v1`.`finance` SET TAGS ('dbx_domain' = 'finance');
 ALTER TABLE `vibe_construction_v1`.`finance`.`cost_code` SET TAGS ('dbx_data_type' = 'reference_data');
-ALTER TABLE `vibe_construction_v1`.`finance`.`cost_code` SET TAGS ('dbx_subdomain' = 'project_costing');
+ALTER TABLE `vibe_construction_v1`.`finance`.`cost_code` SET TAGS ('dbx_subdomain' = 'cost_management');
 ALTER TABLE `vibe_construction_v1`.`finance`.`cost_code` ALTER COLUMN `cost_code_id` SET TAGS ('dbx_business_glossary_term' = 'Cost Code Identifier');
 ALTER TABLE `vibe_construction_v1`.`finance`.`cost_code` ALTER COLUMN `cost_center_id` SET TAGS ('dbx_business_glossary_term' = 'Cost Center Id');
 ALTER TABLE `vibe_construction_v1`.`finance`.`cost_code` ALTER COLUMN `cost_center_id` SET TAGS ('dbx_internal' = 'true');
@@ -622,11 +609,13 @@ ALTER TABLE `vibe_construction_v1`.`finance`.`cost_code` ALTER COLUMN `effective
 ALTER TABLE `vibe_construction_v1`.`finance`.`cost_code` ALTER COLUMN `evm_eligible_flag` SET TAGS ('dbx_business_glossary_term' = 'Earned Value Management (EVM) Eligible Flag');
 ALTER TABLE `vibe_construction_v1`.`finance`.`cost_code` ALTER COLUMN `external_reference_code` SET TAGS ('dbx_business_glossary_term' = 'External Reference ID');
 ALTER TABLE `vibe_construction_v1`.`finance`.`cost_code` ALTER COLUMN `last_modified_by` SET TAGS ('dbx_business_glossary_term' = 'Last Modified By User');
+ALTER TABLE `vibe_construction_v1`.`finance`.`cost_code` ALTER COLUMN `last_modified_by` SET TAGS ('dbx_pii_identifier' = 'true');
 ALTER TABLE `vibe_construction_v1`.`finance`.`cost_code` ALTER COLUMN `last_modified_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Last Modified Timestamp');
 ALTER TABLE `vibe_construction_v1`.`finance`.`cost_code` ALTER COLUMN `cost_code_level` SET TAGS ('dbx_business_glossary_term' = 'Cost Code Level');
 ALTER TABLE `vibe_construction_v1`.`finance`.`cost_code` ALTER COLUMN `cost_code_name` SET TAGS ('dbx_business_glossary_term' = 'Cost Code Name');
+ALTER TABLE `vibe_construction_v1`.`finance`.`cost_code` ALTER COLUMN `cost_code_name` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_construction_v1`.`finance`.`cost_code` ALTER COLUMN `cost_code_name` SET TAGS ('dbx_pii_name' = 'true');
 ALTER TABLE `vibe_construction_v1`.`finance`.`cost_code` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Notes');
-ALTER TABLE `vibe_construction_v1`.`finance`.`cost_code` ALTER COLUMN `parent_cost_code` SET TAGS ('dbx_business_glossary_term' = 'Parent Cost Code');
 ALTER TABLE `vibe_construction_v1`.`finance`.`cost_code` ALTER COLUMN `rate_currency_code` SET TAGS ('dbx_business_glossary_term' = 'Rate Currency Code');
 ALTER TABLE `vibe_construction_v1`.`finance`.`cost_code` ALTER COLUMN `rate_currency_code` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
 ALTER TABLE `vibe_construction_v1`.`finance`.`cost_code` ALTER COLUMN `revenue_recognition_method` SET TAGS ('dbx_business_glossary_term' = 'Revenue Recognition Method');
@@ -639,14 +628,16 @@ ALTER TABLE `vibe_construction_v1`.`finance`.`cost_code` ALTER COLUMN `tax_treat
 ALTER TABLE `vibe_construction_v1`.`finance`.`cost_code` ALTER COLUMN `tax_treatment_code` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_construction_v1`.`finance`.`cost_code` ALTER COLUMN `tax_treatment_code` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_construction_v1`.`finance`.`cost_code` ALTER COLUMN `unit_of_measure` SET TAGS ('dbx_business_glossary_term' = 'Unit of Measure (UOM)');
+ALTER TABLE `vibe_construction_v1`.`finance`.`cost_code` ALTER COLUMN `unit_of_measure` SET TAGS ('dbx_pii_address' = 'true');
 ALTER TABLE `vibe_construction_v1`.`finance`.`cost_code` ALTER COLUMN `wbs_compatible_flag` SET TAGS ('dbx_business_glossary_term' = 'Work Breakdown Structure (WBS) Compatible Flag');
 ALTER TABLE `vibe_construction_v1`.`finance`.`cost_code` ALTER COLUMN `created_by` SET TAGS ('dbx_business_glossary_term' = 'Created By User');
+ALTER TABLE `vibe_construction_v1`.`finance`.`cost_code` ALTER COLUMN `created_by` SET TAGS ('dbx_pii_identifier' = 'true');
 ALTER TABLE `vibe_construction_v1`.`finance`.`cost_center` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_construction_v1`.`finance`.`cost_center` SET TAGS ('dbx_subdomain' = 'project_costing');
+ALTER TABLE `vibe_construction_v1`.`finance`.`cost_center` SET TAGS ('dbx_subdomain' = 'cost_management');
 ALTER TABLE `vibe_construction_v1`.`finance`.`cost_center` ALTER COLUMN `cost_center_id` SET TAGS ('dbx_business_glossary_term' = 'Cost Center Identifier');
 ALTER TABLE `vibe_construction_v1`.`finance`.`cost_center` ALTER COLUMN `account_id` SET TAGS ('dbx_business_glossary_term' = 'Client Account Id (Foreign Key)');
-ALTER TABLE `vibe_construction_v1`.`finance`.`cost_center` ALTER COLUMN `company_code_id` SET TAGS ('dbx_business_glossary_term' = 'Company Code Id (Foreign Key)');
 ALTER TABLE `vibe_construction_v1`.`finance`.`cost_center` ALTER COLUMN `parent_cost_center_id` SET TAGS ('dbx_business_glossary_term' = 'Parent Cost Center ID');
+ALTER TABLE `vibe_construction_v1`.`finance`.`cost_center` ALTER COLUMN `parent_cost_center_id` SET TAGS ('dbx_pii_contact' = 'true');
 ALTER TABLE `vibe_construction_v1`.`finance`.`cost_center` ALTER COLUMN `allocation_method` SET TAGS ('dbx_business_glossary_term' = 'Allocation Method');
 ALTER TABLE `vibe_construction_v1`.`finance`.`cost_center` ALTER COLUMN `allocation_method` SET TAGS ('dbx_value_regex' = 'direct_charge|activity_based|headcount|square_footage|revenue_based|none');
 ALTER TABLE `vibe_construction_v1`.`finance`.`cost_center` ALTER COLUMN `budget_amount` SET TAGS ('dbx_business_glossary_term' = 'Budget Amount');
@@ -658,6 +649,8 @@ ALTER TABLE `vibe_construction_v1`.`finance`.`cost_center` ALTER COLUMN `cost_ce
 ALTER TABLE `vibe_construction_v1`.`finance`.`cost_center` ALTER COLUMN `cost_center_category` SET TAGS ('dbx_value_regex' = 'direct|indirect|overhead|capitalized|expensed');
 ALTER TABLE `vibe_construction_v1`.`finance`.`cost_center` ALTER COLUMN `cost_center_code` SET TAGS ('dbx_business_glossary_term' = 'Cost Center Code');
 ALTER TABLE `vibe_construction_v1`.`finance`.`cost_center` ALTER COLUMN `cost_center_code` SET TAGS ('dbx_value_regex' = '^[A-Z0-9]{4,12}$');
+ALTER TABLE `vibe_construction_v1`.`finance`.`cost_center` ALTER COLUMN `company_code` SET TAGS ('dbx_business_glossary_term' = 'Company Code');
+ALTER TABLE `vibe_construction_v1`.`finance`.`cost_center` ALTER COLUMN `company_code` SET TAGS ('dbx_value_regex' = '^[A-Z0-9]{4}$');
 ALTER TABLE `vibe_construction_v1`.`finance`.`cost_center` ALTER COLUMN `controlling_area` SET TAGS ('dbx_business_glossary_term' = 'Controlling Area');
 ALTER TABLE `vibe_construction_v1`.`finance`.`cost_center` ALTER COLUMN `controlling_area` SET TAGS ('dbx_value_regex' = '^[A-Z0-9]{4}$');
 ALTER TABLE `vibe_construction_v1`.`finance`.`cost_center` ALTER COLUMN `cost_center_group` SET TAGS ('dbx_business_glossary_term' = 'Cost Center Group');
@@ -667,6 +660,7 @@ ALTER TABLE `vibe_construction_v1`.`finance`.`cost_center` ALTER COLUMN `cost_ce
 ALTER TABLE `vibe_construction_v1`.`finance`.`cost_center` ALTER COLUMN `cost_center_type` SET TAGS ('dbx_value_regex' = 'project|regional_office|corporate_overhead|shared_service|support_function|operational');
 ALTER TABLE `vibe_construction_v1`.`finance`.`cost_center` ALTER COLUMN `cost_element_group` SET TAGS ('dbx_business_glossary_term' = 'Cost Element Group');
 ALTER TABLE `vibe_construction_v1`.`finance`.`cost_center` ALTER COLUMN `created_by_user` SET TAGS ('dbx_business_glossary_term' = 'Created By User');
+ALTER TABLE `vibe_construction_v1`.`finance`.`cost_center` ALTER COLUMN `created_by_user` SET TAGS ('dbx_pii_identifier' = 'true');
 ALTER TABLE `vibe_construction_v1`.`finance`.`cost_center` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
 ALTER TABLE `vibe_construction_v1`.`finance`.`cost_center` ALTER COLUMN `currency_code` SET TAGS ('dbx_business_glossary_term' = 'Currency Code');
 ALTER TABLE `vibe_construction_v1`.`finance`.`cost_center` ALTER COLUMN `currency_code` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
@@ -675,29 +669,33 @@ ALTER TABLE `vibe_construction_v1`.`finance`.`cost_center` ALTER COLUMN `functio
 ALTER TABLE `vibe_construction_v1`.`finance`.`cost_center` ALTER COLUMN `hierarchy_level` SET TAGS ('dbx_business_glossary_term' = 'Hierarchy Level');
 ALTER TABLE `vibe_construction_v1`.`finance`.`cost_center` ALTER COLUMN `is_billable` SET TAGS ('dbx_business_glossary_term' = 'Is Billable Flag');
 ALTER TABLE `vibe_construction_v1`.`finance`.`cost_center` ALTER COLUMN `last_modified_by_user` SET TAGS ('dbx_business_glossary_term' = 'Last Modified By User');
+ALTER TABLE `vibe_construction_v1`.`finance`.`cost_center` ALTER COLUMN `last_modified_by_user` SET TAGS ('dbx_pii_identifier' = 'true');
 ALTER TABLE `vibe_construction_v1`.`finance`.`cost_center` ALTER COLUMN `last_modified_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Last Modified Timestamp');
 ALTER TABLE `vibe_construction_v1`.`finance`.`cost_center` ALTER COLUMN `lock_indicator` SET TAGS ('dbx_business_glossary_term' = 'Lock Indicator');
 ALTER TABLE `vibe_construction_v1`.`finance`.`cost_center` ALTER COLUMN `cost_center_name` SET TAGS ('dbx_business_glossary_term' = 'Cost Center Name');
+ALTER TABLE `vibe_construction_v1`.`finance`.`cost_center` ALTER COLUMN `cost_center_name` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_construction_v1`.`finance`.`cost_center` ALTER COLUMN `cost_center_name` SET TAGS ('dbx_pii_name' = 'true');
 ALTER TABLE `vibe_construction_v1`.`finance`.`cost_center` ALTER COLUMN `overhead_rate_percentage` SET TAGS ('dbx_business_glossary_term' = 'Overhead Rate Percentage');
 ALTER TABLE `vibe_construction_v1`.`finance`.`cost_center` ALTER COLUMN `region_code` SET TAGS ('dbx_business_glossary_term' = 'Region Code');
 ALTER TABLE `vibe_construction_v1`.`finance`.`cost_center` ALTER COLUMN `region_code` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
-ALTER TABLE `vibe_construction_v1`.`finance`.`cost_center` ALTER COLUMN `site_location` SET TAGS ('dbx_business_glossary_term' = 'Site Location');
+ALTER TABLE `vibe_construction_v1`.`finance`.`cost_center` ALTER COLUMN `region_code` SET TAGS ('dbx_pii_address' = 'true');
 ALTER TABLE `vibe_construction_v1`.`finance`.`cost_center` ALTER COLUMN `valid_from_date` SET TAGS ('dbx_business_glossary_term' = 'Valid From Date');
 ALTER TABLE `vibe_construction_v1`.`finance`.`cost_center` ALTER COLUMN `valid_to_date` SET TAGS ('dbx_business_glossary_term' = 'Valid To Date');
 ALTER TABLE `vibe_construction_v1`.`finance`.`gl_account` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_construction_v1`.`finance`.`gl_account` SET TAGS ('dbx_subdomain' = 'ledger_accounting');
+ALTER TABLE `vibe_construction_v1`.`finance`.`gl_account` SET TAGS ('dbx_subdomain' = 'accounting_operations');
 ALTER TABLE `vibe_construction_v1`.`finance`.`gl_account` ALTER COLUMN `gl_account_id` SET TAGS ('dbx_business_glossary_term' = 'Gl Account Identifier');
-ALTER TABLE `vibe_construction_v1`.`finance`.`gl_account` ALTER COLUMN `chart_of_accounts_id` SET TAGS ('dbx_business_glossary_term' = 'Chart of Accounts ID');
-ALTER TABLE `vibe_construction_v1`.`finance`.`gl_account` ALTER COLUMN `company_code_id` SET TAGS ('dbx_business_glossary_term' = 'Company Code ID');
 ALTER TABLE `vibe_construction_v1`.`finance`.`gl_account` ALTER COLUMN `account_class` SET TAGS ('dbx_business_glossary_term' = 'General Ledger (GL) Account Class');
 ALTER TABLE `vibe_construction_v1`.`finance`.`gl_account` ALTER COLUMN `account_class` SET TAGS ('dbx_value_regex' = 'balance_sheet|profit_and_loss|statistical');
 ALTER TABLE `vibe_construction_v1`.`finance`.`gl_account` ALTER COLUMN `account_group` SET TAGS ('dbx_business_glossary_term' = 'General Ledger (GL) Account Group');
 ALTER TABLE `vibe_construction_v1`.`finance`.`gl_account` ALTER COLUMN `account_name` SET TAGS ('dbx_business_glossary_term' = 'General Ledger (GL) Account Name');
+ALTER TABLE `vibe_construction_v1`.`finance`.`gl_account` ALTER COLUMN `account_name` SET TAGS ('dbx_pii_name' = 'true');
 ALTER TABLE `vibe_construction_v1`.`finance`.`gl_account` ALTER COLUMN `account_number` SET TAGS ('dbx_business_glossary_term' = 'General Ledger (GL) Account Number');
 ALTER TABLE `vibe_construction_v1`.`finance`.`gl_account` ALTER COLUMN `account_number` SET TAGS ('dbx_value_regex' = '^[0-9]{4,10}$');
 ALTER TABLE `vibe_construction_v1`.`finance`.`gl_account` ALTER COLUMN `account_number` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_construction_v1`.`finance`.`gl_account` ALTER COLUMN `account_number` SET TAGS ('dbx_pii_financial' = 'true');
 ALTER TABLE `vibe_construction_v1`.`finance`.`gl_account` ALTER COLUMN `account_short_name` SET TAGS ('dbx_business_glossary_term' = 'General Ledger (GL) Account Short Name');
+ALTER TABLE `vibe_construction_v1`.`finance`.`gl_account` ALTER COLUMN `account_short_name` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_construction_v1`.`finance`.`gl_account` ALTER COLUMN `account_short_name` SET TAGS ('dbx_pii_name' = 'true');
 ALTER TABLE `vibe_construction_v1`.`finance`.`gl_account` ALTER COLUMN `account_status` SET TAGS ('dbx_business_glossary_term' = 'General Ledger (GL) Account Status');
 ALTER TABLE `vibe_construction_v1`.`finance`.`gl_account` ALTER COLUMN `account_status` SET TAGS ('dbx_value_regex' = 'active|blocked|closed|pending_approval');
 ALTER TABLE `vibe_construction_v1`.`finance`.`gl_account` ALTER COLUMN `account_type` SET TAGS ('dbx_business_glossary_term' = 'General Ledger (GL) Account Type');
@@ -722,6 +720,7 @@ ALTER TABLE `vibe_construction_v1`.`finance`.`gl_account` ALTER COLUMN `field_st
 ALTER TABLE `vibe_construction_v1`.`finance`.`gl_account` ALTER COLUMN `functional_area` SET TAGS ('dbx_business_glossary_term' = 'Functional Area');
 ALTER TABLE `vibe_construction_v1`.`finance`.`gl_account` ALTER COLUMN `line_item_display_indicator` SET TAGS ('dbx_business_glossary_term' = 'Line Item Display Indicator');
 ALTER TABLE `vibe_construction_v1`.`finance`.`gl_account` ALTER COLUMN `modified_by` SET TAGS ('dbx_business_glossary_term' = 'Modified By User');
+ALTER TABLE `vibe_construction_v1`.`finance`.`gl_account` ALTER COLUMN `modified_by` SET TAGS ('dbx_pii_identifier' = 'true');
 ALTER TABLE `vibe_construction_v1`.`finance`.`gl_account` ALTER COLUMN `modified_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Modified Timestamp');
 ALTER TABLE `vibe_construction_v1`.`finance`.`gl_account` ALTER COLUMN `open_item_management_indicator` SET TAGS ('dbx_business_glossary_term' = 'Open Item Management Indicator');
 ALTER TABLE `vibe_construction_v1`.`finance`.`gl_account` ALTER COLUMN `planning_level` SET TAGS ('dbx_business_glossary_term' = 'Planning Level');
@@ -738,20 +737,22 @@ ALTER TABLE `vibe_construction_v1`.`finance`.`gl_account` ALTER COLUMN `valid_fr
 ALTER TABLE `vibe_construction_v1`.`finance`.`gl_account` ALTER COLUMN `valid_to_date` SET TAGS ('dbx_business_glossary_term' = 'Valid To Date');
 ALTER TABLE `vibe_construction_v1`.`finance`.`gl_account` ALTER COLUMN `wbs_element_required_indicator` SET TAGS ('dbx_business_glossary_term' = 'Work Breakdown Structure (WBS) Element Required Indicator');
 ALTER TABLE `vibe_construction_v1`.`finance`.`gl_account` ALTER COLUMN `created_by` SET TAGS ('dbx_business_glossary_term' = 'Created By User');
+ALTER TABLE `vibe_construction_v1`.`finance`.`gl_account` ALTER COLUMN `created_by` SET TAGS ('dbx_pii_identifier' = 'true');
 ALTER TABLE `vibe_construction_v1`.`finance`.`journal_entry` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_construction_v1`.`finance`.`journal_entry` SET TAGS ('dbx_subdomain' = 'ledger_accounting');
+ALTER TABLE `vibe_construction_v1`.`finance`.`journal_entry` SET TAGS ('dbx_subdomain' = 'accounting_operations');
 ALTER TABLE `vibe_construction_v1`.`finance`.`journal_entry` ALTER COLUMN `journal_entry_id` SET TAGS ('dbx_business_glossary_term' = 'Journal Entry ID');
-ALTER TABLE `vibe_construction_v1`.`finance`.`journal_entry` ALTER COLUMN `account_id` SET TAGS ('dbx_business_glossary_term' = 'Client Account Id (Foreign Key)');
-ALTER TABLE `vibe_construction_v1`.`finance`.`journal_entry` ALTER COLUMN `company_code_id` SET TAGS ('dbx_business_glossary_term' = 'Company Code Id (Foreign Key)');
-ALTER TABLE `vibe_construction_v1`.`finance`.`journal_entry` ALTER COLUMN `cost_center_id` SET TAGS ('dbx_business_glossary_term' = 'Cost Center Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`finance`.`journal_entry` ALTER COLUMN `agreement_id` SET TAGS ('dbx_business_glossary_term' = 'Agreement Id (Foreign Key)');
 ALTER TABLE `vibe_construction_v1`.`finance`.`journal_entry` ALTER COLUMN `cost_code_id` SET TAGS ('dbx_business_glossary_term' = 'Cost Code Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`finance`.`journal_entry` ALTER COLUMN `evm_period_record_id` SET TAGS ('dbx_business_glossary_term' = 'Evm Period Record Id (Foreign Key)');
 ALTER TABLE `vibe_construction_v1`.`finance`.`journal_entry` ALTER COLUMN `gl_account_id` SET TAGS ('dbx_business_glossary_term' = 'Gl Account Id (Foreign Key)');
-ALTER TABLE `vibe_construction_v1`.`finance`.`journal_entry` ALTER COLUMN `timesheet_id` SET TAGS ('dbx_business_glossary_term' = 'Source Timesheet Id (Foreign Key)');
-ALTER TABLE `vibe_construction_v1`.`finance`.`journal_entry` ALTER COLUMN `vendor_invoice_id` SET TAGS ('dbx_business_glossary_term' = 'Vendor Invoice Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`finance`.`journal_entry` ALTER COLUMN `wbs_element_id` SET TAGS ('dbx_business_glossary_term' = 'Wbs Element Id (Foreign Key)');
 ALTER TABLE `vibe_construction_v1`.`finance`.`journal_entry` ALTER COLUMN `assignment_field` SET TAGS ('dbx_business_glossary_term' = 'Assignment Field');
 ALTER TABLE `vibe_construction_v1`.`finance`.`journal_entry` ALTER COLUMN `business_area_code` SET TAGS ('dbx_business_glossary_term' = 'Business Area Code');
+ALTER TABLE `vibe_construction_v1`.`finance`.`journal_entry` ALTER COLUMN `business_area_code` SET TAGS ('dbx_pii_address' = 'true');
+ALTER TABLE `vibe_construction_v1`.`finance`.`journal_entry` ALTER COLUMN `company_code` SET TAGS ('dbx_business_glossary_term' = 'Company Code');
 ALTER TABLE `vibe_construction_v1`.`finance`.`journal_entry` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
 ALTER TABLE `vibe_construction_v1`.`finance`.`journal_entry` ALTER COLUMN `credit_amount` SET TAGS ('dbx_business_glossary_term' = 'Credit Amount');
+ALTER TABLE `vibe_construction_v1`.`finance`.`journal_entry` ALTER COLUMN `credit_amount` SET TAGS ('dbx_pii_financial' = 'true');
 ALTER TABLE `vibe_construction_v1`.`finance`.`journal_entry` ALTER COLUMN `currency_code` SET TAGS ('dbx_business_glossary_term' = 'Currency Code');
 ALTER TABLE `vibe_construction_v1`.`finance`.`journal_entry` ALTER COLUMN `currency_code` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
 ALTER TABLE `vibe_construction_v1`.`finance`.`journal_entry` ALTER COLUMN `debit_amount` SET TAGS ('dbx_business_glossary_term' = 'Debit Amount');
@@ -770,11 +771,14 @@ ALTER TABLE `vibe_construction_v1`.`finance`.`journal_entry` ALTER COLUMN `heade
 ALTER TABLE `vibe_construction_v1`.`finance`.`journal_entry` ALTER COLUMN `intercompany_indicator` SET TAGS ('dbx_business_glossary_term' = 'Intercompany Indicator');
 ALTER TABLE `vibe_construction_v1`.`finance`.`journal_entry` ALTER COLUMN `line_item_text` SET TAGS ('dbx_business_glossary_term' = 'Line Item Text');
 ALTER TABLE `vibe_construction_v1`.`finance`.`journal_entry` ALTER COLUMN `local_currency_credit_amount` SET TAGS ('dbx_business_glossary_term' = 'Local Currency Credit Amount');
+ALTER TABLE `vibe_construction_v1`.`finance`.`journal_entry` ALTER COLUMN `local_currency_credit_amount` SET TAGS ('dbx_pii_financial' = 'true');
 ALTER TABLE `vibe_construction_v1`.`finance`.`journal_entry` ALTER COLUMN `local_currency_debit_amount` SET TAGS ('dbx_business_glossary_term' = 'Local Currency Debit Amount');
 ALTER TABLE `vibe_construction_v1`.`finance`.`journal_entry` ALTER COLUMN `modified_by` SET TAGS ('dbx_business_glossary_term' = 'Modified By User');
+ALTER TABLE `vibe_construction_v1`.`finance`.`journal_entry` ALTER COLUMN `modified_by` SET TAGS ('dbx_pii_identifier' = 'true');
 ALTER TABLE `vibe_construction_v1`.`finance`.`journal_entry` ALTER COLUMN `modified_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Modified Timestamp');
 ALTER TABLE `vibe_construction_v1`.`finance`.`journal_entry` ALTER COLUMN `percentage_of_completion` SET TAGS ('dbx_business_glossary_term' = 'Percentage of Completion (POC)');
 ALTER TABLE `vibe_construction_v1`.`finance`.`journal_entry` ALTER COLUMN `posted_by` SET TAGS ('dbx_business_glossary_term' = 'Posted By User');
+ALTER TABLE `vibe_construction_v1`.`finance`.`journal_entry` ALTER COLUMN `posted_by` SET TAGS ('dbx_pii_identifier' = 'true');
 ALTER TABLE `vibe_construction_v1`.`finance`.`journal_entry` ALTER COLUMN `posted_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Posted Timestamp');
 ALTER TABLE `vibe_construction_v1`.`finance`.`journal_entry` ALTER COLUMN `posting_date` SET TAGS ('dbx_business_glossary_term' = 'Posting Date');
 ALTER TABLE `vibe_construction_v1`.`finance`.`journal_entry` ALTER COLUMN `posting_key` SET TAGS ('dbx_business_glossary_term' = 'Posting Key');
@@ -785,20 +789,20 @@ ALTER TABLE `vibe_construction_v1`.`finance`.`journal_entry` ALTER COLUMN `reven
 ALTER TABLE `vibe_construction_v1`.`finance`.`journal_entry` ALTER COLUMN `reversal_indicator` SET TAGS ('dbx_business_glossary_term' = 'Reversal Indicator');
 ALTER TABLE `vibe_construction_v1`.`finance`.`journal_entry` ALTER COLUMN `reversal_reason_code` SET TAGS ('dbx_business_glossary_term' = 'Reversal Reason Code');
 ALTER TABLE `vibe_construction_v1`.`finance`.`journal_entry` ALTER COLUMN `reversal_reason_code` SET TAGS ('dbx_value_regex' = '01|02|03|04|05');
-ALTER TABLE `vibe_construction_v1`.`finance`.`journal_entry` ALTER COLUMN `reversed_document_number` SET TAGS ('dbx_business_glossary_term' = 'Reversed Document Number');
 ALTER TABLE `vibe_construction_v1`.`finance`.`journal_entry` ALTER COLUMN `tax_amount` SET TAGS ('dbx_business_glossary_term' = 'Tax Amount');
+ALTER TABLE `vibe_construction_v1`.`finance`.`journal_entry` ALTER COLUMN `tax_amount` SET TAGS ('dbx_pii_financial' = 'true');
 ALTER TABLE `vibe_construction_v1`.`finance`.`journal_entry` ALTER COLUMN `tax_code` SET TAGS ('dbx_business_glossary_term' = 'Tax Code');
 ALTER TABLE `vibe_construction_v1`.`finance`.`journal_entry` ALTER COLUMN `trading_partner_code` SET TAGS ('dbx_business_glossary_term' = 'Trading Partner Code');
 ALTER TABLE `vibe_construction_v1`.`finance`.`journal_entry` ALTER COLUMN `created_by` SET TAGS ('dbx_business_glossary_term' = 'Created By User');
+ALTER TABLE `vibe_construction_v1`.`finance`.`journal_entry` ALTER COLUMN `created_by` SET TAGS ('dbx_pii_identifier' = 'true');
 ALTER TABLE `vibe_construction_v1`.`finance`.`journal_entry_line` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_construction_v1`.`finance`.`journal_entry_line` SET TAGS ('dbx_subdomain' = 'ledger_accounting');
+ALTER TABLE `vibe_construction_v1`.`finance`.`journal_entry_line` SET TAGS ('dbx_subdomain' = 'accounting_operations');
 ALTER TABLE `vibe_construction_v1`.`finance`.`journal_entry_line` ALTER COLUMN `journal_entry_line_id` SET TAGS ('dbx_business_glossary_term' = 'Journal Entry Line ID');
 ALTER TABLE `vibe_construction_v1`.`finance`.`journal_entry_line` ALTER COLUMN `construction_project_id` SET TAGS ('dbx_business_glossary_term' = 'Project ID');
 ALTER TABLE `vibe_construction_v1`.`finance`.`journal_entry_line` ALTER COLUMN `cost_center_id` SET TAGS ('dbx_business_glossary_term' = 'Cost Center Id (Foreign Key)');
 ALTER TABLE `vibe_construction_v1`.`finance`.`journal_entry_line` ALTER COLUMN `cost_code_id` SET TAGS ('dbx_business_glossary_term' = 'Cost Code Id (Foreign Key)');
 ALTER TABLE `vibe_construction_v1`.`finance`.`journal_entry_line` ALTER COLUMN `gl_account_id` SET TAGS ('dbx_business_glossary_term' = 'Gl Account Id (Foreign Key)');
 ALTER TABLE `vibe_construction_v1`.`finance`.`journal_entry_line` ALTER COLUMN `journal_entry_id` SET TAGS ('dbx_business_glossary_term' = 'Journal Entry ID');
-ALTER TABLE `vibe_construction_v1`.`finance`.`journal_entry_line` ALTER COLUMN `timesheet_line_id` SET TAGS ('dbx_business_glossary_term' = 'Source Timesheet Line Id (Foreign Key)');
 ALTER TABLE `vibe_construction_v1`.`finance`.`journal_entry_line` ALTER COLUMN `vendor_id` SET TAGS ('dbx_business_glossary_term' = 'Vendor ID');
 ALTER TABLE `vibe_construction_v1`.`finance`.`journal_entry_line` ALTER COLUMN `wbs_element_id` SET TAGS ('dbx_business_glossary_term' = 'Wbs Element Id (Foreign Key)');
 ALTER TABLE `vibe_construction_v1`.`finance`.`journal_entry_line` ALTER COLUMN `amount_local_currency` SET TAGS ('dbx_business_glossary_term' = 'Amount in Local Currency');
@@ -807,11 +811,13 @@ ALTER TABLE `vibe_construction_v1`.`finance`.`journal_entry_line` ALTER COLUMN `
 ALTER TABLE `vibe_construction_v1`.`finance`.`journal_entry_line` ALTER COLUMN `baseline_amount` SET TAGS ('dbx_business_glossary_term' = 'Baseline Amount');
 ALTER TABLE `vibe_construction_v1`.`finance`.`journal_entry_line` ALTER COLUMN `business_area_code` SET TAGS ('dbx_business_glossary_term' = 'Business Area Code');
 ALTER TABLE `vibe_construction_v1`.`finance`.`journal_entry_line` ALTER COLUMN `business_area_code` SET TAGS ('dbx_value_regex' = '^[A-Z0-9]{2,6}$');
+ALTER TABLE `vibe_construction_v1`.`finance`.`journal_entry_line` ALTER COLUMN `business_area_code` SET TAGS ('dbx_pii_address' = 'true');
 ALTER TABLE `vibe_construction_v1`.`finance`.`journal_entry_line` ALTER COLUMN `clearing_date` SET TAGS ('dbx_business_glossary_term' = 'Clearing Date');
 ALTER TABLE `vibe_construction_v1`.`finance`.`journal_entry_line` ALTER COLUMN `clearing_document_number` SET TAGS ('dbx_business_glossary_term' = 'Clearing Document Number');
 ALTER TABLE `vibe_construction_v1`.`finance`.`journal_entry_line` ALTER COLUMN `clearing_document_number` SET TAGS ('dbx_value_regex' = '^[A-Z0-9-]{6,20}$');
 ALTER TABLE `vibe_construction_v1`.`finance`.`journal_entry_line` ALTER COLUMN `debit_credit_indicator` SET TAGS ('dbx_business_glossary_term' = 'Debit/Credit Indicator');
 ALTER TABLE `vibe_construction_v1`.`finance`.`journal_entry_line` ALTER COLUMN `debit_credit_indicator` SET TAGS ('dbx_value_regex' = 'D|C');
+ALTER TABLE `vibe_construction_v1`.`finance`.`journal_entry_line` ALTER COLUMN `debit_credit_indicator` SET TAGS ('dbx_pii_financial' = 'true');
 ALTER TABLE `vibe_construction_v1`.`finance`.`journal_entry_line` ALTER COLUMN `document_date` SET TAGS ('dbx_business_glossary_term' = 'Document Date');
 ALTER TABLE `vibe_construction_v1`.`finance`.`journal_entry_line` ALTER COLUMN `due_date` SET TAGS ('dbx_business_glossary_term' = 'Due Date');
 ALTER TABLE `vibe_construction_v1`.`finance`.`journal_entry_line` ALTER COLUMN `entry_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Entry Timestamp');
@@ -837,26 +843,37 @@ ALTER TABLE `vibe_construction_v1`.`finance`.`journal_entry_line` ALTER COLUMN `
 ALTER TABLE `vibe_construction_v1`.`finance`.`journal_entry_line` ALTER COLUMN `reversed_document_number` SET TAGS ('dbx_business_glossary_term' = 'Reversed Document Number');
 ALTER TABLE `vibe_construction_v1`.`finance`.`journal_entry_line` ALTER COLUMN `reversed_document_number` SET TAGS ('dbx_value_regex' = '^[A-Z0-9-]{6,20}$');
 ALTER TABLE `vibe_construction_v1`.`finance`.`journal_entry_line` ALTER COLUMN `tax_amount` SET TAGS ('dbx_business_glossary_term' = 'Tax Amount');
+ALTER TABLE `vibe_construction_v1`.`finance`.`journal_entry_line` ALTER COLUMN `tax_amount` SET TAGS ('dbx_pii_financial' = 'true');
 ALTER TABLE `vibe_construction_v1`.`finance`.`journal_entry_line` ALTER COLUMN `tax_code` SET TAGS ('dbx_business_glossary_term' = 'Tax Code');
 ALTER TABLE `vibe_construction_v1`.`finance`.`journal_entry_line` ALTER COLUMN `tax_code` SET TAGS ('dbx_value_regex' = '^[A-Z0-9]{2,6}$');
 ALTER TABLE `vibe_construction_v1`.`finance`.`journal_entry_line` ALTER COLUMN `transaction_currency_code` SET TAGS ('dbx_business_glossary_term' = 'Transaction Currency Code');
 ALTER TABLE `vibe_construction_v1`.`finance`.`journal_entry_line` ALTER COLUMN `transaction_currency_code` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
 ALTER TABLE `vibe_construction_v1`.`finance`.`project_budget` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_construction_v1`.`finance`.`project_budget` SET TAGS ('dbx_subdomain' = 'project_costing');
+ALTER TABLE `vibe_construction_v1`.`finance`.`project_budget` SET TAGS ('dbx_subdomain' = 'cost_management');
 ALTER TABLE `vibe_construction_v1`.`finance`.`project_budget` ALTER COLUMN `project_budget_id` SET TAGS ('dbx_business_glossary_term' = 'Project Budget ID');
+ALTER TABLE `vibe_construction_v1`.`finance`.`project_budget` ALTER COLUMN `agreement_id` SET TAGS ('dbx_business_glossary_term' = 'Agreement Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`finance`.`project_budget` ALTER COLUMN `contract_change_order_id` SET TAGS ('dbx_business_glossary_term' = 'Contract Change Order Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`finance`.`project_budget` ALTER COLUMN `cost_account_id` SET TAGS ('dbx_business_glossary_term' = 'Cost Account Id (Foreign Key)');
 ALTER TABLE `vibe_construction_v1`.`finance`.`project_budget` ALTER COLUMN `cost_center_id` SET TAGS ('dbx_business_glossary_term' = 'Cost Center Id (Foreign Key)');
 ALTER TABLE `vibe_construction_v1`.`finance`.`project_budget` ALTER COLUMN `cost_code_id` SET TAGS ('dbx_business_glossary_term' = 'Cost Code Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`finance`.`project_budget` ALTER COLUMN `phase_id` SET TAGS ('dbx_business_glossary_term' = 'Phase Id (Foreign Key)');
 ALTER TABLE `vibe_construction_v1`.`finance`.`project_budget` ALTER COLUMN `previous_budget_project_budget_id` SET TAGS ('dbx_business_glossary_term' = 'Previous Budget ID');
+ALTER TABLE `vibe_construction_v1`.`finance`.`project_budget` ALTER COLUMN `schedule_baseline_id` SET TAGS ('dbx_business_glossary_term' = 'Schedule Baseline Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`finance`.`project_budget` ALTER COLUMN `scope_id` SET TAGS ('dbx_business_glossary_term' = 'Contract Scope Id (Foreign Key)');
 ALTER TABLE `vibe_construction_v1`.`finance`.`project_budget` ALTER COLUMN `actual_cost_amount` SET TAGS ('dbx_business_glossary_term' = 'Actual Cost Amount');
 ALTER TABLE `vibe_construction_v1`.`finance`.`project_budget` ALTER COLUMN `approval_date` SET TAGS ('dbx_business_glossary_term' = 'Approval Date');
 ALTER TABLE `vibe_construction_v1`.`finance`.`project_budget` ALTER COLUMN `approved_by` SET TAGS ('dbx_business_glossary_term' = 'Approved By');
+ALTER TABLE `vibe_construction_v1`.`finance`.`project_budget` ALTER COLUMN `approved_by` SET TAGS ('dbx_pii_identifier' = 'true');
 ALTER TABLE `vibe_construction_v1`.`finance`.`project_budget` ALTER COLUMN `approved_change_order_amount` SET TAGS ('dbx_business_glossary_term' = 'Approved Change Order (CO) Amount');
 ALTER TABLE `vibe_construction_v1`.`finance`.`project_budget` ALTER COLUMN `baseline_date` SET TAGS ('dbx_business_glossary_term' = 'Baseline Date');
 ALTER TABLE `vibe_construction_v1`.`finance`.`project_budget` ALTER COLUMN `budget_code` SET TAGS ('dbx_business_glossary_term' = 'Budget Code');
 ALTER TABLE `vibe_construction_v1`.`finance`.`project_budget` ALTER COLUMN `budget_code` SET TAGS ('dbx_value_regex' = '^[A-Z0-9]{6,20}$');
 ALTER TABLE `vibe_construction_v1`.`finance`.`project_budget` ALTER COLUMN `budget_name` SET TAGS ('dbx_business_glossary_term' = 'Budget Name');
+ALTER TABLE `vibe_construction_v1`.`finance`.`project_budget` ALTER COLUMN `budget_name` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_construction_v1`.`finance`.`project_budget` ALTER COLUMN `budget_name` SET TAGS ('dbx_pii_name' = 'true');
 ALTER TABLE `vibe_construction_v1`.`finance`.`project_budget` ALTER COLUMN `budget_notes` SET TAGS ('dbx_business_glossary_term' = 'Budget Notes');
 ALTER TABLE `vibe_construction_v1`.`finance`.`project_budget` ALTER COLUMN `budget_owner` SET TAGS ('dbx_business_glossary_term' = 'Budget Owner');
+ALTER TABLE `vibe_construction_v1`.`finance`.`project_budget` ALTER COLUMN `budget_owner` SET TAGS ('dbx_pii_identifier' = 'true');
 ALTER TABLE `vibe_construction_v1`.`finance`.`project_budget` ALTER COLUMN `budget_period_end_date` SET TAGS ('dbx_business_glossary_term' = 'Budget Period End Date');
 ALTER TABLE `vibe_construction_v1`.`finance`.`project_budget` ALTER COLUMN `budget_period_start_date` SET TAGS ('dbx_business_glossary_term' = 'Budget Period Start Date');
 ALTER TABLE `vibe_construction_v1`.`finance`.`project_budget` ALTER COLUMN `budget_status` SET TAGS ('dbx_business_glossary_term' = 'Budget Status');
@@ -864,6 +881,7 @@ ALTER TABLE `vibe_construction_v1`.`finance`.`project_budget` ALTER COLUMN `budg
 ALTER TABLE `vibe_construction_v1`.`finance`.`project_budget` ALTER COLUMN `budget_type` SET TAGS ('dbx_business_glossary_term' = 'Budget Type');
 ALTER TABLE `vibe_construction_v1`.`finance`.`project_budget` ALTER COLUMN `budget_type` SET TAGS ('dbx_value_regex' = 'contract|internal|contingency|management_reserve|baseline|forecast');
 ALTER TABLE `vibe_construction_v1`.`finance`.`project_budget` ALTER COLUMN `budget_unit_of_measure` SET TAGS ('dbx_business_glossary_term' = 'Budget Unit of Measure');
+ALTER TABLE `vibe_construction_v1`.`finance`.`project_budget` ALTER COLUMN `budget_unit_of_measure` SET TAGS ('dbx_pii_address' = 'true');
 ALTER TABLE `vibe_construction_v1`.`finance`.`project_budget` ALTER COLUMN `budget_variance_amount` SET TAGS ('dbx_business_glossary_term' = 'Budget Variance Amount');
 ALTER TABLE `vibe_construction_v1`.`finance`.`project_budget` ALTER COLUMN `budgeted_quantity` SET TAGS ('dbx_business_glossary_term' = 'Budgeted Quantity');
 ALTER TABLE `vibe_construction_v1`.`finance`.`project_budget` ALTER COLUMN `committed_cost_amount` SET TAGS ('dbx_business_glossary_term' = 'Committed Cost Amount');
@@ -882,21 +900,29 @@ ALTER TABLE `vibe_construction_v1`.`finance`.`project_budget` ALTER COLUMN `mana
 ALTER TABLE `vibe_construction_v1`.`finance`.`project_budget` ALTER COLUMN `original_budget_amount` SET TAGS ('dbx_business_glossary_term' = 'Original Budget Amount');
 ALTER TABLE `vibe_construction_v1`.`finance`.`project_budget` ALTER COLUMN `revision_number` SET TAGS ('dbx_business_glossary_term' = 'Revision Number');
 ALTER TABLE `vibe_construction_v1`.`finance`.`project_budget` ALTER COLUMN `unit_rate` SET TAGS ('dbx_business_glossary_term' = 'Unit Rate');
+ALTER TABLE `vibe_construction_v1`.`finance`.`project_budget` ALTER COLUMN `unit_rate` SET TAGS ('dbx_pii_address' = 'true');
 ALTER TABLE `vibe_construction_v1`.`finance`.`job_cost_transaction` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_construction_v1`.`finance`.`job_cost_transaction` SET TAGS ('dbx_subdomain' = 'project_costing');
+ALTER TABLE `vibe_construction_v1`.`finance`.`job_cost_transaction` SET TAGS ('dbx_subdomain' = 'cost_management');
 ALTER TABLE `vibe_construction_v1`.`finance`.`job_cost_transaction` ALTER COLUMN `job_cost_transaction_id` SET TAGS ('dbx_business_glossary_term' = 'Job Cost Transaction ID');
+ALTER TABLE `vibe_construction_v1`.`finance`.`job_cost_transaction` ALTER COLUMN `activity_id` SET TAGS ('dbx_business_glossary_term' = 'Activity Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`finance`.`job_cost_transaction` ALTER COLUMN `agreement_id` SET TAGS ('dbx_business_glossary_term' = 'Agreement Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`finance`.`job_cost_transaction` ALTER COLUMN `asset_id` SET TAGS ('dbx_business_glossary_term' = 'Equipment ID');
+ALTER TABLE `vibe_construction_v1`.`finance`.`job_cost_transaction` ALTER COLUMN `construction_project_id` SET TAGS ('dbx_business_glossary_term' = 'Site Id (Foreign Key)');
 ALTER TABLE `vibe_construction_v1`.`finance`.`job_cost_transaction` ALTER COLUMN `cost_account_id` SET TAGS ('dbx_business_glossary_term' = 'Cost Account Id (Foreign Key)');
 ALTER TABLE `vibe_construction_v1`.`finance`.`job_cost_transaction` ALTER COLUMN `cost_center_id` SET TAGS ('dbx_business_glossary_term' = 'Cost Center Id (Foreign Key)');
 ALTER TABLE `vibe_construction_v1`.`finance`.`job_cost_transaction` ALTER COLUMN `cost_code_id` SET TAGS ('dbx_business_glossary_term' = 'Cost Code Id (Foreign Key)');
 ALTER TABLE `vibe_construction_v1`.`finance`.`job_cost_transaction` ALTER COLUMN `gl_account_id` SET TAGS ('dbx_business_glossary_term' = 'Gl Account Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`finance`.`job_cost_transaction` ALTER COLUMN `invoice_id` SET TAGS ('dbx_business_glossary_term' = 'Invoice Id (Foreign Key)');
 ALTER TABLE `vibe_construction_v1`.`finance`.`job_cost_transaction` ALTER COLUMN `phase_id` SET TAGS ('dbx_business_glossary_term' = 'Phase Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`finance`.`job_cost_transaction` ALTER COLUMN `project_change_order_id` SET TAGS ('dbx_business_glossary_term' = 'Change Order (CO) ID');
+ALTER TABLE `vibe_construction_v1`.`finance`.`job_cost_transaction` ALTER COLUMN `resource_id` SET TAGS ('dbx_business_glossary_term' = 'Commitment Item ID');
 ALTER TABLE `vibe_construction_v1`.`finance`.`job_cost_transaction` ALTER COLUMN `reversed_transaction_job_cost_transaction_id` SET TAGS ('dbx_business_glossary_term' = 'Reversed Transaction ID');
-ALTER TABLE `vibe_construction_v1`.`finance`.`job_cost_transaction` ALTER COLUMN `timesheet_line_id` SET TAGS ('dbx_business_glossary_term' = 'Source Timesheet Line Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`finance`.`job_cost_transaction` ALTER COLUMN `subcontract_id` SET TAGS ('dbx_business_glossary_term' = 'Subcontract Id (Foreign Key)');
 ALTER TABLE `vibe_construction_v1`.`finance`.`job_cost_transaction` ALTER COLUMN `vendor_id` SET TAGS ('dbx_business_glossary_term' = 'Vendor ID');
-ALTER TABLE `vibe_construction_v1`.`finance`.`job_cost_transaction` ALTER COLUMN `vendor_invoice_id` SET TAGS ('dbx_business_glossary_term' = 'Vendor Invoice Id (Foreign Key)');
 ALTER TABLE `vibe_construction_v1`.`finance`.`job_cost_transaction` ALTER COLUMN `approval_status` SET TAGS ('dbx_business_glossary_term' = 'Approval Status');
 ALTER TABLE `vibe_construction_v1`.`finance`.`job_cost_transaction` ALTER COLUMN `approval_status` SET TAGS ('dbx_value_regex' = 'pending|approved|rejected');
 ALTER TABLE `vibe_construction_v1`.`finance`.`job_cost_transaction` ALTER COLUMN `approved_by` SET TAGS ('dbx_business_glossary_term' = 'Approved By');
+ALTER TABLE `vibe_construction_v1`.`finance`.`job_cost_transaction` ALTER COLUMN `approved_by` SET TAGS ('dbx_pii_identifier' = 'true');
 ALTER TABLE `vibe_construction_v1`.`finance`.`job_cost_transaction` ALTER COLUMN `approved_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Approved Timestamp');
 ALTER TABLE `vibe_construction_v1`.`finance`.`job_cost_transaction` ALTER COLUMN `base_currency_cost` SET TAGS ('dbx_business_glossary_term' = 'Base Currency Cost');
 ALTER TABLE `vibe_construction_v1`.`finance`.`job_cost_transaction` ALTER COLUMN `billable_flag` SET TAGS ('dbx_business_glossary_term' = 'Billable Flag');
@@ -910,9 +936,11 @@ ALTER TABLE `vibe_construction_v1`.`finance`.`job_cost_transaction` ALTER COLUMN
 ALTER TABLE `vibe_construction_v1`.`finance`.`job_cost_transaction` ALTER COLUMN `exchange_rate` SET TAGS ('dbx_business_glossary_term' = 'Exchange Rate');
 ALTER TABLE `vibe_construction_v1`.`finance`.`job_cost_transaction` ALTER COLUMN `fiscal_period` SET TAGS ('dbx_business_glossary_term' = 'Fiscal Period');
 ALTER TABLE `vibe_construction_v1`.`finance`.`job_cost_transaction` ALTER COLUMN `modified_by` SET TAGS ('dbx_business_glossary_term' = 'Modified By');
+ALTER TABLE `vibe_construction_v1`.`finance`.`job_cost_transaction` ALTER COLUMN `modified_by` SET TAGS ('dbx_pii_identifier' = 'true');
 ALTER TABLE `vibe_construction_v1`.`finance`.`job_cost_transaction` ALTER COLUMN `modified_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Modified Timestamp');
 ALTER TABLE `vibe_construction_v1`.`finance`.`job_cost_transaction` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Notes');
 ALTER TABLE `vibe_construction_v1`.`finance`.`job_cost_transaction` ALTER COLUMN `posting_date` SET TAGS ('dbx_business_glossary_term' = 'Posting Date');
+ALTER TABLE `vibe_construction_v1`.`finance`.`job_cost_transaction` ALTER COLUMN `purchase_order_number` SET TAGS ('dbx_business_glossary_term' = 'Purchase Order (PO) Number');
 ALTER TABLE `vibe_construction_v1`.`finance`.`job_cost_transaction` ALTER COLUMN `quantity` SET TAGS ('dbx_business_glossary_term' = 'Quantity');
 ALTER TABLE `vibe_construction_v1`.`finance`.`job_cost_transaction` ALTER COLUMN `reversal_flag` SET TAGS ('dbx_business_glossary_term' = 'Reversal Flag');
 ALTER TABLE `vibe_construction_v1`.`finance`.`job_cost_transaction` ALTER COLUMN `source_transaction_reference` SET TAGS ('dbx_business_glossary_term' = 'Source Transaction ID');
@@ -922,21 +950,22 @@ ALTER TABLE `vibe_construction_v1`.`finance`.`job_cost_transaction` ALTER COLUMN
 ALTER TABLE `vibe_construction_v1`.`finance`.`job_cost_transaction` ALTER COLUMN `transaction_status` SET TAGS ('dbx_business_glossary_term' = 'Transaction Status');
 ALTER TABLE `vibe_construction_v1`.`finance`.`job_cost_transaction` ALTER COLUMN `transaction_status` SET TAGS ('dbx_value_regex' = 'draft|posted|approved|reversed|cancelled');
 ALTER TABLE `vibe_construction_v1`.`finance`.`job_cost_transaction` ALTER COLUMN `unit_cost` SET TAGS ('dbx_business_glossary_term' = 'Unit Cost');
+ALTER TABLE `vibe_construction_v1`.`finance`.`job_cost_transaction` ALTER COLUMN `unit_cost` SET TAGS ('dbx_pii_address' = 'true');
 ALTER TABLE `vibe_construction_v1`.`finance`.`job_cost_transaction` ALTER COLUMN `unit_of_measure` SET TAGS ('dbx_business_glossary_term' = 'Unit of Measure (UOM)');
+ALTER TABLE `vibe_construction_v1`.`finance`.`job_cost_transaction` ALTER COLUMN `unit_of_measure` SET TAGS ('dbx_pii_address' = 'true');
 ALTER TABLE `vibe_construction_v1`.`finance`.`job_cost_transaction` ALTER COLUMN `created_by` SET TAGS ('dbx_business_glossary_term' = 'Created By');
+ALTER TABLE `vibe_construction_v1`.`finance`.`job_cost_transaction` ALTER COLUMN `created_by` SET TAGS ('dbx_pii_identifier' = 'true');
 ALTER TABLE `vibe_construction_v1`.`finance`.`progress_billing` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_construction_v1`.`finance`.`progress_billing` SET TAGS ('dbx_subdomain' = 'billing_payments');
+ALTER TABLE `vibe_construction_v1`.`finance`.`progress_billing` SET TAGS ('dbx_subdomain' = 'revenue_collections');
 ALTER TABLE `vibe_construction_v1`.`finance`.`progress_billing` ALTER COLUMN `progress_billing_id` SET TAGS ('dbx_business_glossary_term' = 'Progress Billing ID');
 ALTER TABLE `vibe_construction_v1`.`finance`.`progress_billing` ALTER COLUMN `account_id` SET TAGS ('dbx_business_glossary_term' = 'Account ID');
 ALTER TABLE `vibe_construction_v1`.`finance`.`progress_billing` ALTER COLUMN `agreement_id` SET TAGS ('dbx_business_glossary_term' = 'Contract ID');
-ALTER TABLE `vibe_construction_v1`.`finance`.`progress_billing` ALTER COLUMN `construction_project_id` SET TAGS ('dbx_business_glossary_term' = 'Construction Project ID');
+ALTER TABLE `vibe_construction_v1`.`finance`.`progress_billing` ALTER COLUMN `cost_account_id` SET TAGS ('dbx_business_glossary_term' = 'Cost Account Id (Foreign Key)');
 ALTER TABLE `vibe_construction_v1`.`finance`.`progress_billing` ALTER COLUMN `cost_center_id` SET TAGS ('dbx_business_glossary_term' = 'Cost Center Id (Foreign Key)');
-ALTER TABLE `vibe_construction_v1`.`finance`.`progress_billing` ALTER COLUMN `invoice_id` SET TAGS ('dbx_business_glossary_term' = 'Invoice Id (Foreign Key)');
-ALTER TABLE `vibe_construction_v1`.`finance`.`progress_billing` ALTER COLUMN `master_services_agreement_id` SET TAGS ('dbx_business_glossary_term' = 'Master Services Agreement Id (Foreign Key)');
-ALTER TABLE `vibe_construction_v1`.`finance`.`progress_billing` ALTER COLUMN `milestone_id` SET TAGS ('dbx_business_glossary_term' = 'Project Milestone Id (Foreign Key)');
 ALTER TABLE `vibe_construction_v1`.`finance`.`progress_billing` ALTER COLUMN `payment_certificate_id` SET TAGS ('dbx_business_glossary_term' = 'Payment Certificate Id (Foreign Key)');
-ALTER TABLE `vibe_construction_v1`.`finance`.`progress_billing` ALTER COLUMN `progress_update_id` SET TAGS ('dbx_business_glossary_term' = 'Progress Update Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`finance`.`progress_billing` ALTER COLUMN `phase_id` SET TAGS ('dbx_business_glossary_term' = 'Phase Id (Foreign Key)');
 ALTER TABLE `vibe_construction_v1`.`finance`.`progress_billing` ALTER COLUMN `project_budget_id` SET TAGS ('dbx_business_glossary_term' = 'Project Budget Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`finance`.`progress_billing` ALTER COLUMN `project_engagement_id` SET TAGS ('dbx_business_glossary_term' = 'Project Engagement Id (Foreign Key)');
 ALTER TABLE `vibe_construction_v1`.`finance`.`progress_billing` ALTER COLUMN `wbs_element_id` SET TAGS ('dbx_business_glossary_term' = 'Work Breakdown Structure (WBS) Element ID');
 ALTER TABLE `vibe_construction_v1`.`finance`.`progress_billing` ALTER COLUMN `aging_bucket` SET TAGS ('dbx_business_glossary_term' = 'Aging Bucket');
 ALTER TABLE `vibe_construction_v1`.`finance`.`progress_billing` ALTER COLUMN `aging_bucket` SET TAGS ('dbx_value_regex' = 'current|1_30_days|31_60_days|61_90_days|over_90_days');
@@ -951,9 +980,12 @@ ALTER TABLE `vibe_construction_v1`.`finance`.`progress_billing` ALTER COLUMN `cu
 ALTER TABLE `vibe_construction_v1`.`finance`.`progress_billing` ALTER COLUMN `current_period_claim` SET TAGS ('dbx_business_glossary_term' = 'Current Period Claim');
 ALTER TABLE `vibe_construction_v1`.`finance`.`progress_billing` ALTER COLUMN `cutoff_date` SET TAGS ('dbx_business_glossary_term' = 'Cutoff Date');
 ALTER TABLE `vibe_construction_v1`.`finance`.`progress_billing` ALTER COLUMN `engineer_approval_name` SET TAGS ('dbx_business_glossary_term' = 'Engineer Approval Name');
+ALTER TABLE `vibe_construction_v1`.`finance`.`progress_billing` ALTER COLUMN `engineer_approval_name` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_construction_v1`.`finance`.`progress_billing` ALTER COLUMN `engineer_approval_name` SET TAGS ('dbx_pii_name' = 'true');
 ALTER TABLE `vibe_construction_v1`.`finance`.`progress_billing` ALTER COLUMN `gross_amount_due` SET TAGS ('dbx_business_glossary_term' = 'Gross Amount Due');
 ALTER TABLE `vibe_construction_v1`.`finance`.`progress_billing` ALTER COLUMN `invoice_date` SET TAGS ('dbx_business_glossary_term' = 'Invoice Date');
 ALTER TABLE `vibe_construction_v1`.`finance`.`progress_billing` ALTER COLUMN `invoice_due_date` SET TAGS ('dbx_business_glossary_term' = 'Invoice Due Date');
+ALTER TABLE `vibe_construction_v1`.`finance`.`progress_billing` ALTER COLUMN `invoice_number` SET TAGS ('dbx_business_glossary_term' = 'Invoice Number');
 ALTER TABLE `vibe_construction_v1`.`finance`.`progress_billing` ALTER COLUMN `materials_stored_on_site` SET TAGS ('dbx_business_glossary_term' = 'Materials Stored On-Site');
 ALTER TABLE `vibe_construction_v1`.`finance`.`progress_billing` ALTER COLUMN `modified_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Modified Timestamp');
 ALTER TABLE `vibe_construction_v1`.`finance`.`progress_billing` ALTER COLUMN `net_amount_due` SET TAGS ('dbx_business_glossary_term' = 'Net Amount Due');
@@ -972,19 +1004,22 @@ ALTER TABLE `vibe_construction_v1`.`finance`.`progress_billing` ALTER COLUMN `re
 ALTER TABLE `vibe_construction_v1`.`finance`.`progress_billing` ALTER COLUMN `scheduled_value` SET TAGS ('dbx_business_glossary_term' = 'Scheduled Value');
 ALTER TABLE `vibe_construction_v1`.`finance`.`progress_billing` ALTER COLUMN `submission_date` SET TAGS ('dbx_business_glossary_term' = 'Submission Date');
 ALTER TABLE `vibe_construction_v1`.`finance`.`progress_billing` ALTER COLUMN `tax_amount` SET TAGS ('dbx_business_glossary_term' = 'Tax Amount');
+ALTER TABLE `vibe_construction_v1`.`finance`.`progress_billing` ALTER COLUMN `tax_amount` SET TAGS ('dbx_pii_financial' = 'true');
 ALTER TABLE `vibe_construction_v1`.`finance`.`progress_billing` ALTER COLUMN `tax_rate` SET TAGS ('dbx_business_glossary_term' = 'Tax Rate');
 ALTER TABLE `vibe_construction_v1`.`finance`.`progress_billing` ALTER COLUMN `work_completed_to_date` SET TAGS ('dbx_business_glossary_term' = 'Work Completed to Date');
 ALTER TABLE `vibe_construction_v1`.`finance`.`invoice` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_construction_v1`.`finance`.`invoice` SET TAGS ('dbx_subdomain' = 'billing_payments');
+ALTER TABLE `vibe_construction_v1`.`finance`.`invoice` SET TAGS ('dbx_subdomain' = 'payables_disbursements');
 ALTER TABLE `vibe_construction_v1`.`finance`.`invoice` ALTER COLUMN `invoice_id` SET TAGS ('dbx_business_glossary_term' = 'Invoice Identifier');
-ALTER TABLE `vibe_construction_v1`.`finance`.`invoice` ALTER COLUMN `activity_resource_assignment_id` SET TAGS ('dbx_business_glossary_term' = 'Activity Resource Assignment Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`finance`.`invoice` ALTER COLUMN `agreement_id` SET TAGS ('dbx_business_glossary_term' = 'Agreement Id (Foreign Key)');
 ALTER TABLE `vibe_construction_v1`.`finance`.`invoice` ALTER COLUMN `cost_center_id` SET TAGS ('dbx_business_glossary_term' = 'Cost Center Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`finance`.`invoice` ALTER COLUMN `deliverable_id` SET TAGS ('dbx_business_glossary_term' = 'Deliverable Id (Foreign Key)');
 ALTER TABLE `vibe_construction_v1`.`finance`.`invoice` ALTER COLUMN `cost_code_id` SET TAGS ('dbx_business_glossary_term' = 'Finance Cost Code Id (Foreign Key)');
 ALTER TABLE `vibe_construction_v1`.`finance`.`invoice` ALTER COLUMN `gl_account_id` SET TAGS ('dbx_business_glossary_term' = 'Gl Account Id (Foreign Key)');
 ALTER TABLE `vibe_construction_v1`.`finance`.`invoice` ALTER COLUMN `vendor_id` SET TAGS ('dbx_business_glossary_term' = 'Vendor ID');
 ALTER TABLE `vibe_construction_v1`.`finance`.`invoice` ALTER COLUMN `approval_status` SET TAGS ('dbx_business_glossary_term' = 'Approval Status');
 ALTER TABLE `vibe_construction_v1`.`finance`.`invoice` ALTER COLUMN `approval_status` SET TAGS ('dbx_value_regex' = 'pending|approved|rejected|escalated');
 ALTER TABLE `vibe_construction_v1`.`finance`.`invoice` ALTER COLUMN `approved_by` SET TAGS ('dbx_business_glossary_term' = 'Approved By');
+ALTER TABLE `vibe_construction_v1`.`finance`.`invoice` ALTER COLUMN `approved_by` SET TAGS ('dbx_pii_identifier' = 'true');
 ALTER TABLE `vibe_construction_v1`.`finance`.`invoice` ALTER COLUMN `approved_date` SET TAGS ('dbx_business_glossary_term' = 'Approval Date');
 ALTER TABLE `vibe_construction_v1`.`finance`.`invoice` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
 ALTER TABLE `vibe_construction_v1`.`finance`.`invoice` ALTER COLUMN `currency_code` SET TAGS ('dbx_business_glossary_term' = 'Currency Code');
@@ -1010,6 +1045,7 @@ ALTER TABLE `vibe_construction_v1`.`finance`.`invoice` ALTER COLUMN `net_payable
 ALTER TABLE `vibe_construction_v1`.`finance`.`invoice` ALTER COLUMN `payment_date` SET TAGS ('dbx_business_glossary_term' = 'Payment Date');
 ALTER TABLE `vibe_construction_v1`.`finance`.`invoice` ALTER COLUMN `payment_method` SET TAGS ('dbx_business_glossary_term' = 'Payment Method');
 ALTER TABLE `vibe_construction_v1`.`finance`.`invoice` ALTER COLUMN `payment_method` SET TAGS ('dbx_value_regex' = 'wire_transfer|check|ach|credit_card|letter_of_credit');
+ALTER TABLE `vibe_construction_v1`.`finance`.`invoice` ALTER COLUMN `payment_method` SET TAGS ('dbx_pii_financial' = 'true');
 ALTER TABLE `vibe_construction_v1`.`finance`.`invoice` ALTER COLUMN `payment_reference_number` SET TAGS ('dbx_business_glossary_term' = 'Payment Reference Number');
 ALTER TABLE `vibe_construction_v1`.`finance`.`invoice` ALTER COLUMN `payment_terms` SET TAGS ('dbx_business_glossary_term' = 'Payment Terms');
 ALTER TABLE `vibe_construction_v1`.`finance`.`invoice` ALTER COLUMN `payment_terms` SET TAGS ('dbx_value_regex' = '^[A-Z0-9 ]{3,30}$');
@@ -1017,32 +1053,97 @@ ALTER TABLE `vibe_construction_v1`.`finance`.`invoice` ALTER COLUMN `received_da
 ALTER TABLE `vibe_construction_v1`.`finance`.`invoice` ALTER COLUMN `retention_amount` SET TAGS ('dbx_business_glossary_term' = 'Retention Amount');
 ALTER TABLE `vibe_construction_v1`.`finance`.`invoice` ALTER COLUMN `retention_percentage` SET TAGS ('dbx_business_glossary_term' = 'Retention Percentage');
 ALTER TABLE `vibe_construction_v1`.`finance`.`invoice` ALTER COLUMN `tax_amount` SET TAGS ('dbx_business_glossary_term' = 'Tax Amount');
+ALTER TABLE `vibe_construction_v1`.`finance`.`invoice` ALTER COLUMN `tax_amount` SET TAGS ('dbx_pii_financial' = 'true');
 ALTER TABLE `vibe_construction_v1`.`finance`.`invoice` ALTER COLUMN `tax_rate` SET TAGS ('dbx_business_glossary_term' = 'Tax Rate');
 ALTER TABLE `vibe_construction_v1`.`finance`.`invoice` ALTER COLUMN `three_way_match_status` SET TAGS ('dbx_business_glossary_term' = 'Three-Way Match Status');
 ALTER TABLE `vibe_construction_v1`.`finance`.`invoice` ALTER COLUMN `three_way_match_status` SET TAGS ('dbx_value_regex' = 'matched|unmatched|partial_match|override');
+ALTER TABLE `vibe_construction_v1`.`finance`.`accounts_receivable_invoice` SET TAGS ('dbx_data_type' = 'transactional_data');
+ALTER TABLE `vibe_construction_v1`.`finance`.`accounts_receivable_invoice` SET TAGS ('dbx_subdomain' = 'revenue_collections');
+ALTER TABLE `vibe_construction_v1`.`finance`.`accounts_receivable_invoice` ALTER COLUMN `accounts_receivable_invoice_id` SET TAGS ('dbx_business_glossary_term' = 'Accounts Receivable (AR) Invoice ID');
+ALTER TABLE `vibe_construction_v1`.`finance`.`accounts_receivable_invoice` ALTER COLUMN `account_id` SET TAGS ('dbx_business_glossary_term' = 'Client ID');
+ALTER TABLE `vibe_construction_v1`.`finance`.`accounts_receivable_invoice` ALTER COLUMN `agreement_id` SET TAGS ('dbx_business_glossary_term' = 'Contract ID');
+ALTER TABLE `vibe_construction_v1`.`finance`.`accounts_receivable_invoice` ALTER COLUMN `construction_project_id` SET TAGS ('dbx_business_glossary_term' = 'Construction Project ID');
+ALTER TABLE `vibe_construction_v1`.`finance`.`accounts_receivable_invoice` ALTER COLUMN `cost_account_id` SET TAGS ('dbx_business_glossary_term' = 'Cost Account Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`finance`.`accounts_receivable_invoice` ALTER COLUMN `cost_center_id` SET TAGS ('dbx_business_glossary_term' = 'Cost Center Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`finance`.`accounts_receivable_invoice` ALTER COLUMN `deliverable_id` SET TAGS ('dbx_business_glossary_term' = 'Deliverable Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`finance`.`accounts_receivable_invoice` ALTER COLUMN `gl_account_id` SET TAGS ('dbx_business_glossary_term' = 'Gl Account Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`finance`.`accounts_receivable_invoice` ALTER COLUMN `payment_certificate_id` SET TAGS ('dbx_business_glossary_term' = 'Payment Certificate Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`finance`.`accounts_receivable_invoice` ALTER COLUMN `phase_id` SET TAGS ('dbx_business_glossary_term' = 'Phase Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`finance`.`accounts_receivable_invoice` ALTER COLUMN `progress_billing_id` SET TAGS ('dbx_business_glossary_term' = 'Progress Billing Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`finance`.`accounts_receivable_invoice` ALTER COLUMN `progress_measurement_id` SET TAGS ('dbx_business_glossary_term' = 'Progress Measurement Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`finance`.`accounts_receivable_invoice` ALTER COLUMN `project_change_order_id` SET TAGS ('dbx_business_glossary_term' = 'Project Change Order Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`finance`.`accounts_receivable_invoice` ALTER COLUMN `project_engagement_id` SET TAGS ('dbx_business_glossary_term' = 'Project Engagement Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`finance`.`accounts_receivable_invoice` ALTER COLUMN `schedule_milestone_id` SET TAGS ('dbx_business_glossary_term' = 'Schedule Milestone Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`finance`.`accounts_receivable_invoice` ALTER COLUMN `wbs_element_id` SET TAGS ('dbx_business_glossary_term' = 'Work Breakdown Structure (WBS) Element ID');
+ALTER TABLE `vibe_construction_v1`.`finance`.`accounts_receivable_invoice` ALTER COLUMN `aging_bucket` SET TAGS ('dbx_business_glossary_term' = 'Aging Bucket');
+ALTER TABLE `vibe_construction_v1`.`finance`.`accounts_receivable_invoice` ALTER COLUMN `aging_bucket` SET TAGS ('dbx_value_regex' = 'current|1_30_days|31_60_days|61_90_days|over_90_days');
+ALTER TABLE `vibe_construction_v1`.`finance`.`accounts_receivable_invoice` ALTER COLUMN `amount_paid_to_date` SET TAGS ('dbx_business_glossary_term' = 'Amount Paid to Date');
+ALTER TABLE `vibe_construction_v1`.`finance`.`accounts_receivable_invoice` ALTER COLUMN `billing_period_end_date` SET TAGS ('dbx_business_glossary_term' = 'Billing Period End Date');
+ALTER TABLE `vibe_construction_v1`.`finance`.`accounts_receivable_invoice` ALTER COLUMN `billing_period_start_date` SET TAGS ('dbx_business_glossary_term' = 'Billing Period Start Date');
+ALTER TABLE `vibe_construction_v1`.`finance`.`accounts_receivable_invoice` ALTER COLUMN `client_reference_number` SET TAGS ('dbx_business_glossary_term' = 'Client Reference Number');
+ALTER TABLE `vibe_construction_v1`.`finance`.`accounts_receivable_invoice` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
+ALTER TABLE `vibe_construction_v1`.`finance`.`accounts_receivable_invoice` ALTER COLUMN `currency_code` SET TAGS ('dbx_business_glossary_term' = 'Currency Code');
+ALTER TABLE `vibe_construction_v1`.`finance`.`accounts_receivable_invoice` ALTER COLUMN `currency_code` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
+ALTER TABLE `vibe_construction_v1`.`finance`.`accounts_receivable_invoice` ALTER COLUMN `days_past_due` SET TAGS ('dbx_business_glossary_term' = 'Days Past Due');
+ALTER TABLE `vibe_construction_v1`.`finance`.`accounts_receivable_invoice` ALTER COLUMN `dispute_date` SET TAGS ('dbx_business_glossary_term' = 'Dispute Date');
+ALTER TABLE `vibe_construction_v1`.`finance`.`accounts_receivable_invoice` ALTER COLUMN `dispute_flag` SET TAGS ('dbx_business_glossary_term' = 'Dispute Flag');
+ALTER TABLE `vibe_construction_v1`.`finance`.`accounts_receivable_invoice` ALTER COLUMN `dispute_reason` SET TAGS ('dbx_business_glossary_term' = 'Dispute Reason');
+ALTER TABLE `vibe_construction_v1`.`finance`.`accounts_receivable_invoice` ALTER COLUMN `due_date` SET TAGS ('dbx_business_glossary_term' = 'Payment Due Date');
+ALTER TABLE `vibe_construction_v1`.`finance`.`accounts_receivable_invoice` ALTER COLUMN `gl_document_number` SET TAGS ('dbx_business_glossary_term' = 'General Ledger (GL) Document Number');
+ALTER TABLE `vibe_construction_v1`.`finance`.`accounts_receivable_invoice` ALTER COLUMN `gl_posting_date` SET TAGS ('dbx_business_glossary_term' = 'General Ledger (GL) Posting Date');
+ALTER TABLE `vibe_construction_v1`.`finance`.`accounts_receivable_invoice` ALTER COLUMN `gross_amount` SET TAGS ('dbx_business_glossary_term' = 'Gross Invoice Amount');
+ALTER TABLE `vibe_construction_v1`.`finance`.`accounts_receivable_invoice` ALTER COLUMN `invoice_date` SET TAGS ('dbx_business_glossary_term' = 'Invoice Date');
+ALTER TABLE `vibe_construction_v1`.`finance`.`accounts_receivable_invoice` ALTER COLUMN `invoice_description` SET TAGS ('dbx_business_glossary_term' = 'Invoice Description');
+ALTER TABLE `vibe_construction_v1`.`finance`.`accounts_receivable_invoice` ALTER COLUMN `invoice_number` SET TAGS ('dbx_business_glossary_term' = 'Invoice Number');
+ALTER TABLE `vibe_construction_v1`.`finance`.`accounts_receivable_invoice` ALTER COLUMN `invoice_number` SET TAGS ('dbx_value_regex' = '^[A-Z0-9]{6,20}$');
+ALTER TABLE `vibe_construction_v1`.`finance`.`accounts_receivable_invoice` ALTER COLUMN `invoice_status` SET TAGS ('dbx_business_glossary_term' = 'Invoice Status');
+ALTER TABLE `vibe_construction_v1`.`finance`.`accounts_receivable_invoice` ALTER COLUMN `invoice_type` SET TAGS ('dbx_business_glossary_term' = 'Invoice Type');
+ALTER TABLE `vibe_construction_v1`.`finance`.`accounts_receivable_invoice` ALTER COLUMN `last_payment_date` SET TAGS ('dbx_business_glossary_term' = 'Last Payment Date');
+ALTER TABLE `vibe_construction_v1`.`finance`.`accounts_receivable_invoice` ALTER COLUMN `modified_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Modified Timestamp');
+ALTER TABLE `vibe_construction_v1`.`finance`.`accounts_receivable_invoice` ALTER COLUMN `net_receivable_amount` SET TAGS ('dbx_business_glossary_term' = 'Net Receivable Amount');
+ALTER TABLE `vibe_construction_v1`.`finance`.`accounts_receivable_invoice` ALTER COLUMN `outstanding_balance` SET TAGS ('dbx_business_glossary_term' = 'Outstanding Balance');
+ALTER TABLE `vibe_construction_v1`.`finance`.`accounts_receivable_invoice` ALTER COLUMN `payment_method` SET TAGS ('dbx_business_glossary_term' = 'Payment Method');
+ALTER TABLE `vibe_construction_v1`.`finance`.`accounts_receivable_invoice` ALTER COLUMN `payment_method` SET TAGS ('dbx_value_regex' = 'bank_transfer|wire_transfer|check|letter_of_credit|direct_debit|cash');
+ALTER TABLE `vibe_construction_v1`.`finance`.`accounts_receivable_invoice` ALTER COLUMN `payment_method` SET TAGS ('dbx_pii_financial' = 'true');
+ALTER TABLE `vibe_construction_v1`.`finance`.`accounts_receivable_invoice` ALTER COLUMN `payment_terms` SET TAGS ('dbx_business_glossary_term' = 'Payment Terms');
+ALTER TABLE `vibe_construction_v1`.`finance`.`accounts_receivable_invoice` ALTER COLUMN `retention_amount` SET TAGS ('dbx_business_glossary_term' = 'Retention Amount');
+ALTER TABLE `vibe_construction_v1`.`finance`.`accounts_receivable_invoice` ALTER COLUMN `retention_rate_percent` SET TAGS ('dbx_business_glossary_term' = 'Retention Rate Percentage');
+ALTER TABLE `vibe_construction_v1`.`finance`.`accounts_receivable_invoice` ALTER COLUMN `revenue_recognition_method` SET TAGS ('dbx_business_glossary_term' = 'Revenue Recognition Method');
+ALTER TABLE `vibe_construction_v1`.`finance`.`accounts_receivable_invoice` ALTER COLUMN `revenue_recognition_method` SET TAGS ('dbx_value_regex' = 'percentage_of_completion|completed_contract|milestone|point_in_time');
+ALTER TABLE `vibe_construction_v1`.`finance`.`accounts_receivable_invoice` ALTER COLUMN `revenue_recognized_amount` SET TAGS ('dbx_business_glossary_term' = 'Revenue Recognized Amount');
+ALTER TABLE `vibe_construction_v1`.`finance`.`accounts_receivable_invoice` ALTER COLUMN `tax_amount` SET TAGS ('dbx_business_glossary_term' = 'Tax Amount');
+ALTER TABLE `vibe_construction_v1`.`finance`.`accounts_receivable_invoice` ALTER COLUMN `tax_amount` SET TAGS ('dbx_pii_financial' = 'true');
+ALTER TABLE `vibe_construction_v1`.`finance`.`accounts_receivable_invoice` ALTER COLUMN `tax_rate_percent` SET TAGS ('dbx_business_glossary_term' = 'Tax Rate Percentage');
+ALTER TABLE `vibe_construction_v1`.`finance`.`accounts_receivable_invoice` ALTER COLUMN `write_off_amount` SET TAGS ('dbx_business_glossary_term' = 'Write-Off Amount');
+ALTER TABLE `vibe_construction_v1`.`finance`.`accounts_receivable_invoice` ALTER COLUMN `write_off_date` SET TAGS ('dbx_business_glossary_term' = 'Write-Off Date');
+ALTER TABLE `vibe_construction_v1`.`finance`.`accounts_receivable_invoice` ALTER COLUMN `write_off_flag` SET TAGS ('dbx_business_glossary_term' = 'Write-Off Flag');
 ALTER TABLE `vibe_construction_v1`.`finance`.`payment_record` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_construction_v1`.`finance`.`payment_record` SET TAGS ('dbx_subdomain' = 'billing_payments');
+ALTER TABLE `vibe_construction_v1`.`finance`.`payment_record` SET TAGS ('dbx_subdomain' = 'payables_disbursements');
 ALTER TABLE `vibe_construction_v1`.`finance`.`payment_record` ALTER COLUMN `payment_record_id` SET TAGS ('dbx_business_glossary_term' = 'Payment Record ID');
+ALTER TABLE `vibe_construction_v1`.`finance`.`payment_record` ALTER COLUMN `accounts_receivable_invoice_id` SET TAGS ('dbx_business_glossary_term' = 'Accounts Receivable Invoice Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`finance`.`payment_record` ALTER COLUMN `asset_id` SET TAGS ('dbx_business_glossary_term' = 'Carbon Offset Id (Foreign Key)');
 ALTER TABLE `vibe_construction_v1`.`finance`.`payment_record` ALTER COLUMN `construction_project_id` SET TAGS ('dbx_business_glossary_term' = 'Construction Project ID');
 ALTER TABLE `vibe_construction_v1`.`finance`.`payment_record` ALTER COLUMN `cost_center_id` SET TAGS ('dbx_business_glossary_term' = 'Cost Center Id (Foreign Key)');
-ALTER TABLE `vibe_construction_v1`.`finance`.`payment_record` ALTER COLUMN `cost_code_id` SET TAGS ('dbx_business_glossary_term' = 'Cost Code Id (Foreign Key)');
 ALTER TABLE `vibe_construction_v1`.`finance`.`payment_record` ALTER COLUMN `gl_account_id` SET TAGS ('dbx_business_glossary_term' = 'Gl Account Id (Foreign Key)');
 ALTER TABLE `vibe_construction_v1`.`finance`.`payment_record` ALTER COLUMN `invoice_id` SET TAGS ('dbx_business_glossary_term' = 'Invoice Accounts Payable Invoice Id (Foreign Key)');
-ALTER TABLE `vibe_construction_v1`.`finance`.`payment_record` ALTER COLUMN `milestone_id` SET TAGS ('dbx_business_glossary_term' = 'Project Milestone Id (Foreign Key)');
 ALTER TABLE `vibe_construction_v1`.`finance`.`payment_record` ALTER COLUMN `payment_certificate_id` SET TAGS ('dbx_business_glossary_term' = 'Payment Certificate Id (Foreign Key)');
-ALTER TABLE `vibe_construction_v1`.`finance`.`payment_record` ALTER COLUMN `payment_schedule_id` SET TAGS ('dbx_business_glossary_term' = 'Payment Schedule Id (Foreign Key)');
-ALTER TABLE `vibe_construction_v1`.`finance`.`payment_record` ALTER COLUMN `progress_billing_id` SET TAGS ('dbx_business_glossary_term' = 'Progress Billing Id (Foreign Key)');
-ALTER TABLE `vibe_construction_v1`.`finance`.`payment_record` ALTER COLUMN `subcontract_payment_id` SET TAGS ('dbx_business_glossary_term' = 'Subcontract Payment Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`finance`.`payment_record` ALTER COLUMN `project_engagement_id` SET TAGS ('dbx_business_glossary_term' = 'Project Engagement Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`finance`.`payment_record` ALTER COLUMN `project_milestone_id` SET TAGS ('dbx_business_glossary_term' = 'Project Milestone Id (Foreign Key)');
 ALTER TABLE `vibe_construction_v1`.`finance`.`payment_record` ALTER COLUMN `vendor_id` SET TAGS ('dbx_business_glossary_term' = 'Vendor ID');
 ALTER TABLE `vibe_construction_v1`.`finance`.`payment_record` ALTER COLUMN `advance_payment_flag` SET TAGS ('dbx_business_glossary_term' = 'Advance Payment Flag');
 ALTER TABLE `vibe_construction_v1`.`finance`.`payment_record` ALTER COLUMN `approval_date` SET TAGS ('dbx_business_glossary_term' = 'Approval Date');
 ALTER TABLE `vibe_construction_v1`.`finance`.`payment_record` ALTER COLUMN `approved_by` SET TAGS ('dbx_business_glossary_term' = 'Approved By');
+ALTER TABLE `vibe_construction_v1`.`finance`.`payment_record` ALTER COLUMN `approved_by` SET TAGS ('dbx_pii_identifier' = 'true');
 ALTER TABLE `vibe_construction_v1`.`finance`.`payment_record` ALTER COLUMN `bank_charges` SET TAGS ('dbx_business_glossary_term' = 'Bank Charges');
+ALTER TABLE `vibe_construction_v1`.`finance`.`payment_record` ALTER COLUMN `bank_charges` SET TAGS ('dbx_pii_financial' = 'true');
 ALTER TABLE `vibe_construction_v1`.`finance`.`payment_record` ALTER COLUMN `bank_reference_number` SET TAGS ('dbx_business_glossary_term' = 'Bank Reference Number');
 ALTER TABLE `vibe_construction_v1`.`finance`.`payment_record` ALTER COLUMN `bank_reference_number` SET TAGS ('dbx_value_regex' = '^[A-Z0-9]{10,35}$');
+ALTER TABLE `vibe_construction_v1`.`finance`.`payment_record` ALTER COLUMN `bank_reference_number` SET TAGS ('dbx_pii_financial' = 'true');
 ALTER TABLE `vibe_construction_v1`.`finance`.`payment_record` ALTER COLUMN `clearing_date` SET TAGS ('dbx_business_glossary_term' = 'Bank Clearing Date');
 ALTER TABLE `vibe_construction_v1`.`finance`.`payment_record` ALTER COLUMN `clearing_status` SET TAGS ('dbx_business_glossary_term' = 'Bank Clearing Status');
 ALTER TABLE `vibe_construction_v1`.`finance`.`payment_record` ALTER COLUMN `clearing_status` SET TAGS ('dbx_value_regex' = 'not_cleared|cleared|partially_cleared|rejected');
+ALTER TABLE `vibe_construction_v1`.`finance`.`payment_record` ALTER COLUMN `cost_code` SET TAGS ('dbx_business_glossary_term' = 'Cost Code');
+ALTER TABLE `vibe_construction_v1`.`finance`.`payment_record` ALTER COLUMN `cost_code` SET TAGS ('dbx_value_regex' = '^[A-Z0-9]{4,12}$');
 ALTER TABLE `vibe_construction_v1`.`finance`.`payment_record` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
 ALTER TABLE `vibe_construction_v1`.`finance`.`payment_record` ALTER COLUMN `currency_code` SET TAGS ('dbx_business_glossary_term' = 'Currency Code');
 ALTER TABLE `vibe_construction_v1`.`finance`.`payment_record` ALTER COLUMN `currency_code` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
@@ -1064,6 +1165,7 @@ ALTER TABLE `vibe_construction_v1`.`finance`.`payment_record` ALTER COLUMN `paym
 ALTER TABLE `vibe_construction_v1`.`finance`.`payment_record` ALTER COLUMN `payment_document_number` SET TAGS ('dbx_value_regex' = '^[A-Z0-9]{8,20}$');
 ALTER TABLE `vibe_construction_v1`.`finance`.`payment_record` ALTER COLUMN `payment_method` SET TAGS ('dbx_business_glossary_term' = 'Payment Method');
 ALTER TABLE `vibe_construction_v1`.`finance`.`payment_record` ALTER COLUMN `payment_method` SET TAGS ('dbx_value_regex' = 'wire_transfer|ach|cheque|cash|letter_of_credit|bank_draft');
+ALTER TABLE `vibe_construction_v1`.`finance`.`payment_record` ALTER COLUMN `payment_method` SET TAGS ('dbx_pii_financial' = 'true');
 ALTER TABLE `vibe_construction_v1`.`finance`.`payment_record` ALTER COLUMN `payment_notes` SET TAGS ('dbx_business_glossary_term' = 'Payment Notes');
 ALTER TABLE `vibe_construction_v1`.`finance`.`payment_record` ALTER COLUMN `payment_priority` SET TAGS ('dbx_business_glossary_term' = 'Payment Priority');
 ALTER TABLE `vibe_construction_v1`.`finance`.`payment_record` ALTER COLUMN `payment_priority` SET TAGS ('dbx_value_regex' = 'urgent|high|normal|low');
@@ -1082,29 +1184,36 @@ ALTER TABLE `vibe_construction_v1`.`finance`.`payment_record` ALTER COLUMN `remi
 ALTER TABLE `vibe_construction_v1`.`finance`.`payment_record` ALTER COLUMN `retention_amount` SET TAGS ('dbx_business_glossary_term' = 'Retention Amount');
 ALTER TABLE `vibe_construction_v1`.`finance`.`payment_record` ALTER COLUMN `value_date` SET TAGS ('dbx_business_glossary_term' = 'Value Date');
 ALTER TABLE `vibe_construction_v1`.`finance`.`payment_record` ALTER COLUMN `withholding_tax_amount` SET TAGS ('dbx_business_glossary_term' = 'Withholding Tax Amount');
+ALTER TABLE `vibe_construction_v1`.`finance`.`payment_record` ALTER COLUMN `withholding_tax_amount` SET TAGS ('dbx_pii_financial' = 'true');
 ALTER TABLE `vibe_construction_v1`.`finance`.`cash_flow_forecast` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_construction_v1`.`finance`.`cash_flow_forecast` SET TAGS ('dbx_subdomain' = 'billing_payments');
+ALTER TABLE `vibe_construction_v1`.`finance`.`cash_flow_forecast` SET TAGS ('dbx_subdomain' = 'payables_disbursements');
 ALTER TABLE `vibe_construction_v1`.`finance`.`cash_flow_forecast` ALTER COLUMN `cash_flow_forecast_id` SET TAGS ('dbx_business_glossary_term' = 'Cash Flow Forecast ID');
 ALTER TABLE `vibe_construction_v1`.`finance`.`cash_flow_forecast` ALTER COLUMN `agreement_id` SET TAGS ('dbx_business_glossary_term' = 'Agreement Id (Foreign Key)');
-ALTER TABLE `vibe_construction_v1`.`finance`.`cash_flow_forecast` ALTER COLUMN `construction_project_id` SET TAGS ('dbx_business_glossary_term' = 'Construction Project ID');
-ALTER TABLE `vibe_construction_v1`.`finance`.`cash_flow_forecast` ALTER COLUMN `cost_center_id` SET TAGS ('dbx_business_glossary_term' = 'Cost Center Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`finance`.`cash_flow_forecast` ALTER COLUMN `cost_account_id` SET TAGS ('dbx_business_glossary_term' = 'Cost Account Id (Foreign Key)');
 ALTER TABLE `vibe_construction_v1`.`finance`.`cash_flow_forecast` ALTER COLUMN `lookahead_plan_id` SET TAGS ('dbx_business_glossary_term' = 'Lookahead Plan Id (Foreign Key)');
-ALTER TABLE `vibe_construction_v1`.`finance`.`cash_flow_forecast` ALTER COLUMN `milestone_id` SET TAGS ('dbx_business_glossary_term' = 'Project Milestone Id (Foreign Key)');
 ALTER TABLE `vibe_construction_v1`.`finance`.`cash_flow_forecast` ALTER COLUMN `payment_schedule_id` SET TAGS ('dbx_business_glossary_term' = 'Payment Schedule Id (Foreign Key)');
 ALTER TABLE `vibe_construction_v1`.`finance`.`cash_flow_forecast` ALTER COLUMN `phase_id` SET TAGS ('dbx_business_glossary_term' = 'Phase Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`finance`.`cash_flow_forecast` ALTER COLUMN `project_baseline_id` SET TAGS ('dbx_business_glossary_term' = 'Project Baseline Id (Foreign Key)');
 ALTER TABLE `vibe_construction_v1`.`finance`.`cash_flow_forecast` ALTER COLUMN `project_budget_id` SET TAGS ('dbx_business_glossary_term' = 'Project Budget Id (Foreign Key)');
-ALTER TABLE `vibe_construction_v1`.`finance`.`cash_flow_forecast` ALTER COLUMN `schedule_baseline_id` SET TAGS ('dbx_business_glossary_term' = 'Schedule Baseline Id (Foreign Key)');
-ALTER TABLE `vibe_construction_v1`.`finance`.`cash_flow_forecast` ALTER COLUMN `staffing_plan_id` SET TAGS ('dbx_business_glossary_term' = 'Staffing Plan Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`finance`.`cash_flow_forecast` ALTER COLUMN `project_engagement_id` SET TAGS ('dbx_business_glossary_term' = 'Project Engagement Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`finance`.`cash_flow_forecast` ALTER COLUMN `forecast_id` SET TAGS ('dbx_business_glossary_term' = 'Project Forecast Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`finance`.`cash_flow_forecast` ALTER COLUMN `project_milestone_id` SET TAGS ('dbx_business_glossary_term' = 'Project Milestone Id (Foreign Key)');
+ALTER TABLE `vibe_construction_v1`.`finance`.`cash_flow_forecast` ALTER COLUMN `risk_register_id` SET TAGS ('dbx_business_glossary_term' = 'Risk Register Id (Foreign Key)');
 ALTER TABLE `vibe_construction_v1`.`finance`.`cash_flow_forecast` ALTER COLUMN `wbs_element_id` SET TAGS ('dbx_business_glossary_term' = 'Work Breakdown Structure (WBS) Element ID');
 ALTER TABLE `vibe_construction_v1`.`finance`.`cash_flow_forecast` ALTER COLUMN `advance_drawdown_amount` SET TAGS ('dbx_business_glossary_term' = 'Advance Drawdown Amount');
 ALTER TABLE `vibe_construction_v1`.`finance`.`cash_flow_forecast` ALTER COLUMN `approval_date` SET TAGS ('dbx_business_glossary_term' = 'Approval Date');
 ALTER TABLE `vibe_construction_v1`.`finance`.`cash_flow_forecast` ALTER COLUMN `approved_by` SET TAGS ('dbx_business_glossary_term' = 'Approved By');
+ALTER TABLE `vibe_construction_v1`.`finance`.`cash_flow_forecast` ALTER COLUMN `approved_by` SET TAGS ('dbx_pii_identifier' = 'true');
 ALTER TABLE `vibe_construction_v1`.`finance`.`cash_flow_forecast` ALTER COLUMN `bond_premium_amount` SET TAGS ('dbx_business_glossary_term' = 'Bond Premium Amount');
 ALTER TABLE `vibe_construction_v1`.`finance`.`cash_flow_forecast` ALTER COLUMN `bonding_capacity_utilization` SET TAGS ('dbx_business_glossary_term' = 'Bonding Capacity Utilization');
+ALTER TABLE `vibe_construction_v1`.`finance`.`cash_flow_forecast` ALTER COLUMN `bonding_capacity_utilization` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_construction_v1`.`finance`.`cash_flow_forecast` ALTER COLUMN `bonding_capacity_utilization` SET TAGS ('dbx_pii_address' = 'true');
 ALTER TABLE `vibe_construction_v1`.`finance`.`cash_flow_forecast` ALTER COLUMN `closing_cash_balance` SET TAGS ('dbx_business_glossary_term' = 'Closing Cash Balance');
 ALTER TABLE `vibe_construction_v1`.`finance`.`cash_flow_forecast` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
 ALTER TABLE `vibe_construction_v1`.`finance`.`cash_flow_forecast` ALTER COLUMN `credit_facility_utilization` SET TAGS ('dbx_business_glossary_term' = 'Credit Facility Utilization');
+ALTER TABLE `vibe_construction_v1`.`finance`.`cash_flow_forecast` ALTER COLUMN `credit_facility_utilization` SET TAGS ('dbx_pii_financial' = 'true');
 ALTER TABLE `vibe_construction_v1`.`finance`.`cash_flow_forecast` ALTER COLUMN `cumulative_cash_position` SET TAGS ('dbx_business_glossary_term' = 'Cumulative Cash Position');
+ALTER TABLE `vibe_construction_v1`.`finance`.`cash_flow_forecast` ALTER COLUMN `cumulative_cash_position` SET TAGS ('dbx_pii_location' = 'true');
 ALTER TABLE `vibe_construction_v1`.`finance`.`cash_flow_forecast` ALTER COLUMN `currency_code` SET TAGS ('dbx_business_glossary_term' = 'Currency Code');
 ALTER TABLE `vibe_construction_v1`.`finance`.`cash_flow_forecast` ALTER COLUMN `currency_code` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
 ALTER TABLE `vibe_construction_v1`.`finance`.`cash_flow_forecast` ALTER COLUMN `equipment_hire_amount` SET TAGS ('dbx_business_glossary_term' = 'Equipment Hire Amount');
@@ -1129,97 +1238,16 @@ ALTER TABLE `vibe_construction_v1`.`finance`.`cash_flow_forecast` ALTER COLUMN `
 ALTER TABLE `vibe_construction_v1`.`finance`.`cash_flow_forecast` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Notes');
 ALTER TABLE `vibe_construction_v1`.`finance`.`cash_flow_forecast` ALTER COLUMN `opening_cash_balance` SET TAGS ('dbx_business_glossary_term' = 'Opening Cash Balance');
 ALTER TABLE `vibe_construction_v1`.`finance`.`cash_flow_forecast` ALTER COLUMN `payroll_amount` SET TAGS ('dbx_business_glossary_term' = 'Payroll Amount');
+ALTER TABLE `vibe_construction_v1`.`finance`.`cash_flow_forecast` ALTER COLUMN `payroll_amount` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_construction_v1`.`finance`.`cash_flow_forecast` ALTER COLUMN `payroll_amount` SET TAGS ('dbx_pii_financial' = 'true');
 ALTER TABLE `vibe_construction_v1`.`finance`.`cash_flow_forecast` ALTER COLUMN `peak_funding_requirement` SET TAGS ('dbx_business_glossary_term' = 'Peak Funding Requirement');
 ALTER TABLE `vibe_construction_v1`.`finance`.`cash_flow_forecast` ALTER COLUMN `prepared_by` SET TAGS ('dbx_business_glossary_term' = 'Prepared By');
+ALTER TABLE `vibe_construction_v1`.`finance`.`cash_flow_forecast` ALTER COLUMN `prepared_by` SET TAGS ('dbx_pii_identifier' = 'true');
 ALTER TABLE `vibe_construction_v1`.`finance`.`cash_flow_forecast` ALTER COLUMN `retention_release_amount` SET TAGS ('dbx_business_glossary_term' = 'Retention Release Amount');
 ALTER TABLE `vibe_construction_v1`.`finance`.`cash_flow_forecast` ALTER COLUMN `s_curve_profile_indicator` SET TAGS ('dbx_business_glossary_term' = 'S-Curve Profile Indicator');
 ALTER TABLE `vibe_construction_v1`.`finance`.`cash_flow_forecast` ALTER COLUMN `s_curve_profile_indicator` SET TAGS ('dbx_value_regex' = 'front_loaded|linear|back_loaded|custom');
 ALTER TABLE `vibe_construction_v1`.`finance`.`cash_flow_forecast` ALTER COLUMN `subcontractor_payment_amount` SET TAGS ('dbx_business_glossary_term' = 'Subcontractor Payment Amount');
+ALTER TABLE `vibe_construction_v1`.`finance`.`cash_flow_forecast` ALTER COLUMN `subcontractor_payment_amount` SET TAGS ('dbx_pii_flag' = 'true');
 ALTER TABLE `vibe_construction_v1`.`finance`.`cash_flow_forecast` ALTER COLUMN `variance_percentage` SET TAGS ('dbx_business_glossary_term' = 'Variance Percentage');
 ALTER TABLE `vibe_construction_v1`.`finance`.`cash_flow_forecast` ALTER COLUMN `variance_to_prior_forecast` SET TAGS ('dbx_business_glossary_term' = 'Variance to Prior Forecast');
 ALTER TABLE `vibe_construction_v1`.`finance`.`cash_flow_forecast` ALTER COLUMN `working_capital_gap` SET TAGS ('dbx_business_glossary_term' = 'Working Capital Gap');
-ALTER TABLE `vibe_construction_v1`.`finance`.`company_code` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_construction_v1`.`finance`.`company_code` SET TAGS ('dbx_subdomain' = 'ledger_accounting');
-ALTER TABLE `vibe_construction_v1`.`finance`.`company_code` ALTER COLUMN `company_code_id` SET TAGS ('dbx_business_glossary_term' = 'Company Code Identifier');
-ALTER TABLE `vibe_construction_v1`.`finance`.`company_code` ALTER COLUMN `parent_company_code_id` SET TAGS ('dbx_business_glossary_term' = 'Parent Company Code Id');
-ALTER TABLE `vibe_construction_v1`.`finance`.`company_code` ALTER COLUMN `parent_company_code_id` SET TAGS ('dbx_self_ref_fk' = 'true');
-ALTER TABLE `vibe_construction_v1`.`finance`.`company_code` ALTER COLUMN `address_line1` SET TAGS ('dbx_business_glossary_term' = 'Address Line1');
-ALTER TABLE `vibe_construction_v1`.`finance`.`company_code` ALTER COLUMN `address_line1` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_construction_v1`.`finance`.`company_code` ALTER COLUMN `address_line1` SET TAGS ('dbx_pii_address' = 'true');
-ALTER TABLE `vibe_construction_v1`.`finance`.`company_code` ALTER COLUMN `address_line2` SET TAGS ('dbx_business_glossary_term' = 'Address Line2');
-ALTER TABLE `vibe_construction_v1`.`finance`.`company_code` ALTER COLUMN `address_line2` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_construction_v1`.`finance`.`company_code` ALTER COLUMN `address_line2` SET TAGS ('dbx_pii_address' = 'true');
-ALTER TABLE `vibe_construction_v1`.`finance`.`company_code` ALTER COLUMN `business_area` SET TAGS ('dbx_business_glossary_term' = 'Business Area');
-ALTER TABLE `vibe_construction_v1`.`finance`.`company_code` ALTER COLUMN `chart_of_accounts` SET TAGS ('dbx_business_glossary_term' = 'Chart Of Accounts');
-ALTER TABLE `vibe_construction_v1`.`finance`.`company_code` ALTER COLUMN `city` SET TAGS ('dbx_business_glossary_term' = 'City');
-ALTER TABLE `vibe_construction_v1`.`finance`.`company_code` ALTER COLUMN `city` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_construction_v1`.`finance`.`company_code` ALTER COLUMN `city` SET TAGS ('dbx_pii_address' = 'true');
-ALTER TABLE `vibe_construction_v1`.`finance`.`company_code` ALTER COLUMN `classification` SET TAGS ('dbx_business_glossary_term' = 'Classification');
-ALTER TABLE `vibe_construction_v1`.`finance`.`company_code` ALTER COLUMN `company_code_code` SET TAGS ('dbx_business_glossary_term' = 'Code');
-ALTER TABLE `vibe_construction_v1`.`finance`.`company_code` ALTER COLUMN `company_code_status` SET TAGS ('dbx_business_glossary_term' = 'Status');
-ALTER TABLE `vibe_construction_v1`.`finance`.`company_code` ALTER COLUMN `cost_center` SET TAGS ('dbx_business_glossary_term' = 'Cost Center');
-ALTER TABLE `vibe_construction_v1`.`finance`.`company_code` ALTER COLUMN `country_code` SET TAGS ('dbx_business_glossary_term' = 'Country Code');
-ALTER TABLE `vibe_construction_v1`.`finance`.`company_code` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
-ALTER TABLE `vibe_construction_v1`.`finance`.`company_code` ALTER COLUMN `currency_code` SET TAGS ('dbx_business_glossary_term' = 'Currency Code');
-ALTER TABLE `vibe_construction_v1`.`finance`.`company_code` ALTER COLUMN `company_code_description` SET TAGS ('dbx_business_glossary_term' = 'Description');
-ALTER TABLE `vibe_construction_v1`.`finance`.`company_code` ALTER COLUMN `dissolution_date` SET TAGS ('dbx_business_glossary_term' = 'Dissolution Date');
-ALTER TABLE `vibe_construction_v1`.`finance`.`company_code` ALTER COLUMN `effective_from` SET TAGS ('dbx_business_glossary_term' = 'Effective From');
-ALTER TABLE `vibe_construction_v1`.`finance`.`company_code` ALTER COLUMN `effective_to` SET TAGS ('dbx_business_glossary_term' = 'Effective To');
-ALTER TABLE `vibe_construction_v1`.`finance`.`company_code` ALTER COLUMN `external_reference_number` SET TAGS ('dbx_business_glossary_term' = 'External Reference Number');
-ALTER TABLE `vibe_construction_v1`.`finance`.`company_code` ALTER COLUMN `financial_reporting_standard` SET TAGS ('dbx_business_glossary_term' = 'Financial Reporting Standard');
-ALTER TABLE `vibe_construction_v1`.`finance`.`company_code` ALTER COLUMN `incorporation_date` SET TAGS ('dbx_business_glossary_term' = 'Incorporation Date');
-ALTER TABLE `vibe_construction_v1`.`finance`.`company_code` ALTER COLUMN `industry_code` SET TAGS ('dbx_business_glossary_term' = 'Industry Code');
-ALTER TABLE `vibe_construction_v1`.`finance`.`company_code` ALTER COLUMN `is_consolidated` SET TAGS ('dbx_business_glossary_term' = 'Is Consolidated');
-ALTER TABLE `vibe_construction_v1`.`finance`.`company_code` ALTER COLUMN `legal_form` SET TAGS ('dbx_business_glossary_term' = 'Legal Form');
-ALTER TABLE `vibe_construction_v1`.`finance`.`company_code` ALTER COLUMN `company_code_name` SET TAGS ('dbx_business_glossary_term' = 'Name');
-ALTER TABLE `vibe_construction_v1`.`finance`.`company_code` ALTER COLUMN `parent_company_code` SET TAGS ('dbx_business_glossary_term' = 'Parent Company Code');
-ALTER TABLE `vibe_construction_v1`.`finance`.`company_code` ALTER COLUMN `postal_code` SET TAGS ('dbx_business_glossary_term' = 'Postal Code');
-ALTER TABLE `vibe_construction_v1`.`finance`.`company_code` ALTER COLUMN `postal_code` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_construction_v1`.`finance`.`company_code` ALTER COLUMN `postal_code` SET TAGS ('dbx_pii_address' = 'true');
-ALTER TABLE `vibe_construction_v1`.`finance`.`company_code` ALTER COLUMN `primary_contact_email` SET TAGS ('dbx_business_glossary_term' = 'Primary Contact Email');
-ALTER TABLE `vibe_construction_v1`.`finance`.`company_code` ALTER COLUMN `primary_contact_email` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_construction_v1`.`finance`.`company_code` ALTER COLUMN `primary_contact_email` SET TAGS ('dbx_pii_email' = 'true');
-ALTER TABLE `vibe_construction_v1`.`finance`.`company_code` ALTER COLUMN `primary_contact_name` SET TAGS ('dbx_business_glossary_term' = 'Primary Contact Name');
-ALTER TABLE `vibe_construction_v1`.`finance`.`company_code` ALTER COLUMN `primary_contact_name` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_construction_v1`.`finance`.`company_code` ALTER COLUMN `primary_contact_name` SET TAGS ('dbx_pii_identifier' = 'true');
-ALTER TABLE `vibe_construction_v1`.`finance`.`company_code` ALTER COLUMN `primary_contact_phone` SET TAGS ('dbx_business_glossary_term' = 'Primary Contact Phone');
-ALTER TABLE `vibe_construction_v1`.`finance`.`company_code` ALTER COLUMN `primary_contact_phone` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_construction_v1`.`finance`.`company_code` ALTER COLUMN `primary_contact_phone` SET TAGS ('dbx_pii_phone' = 'true');
-ALTER TABLE `vibe_construction_v1`.`finance`.`company_code` ALTER COLUMN `profit_center` SET TAGS ('dbx_business_glossary_term' = 'Profit Center');
-ALTER TABLE `vibe_construction_v1`.`finance`.`company_code` ALTER COLUMN `segment` SET TAGS ('dbx_business_glossary_term' = 'Segment');
-ALTER TABLE `vibe_construction_v1`.`finance`.`company_code` ALTER COLUMN `state_province` SET TAGS ('dbx_business_glossary_term' = 'State Province');
-ALTER TABLE `vibe_construction_v1`.`finance`.`company_code` ALTER COLUMN `state_province` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_construction_v1`.`finance`.`company_code` ALTER COLUMN `state_province` SET TAGS ('dbx_pii_address' = 'true');
-ALTER TABLE `vibe_construction_v1`.`finance`.`company_code` ALTER COLUMN `tax_number` SET TAGS ('dbx_business_glossary_term' = 'Tax Number');
-ALTER TABLE `vibe_construction_v1`.`finance`.`company_code` ALTER COLUMN `tax_number` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_construction_v1`.`finance`.`company_code` ALTER COLUMN `tax_number` SET TAGS ('dbx_pii_identifier' = 'true');
-ALTER TABLE `vibe_construction_v1`.`finance`.`company_code` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Updated Timestamp');
-ALTER TABLE `vibe_construction_v1`.`finance`.`chart_of_accounts` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_construction_v1`.`finance`.`chart_of_accounts` SET TAGS ('dbx_subdomain' = 'ledger_accounting');
-ALTER TABLE `vibe_construction_v1`.`finance`.`chart_of_accounts` ALTER COLUMN `chart_of_accounts_id` SET TAGS ('dbx_business_glossary_term' = 'Chart Of Accounts Identifier');
-ALTER TABLE `vibe_construction_v1`.`finance`.`chart_of_accounts` ALTER COLUMN `parent_chart_of_accounts_id` SET TAGS ('dbx_business_glossary_term' = 'Parent Chart Of Accounts Id');
-ALTER TABLE `vibe_construction_v1`.`finance`.`chart_of_accounts` ALTER COLUMN `parent_chart_of_accounts_id` SET TAGS ('dbx_self_ref_fk' = 'true');
-ALTER TABLE `vibe_construction_v1`.`finance`.`chart_of_accounts` ALTER COLUMN `account_hierarchy_level` SET TAGS ('dbx_business_glossary_term' = 'Account Hierarchy Level');
-ALTER TABLE `vibe_construction_v1`.`finance`.`chart_of_accounts` ALTER COLUMN `account_name` SET TAGS ('dbx_business_glossary_term' = 'Account Name');
-ALTER TABLE `vibe_construction_v1`.`finance`.`chart_of_accounts` ALTER COLUMN `account_number` SET TAGS ('dbx_business_glossary_term' = 'Account Number');
-ALTER TABLE `vibe_construction_v1`.`finance`.`chart_of_accounts` ALTER COLUMN `account_number` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_construction_v1`.`finance`.`chart_of_accounts` ALTER COLUMN `account_number` SET TAGS ('dbx_pii_financial' = 'true');
-ALTER TABLE `vibe_construction_v1`.`finance`.`chart_of_accounts` ALTER COLUMN `account_type` SET TAGS ('dbx_business_glossary_term' = 'Account Type');
-ALTER TABLE `vibe_construction_v1`.`finance`.`chart_of_accounts` ALTER COLUMN `chart_of_accounts_status` SET TAGS ('dbx_business_glossary_term' = 'Status');
-ALTER TABLE `vibe_construction_v1`.`finance`.`chart_of_accounts` ALTER COLUMN `cost_center_code` SET TAGS ('dbx_business_glossary_term' = 'Cost Center Code');
-ALTER TABLE `vibe_construction_v1`.`finance`.`chart_of_accounts` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
-ALTER TABLE `vibe_construction_v1`.`finance`.`chart_of_accounts` ALTER COLUMN `currency_code` SET TAGS ('dbx_business_glossary_term' = 'Currency Code');
-ALTER TABLE `vibe_construction_v1`.`finance`.`chart_of_accounts` ALTER COLUMN `chart_of_accounts_description` SET TAGS ('dbx_business_glossary_term' = 'Description');
-ALTER TABLE `vibe_construction_v1`.`finance`.`chart_of_accounts` ALTER COLUMN `effective_from` SET TAGS ('dbx_business_glossary_term' = 'Effective From');
-ALTER TABLE `vibe_construction_v1`.`finance`.`chart_of_accounts` ALTER COLUMN `effective_to` SET TAGS ('dbx_business_glossary_term' = 'Effective To');
-ALTER TABLE `vibe_construction_v1`.`finance`.`chart_of_accounts` ALTER COLUMN `financial_reporting_code` SET TAGS ('dbx_business_glossary_term' = 'Financial Reporting Code');
-ALTER TABLE `vibe_construction_v1`.`finance`.`chart_of_accounts` ALTER COLUMN `is_budgetable` SET TAGS ('dbx_business_glossary_term' = 'Is Budgetable');
-ALTER TABLE `vibe_construction_v1`.`finance`.`chart_of_accounts` ALTER COLUMN `is_cash_account` SET TAGS ('dbx_business_glossary_term' = 'Is Cash Account');
-ALTER TABLE `vibe_construction_v1`.`finance`.`chart_of_accounts` ALTER COLUMN `is_consolidation_account` SET TAGS ('dbx_business_glossary_term' = 'Is Consolidation Account');
-ALTER TABLE `vibe_construction_v1`.`finance`.`chart_of_accounts` ALTER COLUMN `is_external` SET TAGS ('dbx_business_glossary_term' = 'Is External');
-ALTER TABLE `vibe_construction_v1`.`finance`.`chart_of_accounts` ALTER COLUMN `is_intercompany` SET TAGS ('dbx_business_glossary_term' = 'Is Intercompany');
-ALTER TABLE `vibe_construction_v1`.`finance`.`chart_of_accounts` ALTER COLUMN `normal_balance` SET TAGS ('dbx_business_glossary_term' = 'Normal Balance');
-ALTER TABLE `vibe_construction_v1`.`finance`.`chart_of_accounts` ALTER COLUMN `opening_balance` SET TAGS ('dbx_business_glossary_term' = 'Opening Balance');
-ALTER TABLE `vibe_construction_v1`.`finance`.`chart_of_accounts` ALTER COLUMN `profit_center_code` SET TAGS ('dbx_business_glossary_term' = 'Profit Center Code');
-ALTER TABLE `vibe_construction_v1`.`finance`.`chart_of_accounts` ALTER COLUMN `tax_reporting_code` SET TAGS ('dbx_business_glossary_term' = 'Tax Reporting Code');
-ALTER TABLE `vibe_construction_v1`.`finance`.`chart_of_accounts` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Updated Timestamp');

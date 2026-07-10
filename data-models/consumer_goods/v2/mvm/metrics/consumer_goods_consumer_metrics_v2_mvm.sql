@@ -1,77 +1,74 @@
--- Metric views for domain: consumer | Business: Consumer_Goods | Version: 2 | Generated on: 2026-06-27 07:41:37
+-- Metric views for domain: consumer | Business: Consumer_Goods | Version: 2 | Generated on: 2026-07-10 14:45:03
 
 CREATE OR REPLACE VIEW `vibe_consumer_goods_v1`.`_metrics`.`consumer_shopper`
 WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Strategic KPIs for the shopper master entity — acquisition health, lifecycle distribution, consent posture, and lifetime value. Used by CMO, CX, and Data Governance teams to steer acquisition investment, retention programmes, and regulatory compliance."
+  comment: "Core shopper engagement and lifecycle metrics including acquisition, loyalty, and lifetime value indicators"
   source: "`vibe_consumer_goods_v1`.`consumer`.`shopper`"
   dimensions:
     - name: "acquisition_channel"
       expr: acquisition_channel
-      comment: "Channel through which the shopper was acquired (e.g. web, store, social). Enables channel-level ROI analysis."
+      comment: "Channel through which the shopper was acquired (e.g., social, email, referral, organic)"
     - name: "lifecycle_status"
       expr: lifecycle_status
-      comment: "Current lifecycle stage of the shopper (e.g. active, lapsed, churned). Drives retention segmentation."
-    - name: "loyalty_tier"
-      expr: loyalty_tier
-      comment: "Loyalty programme tier of the shopper. Used to stratify value-based KPIs."
+      comment: "Current lifecycle stage of the shopper (e.g., active, dormant, churned, new)"
+    - name: "cltv_segment"
+      expr: cltv_segment
+      comment: "Customer lifetime value segment classification for strategic targeting"
     - name: "consumer_type"
       expr: consumer_type
-      comment: "Classification of the shopper (e.g. individual, business). Supports B2C vs B2B analysis."
+      comment: "Type of consumer (e.g., individual, business, household)"
     - name: "country_code"
       expr: country_code
-      comment: "Country of the shopper. Enables geographic performance breakdowns."
+      comment: "Country of the shopper for geographic analysis"
     - name: "gender"
       expr: gender
-      comment: "Self-reported gender of the shopper. Used for demographic segmentation."
-    - name: "shopper_status"
-      expr: shopper_status
-      comment: "Operational status of the shopper record (e.g. active, inactive, suspended)."
-    - name: "acquisition_year_month"
+      comment: "Gender of the shopper for demographic segmentation"
+    - name: "preferred_language"
+      expr: preferred_language
+      comment: "Preferred language for personalized communication"
+    - name: "acquisition_year"
+      expr: YEAR(acquisition_date)
+      comment: "Year the shopper was acquired for cohort analysis"
+    - name: "acquisition_month"
       expr: DATE_TRUNC('MONTH', acquisition_date)
-      comment: "Month of shopper acquisition. Enables cohort and trend analysis."
-    - name: "first_purchase_year_month"
-      expr: DATE_TRUNC('MONTH', first_purchase_date)
-      comment: "Month of first purchase. Used to measure time-to-first-purchase and conversion velocity."
-    - name: "marketing_opt_in"
-      expr: marketing_opt_in
-      comment: "Whether the shopper has opted in to marketing communications. Critical for consent-based campaign targeting."
-    - name: "email_opt_in"
+      comment: "Month the shopper was acquired for time-series analysis"
+    - name: "email_opt_in_flag"
       expr: email_opt_in
-      comment: "Whether the shopper has opted in to email communications."
-    - name: "gdpr_subject"
+      comment: "Whether shopper has opted in to email marketing"
+    - name: "sms_opt_in_flag"
+      expr: sms_opt_in
+      comment: "Whether shopper has opted in to SMS marketing"
+    - name: "gdpr_subject_flag"
       expr: gdpr_subject
-      comment: "Whether the shopper is subject to GDPR. Required for regulatory reporting."
+      comment: "Whether shopper is subject to GDPR regulations"
   measures:
-    - name: "total_active_shoppers"
-      expr: COUNT(CASE WHEN is_active = TRUE THEN shopper_id END)
-      comment: "Count of shoppers with active status. Core audience-size KPI used in reach and penetration reporting."
     - name: "total_shoppers"
       expr: COUNT(DISTINCT shopper_id)
-      comment: "Total unique shoppers in the platform. Baseline for all per-shopper ratio metrics."
-    - name: "total_lifetime_value"
-      expr: SUM(CAST(lifetime_value AS DOUBLE))
-      comment: "Sum of lifetime value across all shoppers. Indicates total monetisable consumer asset value."
-    - name: "avg_lifetime_value"
-      expr: AVG(CAST(lifetime_value AS DOUBLE))
-      comment: "Average lifetime value per shopper. Key metric for acquisition cost benchmarking and segment valuation."
+      comment: "Total unique shoppers for market sizing and reach analysis"
+    - name: "avg_loyalty_points_balance"
+      expr: AVG(CAST(loyalty_points_balance AS DOUBLE))
+      comment: "Average loyalty points balance per shopper indicating engagement depth"
     - name: "total_loyalty_points_balance"
       expr: SUM(CAST(loyalty_points_balance AS DOUBLE))
-      comment: "Total outstanding loyalty points balance across all shoppers. Represents programme liability and engagement depth."
-    - name: "marketing_opt_in_rate"
-      expr: ROUND(100.0 * COUNT(CASE WHEN marketing_opt_in = TRUE THEN shopper_id END) / NULLIF(COUNT(shopper_id), 0), 2)
-      comment: "Percentage of shoppers opted in to marketing. Governs addressable audience size for campaigns."
+      comment: "Total loyalty points liability across all shoppers for financial planning"
     - name: "email_opt_in_rate"
-      expr: ROUND(100.0 * COUNT(CASE WHEN email_opt_in = TRUE THEN shopper_id END) / NULLIF(COUNT(shopper_id), 0), 2)
-      comment: "Percentage of shoppers opted in to email. Directly constrains email campaign reach."
+      expr: ROUND(100.0 * SUM(CASE WHEN email_opt_in = TRUE THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percentage of shoppers opted in to email marketing for channel effectiveness"
+    - name: "sms_opt_in_rate"
+      expr: ROUND(100.0 * SUM(CASE WHEN sms_opt_in = TRUE THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percentage of shoppers opted in to SMS marketing for channel reach assessment"
+    - name: "gdpr_subject_rate"
+      expr: ROUND(100.0 * SUM(CASE WHEN gdpr_subject = TRUE THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percentage of shoppers subject to GDPR for compliance planning"
     - name: "identity_verified_rate"
-      expr: ROUND(100.0 * COUNT(CASE WHEN identity_verified = TRUE THEN shopper_id END) / NULLIF(COUNT(shopper_id), 0), 2)
-      comment: "Percentage of shoppers with verified identity. Indicates data quality and fraud-risk posture."
-    - name: "loyalty_enrolled_shoppers"
-      expr: COUNT(CASE WHEN loyalty_enrollment_date IS NOT NULL THEN shopper_id END)
-      comment: "Count of shoppers enrolled in the loyalty programme. Measures programme penetration."
+      expr: ROUND(100.0 * SUM(CASE WHEN identity_verified = TRUE THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percentage of shoppers with verified identity for fraud risk assessment"
+    - name: "data_sharing_consent_rate"
+      expr: ROUND(100.0 * SUM(CASE WHEN data_sharing_consent = TRUE THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percentage of shoppers consenting to data sharing for partnership opportunities"
 $$;
 
 CREATE OR REPLACE VIEW `vibe_consumer_goods_v1`.`_metrics`.`consumer_dtc_order`
@@ -79,82 +76,82 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Direct-to-consumer order performance metrics covering revenue, fulfilment efficiency, returns, and channel mix. Primary dashboard for DTC General Manager, VP eCommerce, and CFO revenue reporting."
+  comment: "Direct-to-consumer order performance metrics including revenue, conversion, and fulfillment efficiency"
   source: "`vibe_consumer_goods_v1`.`consumer`.`dtc_order`"
   dimensions:
-    - name: "channel"
-      expr: channel
-      comment: "Sales channel of the DTC order (e.g. web, mobile app, social commerce). Enables channel-level revenue attribution."
-    - name: "channel_code"
-      expr: channel_code
-      comment: "Coded version of the sales channel. Used for system-level channel segmentation."
-    - name: "dtc_order_status"
-      expr: dtc_order_status
-      comment: "Current status of the DTC order (e.g. placed, shipped, delivered, cancelled). Drives fulfilment funnel analysis."
+    - name: "order_status"
+      expr: order_status
+      comment: "Current status of the order (e.g., pending, shipped, delivered, cancelled)"
     - name: "fulfillment_status"
       expr: fulfillment_status
-      comment: "Fulfilment status of the order. Used to identify fulfilment bottlenecks."
-    - name: "payment_method"
-      expr: payment_method
-      comment: "Payment method used (e.g. credit card, PayPal, BNPL). Informs payment mix and risk analysis."
+      comment: "Fulfillment stage of the order for operational tracking"
     - name: "payment_status"
       expr: payment_status
-      comment: "Status of the payment (e.g. paid, pending, failed). Critical for revenue recognition and cash flow."
-    - name: "currency_code"
-      expr: currency_code
-      comment: "Currency of the order. Required for multi-currency revenue reporting."
-    - name: "ip_country_code"
-      expr: ip_country_code
-      comment: "Country inferred from the shopper IP at order time. Enables geographic demand analysis."
+      comment: "Payment processing status for revenue recognition and risk management"
+    - name: "channel_code"
+      expr: channel_code
+      comment: "Sales channel through which the order was placed (e.g., web, mobile app, social)"
     - name: "device_type"
       expr: device_type
-      comment: "Device used to place the order (e.g. mobile, desktop, tablet). Informs UX investment decisions."
-    - name: "order_year_month"
+      comment: "Device type used to place the order for UX optimization"
+    - name: "payment_method"
+      expr: payment_method
+      comment: "Payment method used (e.g., credit card, PayPal, digital wallet)"
+    - name: "currency_code"
+      expr: currency_code
+      comment: "Currency of the transaction for multi-market analysis"
+    - name: "order_year"
+      expr: YEAR(order_date)
+      comment: "Year the order was placed for year-over-year analysis"
+    - name: "order_month"
       expr: DATE_TRUNC('MONTH', order_date)
-      comment: "Month the order was placed. Enables monthly revenue trend and seasonality analysis."
-    - name: "subscription_order_flag"
-      expr: subscription_order_flag
-      comment: "Whether the order originated from a subscription. Distinguishes recurring vs one-time revenue."
+      comment: "Month the order was placed for seasonality and trend analysis"
+    - name: "order_date_day"
+      expr: DATE_TRUNC('DAY', order_date)
+      comment: "Day the order was placed for daily performance tracking"
     - name: "gift_order_flag"
       expr: gift_order_flag
-      comment: "Whether the order is a gift. Used for gifting programme analysis."
+      comment: "Whether the order is a gift for promotional strategy"
+    - name: "subscription_order_flag"
+      expr: subscription_order_flag
+      comment: "Whether the order is part of a subscription for recurring revenue analysis"
     - name: "return_flag"
       expr: return_flag
-      comment: "Whether the order has been returned. Drives return rate and reverse logistics KPIs."
-    - name: "ship_to_country_code"
-      expr: ship_to_country_code
-      comment: "Destination country for the shipment. Enables international shipping performance analysis."
+      comment: "Whether the order has been returned for quality and satisfaction analysis"
   measures:
     - name: "total_orders"
       expr: COUNT(DISTINCT dtc_order_id)
-      comment: "Total number of distinct DTC orders placed. Baseline volume KPI for the DTC channel."
-    - name: "total_order_revenue"
-      expr: SUM(CAST(total_amount AS DOUBLE))
-      comment: "Total gross revenue from DTC orders. Primary top-line revenue KPI for the DTC business."
+      comment: "Total number of unique DTC orders for volume tracking"
+    - name: "gross_merchandise_value"
+      expr: SUM(CAST(order_total_amount AS DOUBLE))
+      comment: "Total gross merchandise value (GMV) of all orders for top-line revenue tracking"
     - name: "total_subtotal_amount"
       expr: SUM(CAST(subtotal_amount AS DOUBLE))
-      comment: "Sum of order subtotals before tax and shipping. Used to isolate product revenue from fulfilment charges."
+      comment: "Total product value before shipping and tax for product revenue analysis"
     - name: "total_discount_amount"
       expr: SUM(CAST(discount_amount AS DOUBLE))
-      comment: "Total discounts applied across DTC orders. Measures promotional spend and margin erosion."
-    - name: "total_tax_amount"
-      expr: SUM(CAST(tax_amount AS DOUBLE))
-      comment: "Total tax collected on DTC orders. Required for tax compliance and remittance reporting."
+      comment: "Total discount amount applied across all orders for promotional cost analysis"
     - name: "total_shipping_amount"
       expr: SUM(CAST(shipping_amount AS DOUBLE))
-      comment: "Total shipping revenue collected. Used to assess shipping cost recovery."
+      comment: "Total shipping revenue collected for logistics cost recovery assessment"
+    - name: "total_tax_amount"
+      expr: SUM(CAST(tax_amount AS DOUBLE))
+      comment: "Total tax collected for compliance and remittance planning"
     - name: "avg_order_value"
-      expr: ROUND(SUM(CAST(total_amount AS DOUBLE)) / NULLIF(COUNT(DISTINCT dtc_order_id), 0), 2)
-      comment: "Average order value (AOV). Core DTC efficiency KPI — rising AOV indicates upsell/cross-sell effectiveness."
-    - name: "return_rate"
-      expr: ROUND(100.0 * COUNT(CASE WHEN return_flag = TRUE THEN dtc_order_id END) / NULLIF(COUNT(DISTINCT dtc_order_id), 0), 2)
-      comment: "Percentage of orders that were returned. High return rates signal product-fit or quality issues."
-    - name: "subscription_order_rate"
-      expr: ROUND(100.0 * COUNT(CASE WHEN subscription_order_flag = TRUE THEN dtc_order_id END) / NULLIF(COUNT(DISTINCT dtc_order_id), 0), 2)
-      comment: "Percentage of orders originating from subscriptions. Measures recurring revenue penetration in DTC."
+      expr: AVG(CAST(order_total_amount AS DOUBLE))
+      comment: "Average order value (AOV) for pricing strategy and customer value optimization"
     - name: "discount_rate"
       expr: ROUND(100.0 * SUM(CAST(discount_amount AS DOUBLE)) / NULLIF(SUM(CAST(subtotal_amount AS DOUBLE)), 0), 2)
-      comment: "Discount as a percentage of subtotal revenue. Tracks promotional intensity and margin risk."
+      comment: "Percentage of subtotal discounted for promotional effectiveness measurement"
+    - name: "return_rate"
+      expr: ROUND(100.0 * SUM(CASE WHEN return_flag = TRUE THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percentage of orders returned for product quality and satisfaction assessment"
+    - name: "subscription_order_rate"
+      expr: ROUND(100.0 * SUM(CASE WHEN subscription_order_flag = TRUE THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percentage of orders from subscriptions for recurring revenue mix analysis"
+    - name: "gift_order_rate"
+      expr: ROUND(100.0 * SUM(CASE WHEN gift_order_flag = TRUE THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percentage of orders that are gifts for seasonal and promotional planning"
 $$;
 
 CREATE OR REPLACE VIEW `vibe_consumer_goods_v1`.`_metrics`.`consumer_dtc_order_line`
@@ -162,76 +159,82 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Line-level DTC order metrics enabling SKU-level revenue, margin, returns, and discount analysis. Used by Merchandising, Category Management, and Finance for product P&L and assortment decisions."
+  comment: "Line-level DTC order metrics for product performance, margin analysis, and fulfillment efficiency"
   source: "`vibe_consumer_goods_v1`.`consumer`.`dtc_order_line`"
   dimensions:
-    - name: "product_category_code"
-      expr: product_category_code
-      comment: "Product category of the line item. Enables category-level revenue and margin analysis."
-    - name: "brand_code"
-      expr: brand_code
-      comment: "Brand associated with the line item. Supports brand-level P&L reporting."
-    - name: "channel_code"
-      expr: channel_code
-      comment: "Sales channel for the line item. Enables channel-level product performance analysis."
-    - name: "dtc_order_line_status"
-      expr: dtc_order_line_status
-      comment: "Status of the order line (e.g. fulfilled, cancelled, returned). Drives line-level fulfilment KPIs."
     - name: "fulfillment_status"
       expr: fulfillment_status
-      comment: "Fulfilment status of the line. Used to identify SKU-level fulfilment issues."
+      comment: "Fulfillment status of the order line for operational tracking"
+    - name: "brand_code"
+      expr: brand_code
+      comment: "Brand of the product sold for brand performance analysis"
+    - name: "product_category_code"
+      expr: product_category_code
+      comment: "Product category for category-level performance tracking"
+    - name: "channel_code"
+      expr: channel_code
+      comment: "Sales channel for the order line"
     - name: "currency_code"
       expr: currency_code
-      comment: "Currency of the line item. Required for multi-currency product revenue reporting."
-    - name: "subscription_flag"
-      expr: subscription_flag
-      comment: "Whether the line item is part of a subscription order. Distinguishes recurring vs one-time product demand."
+      comment: "Currency of the transaction"
+    - name: "unit_of_measure"
+      expr: unit_of_measure
+      comment: "Unit of measure for the product sold"
     - name: "is_returned"
       expr: is_returned
-      comment: "Whether the line item was returned. Drives SKU-level return rate analysis."
+      comment: "Whether the line item was returned"
     - name: "gift_flag"
       expr: gift_flag
-      comment: "Whether the line item is a gift. Used for gifting programme product analysis."
+      comment: "Whether the line item is a gift"
+    - name: "subscription_flag"
+      expr: subscription_flag
+      comment: "Whether the line item is part of a subscription"
     - name: "hazmat_flag"
       expr: hazmat_flag
-      comment: "Whether the line item contains hazardous materials. Required for regulatory and logistics compliance."
-    - name: "actual_ship_year_month"
+      comment: "Whether the product is hazardous material requiring special handling"
+    - name: "actual_ship_year"
+      expr: YEAR(actual_ship_date)
+      comment: "Year the line was shipped for fulfillment performance analysis"
+    - name: "actual_ship_month"
       expr: DATE_TRUNC('MONTH', actual_ship_date)
-      comment: "Month the line item was shipped. Enables monthly shipment volume and revenue trend analysis."
-    - name: "promotion_code"
-      expr: promotion_code
-      comment: "Promotion applied to the line item. Enables promotion-level ROI and discount analysis."
+      comment: "Month the line was shipped for time-series fulfillment tracking"
   measures:
+    - name: "total_order_lines"
+      expr: COUNT(DISTINCT dtc_order_line_id)
+      comment: "Total number of unique order lines for volume and complexity tracking"
     - name: "total_line_revenue"
       expr: SUM(CAST(line_total_amount AS DOUBLE))
-      comment: "Total revenue from DTC order lines. SKU-level top-line revenue KPI."
+      comment: "Total revenue from all order lines for top-line sales tracking"
     - name: "total_line_net_amount"
       expr: SUM(CAST(line_net_amount AS DOUBLE))
-      comment: "Total net revenue after discounts at line level. Used for net revenue and margin analysis."
-    - name: "total_cost_of_goods_sold"
-      expr: SUM(CAST(cost_of_goods_sold AS DOUBLE))
-      comment: "Total COGS across DTC order lines. Required for gross margin calculation."
-    - name: "total_line_discount_amount"
+      comment: "Total net revenue after discounts for true revenue realization"
+    - name: "total_line_discount"
       expr: SUM(CAST(line_discount_amount AS DOUBLE))
-      comment: "Total discount value applied at line level. Measures promotional spend by SKU and category."
-    - name: "total_quantity_ordered"
-      expr: SUM(CAST(quantity AS DOUBLE))
-      comment: "Total units ordered across DTC order lines. Core demand volume metric for supply planning."
+      comment: "Total discount amount at line level for promotional cost analysis"
+    - name: "total_cogs"
+      expr: SUM(CAST(cost_of_goods_sold AS DOUBLE))
+      comment: "Total cost of goods sold for gross margin calculation"
+    - name: "total_line_tax"
+      expr: SUM(CAST(tax_amount AS DOUBLE))
+      comment: "Total tax collected at line level for compliance tracking"
     - name: "avg_unit_price"
       expr: AVG(CAST(unit_price AS DOUBLE))
-      comment: "Average selling price per unit. Tracks pricing effectiveness and mix shift."
-    - name: "gross_margin_amount"
-      expr: SUM(CAST(line_net_amount AS DOUBLE) - CAST(cost_of_goods_sold AS DOUBLE))
-      comment: "Gross margin in absolute terms (net revenue minus COGS). Primary product profitability KPI."
-    - name: "line_return_rate"
-      expr: ROUND(100.0 * COUNT(CASE WHEN is_returned = TRUE THEN dtc_order_line_id END) / NULLIF(COUNT(DISTINCT dtc_order_line_id), 0), 2)
-      comment: "Percentage of order lines returned. High rates by SKU/category signal quality or expectation-gap issues."
-    - name: "avg_line_discount_pct"
-      expr: AVG(CAST(line_discount_pct AS DOUBLE))
-      comment: "Average discount percentage applied at line level. Tracks promotional depth by product and channel."
-    - name: "total_tax_amount"
-      expr: SUM(CAST(tax_amount AS DOUBLE))
-      comment: "Total tax collected at line level. Required for tax compliance and product-level tax reporting."
+      comment: "Average unit price across all line items for pricing strategy"
+    - name: "gross_margin_dollars"
+      expr: SUM((CAST(line_net_amount AS DOUBLE)) - (CAST(cost_of_goods_sold AS DOUBLE)))
+      comment: "Total gross margin in dollars for profitability assessment"
+    - name: "line_discount_rate"
+      expr: ROUND(100.0 * SUM(CAST(line_discount_amount AS DOUBLE)) / NULLIF(SUM(CAST(line_subtotal AS DOUBLE)), 0), 2)
+      comment: "Percentage discount rate at line level for promotional effectiveness"
+    - name: "return_rate"
+      expr: ROUND(100.0 * SUM(CASE WHEN is_returned = TRUE THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percentage of line items returned for product quality assessment"
+    - name: "subscription_line_rate"
+      expr: ROUND(100.0 * SUM(CASE WHEN subscription_flag = TRUE THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percentage of lines from subscriptions for recurring revenue mix"
+    - name: "hazmat_line_rate"
+      expr: ROUND(100.0 * SUM(CASE WHEN hazmat_flag = TRUE THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percentage of lines requiring hazmat handling for logistics planning"
 $$;
 
 CREATE OR REPLACE VIEW `vibe_consumer_goods_v1`.`_metrics`.`consumer_loyalty_account`
@@ -239,70 +242,79 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Loyalty programme health metrics covering enrolment, tier distribution, points liability, and engagement. Used by Loyalty Programme Manager, CMO, and Finance to manage programme economics and member engagement."
+  comment: "Loyalty program account performance metrics including engagement, points economics, and tier distribution"
   source: "`vibe_consumer_goods_v1`.`consumer`.`loyalty_account`"
   dimensions:
-    - name: "membership_tier"
-      expr: membership_tier
-      comment: "Current membership tier of the loyalty account (e.g. Bronze, Silver, Gold, Platinum). Enables tier-level KPI stratification."
     - name: "account_status"
       expr: account_status
-      comment: "Operational status of the loyalty account (e.g. active, suspended, closed). Drives active member counts."
-    - name: "loyalty_account_status"
-      expr: loyalty_account_status
-      comment: "Programme-specific status of the loyalty account. Used for programme health monitoring."
+      comment: "Current status of the loyalty account (e.g., active, suspended, closed)"
     - name: "account_type"
       expr: account_type
-      comment: "Type of loyalty account (e.g. standard, premium, employee). Supports account-type segmentation."
-    - name: "enrollment_channel"
-      expr: enrollment_channel
-      comment: "Channel through which the member enrolled (e.g. web, store, app). Measures enrolment channel effectiveness."
-    - name: "country_code"
-      expr: country_code
-      comment: "Country of the loyalty account. Enables geographic programme performance analysis."
+      comment: "Type of loyalty account for segmentation"
     - name: "cltv_segment"
       expr: cltv_segment
-      comment: "Customer lifetime value segment assigned to the account. Drives value-based programme investment decisions."
-    - name: "enrollment_year_month"
+      comment: "Customer lifetime value segment for strategic targeting"
+    - name: "enrollment_channel"
+      expr: enrollment_channel
+      comment: "Channel through which the account was enrolled"
+    - name: "enrollment_source_code"
+      expr: enrollment_source_code
+      comment: "Source system or campaign that drove enrollment"
+    - name: "country_code"
+      expr: country_code
+      comment: "Country of the loyalty account for geographic analysis"
+    - name: "language_code"
+      expr: language_code
+      comment: "Preferred language for personalized communication"
+    - name: "preferred_redemption_type"
+      expr: preferred_redemption_type
+      comment: "Preferred type of reward redemption (e.g., discount, product, experience)"
+    - name: "enrollment_year"
+      expr: YEAR(enrollment_date)
+      comment: "Year the account was enrolled for cohort analysis"
+    - name: "enrollment_month"
       expr: DATE_TRUNC('MONTH', enrollment_date)
-      comment: "Month of loyalty programme enrolment. Enables enrolment cohort and growth trend analysis."
+      comment: "Month the account was enrolled for time-series analysis"
+    - name: "consent_marketing_flag"
+      expr: consent_marketing
+      comment: "Whether account holder consented to marketing"
     - name: "fraud_flag"
       expr: fraud_flag
-      comment: "Whether the account has been flagged for fraud. Required for programme integrity monitoring."
-    - name: "consent_marketing"
-      expr: consent_marketing
-      comment: "Whether the member has consented to marketing. Governs addressable loyalty audience."
+      comment: "Whether the account has been flagged for fraud"
   measures:
-    - name: "total_active_accounts"
-      expr: COUNT(CASE WHEN account_status = 'active' THEN loyalty_account_id END)
-      comment: "Count of active loyalty accounts. Core programme size KPI."
+    - name: "total_loyalty_accounts"
+      expr: COUNT(DISTINCT loyalty_account_id)
+      comment: "Total number of unique loyalty accounts for program size tracking"
     - name: "total_points_balance"
       expr: SUM(CAST(points_balance AS DOUBLE))
-      comment: "Total outstanding points balance across all accounts. Represents programme financial liability."
+      comment: "Total outstanding points balance across all accounts for liability management"
     - name: "total_lifetime_points_earned"
       expr: SUM(CAST(lifetime_points_earned AS DOUBLE))
-      comment: "Total points ever earned across all accounts. Measures cumulative programme engagement and earn activity."
+      comment: "Total points earned historically for program engagement measurement"
     - name: "total_lifetime_points_redeemed"
       expr: SUM(CAST(lifetime_points_redeemed AS DOUBLE))
-      comment: "Total points ever redeemed across all accounts. Measures redemption activity and programme value delivery."
+      comment: "Total points redeemed historically for reward cost analysis"
     - name: "total_lifetime_points_expired"
       expr: SUM(CAST(lifetime_points_expired AS DOUBLE))
-      comment: "Total points expired across all accounts. High expiry rates indicate low engagement or poor programme design."
-    - name: "redemption_rate"
-      expr: ROUND(100.0 * SUM(CAST(lifetime_points_redeemed AS DOUBLE)) / NULLIF(SUM(CAST(lifetime_points_earned AS DOUBLE)), 0), 2)
-      comment: "Percentage of earned points that have been redeemed. Key programme health indicator — low rates signal disengagement."
-    - name: "points_expiry_rate"
-      expr: ROUND(100.0 * SUM(CAST(lifetime_points_expired AS DOUBLE)) / NULLIF(SUM(CAST(lifetime_points_earned AS DOUBLE)), 0), 2)
-      comment: "Percentage of earned points that have expired. High rates indicate member disengagement or poor programme UX."
-    - name: "total_tier_qualification_spend"
-      expr: SUM(CAST(tier_qualification_spend AS DOUBLE))
-      comment: "Total qualifying spend used for tier assessment. Measures revenue contribution from loyalty members."
+      comment: "Total points expired for breakage revenue recognition"
     - name: "avg_points_balance"
       expr: AVG(CAST(points_balance AS DOUBLE))
-      comment: "Average points balance per loyalty account. Indicates typical member engagement level."
-    - name: "fraud_flagged_account_rate"
-      expr: ROUND(100.0 * COUNT(CASE WHEN fraud_flag = TRUE THEN loyalty_account_id END) / NULLIF(COUNT(DISTINCT loyalty_account_id), 0), 2)
-      comment: "Percentage of loyalty accounts flagged for fraud. Critical for programme integrity and financial risk management."
+      comment: "Average points balance per account for engagement depth assessment"
+    - name: "avg_tier_qualification_spend"
+      expr: AVG(CAST(tier_qualification_spend AS DOUBLE))
+      comment: "Average spend required for tier qualification for program design"
+    - name: "redemption_rate"
+      expr: ROUND(100.0 * SUM(CAST(lifetime_points_redeemed AS DOUBLE)) / NULLIF(SUM(CAST(lifetime_points_earned AS DOUBLE)), 0), 2)
+      comment: "Percentage of earned points that have been redeemed for engagement effectiveness"
+    - name: "expiration_rate"
+      expr: ROUND(100.0 * SUM(CAST(lifetime_points_expired AS DOUBLE)) / NULLIF(SUM(CAST(lifetime_points_earned AS DOUBLE)), 0), 2)
+      comment: "Percentage of earned points that expired for breakage analysis"
+    - name: "marketing_consent_rate"
+      expr: ROUND(100.0 * SUM(CASE WHEN consent_marketing = TRUE THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percentage of accounts with marketing consent for campaign reach planning"
+    - name: "fraud_rate"
+      expr: ROUND(100.0 * SUM(CASE WHEN fraud_flag = TRUE THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percentage of accounts flagged for fraud for risk management"
 $$;
 
 CREATE OR REPLACE VIEW `vibe_consumer_goods_v1`.`_metrics`.`consumer_loyalty_transaction`
@@ -310,73 +322,82 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Loyalty transaction-level metrics covering earn, redemption, monetary value, and fraud. Used by Loyalty Operations, Finance, and Fraud teams to monitor programme economics and transaction integrity."
+  comment: "Loyalty transaction activity metrics for points flow, program economics, and member engagement"
   source: "`vibe_consumer_goods_v1`.`consumer`.`loyalty_transaction`"
   dimensions:
     - name: "transaction_type"
       expr: transaction_type
-      comment: "Type of loyalty transaction (e.g. earn, redeem, adjust, expire). Primary dimension for transaction-type analysis."
+      comment: "Type of loyalty transaction (e.g., earn, redeem, adjustment, expiration)"
     - name: "transaction_status"
       expr: transaction_status
-      comment: "Status of the loyalty transaction (e.g. posted, pending, reversed). Drives valid transaction filtering."
-    - name: "loyalty_transaction_status"
-      expr: loyalty_transaction_status
-      comment: "Programme-specific status of the transaction. Used for operational monitoring."
-    - name: "channel"
-      expr: channel
-      comment: "Channel through which the transaction was triggered (e.g. store, web, app). Enables channel-level earn/redeem analysis."
+      comment: "Status of the transaction (e.g., completed, pending, reversed)"
     - name: "points_direction"
       expr: points_direction
-      comment: "Direction of points movement (credit/debit). Used to separate earn from redemption flows."
-    - name: "country_code"
-      expr: country_code
-      comment: "Country of the transaction. Enables geographic programme economics analysis."
-    - name: "currency_code"
-      expr: currency_code
-      comment: "Currency of the monetary value. Required for multi-currency financial reporting."
-    - name: "is_bonus_transaction"
-      expr: is_bonus_transaction
-      comment: "Whether the transaction is a bonus earn event. Used to measure bonus programme cost."
-    - name: "fraud_flag"
-      expr: fraud_flag
-      comment: "Whether the transaction has been flagged for fraud. Required for programme integrity monitoring."
-    - name: "transaction_year_month"
-      expr: DATE_TRUNC('MONTH', transaction_date)
-      comment: "Month of the loyalty transaction. Enables monthly earn/redeem trend analysis."
+      comment: "Direction of points flow (credit or debit)"
+    - name: "channel"
+      expr: channel
+      comment: "Channel through which the transaction occurred"
     - name: "trigger_event"
       expr: trigger_event
-      comment: "Business event that triggered the transaction (e.g. purchase, referral, birthday). Measures earn trigger effectiveness."
-    - name: "program_year"
-      expr: program_year
-      comment: "Programme year of the transaction. Supports annual programme performance comparison."
+      comment: "Event that triggered the transaction (e.g., purchase, signup, referral)"
+    - name: "adjustment_reason_code"
+      expr: adjustment_reason_code
+      comment: "Reason code for manual adjustments"
+    - name: "country_code"
+      expr: country_code
+      comment: "Country where the transaction occurred"
+    - name: "currency_code"
+      expr: currency_code
+      comment: "Currency of the transaction"
+    - name: "is_bonus_transaction"
+      expr: is_bonus_transaction
+      comment: "Whether the transaction is a bonus points award"
+    - name: "fraud_flag"
+      expr: fraud_flag
+      comment: "Whether the transaction is flagged for fraud"
+    - name: "transaction_year"
+      expr: YEAR(transaction_timestamp)
+      comment: "Year the transaction occurred for year-over-year analysis"
+    - name: "transaction_month"
+      expr: DATE_TRUNC('MONTH', transaction_timestamp)
+      comment: "Month the transaction occurred for time-series analysis"
+    - name: "transaction_date"
+      expr: DATE_TRUNC('DAY', transaction_timestamp)
+      comment: "Day the transaction occurred for daily tracking"
   measures:
     - name: "total_transactions"
       expr: COUNT(DISTINCT loyalty_transaction_id)
-      comment: "Total number of loyalty transactions. Baseline activity volume KPI."
+      comment: "Total number of unique loyalty transactions for activity volume tracking"
     - name: "total_points_transacted"
       expr: SUM(CAST(points_amount AS DOUBLE))
-      comment: "Total points moved across all transactions. Measures overall programme activity volume."
+      comment: "Total points transacted (net of credits and debits) for points flow analysis"
     - name: "total_monetary_value"
       expr: SUM(CAST(monetary_value AS DOUBLE))
-      comment: "Total monetary value associated with loyalty transactions. Measures financial scale of programme activity."
+      comment: "Total monetary value of all transactions for program cost assessment"
     - name: "total_qualifying_spend"
       expr: SUM(CAST(qualifying_spend_amount AS DOUBLE))
-      comment: "Total qualifying spend that triggered loyalty earn events. Measures revenue driven through the loyalty programme."
+      comment: "Total spend that qualified for points earning for program ROI"
     - name: "total_redemption_value"
       expr: SUM(CAST(redemption_value AS DOUBLE))
-      comment: "Total monetary value of points redeemed. Represents programme cost and member value delivery."
+      comment: "Total value of points redeemed for reward cost tracking"
+    - name: "avg_points_per_transaction"
+      expr: AVG(CAST(points_amount AS DOUBLE))
+      comment: "Average points per transaction for engagement intensity measurement"
     - name: "avg_earn_rate"
       expr: AVG(CAST(earn_rate AS DOUBLE))
-      comment: "Average earn rate across transactions. Tracks programme generosity and cost per dollar spent."
+      comment: "Average earn rate across transactions for program generosity assessment"
     - name: "avg_bonus_multiplier"
       expr: AVG(CAST(bonus_multiplier AS DOUBLE))
-      comment: "Average bonus multiplier applied. Measures promotional earn intensity and associated programme cost."
+      comment: "Average bonus multiplier for promotional effectiveness"
+    - name: "bonus_transaction_rate"
+      expr: ROUND(100.0 * SUM(CASE WHEN is_bonus_transaction = TRUE THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percentage of transactions that are bonus awards for promotional mix analysis"
     - name: "fraud_transaction_rate"
-      expr: ROUND(100.0 * COUNT(CASE WHEN fraud_flag = TRUE THEN loyalty_transaction_id END) / NULLIF(COUNT(DISTINCT loyalty_transaction_id), 0), 2)
-      comment: "Percentage of loyalty transactions flagged as fraudulent. Critical risk KPI for programme integrity."
-    - name: "avg_points_per_transaction"
-      expr: ROUND(SUM(CAST(points_amount AS DOUBLE)) / NULLIF(COUNT(DISTINCT loyalty_transaction_id), 0), 2)
-      comment: "Average points per transaction. Measures earn density and programme engagement depth."
+      expr: ROUND(100.0 * SUM(CASE WHEN fraud_flag = TRUE THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percentage of transactions flagged for fraud for risk management"
+    - name: "effective_earn_rate"
+      expr: ROUND(100.0 * SUM(CAST(points_amount AS DOUBLE)) / NULLIF(SUM(CAST(qualifying_spend_amount AS DOUBLE)), 0), 2)
+      comment: "Effective points earned per dollar spent for program economics analysis"
 $$;
 
 CREATE OR REPLACE VIEW `vibe_consumer_goods_v1`.`_metrics`.`consumer_subscription`
@@ -384,153 +405,82 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Subscription programme metrics covering active subscriber base, recurring revenue, churn, trial conversion, and pause behaviour. Used by Subscription GM, CFO, and Product teams to manage recurring revenue growth."
+  comment: "Subscription business metrics including recurring revenue, churn, retention, and lifetime value"
   source: "`vibe_consumer_goods_v1`.`consumer`.`subscription`"
   dimensions:
     - name: "subscription_status"
       expr: subscription_status
-      comment: "Current status of the subscription (e.g. active, paused, cancelled, trial). Primary dimension for subscriber funnel analysis."
+      comment: "Current status of the subscription (e.g., active, paused, cancelled, expired)"
     - name: "subscription_type"
       expr: subscription_type
-      comment: "Type of subscription (e.g. replenishment, curated box, membership). Enables product-type revenue analysis."
-    - name: "billing_frequency"
-      expr: billing_frequency
-      comment: "Billing cadence (e.g. monthly, quarterly, annual). Drives recurring revenue forecasting."
-    - name: "delivery_frequency"
-      expr: delivery_frequency
-      comment: "Delivery cadence of the subscription. Used for supply planning and logistics scheduling."
+      comment: "Type of subscription offering"
+    - name: "frequency"
+      expr: frequency
+      comment: "Delivery frequency of the subscription (e.g., weekly, monthly, quarterly)"
     - name: "channel"
       expr: channel
-      comment: "Acquisition channel for the subscription. Enables channel-level subscriber acquisition analysis."
-    - name: "currency_code"
-      expr: currency_code
-      comment: "Currency of the subscription. Required for multi-currency MRR reporting."
-    - name: "payment_method_type"
-      expr: payment_method_type
-      comment: "Payment method type (e.g. credit card, bank transfer). Informs payment failure risk analysis."
-    - name: "trial_flag"
-      expr: trial_flag
-      comment: "Whether the subscription is in a trial period. Used to measure trial-to-paid conversion."
-    - name: "auto_renew_flag"
-      expr: auto_renew_flag
-      comment: "Whether the subscription auto-renews. High auto-renew rates indicate strong retention."
-    - name: "pause_flag"
-      expr: pause_flag
-      comment: "Whether the subscription is currently paused. Paused subscribers are at churn risk."
+      comment: "Channel through which the subscription was acquired"
     - name: "acquisition_source"
       expr: acquisition_source
-      comment: "Source that drove the subscription acquisition. Enables acquisition channel ROI analysis."
-    - name: "start_year_month"
-      expr: DATE_TRUNC('MONTH', start_date)
-      comment: "Month the subscription started. Enables cohort-based retention and churn analysis."
+      comment: "Source or campaign that drove subscription acquisition"
+    - name: "payment_method_type"
+      expr: payment_method_type
+      comment: "Type of payment method used for recurring billing"
+    - name: "currency_code"
+      expr: currency_code
+      comment: "Currency of the subscription"
     - name: "cancellation_reason"
       expr: cancellation_reason
-      comment: "Reason provided for subscription cancellation. Drives product and service improvement decisions."
+      comment: "Reason for subscription cancellation for churn analysis"
+    - name: "pause_reason"
+      expr: pause_reason
+      comment: "Reason for subscription pause for retention strategy"
+    - name: "trial_flag"
+      expr: trial_flag
+      comment: "Whether the subscription is in trial period"
+    - name: "auto_renew_flag"
+      expr: auto_renew_flag
+      comment: "Whether the subscription auto-renews"
+    - name: "start_year"
+      expr: YEAR(start_date)
+      comment: "Year the subscription started for cohort analysis"
+    - name: "start_month"
+      expr: DATE_TRUNC('MONTH', start_date)
+      comment: "Month the subscription started for time-series analysis"
   measures:
-    - name: "total_active_subscriptions"
-      expr: COUNT(CASE WHEN subscription_status = 'active' THEN subscription_id END)
-      comment: "Count of currently active subscriptions. Core subscriber base KPI for recurring revenue forecasting."
     - name: "total_subscriptions"
       expr: COUNT(DISTINCT subscription_id)
-      comment: "Total subscriptions ever created. Baseline for conversion and churn rate calculations."
-    - name: "total_recurring_amount"
-      expr: SUM(CAST(recurring_amount AS DOUBLE))
-      comment: "Total recurring revenue amount across active subscriptions. Proxy for Monthly/Annual Recurring Revenue (MRR/ARR)."
-    - name: "avg_price_per_cycle"
-      expr: AVG(CAST(price_per_cycle AS DOUBLE))
-      comment: "Average price per billing cycle. Tracks ARPU (Average Revenue Per User) for the subscription business."
-    - name: "total_net_price"
+      comment: "Total number of unique subscriptions for subscriber base tracking"
+    - name: "total_subscription_revenue"
+      expr: SUM(CAST(price AS DOUBLE))
+      comment: "Total subscription revenue (gross) for top-line recurring revenue tracking"
+    - name: "total_net_subscription_revenue"
       expr: SUM(CAST(net_price AS DOUBLE))
-      comment: "Total net price across subscriptions after discounts. Used for net recurring revenue reporting."
-    - name: "avg_discount_pct"
-      expr: AVG(CAST(discount_pct AS DOUBLE))
-      comment: "Average discount percentage applied to subscriptions. Tracks promotional depth and margin impact."
-    - name: "cancellation_rate"
-      expr: ROUND(100.0 * COUNT(CASE WHEN subscription_status = 'cancelled' THEN subscription_id END) / NULLIF(COUNT(DISTINCT subscription_id), 0), 2)
-      comment: "Percentage of subscriptions that have been cancelled. Core churn KPI for subscription business health."
-    - name: "trial_conversion_rate"
-      expr: ROUND(100.0 * COUNT(CASE WHEN trial_flag = FALSE AND subscription_status = 'active' THEN subscription_id END) / NULLIF(COUNT(CASE WHEN trial_flag = TRUE THEN subscription_id END), 0), 2)
-      comment: "Percentage of trial subscriptions that converted to paid active status. Critical growth KPI for subscription acquisition."
-    - name: "pause_rate"
-      expr: ROUND(100.0 * COUNT(CASE WHEN pause_flag = TRUE THEN subscription_id END) / NULLIF(COUNT(CASE WHEN subscription_status = 'active' OR pause_flag = TRUE THEN subscription_id END), 0), 2)
-      comment: "Percentage of active/paused subscriptions currently paused. High pause rates are a leading indicator of churn."
+      comment: "Total net subscription revenue after discounts for true recurring revenue"
+    - name: "total_discount_amount"
+      expr: SUM(CAST(price AS DOUBLE) - CAST(net_price AS DOUBLE))
+      comment: "Total discount amount on subscriptions for promotional cost analysis"
+    - name: "avg_subscription_price"
+      expr: AVG(CAST(price AS DOUBLE))
+      comment: "Average subscription price for pricing strategy and ARPU analysis"
+    - name: "avg_net_subscription_price"
+      expr: AVG(CAST(net_price AS DOUBLE))
+      comment: "Average net subscription price after discounts for true ARPU"
+    - name: "avg_discount_rate"
+      expr: AVG(CAST(discount_rate AS DOUBLE))
+      comment: "Average discount rate applied to subscriptions for promotional effectiveness"
+    - name: "trial_subscription_rate"
+      expr: ROUND(100.0 * SUM(CASE WHEN trial_flag = TRUE THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percentage of subscriptions in trial for conversion funnel analysis"
     - name: "auto_renew_rate"
-      expr: ROUND(100.0 * COUNT(CASE WHEN auto_renew_flag = TRUE THEN subscription_id END) / NULLIF(COUNT(DISTINCT subscription_id), 0), 2)
-      comment: "Percentage of subscriptions with auto-renew enabled. High rates indicate strong retention and predictable revenue."
-$$;
-
-CREATE OR REPLACE VIEW `vibe_consumer_goods_v1`.`_metrics`.`consumer_consent_record`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Consent management metrics covering opt-in rates, consent type distribution, double opt-in compliance, and withdrawal trends. Used by Data Privacy Officer, Legal, and Marketing Compliance teams for GDPR/CCPA governance."
-  source: "`vibe_consumer_goods_v1`.`consumer`.`consent_record`"
-  dimensions:
-    - name: "consent_type"
-      expr: consent_type
-      comment: "Type of consent captured (e.g. marketing, data sharing, profiling). Primary dimension for consent coverage analysis."
-    - name: "consent_status"
-      expr: consent_status
-      comment: "Current status of the consent record (e.g. given, withdrawn, expired). Drives active consent counts."
-    - name: "consent_record_status"
-      expr: consent_record_status
-      comment: "Operational status of the consent record. Used for data quality and completeness monitoring."
-    - name: "channel"
-      expr: channel
-      comment: "Channel through which consent was captured (e.g. web, store, email). Enables channel-level consent analysis."
-    - name: "capture_method"
-      expr: capture_method
-      comment: "Method used to capture consent (e.g. checkbox, signature, verbal). Required for consent validity auditing."
-    - name: "legal_basis"
-      expr: legal_basis
-      comment: "Legal basis for processing (e.g. consent, legitimate interest, contract). Critical for GDPR compliance reporting."
-    - name: "regulatory_jurisdiction"
-      expr: regulatory_jurisdiction
-      comment: "Regulatory jurisdiction governing the consent (e.g. EU, CA, UK). Enables jurisdiction-level compliance reporting."
-    - name: "country_code"
-      expr: country_code
-      comment: "Country of the consent record. Required for geographic regulatory compliance analysis."
-    - name: "consent_scope"
-      expr: consent_scope
-      comment: "Scope of the consent (e.g. email, SMS, all channels). Drives channel-specific addressable audience sizing."
-    - name: "consent_year_month"
-      expr: DATE_TRUNC('MONTH', consent_date)
-      comment: "Month consent was captured. Enables consent volume trend and regulatory deadline tracking."
-    - name: "double_opt_in_flag"
-      expr: double_opt_in_flag
-      comment: "Whether double opt-in was completed. Required for email marketing compliance in certain jurisdictions."
-    - name: "parental_consent_flag"
-      expr: parental_consent_flag
-      comment: "Whether parental consent was obtained. Required for COPPA and minor-protection compliance."
-    - name: "third_party_sharing_flag"
-      expr: third_party_sharing_flag
-      comment: "Whether consent covers third-party data sharing. Critical for data partnership and monetisation compliance."
-  measures:
-    - name: "total_consent_records"
-      expr: COUNT(DISTINCT consent_record_id)
-      comment: "Total consent records captured. Baseline volume KPI for consent programme coverage."
-    - name: "active_consent_count"
-      expr: COUNT(CASE WHEN consent_given = TRUE AND consent_status = 'active' THEN consent_record_id END)
-      comment: "Count of currently active, given consent records. Defines the legally addressable audience for marketing."
-    - name: "consent_given_rate"
-      expr: ROUND(100.0 * COUNT(CASE WHEN consent_given = TRUE THEN consent_record_id END) / NULLIF(COUNT(DISTINCT consent_record_id), 0), 2)
-      comment: "Percentage of consent records where consent was given. Core compliance KPI — low rates restrict marketing reach."
-    - name: "double_opt_in_compliance_rate"
-      expr: ROUND(100.0 * COUNT(CASE WHEN double_opt_in_flag = TRUE THEN consent_record_id END) / NULLIF(COUNT(DISTINCT consent_record_id), 0), 2)
-      comment: "Percentage of consent records with double opt-in completed. Required for email compliance in GDPR jurisdictions."
-    - name: "withdrawal_count"
-      expr: COUNT(CASE WHEN withdrawal_timestamp IS NOT NULL THEN consent_record_id END)
-      comment: "Count of consent withdrawals. Rising withdrawals signal brand trust issues or regulatory pressure."
-    - name: "withdrawal_rate"
-      expr: ROUND(100.0 * COUNT(CASE WHEN withdrawal_timestamp IS NOT NULL THEN consent_record_id END) / NULLIF(COUNT(DISTINCT consent_record_id), 0), 2)
-      comment: "Percentage of consent records that have been withdrawn. Key indicator of consumer trust and regulatory risk."
-    - name: "re_consent_required_count"
-      expr: COUNT(CASE WHEN re_consent_required_flag = TRUE THEN consent_record_id END)
-      comment: "Count of consent records requiring re-consent. Drives re-consent campaign prioritisation and regulatory deadline management."
-    - name: "third_party_sharing_consent_rate"
-      expr: ROUND(100.0 * COUNT(CASE WHEN third_party_sharing_flag = TRUE AND consent_given = TRUE THEN consent_record_id END) / NULLIF(COUNT(CASE WHEN consent_given = TRUE THEN consent_record_id END), 0), 2)
-      comment: "Percentage of given consents that include third-party sharing. Governs data monetisation and partnership programme scope."
+      expr: ROUND(100.0 * SUM(CASE WHEN auto_renew_flag = TRUE THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percentage of subscriptions with auto-renew enabled for retention risk assessment"
+    - name: "gdpr_consent_rate"
+      expr: ROUND(100.0 * SUM(CASE WHEN gdpr_consent_flag = TRUE THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percentage of subscriptions with GDPR consent for compliance tracking"
+    - name: "effective_discount_rate"
+      expr: ROUND(100.0 * SUM(CAST(price AS DOUBLE) - CAST(net_price AS DOUBLE)) / NULLIF(SUM(CAST(price AS DOUBLE)), 0), 2)
+      comment: "Effective discount rate across all subscriptions for margin impact analysis"
 $$;
 
 CREATE OR REPLACE VIEW `vibe_consumer_goods_v1`.`_metrics`.`consumer_household`
@@ -538,145 +488,154 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Household-level consumer metrics covering loyalty penetration, digital engagement, income segmentation, and NPS. Used by Consumer Insights, Category Management, and Retail Strategy teams for household-level targeting and investment decisions."
+  comment: "Household-level consumer insights including demographics, loyalty, and lifetime value for strategic targeting"
   source: "`vibe_consumer_goods_v1`.`consumer`.`household`"
   dimensions:
     - name: "household_status"
       expr: household_status
-      comment: "Operational status of the household record (e.g. active, dissolved, merged). Drives active household counts."
+      comment: "Current status of the household (e.g., active, inactive, merged)"
     - name: "household_type"
       expr: household_type
-      comment: "Type of household (e.g. single, family, multi-generational). Enables household-type segmentation."
-    - name: "income_band"
-      expr: income_band
-      comment: "Income band of the household. Drives value-based targeting and assortment decisions."
-    - name: "income_bracket"
-      expr: income_bracket
-      comment: "Finer income bracket classification. Used for precision targeting and pricing strategy."
-    - name: "life_stage"
-      expr: life_stage
-      comment: "Life stage of the household (e.g. young family, empty nester, retiree). Enables life-stage marketing."
-    - name: "lifecycle_stage"
-      expr: lifecycle_stage
-      comment: "Lifecycle stage of the household in the brand relationship. Drives retention and win-back strategies."
-    - name: "loyalty_tier"
-      expr: loyalty_tier
-      comment: "Loyalty tier of the household. Enables tier-based household value analysis."
+      comment: "Type of household for segmentation"
     - name: "cltv_band"
       expr: cltv_band
-      comment: "Customer lifetime value band of the household. Primary dimension for value-based investment decisions."
-    - name: "country_code"
-      expr: country_code
-      comment: "Country of the household. Enables geographic market analysis."
-    - name: "geographic_region"
-      expr: geographic_region
-      comment: "Geographic region of the household. Supports regional performance and investment analysis."
+      comment: "Customer lifetime value band for strategic targeting"
+    - name: "market_segment"
+      expr: market_segment
+      comment: "Market segment classification for positioning strategy"
+    - name: "life_stage"
+      expr: life_stage
+      comment: "Life stage of the household (e.g., young family, empty nester)"
+    - name: "income_band"
+      expr: income_band
+      comment: "Income band for socioeconomic segmentation"
     - name: "dwelling_type"
       expr: dwelling_type
-      comment: "Type of dwelling (e.g. house, apartment, condo). Used for channel and format targeting."
+      comment: "Type of dwelling (e.g., house, apartment, condo)"
+    - name: "geographic_region"
+      expr: geographic_region
+      comment: "Geographic region for regional strategy"
+    - name: "country_code"
+      expr: country_code
+      comment: "Country of the household"
     - name: "primary_channel"
       expr: primary_channel
-      comment: "Primary shopping channel of the household. Drives channel investment and omnichannel strategy."
-    - name: "has_children"
-      expr: has_children
-      comment: "Whether the household has children. Key demographic dimension for family-oriented product targeting."
-    - name: "formation_year_month"
-      expr: DATE_TRUNC('MONTH', formation_date)
-      comment: "Month the household was formed/identified. Enables household acquisition cohort analysis."
+      comment: "Primary shopping channel of the household"
+    - name: "purchase_frequency_band"
+      expr: purchase_frequency_band
+      comment: "Purchase frequency classification for engagement strategy"
+    - name: "children_present_flag"
+      expr: children_present_flag
+      comment: "Whether children are present in the household"
+    - name: "pet_owner_flag"
+      expr: pet_owner_flag
+      comment: "Whether the household owns pets"
+    - name: "private_label_buyer_flag"
+      expr: private_label_buyer_flag
+      comment: "Whether the household purchases private label products"
+    - name: "marketing_opt_in_flag"
+      expr: marketing_opt_in_flag
+      comment: "Whether the household has opted in to marketing"
   measures:
-    - name: "total_active_households"
-      expr: COUNT(CASE WHEN household_status = 'active' THEN household_id END)
-      comment: "Count of active households. Core audience size KPI for household-level marketing and targeting."
     - name: "total_households"
       expr: COUNT(DISTINCT household_id)
-      comment: "Total unique households in the platform. Baseline for penetration and reach calculations."
+      comment: "Total number of unique households for market sizing"
     - name: "total_loyalty_points_balance"
       expr: SUM(CAST(loyalty_points_balance AS DOUBLE))
-      comment: "Total loyalty points balance across households. Measures household-level programme engagement and liability."
+      comment: "Total loyalty points balance across households for liability management"
     - name: "avg_loyalty_points_balance"
       expr: AVG(CAST(loyalty_points_balance AS DOUBLE))
-      comment: "Average loyalty points balance per household. Indicates typical household engagement level."
-    - name: "loyalty_enrolled_household_rate"
-      expr: ROUND(100.0 * COUNT(CASE WHEN loyalty_enrollment_date IS NOT NULL THEN household_id END) / NULLIF(COUNT(DISTINCT household_id), 0), 2)
-      comment: "Percentage of households enrolled in the loyalty programme. Measures loyalty programme penetration across the consumer base."
-    - name: "digital_engagement_rate"
-      expr: ROUND(100.0 * COUNT(CASE WHEN digital_engagement_flag = TRUE THEN household_id END) / NULLIF(COUNT(DISTINCT household_id), 0), 2)
-      comment: "Percentage of households with digital engagement. Measures digital channel adoption and omnichannel reach."
-    - name: "marketing_opt_in_rate"
-      expr: ROUND(100.0 * COUNT(CASE WHEN marketing_opt_in_flag = TRUE THEN household_id END) / NULLIF(COUNT(DISTINCT household_id), 0), 2)
-      comment: "Percentage of households opted in to marketing. Governs addressable household audience for campaigns."
+      comment: "Average loyalty points balance per household for engagement depth"
+    - name: "children_present_rate"
+      expr: ROUND(100.0 * SUM(CASE WHEN children_present_flag = TRUE THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percentage of households with children for family-oriented product strategy"
+    - name: "pet_owner_rate"
+      expr: ROUND(100.0 * SUM(CASE WHEN pet_owner_flag = TRUE THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percentage of households with pets for pet product targeting"
     - name: "private_label_buyer_rate"
-      expr: ROUND(100.0 * COUNT(CASE WHEN private_label_buyer_flag = TRUE THEN household_id END) / NULLIF(COUNT(DISTINCT household_id), 0), 2)
-      comment: "Percentage of households that purchase private label products. Measures private label penetration and brand loyalty."
+      expr: ROUND(100.0 * SUM(CASE WHEN private_label_buyer_flag = TRUE THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percentage of households buying private label for brand strategy"
+    - name: "marketing_opt_in_rate"
+      expr: ROUND(100.0 * SUM(CASE WHEN marketing_opt_in_flag = TRUE THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percentage of households opted in to marketing for campaign reach"
+    - name: "digital_engagement_rate"
+      expr: ROUND(100.0 * SUM(CASE WHEN digital_engagement_flag = TRUE THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percentage of households with digital engagement for channel strategy"
+    - name: "gdpr_consent_rate"
+      expr: ROUND(100.0 * SUM(CASE WHEN gdpr_consent_flag = TRUE THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percentage of households with GDPR consent for compliance planning"
+    - name: "ccpa_opt_out_rate"
+      expr: ROUND(100.0 * SUM(CASE WHEN ccpa_opt_out_flag = TRUE THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percentage of households opted out under CCPA for privacy compliance"
+    - name: "panel_member_rate"
+      expr: ROUND(100.0 * SUM(CASE WHEN panel_member_flag = TRUE THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percentage of households participating in research panels for insights quality"
 $$;
 
-CREATE OR REPLACE VIEW `vibe_consumer_goods_v1`.`_metrics`.`consumer_segment`
+CREATE OR REPLACE VIEW `vibe_consumer_goods_v1`.`_metrics`.`consumer_consent_record`
 WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Consumer segment definition metrics covering segment size, CLTV thresholds, ML model coverage, and activation eligibility. Used by Consumer Insights, Marketing Strategy, and Data Science teams to govern segment quality and activation readiness."
-  source: "`vibe_consumer_goods_v1`.`consumer`.`segment`"
+  comment: "Privacy and consent management metrics for regulatory compliance, opt-in rates, and data governance"
+  source: "`vibe_consumer_goods_v1`.`consumer`.`consent_record`"
   dimensions:
-    - name: "segment_type"
-      expr: segment_type
-      comment: "Type of segment (e.g. behavioural, demographic, predictive). Enables segment-type portfolio analysis."
-    - name: "segment_status"
-      expr: segment_status
-      comment: "Operational status of the segment (e.g. active, draft, archived). Drives active segment inventory management."
-    - name: "activation_channel"
-      expr: activation_channel
-      comment: "Channel through which the segment is activated (e.g. email, paid media, push). Enables channel-level segment activation analysis."
-    - name: "owning_business_unit"
-      expr: owning_business_unit
-      comment: "Business unit that owns the segment. Supports segment governance and accountability."
-    - name: "geographic_scope"
-      expr: geographic_scope
-      comment: "Geographic scope of the segment. Enables regional segment coverage analysis."
-    - name: "loyalty_tier_scope"
-      expr: loyalty_tier_scope
-      comment: "Loyalty tier scope of the segment. Used to understand tier-based targeting coverage."
-    - name: "is_active"
-      expr: is_active
-      comment: "Whether the segment is currently active. Primary filter for active segment inventory."
-    - name: "personalization_eligible"
-      expr: personalization_eligible
-      comment: "Whether the segment is eligible for personalisation. Governs personalisation programme reach."
-    - name: "trade_promotion_eligible"
-      expr: trade_promotion_eligible
-      comment: "Whether the segment is eligible for trade promotions. Drives trade promotion targeting decisions."
-    - name: "consent_required"
-      expr: consent_required
-      comment: "Whether consent is required to activate this segment. Critical for compliance-gated activation."
-    - name: "refresh_frequency"
-      expr: refresh_frequency
-      comment: "How frequently the segment membership is refreshed. Indicates segment data freshness and operational cost."
-    - name: "ml_model_code"
-      expr: ml_model_code
-      comment: "ML model used to define the segment. Enables model-level segment performance tracking."
+    - name: "consent_type"
+      expr: consent_type
+      comment: "Type of consent (e.g., marketing, data sharing, profiling)"
+    - name: "consent_status"
+      expr: consent_status
+      comment: "Current status of the consent (e.g., granted, withdrawn, expired)"
+    - name: "consent_scope"
+      expr: consent_scope
+      comment: "Scope of the consent (e.g., email, SMS, third-party sharing)"
+    - name: "legal_basis"
+      expr: legal_basis
+      comment: "Legal basis for processing (e.g., consent, legitimate interest, contract)"
+    - name: "regulatory_jurisdiction"
+      expr: regulatory_jurisdiction
+      comment: "Regulatory jurisdiction governing the consent (e.g., GDPR, CCPA)"
+    - name: "capture_method"
+      expr: capture_method
+      comment: "Method by which consent was captured (e.g., web form, in-store, phone)"
+    - name: "country_code"
+      expr: country_code
+      comment: "Country where consent was captured"
+    - name: "device_type"
+      expr: device_type
+      comment: "Device type used to capture consent"
+    - name: "double_opt_in_flag"
+      expr: double_opt_in_flag
+      comment: "Whether double opt-in was used for consent verification"
+    - name: "parental_consent_flag"
+      expr: parental_consent_flag
+      comment: "Whether parental consent was obtained for minors"
+    - name: "third_party_sharing_flag"
+      expr: third_party_sharing_flag
+      comment: "Whether consent includes third-party data sharing"
+    - name: "profiling_consent_flag"
+      expr: profiling_consent_flag
+      comment: "Whether consent includes profiling and automated decision-making"
+    - name: "capture_year"
+      expr: YEAR(capture_timestamp)
+      comment: "Year consent was captured for compliance trend analysis"
+    - name: "capture_month"
+      expr: DATE_TRUNC('MONTH', capture_timestamp)
+      comment: "Month consent was captured for time-series compliance tracking"
   measures:
-    - name: "total_active_segments"
-      expr: COUNT(CASE WHEN is_active = TRUE THEN segment_id END)
-      comment: "Count of currently active segments. Measures the active segment portfolio available for marketing activation."
-    - name: "total_target_audience_size"
-      expr: SUM(CAST(target_audience_size AS DOUBLE))
-      comment: "Total target audience size across all segments. Measures total addressable audience across the segment portfolio."
-    - name: "avg_target_audience_size"
-      expr: AVG(CAST(target_audience_size AS DOUBLE))
-      comment: "Average audience size per segment. Indicates typical segment scale for campaign planning."
-    - name: "avg_cltv_min_value"
-      expr: AVG(CAST(cltv_min_value AS DOUBLE))
-      comment: "Average minimum CLTV threshold across segments. Indicates the value floor of the segment portfolio."
-    - name: "avg_cltv_max_value"
-      expr: AVG(CAST(cltv_max_value AS DOUBLE))
-      comment: "Average maximum CLTV threshold across segments. Indicates the value ceiling of the segment portfolio."
-    - name: "personalization_eligible_rate"
-      expr: ROUND(100.0 * COUNT(CASE WHEN personalization_eligible = TRUE THEN segment_id END) / NULLIF(COUNT(DISTINCT segment_id), 0), 2)
-      comment: "Percentage of segments eligible for personalisation. Measures personalisation programme coverage across the segment portfolio."
-    - name: "consent_required_segment_rate"
-      expr: ROUND(100.0 * COUNT(CASE WHEN consent_required = TRUE THEN segment_id END) / NULLIF(COUNT(DISTINCT segment_id), 0), 2)
-      comment: "Percentage of segments requiring consent for activation. Indicates compliance complexity of the segment portfolio."
-    - name: "avg_min_confidence_score"
-      expr: AVG(CAST(min_confidence_score AS DOUBLE))
-      comment: "Average minimum confidence score threshold across ML-driven segments. Measures model quality standards applied to the segment portfolio."
+    - name: "total_consent_records"
+      expr: COUNT(DISTINCT consent_record_id)
+      comment: "Total number of unique consent records for compliance audit volume"
+    - name: "double_opt_in_rate"
+      expr: ROUND(100.0 * SUM(CASE WHEN double_opt_in_flag = TRUE THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percentage of consents with double opt-in for quality and compliance"
+    - name: "parental_consent_rate"
+      expr: ROUND(100.0 * SUM(CASE WHEN parental_consent_flag = TRUE THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percentage of consents requiring parental approval for minor protection compliance"
+    - name: "third_party_sharing_rate"
+      expr: ROUND(100.0 * SUM(CASE WHEN third_party_sharing_flag = TRUE THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percentage of consents allowing third-party sharing for partnership strategy"
+    - name: "profiling_consent_rate"
+      expr: ROUND(100.0 * SUM(CASE WHEN profiling_consent_flag = TRUE THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percentage of consents allowing profiling for personalization capability"
 $$;

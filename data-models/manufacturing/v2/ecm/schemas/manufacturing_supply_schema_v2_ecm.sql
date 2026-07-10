@@ -1,5 +1,5 @@
--- Schema for Domain: supply | Business: Manufacturing | Version: v2_ecm
--- Generated on: 2026-07-03 05:59:39
+-- Schema for Domain: supply | Business:  | Version: v2_ecm
+-- Generated on: 2026-07-10 12:59:05
 
 -- ========= DATABASE =========
 CREATE DATABASE IF NOT EXISTS `vibe_manufacturing_v1`.`supply` COMMENT 'Supply chain planning and demand management domain covering MRP/MRP II runs, demand forecasting, capacity planning, APS scheduling, supplier lead times, MOQ management, supply risk, multi-tier supplier coordination, and supply network optimization. Integrates Microsoft Dynamics 365 SCM and SAP PP/MM for end-to-end supply network visibility.';
@@ -34,7 +34,7 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`supply`.`mrp_run` (
     `planning_time_fence_days` STRING COMMENT 'Number of days from the run date within which the MRP system can reschedule but not create new planned orders. Defines the slushy zone between frozen and free planning periods.',
     `plant_code` STRING COMMENT 'Manufacturing plant or facility code for which this MRP run was executed. Defines the scope of materials and production resources included in the planning calculation.',
     `routing_explosion_flag` BOOLEAN COMMENT 'Indicates whether production routing and work center capacity requirements were calculated during this MRP run (True) or only material requirements were computed (False).',
-    `run_duration_minutes` DECIMAL(18,2) COMMENT 'Total elapsed time in minutes from actual start to actual end of the MRP run. Key performance indicator for planning system efficiency.',
+    `run_duration_minutes` STRING COMMENT 'Total elapsed time in minutes from actual start to actual end of the MRP run. Key performance indicator for planning system efficiency.',
     `run_number` STRING COMMENT 'Business-facing identifier for the MRP run, typically system-generated or user-assigned for tracking and audit purposes.',
     `run_parameters_json` STRING COMMENT 'JSON-formatted string containing additional MRP run configuration parameters and settings not captured in dedicated columns. Enables flexible storage of system-specific or advanced planning parameters.',
     `run_status` STRING COMMENT 'Current execution status of the MRP run: scheduled (queued for execution), running (in progress), completed (successfully finished), failed (terminated with errors), or cancelled (manually aborted).. Valid values are `scheduled|running|completed|failed|cancelled`',
@@ -148,53 +148,12 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`supply`.`demand_forecast` (
     CONSTRAINT pk_demand_forecast PRIMARY KEY(`demand_forecast_id`)
 ) COMMENT 'Stores version-aware demand forecast records supporting scenario comparison and consensus planning. Captures statistical baseline forecasts, sales-adjusted forecasts, consensus forecasts, and approved forecasts with full version lineage. Each record includes forecast quantity, forecast horizon, forecast model used, confidence interval, demand class (independent vs. dependent), item/location combination, version type, version approval workflow status, and planning period. Supports S&OP processes by maintaining multiple demand scenarios for supply planning sensitivity analysis. Sourced from Microsoft Dynamics 365 SCM demand planning module.';
 
-CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`supply`.`plan` (
-    `plan_id` BIGINT COMMENT 'Primary key for plan',
-    `cost_center_id` BIGINT COMMENT 'Foreign key linking to finance.cost_center. Business justification: Supply Plan vs Budget variance analysis requires linking each supply plan to its responsible cost center.',
-    `employee_id` BIGINT COMMENT 'Identifier of the user who approved this supply plan for execution, establishing accountability for S&OP decisions.',
-    `material_master_id` BIGINT COMMENT 'Specific material or SKU for which this supply plan is created. May be null for aggregate material group plans.',
-    `sku_master_id` BIGINT COMMENT 'Foreign key linking to product.sku_master. Business justification: Supply plans reference the SKU master to allocate production capacity and material supply per product.',
-    `approval_timestamp` TIMESTAMP COMMENT 'Date and time when the supply plan was approved, marking the transition from planning to execution phase.',
-    `capacity_utilization_percentage` DECIMAL(18,2) COMMENT 'Percentage of available production or procurement capacity utilized by this supply plan, indicating capacity constraints.',
-    `created_timestamp` TIMESTAMP COMMENT 'Date and time when this supply plan record was first created in the system.',
-    `demand_forecast_quantity` DECIMAL(18,2) COMMENT 'Total forecasted demand quantity for the planning period, serving as the primary input to the supply plan.',
-    `last_modified_timestamp` TIMESTAMP COMMENT 'Date and time when this supply plan record was last updated, tracking the most recent change to planning parameters or status.',
-    `lead_time_days` STRING COMMENT 'Total lead time in days from order placement to material availability, including procurement, production, and transportation time.',
-    `lot_sizing_procedure` STRING COMMENT 'Lot-sizing rule used to determine planned order quantities: LOT_FOR_LOT (exact requirement), FIXED_LOT (fixed quantity), EOQ (Economic Order Quantity), POQ (Periodic Order Quantity), or PERIOD_LOT (period-based aggregation).. Valid values are `LOT_FOR_LOT|FIXED_LOT|EOQ|POQ|PERIOD_LOT`',
-    `material_group_code` STRING COMMENT 'Material group or product family covered by this supply plan, enabling aggregated planning at the product category level.. Valid values are `^[A-Z0-9]{4,15}$`',
-    `maximum_lot_size` DECIMAL(18,2) COMMENT 'Maximum order quantity constraint applied during supply planning, reflecting capacity or storage limitations.',
-    `minimum_lot_size` DECIMAL(18,2) COMMENT 'Minimum order quantity (MOQ) constraint applied during supply planning, reflecting supplier or production constraints.',
-    `mrp_controller_code` STRING COMMENT 'Code identifying the MRP controller or planner responsible for this supply plan, enabling workload distribution and accountability.. Valid values are `^[A-Z0-9]{3,10}$`',
-    `notes` STRING COMMENT 'Free-text notes and comments from planners regarding assumptions, constraints, or special considerations for this supply plan.',
-    `plan_number` STRING COMMENT 'Externally-known business identifier for the supply plan, used for cross-system reference and S&OP review documentation.. Valid values are `^[A-Z0-9]{8,20}$`',
-    `plan_status` STRING COMMENT 'Current lifecycle status of the supply plan: DRAFT (under development), PENDING_REVIEW (awaiting S&OP approval), APPROVED (approved for execution), ACTIVE (currently executing), SUPERSEDED (replaced by newer version), or CANCELLED (voided).. Valid values are `DRAFT|PENDING_REVIEW|APPROVED|ACTIVE|SUPERSEDED|CANCELLED`',
-    `planned_supply_quantity` DECIMAL(18,2) COMMENT 'Total quantity of material planned to be supplied during the planning period, aggregated across all time buckets.',
-    `planning_horizon_days` STRING COMMENT 'Number of days into the future covered by this supply plan, defining the forward-looking planning window.',
-    `planning_method` STRING COMMENT 'Method used to generate the supply plan: MRP (Material Requirements Planning), MRP II (Manufacturing Resource Planning), APS (Advanced Planning and Scheduling), MANUAL (manual planning), JIT (Just In Time), or KANBAN (pull-based replenishment).. Valid values are `MRP|MRP_II|APS|MANUAL|JIT|KANBAN`',
-    `planning_period_end_date` DATE COMMENT 'End date of the planning horizon covered by this supply plan.',
-    `planning_period_start_date` DATE COMMENT 'Start date of the planning horizon covered by this supply plan.',
-    `planning_run_timestamp` TIMESTAMP COMMENT 'Date and time when the MRP/APS planning run was executed to generate this supply plan.',
-    `planning_strategy` DECIMAL(18,2) COMMENT 'Supply planning strategy: MTS (Make to Stock), MTO (Make to Order), ATO (Assemble to Order), or ETO (Engineer to Order).',
-    `planning_time_fence_days` STRING COMMENT 'Number of days from today within which the planning system will not automatically change planned orders, protecting near-term execution stability.',
-    `plant_code` STRING COMMENT 'Manufacturing plant or distribution center for which this supply plan is created.. Valid values are `^[A-Z0-9]{4,10}$`',
-    `procurement_type` STRING COMMENT 'Source of supply: IN_HOUSE (internal production), EXTERNAL (external procurement from suppliers), or BOTH (mixed sourcing).. Valid values are `IN_HOUSE|EXTERNAL|BOTH`',
-    `reorder_point_quantity` DECIMAL(18,2) COMMENT 'Reorder point quantity that triggers replenishment planning when stock falls below this threshold.',
-    `rounding_value` DECIMAL(18,2) COMMENT 'Rounding increment for planned order quantities, ensuring orders align with packaging or production batch multiples.',
-    `safety_stock_quantity` DECIMAL(18,2) COMMENT 'Safety stock level maintained as buffer against demand variability and supply uncertainty, factored into the supply plan.',
-    `source_system_code` STRING COMMENT 'Code identifying the source system that generated this supply plan: SAP_PP (SAP Production Planning), DYNAMICS_SCM (Microsoft Dynamics 365 Supply Chain Management), OPCENTER (Siemens Opcenter APS), or MANUAL (manually created).. Valid values are `SAP_PP|DYNAMICS_SCM|OPCENTER|MANUAL`',
-    `supply_risk_level` STRING COMMENT 'Assessed risk level for supply availability: LOW (stable supply), MEDIUM (minor risks), HIGH (significant risks), or CRITICAL (severe supply constraints).. Valid values are `LOW|MEDIUM|HIGH|CRITICAL`',
-    `unit_of_measure` STRING COMMENT 'Unit of measure for the planned supply quantity (e.g., EA for each, KG for kilogram, L for liter, M for meter).. Valid values are `^[A-Z]{2,5}$`',
-    `variance_percentage` DECIMAL(18,2) COMMENT 'Variance expressed as a percentage of demand forecast, enabling normalized comparison across materials.',
-    `variance_quantity` DECIMAL(18,2) COMMENT 'Variance between planned supply quantity and demand forecast quantity, indicating over-planning or under-planning.',
-    `version` STRING COMMENT 'Version identifier for the supply plan, enabling comparison of multiple planning scenarios and what-if analysis.. Valid values are `^[A-Z0-9]{1,10}$`',
-    CONSTRAINT pk_plan PRIMARY KEY(`plan_id`)
-) COMMENT 'Master supply plan record representing the approved supply response to demand for a given planning period, plant, and material group. Captures planned supply quantities by time bucket, planning method (MRP, APS, manual), plan version, approval status, planning parameters (strategy, horizon, time fences, lot-sizing procedure, MRP controller), and variance against demand forecast. Integrates outputs from SAP PP and Microsoft Dynamics 365 SCM APS scheduling into a unified supply position for S&OP review.';
-
 CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`supply`.`capacity_plan` (
     `capacity_plan_id` BIGINT COMMENT 'Unique identifier for the capacity plan record. Primary key for capacity planning analysis.',
     `aps_scenario_id` BIGINT COMMENT 'Identifier of the APS scenario or simulation run that generated this capacity plan. Links to Siemens Opcenter APS or Microsoft Dynamics 365 SCM planning scenarios.',
     `cost_center_id` BIGINT COMMENT 'Foreign key linking to finance.cost_center. Business justification: Capacity Cost Allocation process charges capacity usage to cost centers for internal cost tracking.',
     `employee_id` BIGINT COMMENT 'Identifier of the production planner or capacity planner responsible for creating and maintaining this capacity plan.',
+    `plant_data_id` BIGINT COMMENT 'Identifier of the manufacturing plant or facility where the work center is located. Enables multi-plant capacity planning.',
     `work_center_id` BIGINT COMMENT 'Identifier of the work center or production resource for which capacity is being planned. Links to the production facility or machine group.',
     `available_capacity_hours` DECIMAL(18,2) COMMENT 'Total available capacity in hours for the work center during the planning period. Calculated based on shifts, calendar days, and resource availability.',
     `capacity_buffer_hours` DECIMAL(18,2) COMMENT 'Safety buffer or protective capacity reserved to absorb variability and prevent schedule disruptions. Part of Theory of Constraints buffer management.',
@@ -208,7 +167,7 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`supply`.`capacity_plan` (
     `is_bottleneck` BOOLEAN COMMENT 'Boolean flag indicating whether this work center is identified as a bottleneck constraint in the production schedule. True if utilization exceeds threshold or if this resource limits throughput.',
     `last_mrp_run_date` DATE COMMENT 'Date of the last MRP or MRP II run that generated the required capacity data for this plan. Indicates data freshness.',
     `leveling_adjustment_hours` DECIMAL(18,2) COMMENT 'Capacity adjustment applied through leveling actions such as overtime, shift changes, subcontracting, or order rescheduling to balance load.',
-    `leveling_strategy` DECIMAL(18,2) COMMENT 'Strategy applied to resolve capacity overload. Indicates the method used to balance capacity constraints.',
+    `leveling_strategy` STRING COMMENT 'Strategy applied to resolve capacity overload. Indicates the method used to balance capacity constraints.. Valid values are `overtime|shift_add|subcontract|reschedule|none`',
     `mrp_controller` STRING COMMENT 'MRP controller code responsible for the materials and capacity planning for this work center. Links capacity planning to material planning.',
     `notes` STRING COMMENT 'Free-text notes or comments from the planner regarding capacity constraints, assumptions, or leveling decisions.',
     `overload_hours` DECIMAL(18,2) COMMENT 'Number of hours by which required capacity exceeds available capacity. Positive value indicates capacity shortage requiring leveling or additional resources.',
@@ -237,13 +196,13 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`supply`.`aps_schedule` (
     `aps_schedule_id` BIGINT COMMENT 'Unique identifier for the APS schedule record. Primary key for the schedule entry generated by the APS engine.',
     `employee_id` BIGINT COMMENT 'Reference to the operator or workforce resource assigned to this scheduled operation. Links to workforce management system.',
     `material_master_id` BIGINT COMMENT 'Reference to the material or product being manufactured in this operation. Links to the material master in SAP MM or inventory system.',
+    `production_line_id` BIGINT COMMENT 'add column production_line_id (BIGINT) with FK to production.production_line.production_line_id - APS schedules assign work to specific production lines',
     `production_work_order_id` BIGINT COMMENT 'Reference to the production order that this schedule entry is planning for. Links to the manufacturing order in SAP PP or Dynamics 365 SCM.',
-    `run_id` BIGINT COMMENT 'Reference to the APS scheduling run that generated this schedule entry. Links to the planning execution batch for traceability.',
     `sku_master_id` BIGINT COMMENT 'Foreign key linking to product.sku_master. Business justification: Advanced scheduling links each operation to the SKU master for capacity planning and performance tracking.',
     `work_center_id` BIGINT COMMENT 'Reference to the work center where this operation is scheduled to be performed. Links to the manufacturing resource/work center master.',
     `capacity_utilization_percent` DECIMAL(18,2) COMMENT 'Percentage of work center capacity consumed by this scheduled operation during its time window. Used for capacity planning analysis.',
     `constraint_type` STRING COMMENT 'Primary constraint that limited the scheduling of this operation. Identifies the bottleneck resource or dependency.. Valid values are `capacity|material|tooling|operator|none`',
-    `cost_center_code` DECIMAL(18,2) COMMENT 'Cost center responsible for this scheduled operation. Used for production cost allocation and variance analysis.',
+    `cost_center_code` STRING COMMENT 'Cost center responsible for this scheduled operation. Used for production cost allocation and variance analysis.. Valid values are `^[A-Z0-9]{6,10}$`',
     `created_timestamp` TIMESTAMP COMMENT 'Date and time when this schedule record was first created in the APS system. Audit trail for schedule generation.',
     `critical_path_flag` BOOLEAN COMMENT 'Indicates whether this operation is on the critical path for the production order. True if any delay will impact the order completion date.',
     `currency_code` STRING COMMENT 'Three-letter ISO 4217 currency code for the standard cost amount (e.g., USD, EUR, GBP).. Valid values are `^[A-Z]{3}$`',
@@ -253,7 +212,7 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`supply`.`aps_schedule` (
     `latest_end_timestamp` TIMESTAMP COMMENT 'Latest permissible completion time for this operation to meet downstream commitments and customer delivery dates.',
     `machine_code` BIGINT COMMENT 'Reference to the specific machine or equipment unit assigned to execute this operation. Links to the equipment register in asset management.',
     `modified_by_user` STRING COMMENT 'User ID or name of the person or system process that last modified this schedule record. Supports audit and accountability.',
-    `operation_number` DECIMAL(18,2) COMMENT 'Sequential operation number within the production routing. Identifies the specific manufacturing step being scheduled.',
+    `operation_number` STRING COMMENT 'Sequential operation number within the production routing. Identifies the specific manufacturing step being scheduled.. Valid values are `^[0-9]{4}$`',
     `overlap_allowed_flag` BOOLEAN COMMENT 'Indicates whether this operation can overlap with subsequent operations in the routing. True if overlap is permitted, false if sequential execution is required.',
     `planned_quantity` DECIMAL(18,2) COMMENT 'Quantity of units planned to be produced in this scheduled operation. Aligns with the production order quantity.',
     `planning_horizon_date` DATE COMMENT 'The planning horizon end date for the APS run that created this schedule. Defines the time boundary of the scheduling optimization.',
@@ -330,6 +289,7 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`supply`.`material_requirement` 
 
 CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`supply`.`network_node` (
     `network_node_id` BIGINT COMMENT 'Primary key for network_node',
+    `network_segment_id` BIGINT COMMENT 'Foreign key linking to automation.network_segment. Business justification: Required for network topology mapping linking physical supply nodes to IT network segments, used in the Network Integration Report for OT‑IT alignment.',
     `node_id` BIGINT COMMENT 'Foreign key linking to logistics.logistics_node. Business justification: Required for mapping each supply network node to its logistics node in transport planning and execution reports.',
     `site_id` BIGINT COMMENT 'Foreign key linking to supplier.supplier_site. Business justification: Logistics network nodes are mapped to specific supplier sites to support risk assessment and transportation planning in the supply chain.',
     `active_sourcing_rules` STRING COMMENT 'Comma-separated list of active sourcing rule identifiers or strategies applied to this node (e.g., JIT (Just In Time), VMI (Vendor Managed Inventory), consignment).',
@@ -338,7 +298,7 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`supply`.`network_node` (
     `capacity_unit_of_measure` STRING COMMENT 'Unit of measure for throughput capacity (e.g., units, pallets, tons, cubic_meters).',
     `certification_status` STRING COMMENT 'Quality and compliance certification status of the node (e.g., ISO 9001, ISO 14001, ISO 45001, IATF 16949).',
     `city` STRING COMMENT 'City or municipality where the network node is located.',
-    `cost_center_code` DECIMAL(18,2) COMMENT 'Financial cost center code associated with the network node for accounting and budgeting purposes.',
+    `cost_center_code` STRING COMMENT 'Financial cost center code associated with the network node for accounting and budgeting purposes.',
     `country_code` STRING COMMENT 'Three-letter ISO country code of the network node location.. Valid values are `^[A-Z]{3}$`',
     `created_timestamp` TIMESTAMP COMMENT 'Timestamp when the network node record was first created in the system.',
     `effective_from_date` DATE COMMENT 'Date when the network node became or will become operational in the supply chain.',
@@ -355,7 +315,7 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`supply`.`network_node` (
     `node_type` STRING COMMENT 'Classification of the network node by its primary function in the supply chain topology.. Valid values are `manufacturing_plant|distribution_center|supplier_facility|contract_manufacturer|customer_delivery_point|warehouse`',
     `operating_days_per_week` STRING COMMENT 'Number of operating days per week for the network node (typically 5, 6, or 7).',
     `operating_hours_per_day` DECIMAL(18,2) COMMENT 'Standard daily operating hours of the network node facility.',
-    `operational_status` DECIMAL(18,2) COMMENT 'Current operational state of the network node in the supply chain.',
+    `operational_status` STRING COMMENT 'Current operational state of the network node in the supply chain.. Valid values are `active|inactive|planned|decommissioned|suspended|under_construction`',
     `ownership_type` STRING COMMENT 'Legal ownership model of the network node facility.. Valid values are `owned|leased|third_party|contract|joint_venture`',
     `postal_code` STRING COMMENT 'Postal or ZIP code of the network node facility address.',
     `primary_contact_email` STRING COMMENT 'Email address of the primary business contact for the network node.. Valid values are `^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+.[a-zA-Z]{2,}$`',
@@ -403,11 +363,11 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`supply`.`sourcing_rule` (
     `moq` DECIMAL(18,2) COMMENT 'Minimum Order Quantity negotiated with the supplier or defined by production constraints. MRP will not generate orders below this threshold.',
     `notes` STRING COMMENT 'Additional free-text notes or comments providing context, special instructions, or historical information about this sourcing rule.',
     `order_unit` STRING COMMENT 'Unit of measure in which orders are placed with the supplier (e.g., EA for each, KG for kilogram, M for meter). Must be convertible to base UOM.. Valid values are `^[A-Z]{2,3}$`',
-    `payment_terms` DECIMAL(18,2) COMMENT 'Code representing the negotiated payment terms with the supplier, defining due dates, discounts, and payment schedules.',
+    `payment_terms` STRING COMMENT 'Code representing the negotiated payment terms with the supplier, defining due dates, discounts, and payment schedules.',
     `planned_delivery_time_days` STRING COMMENT 'Expected lead time in calendar days from order placement to goods receipt for this material-plant-supplier combination. Used by MRP for backward scheduling.',
     `planner_approved_flag` BOOLEAN COMMENT 'Indicates whether the sourcing rule has been reviewed and approved by the material planner or supply chain manager for use in MRP runs.',
     `preferred_supplier_flag` BOOLEAN COMMENT 'Boolean indicator marking this supplier as the preferred source for the material-plant combination. Used to prioritize sourcing decisions when multiple suppliers are available.',
-    `price_unit` DECIMAL(18,2) COMMENT 'Quantity unit to which the standard price applies. For example, if price_unit is 100, the standard_price represents the cost per 100 units.',
+    `price_unit` STRING COMMENT 'Quantity unit to which the standard price applies. For example, if price_unit is 100, the standard_price represents the cost per 100 units.',
     `purchasing_group` STRING COMMENT 'Code identifying the purchasing group or buyer responsible for managing procurement activities under this sourcing rule.. Valid values are `^[A-Z0-9]{3}$`',
     `purchasing_organization` STRING COMMENT 'Code identifying the purchasing organization responsible for negotiating and executing procurement under this sourcing rule.. Valid values are `^[A-Z0-9]{4}$`',
     `quota_arrangement_flag` BOOLEAN COMMENT 'Indicates whether this sourcing rule is part of a quota arrangement where demand is split across multiple suppliers based on allocation percentages.',
@@ -480,6 +440,7 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`supply`.`risk_register` (
     `supplier_id` BIGINT COMMENT 'Reference to the supplier associated with this supply risk. Links to supplier master data in SAP Ariba or SAP MM vendor master.',
     `regulatory_requirement_id` BIGINT COMMENT 'Foreign key linking to compliance.regulatory_requirement. Business justification: Required for Risk Register to capture compliance risk per regulatory requirement; risk management reports tie each risk to a specific regulation.',
     `employee_id` BIGINT COMMENT 'Reference to the employee responsible for monitoring and managing this supply risk. Links to employee master data in Workday HCM.',
+    `safety_function_id` BIGINT COMMENT 'Foreign key linking to automation.safety_function. Business justification: Links supply‑side risk records to safety instrumented functions, essential for the Safety Risk Assessment matrix used in compliance audits.',
     `service_contract_id` BIGINT COMMENT 'Foreign key linking to service.service_contract. Business justification: Risk register tracks supply risks that affect active service contracts (Contract Risk Management report).',
     `sku_master_id` BIGINT COMMENT 'Foreign key linking to product.sku_master. Business justification: Risk registers track supply‑chain risks at the SKU level for mitigation planning.',
     `alternative_supplier_identified_flag` BOOLEAN COMMENT 'Boolean indicator whether an alternative or backup supplier has been identified and qualified for this material or component. True indicates alternative supplier is available.',
@@ -499,14 +460,14 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`supply`.`risk_register` (
     `last_review_date` DATE COMMENT 'Date of the most recent review or reassessment of this supply risk, ensuring risk information remains current and accurate.',
     `lead_time_impact_days` STRING COMMENT 'Estimated increase in procurement or production lead time (in days) if the risk materializes, used for Material Requirements Planning (MRP) and Advanced Planning and Scheduling (APS) adjustments.',
     `mitigation_cost` DECIMAL(18,2) COMMENT 'Estimated or actual cost to implement the mitigation strategy, used for cost-benefit analysis and budget planning.',
-    `mitigation_cost_currency` DECIMAL(18,2) COMMENT 'Three-letter ISO 4217 currency code for the mitigation cost (e.g., USD, EUR, GBP, CNY).',
+    `mitigation_cost_currency` STRING COMMENT 'Three-letter ISO 4217 currency code for the mitigation cost (e.g., USD, EUR, GBP, CNY).. Valid values are `^[A-Z]{3}$`',
     `mitigation_status` STRING COMMENT 'Current status of the mitigation action plan: not started (planned but not initiated), in progress (actively being implemented), completed (mitigation actions finished), on hold (temporarily paused), or cancelled (mitigation plan abandoned).. Valid values are `not_started|in_progress|completed|on_hold|cancelled`',
-    `mitigation_strategy` DECIMAL(18,2) COMMENT 'Detailed description of the mitigation actions and strategies planned or implemented to reduce the likelihood or impact of the supply risk.',
+    `mitigation_strategy` STRING COMMENT 'Detailed description of the mitigation actions and strategies planned or implemented to reduce the likelihood or impact of the supply risk.',
     `mitigation_target_date` DATE COMMENT 'Target completion date for the mitigation actions, used for project management and risk reduction tracking.',
     `moq_impact` DECIMAL(18,2) COMMENT 'Change in Minimum Order Quantity (MOQ) requirements if the risk materializes and alternative sourcing is required, impacting inventory planning and working capital.',
     `next_review_date` DATE COMMENT 'Scheduled date for the next review or reassessment of this supply risk, supporting proactive risk management and governance.',
     `notes` STRING COMMENT 'Additional free-text notes, comments, or observations related to this supply risk, supporting collaboration and knowledge sharing among risk management teams.',
-    `potential_impact_duration_days` DECIMAL(18,2) COMMENT 'Estimated duration in days that the supply disruption could last if the risk materializes, used for business continuity and recovery planning.',
+    `potential_impact_duration_days` STRING COMMENT 'Estimated duration in days that the supply disruption could last if the risk materializes, used for business continuity and recovery planning.',
     `potential_supply_impact_quantity` DECIMAL(18,2) COMMENT 'Estimated quantity of material or product that could be impacted if the risk materializes, measured in the base unit of measure (UOM) for the material.',
     `probability_of_occurrence` STRING COMMENT 'Likelihood that the supply risk will materialize within the planning horizon: very high (>80% probability), high (60-80%), medium (40-60%), low (20-40%), or very low (<20%).. Valid values are `very_high|high|medium|low|very_low`',
     `risk_category` STRING COMMENT 'High-level categorization of the risk domain: supplier (vendor-related risks), material (raw material availability or price volatility), logistics (transportation and distribution risks), regulatory (compliance and legal risks), demand (demand volatility or forecast accuracy), or technology (obsolescence or system failures).. Valid values are `supplier|material|logistics|regulatory|demand|technology`',
@@ -568,10 +529,12 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`supply`.`planning_exception` (
 CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`supply`.`inventory_position` (
     `inventory_position_id` BIGINT COMMENT 'Unique identifier for the inventory position snapshot record.',
     `cost_center_id` BIGINT COMMENT 'Foreign key linking to finance.cost_center. Business justification: Inventory Valuation by Cost Center report allocates on‑hand stock value to the owning cost center.',
+    `material_master_id` BIGINT COMMENT 'add column inventory_material_master_id (BIGINT) with FK to inventory.material_master.material_master_id - inventory position must reference the material being tracked',
     `invoice_line_id` BIGINT COMMENT 'Foreign key linking to billing.invoice_line. Business justification: Financial reporting: Map inventory snapshot to invoiced line items for accurate COGS calculation and audit trails; a standard practice in manufacturing finance.',
     `mrp_run_id` BIGINT COMMENT 'Foreign key linking to supply.mrp_run. Business justification: Inventory position snapshot is generated after an MRP run; linking to mrp_run provides provenance of the snapshot.',
     `service_warranty_id` BIGINT COMMENT 'Foreign key linking to service.service_warranty. Business justification: Inventory position is used to manage stock for warranty replacements (Warranty Inventory Management process).',
     `sku_master_id` BIGINT COMMENT 'Foreign key linking to product.sku_master. Business justification: Inventory snapshots are tied to the SKU master for accurate stock valuation and reporting.',
+    `stock_location_id` BIGINT COMMENT 'add column stock_location_id (BIGINT) with FK to inventory.stock_location.stock_location_id - inventory position is location-specific',
     `abc_classification` STRING COMMENT 'The ABC classification of the material based on value or consumption volume. A items are high-value/high-volume, B items are medium, C items are low-value/low-volume.. Valid values are `A|B|C`',
     `available_to_promise_quantity` DECIMAL(18,2) COMMENT 'The quantity of material available to promise to new customer orders. Calculated as on-hand plus scheduled receipts minus existing commitments. This is the key metric for order promising and customer service.',
     `average_daily_demand` DECIMAL(18,2) COMMENT 'The average daily consumption or demand rate for the material, used for days-of-supply calculations and replenishment planning.',
@@ -595,7 +558,7 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`supply`.`inventory_position` (
     `open_production_order_quantity` DECIMAL(18,2) COMMENT 'Total quantity of material on open production orders (manufacturing orders) that are in progress or scheduled but not yet completed and received into stock.',
     `open_purchase_order_quantity` DECIMAL(18,2) COMMENT 'Total quantity of material on open purchase orders that have been released to suppliers but not yet received. This represents inbound supply in transit or scheduled for delivery.',
     `planned_receipt_date` DATE COMMENT 'The earliest date on which a planned or open order is scheduled to be received into stock. This is the next expected supply arrival date.',
-    `planning_strategy_group` DECIMAL(18,2) COMMENT 'Two-character code defining the planning strategy for the material (e.g., make-to-stock, make-to-order, engineer-to-order). Determines how demand and supply are matched.',
+    `planning_strategy_group` STRING COMMENT 'Two-character code defining the planning strategy for the material (e.g., make-to-stock, make-to-order, engineer-to-order). Determines how demand and supply are matched.. Valid values are `^[A-Z0-9]{2}$`',
     `plant_code` STRING COMMENT 'Four-character code identifying the manufacturing plant or distribution center where the inventory is held.. Valid values are `^[A-Z0-9]{4}$`',
     `procurement_type` STRING COMMENT 'Indicates how the material is procured. E = in-house production (manufactured), F = external procurement (purchased), X = both.. Valid values are `E|F|X`',
     `reorder_point_quantity` DECIMAL(18,2) COMMENT 'The inventory level at which a replenishment order should be triggered. When on-hand stock falls to or below this level, MRP (Material Requirements Planning) generates a planned order.',
@@ -627,7 +590,7 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`supply`.`moq_constraint` (
     `constraint_status` STRING COMMENT 'Current lifecycle status of the MOQ constraint. Only active constraints are applied by MRP during planning runs.. Valid values are `active|inactive|pending_approval|expired|superseded`',
     `constraint_type` STRING COMMENT 'Type of lot-sizing constraint applied to this material-supplier combination. Determines how MRP calculates procurement quantities.. Valid values are `minimum_order_quantity|fixed_lot_size|order_multiple|maximum_order_quantity|economic_order_quantity|supplier_package_size`',
     `contract_reference_number` STRING COMMENT 'Reference number of the purchasing contract or supplier agreement that defines this MOQ constraint.. Valid values are `^[A-Z0-9-]{6,20}$`',
-    `cost_impact_currency_code` DECIMAL(18,2) COMMENT 'Three-letter ISO 4217 currency code for the cost impact value.',
+    `cost_impact_currency_code` STRING COMMENT 'Three-letter ISO 4217 currency code for the cost impact value.. Valid values are `^[A-Z]{3}$`',
     `cost_impact_per_unit` DECIMAL(18,2) COMMENT 'Estimated cost impact per unit when ordering below the MOQ threshold. Used for cost-benefit analysis of MOQ exceptions.',
     `created_timestamp` TIMESTAMP COMMENT 'Timestamp when this MOQ constraint record was first created in the system.',
     `effective_end_date` DATE COMMENT 'Date after which this MOQ constraint is no longer effective. Null indicates an open-ended constraint with no expiration.',
@@ -658,7 +621,7 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`supply`.`moq_constraint` (
 
 CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`supply`.`demand_plan_version` (
     `demand_plan_version_id` BIGINT COMMENT 'Unique identifier for the demand plan version record. Primary key for the demand plan version entity.',
-    `plan_id` BIGINT COMMENT 'Reference to the parent demand plan that this version belongs to. Links to the master demand plan entity.',
+    `supply_plan_id` BIGINT COMMENT 'Reference to the parent demand plan that this version belongs to. Links to the master demand plan entity.',
     `employee_id` BIGINT COMMENT 'Reference to the user who granted final approval for this demand plan version. Links to the user or employee master for audit trail and accountability in the S&OP approval workflow.',
     `superseded_by_version_demand_plan_version_id` BIGINT COMMENT 'Reference to the newer demand plan version that replaces this version. Null if this is the current active version. Maintains version lineage and audit trail for plan evolution tracking.',
     `tertiary_demand_last_modified_by_user_employee_id` BIGINT COMMENT 'Reference to the user who most recently modified this demand plan version record. Links to the user or employee master for change tracking and accountability.',
@@ -693,6 +656,8 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`supply`.`demand_plan_version` (
 
 CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`supply`.`sop_cycle` (
     `sop_cycle_id` BIGINT COMMENT 'Unique identifier for the S&OP cycle record. Primary key.',
+    `demand_plan_version_id` BIGINT COMMENT 'add column demand_plan_version_id (BIGINT) with FK to supply.demand_plan_version.demand_plan_version_id - S&OP cycles reconcile demand plan versions',
+    `supply_plan_id` BIGINT COMMENT '',
     `employee_id` BIGINT COMMENT 'Identifier of the user responsible for orchestrating and managing this S&OP cycle. Typically the S&OP manager or demand planning manager.',
     `approval_timestamp` TIMESTAMP COMMENT 'Date and time when the S&OP cycle was formally approved by executive leadership, marking the transition to execution phase.',
     `approved_demand_forecast_version` STRING COMMENT 'Version identifier of the demand forecast approved during this S&OP cycle. Links to the demand forecast master data in Microsoft Dynamics 365 SCM.. Valid values are `^DF-[0-9]{4}-[0-9]{2}-V[0-9]{2}$`',
@@ -715,7 +680,7 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`supply`.`sop_cycle` (
     `financial_reconciliation_status` STRING COMMENT 'Status of financial reconciliation between the approved S&OP plan and the financial budget. Ensures alignment between operational plans and financial commitments.. Valid values are `not_started|in_progress|completed|approved`',
     `fiscal_period` STRING COMMENT 'Fiscal period (month) within the fiscal year, typically 1-12, used for financial reconciliation.',
     `fiscal_year` STRING COMMENT 'Fiscal year to which this S&OP cycle belongs, used for financial reconciliation and annual planning alignment.',
-    `gap_resolution_strategy` DECIMAL(18,2) COMMENT 'Description of the strategy approved to resolve demand-supply gaps, including capacity expansion, supplier escalation, demand shaping, inventory build, or customer allocation decisions.',
+    `gap_resolution_strategy` STRING COMMENT 'Description of the strategy approved to resolve demand-supply gaps, including capacity expansion, supplier escalation, demand shaping, inventory build, or customer allocation decisions.',
     `inventory_plan_value` DECIMAL(18,2) COMMENT 'Target inventory value at the end of the planning period based on the approved supply plan. Used for working capital planning and financial reconciliation.',
     `key_assumptions` STRING COMMENT 'Critical assumptions underlying the S&OP plan, including market conditions, customer demand drivers, supplier performance, capacity availability, and economic factors.',
     `last_modified_timestamp` TIMESTAMP COMMENT 'Date and time when this S&OP cycle record was last updated in the system.',
@@ -743,7 +708,7 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`supply`.`allocation` (
     `service_contract_id` BIGINT COMMENT 'Foreign key linking to service.service_contract. Business justification: Allocation of supply quantities to fulfill obligations under specific service contracts (Contract Allocation dashboard).',
     `sku_master_id` BIGINT COMMENT 'Foreign key linking to product.sku_master. Business justification: Allocation records allocate available supply to specific SKUs for order fulfillment.',
     `supplier_id` BIGINT COMMENT 'Reference to the supplier whose capacity or delivery constraints triggered the allocation decision.',
-    `plan_id` BIGINT COMMENT 'Reference to the constrained supply plan that triggered this allocation decision.',
+    `supply_plan_id` BIGINT COMMENT 'Reference to the constrained supply plan that triggered this allocation decision.',
     `allocated_quantity` DECIMAL(18,2) COMMENT 'Quantity of material allocated to the recipient entity (customer, plant, distribution center, or product line).',
     `allocation_number` STRING COMMENT 'Business-facing unique allocation identifier used for tracking and reference in supply chain communications.. Valid values are `^ALLOC-[0-9]{8}$`',
     `allocation_status` STRING COMMENT 'Current lifecycle status of the allocation decision in the supply chain workflow. [ENUM-REF-CANDIDATE: draft|proposed|approved|active|partially_fulfilled|fulfilled|cancelled|superseded — 8 candidates stripped; promote to reference product]',
@@ -785,8 +750,8 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`supply`.`replenishment_proposal
     `mrp_run_id` BIGINT COMMENT 'Reference to the MRP run that generated this replenishment proposal.',
     `order_header_id` BIGINT COMMENT 'Foreign key linking to order.order_header. Business justification: Replenishment proposals are triggered by individual sales orders; linking to order_header enables the Replenishment Proposal Generation report.',
     `employee_id` BIGINT COMMENT 'Reference to the user who firmed this proposal, locking it from automatic MRP adjustments.',
+    `quote_line_id` BIGINT COMMENT 'Foreign key linking to sales.quote_line. Business justification: Replenishment proposals are derived from quoted line items to ensure stock for quoted sales.',
     `supply_plant_id` BIGINT COMMENT 'FK to supply.plant',
-    `request_id` BIGINT COMMENT 'Foreign key linking to service.request. Business justification: Replenishment proposals are generated from field service requests for spare parts (Service‑Driven Replenishment process).',
     `sku_master_id` BIGINT COMMENT 'Foreign key linking to product.sku_master. Business justification: Replenishment proposals are generated per SKU to trigger purchase orders or production.',
     `source_plant_id` BIGINT COMMENT 'FK to supply.plant',
     `supplier_id` BIGINT COMMENT 'Reference to the preferred or proposed supplier for external procurement proposals. Null for in-house production proposals.',
@@ -831,12 +796,8 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`supply`.`replenishment_proposal
 CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`supply`.`planning_parameter` (
     `planning_parameter_id` BIGINT COMMENT 'Primary key for planning_parameter',
     `planning_calendar_id` BIGINT COMMENT 'Factory calendar identifier that defines working days, holidays, and shifts used to schedule planned order dates and calculate lead times.',
-    `employee_id` BIGINT COMMENT '',
-    `material_master_id` BIGINT COMMENT '',
-    `supply_plant_id` BIGINT COMMENT '',
-    `primary_planning_employee_id` BIGINT COMMENT 'System user identifier of the planner or administrator who created this planning parameter configuration record.',
-    `primary_planning_material_master_id` BIGINT COMMENT 'Reference to the material master record for which these planning parameters apply.',
-    `process_parameter_id` BIGINT COMMENT 'Foreign key linking to automation.process_parameter. Business justification: Connects planning parameters to defined process parameters, enabling the Production Planning‑Execution Alignment report that validates parameter consistency.',
+    `employee_id` BIGINT COMMENT 'System user identifier of the planner or administrator who created this planning parameter configuration record.',
+    `material_master_id` BIGINT COMMENT 'Reference to the material master record for which these planning parameters apply.',
     `sku_master_id` BIGINT COMMENT 'Foreign key linking to product.sku_master. Business justification: Planning parameters (lot size, lead time) are stored per SKU to drive MRP calculations.',
     `abc_indicator` STRING COMMENT 'Classification of the material based on consumption value or strategic importance: A=High Value/Critical, B=Medium Value/Moderate, C=Low Value/Routine, used to prioritize planning attention and inventory policies.. Valid values are `A|B|C`',
     `assembly_scrap_percent` DECIMAL(18,2) COMMENT 'Expected scrap or yield loss percentage during assembly or production, used to inflate gross requirements to account for anticipated waste.',
@@ -846,67 +807,47 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`supply`.`planning_parameter` (
     `conversion_indicator` STRING COMMENT 'Controls whether planned orders are automatically converted to production or purchase orders: 1=Automatic Conversion, 2=Manual Conversion Required.. Valid values are `1|2`',
     `created_timestamp` TIMESTAMP COMMENT 'Timestamp when this planning parameter configuration record was first created in the system.',
     `discontinuation_indicator` STRING COMMENT 'Flags materials in phase-out: 1=Material to be Discontinued, 2=Successor Material Exists, Z=Discontinuation Effective, used to trigger follow-up material substitution in planning.. Valid values are `1|2|Z`',
-    `effective_from_date` TIMESTAMP COMMENT '',
     `effective_out_date` DATE COMMENT 'Date on which this material is discontinued and should no longer be planned or procured, triggering transition to successor materials.',
-    `effective_to_date` TIMESTAMP COMMENT '',
-    `fixed_lot_size` DECIMAL(18,2) COMMENT '',
     `forward_consumption_period_days` STRING COMMENT 'Number of days in the future that actual demand can consume forecast quantities, allowing early orders to reduce future planned independent requirements.',
     `goods_receipt_processing_time_days` STRING COMMENT 'Time in days required for receiving, inspection, and posting of goods after physical arrival, extending the total procurement lead time.',
-    `gr_processing_time_days` STRING COMMENT '',
     `in_house_production_time_days` STRING COMMENT 'Total lead time in days required to manufacture the material in-house, from order release to goods receipt, including queue, setup, processing, and move times.',
     `individual_collective_indicator` STRING COMMENT 'Defines whether requirements are managed individually per sales order (1=Individual Requirements) or pooled across orders (2=Collective Requirements) for planning purposes.. Valid values are `1|2`',
     `jit_delivery_schedules_flag` BOOLEAN COMMENT 'Indicates whether this material is managed under JIT delivery schedules with suppliers, enabling frequent small-lot deliveries synchronized with production consumption.',
     `last_modified_timestamp` TIMESTAMP COMMENT 'Timestamp when this planning parameter configuration record was most recently updated, supporting change tracking and audit compliance.',
     `last_mrp_run_timestamp` TIMESTAMP COMMENT 'Timestamp of the most recent MRP run that processed this material-plant combination using these planning parameters, enabling audit and troubleshooting.',
     `lot_sizing_procedure` STRING COMMENT 'Method used to calculate order quantities: EX=Lot-for-Lot, HB=Replenish to Maximum Stock Level, FX=Fixed Lot Size, WB=Weekly Lot Size, LS=Lot Size Key, ZB=Periodic Lot Size, EW=Economic Order Quantity, FB=Fixed Bin Quantity, LZ=Lot Size with Rounding. [ENUM-REF-CANDIDATE: EX|HB|FX|WB|LS|ZB|EW|FB|LZ — 9 candidates stripped; promote to reference product]',
-    `maximum_lot_size` DECIMAL(18,2) COMMENT '',
     `maximum_lot_size_quantity` DECIMAL(18,2) COMMENT 'Maximum order quantity that can be procured or produced in a single lot, driven by storage capacity, equipment constraints, or supplier limitations.',
-    `minimum_lot_size` DECIMAL(18,2) COMMENT '',
     `minimum_lot_size_quantity` DECIMAL(18,2) COMMENT 'Minimum order quantity that must be procured or produced in a single lot, enforcing MOQ constraints from suppliers or production efficiency requirements.',
     `mixed_mrp_indicator` STRING COMMENT 'Controls whether subassemblies are planned with the header material or separately: 1=Plan Subassemblies Separately, 2=Plan with Header, 3=No Mixed MRP.. Valid values are `1|2|3`',
-    `mrp_controller` STRING COMMENT '',
     `mrp_controller_code` STRING COMMENT 'Three-character code identifying the planner or planning group responsible for managing MRP exceptions, firming planned orders, and coordinating supply for this material-plant combination.. Valid values are `^[A-Z0-9]{3}$`',
     `mrp_type` STRING COMMENT 'MRP procedure that controls how the planning run processes this material: PD=MRP, VB=Manual Reorder Point, VM=Automatic Reorder Point, VV=Forecast-Based Planning, ND=No Planning, R1=Time-Phased Planning, R2=Reorder Point Planning with External Requirements. [ENUM-REF-CANDIDATE: PD|VB|VM|VV|ND|R1|R2 — 7 candidates stripped; promote to reference product]',
-    `notes` STRING COMMENT '',
     `parameter_effective_date` DATE COMMENT 'Date from which this planning parameter configuration becomes active and is used by MRP runs, enabling time-phased parameter changes.',
     `parameter_expiry_date` DATE COMMENT 'Date on which this planning parameter configuration expires and is no longer used by MRP runs, supporting planned transitions to new parameter sets.',
     `parameter_status` STRING COMMENT 'Current lifecycle status of this planning parameter record: active=In Use by MRP, inactive=Disabled, pending=Awaiting Approval, archived=Historical Record.. Valid values are `active|inactive|pending|archived`',
     `period_indicator` STRING COMMENT 'Defines the planning period granularity for this material: D=Daily, W=Weekly, M=Monthly, controlling how requirements are bucketed and planned orders are generated.. Valid values are `D|W|M`',
     `planned_delivery_time_days` STRING COMMENT 'Expected procurement lead time in days from purchase order creation to goods receipt for externally procured materials, based on supplier lead time agreements.',
     `planning_horizon_days` STRING COMMENT 'Total number of days into the future that the MRP run will generate planned orders and evaluate requirements, defining the outer boundary of the planning window.',
-    `planning_strategy_group` DECIMAL(18,2) COMMENT 'Strategy that defines the planning approach: 10=Make-to-Stock, 11=Make-to-Stock with Final Assembly, 20=Make-to-Order, 25=Make-to-Order with Planning, 30=Production by Lot Size, 40=Planning at Assembly Level, 50=Planning without Final Assembly, 52=Planning with Final Assembly, 54=Planning with Planning Material, 56=Planning with Planning Material and Final Assembly, 59=Phantom Assembly, 60=Planning with Collective Requirements, 70=Planning at Sales Order Item Level, 82=Assembly Processing, 89=Configure-to-Order. [ENUM-REF-CANDIDATE: 10|11|20|25|30|40|50|52|54|56|59|60|70|82|89 — 15 candidates stripped; promote to reference product]',
+    `planning_strategy_group` STRING COMMENT 'Strategy that defines the planning approach: 10=Make-to-Stock, 11=Make-to-Stock with Final Assembly, 20=Make-to-Order, 25=Make-to-Order with Planning, 30=Production by Lot Size, 40=Planning at Assembly Level, 50=Planning without Final Assembly, 52=Planning with Final Assembly, 54=Planning with Planning Material, 56=Planning with Planning Material and Final Assembly, 59=Phantom Assembly, 60=Planning with Collective Requirements, 70=Planning at Sales Order Item Level, 82=Assembly Processing, 89=Configure-to-Order. [ENUM-REF-CANDIDATE: 10|11|20|25|30|40|50|52|54|56|59|60|70|82|89 — 15 candidates stripped; promote to reference product]',
     `planning_time_fence_days` STRING COMMENT 'Number of days from today defining the firm zone where MRP will not automatically create, reschedule, or delete planned orders without planner approval, protecting near-term execution stability.',
+    `plant_code` STRING COMMENT 'Four-character alphanumeric code identifying the manufacturing or distribution plant where these planning parameters are effective.. Valid values are `^[A-Z0-9]{4}$`',
     `procurement_type` STRING COMMENT 'Defines how the material is obtained: E=In-house Production, F=External Procurement, X=Both (production and procurement possible).. Valid values are `E|F|X`',
     `quota_arrangement_usage` STRING COMMENT 'Defines how quota arrangements distribute procurement across multiple sources: 1=Quota Arrangement Active, 2=Quota Arrangement Inactive, 3=Quota Arrangement for Subcontracting.. Valid values are `1|2|3`',
-    `reorder_point_quantity` DECIMAL(18,2) COMMENT '',
-    `rounding_value` DECIMAL(18,2) COMMENT '',
     `rounding_value_quantity` DECIMAL(18,2) COMMENT 'Quantity increment to which planned order quantities are rounded up to align with packaging units, pallet sizes, or standard container quantities.',
-    `safety_stock_quantity` DECIMAL(18,2) COMMENT '',
-    `safety_time_days` STRING COMMENT '',
     `scheduling_margin_key` STRING COMMENT 'Key that defines opening period, float before production, and float after production used in backward and forward scheduling to buffer planned order dates.. Valid values are `^[A-Z0-9]{3}$`',
-    `service_level_target_percent` DECIMAL(18,2) COMMENT '',
-    `source_system_code` STRING COMMENT '',
     `special_procurement_type` STRING COMMENT 'Special procurement rule: 10=Withdrawal from Alternative Storage Location, 20=Production in Alternative Plant, 30=External Procurement from Alternative Plant, 40=Stock Transfer, 50=Phantom Assembly, 52=Collective Requirements, 60=Cross-Project Material, 70=Consignment, 80=Pipeline, 90=Subcontracting. [ENUM-REF-CANDIDATE: 10|20|30|40|50|52|60|70|80|90 — 10 candidates stripped; promote to reference product]',
-    `strategy_group_counter` DECIMAL(18,2) COMMENT 'Sequence number used in conjunction with planning strategy group to differentiate multiple planning variants for the same material-plant combination.',
+    `strategy_group_counter` STRING COMMENT 'Sequence number used in conjunction with planning strategy group to differentiate multiple planning variants for the same material-plant combination.',
     `takt_time_minutes` DECIMAL(18,2) COMMENT 'Target production rate in minutes per unit, defining the pace at which this material must be produced to meet customer demand without overproduction or underproduction.',
-    `unit_of_measure` STRING COMMENT '',
     CONSTRAINT pk_planning_parameter PRIMARY KEY(`planning_parameter_id`)
 ) COMMENT 'Stores the configurable planning parameters that govern MRP and APS behavior for each material-plant combination, including planning strategy (make-to-stock, make-to-order, assemble-to-order), planning horizon, time fence (firm zone, trade-off zone, planning zone), lot-sizing procedure, planning calendar, and MRP controller assignment. These parameters directly control how the supply planning engine generates planned orders and requirements.';
 
 CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`supply`.`aps_scenario` (
     `aps_scenario_id` BIGINT COMMENT 'Primary key for aps_scenario',
     `baseline_aps_scenario_id` BIGINT COMMENT 'Self-referencing FK on aps_scenario (baseline_aps_scenario_id)',
-    `employee_id` BIGINT COMMENT '',
-    `plan_id` BIGINT COMMENT '',
-    `approval_timestamp` TIMESTAMP COMMENT '',
-    `approved_flag` BOOLEAN COMMENT '',
     `backorder_allowed` BOOLEAN COMMENT 'Whether backorders are permitted when demand exceeds supply.',
-    `baseline_scenario_flag` BOOLEAN COMMENT '',
     `capacity_planning_method` STRING COMMENT 'Methodology applied to allocate production capacity in the scenario.',
-    `capacity_utilization_percent` DECIMAL(18,2) COMMENT '',
     `aps_scenario_code` STRING COMMENT 'Short alphanumeric code used to reference the scenario in systems and reports.',
     `convergence_tolerance` DECIMAL(18,2) COMMENT 'Numeric tolerance for stopping criteria of the optimizer.',
-    `cost_model_version` DECIMAL(18,2) COMMENT 'Version of the cost model applied to calculate scenario economics.',
+    `cost_model_version` STRING COMMENT 'Version of the cost model applied to calculate scenario economics.',
     `created_timestamp` TIMESTAMP COMMENT 'Timestamp when the scenario record was first created.',
     `currency_code` STRING COMMENT 'Three‑letter ISO 4217 code for monetary values used in the scenario.',
     `demand_forecast_method` STRING COMMENT 'Technique used to generate demand forecasts within the scenario.',
@@ -915,39 +856,22 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`supply`.`aps_scenario` (
     `effective_end_date` DATE COMMENT 'Date after which the scenario is no longer valid (null for open‑ended).',
     `effective_start_date` DATE COMMENT 'Date from which the scenario becomes valid for planning.',
     `is_active` BOOLEAN COMMENT 'Indicates whether the scenario is currently active for planning runs.',
-    `last_modified_timestamp` TIMESTAMP COMMENT '',
     `lead_time_buffer_days` STRING COMMENT 'Additional safety buffer added to supplier lead times.',
     `lot_sizing_rule` STRING COMMENT 'Rule used to determine production lot sizes.',
-    `max_iterations` DECIMAL(18,2) COMMENT 'Upper bound on solver iterations for convergence.',
+    `max_iterations` STRING COMMENT 'Upper bound on solver iterations for convergence.',
     `aps_scenario_name` STRING COMMENT 'Human‑readable name of the planning scenario.',
     `notes` STRING COMMENT 'Free‑form notes or comments from planners.',
-    `objective_function` STRING COMMENT '',
-    `on_time_delivery_percent` DECIMAL(18,2) COMMENT '',
-    `optimization_method` STRING COMMENT '',
     `optimization_objective` STRING COMMENT 'Primary objective the optimizer seeks to achieve.',
     `overtime_allowed` BOOLEAN COMMENT 'Indicates if overtime labor can be scheduled in the scenario.',
     `planning_algorithm` STRING COMMENT 'Algorithmic approach used by the optimizer.',
     `planning_horizon_days` STRING COMMENT 'Number of future days the scenario plans for.',
-    `planning_horizon_end_date` TIMESTAMP COMMENT '',
-    `planning_horizon_start_date` TIMESTAMP COMMENT '',
-    `plant_code` STRING COMMENT '',
     `priority_level` STRING COMMENT 'Business priority of the scenario (1 = highest).',
     `regulatory_compliance_flag` BOOLEAN COMMENT 'True if the scenario adheres to applicable industry regulations (e.g., environmental, safety).',
     `related_product_family` STRING COMMENT 'Identifier of the product family that the scenario primarily addresses.',
     `safety_stock_policy` STRING COMMENT 'Policy governing safety stock calculations.',
-    `scenario_name` STRING COMMENT '',
-    `scenario_notes` STRING COMMENT '',
-    `scenario_number` STRING COMMENT '',
-    `scenario_status` STRING COMMENT '',
     `scenario_type` STRING COMMENT 'Broad category of planning the scenario supports.',
-    `service_level_percent` DECIMAL(18,2) COMMENT '',
-    `solver_run_duration_minutes` DECIMAL(18,2) COMMENT '',
-    `source_system_code` STRING COMMENT '',
     `aps_scenario_status` STRING COMMENT 'Lifecycle status of the scenario.',
     `supplier_inclusion_flag` BOOLEAN COMMENT 'Indicates whether supplier constraints are considered in the scenario.',
-    `total_cost_amount` DECIMAL(18,2) COMMENT '',
-    `total_late_orders_count` DECIMAL(18,2) COMMENT '',
-    `total_revenue_amount` DECIMAL(18,2) COMMENT '',
     `updated_by` STRING COMMENT 'Identifier of the user who last modified the scenario.',
     `updated_timestamp` TIMESTAMP COMMENT 'Timestamp of the most recent update to the scenario record.',
     `version_number` STRING COMMENT 'Version identifier for change management of the scenario definition.',
@@ -958,50 +882,31 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`supply`.`aps_scenario` (
 CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`supply`.`planning_calendar` (
     `planning_calendar_id` BIGINT COMMENT 'Primary key for planning_calendar',
     `base_planning_calendar_id` BIGINT COMMENT 'Self-referencing FK on planning_calendar (base_planning_calendar_id)',
-    `employee_id` BIGINT COMMENT '',
     `holiday_calendar_id` BIGINT COMMENT 'Reference to the holiday calendar that defines non‑working days for this planning calendar.',
-    `supply_plant_id` BIGINT COMMENT '',
     `calendar_code` STRING COMMENT 'Business identifier code used to reference the calendar in downstream systems.',
-    `calendar_name` STRING COMMENT '',
-    `calendar_status` STRING COMMENT '',
     `calendar_type` STRING COMMENT 'Category of the calendar indicating its primary planning purpose.',
     `created_timestamp` TIMESTAMP COMMENT 'Timestamp when the calendar record was first created in the system.',
     `planning_calendar_description` STRING COMMENT 'Free‑form description providing context or notes about the calendar.',
     `effective_from` DATE COMMENT 'Date when the calendar becomes effective for planning activities.',
     `effective_until` DATE COMMENT 'Date when the calendar ceases to be effective (nullable for open‑ended calendars).',
     `end_date` DATE COMMENT 'Last calendar day that is included in the planning horizon.',
-    `first_workday_of_week` STRING COMMENT '',
     `frequency` STRING COMMENT 'Granularity at which planning cycles repeat.',
-    `holidays_count` STRING COMMENT '',
     `is_holiday_calendar` BOOLEAN COMMENT 'Indicates whether the calendar includes holiday definitions (true) or not (false).',
-    `last_modified_timestamp` TIMESTAMP COMMENT '',
     `last_run_timestamp` TIMESTAMP COMMENT 'Timestamp of the most recent planning run that used this calendar.',
     `planning_calendar_name` STRING COMMENT 'Human‑readable name of the planning calendar (e.g., Fiscal 2025, Production Shift Calendar).',
     `next_run_timestamp` TIMESTAMP COMMENT 'Scheduled timestamp for the next planning run that will use this calendar.',
-    `notes` STRING COMMENT '',
-    `number_of_periods` STRING COMMENT '',
-    `period_length_days` STRING COMMENT '',
-    `period_type` STRING COMMENT '',
     `planning_horizon_days` STRING COMMENT 'Number of days covered by the calendar for forward planning.',
-    `shift_pattern_code` STRING COMMENT '',
-    `source_system_code` STRING COMMENT '',
     `start_date` DATE COMMENT 'First calendar day that is included in the planning horizon.',
     `planning_calendar_status` STRING COMMENT 'Current lifecycle status of the calendar.',
     `time_zone` STRING COMMENT 'IANA time‑zone identifier (e.g., America/Chicago) used for timestamp calculations.',
     `updated_timestamp` TIMESTAMP COMMENT 'Timestamp of the most recent update to the calendar record.',
-    `valid_from_date` TIMESTAMP COMMENT '',
-    `valid_to_date` TIMESTAMP COMMENT '',
-    `working_days_per_week` STRING COMMENT '',
-    `working_hours_per_day` DECIMAL(18,2) COMMENT '',
     `created_by` STRING COMMENT 'Identifier of the user or process that created the calendar record.',
     CONSTRAINT pk_planning_calendar PRIMARY KEY(`planning_calendar_id`)
 ) COMMENT 'Master reference table for planning_calendar. Referenced by planning_calendar_id.';
 
 CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`supply`.`supply_plant` (
     `supply_plant_id` BIGINT COMMENT 'Primary key for plant',
-    `company_code_id` BIGINT COMMENT '',
-    `address_line_1` STRING COMMENT '',
-    `address_line_2` STRING COMMENT '',
+    `asset_plant_id` BIGINT COMMENT 'add column asset_plant_id (BIGINT) with FK to asset.plant.plant_id - supply planning plants should reference the canonical plant definition in asset domain',
     `capacity` DECIMAL(18,2) COMMENT 'Maximum production capacity of the plant expressed in the unit defined by capacity_unit.',
     `capacity_unit` STRING COMMENT 'Unit of measure for the production capacity.',
     `carbon_emission_factor` DECIMAL(18,2) COMMENT 'CO₂ emission factor (kg CO₂ per unit of production) for the plant.',
@@ -1010,11 +915,9 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`supply`.`supply_plant` (
     `compliance_certifications` STRING COMMENT 'Comma‑separated list of certifications (e.g., ISO 9001, ISO 14001) held by the plant.',
     `country_code` STRING COMMENT 'Three‑letter ISO country code of the plant location.',
     `created_timestamp` TIMESTAMP COMMENT 'Timestamp when the plant record was first created in the data lake.',
-    `currency_code` STRING COMMENT '',
     `energy_source` STRING COMMENT 'Main source of energy used by the plant.',
     `is_primary_plant` BOOLEAN COMMENT 'Indicates whether this plant is the primary manufacturing site for the company.',
     `last_maintenance_date` DATE COMMENT 'Date of the most recent scheduled maintenance.',
-    `last_modified_timestamp` TIMESTAMP COMMENT '',
     `latitude` DECIMAL(18,2) COMMENT 'Geographic latitude of the plant.',
     `location_address` STRING COMMENT 'Street address of the plant facility.',
     `longitude` DECIMAL(18,2) COMMENT 'Geographic longitude of the plant.',
@@ -1022,35 +925,69 @@ CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`supply`.`supply_plant` (
     `manager_email` STRING COMMENT 'Email address of the plant manager.',
     `manager_name` STRING COMMENT 'Full name of the primary manager responsible for the plant.',
     `manager_phone` STRING COMMENT 'Contact phone number for the plant manager.',
-    `mrp_area_code` STRING COMMENT '',
     `supply_plant_name` STRING COMMENT 'Human‑readable name of the plant.',
     `next_maintenance_date` DATE COMMENT 'Planned date for the next scheduled maintenance.',
-    `notes` STRING COMMENT '',
     `number_of_shifts` STRING COMMENT 'Number of production shifts operated per day.',
     `opening_date` DATE COMMENT 'Date the plant began operations.',
     `operational_start_time` TIMESTAMP COMMENT 'Timestamp when the plant began its current operational run.',
-    `planning_calendar_code` STRING COMMENT '',
     `plant_owner` STRING COMMENT 'Legal entity that owns the plant.',
-    `plant_status` STRING COMMENT '',
     `plant_status_reason` STRING COMMENT 'Free‑text explanation for the current status of the plant.',
     `plant_type` STRING COMMENT 'Category describing the primary function of the plant.',
-    `postal_code` STRING COMMENT '',
     `power_capacity_mw` DECIMAL(18,2) COMMENT 'Maximum electrical power capacity of the plant in megawatts.',
-    `purchasing_organization_code` STRING COMMENT '',
     `region` STRING COMMENT 'Broad geographic region where the plant resides.',
     `safety_rating` STRING COMMENT 'Safety performance rating of the plant.',
     `shift_hours` DECIMAL(18,2) COMMENT 'Length of each production shift in hours.',
     `site_area_sqm` DECIMAL(18,2) COMMENT 'Total built‑up area of the plant in square meters.',
-    `source_system_code` STRING COMMENT '',
     `state_province` STRING COMMENT 'State or province of the plant location.',
     `supply_plant_status` STRING COMMENT 'Current lifecycle state of the plant.',
-    `time_zone` STRING COMMENT '',
     `timezone` STRING COMMENT 'IANA time zone identifier for the plant location.',
     `updated_timestamp` TIMESTAMP COMMENT 'Timestamp of the most recent update to the plant record.',
     `waste_management_type` STRING COMMENT 'Primary waste management approach employed at the plant.',
     `water_usage_cubic_m` DECIMAL(18,2) COMMENT 'Total water consumption of the plant per reporting period.',
     CONSTRAINT pk_supply_plant PRIMARY KEY(`supply_plant_id`)
 ) COMMENT 'Master reference table for plant. Referenced by plant_id.';
+
+CREATE OR REPLACE TABLE `vibe_manufacturing_v1`.`supply`.`supply_plan` (
+    `supply_plan_id` BIGINT COMMENT 'Primary key for plan',
+    `cost_center_id` BIGINT COMMENT 'Foreign key linking to finance.cost_center. Business justification: Supply Plan vs Budget variance analysis requires linking each supply plan to its responsible cost center.',
+    `employee_id` BIGINT COMMENT 'Identifier of the user who approved this supply plan for execution, establishing accountability for S&OP decisions.',
+    `material_master_id` BIGINT COMMENT 'Specific material or SKU for which this supply plan is created. May be null for aggregate material group plans.',
+    `sku_master_id` BIGINT COMMENT 'Foreign key linking to product.sku_master. Business justification: Supply plans reference the SKU master to allocate production capacity and material supply per product.',
+    `approval_timestamp` TIMESTAMP COMMENT 'Date and time when the supply plan was approved, marking the transition from planning to execution phase.',
+    `capacity_utilization_percentage` DECIMAL(18,2) COMMENT 'Percentage of available production or procurement capacity utilized by this supply plan, indicating capacity constraints.',
+    `created_timestamp` TIMESTAMP COMMENT 'Date and time when this supply plan record was first created in the system.',
+    `demand_forecast_quantity` DECIMAL(18,2) COMMENT 'Total forecasted demand quantity for the planning period, serving as the primary input to the supply plan.',
+    `last_modified_timestamp` TIMESTAMP COMMENT 'Date and time when this supply plan record was last updated, tracking the most recent change to planning parameters or status.',
+    `lead_time_days` STRING COMMENT 'Total lead time in days from order placement to material availability, including procurement, production, and transportation time.',
+    `lot_sizing_procedure` STRING COMMENT 'Lot-sizing rule used to determine planned order quantities: LOT_FOR_LOT (exact requirement), FIXED_LOT (fixed quantity), EOQ (Economic Order Quantity), POQ (Periodic Order Quantity), or PERIOD_LOT (period-based aggregation).. Valid values are `LOT_FOR_LOT|FIXED_LOT|EOQ|POQ|PERIOD_LOT`',
+    `material_group_code` STRING COMMENT 'Material group or product family covered by this supply plan, enabling aggregated planning at the product category level.. Valid values are `^[A-Z0-9]{4,15}$`',
+    `maximum_lot_size` DECIMAL(18,2) COMMENT 'Maximum order quantity constraint applied during supply planning, reflecting capacity or storage limitations.',
+    `minimum_lot_size` DECIMAL(18,2) COMMENT 'Minimum order quantity (MOQ) constraint applied during supply planning, reflecting supplier or production constraints.',
+    `mrp_controller_code` STRING COMMENT 'Code identifying the MRP controller or planner responsible for this supply plan, enabling workload distribution and accountability.. Valid values are `^[A-Z0-9]{3,10}$`',
+    `notes` STRING COMMENT 'Free-text notes and comments from planners regarding assumptions, constraints, or special considerations for this supply plan.',
+    `plan_number` STRING COMMENT 'Externally-known business identifier for the supply plan, used for cross-system reference and S&OP review documentation.. Valid values are `^[A-Z0-9]{8,20}$`',
+    `plan_status` STRING COMMENT 'Current lifecycle status of the supply plan: DRAFT (under development), PENDING_REVIEW (awaiting S&OP approval), APPROVED (approved for execution), ACTIVE (currently executing), SUPERSEDED (replaced by newer version), or CANCELLED (voided).. Valid values are `DRAFT|PENDING_REVIEW|APPROVED|ACTIVE|SUPERSEDED|CANCELLED`',
+    `planned_supply_quantity` DECIMAL(18,2) COMMENT 'Total quantity of material planned to be supplied during the planning period, aggregated across all time buckets.',
+    `planning_horizon_days` STRING COMMENT 'Number of days into the future covered by this supply plan, defining the forward-looking planning window.',
+    `planning_method` STRING COMMENT 'Method used to generate the supply plan: MRP (Material Requirements Planning), MRP II (Manufacturing Resource Planning), APS (Advanced Planning and Scheduling), MANUAL (manual planning), JIT (Just In Time), or KANBAN (pull-based replenishment).. Valid values are `MRP|MRP_II|APS|MANUAL|JIT|KANBAN`',
+    `planning_period_end_date` DATE COMMENT 'End date of the planning horizon covered by this supply plan.',
+    `planning_period_start_date` DATE COMMENT 'Start date of the planning horizon covered by this supply plan.',
+    `planning_run_timestamp` TIMESTAMP COMMENT 'Date and time when the MRP/APS planning run was executed to generate this supply plan.',
+    `planning_strategy` STRING COMMENT 'Supply planning strategy: MTS (Make to Stock), MTO (Make to Order), ATO (Assemble to Order), or ETO (Engineer to Order).. Valid values are `MTS|MTO|ATO|ETO`',
+    `planning_time_fence_days` STRING COMMENT 'Number of days from today within which the planning system will not automatically change planned orders, protecting near-term execution stability.',
+    `plant_code` STRING COMMENT 'Manufacturing plant or distribution center for which this supply plan is created.. Valid values are `^[A-Z0-9]{4,10}$`',
+    `procurement_type` STRING COMMENT 'Source of supply: IN_HOUSE (internal production), EXTERNAL (external procurement from suppliers), or BOTH (mixed sourcing).. Valid values are `IN_HOUSE|EXTERNAL|BOTH`',
+    `reorder_point_quantity` DECIMAL(18,2) COMMENT 'Reorder point quantity that triggers replenishment planning when stock falls below this threshold.',
+    `rounding_value` DECIMAL(18,2) COMMENT 'Rounding increment for planned order quantities, ensuring orders align with packaging or production batch multiples.',
+    `safety_stock_quantity` DECIMAL(18,2) COMMENT 'Safety stock level maintained as buffer against demand variability and supply uncertainty, factored into the supply plan.',
+    `source_system_code` STRING COMMENT 'Code identifying the source system that generated this supply plan: SAP_PP (SAP Production Planning), DYNAMICS_SCM (Microsoft Dynamics 365 Supply Chain Management), OPCENTER (Siemens Opcenter APS), or MANUAL (manually created).. Valid values are `SAP_PP|DYNAMICS_SCM|OPCENTER|MANUAL`',
+    `supply_risk_level` STRING COMMENT 'Assessed risk level for supply availability: LOW (stable supply), MEDIUM (minor risks), HIGH (significant risks), or CRITICAL (severe supply constraints).. Valid values are `LOW|MEDIUM|HIGH|CRITICAL`',
+    `unit_of_measure` STRING COMMENT 'Unit of measure for the planned supply quantity (e.g., EA for each, KG for kilogram, L for liter, M for meter).. Valid values are `^[A-Z]{2,5}$`',
+    `variance_percentage` DECIMAL(18,2) COMMENT 'Variance expressed as a percentage of demand forecast, enabling normalized comparison across materials.',
+    `variance_quantity` DECIMAL(18,2) COMMENT 'Variance between planned supply quantity and demand forecast quantity, indicating over-planning or under-planning.',
+    `version` STRING COMMENT 'Version identifier for the supply plan, enabling comparison of multiple planning scenarios and what-if analysis.. Valid values are `^[A-Z0-9]{1,10}$`',
+    CONSTRAINT pk_supply_plan PRIMARY KEY(`supply_plan_id`)
+) COMMENT 'Master supply plan record representing the approved supply response to demand for a given planning period, plant, and material group. Captures planned supply quantities by time bucket, planning method (MRP, APS, manual), plan version, approval status, planning parameters (strategy, horizon, time fences, lot-sizing procedure, MRP controller), and variance against demand forecast. Integrates outputs from SAP PP and Microsoft Dynamics 365 SCM APS scheduling into a unified supply position for S&OP review.';
 
 -- ========= FOREIGN KEYS =========
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`planned_order` ADD CONSTRAINT `fk_supply_planned_order_mrp_run_id` FOREIGN KEY (`mrp_run_id`) REFERENCES `vibe_manufacturing_v1`.`supply`.`mrp_run`(`mrp_run_id`);
@@ -1061,18 +998,17 @@ ALTER TABLE `vibe_manufacturing_v1`.`supply`.`sourcing_rule` ADD CONSTRAINT `fk_
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`risk_register` ADD CONSTRAINT `fk_supply_risk_register_network_node_id` FOREIGN KEY (`network_node_id`) REFERENCES `vibe_manufacturing_v1`.`supply`.`network_node`(`network_node_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`planning_exception` ADD CONSTRAINT `fk_supply_planning_exception_mrp_run_id` FOREIGN KEY (`mrp_run_id`) REFERENCES `vibe_manufacturing_v1`.`supply`.`mrp_run`(`mrp_run_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`inventory_position` ADD CONSTRAINT `fk_supply_inventory_position_mrp_run_id` FOREIGN KEY (`mrp_run_id`) REFERENCES `vibe_manufacturing_v1`.`supply`.`mrp_run`(`mrp_run_id`);
-ALTER TABLE `vibe_manufacturing_v1`.`supply`.`demand_plan_version` ADD CONSTRAINT `fk_supply_demand_plan_version_plan_id` FOREIGN KEY (`plan_id`) REFERENCES `vibe_manufacturing_v1`.`supply`.`plan`(`plan_id`);
+ALTER TABLE `vibe_manufacturing_v1`.`supply`.`demand_plan_version` ADD CONSTRAINT `fk_supply_demand_plan_version_supply_plan_id` FOREIGN KEY (`supply_plan_id`) REFERENCES `vibe_manufacturing_v1`.`supply`.`supply_plan`(`supply_plan_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`demand_plan_version` ADD CONSTRAINT `fk_supply_demand_plan_version_superseded_by_version_demand_plan_version_id` FOREIGN KEY (`superseded_by_version_demand_plan_version_id`) REFERENCES `vibe_manufacturing_v1`.`supply`.`demand_plan_version`(`demand_plan_version_id`);
-ALTER TABLE `vibe_manufacturing_v1`.`supply`.`allocation` ADD CONSTRAINT `fk_supply_allocation_plan_id` FOREIGN KEY (`plan_id`) REFERENCES `vibe_manufacturing_v1`.`supply`.`plan`(`plan_id`);
+ALTER TABLE `vibe_manufacturing_v1`.`supply`.`sop_cycle` ADD CONSTRAINT `fk_supply_sop_cycle_demand_plan_version_id` FOREIGN KEY (`demand_plan_version_id`) REFERENCES `vibe_manufacturing_v1`.`supply`.`demand_plan_version`(`demand_plan_version_id`);
+ALTER TABLE `vibe_manufacturing_v1`.`supply`.`sop_cycle` ADD CONSTRAINT `fk_supply_sop_cycle_supply_plan_id` FOREIGN KEY (`supply_plan_id`) REFERENCES `vibe_manufacturing_v1`.`supply`.`supply_plan`(`supply_plan_id`);
+ALTER TABLE `vibe_manufacturing_v1`.`supply`.`allocation` ADD CONSTRAINT `fk_supply_allocation_supply_plan_id` FOREIGN KEY (`supply_plan_id`) REFERENCES `vibe_manufacturing_v1`.`supply`.`supply_plan`(`supply_plan_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`replenishment_proposal` ADD CONSTRAINT `fk_supply_replenishment_proposal_mrp_run_id` FOREIGN KEY (`mrp_run_id`) REFERENCES `vibe_manufacturing_v1`.`supply`.`mrp_run`(`mrp_run_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`replenishment_proposal` ADD CONSTRAINT `fk_supply_replenishment_proposal_supply_plant_id` FOREIGN KEY (`supply_plant_id`) REFERENCES `vibe_manufacturing_v1`.`supply`.`supply_plant`(`supply_plant_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`replenishment_proposal` ADD CONSTRAINT `fk_supply_replenishment_proposal_source_plant_id` FOREIGN KEY (`source_plant_id`) REFERENCES `vibe_manufacturing_v1`.`supply`.`supply_plant`(`supply_plant_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`planning_parameter` ADD CONSTRAINT `fk_supply_planning_parameter_planning_calendar_id` FOREIGN KEY (`planning_calendar_id`) REFERENCES `vibe_manufacturing_v1`.`supply`.`planning_calendar`(`planning_calendar_id`);
-ALTER TABLE `vibe_manufacturing_v1`.`supply`.`planning_parameter` ADD CONSTRAINT `fk_supply_planning_parameter_supply_plant_id` FOREIGN KEY (`supply_plant_id`) REFERENCES `vibe_manufacturing_v1`.`supply`.`supply_plant`(`supply_plant_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`aps_scenario` ADD CONSTRAINT `fk_supply_aps_scenario_baseline_aps_scenario_id` FOREIGN KEY (`baseline_aps_scenario_id`) REFERENCES `vibe_manufacturing_v1`.`supply`.`aps_scenario`(`aps_scenario_id`);
-ALTER TABLE `vibe_manufacturing_v1`.`supply`.`aps_scenario` ADD CONSTRAINT `fk_supply_aps_scenario_plan_id` FOREIGN KEY (`plan_id`) REFERENCES `vibe_manufacturing_v1`.`supply`.`plan`(`plan_id`);
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`planning_calendar` ADD CONSTRAINT `fk_supply_planning_calendar_base_planning_calendar_id` FOREIGN KEY (`base_planning_calendar_id`) REFERENCES `vibe_manufacturing_v1`.`supply`.`planning_calendar`(`planning_calendar_id`);
-ALTER TABLE `vibe_manufacturing_v1`.`supply`.`planning_calendar` ADD CONSTRAINT `fk_supply_planning_calendar_supply_plant_id` FOREIGN KEY (`supply_plant_id`) REFERENCES `vibe_manufacturing_v1`.`supply`.`supply_plant`(`supply_plant_id`);
 
 -- ========= TAGS =========
 ALTER SCHEMA `vibe_manufacturing_v1`.`supply` SET TAGS ('dbx_division' = 'operations');
@@ -1125,7 +1061,7 @@ ALTER TABLE `vibe_manufacturing_v1`.`supply`.`mrp_run` ALTER COLUMN `scheduling_
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`mrp_run` ALTER COLUMN `scheduling_method` SET TAGS ('dbx_value_regex' = 'forward|backward|finite|infinite');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`mrp_run` ALTER COLUMN `source_system_code` SET TAGS ('dbx_business_glossary_term' = 'Source System Code');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`planned_order` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_manufacturing_v1`.`supply`.`planned_order` SET TAGS ('dbx_subdomain' = 'supply_execution');
+ALTER TABLE `vibe_manufacturing_v1`.`supply`.`planned_order` SET TAGS ('dbx_subdomain' = 'demand_planning');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`planned_order` ALTER COLUMN `planned_order_id` SET TAGS ('dbx_business_glossary_term' = 'Planned Order ID');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`planned_order` ALTER COLUMN `bom_id` SET TAGS ('dbx_business_glossary_term' = 'BOM (Bill of Materials) ID');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`planned_order` ALTER COLUMN `cost_center_id` SET TAGS ('dbx_business_glossary_term' = 'Cost Center Id (Foreign Key)');
@@ -1215,8 +1151,6 @@ ALTER TABLE `vibe_manufacturing_v1`.`supply`.`demand_forecast` ALTER COLUMN `for
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`demand_forecast` ALTER COLUMN `forecast_model_code` SET TAGS ('dbx_business_glossary_term' = 'Forecast Model Code');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`demand_forecast` ALTER COLUMN `forecast_model_code` SET TAGS ('dbx_value_regex' = '^[A-Z0-9_]{2,20}$');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`demand_forecast` ALTER COLUMN `forecast_model_name` SET TAGS ('dbx_business_glossary_term' = 'Forecast Model Name');
-ALTER TABLE `vibe_manufacturing_v1`.`supply`.`demand_forecast` ALTER COLUMN `forecast_model_name` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_manufacturing_v1`.`supply`.`demand_forecast` ALTER COLUMN `forecast_model_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`demand_forecast` ALTER COLUMN `forecast_number` SET TAGS ('dbx_business_glossary_term' = 'Forecast Number');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`demand_forecast` ALTER COLUMN `forecast_number` SET TAGS ('dbx_value_regex' = '^FC-[0-9]{8}-[0-9]{4}$');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`demand_forecast` ALTER COLUMN `forecast_quantity` SET TAGS ('dbx_business_glossary_term' = 'Forecast Quantity');
@@ -1240,8 +1174,6 @@ ALTER TABLE `vibe_manufacturing_v1`.`supply`.`demand_forecast` ALTER COLUMN `pro
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`demand_forecast` ALTER COLUMN `sales_adjustment_quantity` SET TAGS ('dbx_business_glossary_term' = 'Sales Adjustment Quantity');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`demand_forecast` ALTER COLUMN `sales_adjustment_reason` SET TAGS ('dbx_business_glossary_term' = 'Sales Adjustment Reason');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`demand_forecast` ALTER COLUMN `scenario_name` SET TAGS ('dbx_business_glossary_term' = 'Scenario Name');
-ALTER TABLE `vibe_manufacturing_v1`.`supply`.`demand_forecast` ALTER COLUMN `scenario_name` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_manufacturing_v1`.`supply`.`demand_forecast` ALTER COLUMN `scenario_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`demand_forecast` ALTER COLUMN `seasonality_index` SET TAGS ('dbx_business_glossary_term' = 'Seasonality Index');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`demand_forecast` ALTER COLUMN `source_system_code` SET TAGS ('dbx_business_glossary_term' = 'Source System Code');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`demand_forecast` ALTER COLUMN `source_system_code` SET TAGS ('dbx_value_regex' = '^[A-Z0-9_]{2,20}$');
@@ -1250,68 +1182,15 @@ ALTER TABLE `vibe_manufacturing_v1`.`supply`.`demand_forecast` ALTER COLUMN `uni
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`demand_forecast` ALTER COLUMN `unit_of_measure` SET TAGS ('dbx_value_regex' = '^[A-Z]{2,3}$');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`demand_forecast` ALTER COLUMN `version_type` SET TAGS ('dbx_business_glossary_term' = 'Forecast Version Type');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`demand_forecast` ALTER COLUMN `version_type` SET TAGS ('dbx_value_regex' = 'baseline|sales_adjusted|consensus|approved|working');
-ALTER TABLE `vibe_manufacturing_v1`.`supply`.`plan` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_manufacturing_v1`.`supply`.`plan` SET TAGS ('dbx_subdomain' = 'demand_planning');
-ALTER TABLE `vibe_manufacturing_v1`.`supply`.`plan` ALTER COLUMN `plan_id` SET TAGS ('dbx_business_glossary_term' = 'Plan Identifier');
-ALTER TABLE `vibe_manufacturing_v1`.`supply`.`plan` ALTER COLUMN `cost_center_id` SET TAGS ('dbx_business_glossary_term' = 'Cost Center Id (Foreign Key)');
-ALTER TABLE `vibe_manufacturing_v1`.`supply`.`plan` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Approved By User ID');
-ALTER TABLE `vibe_manufacturing_v1`.`supply`.`plan` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`supply`.`plan` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`supply`.`plan` ALTER COLUMN `material_master_id` SET TAGS ('dbx_business_glossary_term' = 'Material ID');
-ALTER TABLE `vibe_manufacturing_v1`.`supply`.`plan` ALTER COLUMN `sku_master_id` SET TAGS ('dbx_business_glossary_term' = 'Sku Master Id (Foreign Key)');
-ALTER TABLE `vibe_manufacturing_v1`.`supply`.`plan` ALTER COLUMN `approval_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Approval Timestamp');
-ALTER TABLE `vibe_manufacturing_v1`.`supply`.`plan` ALTER COLUMN `capacity_utilization_percentage` SET TAGS ('dbx_business_glossary_term' = 'Capacity Utilization Percentage');
-ALTER TABLE `vibe_manufacturing_v1`.`supply`.`plan` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
-ALTER TABLE `vibe_manufacturing_v1`.`supply`.`plan` ALTER COLUMN `demand_forecast_quantity` SET TAGS ('dbx_business_glossary_term' = 'Demand Forecast Quantity');
-ALTER TABLE `vibe_manufacturing_v1`.`supply`.`plan` ALTER COLUMN `last_modified_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Last Modified Timestamp');
-ALTER TABLE `vibe_manufacturing_v1`.`supply`.`plan` ALTER COLUMN `lead_time_days` SET TAGS ('dbx_business_glossary_term' = 'Lead Time Days');
-ALTER TABLE `vibe_manufacturing_v1`.`supply`.`plan` ALTER COLUMN `lot_sizing_procedure` SET TAGS ('dbx_business_glossary_term' = 'Lot Sizing Procedure');
-ALTER TABLE `vibe_manufacturing_v1`.`supply`.`plan` ALTER COLUMN `lot_sizing_procedure` SET TAGS ('dbx_value_regex' = 'LOT_FOR_LOT|FIXED_LOT|EOQ|POQ|PERIOD_LOT');
-ALTER TABLE `vibe_manufacturing_v1`.`supply`.`plan` ALTER COLUMN `material_group_code` SET TAGS ('dbx_business_glossary_term' = 'Material Group Code');
-ALTER TABLE `vibe_manufacturing_v1`.`supply`.`plan` ALTER COLUMN `material_group_code` SET TAGS ('dbx_value_regex' = '^[A-Z0-9]{4,15}$');
-ALTER TABLE `vibe_manufacturing_v1`.`supply`.`plan` ALTER COLUMN `maximum_lot_size` SET TAGS ('dbx_business_glossary_term' = 'Maximum Lot Size');
-ALTER TABLE `vibe_manufacturing_v1`.`supply`.`plan` ALTER COLUMN `minimum_lot_size` SET TAGS ('dbx_business_glossary_term' = 'Minimum Lot Size (MOQ)');
-ALTER TABLE `vibe_manufacturing_v1`.`supply`.`plan` ALTER COLUMN `mrp_controller_code` SET TAGS ('dbx_business_glossary_term' = 'MRP (Material Requirements Planning) Controller Code');
-ALTER TABLE `vibe_manufacturing_v1`.`supply`.`plan` ALTER COLUMN `mrp_controller_code` SET TAGS ('dbx_value_regex' = '^[A-Z0-9]{3,10}$');
-ALTER TABLE `vibe_manufacturing_v1`.`supply`.`plan` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Plan Notes');
-ALTER TABLE `vibe_manufacturing_v1`.`supply`.`plan` ALTER COLUMN `plan_number` SET TAGS ('dbx_business_glossary_term' = 'Supply Plan Number');
-ALTER TABLE `vibe_manufacturing_v1`.`supply`.`plan` ALTER COLUMN `plan_number` SET TAGS ('dbx_value_regex' = '^[A-Z0-9]{8,20}$');
-ALTER TABLE `vibe_manufacturing_v1`.`supply`.`plan` ALTER COLUMN `plan_status` SET TAGS ('dbx_business_glossary_term' = 'Plan Status');
-ALTER TABLE `vibe_manufacturing_v1`.`supply`.`plan` ALTER COLUMN `plan_status` SET TAGS ('dbx_value_regex' = 'DRAFT|PENDING_REVIEW|APPROVED|ACTIVE|SUPERSEDED|CANCELLED');
-ALTER TABLE `vibe_manufacturing_v1`.`supply`.`plan` ALTER COLUMN `planned_supply_quantity` SET TAGS ('dbx_business_glossary_term' = 'Planned Supply Quantity');
-ALTER TABLE `vibe_manufacturing_v1`.`supply`.`plan` ALTER COLUMN `planning_horizon_days` SET TAGS ('dbx_business_glossary_term' = 'Planning Horizon Days');
-ALTER TABLE `vibe_manufacturing_v1`.`supply`.`plan` ALTER COLUMN `planning_method` SET TAGS ('dbx_business_glossary_term' = 'Planning Method');
-ALTER TABLE `vibe_manufacturing_v1`.`supply`.`plan` ALTER COLUMN `planning_method` SET TAGS ('dbx_value_regex' = 'MRP|MRP_II|APS|MANUAL|JIT|KANBAN');
-ALTER TABLE `vibe_manufacturing_v1`.`supply`.`plan` ALTER COLUMN `planning_period_end_date` SET TAGS ('dbx_business_glossary_term' = 'Planning Period End Date');
-ALTER TABLE `vibe_manufacturing_v1`.`supply`.`plan` ALTER COLUMN `planning_period_start_date` SET TAGS ('dbx_business_glossary_term' = 'Planning Period Start Date');
-ALTER TABLE `vibe_manufacturing_v1`.`supply`.`plan` ALTER COLUMN `planning_run_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Planning Run Timestamp');
-ALTER TABLE `vibe_manufacturing_v1`.`supply`.`plan` ALTER COLUMN `planning_strategy` SET TAGS ('dbx_business_glossary_term' = 'Planning Strategy');
-ALTER TABLE `vibe_manufacturing_v1`.`supply`.`plan` ALTER COLUMN `planning_time_fence_days` SET TAGS ('dbx_business_glossary_term' = 'Planning Time Fence Days');
-ALTER TABLE `vibe_manufacturing_v1`.`supply`.`plan` ALTER COLUMN `plant_code` SET TAGS ('dbx_business_glossary_term' = 'Plant Code');
-ALTER TABLE `vibe_manufacturing_v1`.`supply`.`plan` ALTER COLUMN `plant_code` SET TAGS ('dbx_value_regex' = '^[A-Z0-9]{4,10}$');
-ALTER TABLE `vibe_manufacturing_v1`.`supply`.`plan` ALTER COLUMN `procurement_type` SET TAGS ('dbx_business_glossary_term' = 'Procurement Type');
-ALTER TABLE `vibe_manufacturing_v1`.`supply`.`plan` ALTER COLUMN `procurement_type` SET TAGS ('dbx_value_regex' = 'IN_HOUSE|EXTERNAL|BOTH');
-ALTER TABLE `vibe_manufacturing_v1`.`supply`.`plan` ALTER COLUMN `reorder_point_quantity` SET TAGS ('dbx_business_glossary_term' = 'Reorder Point (ROP) Quantity');
-ALTER TABLE `vibe_manufacturing_v1`.`supply`.`plan` ALTER COLUMN `rounding_value` SET TAGS ('dbx_business_glossary_term' = 'Rounding Value');
-ALTER TABLE `vibe_manufacturing_v1`.`supply`.`plan` ALTER COLUMN `safety_stock_quantity` SET TAGS ('dbx_business_glossary_term' = 'Safety Stock Quantity');
-ALTER TABLE `vibe_manufacturing_v1`.`supply`.`plan` ALTER COLUMN `source_system_code` SET TAGS ('dbx_business_glossary_term' = 'Source System Code');
-ALTER TABLE `vibe_manufacturing_v1`.`supply`.`plan` ALTER COLUMN `source_system_code` SET TAGS ('dbx_value_regex' = 'SAP_PP|DYNAMICS_SCM|OPCENTER|MANUAL');
-ALTER TABLE `vibe_manufacturing_v1`.`supply`.`plan` ALTER COLUMN `supply_risk_level` SET TAGS ('dbx_business_glossary_term' = 'Supply Risk Level');
-ALTER TABLE `vibe_manufacturing_v1`.`supply`.`plan` ALTER COLUMN `supply_risk_level` SET TAGS ('dbx_value_regex' = 'LOW|MEDIUM|HIGH|CRITICAL');
-ALTER TABLE `vibe_manufacturing_v1`.`supply`.`plan` ALTER COLUMN `unit_of_measure` SET TAGS ('dbx_business_glossary_term' = 'Unit of Measure (UOM)');
-ALTER TABLE `vibe_manufacturing_v1`.`supply`.`plan` ALTER COLUMN `unit_of_measure` SET TAGS ('dbx_value_regex' = '^[A-Z]{2,5}$');
-ALTER TABLE `vibe_manufacturing_v1`.`supply`.`plan` ALTER COLUMN `variance_percentage` SET TAGS ('dbx_business_glossary_term' = 'Variance Percentage');
-ALTER TABLE `vibe_manufacturing_v1`.`supply`.`plan` ALTER COLUMN `variance_quantity` SET TAGS ('dbx_business_glossary_term' = 'Variance Quantity');
-ALTER TABLE `vibe_manufacturing_v1`.`supply`.`plan` ALTER COLUMN `version` SET TAGS ('dbx_business_glossary_term' = 'Plan Version');
-ALTER TABLE `vibe_manufacturing_v1`.`supply`.`plan` ALTER COLUMN `version` SET TAGS ('dbx_value_regex' = '^[A-Z0-9]{1,10}$');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`capacity_plan` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_manufacturing_v1`.`supply`.`capacity_plan` SET TAGS ('dbx_subdomain' = 'supply_execution');
+ALTER TABLE `vibe_manufacturing_v1`.`supply`.`capacity_plan` SET TAGS ('dbx_subdomain' = 'supply_scheduling');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`capacity_plan` ALTER COLUMN `capacity_plan_id` SET TAGS ('dbx_business_glossary_term' = 'Capacity Plan ID');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`capacity_plan` ALTER COLUMN `aps_scenario_id` SET TAGS ('dbx_business_glossary_term' = 'Advanced Planning and Scheduling (APS) Scenario ID');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`capacity_plan` ALTER COLUMN `cost_center_id` SET TAGS ('dbx_business_glossary_term' = 'Cost Center Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`capacity_plan` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Planner ID');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`capacity_plan` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`capacity_plan` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`supply`.`capacity_plan` ALTER COLUMN `plant_data_id` SET TAGS ('dbx_business_glossary_term' = 'Plant ID');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`capacity_plan` ALTER COLUMN `work_center_id` SET TAGS ('dbx_business_glossary_term' = 'Work Center ID');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`capacity_plan` ALTER COLUMN `available_capacity_hours` SET TAGS ('dbx_business_glossary_term' = 'Available Capacity Hours');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`capacity_plan` ALTER COLUMN `capacity_buffer_hours` SET TAGS ('dbx_business_glossary_term' = 'Capacity Buffer Hours');
@@ -1329,6 +1208,7 @@ ALTER TABLE `vibe_manufacturing_v1`.`supply`.`capacity_plan` ALTER COLUMN `is_bo
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`capacity_plan` ALTER COLUMN `last_mrp_run_date` SET TAGS ('dbx_business_glossary_term' = 'Last Material Requirements Planning (MRP) Run Date');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`capacity_plan` ALTER COLUMN `leveling_adjustment_hours` SET TAGS ('dbx_business_glossary_term' = 'Leveling Adjustment Hours');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`capacity_plan` ALTER COLUMN `leveling_strategy` SET TAGS ('dbx_business_glossary_term' = 'Leveling Strategy');
+ALTER TABLE `vibe_manufacturing_v1`.`supply`.`capacity_plan` ALTER COLUMN `leveling_strategy` SET TAGS ('dbx_value_regex' = 'overtime|shift_add|subcontract|reschedule|none');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`capacity_plan` ALTER COLUMN `mrp_controller` SET TAGS ('dbx_business_glossary_term' = 'Material Requirements Planning (MRP) Controller');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`capacity_plan` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Capacity Plan Notes');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`capacity_plan` ALTER COLUMN `overload_hours` SET TAGS ('dbx_business_glossary_term' = 'Overload Hours');
@@ -1355,20 +1235,20 @@ ALTER TABLE `vibe_manufacturing_v1`.`supply`.`capacity_plan` ALTER COLUMN `shift
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`capacity_plan` ALTER COLUMN `underload_hours` SET TAGS ('dbx_business_glossary_term' = 'Underload Hours');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`capacity_plan` ALTER COLUMN `unplanned_downtime_hours` SET TAGS ('dbx_business_glossary_term' = 'Unplanned Downtime Hours');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`aps_schedule` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_manufacturing_v1`.`supply`.`aps_schedule` SET TAGS ('dbx_subdomain' = 'supply_execution');
+ALTER TABLE `vibe_manufacturing_v1`.`supply`.`aps_schedule` SET TAGS ('dbx_subdomain' = 'supply_scheduling');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`aps_schedule` ALTER COLUMN `aps_schedule_id` SET TAGS ('dbx_business_glossary_term' = 'Advanced Planning and Scheduling (APS) Schedule ID');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`aps_schedule` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Operator ID');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`aps_schedule` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`aps_schedule` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`aps_schedule` ALTER COLUMN `material_master_id` SET TAGS ('dbx_business_glossary_term' = 'Material ID');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`aps_schedule` ALTER COLUMN `production_work_order_id` SET TAGS ('dbx_business_glossary_term' = 'Production Order ID');
-ALTER TABLE `vibe_manufacturing_v1`.`supply`.`aps_schedule` ALTER COLUMN `run_id` SET TAGS ('dbx_business_glossary_term' = 'Scheduling Run ID');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`aps_schedule` ALTER COLUMN `sku_master_id` SET TAGS ('dbx_business_glossary_term' = 'Sku Master Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`aps_schedule` ALTER COLUMN `work_center_id` SET TAGS ('dbx_business_glossary_term' = 'Work Center ID');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`aps_schedule` ALTER COLUMN `capacity_utilization_percent` SET TAGS ('dbx_business_glossary_term' = 'Capacity Utilization Percentage');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`aps_schedule` ALTER COLUMN `constraint_type` SET TAGS ('dbx_business_glossary_term' = 'Constraint Type');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`aps_schedule` ALTER COLUMN `constraint_type` SET TAGS ('dbx_value_regex' = 'capacity|material|tooling|operator|none');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`aps_schedule` ALTER COLUMN `cost_center_code` SET TAGS ('dbx_business_glossary_term' = 'Cost Center Code');
+ALTER TABLE `vibe_manufacturing_v1`.`supply`.`aps_schedule` ALTER COLUMN `cost_center_code` SET TAGS ('dbx_value_regex' = '^[A-Z0-9]{6,10}$');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`aps_schedule` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`aps_schedule` ALTER COLUMN `critical_path_flag` SET TAGS ('dbx_business_glossary_term' = 'Critical Path Flag');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`aps_schedule` ALTER COLUMN `currency_code` SET TAGS ('dbx_business_glossary_term' = 'Currency Code');
@@ -1380,6 +1260,7 @@ ALTER TABLE `vibe_manufacturing_v1`.`supply`.`aps_schedule` ALTER COLUMN `latest
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`aps_schedule` ALTER COLUMN `machine_code` SET TAGS ('dbx_business_glossary_term' = 'Machine ID');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`aps_schedule` ALTER COLUMN `modified_by_user` SET TAGS ('dbx_business_glossary_term' = 'Modified By User');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`aps_schedule` ALTER COLUMN `operation_number` SET TAGS ('dbx_business_glossary_term' = 'Operation Number');
+ALTER TABLE `vibe_manufacturing_v1`.`supply`.`aps_schedule` ALTER COLUMN `operation_number` SET TAGS ('dbx_value_regex' = '^[0-9]{4}$');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`aps_schedule` ALTER COLUMN `overlap_allowed_flag` SET TAGS ('dbx_business_glossary_term' = 'Overlap Allowed Flag');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`aps_schedule` ALTER COLUMN `planned_quantity` SET TAGS ('dbx_business_glossary_term' = 'Planned Quantity');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`aps_schedule` ALTER COLUMN `planning_horizon_date` SET TAGS ('dbx_business_glossary_term' = 'Planning Horizon Date');
@@ -1413,7 +1294,7 @@ ALTER TABLE `vibe_manufacturing_v1`.`supply`.`aps_schedule` ALTER COLUMN `teardo
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`aps_schedule` ALTER COLUMN `unit_of_measure` SET TAGS ('dbx_business_glossary_term' = 'Unit of Measure (UOM)');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`aps_schedule` ALTER COLUMN `unit_of_measure` SET TAGS ('dbx_value_regex' = '^[A-Z]{2,3}$');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`material_requirement` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_manufacturing_v1`.`supply`.`material_requirement` SET TAGS ('dbx_subdomain' = 'supply_execution');
+ALTER TABLE `vibe_manufacturing_v1`.`supply`.`material_requirement` SET TAGS ('dbx_subdomain' = 'demand_planning');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`material_requirement` ALTER COLUMN `material_requirement_id` SET TAGS ('dbx_business_glossary_term' = 'Material Requirement ID');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`material_requirement` ALTER COLUMN `cost_center_id` SET TAGS ('dbx_business_glossary_term' = 'Cost Center Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`material_requirement` ALTER COLUMN `material_master_id` SET TAGS ('dbx_business_glossary_term' = 'Material ID');
@@ -1469,17 +1350,16 @@ ALTER TABLE `vibe_manufacturing_v1`.`supply`.`material_requirement` ALTER COLUMN
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`network_node` SET TAGS ('dbx_data_type' = 'master_data');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`network_node` SET TAGS ('dbx_subdomain' = 'network_configuration');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`network_node` ALTER COLUMN `network_node_id` SET TAGS ('dbx_business_glossary_term' = 'Network Node Identifier');
+ALTER TABLE `vibe_manufacturing_v1`.`supply`.`network_node` ALTER COLUMN `network_segment_id` SET TAGS ('dbx_business_glossary_term' = 'Network Segment Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`network_node` ALTER COLUMN `node_id` SET TAGS ('dbx_business_glossary_term' = 'Logistics Node Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`network_node` ALTER COLUMN `site_id` SET TAGS ('dbx_business_glossary_term' = 'Supplier Site Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`network_node` ALTER COLUMN `active_sourcing_rules` SET TAGS ('dbx_business_glossary_term' = 'Active Sourcing Rules');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`network_node` ALTER COLUMN `address_line_1` SET TAGS ('dbx_business_glossary_term' = 'Address Line 1');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`network_node` ALTER COLUMN `address_line_1` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`network_node` ALTER COLUMN `address_line_1` SET TAGS ('dbx_pii_address' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`supply`.`network_node` ALTER COLUMN `address_line_1` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`network_node` ALTER COLUMN `address_line_2` SET TAGS ('dbx_business_glossary_term' = 'Address Line 2');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`network_node` ALTER COLUMN `address_line_2` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`network_node` ALTER COLUMN `address_line_2` SET TAGS ('dbx_pii_address' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`supply`.`network_node` ALTER COLUMN `address_line_2` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`network_node` ALTER COLUMN `capacity_unit_of_measure` SET TAGS ('dbx_business_glossary_term' = 'Capacity Unit of Measure (UOM)');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`network_node` ALTER COLUMN `certification_status` SET TAGS ('dbx_business_glossary_term' = 'Certification Status');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`network_node` ALTER COLUMN `city` SET TAGS ('dbx_business_glossary_term' = 'City');
@@ -1507,6 +1387,7 @@ ALTER TABLE `vibe_manufacturing_v1`.`supply`.`network_node` ALTER COLUMN `node_t
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`network_node` ALTER COLUMN `operating_days_per_week` SET TAGS ('dbx_business_glossary_term' = 'Operating Days Per Week');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`network_node` ALTER COLUMN `operating_hours_per_day` SET TAGS ('dbx_business_glossary_term' = 'Operating Hours Per Day');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`network_node` ALTER COLUMN `operational_status` SET TAGS ('dbx_business_glossary_term' = 'Operational Status');
+ALTER TABLE `vibe_manufacturing_v1`.`supply`.`network_node` ALTER COLUMN `operational_status` SET TAGS ('dbx_value_regex' = 'active|inactive|planned|decommissioned|suspended|under_construction');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`network_node` ALTER COLUMN `ownership_type` SET TAGS ('dbx_business_glossary_term' = 'Ownership Type');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`network_node` ALTER COLUMN `ownership_type` SET TAGS ('dbx_value_regex' = 'owned|leased|third_party|contract|joint_venture');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`network_node` ALTER COLUMN `postal_code` SET TAGS ('dbx_business_glossary_term' = 'Postal Code');
@@ -1516,18 +1397,12 @@ ALTER TABLE `vibe_manufacturing_v1`.`supply`.`network_node` ALTER COLUMN `primar
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`network_node` ALTER COLUMN `primary_contact_email` SET TAGS ('dbx_value_regex' = '^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+.[a-zA-Z]{2,}$');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`network_node` ALTER COLUMN `primary_contact_email` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`network_node` ALTER COLUMN `primary_contact_email` SET TAGS ('dbx_pii_email' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`supply`.`network_node` ALTER COLUMN `primary_contact_email` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`supply`.`network_node` ALTER COLUMN `primary_contact_email` SET TAGS ('dbx_sensitivity' = 'pii');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`network_node` ALTER COLUMN `primary_contact_name` SET TAGS ('dbx_business_glossary_term' = 'Primary Contact Name');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`network_node` ALTER COLUMN `primary_contact_name` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`network_node` ALTER COLUMN `primary_contact_name` SET TAGS ('dbx_pii_name' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`supply`.`network_node` ALTER COLUMN `primary_contact_name` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`supply`.`network_node` ALTER COLUMN `primary_contact_name` SET TAGS ('dbx_sensitivity' = 'pii');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`network_node` ALTER COLUMN `primary_contact_phone` SET TAGS ('dbx_business_glossary_term' = 'Primary Contact Phone');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`network_node` ALTER COLUMN `primary_contact_phone` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`network_node` ALTER COLUMN `primary_contact_phone` SET TAGS ('dbx_pii_phone' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`supply`.`network_node` ALTER COLUMN `primary_contact_phone` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`supply`.`network_node` ALTER COLUMN `primary_contact_phone` SET TAGS ('dbx_sensitivity' = 'pii');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`network_node` ALTER COLUMN `region` SET TAGS ('dbx_business_glossary_term' = 'Geographic Region');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`network_node` ALTER COLUMN `risk_category` SET TAGS ('dbx_business_glossary_term' = 'Risk Category');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`network_node` ALTER COLUMN `risk_category` SET TAGS ('dbx_value_regex' = 'low|medium|high|critical');
@@ -1586,8 +1461,6 @@ ALTER TABLE `vibe_manufacturing_v1`.`supply`.`sourcing_rule` ALTER COLUMN `quota
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`sourcing_rule` ALTER COLUMN `rule_code` SET TAGS ('dbx_business_glossary_term' = 'Sourcing Rule Code');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`sourcing_rule` ALTER COLUMN `rule_code` SET TAGS ('dbx_value_regex' = '^[A-Z0-9]{6,20}$');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`sourcing_rule` ALTER COLUMN `rule_name` SET TAGS ('dbx_business_glossary_term' = 'Sourcing Rule Name');
-ALTER TABLE `vibe_manufacturing_v1`.`supply`.`sourcing_rule` ALTER COLUMN `rule_name` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_manufacturing_v1`.`supply`.`sourcing_rule` ALTER COLUMN `rule_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`sourcing_rule` ALTER COLUMN `rule_status` SET TAGS ('dbx_business_glossary_term' = 'Sourcing Rule Status');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`sourcing_rule` ALTER COLUMN `rule_status` SET TAGS ('dbx_value_regex' = 'active|inactive|blocked|pending_approval|expired');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`sourcing_rule` ALTER COLUMN `sourcing_priority` SET TAGS ('dbx_business_glossary_term' = 'Sourcing Priority Rank');
@@ -1600,7 +1473,7 @@ ALTER TABLE `vibe_manufacturing_v1`.`supply`.`sourcing_rule` ALTER COLUMN `suppl
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`sourcing_rule` ALTER COLUMN `valid_from_date` SET TAGS ('dbx_business_glossary_term' = 'Sourcing Rule Valid From Date');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`sourcing_rule` ALTER COLUMN `valid_to_date` SET TAGS ('dbx_business_glossary_term' = 'Sourcing Rule Valid To Date');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`supply_safety_stock_policy` SET TAGS ('dbx_data_type' = 'reference_data');
-ALTER TABLE `vibe_manufacturing_v1`.`supply`.`supply_safety_stock_policy` SET TAGS ('dbx_subdomain' = 'inventory_positioning');
+ALTER TABLE `vibe_manufacturing_v1`.`supply`.`supply_safety_stock_policy` SET TAGS ('dbx_subdomain' = 'inventory_replenishment');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`supply_safety_stock_policy` ALTER COLUMN `supply_safety_stock_policy_id` SET TAGS ('dbx_business_glossary_term' = 'Supply Safety Stock Policy ID');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`supply_safety_stock_policy` ALTER COLUMN `material_master_id` SET TAGS ('dbx_business_glossary_term' = 'Material ID');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`supply_safety_stock_policy` ALTER COLUMN `sku_master_id` SET TAGS ('dbx_business_glossary_term' = 'Sku Master Id (Foreign Key)');
@@ -1662,7 +1535,7 @@ ALTER TABLE `vibe_manufacturing_v1`.`supply`.`supply_safety_stock_policy` ALTER 
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`supply_safety_stock_policy` ALTER COLUMN `xyz_classification` SET TAGS ('dbx_business_glossary_term' = 'XYZ Classification');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`supply_safety_stock_policy` ALTER COLUMN `xyz_classification` SET TAGS ('dbx_value_regex' = 'X|Y|Z');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`risk_register` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_manufacturing_v1`.`supply`.`risk_register` SET TAGS ('dbx_subdomain' = 'supply_execution');
+ALTER TABLE `vibe_manufacturing_v1`.`supply`.`risk_register` SET TAGS ('dbx_subdomain' = 'supply_scheduling');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`risk_register` ALTER COLUMN `risk_register_id` SET TAGS ('dbx_business_glossary_term' = 'Risk Register Identifier');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`risk_register` ALTER COLUMN `capa_id` SET TAGS ('dbx_business_glossary_term' = 'Capa Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`risk_register` ALTER COLUMN `customer_account_id` SET TAGS ('dbx_business_glossary_term' = 'Customer Account Id (Foreign Key)');
@@ -1674,6 +1547,7 @@ ALTER TABLE `vibe_manufacturing_v1`.`supply`.`risk_register` ALTER COLUMN `regul
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`risk_register` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Risk Owner Employee Identifier (ID)');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`risk_register` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`risk_register` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`supply`.`risk_register` ALTER COLUMN `safety_function_id` SET TAGS ('dbx_business_glossary_term' = 'Safety Function Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`risk_register` ALTER COLUMN `service_contract_id` SET TAGS ('dbx_business_glossary_term' = 'Service Contract Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`risk_register` ALTER COLUMN `sku_master_id` SET TAGS ('dbx_business_glossary_term' = 'Sku Master Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`risk_register` ALTER COLUMN `alternative_supplier_identified_flag` SET TAGS ('dbx_business_glossary_term' = 'Alternative Supplier Identified Flag');
@@ -1698,6 +1572,7 @@ ALTER TABLE `vibe_manufacturing_v1`.`supply`.`risk_register` ALTER COLUMN `lead_
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`risk_register` ALTER COLUMN `mitigation_cost` SET TAGS ('dbx_business_glossary_term' = 'Mitigation Cost');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`risk_register` ALTER COLUMN `mitigation_cost` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`risk_register` ALTER COLUMN `mitigation_cost_currency` SET TAGS ('dbx_business_glossary_term' = 'Mitigation Cost Currency');
+ALTER TABLE `vibe_manufacturing_v1`.`supply`.`risk_register` ALTER COLUMN `mitigation_cost_currency` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`risk_register` ALTER COLUMN `mitigation_status` SET TAGS ('dbx_business_glossary_term' = 'Mitigation Status');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`risk_register` ALTER COLUMN `mitigation_status` SET TAGS ('dbx_value_regex' = 'not_started|in_progress|completed|on_hold|cancelled');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`risk_register` ALTER COLUMN `mitigation_strategy` SET TAGS ('dbx_business_glossary_term' = 'Mitigation Strategy');
@@ -1724,7 +1599,7 @@ ALTER TABLE `vibe_manufacturing_v1`.`supply`.`risk_register` ALTER COLUMN `risk_
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`risk_register` ALTER COLUMN `risk_type` SET TAGS ('dbx_value_regex' = 'single_source_dependency|geopolitical|capacity_constraint|quality_issue|natural_disaster|financial_instability');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`risk_register` ALTER COLUMN `safety_stock_recommendation` SET TAGS ('dbx_business_glossary_term' = 'Safety Stock Recommendation');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`planning_exception` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_manufacturing_v1`.`supply`.`planning_exception` SET TAGS ('dbx_subdomain' = 'supply_execution');
+ALTER TABLE `vibe_manufacturing_v1`.`supply`.`planning_exception` SET TAGS ('dbx_subdomain' = 'supply_scheduling');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`planning_exception` ALTER COLUMN `planning_exception_id` SET TAGS ('dbx_business_glossary_term' = 'Planning Exception Identifier');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`planning_exception` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Planner Assigned User ID');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`planning_exception` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
@@ -1742,8 +1617,6 @@ ALTER TABLE `vibe_manufacturing_v1`.`supply`.`planning_exception` ALTER COLUMN `
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`planning_exception` ALTER COLUMN `current_receipt_date` SET TAGS ('dbx_business_glossary_term' = 'Current Receipt Date');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`planning_exception` ALTER COLUMN `customer_name` SET TAGS ('dbx_business_glossary_term' = 'Customer Name');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`planning_exception` ALTER COLUMN `customer_name` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`supply`.`planning_exception` ALTER COLUMN `customer_name` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_manufacturing_v1`.`supply`.`planning_exception` ALTER COLUMN `customer_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`planning_exception` ALTER COLUMN `demand_order_number` SET TAGS ('dbx_business_glossary_term' = 'Demand Order Number');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`planning_exception` ALTER COLUMN `demand_source` SET TAGS ('dbx_business_glossary_term' = 'Demand Source');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`planning_exception` ALTER COLUMN `demand_source` SET TAGS ('dbx_value_regex' = 'sales_order|forecast|safety_stock|dependent_requirement|service_order|project_demand');
@@ -1783,7 +1656,7 @@ ALTER TABLE `vibe_manufacturing_v1`.`supply`.`planning_exception` ALTER COLUMN `
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`planning_exception` ALTER COLUMN `unit_of_measure` SET TAGS ('dbx_business_glossary_term' = 'Unit of Measure (UOM)');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`planning_exception` ALTER COLUMN `unit_of_measure` SET TAGS ('dbx_value_regex' = '^[A-Z]{2,6}$');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`inventory_position` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_manufacturing_v1`.`supply`.`inventory_position` SET TAGS ('dbx_subdomain' = 'inventory_positioning');
+ALTER TABLE `vibe_manufacturing_v1`.`supply`.`inventory_position` SET TAGS ('dbx_subdomain' = 'inventory_replenishment');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`inventory_position` ALTER COLUMN `inventory_position_id` SET TAGS ('dbx_business_glossary_term' = 'Inventory Position ID');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`inventory_position` ALTER COLUMN `cost_center_id` SET TAGS ('dbx_business_glossary_term' = 'Cost Center Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`inventory_position` ALTER COLUMN `invoice_line_id` SET TAGS ('dbx_business_glossary_term' = 'Invoice Line Id (Foreign Key)');
@@ -1818,6 +1691,7 @@ ALTER TABLE `vibe_manufacturing_v1`.`supply`.`inventory_position` ALTER COLUMN `
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`inventory_position` ALTER COLUMN `open_purchase_order_quantity` SET TAGS ('dbx_business_glossary_term' = 'Open Purchase Order (PO) Quantity');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`inventory_position` ALTER COLUMN `planned_receipt_date` SET TAGS ('dbx_business_glossary_term' = 'Planned Receipt Date');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`inventory_position` ALTER COLUMN `planning_strategy_group` SET TAGS ('dbx_business_glossary_term' = 'Planning Strategy Group');
+ALTER TABLE `vibe_manufacturing_v1`.`supply`.`inventory_position` ALTER COLUMN `planning_strategy_group` SET TAGS ('dbx_value_regex' = '^[A-Z0-9]{2}$');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`inventory_position` ALTER COLUMN `plant_code` SET TAGS ('dbx_business_glossary_term' = 'Plant Code');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`inventory_position` ALTER COLUMN `plant_code` SET TAGS ('dbx_value_regex' = '^[A-Z0-9]{4}$');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`inventory_position` ALTER COLUMN `procurement_type` SET TAGS ('dbx_business_glossary_term' = 'Procurement Type');
@@ -1862,6 +1736,7 @@ ALTER TABLE `vibe_manufacturing_v1`.`supply`.`moq_constraint` ALTER COLUMN `cons
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`moq_constraint` ALTER COLUMN `contract_reference_number` SET TAGS ('dbx_business_glossary_term' = 'Contract Reference Number');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`moq_constraint` ALTER COLUMN `contract_reference_number` SET TAGS ('dbx_value_regex' = '^[A-Z0-9-]{6,20}$');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`moq_constraint` ALTER COLUMN `cost_impact_currency_code` SET TAGS ('dbx_business_glossary_term' = 'Cost Impact Currency Code');
+ALTER TABLE `vibe_manufacturing_v1`.`supply`.`moq_constraint` ALTER COLUMN `cost_impact_currency_code` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`moq_constraint` ALTER COLUMN `cost_impact_per_unit` SET TAGS ('dbx_business_glossary_term' = 'Cost Impact Per Unit');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`moq_constraint` ALTER COLUMN `cost_impact_per_unit` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`moq_constraint` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
@@ -1896,7 +1771,7 @@ ALTER TABLE `vibe_manufacturing_v1`.`supply`.`moq_constraint` ALTER COLUMN `supp
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`demand_plan_version` SET TAGS ('dbx_data_type' = 'master_data');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`demand_plan_version` SET TAGS ('dbx_subdomain' = 'demand_planning');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`demand_plan_version` ALTER COLUMN `demand_plan_version_id` SET TAGS ('dbx_business_glossary_term' = 'Demand Plan Version Identifier (ID)');
-ALTER TABLE `vibe_manufacturing_v1`.`supply`.`demand_plan_version` ALTER COLUMN `plan_id` SET TAGS ('dbx_business_glossary_term' = 'Demand Plan Identifier (ID)');
+ALTER TABLE `vibe_manufacturing_v1`.`supply`.`demand_plan_version` ALTER COLUMN `supply_plan_id` SET TAGS ('dbx_business_glossary_term' = 'Demand Plan Identifier (ID)');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`demand_plan_version` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Approved By User Identifier (ID)');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`demand_plan_version` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`demand_plan_version` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
@@ -1926,8 +1801,6 @@ ALTER TABLE `vibe_manufacturing_v1`.`supply`.`demand_plan_version` ALTER COLUMN 
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`demand_plan_version` ALTER COLUMN `plant_code` SET TAGS ('dbx_business_glossary_term' = 'Plant Code');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`demand_plan_version` ALTER COLUMN `plant_code` SET TAGS ('dbx_value_regex' = '^[A-Z0-9]{4,10}$');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`demand_plan_version` ALTER COLUMN `scenario_name` SET TAGS ('dbx_business_glossary_term' = 'Scenario Name');
-ALTER TABLE `vibe_manufacturing_v1`.`supply`.`demand_plan_version` ALTER COLUMN `scenario_name` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_manufacturing_v1`.`supply`.`demand_plan_version` ALTER COLUMN `scenario_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`demand_plan_version` ALTER COLUMN `source_system_code` SET TAGS ('dbx_business_glossary_term' = 'Source System Code');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`demand_plan_version` ALTER COLUMN `source_system_code` SET TAGS ('dbx_value_regex' = '^[A-Z0-9_]{2,20}$');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`demand_plan_version` ALTER COLUMN `total_planned_demand_quantity` SET TAGS ('dbx_business_glossary_term' = 'Total Planned Demand Quantity');
@@ -1959,8 +1832,6 @@ ALTER TABLE `vibe_manufacturing_v1`.`supply`.`sop_cycle` ALTER COLUMN `cost_plan
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`sop_cycle` ALTER COLUMN `cost_plan_amount` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`sop_cycle` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`sop_cycle` ALTER COLUMN `cycle_name` SET TAGS ('dbx_business_glossary_term' = 'S&OP Cycle Name');
-ALTER TABLE `vibe_manufacturing_v1`.`supply`.`sop_cycle` ALTER COLUMN `cycle_name` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_manufacturing_v1`.`supply`.`sop_cycle` ALTER COLUMN `cycle_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`sop_cycle` ALTER COLUMN `cycle_notes` SET TAGS ('dbx_business_glossary_term' = 'Cycle Notes');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`sop_cycle` ALTER COLUMN `cycle_number` SET TAGS ('dbx_business_glossary_term' = 'S&OP Cycle Number');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`sop_cycle` ALTER COLUMN `cycle_number` SET TAGS ('dbx_value_regex' = '^SOP-[0-9]{4}-[0-9]{2}$');
@@ -2001,7 +1872,7 @@ ALTER TABLE `vibe_manufacturing_v1`.`supply`.`sop_cycle` ALTER COLUMN `supply_ri
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`sop_cycle` ALTER COLUMN `supply_risk_level` SET TAGS ('dbx_value_regex' = 'low|medium|high|critical');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`sop_cycle` ALTER COLUMN `supply_risk_mitigation_plan` SET TAGS ('dbx_business_glossary_term' = 'Supply Risk Mitigation Plan');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`allocation` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_manufacturing_v1`.`supply`.`allocation` SET TAGS ('dbx_subdomain' = 'inventory_positioning');
+ALTER TABLE `vibe_manufacturing_v1`.`supply`.`allocation` SET TAGS ('dbx_subdomain' = 'inventory_replenishment');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`allocation` ALTER COLUMN `allocation_id` SET TAGS ('dbx_business_glossary_term' = 'Allocation Identifier');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`allocation` ALTER COLUMN `customer_account_id` SET TAGS ('dbx_business_glossary_term' = 'Customer Account Identifier (ID)');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`allocation` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Approved By User Identifier (ID)');
@@ -2012,7 +1883,7 @@ ALTER TABLE `vibe_manufacturing_v1`.`supply`.`allocation` ALTER COLUMN `material
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`allocation` ALTER COLUMN `service_contract_id` SET TAGS ('dbx_business_glossary_term' = 'Service Contract Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`allocation` ALTER COLUMN `sku_master_id` SET TAGS ('dbx_business_glossary_term' = 'Sku Master Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`allocation` ALTER COLUMN `supplier_id` SET TAGS ('dbx_business_glossary_term' = 'Supplier Identifier (ID)');
-ALTER TABLE `vibe_manufacturing_v1`.`supply`.`allocation` ALTER COLUMN `plan_id` SET TAGS ('dbx_business_glossary_term' = 'Supply Plan Identifier (ID)');
+ALTER TABLE `vibe_manufacturing_v1`.`supply`.`allocation` ALTER COLUMN `supply_plan_id` SET TAGS ('dbx_business_glossary_term' = 'Supply Plan Identifier (ID)');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`allocation` ALTER COLUMN `allocated_quantity` SET TAGS ('dbx_business_glossary_term' = 'Allocated Quantity');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`allocation` ALTER COLUMN `allocation_number` SET TAGS ('dbx_business_glossary_term' = 'Allocation Number');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`allocation` ALTER COLUMN `allocation_number` SET TAGS ('dbx_value_regex' = '^ALLOC-[0-9]{8}$');
@@ -2058,7 +1929,7 @@ ALTER TABLE `vibe_manufacturing_v1`.`supply`.`allocation` ALTER COLUMN `unit_of_
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`allocation` ALTER COLUMN `unit_of_measure` SET TAGS ('dbx_value_regex' = '^[A-Z]{2,3}$');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`allocation` ALTER COLUMN `version` SET TAGS ('dbx_business_glossary_term' = 'Allocation Version');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`replenishment_proposal` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_manufacturing_v1`.`supply`.`replenishment_proposal` SET TAGS ('dbx_subdomain' = 'inventory_positioning');
+ALTER TABLE `vibe_manufacturing_v1`.`supply`.`replenishment_proposal` SET TAGS ('dbx_subdomain' = 'inventory_replenishment');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`replenishment_proposal` ALTER COLUMN `replenishment_proposal_id` SET TAGS ('dbx_business_glossary_term' = 'Replenishment Proposal ID');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`replenishment_proposal` ALTER COLUMN `material_master_id` SET TAGS ('dbx_business_glossary_term' = 'Material ID');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`replenishment_proposal` ALTER COLUMN `mrp_run_id` SET TAGS ('dbx_business_glossary_term' = 'Material Requirements Planning (MRP) Run ID');
@@ -2066,9 +1937,9 @@ ALTER TABLE `vibe_manufacturing_v1`.`supply`.`replenishment_proposal` ALTER COLU
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`replenishment_proposal` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Firmed By User ID');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`replenishment_proposal` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`replenishment_proposal` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`supply`.`replenishment_proposal` ALTER COLUMN `quote_line_id` SET TAGS ('dbx_business_glossary_term' = 'Quote Line Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`replenishment_proposal` ALTER COLUMN `supply_plant_id` SET TAGS ('dbx_business_glossary_term' = 'Plant Id');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`replenishment_proposal` ALTER COLUMN `supply_plant_id` SET TAGS ('dbx_internal' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`supply`.`replenishment_proposal` ALTER COLUMN `request_id` SET TAGS ('dbx_business_glossary_term' = 'Service Request Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`replenishment_proposal` ALTER COLUMN `sku_master_id` SET TAGS ('dbx_business_glossary_term' = 'Sku Master Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`replenishment_proposal` ALTER COLUMN `source_plant_id` SET TAGS ('dbx_business_glossary_term' = 'Source Plant Id');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`replenishment_proposal` ALTER COLUMN `source_plant_id` SET TAGS ('dbx_internal' = 'true');
@@ -2115,16 +1986,13 @@ ALTER TABLE `vibe_manufacturing_v1`.`supply`.`replenishment_proposal` ALTER COLU
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`replenishment_proposal` ALTER COLUMN `storage_location_code` SET TAGS ('dbx_business_glossary_term' = 'Storage Location Code');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`replenishment_proposal` ALTER COLUMN `unit_of_measure` SET TAGS ('dbx_business_glossary_term' = 'Unit of Measure (UOM)');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`planning_parameter` SET TAGS ('dbx_data_type' = 'reference_data');
-ALTER TABLE `vibe_manufacturing_v1`.`supply`.`planning_parameter` SET TAGS ('dbx_subdomain' = 'network_configuration');
+ALTER TABLE `vibe_manufacturing_v1`.`supply`.`planning_parameter` SET TAGS ('dbx_subdomain' = 'supply_scheduling');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`planning_parameter` ALTER COLUMN `planning_parameter_id` SET TAGS ('dbx_business_glossary_term' = 'Planning Parameter Identifier');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`planning_parameter` ALTER COLUMN `planning_calendar_id` SET TAGS ('dbx_business_glossary_term' = 'Planning Calendar ID');
+ALTER TABLE `vibe_manufacturing_v1`.`supply`.`planning_parameter` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Created By User ID');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`planning_parameter` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`planning_parameter` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`supply`.`planning_parameter` ALTER COLUMN `primary_planning_employee_id` SET TAGS ('dbx_business_glossary_term' = 'Created By User ID');
-ALTER TABLE `vibe_manufacturing_v1`.`supply`.`planning_parameter` ALTER COLUMN `primary_planning_employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`supply`.`planning_parameter` ALTER COLUMN `primary_planning_employee_id` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`supply`.`planning_parameter` ALTER COLUMN `primary_planning_material_master_id` SET TAGS ('dbx_business_glossary_term' = 'Material ID');
-ALTER TABLE `vibe_manufacturing_v1`.`supply`.`planning_parameter` ALTER COLUMN `process_parameter_id` SET TAGS ('dbx_business_glossary_term' = 'Process Parameter Id (Foreign Key)');
+ALTER TABLE `vibe_manufacturing_v1`.`supply`.`planning_parameter` ALTER COLUMN `material_master_id` SET TAGS ('dbx_business_glossary_term' = 'Material ID');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`planning_parameter` ALTER COLUMN `sku_master_id` SET TAGS ('dbx_business_glossary_term' = 'Sku Master Id (Foreign Key)');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`planning_parameter` ALTER COLUMN `abc_indicator` SET TAGS ('dbx_business_glossary_term' = 'ABC Indicator');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`planning_parameter` ALTER COLUMN `abc_indicator` SET TAGS ('dbx_value_regex' = 'A|B|C');
@@ -2166,6 +2034,8 @@ ALTER TABLE `vibe_manufacturing_v1`.`supply`.`planning_parameter` ALTER COLUMN `
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`planning_parameter` ALTER COLUMN `planning_horizon_days` SET TAGS ('dbx_business_glossary_term' = 'Planning Horizon (Days)');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`planning_parameter` ALTER COLUMN `planning_strategy_group` SET TAGS ('dbx_business_glossary_term' = 'Planning Strategy Group');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`planning_parameter` ALTER COLUMN `planning_time_fence_days` SET TAGS ('dbx_business_glossary_term' = 'Planning Time Fence (Days)');
+ALTER TABLE `vibe_manufacturing_v1`.`supply`.`planning_parameter` ALTER COLUMN `plant_code` SET TAGS ('dbx_business_glossary_term' = 'Plant Code');
+ALTER TABLE `vibe_manufacturing_v1`.`supply`.`planning_parameter` ALTER COLUMN `plant_code` SET TAGS ('dbx_value_regex' = '^[A-Z0-9]{4}$');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`planning_parameter` ALTER COLUMN `procurement_type` SET TAGS ('dbx_business_glossary_term' = 'Procurement Type');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`planning_parameter` ALTER COLUMN `procurement_type` SET TAGS ('dbx_value_regex' = 'E|F|X');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`planning_parameter` ALTER COLUMN `quota_arrangement_usage` SET TAGS ('dbx_business_glossary_term' = 'Quota Arrangement Usage');
@@ -2177,12 +2047,10 @@ ALTER TABLE `vibe_manufacturing_v1`.`supply`.`planning_parameter` ALTER COLUMN `
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`planning_parameter` ALTER COLUMN `strategy_group_counter` SET TAGS ('dbx_business_glossary_term' = 'Strategy Group Counter');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`planning_parameter` ALTER COLUMN `takt_time_minutes` SET TAGS ('dbx_business_glossary_term' = 'Takt Time (Minutes)');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`aps_scenario` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_manufacturing_v1`.`supply`.`aps_scenario` SET TAGS ('dbx_subdomain' = 'supply_execution');
+ALTER TABLE `vibe_manufacturing_v1`.`supply`.`aps_scenario` SET TAGS ('dbx_subdomain' = 'supply_scheduling');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`aps_scenario` ALTER COLUMN `aps_scenario_id` SET TAGS ('dbx_business_glossary_term' = 'Aps Scenario Identifier');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`aps_scenario` ALTER COLUMN `baseline_aps_scenario_id` SET TAGS ('dbx_business_glossary_term' = 'Baseline Aps Scenario Id');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`aps_scenario` ALTER COLUMN `baseline_aps_scenario_id` SET TAGS ('dbx_self_ref_fk' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`supply`.`aps_scenario` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`supply`.`aps_scenario` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`aps_scenario` ALTER COLUMN `backorder_allowed` SET TAGS ('dbx_business_glossary_term' = 'Backorder Allowed');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`aps_scenario` ALTER COLUMN `capacity_planning_method` SET TAGS ('dbx_business_glossary_term' = 'Capacity Planning Method');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`aps_scenario` ALTER COLUMN `aps_scenario_code` SET TAGS ('dbx_business_glossary_term' = 'Code');
@@ -2200,8 +2068,6 @@ ALTER TABLE `vibe_manufacturing_v1`.`supply`.`aps_scenario` ALTER COLUMN `lead_t
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`aps_scenario` ALTER COLUMN `lot_sizing_rule` SET TAGS ('dbx_business_glossary_term' = 'Lot Sizing Rule');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`aps_scenario` ALTER COLUMN `max_iterations` SET TAGS ('dbx_business_glossary_term' = 'Max Iterations');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`aps_scenario` ALTER COLUMN `aps_scenario_name` SET TAGS ('dbx_business_glossary_term' = 'Name');
-ALTER TABLE `vibe_manufacturing_v1`.`supply`.`aps_scenario` ALTER COLUMN `aps_scenario_name` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_manufacturing_v1`.`supply`.`aps_scenario` ALTER COLUMN `aps_scenario_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`aps_scenario` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Notes');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`aps_scenario` ALTER COLUMN `optimization_objective` SET TAGS ('dbx_business_glossary_term' = 'Optimization Objective');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`aps_scenario` ALTER COLUMN `overtime_allowed` SET TAGS ('dbx_business_glossary_term' = 'Overtime Allowed');
@@ -2211,7 +2077,6 @@ ALTER TABLE `vibe_manufacturing_v1`.`supply`.`aps_scenario` ALTER COLUMN `priori
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`aps_scenario` ALTER COLUMN `regulatory_compliance_flag` SET TAGS ('dbx_business_glossary_term' = 'Regulatory Compliance Flag');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`aps_scenario` ALTER COLUMN `related_product_family` SET TAGS ('dbx_business_glossary_term' = 'Related Product Family');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`aps_scenario` ALTER COLUMN `safety_stock_policy` SET TAGS ('dbx_business_glossary_term' = 'Safety Stock Policy');
-ALTER TABLE `vibe_manufacturing_v1`.`supply`.`aps_scenario` ALTER COLUMN `scenario_name` SET TAGS ('dbx_sensitivity' = 'pii');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`aps_scenario` ALTER COLUMN `scenario_type` SET TAGS ('dbx_business_glossary_term' = 'Scenario Type');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`aps_scenario` ALTER COLUMN `aps_scenario_status` SET TAGS ('dbx_business_glossary_term' = 'Status');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`aps_scenario` ALTER COLUMN `supplier_inclusion_flag` SET TAGS ('dbx_business_glossary_term' = 'Supplier Inclusion Flag');
@@ -2220,15 +2085,12 @@ ALTER TABLE `vibe_manufacturing_v1`.`supply`.`aps_scenario` ALTER COLUMN `update
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`aps_scenario` ALTER COLUMN `version_number` SET TAGS ('dbx_business_glossary_term' = 'Version Number');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`aps_scenario` ALTER COLUMN `created_by` SET TAGS ('dbx_business_glossary_term' = 'Created By');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`planning_calendar` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_manufacturing_v1`.`supply`.`planning_calendar` SET TAGS ('dbx_subdomain' = 'network_configuration');
+ALTER TABLE `vibe_manufacturing_v1`.`supply`.`planning_calendar` SET TAGS ('dbx_subdomain' = 'supply_scheduling');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`planning_calendar` ALTER COLUMN `planning_calendar_id` SET TAGS ('dbx_business_glossary_term' = 'Planning Calendar Identifier');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`planning_calendar` ALTER COLUMN `base_planning_calendar_id` SET TAGS ('dbx_business_glossary_term' = 'Base Planning Calendar Id');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`planning_calendar` ALTER COLUMN `base_planning_calendar_id` SET TAGS ('dbx_self_ref_fk' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`supply`.`planning_calendar` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`supply`.`planning_calendar` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`planning_calendar` ALTER COLUMN `holiday_calendar_id` SET TAGS ('dbx_business_glossary_term' = 'Holiday Calendar Id');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`planning_calendar` ALTER COLUMN `calendar_code` SET TAGS ('dbx_business_glossary_term' = 'Calendar Code');
-ALTER TABLE `vibe_manufacturing_v1`.`supply`.`planning_calendar` ALTER COLUMN `calendar_name` SET TAGS ('dbx_sensitivity' = 'pii');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`planning_calendar` ALTER COLUMN `calendar_type` SET TAGS ('dbx_business_glossary_term' = 'Calendar Type');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`planning_calendar` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`planning_calendar` ALTER COLUMN `planning_calendar_description` SET TAGS ('dbx_business_glossary_term' = 'Description');
@@ -2239,8 +2101,6 @@ ALTER TABLE `vibe_manufacturing_v1`.`supply`.`planning_calendar` ALTER COLUMN `f
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`planning_calendar` ALTER COLUMN `is_holiday_calendar` SET TAGS ('dbx_business_glossary_term' = 'Is Holiday Calendar');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`planning_calendar` ALTER COLUMN `last_run_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Last Run Timestamp');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`planning_calendar` ALTER COLUMN `planning_calendar_name` SET TAGS ('dbx_business_glossary_term' = 'Name');
-ALTER TABLE `vibe_manufacturing_v1`.`supply`.`planning_calendar` ALTER COLUMN `planning_calendar_name` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_manufacturing_v1`.`supply`.`planning_calendar` ALTER COLUMN `planning_calendar_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`planning_calendar` ALTER COLUMN `next_run_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Next Run Timestamp');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`planning_calendar` ALTER COLUMN `planning_horizon_days` SET TAGS ('dbx_business_glossary_term' = 'Planning Horizon Days');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`planning_calendar` ALTER COLUMN `start_date` SET TAGS ('dbx_business_glossary_term' = 'Start Date');
@@ -2249,19 +2109,8 @@ ALTER TABLE `vibe_manufacturing_v1`.`supply`.`planning_calendar` ALTER COLUMN `t
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`planning_calendar` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Updated Timestamp');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`planning_calendar` ALTER COLUMN `created_by` SET TAGS ('dbx_business_glossary_term' = 'Created By');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`supply_plant` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_manufacturing_v1`.`supply`.`supply_plant` SET TAGS ('dbx_subdomain' = 'supply_execution');
-ALTER TABLE `vibe_manufacturing_v1`.`supply`.`supply_plant` SET TAGS ('dbx_ssot' = 'reference');
-ALTER TABLE `vibe_manufacturing_v1`.`supply`.`supply_plant` SET TAGS ('dbx_ssot_group' = 'plant');
-ALTER TABLE `vibe_manufacturing_v1`.`supply`.`supply_plant` SET TAGS ('dbx_ssot_master' = 'asset.plant');
-ALTER TABLE `vibe_manufacturing_v1`.`supply`.`supply_plant` SET TAGS ('dbx_ssot_of' = 'asset.plant');
-ALTER TABLE `vibe_manufacturing_v1`.`supply`.`supply_plant` SET TAGS ('dbx_ssot_canonical' = 'asset.plant');
-ALTER TABLE `vibe_manufacturing_v1`.`supply`.`supply_plant` SET TAGS ('dbx_ssot_role' = 'duplicate');
+ALTER TABLE `vibe_manufacturing_v1`.`supply`.`supply_plant` SET TAGS ('dbx_subdomain' = 'network_configuration');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`supply_plant` ALTER COLUMN `supply_plant_id` SET TAGS ('dbx_business_glossary_term' = 'Plant Identifier');
-ALTER TABLE `vibe_manufacturing_v1`.`supply`.`supply_plant` ALTER COLUMN `supply_plant_id` SET TAGS ('dbx_ssot_ref' = 'asset.plant');
-ALTER TABLE `vibe_manufacturing_v1`.`supply`.`supply_plant` ALTER COLUMN `supply_plant_id` SET TAGS ('dbx_ssot_duplicate_resolved' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`supply`.`supply_plant` ALTER COLUMN `supply_plant_id` SET TAGS ('dbx_ssot_master' = 'asset.asset_plant');
-ALTER TABLE `vibe_manufacturing_v1`.`supply`.`supply_plant` ALTER COLUMN `address_line_1` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_manufacturing_v1`.`supply`.`supply_plant` ALTER COLUMN `address_line_2` SET TAGS ('dbx_sensitivity' = 'pii');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`supply_plant` ALTER COLUMN `capacity` SET TAGS ('dbx_business_glossary_term' = 'Capacity');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`supply_plant` ALTER COLUMN `capacity_unit` SET TAGS ('dbx_business_glossary_term' = 'Capacity Unit');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`supply_plant` ALTER COLUMN `carbon_emission_factor` SET TAGS ('dbx_business_glossary_term' = 'Carbon Emission Factor');
@@ -2279,8 +2128,6 @@ ALTER TABLE `vibe_manufacturing_v1`.`supply`.`supply_plant` ALTER COLUMN `latitu
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`supply_plant` ALTER COLUMN `location_address` SET TAGS ('dbx_business_glossary_term' = 'Location Address');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`supply_plant` ALTER COLUMN `location_address` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`supply_plant` ALTER COLUMN `location_address` SET TAGS ('dbx_pii_address' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`supply`.`supply_plant` ALTER COLUMN `location_address` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`supply`.`supply_plant` ALTER COLUMN `location_address` SET TAGS ('dbx_sensitivity' = 'pii');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`supply_plant` ALTER COLUMN `longitude` SET TAGS ('dbx_business_glossary_term' = 'Longitude');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`supply_plant` ALTER COLUMN `longitude` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`supply_plant` ALTER COLUMN `longitude` SET TAGS ('dbx_pii_address' = 'true');
@@ -2288,21 +2135,13 @@ ALTER TABLE `vibe_manufacturing_v1`.`supply`.`supply_plant` ALTER COLUMN `mainte
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`supply_plant` ALTER COLUMN `manager_email` SET TAGS ('dbx_business_glossary_term' = 'Manager Email');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`supply_plant` ALTER COLUMN `manager_email` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`supply_plant` ALTER COLUMN `manager_email` SET TAGS ('dbx_pii_email' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`supply`.`supply_plant` ALTER COLUMN `manager_email` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`supply`.`supply_plant` ALTER COLUMN `manager_email` SET TAGS ('dbx_sensitivity' = 'pii');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`supply_plant` ALTER COLUMN `manager_name` SET TAGS ('dbx_business_glossary_term' = 'Manager Name');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`supply_plant` ALTER COLUMN `manager_name` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`supply_plant` ALTER COLUMN `manager_name` SET TAGS ('dbx_pii_name' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`supply`.`supply_plant` ALTER COLUMN `manager_name` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`supply`.`supply_plant` ALTER COLUMN `manager_name` SET TAGS ('dbx_sensitivity' = 'pii');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`supply_plant` ALTER COLUMN `manager_phone` SET TAGS ('dbx_business_glossary_term' = 'Manager Phone');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`supply_plant` ALTER COLUMN `manager_phone` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`supply_plant` ALTER COLUMN `manager_phone` SET TAGS ('dbx_pii_phone' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`supply`.`supply_plant` ALTER COLUMN `manager_phone` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`supply`.`supply_plant` ALTER COLUMN `manager_phone` SET TAGS ('dbx_sensitivity' = 'pii');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`supply_plant` ALTER COLUMN `supply_plant_name` SET TAGS ('dbx_business_glossary_term' = 'Name');
-ALTER TABLE `vibe_manufacturing_v1`.`supply`.`supply_plant` ALTER COLUMN `supply_plant_name` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_manufacturing_v1`.`supply`.`supply_plant` ALTER COLUMN `supply_plant_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`supply_plant` ALTER COLUMN `next_maintenance_date` SET TAGS ('dbx_business_glossary_term' = 'Next Maintenance Date');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`supply_plant` ALTER COLUMN `number_of_shifts` SET TAGS ('dbx_business_glossary_term' = 'Number Of Shifts');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`supply_plant` ALTER COLUMN `opening_date` SET TAGS ('dbx_business_glossary_term' = 'Opening Date');
@@ -2310,8 +2149,6 @@ ALTER TABLE `vibe_manufacturing_v1`.`supply`.`supply_plant` ALTER COLUMN `operat
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`supply_plant` ALTER COLUMN `plant_owner` SET TAGS ('dbx_business_glossary_term' = 'Plant Owner');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`supply_plant` ALTER COLUMN `plant_status_reason` SET TAGS ('dbx_business_glossary_term' = 'Plant Status Reason');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`supply_plant` ALTER COLUMN `plant_type` SET TAGS ('dbx_business_glossary_term' = 'Plant Type');
-ALTER TABLE `vibe_manufacturing_v1`.`supply`.`supply_plant` ALTER COLUMN `postal_code` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_manufacturing_v1`.`supply`.`supply_plant` ALTER COLUMN `postal_code` SET TAGS ('dbx_pii_address' = 'true');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`supply_plant` ALTER COLUMN `power_capacity_mw` SET TAGS ('dbx_business_glossary_term' = 'Power Capacity Mw');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`supply_plant` ALTER COLUMN `region` SET TAGS ('dbx_business_glossary_term' = 'Region');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`supply_plant` ALTER COLUMN `safety_rating` SET TAGS ('dbx_business_glossary_term' = 'Safety Rating');
@@ -2323,3 +2160,58 @@ ALTER TABLE `vibe_manufacturing_v1`.`supply`.`supply_plant` ALTER COLUMN `timezo
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`supply_plant` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Updated Timestamp');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`supply_plant` ALTER COLUMN `waste_management_type` SET TAGS ('dbx_business_glossary_term' = 'Waste Management Type');
 ALTER TABLE `vibe_manufacturing_v1`.`supply`.`supply_plant` ALTER COLUMN `water_usage_cubic_m` SET TAGS ('dbx_business_glossary_term' = 'Water Usage Cubic M');
+ALTER TABLE `vibe_manufacturing_v1`.`supply`.`supply_plan` SET TAGS ('dbx_data_type' = 'master_data');
+ALTER TABLE `vibe_manufacturing_v1`.`supply`.`supply_plan` SET TAGS ('dbx_subdomain' = 'supply_scheduling');
+ALTER TABLE `vibe_manufacturing_v1`.`supply`.`supply_plan` ALTER COLUMN `supply_plan_id` SET TAGS ('dbx_business_glossary_term' = 'Plan Identifier');
+ALTER TABLE `vibe_manufacturing_v1`.`supply`.`supply_plan` ALTER COLUMN `cost_center_id` SET TAGS ('dbx_business_glossary_term' = 'Cost Center Id (Foreign Key)');
+ALTER TABLE `vibe_manufacturing_v1`.`supply`.`supply_plan` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Approved By User ID');
+ALTER TABLE `vibe_manufacturing_v1`.`supply`.`supply_plan` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`supply`.`supply_plan` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_manufacturing_v1`.`supply`.`supply_plan` ALTER COLUMN `material_master_id` SET TAGS ('dbx_business_glossary_term' = 'Material ID');
+ALTER TABLE `vibe_manufacturing_v1`.`supply`.`supply_plan` ALTER COLUMN `sku_master_id` SET TAGS ('dbx_business_glossary_term' = 'Sku Master Id (Foreign Key)');
+ALTER TABLE `vibe_manufacturing_v1`.`supply`.`supply_plan` ALTER COLUMN `approval_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Approval Timestamp');
+ALTER TABLE `vibe_manufacturing_v1`.`supply`.`supply_plan` ALTER COLUMN `capacity_utilization_percentage` SET TAGS ('dbx_business_glossary_term' = 'Capacity Utilization Percentage');
+ALTER TABLE `vibe_manufacturing_v1`.`supply`.`supply_plan` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
+ALTER TABLE `vibe_manufacturing_v1`.`supply`.`supply_plan` ALTER COLUMN `demand_forecast_quantity` SET TAGS ('dbx_business_glossary_term' = 'Demand Forecast Quantity');
+ALTER TABLE `vibe_manufacturing_v1`.`supply`.`supply_plan` ALTER COLUMN `last_modified_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Last Modified Timestamp');
+ALTER TABLE `vibe_manufacturing_v1`.`supply`.`supply_plan` ALTER COLUMN `lead_time_days` SET TAGS ('dbx_business_glossary_term' = 'Lead Time Days');
+ALTER TABLE `vibe_manufacturing_v1`.`supply`.`supply_plan` ALTER COLUMN `lot_sizing_procedure` SET TAGS ('dbx_business_glossary_term' = 'Lot Sizing Procedure');
+ALTER TABLE `vibe_manufacturing_v1`.`supply`.`supply_plan` ALTER COLUMN `lot_sizing_procedure` SET TAGS ('dbx_value_regex' = 'LOT_FOR_LOT|FIXED_LOT|EOQ|POQ|PERIOD_LOT');
+ALTER TABLE `vibe_manufacturing_v1`.`supply`.`supply_plan` ALTER COLUMN `material_group_code` SET TAGS ('dbx_business_glossary_term' = 'Material Group Code');
+ALTER TABLE `vibe_manufacturing_v1`.`supply`.`supply_plan` ALTER COLUMN `material_group_code` SET TAGS ('dbx_value_regex' = '^[A-Z0-9]{4,15}$');
+ALTER TABLE `vibe_manufacturing_v1`.`supply`.`supply_plan` ALTER COLUMN `maximum_lot_size` SET TAGS ('dbx_business_glossary_term' = 'Maximum Lot Size');
+ALTER TABLE `vibe_manufacturing_v1`.`supply`.`supply_plan` ALTER COLUMN `minimum_lot_size` SET TAGS ('dbx_business_glossary_term' = 'Minimum Lot Size (MOQ)');
+ALTER TABLE `vibe_manufacturing_v1`.`supply`.`supply_plan` ALTER COLUMN `mrp_controller_code` SET TAGS ('dbx_business_glossary_term' = 'MRP (Material Requirements Planning) Controller Code');
+ALTER TABLE `vibe_manufacturing_v1`.`supply`.`supply_plan` ALTER COLUMN `mrp_controller_code` SET TAGS ('dbx_value_regex' = '^[A-Z0-9]{3,10}$');
+ALTER TABLE `vibe_manufacturing_v1`.`supply`.`supply_plan` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Plan Notes');
+ALTER TABLE `vibe_manufacturing_v1`.`supply`.`supply_plan` ALTER COLUMN `plan_number` SET TAGS ('dbx_business_glossary_term' = 'Supply Plan Number');
+ALTER TABLE `vibe_manufacturing_v1`.`supply`.`supply_plan` ALTER COLUMN `plan_number` SET TAGS ('dbx_value_regex' = '^[A-Z0-9]{8,20}$');
+ALTER TABLE `vibe_manufacturing_v1`.`supply`.`supply_plan` ALTER COLUMN `plan_status` SET TAGS ('dbx_business_glossary_term' = 'Plan Status');
+ALTER TABLE `vibe_manufacturing_v1`.`supply`.`supply_plan` ALTER COLUMN `plan_status` SET TAGS ('dbx_value_regex' = 'DRAFT|PENDING_REVIEW|APPROVED|ACTIVE|SUPERSEDED|CANCELLED');
+ALTER TABLE `vibe_manufacturing_v1`.`supply`.`supply_plan` ALTER COLUMN `planned_supply_quantity` SET TAGS ('dbx_business_glossary_term' = 'Planned Supply Quantity');
+ALTER TABLE `vibe_manufacturing_v1`.`supply`.`supply_plan` ALTER COLUMN `planning_horizon_days` SET TAGS ('dbx_business_glossary_term' = 'Planning Horizon Days');
+ALTER TABLE `vibe_manufacturing_v1`.`supply`.`supply_plan` ALTER COLUMN `planning_method` SET TAGS ('dbx_business_glossary_term' = 'Planning Method');
+ALTER TABLE `vibe_manufacturing_v1`.`supply`.`supply_plan` ALTER COLUMN `planning_method` SET TAGS ('dbx_value_regex' = 'MRP|MRP_II|APS|MANUAL|JIT|KANBAN');
+ALTER TABLE `vibe_manufacturing_v1`.`supply`.`supply_plan` ALTER COLUMN `planning_period_end_date` SET TAGS ('dbx_business_glossary_term' = 'Planning Period End Date');
+ALTER TABLE `vibe_manufacturing_v1`.`supply`.`supply_plan` ALTER COLUMN `planning_period_start_date` SET TAGS ('dbx_business_glossary_term' = 'Planning Period Start Date');
+ALTER TABLE `vibe_manufacturing_v1`.`supply`.`supply_plan` ALTER COLUMN `planning_run_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Planning Run Timestamp');
+ALTER TABLE `vibe_manufacturing_v1`.`supply`.`supply_plan` ALTER COLUMN `planning_strategy` SET TAGS ('dbx_business_glossary_term' = 'Planning Strategy');
+ALTER TABLE `vibe_manufacturing_v1`.`supply`.`supply_plan` ALTER COLUMN `planning_strategy` SET TAGS ('dbx_value_regex' = 'MTS|MTO|ATO|ETO');
+ALTER TABLE `vibe_manufacturing_v1`.`supply`.`supply_plan` ALTER COLUMN `planning_time_fence_days` SET TAGS ('dbx_business_glossary_term' = 'Planning Time Fence Days');
+ALTER TABLE `vibe_manufacturing_v1`.`supply`.`supply_plan` ALTER COLUMN `plant_code` SET TAGS ('dbx_business_glossary_term' = 'Plant Code');
+ALTER TABLE `vibe_manufacturing_v1`.`supply`.`supply_plan` ALTER COLUMN `plant_code` SET TAGS ('dbx_value_regex' = '^[A-Z0-9]{4,10}$');
+ALTER TABLE `vibe_manufacturing_v1`.`supply`.`supply_plan` ALTER COLUMN `procurement_type` SET TAGS ('dbx_business_glossary_term' = 'Procurement Type');
+ALTER TABLE `vibe_manufacturing_v1`.`supply`.`supply_plan` ALTER COLUMN `procurement_type` SET TAGS ('dbx_value_regex' = 'IN_HOUSE|EXTERNAL|BOTH');
+ALTER TABLE `vibe_manufacturing_v1`.`supply`.`supply_plan` ALTER COLUMN `reorder_point_quantity` SET TAGS ('dbx_business_glossary_term' = 'Reorder Point (ROP) Quantity');
+ALTER TABLE `vibe_manufacturing_v1`.`supply`.`supply_plan` ALTER COLUMN `rounding_value` SET TAGS ('dbx_business_glossary_term' = 'Rounding Value');
+ALTER TABLE `vibe_manufacturing_v1`.`supply`.`supply_plan` ALTER COLUMN `safety_stock_quantity` SET TAGS ('dbx_business_glossary_term' = 'Safety Stock Quantity');
+ALTER TABLE `vibe_manufacturing_v1`.`supply`.`supply_plan` ALTER COLUMN `source_system_code` SET TAGS ('dbx_business_glossary_term' = 'Source System Code');
+ALTER TABLE `vibe_manufacturing_v1`.`supply`.`supply_plan` ALTER COLUMN `source_system_code` SET TAGS ('dbx_value_regex' = 'SAP_PP|DYNAMICS_SCM|OPCENTER|MANUAL');
+ALTER TABLE `vibe_manufacturing_v1`.`supply`.`supply_plan` ALTER COLUMN `supply_risk_level` SET TAGS ('dbx_business_glossary_term' = 'Supply Risk Level');
+ALTER TABLE `vibe_manufacturing_v1`.`supply`.`supply_plan` ALTER COLUMN `supply_risk_level` SET TAGS ('dbx_value_regex' = 'LOW|MEDIUM|HIGH|CRITICAL');
+ALTER TABLE `vibe_manufacturing_v1`.`supply`.`supply_plan` ALTER COLUMN `unit_of_measure` SET TAGS ('dbx_business_glossary_term' = 'Unit of Measure (UOM)');
+ALTER TABLE `vibe_manufacturing_v1`.`supply`.`supply_plan` ALTER COLUMN `unit_of_measure` SET TAGS ('dbx_value_regex' = '^[A-Z]{2,5}$');
+ALTER TABLE `vibe_manufacturing_v1`.`supply`.`supply_plan` ALTER COLUMN `variance_percentage` SET TAGS ('dbx_business_glossary_term' = 'Variance Percentage');
+ALTER TABLE `vibe_manufacturing_v1`.`supply`.`supply_plan` ALTER COLUMN `variance_quantity` SET TAGS ('dbx_business_glossary_term' = 'Variance Quantity');
+ALTER TABLE `vibe_manufacturing_v1`.`supply`.`supply_plan` ALTER COLUMN `version` SET TAGS ('dbx_business_glossary_term' = 'Plan Version');
+ALTER TABLE `vibe_manufacturing_v1`.`supply`.`supply_plan` ALTER COLUMN `version` SET TAGS ('dbx_value_regex' = '^[A-Z0-9]{1,10}$');

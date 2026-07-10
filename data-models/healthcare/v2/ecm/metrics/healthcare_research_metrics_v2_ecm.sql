@@ -1,47 +1,100 @@
--- Metric views for domain: research | Business: Healthcare | Version: 2 | Generated on: 2026-07-02 07:21:53
+-- Metric views for domain: research | Business: Healthcare | Version: 2 | Generated on: 2026-07-10 14:53:25
+
+CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`research_study`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Clinical research study portfolio KPIs: enrollment attainment, study status mix, regulatory profile. Steers research portfolio investment and enrollment risk management."
+  source: "`vibe_healthcare_v1`.`research`.`research_study`"
+  dimensions:
+    - name: "study_status"
+      expr: study_status
+      comment: "Lifecycle status of the study (active, completed, terminated, etc.)."
+    - name: "study_type"
+      expr: study_type
+      comment: "Type of study (interventional, observational, etc.)."
+    - name: "phase"
+      expr: phase
+      comment: "Clinical trial phase (I, II, III, IV)."
+    - name: "sponsor_type"
+      expr: sponsor_type
+      comment: "Type of sponsor (industry, federal, investigator-initiated)."
+    - name: "funding_source"
+      expr: funding_source
+      comment: "Primary funding source category for the study."
+    - name: "blinding_type"
+      expr: blinding_type
+      comment: "Blinding design of the study."
+    - name: "start_month"
+      expr: DATE_TRUNC('MONTH', start_date)
+      comment: "Study start month for enrollment cohort trend analysis."
+  measures:
+    - name: "Study Count"
+      expr: COUNT(1)
+      comment: "Total number of research studies in scope; portfolio size indicator."
+    - name: "Distinct Sponsors"
+      expr: COUNT(DISTINCT sponsor_name)
+      comment: "Number of distinct sponsors funding studies; diversification of funding base."
+    - name: "Total Target Enrollment"
+      expr: SUM(CAST(target_enrollment AS DOUBLE))
+      comment: "Sum of planned target enrollment across studies; capacity planning input."
+    - name: "Total Actual Enrollment"
+      expr: SUM(CAST(actual_enrollment AS DOUBLE))
+      comment: "Sum of actual enrollment achieved across studies; enrollment performance."
+    - name: "Avg Target Enrollment"
+      expr: AVG(CAST(target_enrollment AS DOUBLE))
+      comment: "Average planned enrollment per study; sizing benchmark."
+    - name: "FDA Regulated Drug Study Count"
+      expr: COUNT(CASE WHEN fda_regulated_drug_flag = TRUE THEN 1 END)
+      comment: "Number of FDA-regulated drug studies; regulatory oversight burden."
+    - name: "Part 11 Compliant Study Count"
+      expr: COUNT(CASE WHEN cfr_part_11_compliant_flag = TRUE THEN 1 END)
+      comment: "Studies compliant with 21 CFR Part 11; compliance posture."
+$$;
 
 CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`research_subject_enrollment`
 WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Subject enrollment KPIs for clinical trial operations: enrollment volume, screen-to-enrollment yield, adverse event burden, protocol deviation and withdrawal rates that steer study feasibility and site management decisions."
+  comment: "Subject enrollment operational KPIs: enrollment volume, eligibility, withdrawals, and safety flags. Drives recruitment performance and retention monitoring."
   source: "`vibe_healthcare_v1`.`research`.`subject_enrollment`"
   dimensions:
     - name: "enrollment_status"
       expr: enrollment_status
-      comment: "Current enrollment lifecycle status (screened, enrolled, withdrawn, completed) used to segment funnel analysis."
+      comment: "Current enrollment status of the subject."
     - name: "enrollment_source"
       expr: enrollment_source
-      comment: "Channel by which the subject was recruited, used to evaluate recruitment strategy effectiveness."
+      comment: "Source/channel through which the subject was recruited."
     - name: "enrollment_month"
       expr: DATE_TRUNC('MONTH', enrollment_date)
-      comment: "Month of enrollment for trending enrollment velocity over time."
-    - name: "eligibility_confirmed_flag"
-      expr: eligibility_confirmed_flag
-      comment: "Whether eligibility was confirmed, used to assess screening quality."
+      comment: "Month of enrollment for recruitment trend analysis."
+    - name: "withdrawal_reason"
+      expr: withdrawal_reason
+      comment: "Reason for subject withdrawal; retention insight."
   measures:
-    - name: "Enrolled Subject Count"
+    - name: "Enrollment Count"
       expr: COUNT(1)
-      comment: "Total number of subject enrollment records; the core recruitment volume KPI leadership tracks against enrollment targets."
-    - name: "Distinct Enrolled Patients"
+      comment: "Total subject enrollments; recruitment volume."
+    - name: "Distinct Enrolled Subjects"
       expr: COUNT(DISTINCT mpi_record_id)
-      comment: "Distinct patients enrolled across studies; informs unique-participant reach and cross-study burden."
-    - name: "Subjects With Adverse Event"
-      expr: SUM(CASE WHEN adverse_event_flag = TRUE THEN 1 ELSE 0 END)
-      comment: "Count of subjects flagged with an adverse event; drives safety monitoring and DSMB escalation."
-    - name: "Adverse Event Rate Pct"
-      expr: ROUND(100.0 * SUM(CASE WHEN adverse_event_flag = TRUE THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percent of enrolled subjects with an adverse event; a key safety signal for trial risk review."
-    - name: "Protocol Deviation Rate Pct"
-      expr: ROUND(100.0 * SUM(CASE WHEN protocol_deviation_flag = TRUE THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percent of subjects with a protocol deviation; indicates site compliance and data integrity risk."
+      comment: "Distinct patients enrolled; true recruited population."
+    - name: "Eligibility Confirmed Count"
+      expr: COUNT(CASE WHEN eligibility_confirmed_flag = TRUE THEN 1 END)
+      comment: "Enrollments with confirmed eligibility; screening quality."
+    - name: "Withdrawn Count"
+      expr: COUNT(CASE WHEN withdrawal_date IS NOT NULL THEN 1 END)
+      comment: "Number of withdrawn subjects; attrition tracking."
     - name: "Withdrawal Rate Pct"
-      expr: ROUND(100.0 * SUM(CASE WHEN withdrawal_date IS NOT NULL THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percent of subjects who withdrew; retention KPI signaling protocol burden or safety concerns."
-    - name: "Serious Adverse Event Rate Pct"
-      expr: ROUND(100.0 * SUM(CASE WHEN serious_adverse_event_flag = TRUE THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percent of subjects with a serious adverse event; drives expedited safety reporting and stopping-rule review."
+      expr: ROUND(100.0 * COUNT(CASE WHEN withdrawal_date IS NOT NULL THEN 1 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percent of enrollments that withdrew; retention risk KPI."
+    - name: "Serious Adverse Event Count"
+      expr: COUNT(CASE WHEN serious_adverse_event_flag = TRUE THEN 1 END)
+      comment: "Enrollments flagged with a serious adverse event; safety signal."
+    - name: "Protocol Deviation Count"
+      expr: COUNT(CASE WHEN protocol_deviation_flag = TRUE THEN 1 END)
+      comment: "Enrollments with a protocol deviation; compliance risk."
 $$;
 
 CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`research_adverse_event`
@@ -49,151 +102,46 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Adverse event surveillance KPIs: seriousness, expedited reporting compliance, IRB reportability and resolution to steer patient-safety governance and regulatory reporting."
+  comment: "Adverse event safety KPIs: seriousness, expedited reporting timeliness, and outcomes. Central to patient safety governance and regulatory reporting compliance."
   source: "`vibe_healthcare_v1`.`research`.`adverse_event`"
   dimensions:
     - name: "event_type"
       expr: event_type
-      comment: "Type of adverse event for categorizing the safety profile."
+      comment: "Category/type of the adverse event."
+    - name: "event_status"
+      expr: event_status
+      comment: "Processing/resolution status of the event."
     - name: "severity_grade"
       expr: severity_grade
-      comment: "Clinical severity grade of the event used to prioritize review."
+      comment: "CTCAE-style severity grade of the event."
     - name: "causality_assessment"
       expr: causality_assessment
-      comment: "Assessed relationship of the event to the study intervention."
-    - name: "adverse_event_status"
-      expr: adverse_event_status
-      comment: "Current status of the adverse event record for open/closed tracking."
-    - name: "onset_month"
-      expr: DATE_TRUNC('MONTH', onset_date)
-      comment: "Month of event onset for temporal safety trending."
+      comment: "Assessed causality relationship to study product."
+    - name: "outcome"
+      expr: outcome
+      comment: "Clinical outcome of the adverse event."
+    - name: "report_month"
+      expr: DATE_TRUNC('MONTH', report_date)
+      comment: "Month the event was reported; trend monitoring."
   measures:
     - name: "Adverse Event Count"
       expr: COUNT(1)
-      comment: "Total adverse events reported; the base safety volume KPI for study oversight."
+      comment: "Total adverse events; overall safety burden."
     - name: "Serious Event Count"
-      expr: SUM(CASE WHEN seriousness_flag = TRUE THEN 1 ELSE 0 END)
-      comment: "Count of serious adverse events; central to safety escalation and stopping decisions."
+      expr: COUNT(CASE WHEN seriousness_flag = TRUE THEN 1 END)
+      comment: "Number of serious adverse events; primary safety escalation metric."
     - name: "Serious Event Rate Pct"
-      expr: ROUND(100.0 * SUM(CASE WHEN seriousness_flag = TRUE THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percent of events classified serious; a headline safety indicator for governance committees."
-    - name: "Expedited Reporting Rate Pct"
-      expr: ROUND(100.0 * SUM(CASE WHEN expedited_reporting_flag = TRUE THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percent of events requiring expedited reporting; monitors regulatory timeliness obligations."
-    - name: "IRB Reportable Rate Pct"
-      expr: ROUND(100.0 * SUM(CASE WHEN irb_reportable_flag = TRUE THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percent of events reportable to the IRB; ensures compliance oversight coverage."
-    - name: "Follow Up Required Rate Pct"
-      expr: ROUND(100.0 * SUM(CASE WHEN follow_up_required_flag = TRUE THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percent of events needing follow-up; sizes the open safety workload for coordinators."
-$$;
-
-CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`research_study_site`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Site performance KPIs: enrollment achievement, deviation and adverse-event burden, data-query load and risk rating used to steer multi-site trial management and site remediation."
-  source: "`vibe_healthcare_v1`.`research`.`study_site`"
-  dimensions:
-    - name: "site_status"
-      expr: site_status
-      comment: "Operational status of the study site (active, closed) for portfolio segmentation."
-    - name: "site_risk_rating"
-      expr: site_risk_rating
-      comment: "Assigned risk tier of the site used to prioritize monitoring resources."
-    - name: "regulatory_binder_status"
-      expr: regulatory_binder_status
-      comment: "Completeness status of the site regulatory binder for compliance readiness."
-    - name: "activation_month"
-      expr: DATE_TRUNC('MONTH', activation_date)
-      comment: "Month the site was activated for startup timeline analysis."
-  measures:
-    - name: "Site Count"
-      expr: COUNT(1)
-      comment: "Total number of study sites; base footprint KPI for study operations."
-    - name: "Avg Enrollment Rate Per Month"
-      expr: ROUND(AVG(CAST(enrollment_rate_per_month AS DOUBLE)), 2)
-      comment: "Average monthly enrollment rate across sites; measures recruitment productivity to steer site investment."
-    - name: "Avg Site Performance Score"
-      expr: ROUND(AVG(CAST(site_performance_score AS DOUBLE)), 2)
-      comment: "Mean composite performance score; a leadership-facing site-quality indicator."
-    - name: "High Risk Site Rate Pct"
-      expr: ROUND(100.0 * SUM(CASE WHEN site_risk_rating = 'High' THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percent of sites rated high risk; drives monitoring resource allocation."
-    - name: "Sites Requiring CAPA Rate Pct"
-      expr: ROUND(100.0 * SUM(CASE WHEN corrective_action_plan_required_flag = TRUE THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percent of sites requiring a corrective action plan; a compliance-remediation KPI."
-$$;
-
-CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`research_study_budget`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Study financial KPIs: budget totals, spend, per-patient economics and burn rate used to steer research financial planning and sponsor negotiations."
-  source: "`vibe_healthcare_v1`.`research`.`study_budget`"
-  dimensions:
-    - name: "budget_status"
-      expr: budget_status
-      comment: "Approval/lifecycle status of the budget for financial pipeline segmentation."
-    - name: "budget_version"
-      expr: budget_version
-      comment: "Budget version identifier for tracking negotiation iterations."
-    - name: "approval_month"
-      expr: DATE_TRUNC('MONTH', budget_approval_date)
-      comment: "Month the budget was approved for finance trending."
-  measures:
-    - name: "Total Approved Amount"
-      expr: SUM(CAST(approved_amount AS DOUBLE))
-      comment: "Sum of approved study budget; core research funding commitment KPI."
-    - name: "Total Spent Amount"
-      expr: SUM(CAST(spent_amount AS DOUBLE))
-      comment: "Sum of spend to date across budgets; the financial burn KPI for portfolio oversight."
-    - name: "Avg Per Patient Amount"
-      expr: ROUND(AVG(CAST(per_patient_amount AS DOUBLE)), 2)
-      comment: "Average per-patient reimbursement; drives feasibility and sponsor negotiation decisions."
-    - name: "Total Startup Cost Amount"
-      expr: SUM(CAST(startup_cost_amount AS DOUBLE))
-      comment: "Sum of one-time startup costs; informs go/no-go decisions for new studies."
-$$;
-
-CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`research_grant_expenditure`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Grant spend KPIs: expenditure totals, cost-share, direct vs indirect allowability and audit exposure used to steer sponsored-programs financial compliance."
-  source: "`vibe_healthcare_v1`.`research`.`grant_expenditure`"
-  dimensions:
-    - name: "expense_category"
-      expr: expense_category
-      comment: "Category of grant expense for cost-composition analysis."
-    - name: "fiscal_year"
-      expr: fiscal_year
-      comment: "Fiscal year of the transaction for annual budget reporting."
-    - name: "approval_status"
-      expr: approval_status
-      comment: "Approval status of the expenditure for pipeline monitoring."
-    - name: "transaction_month"
-      expr: DATE_TRUNC('MONTH', transaction_date)
-      comment: "Month of the transaction for spend trending."
-  measures:
-    - name: "Total Expenditure Amount"
-      expr: SUM(CAST(amount AS DOUBLE))
-      comment: "Sum of grant expenditures; the primary spend KPI for grant financial management."
-    - name: "Total Cost Share Amount"
-      expr: SUM(CAST(cost_share_amount AS DOUBLE))
-      comment: "Sum of institutional cost-share; tracks matching obligations against awards."
-    - name: "Avg Effort Percentage"
-      expr: ROUND(AVG(CAST(effort_percentage AS DOUBLE)), 2)
-      comment: "Average committed effort percentage; supports effort certification compliance."
-    - name: "Unallowable Cost Rate Pct"
-      expr: ROUND(100.0 * SUM(CASE WHEN allowable_flag = FALSE THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percent of expenditures flagged unallowable; a direct audit-risk indicator for compliance."
-    - name: "Audit Flagged Rate Pct"
-      expr: ROUND(100.0 * SUM(CASE WHEN audit_flag = TRUE THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percent of expenditures flagged for audit; sizes financial-review exposure."
+      expr: ROUND(100.0 * COUNT(CASE WHEN seriousness_flag = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percent of events classified serious; safety risk KPI."
+    - name: "Expedited Report Count"
+      expr: COUNT(CASE WHEN expedited_reporting_flag = TRUE THEN 1 END)
+      comment: "Events requiring expedited regulatory reporting."
+    - name: "IRB Reportable Count"
+      expr: COUNT(CASE WHEN irb_reportable_flag = TRUE THEN 1 END)
+      comment: "Events reportable to the IRB; oversight workload."
+    - name: "Follow Up Required Count"
+      expr: COUNT(CASE WHEN follow_up_required_flag = TRUE THEN 1 END)
+      comment: "Events with open follow-up obligations."
 $$;
 
 CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`research_protocol_deviation`
@@ -201,107 +149,245 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Protocol deviation KPIs: volume, severity mix and IRB reportability used to steer study quality and compliance interventions."
+  comment: "Protocol deviation KPIs: severity mix, reportability, and CAPA closure. Steers GCP compliance and site quality oversight."
   source: "`vibe_healthcare_v1`.`research`.`protocol_deviation`"
   dimensions:
-    - name: "deviation_type"
-      expr: deviation_type
-      comment: "Category of protocol deviation for root-cause segmentation."
+    - name: "deviation_category"
+      expr: deviation_category
+      comment: "Category of the protocol deviation."
     - name: "deviation_severity"
       expr: deviation_severity
-      comment: "Severity classification of the deviation to prioritize remediation."
-    - name: "protocol_deviation_status"
-      expr: protocol_deviation_status
-      comment: "Resolution status of the deviation for open workload tracking."
+      comment: "Severity classification of the deviation."
+    - name: "deviation_status"
+      expr: deviation_status
+      comment: "Current status of the deviation record."
     - name: "deviation_month"
       expr: DATE_TRUNC('MONTH', deviation_date)
-      comment: "Month the deviation occurred for quality trending."
+      comment: "Month of the deviation; trend tracking."
   measures:
     - name: "Deviation Count"
       expr: COUNT(1)
-      comment: "Total protocol deviations; base study-quality volume KPI."
-    - name: "IRB Reportable Rate Pct"
-      expr: ROUND(100.0 * SUM(CASE WHEN irb_reportable_flag = TRUE THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percent of deviations reportable to the IRB; compliance-escalation KPI."
-    - name: "Major Deviation Rate Pct"
-      expr: ROUND(100.0 * SUM(CASE WHEN deviation_severity = 'Major' THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percent of deviations classified major; signals significant protocol-adherence risk."
-    - name: "Distinct Affected Subjects"
-      expr: COUNT(DISTINCT subject_enrollment_id)
-      comment: "Distinct subjects affected by deviations; sizes patient-level quality impact."
+      comment: "Total protocol deviations; compliance workload."
+    - name: "FDA Reportable Count"
+      expr: COUNT(CASE WHEN fda_reportable_flag = TRUE THEN 1 END)
+      comment: "Deviations reportable to the FDA; regulatory exposure."
+    - name: "IRB Reportable Count"
+      expr: COUNT(CASE WHEN irb_reportable_flag = TRUE THEN 1 END)
+      comment: "Deviations reportable to the IRB."
+    - name: "Closed Deviation Count"
+      expr: COUNT(CASE WHEN closure_date IS NOT NULL THEN 1 END)
+      comment: "Deviations with a closure date; resolution progress."
+    - name: "Closure Rate Pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN closure_date IS NOT NULL THEN 1 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percent of deviations closed; CAPA effectiveness KPI."
 $$;
 
-CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`research_ip_dispensation`
+CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`research_study_site`
 WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Investigational product dispensation KPIs: quantities dispensed and returned, compliance and accountability used to steer IP supply and drug-accountability governance."
-  source: "`vibe_healthcare_v1`.`research`.`ip_dispensation`"
+  comment: "Study site performance KPIs: enrollment attainment, monitoring quality, and data query burden. Drives site selection and risk-based monitoring decisions."
+  source: "`vibe_healthcare_v1`.`research`.`study_site`"
   dimensions:
-    - name: "compliance_status"
-      expr: compliance_status
-      comment: "IP accountability compliance status for the dispensation."
-    - name: "accountability_status"
-      expr: accountability_status
-      comment: "Accountability reconciliation status of dispensed product."
-    - name: "blinding_status"
-      expr: blinding_status
-      comment: "Blinding state of the dispensed product for integrity tracking."
-    - name: "dispensation_month"
-      expr: DATE_TRUNC('MONTH', dispensation_date)
-      comment: "Month of dispensation for supply trending."
+    - name: "site_status"
+      expr: site_status
+      comment: "Operational status of the study site."
+    - name: "site_risk_rating"
+      expr: site_risk_rating
+      comment: "Assigned risk rating for the site."
+    - name: "regulatory_binder_status"
+      expr: regulatory_binder_status
+      comment: "Completeness status of the site regulatory binder."
+    - name: "activation_month"
+      expr: DATE_TRUNC('MONTH', activation_date)
+      comment: "Site activation month for startup timeline analysis."
   measures:
-    - name: "Dispensation Count"
+    - name: "Site Count"
       expr: COUNT(1)
-      comment: "Total dispensation events; base IP supply-activity KPI."
-    - name: "Total Quantity Dispensed"
-      expr: SUM(CAST(quantity_dispensed AS DOUBLE))
-      comment: "Sum of IP quantity dispensed; central to inventory and supply planning."
-    - name: "Total Quantity Returned"
-      expr: SUM(CAST(quantity_returned AS DOUBLE))
-      comment: "Sum of IP quantity returned; supports drug-accountability reconciliation."
-    - name: "Non Compliant Dispensation Rate Pct"
-      expr: ROUND(100.0 * SUM(CASE WHEN compliance_status = 'Non-Compliant' THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percent of dispensations flagged non-compliant; an IP-governance risk KPI."
+      comment: "Total number of study sites; network footprint."
+    - name: "Total Actual Enrollment"
+      expr: SUM(CAST(actual_enrollment_count AS DOUBLE))
+      comment: "Total subjects enrolled across sites; recruitment output."
+    - name: "Avg Enrollment Rate Per Month"
+      expr: AVG(CAST(enrollment_rate_per_month AS DOUBLE))
+      comment: "Average monthly enrollment rate across sites; recruitment velocity KPI."
+    - name: "Avg Site Performance Score"
+      expr: AVG(CAST(site_performance_score AS DOUBLE))
+      comment: "Average site performance score; overall quality benchmark."
+    - name: "Total Open Data Queries"
+      expr: SUM(CAST(open_data_query_count AS DOUBLE))
+      comment: "Total open data queries across sites; data-cleaning backlog."
+    - name: "CAPA Required Site Count"
+      expr: COUNT(CASE WHEN corrective_action_plan_required_flag = TRUE THEN 1 END)
+      comment: "Sites requiring corrective action plans; quality escalation."
 $$;
 
-CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`research_informed_consent`
+CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`research_study_budget`
 WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Informed consent KPIs: consent completeness, HIPAA authorization, LAR/interpreter use and re-consent used to steer human-subjects protection compliance."
-  source: "`vibe_healthcare_v1`.`research`.`informed_consent`"
+  comment: "Study budget financial KPIs: total and per-patient budget, overhead recovery, and coverage analysis coverage. Steers research financial sustainability."
+  source: "`vibe_healthcare_v1`.`research`.`study_budget`"
   dimensions:
-    - name: "consent_status"
-      expr: consent_status
-      comment: "Status of the informed consent record for compliance monitoring."
-    - name: "consent_type"
-      expr: consent_type
-      comment: "Type of consent obtained for segmentation."
-    - name: "consent_method"
-      expr: consent_method
-      comment: "Method used to obtain consent (in-person, electronic)."
-    - name: "consent_month"
-      expr: DATE_TRUNC('MONTH', consent_date)
-      comment: "Month consent was obtained for consenting-activity trending."
+    - name: "budget_status"
+      expr: budget_status
+      comment: "Current status of the budget."
+    - name: "budget_type"
+      expr: budget_type
+      comment: "Type/classification of the budget."
+    - name: "payment_schedule_type"
+      expr: payment_schedule_type
+      comment: "Payment schedule structure for the budget."
+    - name: "budget_effective_month"
+      expr: DATE_TRUNC('MONTH', budget_effective_date)
+      comment: "Effective month of the budget for period analysis."
   measures:
-    - name: "Consent Count"
+    - name: "Budget Count"
       expr: COUNT(1)
-      comment: "Total informed consent records; base human-subjects activity KPI."
-    - name: "HIPAA Authorization Rate Pct"
-      expr: ROUND(100.0 * SUM(CASE WHEN hipaa_authorization_included = TRUE THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percent of consents including HIPAA authorization; a privacy-compliance KPI."
-    - name: "LAR Consent Rate Pct"
-      expr: ROUND(100.0 * SUM(CASE WHEN lar_consent_indicator = TRUE THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percent obtained via legally authorized representative; flags vulnerable-population burden."
-    - name: "Interpreter Used Rate Pct"
-      expr: ROUND(100.0 * SUM(CASE WHEN interpreter_used_flag = TRUE THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percent of consents using an interpreter; supports language-access equity monitoring."
-    - name: "Withdrawal Rate Pct"
-      expr: ROUND(100.0 * SUM(CASE WHEN withdrawal_date IS NOT NULL THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percent of consents subsequently withdrawn; a retention/consent-integrity KPI."
+      comment: "Number of study budgets in scope."
+    - name: "Total Budget Amount"
+      expr: SUM(CAST(total_budget_amount AS DOUBLE))
+      comment: "Sum of total budget amounts; portfolio funding size."
+    - name: "Total Overhead Amount"
+      expr: SUM(CAST(overhead_amount AS DOUBLE))
+      comment: "Sum of overhead/indirect recovery; institutional revenue driver."
+    - name: "Avg Per Patient Budget"
+      expr: AVG(CAST(per_patient_budget_amount AS DOUBLE))
+      comment: "Average per-patient budget; negotiation benchmark."
+    - name: "Avg Overhead Rate Pct"
+      expr: AVG(CAST(overhead_rate_percentage AS DOUBLE))
+      comment: "Average overhead rate percentage; indirect cost recovery KPI."
+    - name: "Total Research Only Cost"
+      expr: SUM(CAST(research_only_cost_amount AS DOUBLE))
+      comment: "Sum of research-only costs; sponsor-billable exposure."
+$$;
+
+CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`research_grant_expenditure`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Grant expenditure KPIs: spend by category, cost-sharing, and allowability. Drives grant compliance and burn-rate monitoring."
+  source: "`vibe_healthcare_v1`.`research`.`grant_expenditure`"
+  dimensions:
+    - name: "expense_category"
+      expr: expense_category
+      comment: "Category of the grant expenditure."
+    - name: "approval_status"
+      expr: approval_status
+      comment: "Approval status of the expenditure."
+    - name: "fiscal_year"
+      expr: fiscal_year
+      comment: "Fiscal year of the expenditure."
+    - name: "transaction_month"
+      expr: DATE_TRUNC('MONTH', transaction_date)
+      comment: "Month of the transaction for burn-rate trends."
+  measures:
+    - name: "Expenditure Count"
+      expr: COUNT(1)
+      comment: "Number of expenditure transactions."
+    - name: "Total Expenditure Amount"
+      expr: SUM(CAST(amount AS DOUBLE))
+      comment: "Sum of expenditure amounts; grant burn tracking."
+    - name: "Total Cost Share Amount"
+      expr: SUM(CAST(cost_share_amount AS DOUBLE))
+      comment: "Sum of committed cost-share; institutional contribution."
+    - name: "Avg Effort Percentage"
+      expr: AVG(CAST(effort_percentage AS DOUBLE))
+      comment: "Average committed effort percentage; personnel allocation KPI."
+    - name: "Unallowable Expenditure Count"
+      expr: COUNT(CASE WHEN allowable_flag = FALSE THEN 1 END)
+      comment: "Expenditures flagged unallowable; audit risk."
+    - name: "Audit Flagged Count"
+      expr: COUNT(CASE WHEN audit_flag = TRUE THEN 1 END)
+      comment: "Expenditures flagged for audit; compliance exposure."
+$$;
+
+CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`research_grant`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Research grant portfolio KPIs: award value, indirect cost recovery, and remaining balance. Steers sponsored-programs financial performance."
+  source: "`vibe_healthcare_v1`.`research`.`research_grant`"
+  dimensions:
+    - name: "grant_status"
+      expr: grant_status
+      comment: "Current status of the grant."
+    - name: "grant_type"
+      expr: grant_type
+      comment: "Type of grant award."
+    - name: "funding_agency"
+      expr: funding_agency
+      comment: "Funding agency providing the grant."
+    - name: "project_start_month"
+      expr: DATE_TRUNC('MONTH', project_start_date)
+      comment: "Project start month for award trend analysis."
+  measures:
+    - name: "Grant Count"
+      expr: COUNT(1)
+      comment: "Number of grants in the portfolio."
+    - name: "Total Award Amount"
+      expr: SUM(CAST(award_amount AS DOUBLE))
+      comment: "Sum of award amounts; total funding secured."
+    - name: "Total Direct Costs"
+      expr: SUM(CAST(direct_costs AS DOUBLE))
+      comment: "Sum of direct costs across grants."
+    - name: "Total Indirect Costs"
+      expr: SUM(CAST(indirect_costs AS DOUBLE))
+      comment: "Sum of indirect/F&A costs; institutional revenue."
+    - name: "Total Remaining Balance"
+      expr: SUM(CAST(remaining_balance AS DOUBLE))
+      comment: "Sum of remaining balances; unspent funds at risk."
+    - name: "Avg F&A Rate"
+      expr: AVG(CAST(fa_rate AS DOUBLE))
+      comment: "Average facilities & administrative rate; recovery efficiency KPI."
+    - name: "Clinical Trial Grant Count"
+      expr: COUNT(CASE WHEN clinical_trial_flag = TRUE THEN 1 END)
+      comment: "Grants supporting clinical trials."
+$$;
+
+CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`research_monitoring_visit`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Site monitoring visit KPIs: findings burden, SDV coverage, and CAPA follow-up. Drives risk-based monitoring and data integrity oversight."
+  source: "`vibe_healthcare_v1`.`research`.`monitoring_visit`"
+  dimensions:
+    - name: "visit_type"
+      expr: visit_type
+      comment: "Type of monitoring visit."
+    - name: "visit_status"
+      expr: visit_status
+      comment: "Status of the monitoring visit."
+    - name: "monitor_type"
+      expr: monitor_type
+      comment: "Type of monitor conducting the visit."
+    - name: "visit_month"
+      expr: DATE_TRUNC('MONTH', visit_date)
+      comment: "Month of the monitoring visit."
+  measures:
+    - name: "Monitoring Visit Count"
+      expr: COUNT(1)
+      comment: "Number of monitoring visits conducted."
+    - name: "Total Major Findings"
+      expr: SUM(CAST(major_findings_count AS DOUBLE))
+      comment: "Sum of major findings; site quality risk."
+    - name: "Total Minor Findings"
+      expr: SUM(CAST(minor_findings_count AS DOUBLE))
+      comment: "Sum of minor findings across visits."
+    - name: "Avg SDV Percentage"
+      expr: AVG(CAST(sdv_percentage AS DOUBLE))
+      comment: "Average source data verification coverage; data integrity KPI."
+    - name: "CAPA Required Visit Count"
+      expr: COUNT(CASE WHEN corrective_action_plan_required_flag = TRUE THEN 1 END)
+      comment: "Visits requiring corrective action plans."
+    - name: "Follow Up Required Count"
+      expr: COUNT(CASE WHEN follow_up_visit_required_flag = TRUE THEN 1 END)
+      comment: "Visits triggering a follow-up visit; escalation workload."
 $$;
 
 CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`research_study_visit`
@@ -309,72 +395,78 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Study visit execution KPIs: protocol compliance, missed assessments, source-data verification and open queries used to steer data quality and site monitoring."
+  comment: "Protocol study visit KPIs: visit compliance, window adherence, and data completeness. Drives protocol adherence and data-lock readiness."
   source: "`vibe_healthcare_v1`.`research`.`study_visit`"
   dimensions:
     - name: "visit_status"
       expr: visit_status
-      comment: "Status of the study visit for completion tracking."
+      comment: "Status of the study visit."
     - name: "visit_type"
       expr: visit_type
-      comment: "Type of protocol visit for scheduling analysis."
+      comment: "Type of study visit."
     - name: "visit_window_status"
       expr: visit_window_status
-      comment: "Whether the visit fell within the protocol window; adherence indicator."
+      comment: "Whether the visit fell within its protocol window."
     - name: "scheduled_month"
       expr: DATE_TRUNC('MONTH', scheduled_date)
-      comment: "Scheduled month of the visit for activity trending."
+      comment: "Scheduled month of the visit."
   measures:
     - name: "Study Visit Count"
       expr: COUNT(1)
-      comment: "Total study visits; base operational-activity KPI."
+      comment: "Total study visits; protocol activity volume."
     - name: "Avg Compliance Percentage"
-      expr: ROUND(AVG(CAST(compliance_percentage AS DOUBLE)), 2)
-      comment: "Average protocol compliance percent per visit; a headline data-quality KPI."
-    - name: "Source Data Verified Rate Pct"
-      expr: ROUND(100.0 * SUM(CASE WHEN source_data_verified_flag = TRUE THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percent of visits with source-data verification complete; monitors monitoring throughput."
-    - name: "Protocol Deviation Rate Pct"
-      expr: ROUND(100.0 * SUM(CASE WHEN protocol_deviation_flag = TRUE THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percent of visits with a protocol deviation; site-quality indicator."
-    - name: "Data Entry Complete Rate Pct"
-      expr: ROUND(100.0 * SUM(CASE WHEN data_entry_complete_flag = TRUE THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percent of visits with data entry complete; measures data-timeliness at sites."
+      expr: AVG(CAST(compliance_percentage AS DOUBLE))
+      comment: "Average visit compliance percentage; protocol adherence KPI."
+    - name: "Data Complete Visit Count"
+      expr: COUNT(CASE WHEN data_entry_complete_flag = TRUE THEN 1 END)
+      comment: "Visits with complete data entry; data-lock readiness."
+    - name: "SDV Verified Count"
+      expr: COUNT(CASE WHEN source_data_verified_flag = TRUE THEN 1 END)
+      comment: "Visits with source data verified."
+    - name: "Protocol Deviation Visit Count"
+      expr: COUNT(CASE WHEN protocol_deviation_flag = TRUE THEN 1 END)
+      comment: "Visits with a protocol deviation; compliance risk."
+    - name: "Missed Assessment Total"
+      expr: SUM(CAST(assessments_missed_count AS DOUBLE))
+      comment: "Total missed assessments; data completeness gap."
 $$;
 
-CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`research_biospecimen`
+CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`research_ip_dispensation`
 WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Biospecimen management KPIs: collection volume, consent-for-future-use, deviation and disposition used to steer biobank operations and consent governance."
-  source: "`vibe_healthcare_v1`.`research`.`biospecimen`"
+  comment: "Investigational product dispensation KPIs: quantities dispensed/returned, accountability, and compliance. Drives drug accountability and supply oversight."
+  source: "`vibe_healthcare_v1`.`research`.`ip_dispensation`"
   dimensions:
-    - name: "specimen_type"
-      expr: specimen_type
-      comment: "Type of biospecimen for inventory segmentation."
-    - name: "specimen_status"
-      expr: specimen_status
-      comment: "Lifecycle status of the specimen for availability tracking."
-    - name: "deidentification_status"
-      expr: deidentification_status
-      comment: "De-identification state of the specimen for privacy governance."
-    - name: "collection_month"
-      expr: DATE_TRUNC('MONTH', collection_date)
-      comment: "Month of collection for biobank activity trending."
+    - name: "accountability_status"
+      expr: accountability_status
+      comment: "Drug accountability status of the dispensation."
+    - name: "compliance_status"
+      expr: compliance_status
+      comment: "Compliance status of the dispensation."
+    - name: "blinding_status"
+      expr: blinding_status
+      comment: "Blinding status at dispensation."
+    - name: "dispensation_month"
+      expr: DATE_TRUNC('MONTH', dispensation_date)
+      comment: "Month of dispensation."
   measures:
-    - name: "Biospecimen Count"
+    - name: "Dispensation Count"
       expr: COUNT(1)
-      comment: "Total biospecimens; base biobank inventory KPI."
-    - name: "Total Collection Volume"
-      expr: SUM(CAST(collection_volume AS DOUBLE))
-      comment: "Sum of collected specimen volume; supports biobank capacity planning."
-    - name: "Consent For Future Use Rate Pct"
-      expr: ROUND(100.0 * SUM(CASE WHEN consent_for_future_use = TRUE THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percent of specimens with future-use consent; determines reusable-research asset base."
-    - name: "Protocol Deviation Rate Pct"
-      expr: ROUND(100.0 * SUM(CASE WHEN protocol_deviation_flag = TRUE THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percent of specimens with a collection/handling deviation; a quality-risk KPI."
+      comment: "Number of dispensation events."
+    - name: "Total Quantity Dispensed"
+      expr: SUM(CAST(quantity_dispensed AS DOUBLE))
+      comment: "Total investigational product dispensed; supply consumption."
+    - name: "Total Quantity Returned"
+      expr: SUM(CAST(quantity_returned AS DOUBLE))
+      comment: "Total product returned; accountability reconciliation."
+    - name: "Total Missed Doses"
+      expr: SUM(CAST(missed_doses AS DOUBLE))
+      comment: "Total missed doses; adherence risk KPI."
+    - name: "Distinct Subjects Dispensed"
+      expr: COUNT(DISTINCT subject_enrollment_id)
+      comment: "Distinct subjects receiving product; reach."
 $$;
 
 CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`research_irb_submission`
@@ -382,75 +474,81 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "IRB submission KPIs: submission volume, approval outcomes, action-required and risk level used to steer regulatory throughput and compliance timelines."
+  comment: "IRB/regulatory submission KPIs: submission volume, outcomes, and action-required backlog. Drives regulatory affairs throughput and turnaround."
   source: "`vibe_healthcare_v1`.`research`.`irb_submission`"
   dimensions:
-    - name: "submission_type"
-      expr: submission_type
-      comment: "Type of IRB submission for workload segmentation."
     - name: "submission_status"
       expr: submission_status
-      comment: "Current status of the submission for pipeline monitoring."
+      comment: "Current status of the submission."
+    - name: "submission_type"
+      expr: submission_type
+      comment: "Type of IRB submission."
     - name: "review_type"
       expr: review_type
-      comment: "Level of IRB review (full board, expedited, exempt)."
+      comment: "Type of IRB review conducted."
     - name: "risk_level"
       expr: risk_level
-      comment: "Assessed risk level of the study submission."
+      comment: "Assessed risk level of the submission."
     - name: "submission_month"
       expr: DATE_TRUNC('MONTH', submission_date)
-      comment: "Month of submission for regulatory activity trending."
+      comment: "Month of submission for throughput trend."
   measures:
     - name: "Submission Count"
       expr: COUNT(1)
-      comment: "Total IRB submissions; base regulatory-workload KPI."
-    - name: "Action Required Rate Pct"
-      expr: ROUND(100.0 * SUM(CASE WHEN action_required_flag = TRUE THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percent of submissions requiring further action; sizes regulatory rework burden."
-    - name: "Vulnerable Population Rate Pct"
-      expr: ROUND(100.0 * SUM(CASE WHEN vulnerable_population_flag = TRUE THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percent of submissions involving vulnerable populations; heightens ethics oversight."
-    - name: "Distinct Studies Submitted"
-      expr: COUNT(DISTINCT research_study_id)
-      comment: "Distinct studies with IRB submissions; portfolio-coverage KPI."
+      comment: "Number of IRB submissions; regulatory workload."
+    - name: "Action Required Count"
+      expr: COUNT(CASE WHEN action_required_flag = TRUE THEN 1 END)
+      comment: "Submissions with pending required actions; backlog."
+    - name: "Approved Count"
+      expr: COUNT(CASE WHEN approval_date IS NOT NULL THEN 1 END)
+      comment: "Submissions with a recorded approval date."
+    - name: "Approval Rate Pct"
+      expr: ROUND(100.0 * COUNT(CASE WHEN approval_date IS NOT NULL THEN 1 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percent of submissions approved; regulatory success KPI."
+    - name: "Vulnerable Population Count"
+      expr: COUNT(CASE WHEN vulnerable_population_flag = TRUE THEN 1 END)
+      comment: "Submissions involving vulnerable populations; heightened oversight."
 $$;
 
-CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`research_investigational_product_training`
+CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`research_informed_consent`
 WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "IP training compliance KPIs: completion, competency pass rates, certification currency and recertification due used to steer GCP/IP handling readiness across study teams."
-  source: "`vibe_healthcare_v1`.`research`.`investigational_product_training`"
+  comment: "Informed consent KPIs: consent completion, HIPAA authorization, and interpreter/LAR use. Drives consent compliance and equity monitoring."
+  source: "`vibe_healthcare_v1`.`research`.`informed_consent`"
   dimensions:
-    - name: "training_type"
-      expr: training_type
-      comment: "Type of IP training delivered for compliance segmentation."
-    - name: "training_status"
-      expr: training_status
-      comment: "Current status of the training record."
-    - name: "completion_status"
-      expr: completion_status
-      comment: "Completion state of the training for readiness tracking."
-    - name: "training_month"
-      expr: DATE_TRUNC('MONTH', training_date)
-      comment: "Month of training delivery for compliance trending."
+    - name: "consent_status"
+      expr: consent_status
+      comment: "Status of the informed consent."
+    - name: "consent_type"
+      expr: consent_type
+      comment: "Type of consent obtained."
+    - name: "consent_method"
+      expr: consent_method
+      comment: "Method used to obtain consent."
+    - name: "language_code"
+      expr: language_code
+      comment: "Language in which consent was obtained; equity dimension."
+    - name: "consent_month"
+      expr: DATE_TRUNC('MONTH', consent_date)
+      comment: "Month consent was obtained."
   measures:
-    - name: "Training Record Count"
+    - name: "Consent Count"
       expr: COUNT(1)
-      comment: "Total IP training records; base training-activity KPI."
-    - name: "Completion Rate Pct"
-      expr: ROUND(100.0 * SUM(CASE WHEN completion_flag = TRUE THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percent of training completed; a readiness-compliance KPI for study staff."
-    - name: "Competency Pass Rate Pct"
-      expr: ROUND(100.0 * SUM(CASE WHEN competency_assessment_passed = TRUE THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percent passing the competency assessment; measures effective staff qualification."
-    - name: "Avg Assessment Score"
-      expr: ROUND(AVG(CAST(assessment_score AS DOUBLE)), 2)
-      comment: "Average assessment score; quality indicator for training effectiveness."
-    - name: "GCP Certified Rate Pct"
-      expr: ROUND(100.0 * SUM(CASE WHEN gcp_certified_flag = TRUE THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percent GCP-certified; a regulatory-readiness KPI for the study team."
+      comment: "Number of informed consents recorded."
+    - name: "HIPAA Authorized Count"
+      expr: COUNT(CASE WHEN hipaa_authorization_included = TRUE THEN 1 END)
+      comment: "Consents including HIPAA authorization; compliance completeness."
+    - name: "Interpreter Used Count"
+      expr: COUNT(CASE WHEN interpreter_used_flag = TRUE THEN 1 END)
+      comment: "Consents requiring an interpreter; language access KPI."
+    - name: "LAR Consent Count"
+      expr: COUNT(CASE WHEN lar_consent_indicator = TRUE THEN 1 END)
+      comment: "Consents obtained via legally authorized representative."
+    - name: "Withdrawn Consent Count"
+      expr: COUNT(CASE WHEN withdrawal_date IS NOT NULL THEN 1 END)
+      comment: "Consents subsequently withdrawn; retention insight."
 $$;
 
 CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`research_coverage_analysis`
@@ -458,31 +556,37 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Clinical research billing coverage-analysis KPIs: analysis throughput, sponsor coverage determinations used to steer research-billing compliance (Medicare CTP) and risk."
+  comment: "Medicare Coverage Analysis KPIs: routine cost coverage determinations and investigational flags. Drives research billing compliance risk."
   source: "`vibe_healthcare_v1`.`research`.`coverage_analysis`"
   dimensions:
     - name: "analysis_status"
       expr: analysis_status
-      comment: "Status of the coverage analysis for pipeline monitoring."
-    - name: "coverage_determination"
-      expr: coverage_determination
-      comment: "Determination outcome (routine care vs research) for billing routing."
-    - name: "service_type"
-      expr: service_type
-      comment: "Service type analyzed for coverage segmentation."
+      comment: "Status of the coverage analysis."
+    - name: "payer_type"
+      expr: payer_type
+      comment: "Payer type covered by the analysis."
+    - name: "medicare_coverage_determination"
+      expr: medicare_coverage_determination
+      comment: "Medicare coverage determination outcome."
     - name: "analysis_month"
       expr: DATE_TRUNC('MONTH', analysis_date)
-      comment: "Month the analysis was performed for throughput trending."
+      comment: "Month the analysis was performed."
   measures:
     - name: "Coverage Analysis Count"
       expr: COUNT(1)
-      comment: "Total coverage analyses; base research-billing compliance workload KPI."
-    - name: "Sponsor Coverage Rate Pct"
-      expr: ROUND(100.0 * SUM(CASE WHEN sponsor_coverage_flag = TRUE THEN 1 ELSE 0 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percent of items designated sponsor-covered; drives research-billing revenue segregation."
-    - name: "Distinct Studies Analyzed"
-      expr: COUNT(DISTINCT research_study_id)
-      comment: "Distinct studies with completed coverage analysis; compliance-coverage KPI."
+      comment: "Number of coverage analyses completed."
+    - name: "Routine Cost Coverage Count"
+      expr: COUNT(CASE WHEN routine_cost_coverage_flag = TRUE THEN 1 END)
+      comment: "Analyses confirming routine cost coverage; billing eligibility."
+    - name: "Investigational Drug Count"
+      expr: COUNT(CASE WHEN investigational_drug_flag = TRUE THEN 1 END)
+      comment: "Analyses involving investigational drugs; billing exclusion risk."
+    - name: "Off Label Use Count"
+      expr: COUNT(CASE WHEN off_label_use_flag = TRUE THEN 1 END)
+      comment: "Analyses involving off-label use; compliance flag."
+    - name: "CTA Flagged Count"
+      expr: COUNT(CASE WHEN clinical_trial_agreement_flag = TRUE THEN 1 END)
+      comment: "Analyses tied to a clinical trial agreement."
 $$;
 
 CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`research_billing_event`
@@ -519,30 +623,20 @@ AS $$
   comment: "Data governance metrics for de‑identified research datasets"
   source: "`vibe_healthcare_v1`.`research`.`deidentified_dataset`"
   dimensions:
-    - name: "All Records"
-      expr: "1"
+    - name: "dataset_type"
+      expr: dataset_type
+      comment: "Logical classification of the dataset (e.g., Clinical, Genomic)"
   measures:
     - name: "dataset_count"
       expr: COUNT(1)
       comment: "Total number of de‑identified datasets created"
-$$;
-
-CREATE OR REPLACE VIEW `vibe_healthcare_v1`.`_metrics`.`research_study`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Portfolio‑level overview of research studies for executive steering"
-  source: "`vibe_healthcare_v1`.`research`.`research_study`"
-  dimensions:
-    - name: "phase"
-      expr: phase
-      comment: "Clinical trial phase (e.g., Phase I, II, III)"
-  measures:
-    - name: "study_count"
-      expr: COUNT(1)
-      comment: "Total number of research studies in the portfolio"
-    - name: "active_studies"
-      expr: SUM(CASE WHEN study_status = 'Active' THEN 1 ELSE 0 END)
-      comment: "Number of studies currently active"
+    - name: "total_dataset_size_mb"
+      expr: SUM(CAST(dataset_size_mb AS DOUBLE))
+      comment: "Cumulative size of all datasets in megabytes"
+    - name: "average_dataset_size_mb"
+      expr: AVG(CAST(dataset_size_mb AS DOUBLE))
+      comment: "Average size per dataset"
+    - name: "cfr_part_11_compliant_datasets"
+      expr: SUM(CASE WHEN cfr_part_11_compliant_flag THEN 1 ELSE 0 END)
+      comment: "Count of datasets that are CFR Part 11 compliant"
 $$;

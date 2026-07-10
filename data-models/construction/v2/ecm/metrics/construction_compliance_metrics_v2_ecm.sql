@@ -1,105 +1,65 @@
--- Metric views for domain: compliance | Business: Construction | Version: 2 | Generated on: 2026-06-28 00:14:33
+-- Metric views for domain: compliance | Business: Construction | Version: 2 | Generated on: 2026-07-10 12:14:04
 
 CREATE OR REPLACE VIEW `vibe_construction_v1`.`_metrics`.`compliance_assessment`
 WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Measures compliance assessment outcomes, ratings, and financial penalties. Enables leadership to track assessment performance, identify critical compliance gaps, and manage penalty exposure."
+  comment: "Tracks compliance assessment outcomes, risk exposure, financial penalties, and rating scores across projects and jurisdictions. Enables leadership to monitor regulatory standing and prioritize remediation investment."
   source: "`vibe_construction_v1`.`compliance`.`assessment`"
   dimensions:
     - name: "assessment_type"
       expr: assessment_type
-      comment: "Type of assessment (internal, external, regulatory) for portfolio segmentation."
-    - name: "assessment_status"
-      expr: assessment_status
-      comment: "Current status of the assessment for pipeline management."
+      comment: "Type of compliance assessment (e.g. internal audit, regulatory review, third-party) for segmenting performance by assessment category."
     - name: "compliance_category"
       expr: compliance_category
-      comment: "Compliance category assessed (environmental, safety, financial) for cross-domain analysis."
-    - name: "compliance_rating"
-      expr: compliance_rating
-      comment: "Rating outcome of the assessment for performance benchmarking."
+      comment: "Regulatory or compliance category (e.g. environmental, safety, financial) to group assessments by domain area."
     - name: "compliance_status_overall"
       expr: compliance_status_overall
-      comment: "Overall compliance status resulting from the assessment."
+      comment: "Overall compliance status of the assessment (e.g. compliant, non-compliant, partial) for executive-level status reporting."
     - name: "risk_level"
       expr: risk_level
-      comment: "Risk level identified in the assessment for executive risk reporting."
-    - name: "is_critical"
-      expr: is_critical
-      comment: "Flag indicating whether the assessment identified critical compliance issues."
-    - name: "is_external_audit"
-      expr: is_external_audit
-      comment: "Flag indicating whether the assessment was conducted by an external auditor."
+      comment: "Risk level assigned to the assessment (e.g. high, medium, low) for risk-tiered reporting."
     - name: "jurisdiction"
       expr: jurisdiction
-      comment: "Jurisdiction of the assessment for geographic compliance analysis."
+      comment: "Regulatory jurisdiction applicable to the assessment, enabling geographic compliance analysis."
+    - name: "is_critical"
+      expr: is_critical
+      comment: "Flag indicating whether the assessment is classified as critical, for prioritisation dashboards."
+    - name: "is_external_audit"
+      expr: is_external_audit
+      comment: "Distinguishes external audits from internal assessments for benchmarking and governance reporting."
     - name: "assessment_date_month"
-      expr: DATE_TRUNC('month', assessment_date)
-      comment: "Month of assessment for trend and scheduling analysis."
-    - name: "currency_code"
-      expr: currency_code
-      comment: "Currency for penalty amount reporting."
+      expr: DATE_TRUNC('MONTH', assessment_date)
+      comment: "Month of assessment date for trend analysis of compliance posture over time."
+    - name: "assessment_status"
+      expr: assessment_status
+      comment: "Current workflow status of the assessment (e.g. open, closed, in-review) for pipeline management."
   measures:
     - name: "total_assessments"
       expr: COUNT(1)
-      comment: "Total number of compliance assessments conducted. Baseline measure of compliance program activity."
-    - name: "critical_assessment_count"
+      comment: "Total number of compliance assessments conducted. Baseline volume metric for audit programme throughput."
+    - name: "critical_assessments"
       expr: COUNT(CASE WHEN is_critical = TRUE THEN 1 END)
-      comment: "Number of assessments flagged as critical. Drives executive escalation and remediation prioritisation."
-    - name: "external_audit_count"
-      expr: COUNT(CASE WHEN is_external_audit = TRUE THEN 1 END)
-      comment: "Number of external audits conducted. Indicates regulatory scrutiny level."
-    - name: "total_penalty_exposure"
+      comment: "Number of assessments flagged as critical. Executives use this to gauge severity of the compliance portfolio."
+    - name: "non_compliant_assessments"
+      expr: COUNT(CASE WHEN compliance_status_overall = 'non-compliant' THEN 1 END)
+      comment: "Count of assessments with a non-compliant overall status. Directly drives remediation prioritisation decisions."
+    - name: "total_penalty_amount"
       expr: SUM(CAST(penalty_amount AS DOUBLE))
-      comment: "Total penalty amounts identified across assessments. Core financial risk KPI for compliance management."
+      comment: "Total financial penalties identified across all assessments. Key financial risk exposure metric for CFO and legal teams."
     - name: "avg_rating_score"
       expr: AVG(CAST(rating_score AS DOUBLE))
-      comment: "Average compliance rating score. Tracks overall compliance performance trend for executive reporting."
+      comment: "Average compliance rating score across assessments. Tracks overall compliance maturity and improvement over time."
     - name: "avg_penalty_per_assessment"
       expr: AVG(CAST(penalty_amount AS DOUBLE))
-      comment: "Average penalty amount per assessment. Benchmarks financial risk per compliance review cycle."
-    - name: "high_risk_assessment_count"
-      expr: COUNT(CASE WHEN risk_level = 'High' THEN 1 END)
-      comment: "Number of high-risk assessments. Informs risk mitigation investment decisions."
-$$;
-
-CREATE OR REPLACE VIEW `construction_ecm`.`_metrics`.`compliance_assessment_by_type`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Assessment counts broken out by type, status and jurisdiction for operational monitoring"
-  source: "`construction_ecm`.`compliance`.`assessment`"
-  dimensions:
-    - name: "assessment_type"
-      expr: assessment_type
-      comment: "Category of assessment (e.g., Safety, Environmental)"
-  measures:
-    - name: "total_assessments"
-      expr: COUNT(1)
-      comment: "Number of assessments"
-$$;
-
-CREATE OR REPLACE VIEW `vibe_construction_v1`.`_metrics`.`compliance_pci_assessment`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Tracks PCI DSS assessment outcomes, control pass/fail rates, and compliance costs. Enables leadership to manage payment card data security compliance and associated financial risk."
-  source: "`vibe_construction_v1`.`compliance`.`assessment`"
-  dimensions:
-    - name: "assessment_type"
-      expr: assessment_type
-      comment: "Type of PCI assessment (SAQ, QSA, ISA) for compliance program segmentation."
-    - name: "assessment_date_month"
-      expr: DATE_TRUNC('month', assessment_date)
-      comment: "Month of assessment for compliance cycle management."
-  measures:
-    - name: "total_pci_assessments"
-      expr: COUNT(1)
-      comment: "Total PCI DSS assessments conducted. Baseline measure of payment security compliance program activity."
+      comment: "Average penalty amount per assessment. Indicates typical financial exposure per compliance event."
+    - name: "external_audit_count"
+      expr: COUNT(CASE WHEN is_external_audit = TRUE THEN 1 END)
+      comment: "Number of external audits conducted. Tracks third-party scrutiny volume for governance reporting."
+    - name: "high_risk_assessments"
+      expr: COUNT(CASE WHEN risk_level = 'high' THEN 1 END)
+      comment: "Count of high-risk assessments. Triggers executive escalation and resource reallocation when elevated."
 $$;
 
 CREATE OR REPLACE VIEW `vibe_construction_v1`.`_metrics`.`compliance_audit_report`
@@ -107,217 +67,114 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Tracks audit report outcomes, scores, and finding volumes. Enables leadership to monitor audit program effectiveness, compliance health trends, and remediation urgency."
+  comment: "Measures audit programme performance including findings volume, scores, remediation timelines, and risk ratings. Supports audit committee reporting and continuous improvement tracking."
   source: "`vibe_construction_v1`.`compliance`.`audit_report`"
   dimensions:
     - name: "report_type"
       expr: report_type
-      comment: "Type of audit report (internal, external, regulatory) for portfolio segmentation."
-    - name: "audit_report_status"
-      expr: audit_report_status
-      comment: "Current status of the audit report for pipeline management."
+      comment: "Type of audit report (e.g. internal, external, regulatory) for segmenting audit programme by category."
     - name: "compliance_status"
       expr: compliance_status
-      comment: "Overall compliance status resulting from the audit."
+      comment: "Compliance status recorded in the audit report for executive status dashboards."
     - name: "risk_rating"
       expr: risk_rating
-      comment: "Risk rating assigned to the audit report for executive risk reporting."
+      comment: "Risk rating assigned to the audit report (e.g. high, medium, low) for risk-tiered portfolio views."
+    - name: "audit_report_status"
+      expr: audit_report_status
+      comment: "Current workflow status of the audit report (e.g. draft, issued, closed) for pipeline management."
     - name: "confidentiality_level"
       expr: confidentiality_level
-      comment: "Confidentiality classification of the audit report."
+      comment: "Confidentiality classification of the report for access control and governance reporting."
     - name: "audit_period_start_month"
-      expr: DATE_TRUNC('month', audit_period_start)
-      comment: "Month the audit period started for trend analysis."
-    - name: "approval_date_month"
-      expr: DATE_TRUNC('month', approval_date)
-      comment: "Month the audit report was approved for reporting cycle analysis."
+      expr: DATE_TRUNC('MONTH', audit_period_start)
+      comment: "Month of audit period start for temporal trend analysis of audit coverage."
+    - name: "audit_scope"
+      expr: audit_scope
+      comment: "Scope of the audit (e.g. financial, operational, safety) for coverage analysis."
   measures:
     - name: "total_audit_reports"
       expr: COUNT(1)
-      comment: "Total number of audit reports produced. Baseline measure of audit program activity."
-    - name: "avg_audit_score"
+      comment: "Total number of audit reports issued. Baseline measure of audit programme activity."
+    - name: "avg_overall_score"
       expr: AVG(CAST(overall_score AS DOUBLE))
-      comment: "Average overall audit score. Primary KPI for tracking compliance health trend across the organisation."
-    - name: "max_audit_score"
-      expr: MAX(CAST(overall_score AS DOUBLE))
-      comment: "Maximum audit score achieved. Benchmarks best-in-class compliance performance."
-    - name: "min_audit_score"
-      expr: MIN(CAST(overall_score AS DOUBLE))
-      comment: "Minimum audit score recorded. Identifies worst-performing compliance areas requiring intervention."
-    - name: "total_critical_findings"
-      expr: SUM(CAST(critical_findings_count AS BIGINT))
-      comment: "Total critical findings across all audit reports. High counts signal systemic compliance failures requiring executive action."
-    - name: "total_noncritical_findings"
-      expr: SUM(CAST(noncritical_findings_count AS BIGINT))
-      comment: "Total non-critical findings. Tracks overall finding volume for compliance improvement programs."
-    - name: "reports_pending_remediation"
-      expr: COUNT(CASE WHEN audit_report_status NOT IN ('Closed', 'Completed') THEN 1 END)
-      comment: "Number of audit reports with open remediation. Indicates outstanding compliance obligations."
+      comment: "Average audit score across all reports. Tracks overall compliance quality trend for executive steering."
+    - name: "total_overall_score"
+      expr: SUM(CAST(overall_score AS DOUBLE))
+      comment: "Sum of audit scores used as denominator component for weighted scoring calculations in BI."
+    - name: "high_risk_reports"
+      expr: COUNT(CASE WHEN risk_rating = 'high' THEN 1 END)
+      comment: "Number of audit reports rated high risk. Directly informs audit committee escalation decisions."
+    - name: "open_reports"
+      expr: COUNT(CASE WHEN audit_report_status NOT IN ('closed', 'issued') THEN 1 END)
+      comment: "Count of audit reports not yet closed or issued. Indicates audit backlog requiring management attention."
+    - name: "avg_days_to_remediation"
+      expr: AVG(CAST(DATEDIFF(remediation_due_date, approval_date) AS DOUBLE))
+      comment: "Average days between audit approval and remediation due date. Measures urgency and adequacy of remediation timelines."
+    - name: "non_compliant_reports"
+      expr: COUNT(CASE WHEN compliance_status = 'non-compliant' THEN 1 END)
+      comment: "Count of audit reports with non-compliant status. Key indicator of systemic compliance failures requiring intervention."
 $$;
 
-CREATE OR REPLACE VIEW `vibe_construction_v1`.`_metrics`.`compliance_authority_notice`
+CREATE OR REPLACE VIEW `vibe_construction_v1`.`_metrics`.`compliance_permit`
 WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Tracks regulatory authority notices, penalty exposure, and response compliance. Enables leadership to manage enforcement actions, financial penalties, and regulatory relationships."
-  source: "`vibe_construction_v1`.`compliance`.`authority_notice`"
+  comment: "Monitors permit portfolio health including active permits, expiry risk, fee expenditure, and suspension rates. Critical for project delivery risk management and regulatory standing."
+  source: "`vibe_construction_v1`.`compliance`.`compliance_permit`"
   dimensions:
-    - name: "notice_type"
-      expr: notice_type
-      comment: "Type of authority notice (infringement, direction, improvement notice) for enforcement analysis."
-    - name: "authority_notice_status"
-      expr: authority_notice_status
-      comment: "Current status of the notice for resolution pipeline management."
-    - name: "severity_level"
-      expr: severity_level
-      comment: "Severity of the notice for executive risk prioritisation."
-    - name: "authority_type"
-      expr: authority_type
-      comment: "Type of issuing authority (environmental, safety, financial) for regulatory relationship management."
-    - name: "compliance_category"
-      expr: compliance_category
-      comment: "Compliance category of the notice for cross-domain analysis."
-    - name: "appeal_lodged_flag"
-      expr: appeal_lodged_flag
-      comment: "Flag indicating whether an appeal has been lodged against the notice."
-    - name: "response_submitted_flag"
-      expr: response_submitted_flag
-      comment: "Flag indicating whether a response has been submitted to the authority."
-    - name: "penalty_currency"
-      expr: penalty_currency
-      comment: "Currency of the penalty for financial reporting."
-    - name: "notice_date_month"
-      expr: DATE_TRUNC('month', CAST(notice_date AS DATE))
-      comment: "Month the notice was issued for enforcement trend analysis."
-  measures:
-    - name: "total_authority_notices"
-      expr: COUNT(1)
-      comment: "Total authority notices received. Baseline measure of regulatory enforcement exposure."
-    - name: "total_penalty_amount"
-      expr: SUM(CAST(penalty_amount AS DOUBLE))
-      comment: "Total financial penalties from authority notices. Core financial risk KPI for executive reporting."
-    - name: "avg_penalty_amount"
-      expr: AVG(CAST(penalty_amount AS DOUBLE))
-      comment: "Average penalty per authority notice. Benchmarks enforcement severity trend."
-    - name: "unresponded_notice_count"
-      expr: COUNT(CASE WHEN response_submitted_flag = FALSE OR response_submitted_flag IS NULL THEN 1 END)
-      comment: "Number of notices without a submitted response. Indicates regulatory non-compliance risk requiring immediate action."
-    - name: "appealed_notice_count"
-      expr: COUNT(CASE WHEN appeal_lodged_flag = TRUE THEN 1 END)
-      comment: "Number of notices under appeal. Tracks legal challenge activity and associated cost exposure."
-    - name: "response_rate_pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN response_submitted_flag = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percentage of authority notices with a submitted response. KPI for regulatory responsiveness and compliance culture."
-$$;
-
-CREATE OR REPLACE VIEW `vibe_construction_v1`.`_metrics`.`compliance_env_impact_assessment`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Tracks environmental impact assessment outcomes, approval status, and regulatory submission compliance. Enables leadership to manage environmental approval pipelines and project delivery risk."
-  source: "`vibe_construction_v1`.`compliance`.`env_impact_assessment`"
-  dimensions:
-    - name: "assessment_type"
-      expr: assessment_type
-      comment: "Type of environmental impact assessment (EIA, ESIA, screening) for regulatory process management."
-    - name: "approval_status"
-      expr: approval_status
-      comment: "Approval status of the assessment for project delivery risk management."
-    - name: "overall_status"
-      expr: overall_status
-      comment: "Overall status of the environmental assessment for portfolio health monitoring."
-    - name: "risk_level"
-      expr: risk_level
-      comment: "Risk level identified in the assessment for executive prioritisation."
-    - name: "environmental_category"
-      expr: environmental_category
-      comment: "Environmental category of the assessment (air, water, biodiversity) for impact analysis."
-    - name: "epa_report_submitted"
-      expr: epa_report_submitted
-      comment: "Flag indicating whether the EPA report has been submitted."
-    - name: "iso_14001_compliant"
-      expr: iso_14001_compliant
-      comment: "Flag indicating ISO 14001 compliance status of the assessment."
-    - name: "project_phase"
-      expr: project_phase
-      comment: "Project phase during which the assessment was conducted."
-    - name: "assessment_date_year"
-      expr: DATE_TRUNC('year', assessment_date)
-      comment: "Year of assessment for portfolio trend analysis."
-  measures:
-    - name: "total_assessments"
-      expr: COUNT(1)
-      comment: "Total environmental impact assessments conducted. Baseline measure of environmental compliance program scope."
-    - name: "approved_assessment_count"
-      expr: COUNT(CASE WHEN approval_status = 'Approved' THEN 1 END)
-      comment: "Number of approved environmental assessments. Tracks regulatory approval pipeline throughput."
-    - name: "pending_approval_count"
-      expr: COUNT(CASE WHEN approval_status NOT IN ('Approved', 'Rejected', 'Withdrawn') THEN 1 END)
-      comment: "Number of assessments pending regulatory approval. Indicates project delivery risk from environmental approval delays."
-    - name: "epa_submitted_count"
-      expr: COUNT(CASE WHEN epa_report_submitted = TRUE THEN 1 END)
-      comment: "Number of assessments with EPA reports submitted. Tracks regulatory reporting compliance."
-    - name: "iso_14001_compliant_count"
-      expr: COUNT(CASE WHEN iso_14001_compliant = TRUE THEN 1 END)
-      comment: "Number of assessments meeting ISO 14001 requirements. Tracks environmental management system compliance."
-    - name: "approval_rate_pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN approval_status = 'Approved' THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percentage of environmental assessments approved. Strategic KPI for environmental regulatory relationship health."
-$$;
-
-CREATE OR REPLACE VIEW `vibe_construction_v1`.`_metrics`.`compliance_env_monitoring`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Tracks environmental monitoring measurements, exceedances, and compliance status. Enables leadership to manage environmental regulatory compliance and identify sites with threshold breaches."
-  source: "`vibe_construction_v1`.`compliance`.`env_monitoring`"
-  dimensions:
-    - name: "monitoring_type"
-      expr: monitoring_type
-      comment: "Type of environmental monitoring (air quality, noise, water, soil) for parameter-specific analysis."
-    - name: "parameter"
-      expr: parameter
-      comment: "Environmental parameter being monitored (PM2.5, NOx, pH) for regulatory threshold tracking."
-    - name: "env_monitoring_status"
-      expr: env_monitoring_status
-      comment: "Current status of the monitoring record for compliance pipeline management."
+    - name: "permit_type"
+      expr: permit_type
+      comment: "Type of permit (e.g. environmental, building, occupancy) for portfolio segmentation."
+    - name: "permit_category"
+      expr: permit_category
+      comment: "Category of permit for grouping by regulatory domain (e.g. planning, environmental, safety)."
+    - name: "compliance_permit_status"
+      expr: compliance_permit_status
+      comment: "Current status of the permit (e.g. active, expired, suspended) for portfolio health dashboards."
     - name: "compliance_status"
       expr: compliance_status
-      comment: "Compliance status of the monitoring result against regulatory thresholds."
-    - name: "exceedance_flag"
-      expr: exceedance_flag
-      comment: "Flag indicating whether the measured value exceeded the regulatory threshold. Critical for enforcement risk management."
-    - name: "measurement_unit"
-      expr: measurement_unit
-      comment: "Unit of measurement for the monitored parameter."
-    - name: "corrective_action_status"
-      expr: corrective_action_status
-      comment: "Status of corrective action taken following an exceedance."
-    - name: "monitoring_date_month"
-      expr: DATE_TRUNC('month', CAST(monitoring_timestamp AS DATE))
-      comment: "Month of monitoring for trend and seasonal analysis."
+      comment: "Compliance standing of the permit for regulatory reporting."
+    - name: "risk_level"
+      expr: risk_level
+      comment: "Risk level associated with the permit for prioritised renewal and monitoring."
+    - name: "is_active"
+      expr: is_active
+      comment: "Whether the permit is currently active, for active portfolio filtering."
+    - name: "renewal_required_flag"
+      expr: renewal_required_flag
+      comment: "Flag indicating permit requires renewal, for proactive renewal pipeline management."
+    - name: "suspension_flag"
+      expr: suspension_flag
+      comment: "Flag indicating permit is currently suspended, a critical operational risk indicator."
+    - name: "expiry_year_month"
+      expr: DATE_TRUNC('MONTH', expiry_date)
+      comment: "Month of permit expiry for forward-looking renewal planning."
   measures:
-    - name: "total_monitoring_records"
+    - name: "total_permits"
       expr: COUNT(1)
-      comment: "Total environmental monitoring records. Baseline measure of monitoring program coverage."
-    - name: "exceedance_count"
-      expr: COUNT(CASE WHEN exceedance_flag = TRUE THEN 1 END)
-      comment: "Number of threshold exceedances recorded. Core environmental compliance KPI — high counts trigger regulatory enforcement risk."
-    - name: "exceedance_rate_pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN exceedance_flag = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percentage of monitoring readings that exceeded regulatory thresholds. Strategic KPI for environmental compliance health."
-    - name: "avg_measured_value"
-      expr: AVG(CAST(measured_value AS DOUBLE))
-      comment: "Average measured value across monitoring records. Tracks environmental parameter trends against thresholds."
-    - name: "avg_threshold_value"
-      expr: AVG(CAST(threshold_value AS DOUBLE))
-      comment: "Average regulatory threshold value. Provides context for measured value analysis."
-    - name: "max_measured_value"
-      expr: MAX(CAST(measured_value AS DOUBLE))
-      comment: "Maximum measured value recorded. Identifies worst-case environmental exposure for regulatory reporting."
+      comment: "Total number of permits in the portfolio. Baseline measure for permit management scope."
+    - name: "active_permits"
+      expr: COUNT(CASE WHEN is_active = TRUE THEN 1 END)
+      comment: "Number of currently active permits. Executives use this to confirm regulatory authorisation coverage."
+    - name: "suspended_permits"
+      expr: COUNT(CASE WHEN suspension_flag = TRUE THEN 1 END)
+      comment: "Number of suspended permits. A suspended permit can halt project work — this is a critical operational risk metric."
+    - name: "permits_requiring_renewal"
+      expr: COUNT(CASE WHEN renewal_required_flag = TRUE THEN 1 END)
+      comment: "Count of permits flagged for renewal. Drives proactive renewal workload planning."
+    - name: "total_fee_amount"
+      expr: SUM(CAST(fee_amount AS DOUBLE))
+      comment: "Total permit fees across the portfolio. Tracks regulatory compliance cost for budget management."
+    - name: "avg_fee_amount"
+      expr: AVG(CAST(fee_amount AS DOUBLE))
+      comment: "Average permit fee. Benchmarks permit cost by type and jurisdiction for procurement planning."
+    - name: "fee_paid_permits"
+      expr: COUNT(CASE WHEN fee_paid_flag = TRUE THEN 1 END)
+      comment: "Number of permits with fees paid. Unpaid fees risk permit suspension — this metric drives accounts payable prioritisation."
+    - name: "high_risk_permits"
+      expr: COUNT(CASE WHEN risk_level = 'high' THEN 1 END)
+      comment: "Count of high-risk permits. Informs executive escalation and dedicated compliance resource allocation."
 $$;
 
 CREATE OR REPLACE VIEW `vibe_construction_v1`.`_metrics`.`compliance_finding`
@@ -325,394 +182,55 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Tracks compliance findings by severity, type, and resolution status. Enables leadership to assess systemic compliance gaps, financial exposure from findings, and remediation velocity."
+  comment: "Tracks compliance findings by severity, type, financial impact, and resolution status. Enables root-cause analysis, remediation prioritisation, and regulatory risk quantification."
   source: "`vibe_construction_v1`.`compliance`.`finding`"
   dimensions:
     - name: "finding_type"
       expr: finding_type
-      comment: "Type of finding (non-conformance, observation, major, minor) for severity-based analysis."
-    - name: "finding_status"
-      expr: finding_status
-      comment: "Current resolution status of the finding for pipeline management."
+      comment: "Type of compliance finding (e.g. non-conformance, observation, major finding) for categorised reporting."
     - name: "risk_level"
       expr: risk_level
-      comment: "Risk level of the finding for executive risk reporting."
+      comment: "Risk level of the finding (e.g. high, medium, low) for risk-tiered remediation prioritisation."
+    - name: "finding_status"
+      expr: finding_status
+      comment: "Current resolution status of the finding (e.g. open, in-progress, closed) for pipeline management."
     - name: "compliance_status"
       expr: compliance_status
-      comment: "Compliance status associated with the finding."
+      comment: "Compliance standing associated with the finding for regulatory reporting."
     - name: "is_financial_related"
       expr: is_financial_related
-      comment: "Flag indicating whether the finding has financial implications."
+      comment: "Flag indicating the finding has financial implications, for CFO-level risk reporting."
     - name: "is_privacy_related"
       expr: is_privacy_related
-      comment: "Flag indicating whether the finding relates to privacy/data protection obligations."
+      comment: "Flag indicating the finding relates to privacy/data protection, for DPO and legal reporting."
     - name: "reported_date_month"
-      expr: DATE_TRUNC('month', reported_date)
-      comment: "Month the finding was reported for trend analysis."
-    - name: "currency_code"
-      expr: currency_code
-      comment: "Currency for financial impact reporting."
+      expr: DATE_TRUNC('MONTH', reported_date)
+      comment: "Month findings were reported for trend analysis of compliance issue emergence."
   measures:
     - name: "total_findings"
       expr: COUNT(1)
-      comment: "Total number of compliance findings. Baseline measure of compliance gap volume."
-    - name: "open_findings_count"
-      expr: COUNT(CASE WHEN finding_status NOT IN ('Closed', 'Resolved') THEN 1 END)
-      comment: "Number of unresolved findings. High open counts indicate unmitigated compliance risk."
-    - name: "high_risk_findings_count"
-      expr: COUNT(CASE WHEN risk_level = 'High' THEN 1 END)
-      comment: "Number of high-risk findings. Directly informs executive risk escalation decisions."
-    - name: "financial_findings_count"
-      expr: COUNT(CASE WHEN is_financial_related = TRUE THEN 1 END)
-      comment: "Number of findings with financial implications. Quantifies financial compliance exposure."
-    - name: "privacy_findings_count"
-      expr: COUNT(CASE WHEN is_privacy_related = TRUE THEN 1 END)
-      comment: "Number of privacy-related findings. Informs data protection risk management."
+      comment: "Total number of compliance findings. Baseline measure of compliance issue volume across the organisation."
+    - name: "open_findings"
+      expr: COUNT(CASE WHEN finding_status = 'open' THEN 1 END)
+      comment: "Number of unresolved open findings. Directly measures outstanding compliance risk exposure."
+    - name: "high_risk_findings"
+      expr: COUNT(CASE WHEN risk_level = 'high' THEN 1 END)
+      comment: "Count of high-risk findings. Triggers executive escalation and priority remediation resource allocation."
     - name: "total_financial_impact"
       expr: SUM(CAST(impact_amount AS DOUBLE))
-      comment: "Total financial impact of findings. Core KPI for quantifying cost of non-compliance."
+      comment: "Total financial impact of all findings. Quantifies the monetary cost of compliance failures for CFO reporting."
     - name: "avg_severity_score"
       expr: AVG(CAST(severity_score AS DOUBLE))
-      comment: "Average severity score across findings. Tracks overall compliance health trend over time."
-    - name: "max_severity_score"
-      expr: MAX(CAST(severity_score AS DOUBLE))
-      comment: "Maximum severity score recorded. Identifies worst-case compliance exposure for executive attention."
-$$;
-
-CREATE OR REPLACE VIEW `vibe_construction_v1`.`_metrics`.`compliance_iso_audit`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Tracks ISO audit performance, non-conformance volumes, and corrective action requirements. Enables leadership to manage ISO certification health and continuous improvement programs."
-  source: "`vibe_construction_v1`.`compliance`.`iso_audit`"
-  dimensions:
-    - name: "audit_type"
-      expr: audit_type
-      comment: "Type of ISO audit (surveillance, recertification, internal) for program management."
-    - name: "iso_audit_status"
-      expr: iso_audit_status
-      comment: "Current status of the ISO audit for pipeline management."
-    - name: "audit_outcome"
-      expr: audit_outcome
-      comment: "Outcome of the audit (pass, conditional pass, fail) for certification health tracking."
-    - name: "compliance_status"
-      expr: compliance_status
-      comment: "Compliance status resulting from the audit."
-    - name: "standard_audited"
-      expr: standard_audited
-      comment: "ISO standard audited (ISO 9001, ISO 14001, ISO 45001) for standard-specific performance analysis."
-    - name: "risk_level"
-      expr: risk_level
-      comment: "Risk level identified in the audit for executive risk reporting."
-    - name: "corrective_action_required_flag"
-      expr: corrective_action_required_flag
-      comment: "Flag indicating whether corrective action is required following the audit."
-    - name: "follow_up_audit_scheduled_flag"
-      expr: follow_up_audit_scheduled_flag
-      comment: "Flag indicating whether a follow-up audit has been scheduled."
-    - name: "audit_date_month"
-      expr: DATE_TRUNC('month', audit_date)
-      comment: "Month of audit for scheduling and trend analysis."
-  measures:
-    - name: "total_iso_audits"
-      expr: COUNT(1)
-      comment: "Total ISO audits conducted. Baseline measure of ISO compliance program activity."
-    - name: "avg_audit_score"
-      expr: AVG(CAST(audit_score AS DOUBLE))
-      comment: "Average ISO audit score. Primary KPI for tracking ISO compliance performance trend."
-    - name: "total_non_conformances"
-      expr: SUM(CAST(non_conformances_count AS BIGINT))
-      comment: "Total non-conformances identified across ISO audits. High counts signal systemic quality or compliance failures."
-    - name: "total_observations"
-      expr: SUM(CAST(observations_count AS BIGINT))
-      comment: "Total observations raised in ISO audits. Tracks improvement opportunity volume."
-    - name: "corrective_action_required_count"
-      expr: COUNT(CASE WHEN corrective_action_required_flag = TRUE THEN 1 END)
-      comment: "Number of audits requiring corrective action. Drives remediation workload planning."
-    - name: "avg_audit_duration_hours"
-      expr: AVG(CAST(audit_duration_hours AS DOUBLE))
-      comment: "Average audit duration in hours. Informs audit resource planning and efficiency benchmarking."
-    - name: "total_audit_hours"
-      expr: SUM(CAST(audit_duration_hours AS DOUBLE))
-      comment: "Total hours invested in ISO audits. Quantifies compliance program resource consumption."
-$$;
-
-CREATE OR REPLACE VIEW `vibe_construction_v1`.`_metrics`.`compliance_leed_certification`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Tracks LEED certification progress, points performance, and sustainability compliance. Enables leadership to manage green building certification targets and sustainability commitments."
-  source: "`vibe_construction_v1`.`compliance`.`leed_certification`"
-  dimensions:
-    - name: "certification_type"
-      expr: certification_type
-      comment: "Type of LEED certification (BD+C, ID+C, O+M) for program segmentation."
-    - name: "certification_level_target"
-      expr: certification_level_target
-      comment: "Target certification level (Certified, Silver, Gold, Platinum) for ambition tracking."
-    - name: "certification_level_awarded"
-      expr: certification_level_awarded
-      comment: "Actual certification level awarded for performance vs target analysis."
-    - name: "compliance_status"
-      expr: compliance_status
-      comment: "Current compliance status of the certification for portfolio health monitoring."
-    - name: "lifecycle_status"
-      expr: lifecycle_status
-      comment: "Lifecycle stage of the certification (in-progress, submitted, awarded, expired)."
-    - name: "review_status"
-      expr: review_status
-      comment: "Review status of the certification submission."
-    - name: "project_phase"
-      expr: project_phase
-      comment: "Project phase during which certification is being pursued."
-    - name: "award_date_year"
-      expr: DATE_TRUNC('year', award_date)
-      comment: "Year of certification award for portfolio trend analysis."
-  measures:
-    - name: "total_leed_certifications"
-      expr: COUNT(1)
-      comment: "Total LEED certifications in the portfolio. Baseline measure of sustainability certification program scale."
-    - name: "total_points_awarded"
-      expr: SUM(CAST(total_points_awarded AS DOUBLE))
-      comment: "Total LEED points awarded across all certifications. Quantifies sustainability achievement portfolio-wide."
-    - name: "total_points_targeted"
-      expr: SUM(CAST(total_points_targeted AS DOUBLE))
-      comment: "Total LEED points targeted across all certifications. Enables target vs actual gap analysis."
-    - name: "avg_points_awarded"
-      expr: AVG(CAST(total_points_awarded AS DOUBLE))
-      comment: "Average LEED points awarded per certification. Benchmarks sustainability performance per project."
-    - name: "avg_points_achievement_pct"
-      expr: ROUND(100.0 * SUM(CAST(total_points_awarded AS DOUBLE)) / NULLIF(SUM(CAST(total_points_targeted AS DOUBLE)), 0), 2)
-      comment: "Percentage of targeted LEED points actually awarded. Core KPI for sustainability target attainment."
-    - name: "total_points_available"
-      expr: SUM(CAST(total_points_available AS DOUBLE))
-      comment: "Total LEED points available across all certifications. Defines the maximum achievable sustainability score."
-$$;
-
-CREATE OR REPLACE VIEW `vibe_construction_v1`.`_metrics`.`compliance_leed_credit`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Tracks LEED credit achievement by category and eligibility. Enables sustainability managers and executives to identify credit gaps and optimise green building point strategies."
-  source: "`vibe_construction_v1`.`compliance`.`leed_credit`"
-  dimensions:
-    - name: "credit_category"
-      expr: credit_category
-      comment: "LEED credit category (energy, water, materials, indoor quality) for sustainability strategy analysis."
-    - name: "leed_credit_status"
-      expr: leed_credit_status
-      comment: "Current status of the credit (submitted, approved, rejected, pending) for pipeline management."
-    - name: "review_status"
-      expr: review_status
-      comment: "Review status of the credit submission."
-    - name: "is_eligible"
-      expr: is_eligible
-      comment: "Flag indicating whether the project is eligible for this credit."
-    - name: "submission_method"
-      expr: submission_method
-      comment: "Method used to submit credit evidence for process analysis."
-    - name: "evidence_submission_date_month"
-      expr: DATE_TRUNC('month', evidence_submission_date)
-      comment: "Month evidence was submitted for credit submission pipeline analysis."
-  measures:
-    - name: "total_credits"
-      expr: COUNT(1)
-      comment: "Total LEED credits tracked. Baseline measure of sustainability credit portfolio scope."
-    - name: "eligible_credit_count"
-      expr: COUNT(CASE WHEN is_eligible = TRUE THEN 1 END)
-      comment: "Number of credits the project is eligible for. Defines the achievable sustainability ceiling."
-    - name: "total_points_awarded"
-      expr: SUM(CAST(points_awarded AS DOUBLE))
-      comment: "Total LEED points awarded across all credits. Core sustainability achievement KPI."
-    - name: "total_points_targeted"
-      expr: SUM(CAST(points_targeted AS DOUBLE))
-      comment: "Total LEED points targeted across all credits. Enables gap analysis against sustainability goals."
-    - name: "total_points_available"
-      expr: SUM(CAST(points_available AS DOUBLE))
-      comment: "Total LEED points available across all credits. Defines maximum achievable score."
-    - name: "credit_achievement_rate_pct"
-      expr: ROUND(100.0 * SUM(CAST(points_awarded AS DOUBLE)) / NULLIF(SUM(CAST(points_available AS DOUBLE)), 0), 2)
-      comment: "Percentage of available LEED points actually awarded. Strategic KPI for sustainability performance vs potential."
-$$;
-
-CREATE OR REPLACE VIEW `vibe_construction_v1`.`_metrics`.`compliance_permit_condition`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Tracks permit condition compliance, financial penalties, and inspection status. Enables leadership to manage permit condition obligations and avoid enforcement actions."
-  source: "`vibe_construction_v1`.`compliance`.`permit_condition`"
-  dimensions:
-    - name: "condition_type"
-      expr: condition_type
-      comment: "Type of permit condition (reporting, monitoring, operational restriction) for obligation categorisation."
-    - name: "condition_category"
-      expr: condition_category
-      comment: "Category of the condition for cross-domain compliance analysis."
-    - name: "permit_condition_status"
-      expr: permit_condition_status
-      comment: "Current status of the condition for compliance pipeline management."
-    - name: "condition_priority"
-      expr: condition_priority
-      comment: "Priority level of the condition for resource allocation."
-    - name: "condition_is_mandatory"
-      expr: condition_is_mandatory
-      comment: "Flag indicating whether the condition is mandatory."
-    - name: "inspection_required"
-      expr: inspection_required
-      comment: "Flag indicating whether inspection is required to verify condition compliance."
-    - name: "condition_fine_currency"
-      expr: condition_fine_currency
-      comment: "Currency of the condition fine for financial reporting."
-    - name: "compliance_deadline_month"
-      expr: DATE_TRUNC('month', compliance_deadline)
-      comment: "Month the condition compliance deadline falls for workload planning."
-  measures:
-    - name: "total_permit_conditions"
-      expr: COUNT(1)
-      comment: "Total permit conditions tracked. Baseline measure of permit compliance obligation volume."
-    - name: "mandatory_condition_count"
-      expr: COUNT(CASE WHEN condition_is_mandatory = TRUE THEN 1 END)
-      comment: "Number of mandatory permit conditions. Mandatory conditions carry highest enforcement risk if breached."
-    - name: "inspection_required_count"
-      expr: COUNT(CASE WHEN inspection_required = TRUE THEN 1 END)
-      comment: "Number of conditions requiring inspection. Drives inspection scheduling and resource planning."
-    - name: "total_condition_fines"
-      expr: SUM(CAST(condition_fine_amount AS DOUBLE))
-      comment: "Total fines associated with permit conditions. Quantifies financial penalty exposure from permit non-compliance."
-    - name: "total_penalty_amount"
-      expr: SUM(CAST(penalty_amount AS DOUBLE))
-      comment: "Total penalty amounts across permit conditions. Core financial risk KPI for permit compliance management."
-    - name: "non_compliant_condition_count"
-      expr: COUNT(CASE WHEN permit_condition_status NOT IN ('Compliant', 'Closed', 'Met') THEN 1 END)
-      comment: "Number of permit conditions not in compliance. Directly informs enforcement risk escalation."
-$$;
-
-CREATE OR REPLACE VIEW `vibe_construction_v1`.`_metrics`.`compliance_privacy_incident`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Tracks privacy incidents by severity, breach type, and regulatory notification status. Enables leadership to manage data protection risk, regulatory reporting obligations, and remediation costs."
-  source: "`vibe_construction_v1`.`compliance`.`privacy_incident`"
-  dimensions:
-    - name: "breach_type"
-      expr: breach_type
-      comment: "Type of privacy breach (unauthorised access, data loss, disclosure) for incident classification."
-    - name: "breach_severity"
-      expr: breach_severity
-      comment: "Severity of the breach for executive risk prioritisation."
-    - name: "privacy_incident_status"
-      expr: privacy_incident_status
-      comment: "Current status of the privacy incident for resolution pipeline management."
-    - name: "data_category"
-      expr: data_category
-      comment: "Category of data involved in the breach for regulatory obligation assessment."
-    - name: "data_subject_type"
-      expr: data_subject_type
-      comment: "Type of data subject affected (employee, customer, contractor) for impact scoping."
-    - name: "regulatory_report_submitted"
-      expr: regulatory_report_submitted
-      comment: "Flag indicating whether the incident has been reported to the regulatory authority."
-    - name: "individuals_notified_flag"
-      expr: individuals_notified_flag
-      comment: "Flag indicating whether affected individuals have been notified."
-    - name: "legal_hold_flag"
-      expr: legal_hold_flag
-      comment: "Flag indicating whether a legal hold has been placed on related data."
-    - name: "currency_code"
-      expr: currency_code
-      comment: "Currency for fine and cost reporting."
-    - name: "incident_date_month"
-      expr: DATE_TRUNC('month', CAST(incident_timestamp AS DATE))
-      comment: "Month of incident for trend analysis and regulatory reporting cycles."
-  measures:
-    - name: "total_privacy_incidents"
-      expr: COUNT(1)
-      comment: "Total privacy incidents recorded. Baseline measure of data protection risk exposure."
-    - name: "unreported_incident_count"
-      expr: COUNT(CASE WHEN regulatory_report_submitted = FALSE OR regulatory_report_submitted IS NULL THEN 1 END)
-      comment: "Number of incidents not yet reported to regulators. Indicates potential regulatory non-compliance with mandatory notification obligations."
-    - name: "total_estimated_fines"
-      expr: SUM(CAST(estimated_fine_amount AS DOUBLE))
-      comment: "Total estimated regulatory fines from privacy incidents. Core financial risk KPI for data protection governance."
-    - name: "avg_estimated_fine"
-      expr: AVG(CAST(estimated_fine_amount AS DOUBLE))
-      comment: "Average estimated fine per privacy incident. Benchmarks financial exposure per breach event."
-    - name: "total_records_affected"
-      expr: SUM(CAST(data_volume_records AS DOUBLE))
-      comment: "Total number of data records affected by privacy incidents. Quantifies breach scale for regulatory severity assessment."
-    - name: "total_data_volume_bytes"
-      expr: SUM(CAST(data_volume_bytes AS DOUBLE))
-      comment: "Total data volume (bytes) involved in privacy incidents. Informs breach severity classification and regulatory notification thresholds."
-    - name: "regulatory_reporting_rate_pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN regulatory_report_submitted = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percentage of privacy incidents reported to regulators. KPI for regulatory notification compliance."
-$$;
-
-CREATE OR REPLACE VIEW `vibe_construction_v1`.`_metrics`.`compliance_regulatory_change`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Tracks regulatory changes, their implementation status, and financial impact. Enables leadership to manage regulatory change risk, implementation workload, and associated costs."
-  source: "`vibe_construction_v1`.`compliance`.`regulatory_change`"
-  dimensions:
-    - name: "change_type"
-      expr: change_type
-      comment: "Type of regulatory change (new regulation, amendment, repeal) for impact classification."
-    - name: "regulatory_change_status"
-      expr: regulatory_change_status
-      comment: "Current status of the regulatory change for implementation pipeline management."
-    - name: "implementation_status"
-      expr: implementation_status
-      comment: "Implementation progress status for change management tracking."
-    - name: "risk_level"
-      expr: risk_level
-      comment: "Risk level of the regulatory change for executive prioritisation."
-    - name: "compliance_category"
-      expr: compliance_category
-      comment: "Compliance category affected by the change for cross-domain impact analysis."
-    - name: "is_active"
-      expr: is_active
-      comment: "Flag indicating whether the regulatory change is currently active."
-    - name: "is_mandatory"
-      expr: is_mandatory
-      comment: "Flag indicating whether implementation is mandatory."
-    - name: "jurisdiction_type"
-      expr: jurisdiction_type
-      comment: "Jurisdiction type of the regulatory change for geographic impact analysis."
-    - name: "financial_impact_currency"
-      expr: financial_impact_currency
-      comment: "Currency of the financial impact estimate."
-    - name: "effective_date_month"
-      expr: DATE_TRUNC('month', effective_date)
-      comment: "Month the regulatory change becomes effective for implementation deadline management."
-  measures:
-    - name: "total_regulatory_changes"
-      expr: COUNT(1)
-      comment: "Total regulatory changes tracked. Baseline measure of regulatory change management workload."
-    - name: "active_change_count"
-      expr: COUNT(CASE WHEN is_active = TRUE THEN 1 END)
-      comment: "Number of currently active regulatory changes requiring attention. Defines live change management burden."
-    - name: "mandatory_change_count"
-      expr: COUNT(CASE WHEN is_mandatory = TRUE THEN 1 END)
-      comment: "Number of mandatory regulatory changes. Mandatory changes carry highest non-compliance risk if not implemented."
-    - name: "high_risk_change_count"
-      expr: COUNT(CASE WHEN risk_level = 'High' THEN 1 END)
-      comment: "Number of high-risk regulatory changes. Drives executive escalation and resource allocation decisions."
-    - name: "total_financial_impact"
-      expr: SUM(CAST(financial_impact_amount AS DOUBLE))
-      comment: "Total estimated financial impact of regulatory changes. Core KPI for compliance cost forecasting and budget planning."
-    - name: "avg_financial_impact"
-      expr: AVG(CAST(financial_impact_amount AS DOUBLE))
-      comment: "Average financial impact per regulatory change. Benchmarks cost of regulatory compliance per change event."
-    - name: "pending_implementation_count"
-      expr: COUNT(CASE WHEN implementation_status NOT IN ('Implemented', 'Closed', 'Completed') THEN 1 END)
-      comment: "Number of regulatory changes not yet fully implemented. Indicates outstanding compliance implementation risk."
+      comment: "Average severity score across findings. Tracks overall compliance health trend for steering committees."
+    - name: "privacy_related_findings"
+      expr: COUNT(CASE WHEN is_privacy_related = TRUE THEN 1 END)
+      comment: "Count of privacy-related findings. Critical for GDPR compliance reporting and DPO oversight."
+    - name: "financial_related_findings"
+      expr: COUNT(CASE WHEN is_financial_related = TRUE THEN 1 END)
+      comment: "Count of findings with financial implications. Informs financial risk register and audit committee reporting."
+    - name: "avg_days_to_resolution"
+      expr: AVG(CAST(DATEDIFF(resolution_date, reported_date) AS DOUBLE))
+      comment: "Average days from finding report to resolution. Measures remediation velocity — a key operational efficiency KPI."
 $$;
 
 CREATE OR REPLACE VIEW `vibe_construction_v1`.`_metrics`.`compliance_regulatory_obligation`
@@ -720,55 +238,329 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Tracks regulatory obligations by status, risk, and financial exposure. Enables leadership to manage the organisation's regulatory compliance portfolio and associated penalty risk."
+  comment: "Monitors the regulatory obligation portfolio including active obligations, penalty exposure, compliance status, and review cadence. Enables proactive regulatory risk management and resource planning."
   source: "`vibe_construction_v1`.`compliance`.`regulatory_obligation`"
   dimensions:
     - name: "compliance_status"
       expr: compliance_status
-      comment: "Current compliance status of the obligation for health monitoring."
+      comment: "Current compliance status of the obligation for regulatory standing dashboards."
     - name: "risk_level"
       expr: risk_level
-      comment: "Risk level of the obligation for executive risk prioritisation."
+      comment: "Risk level of the obligation for prioritised compliance management."
     - name: "jurisdiction"
       expr: jurisdiction
-      comment: "Jurisdiction of the obligation for geographic compliance analysis."
+      comment: "Jurisdiction of the regulatory obligation for geographic compliance analysis."
     - name: "is_active"
       expr: is_active
-      comment: "Flag indicating whether the obligation is currently active."
+      comment: "Whether the obligation is currently active, for active portfolio filtering."
     - name: "is_mandatory"
       expr: is_mandatory
-      comment: "Flag indicating whether the obligation is mandatory (vs voluntary)."
+      comment: "Whether the obligation is mandatory vs. voluntary, for prioritisation of compliance effort."
+    - name: "regulatory_body"
+      expr: regulatory_body
+      comment: "Regulatory body issuing the obligation for authority-level compliance reporting."
     - name: "penalty_type"
       expr: penalty_type
-      comment: "Type of penalty for non-compliance (financial, operational, criminal) for risk classification."
-    - name: "penalty_currency"
-      expr: penalty_currency
-      comment: "Currency of the penalty for financial reporting."
-    - name: "next_review_date_month"
-      expr: DATE_TRUNC('month', next_review_date)
-      comment: "Month of next scheduled review for compliance calendar management."
+      comment: "Type of penalty associated with non-compliance (e.g. fine, suspension, prosecution) for risk classification."
   measures:
     - name: "total_obligations"
       expr: COUNT(1)
-      comment: "Total regulatory obligations tracked. Baseline measure of compliance obligation portfolio size."
-    - name: "active_obligation_count"
+      comment: "Total number of regulatory obligations tracked. Baseline measure of regulatory compliance scope."
+    - name: "active_obligations"
       expr: COUNT(CASE WHEN is_active = TRUE THEN 1 END)
-      comment: "Number of currently active regulatory obligations. Defines the live compliance burden."
-    - name: "mandatory_obligation_count"
-      expr: COUNT(CASE WHEN is_mandatory = TRUE THEN 1 END)
-      comment: "Number of mandatory obligations. Mandatory obligations carry highest non-compliance risk."
-    - name: "high_risk_obligation_count"
-      expr: COUNT(CASE WHEN risk_level = 'High' THEN 1 END)
-      comment: "Number of high-risk obligations. Drives executive prioritisation of compliance investment."
+      comment: "Number of currently active regulatory obligations. Defines the live compliance workload."
+    - name: "non_compliant_obligations"
+      expr: COUNT(CASE WHEN compliance_status = 'non-compliant' THEN 1 END)
+      comment: "Count of obligations currently in non-compliant status. Directly quantifies regulatory breach exposure."
     - name: "total_penalty_exposure"
       expr: SUM(CAST(penalty_amount AS DOUBLE))
-      comment: "Total potential penalty exposure across all obligations. Core financial risk KPI for compliance portfolio management."
-    - name: "avg_penalty_exposure"
+      comment: "Total potential penalty amount across all obligations. Key financial risk metric for CFO and legal counsel."
+    - name: "avg_penalty_amount"
       expr: AVG(CAST(penalty_amount AS DOUBLE))
-      comment: "Average penalty exposure per obligation. Benchmarks financial risk per regulatory requirement."
-    - name: "non_compliant_obligation_count"
-      expr: COUNT(CASE WHEN compliance_status NOT IN ('Compliant', 'Closed') THEN 1 END)
-      comment: "Number of obligations not currently in compliance. Directly informs regulatory risk escalation decisions."
+      comment: "Average penalty per obligation. Benchmarks typical regulatory financial exposure for risk provisioning."
+    - name: "mandatory_obligations"
+      expr: COUNT(CASE WHEN is_mandatory = TRUE THEN 1 END)
+      comment: "Count of mandatory obligations. Mandatory obligations carry highest compliance risk and must be prioritised."
+    - name: "high_risk_obligations"
+      expr: COUNT(CASE WHEN risk_level = 'high' THEN 1 END)
+      comment: "Count of high-risk obligations. Informs executive escalation and dedicated compliance resource allocation."
+    - name: "obligations_due_for_review"
+      expr: COUNT(CASE WHEN next_review_date <= CURRENT_DATE() THEN 1 END)
+      comment: "Number of obligations where the next review date has passed. Drives compliance review scheduling and avoids lapses."
+$$;
+
+CREATE OR REPLACE VIEW `vibe_construction_v1`.`_metrics`.`compliance_action`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Tracks compliance corrective actions including cost, completion rates, monitoring requirements, and repeat action patterns. Enables management to assess remediation effectiveness and cost of compliance."
+  source: "`vibe_construction_v1`.`compliance`.`compliance_action`"
+  dimensions:
+    - name: "action_type"
+      expr: action_type
+      comment: "Type of compliance action (e.g. corrective, preventive, monitoring) for categorised performance reporting."
+    - name: "compliance_action_status"
+      expr: compliance_action_status
+      comment: "Current status of the compliance action (e.g. open, in-progress, closed) for pipeline management."
+    - name: "compliance_area"
+      expr: compliance_area
+      comment: "Compliance area the action addresses (e.g. environmental, safety, financial) for domain-level analysis."
+    - name: "risk_level"
+      expr: risk_level
+      comment: "Risk level of the compliance action for prioritised resource allocation."
+    - name: "priority"
+      expr: priority
+      comment: "Priority level of the action (e.g. critical, high, medium, low) for workload management."
+    - name: "is_external"
+      expr: is_external
+      comment: "Whether the action involves an external authority or party, for external engagement tracking."
+    - name: "is_repeat_action"
+      expr: is_repeat_action
+      comment: "Flag indicating this is a repeat compliance action, signalling systemic issues requiring root-cause intervention."
+    - name: "monitoring_required"
+      expr: monitoring_required
+      comment: "Whether ongoing monitoring is required for the action, for resource planning."
+    - name: "due_date_month"
+      expr: DATE_TRUNC('MONTH', due_date)
+      comment: "Month the action is due for forward-looking workload and deadline management."
+  measures:
+    - name: "total_actions"
+      expr: COUNT(1)
+      comment: "Total number of compliance actions. Baseline measure of remediation workload."
+    - name: "open_actions"
+      expr: COUNT(CASE WHEN compliance_action_status = 'open' THEN 1 END)
+      comment: "Number of open compliance actions. Measures outstanding remediation backlog requiring management attention."
+    - name: "repeat_actions"
+      expr: COUNT(CASE WHEN is_repeat_action = TRUE THEN 1 END)
+      comment: "Count of repeat compliance actions. High repeat rates indicate systemic failures and ineffective root-cause remediation."
+    - name: "total_actual_cost"
+      expr: SUM(CAST(cost_actual AS DOUBLE))
+      comment: "Total actual cost incurred for compliance actions. Tracks the financial cost of compliance remediation."
+    - name: "total_estimated_cost"
+      expr: SUM(CAST(cost_estimate AS DOUBLE))
+      comment: "Total estimated cost of compliance actions. Used for budget forecasting and cost-of-compliance reporting."
+    - name: "avg_actual_cost"
+      expr: AVG(CAST(cost_actual AS DOUBLE))
+      comment: "Average actual cost per compliance action. Benchmarks remediation cost efficiency."
+    - name: "actions_requiring_monitoring"
+      expr: COUNT(CASE WHEN monitoring_required = TRUE THEN 1 END)
+      comment: "Count of actions requiring ongoing monitoring. Drives monitoring resource planning and scheduling."
+    - name: "high_priority_open_actions"
+      expr: COUNT(CASE WHEN priority IN ('critical', 'high') AND compliance_action_status = 'open' THEN 1 END)
+      comment: "Count of open high-priority or critical compliance actions. Directly triggers executive escalation when elevated."
+$$;
+
+CREATE OR REPLACE VIEW `vibe_construction_v1`.`_metrics`.`compliance_iso_audit`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Measures ISO audit programme performance including audit scores, non-conformances, corrective action rates, and certification body coverage. Supports quality management system governance and certification maintenance."
+  source: "`vibe_construction_v1`.`compliance`.`iso_audit`"
+  dimensions:
+    - name: "audit_type"
+      expr: audit_type
+      comment: "Type of ISO audit (e.g. surveillance, recertification, internal) for programme segmentation."
+    - name: "standard_audited"
+      expr: standard_audited
+      comment: "ISO standard being audited (e.g. ISO 9001, ISO 14001, ISO 45001) for standard-level compliance tracking."
+    - name: "audit_outcome"
+      expr: audit_outcome
+      comment: "Outcome of the ISO audit (e.g. pass, conditional pass, fail) for certification risk assessment."
+    - name: "compliance_status"
+      expr: compliance_status
+      comment: "Compliance status resulting from the audit for regulatory standing dashboards."
+    - name: "risk_level"
+      expr: risk_level
+      comment: "Risk level assigned to the audit for prioritised follow-up management."
+    - name: "iso_audit_status"
+      expr: iso_audit_status
+      comment: "Current workflow status of the audit (e.g. planned, in-progress, completed) for programme management."
+    - name: "corrective_action_required_flag"
+      expr: corrective_action_required_flag
+      comment: "Whether corrective action is required following the audit, for remediation pipeline management."
+    - name: "audit_date_month"
+      expr: DATE_TRUNC('MONTH', audit_date)
+      comment: "Month of audit for temporal trend analysis of ISO compliance performance."
+  measures:
+    - name: "total_iso_audits"
+      expr: COUNT(1)
+      comment: "Total number of ISO audits conducted. Baseline measure of audit programme activity."
+    - name: "avg_audit_score"
+      expr: AVG(CAST(audit_score AS DOUBLE))
+      comment: "Average ISO audit score. Tracks quality management system maturity and improvement over time."
+    - name: "total_audit_score"
+      expr: SUM(CAST(audit_score AS DOUBLE))
+      comment: "Sum of audit scores for weighted average calculations in BI layer."
+    - name: "audits_requiring_corrective_action"
+      expr: COUNT(CASE WHEN corrective_action_required_flag = TRUE THEN 1 END)
+      comment: "Number of audits requiring corrective action. Measures the volume of non-conformances requiring remediation."
+    - name: "total_audit_duration_hours"
+      expr: SUM(CAST(audit_duration_hours AS DOUBLE))
+      comment: "Total hours spent on ISO audits. Tracks audit programme resource consumption for capacity planning."
+    - name: "avg_audit_duration_hours"
+      expr: AVG(CAST(audit_duration_hours AS DOUBLE))
+      comment: "Average audit duration in hours. Benchmarks audit efficiency and identifies outliers requiring investigation."
+    - name: "follow_up_audits_scheduled"
+      expr: COUNT(CASE WHEN follow_up_audit_scheduled_flag = TRUE THEN 1 END)
+      comment: "Count of audits with a follow-up audit scheduled. Indicates volume of unresolved issues requiring re-audit."
+    - name: "failed_audits"
+      expr: COUNT(CASE WHEN audit_outcome = 'fail' THEN 1 END)
+      comment: "Number of failed ISO audits. A critical metric — failed audits risk certification loss and project delivery impact."
+$$;
+
+CREATE OR REPLACE VIEW `vibe_construction_v1`.`_metrics`.`compliance_leed_certification`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Tracks LEED certification progress, points achievement, and certification level attainment across projects. Enables sustainability performance reporting and green building target management."
+  source: "`vibe_construction_v1`.`compliance`.`leed_certification`"
+  dimensions:
+    - name: "certification_level_target"
+      expr: certification_level_target
+      comment: "Target LEED certification level (e.g. Certified, Silver, Gold, Platinum) for goal-setting and gap analysis."
+    - name: "certification_level_awarded"
+      expr: certification_level_awarded
+      comment: "Actual LEED certification level awarded for achievement reporting and benchmarking."
+    - name: "certification_type"
+      expr: certification_type
+      comment: "Type of LEED certification (e.g. BD+C, ID+C, O+M) for programme segmentation."
+    - name: "compliance_status"
+      expr: compliance_status
+      comment: "Compliance status of the LEED certification process for regulatory and sustainability reporting."
+    - name: "lifecycle_status"
+      expr: lifecycle_status
+      comment: "Lifecycle stage of the certification (e.g. registered, submitted, awarded) for pipeline management."
+    - name: "project_phase"
+      expr: project_phase
+      comment: "Project phase during which certification is being pursued for phase-level sustainability tracking."
+    - name: "award_year"
+      expr: DATE_TRUNC('YEAR', award_date)
+      comment: "Year of LEED award for annual sustainability achievement reporting."
+  measures:
+    - name: "total_certifications"
+      expr: COUNT(1)
+      comment: "Total number of LEED certifications tracked. Baseline measure of green building programme scope."
+    - name: "total_points_awarded"
+      expr: SUM(CAST(total_points_awarded AS DOUBLE))
+      comment: "Total LEED points awarded across all certifications. Quantifies overall sustainability achievement."
+    - name: "avg_points_awarded"
+      expr: AVG(CAST(total_points_awarded AS DOUBLE))
+      comment: "Average LEED points awarded per certification. Benchmarks sustainability performance across projects."
+    - name: "total_points_targeted"
+      expr: SUM(CAST(total_points_targeted AS DOUBLE))
+      comment: "Total LEED points targeted across certifications. Used as denominator for points achievement rate in BI."
+    - name: "total_points_available"
+      expr: SUM(CAST(total_points_available AS DOUBLE))
+      comment: "Total LEED points available across certifications. Provides maximum achievable benchmark for gap analysis."
+    - name: "avg_points_targeted"
+      expr: AVG(CAST(total_points_targeted AS DOUBLE))
+      comment: "Average points targeted per certification. Tracks ambition level of sustainability programme."
+    - name: "certifications_awarded"
+      expr: COUNT(CASE WHEN certification_level_awarded IS NOT NULL THEN 1 END)
+      comment: "Number of certifications that have been awarded. Measures green building programme delivery success."
+$$;
+
+CREATE OR REPLACE VIEW `vibe_construction_v1`.`_metrics`.`compliance_leed_credit`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Tracks LEED credit achievement at the individual credit level, enabling detailed sustainability gap analysis and points optimisation across credit categories."
+  source: "`vibe_construction_v1`.`compliance`.`leed_credit`"
+  dimensions:
+    - name: "credit_category"
+      expr: credit_category
+      comment: "LEED credit category (e.g. Energy & Atmosphere, Water Efficiency, Materials) for category-level sustainability analysis."
+    - name: "leed_credit_status"
+      expr: leed_credit_status
+      comment: "Current status of the LEED credit (e.g. attempted, awarded, denied) for achievement tracking."
+    - name: "review_status"
+      expr: review_status
+      comment: "Review status of the credit submission for pipeline management."
+    - name: "is_eligible"
+      expr: is_eligible
+      comment: "Whether the project is eligible for this credit, for eligibility-adjusted gap analysis."
+    - name: "submission_method"
+      expr: submission_method
+      comment: "Method used to submit credit evidence for process efficiency analysis."
+  measures:
+    - name: "total_credits"
+      expr: COUNT(1)
+      comment: "Total number of LEED credits tracked. Baseline measure of sustainability credit portfolio scope."
+    - name: "total_points_awarded"
+      expr: SUM(CAST(points_awarded AS DOUBLE))
+      comment: "Total LEED points awarded across all credits. Core sustainability achievement metric."
+    - name: "total_points_targeted"
+      expr: SUM(CAST(points_targeted AS DOUBLE))
+      comment: "Total points targeted across credits. Used as denominator for credit achievement rate in BI."
+    - name: "total_points_available"
+      expr: SUM(CAST(points_available AS DOUBLE))
+      comment: "Total points available across credits. Provides maximum achievable benchmark for gap analysis."
+    - name: "avg_points_awarded"
+      expr: AVG(CAST(points_awarded AS DOUBLE))
+      comment: "Average points awarded per credit. Benchmarks credit-level sustainability performance."
+    - name: "eligible_credits"
+      expr: COUNT(CASE WHEN is_eligible = TRUE THEN 1 END)
+      comment: "Count of credits the project is eligible for. Defines the achievable sustainability ceiling."
+    - name: "awarded_credits"
+      expr: COUNT(CASE WHEN leed_credit_status = 'awarded' THEN 1 END)
+      comment: "Number of credits successfully awarded. Measures sustainability delivery success at credit level."
+$$;
+
+CREATE OR REPLACE VIEW `vibe_construction_v1`.`_metrics`.`compliance_env_monitoring`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Tracks environmental monitoring measurements including exceedances, threshold breaches, and measurement values by parameter and location. Enables environmental compliance management and regulatory reporting."
+  source: "`vibe_construction_v1`.`compliance`.`env_monitoring`"
+  dimensions:
+    - name: "monitoring_type"
+      expr: monitoring_type
+      comment: "Type of environmental monitoring (e.g. air quality, noise, water, soil) for parameter-level analysis."
+    - name: "parameter"
+      expr: parameter
+      comment: "Environmental parameter being monitored (e.g. PM2.5, NOx, pH) for pollutant-level compliance tracking."
+    - name: "compliance_status"
+      expr: compliance_status
+      comment: "Compliance status of the monitoring reading for regulatory standing dashboards."
+    - name: "exceedance_flag"
+      expr: exceedance_flag
+      comment: "Whether the measurement exceeded the regulatory threshold — the primary environmental compliance risk indicator."
+    - name: "env_monitoring_status"
+      expr: env_monitoring_status
+      comment: "Current status of the monitoring record for data quality and completeness tracking."
+    - name: "corrective_action_status"
+      expr: corrective_action_status
+      comment: "Status of corrective action taken following an exceedance for remediation pipeline management."
+    - name: "monitoring_month"
+      expr: DATE_TRUNC('MONTH', monitoring_timestamp)
+      comment: "Month of monitoring for temporal trend analysis of environmental performance."
+    - name: "measurement_unit"
+      expr: measurement_unit
+      comment: "Unit of measurement for the monitored parameter for consistent cross-parameter reporting."
+  measures:
+    - name: "total_monitoring_records"
+      expr: COUNT(1)
+      comment: "Total number of environmental monitoring records. Baseline measure of monitoring programme coverage."
+    - name: "exceedance_count"
+      expr: COUNT(CASE WHEN exceedance_flag = TRUE THEN 1 END)
+      comment: "Number of monitoring readings that exceeded regulatory thresholds. Critical environmental compliance risk metric."
+    - name: "avg_measured_value"
+      expr: AVG(CAST(measured_value AS DOUBLE))
+      comment: "Average measured value across monitoring records. Tracks environmental parameter trends against thresholds."
+    - name: "avg_threshold_value"
+      expr: AVG(CAST(threshold_value AS DOUBLE))
+      comment: "Average regulatory threshold value for context in exceedance analysis."
+    - name: "max_measured_value"
+      expr: MAX(CAST(measured_value AS DOUBLE))
+      comment: "Maximum measured value recorded. Identifies worst-case environmental events for regulatory reporting."
+    - name: "non_compliant_readings"
+      expr: COUNT(CASE WHEN compliance_status = 'non-compliant' THEN 1 END)
+      comment: "Count of non-compliant monitoring readings. Directly quantifies environmental regulatory breach frequency."
 $$;
 
 CREATE OR REPLACE VIEW `vibe_construction_v1`.`_metrics`.`compliance_regulatory_submission`
@@ -776,52 +568,181 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Tracks regulatory submission volumes, fees, and compliance with submission deadlines. Enables leadership to manage regulatory reporting obligations and associated financial costs."
+  comment: "Monitors regulatory submission performance including submission volumes, fee expenditure, acknowledgement rates, and confidential submission tracking. Supports regulatory affairs management and reporting obligations."
   source: "`vibe_construction_v1`.`compliance`.`regulatory_submission`"
   dimensions:
     - name: "submission_type"
       expr: submission_type
-      comment: "Type of regulatory submission (annual report, incident notification, permit renewal) for obligation tracking."
+      comment: "Type of regulatory submission (e.g. annual report, incident notification, permit application) for portfolio segmentation."
     - name: "regulatory_submission_status"
       expr: regulatory_submission_status
-      comment: "Current status of the submission for pipeline management."
+      comment: "Current status of the submission (e.g. submitted, acknowledged, rejected) for pipeline management."
     - name: "compliance_category"
       expr: compliance_category
-      comment: "Compliance category of the submission for cross-domain analysis."
+      comment: "Compliance category of the submission for domain-level regulatory reporting."
     - name: "submission_method"
       expr: submission_method
-      comment: "Method used to submit (online portal, paper, email) for process efficiency analysis."
+      comment: "Method used to submit (e.g. online portal, post, email) for process efficiency analysis."
     - name: "acknowledgement_received"
       expr: acknowledgement_received
-      comment: "Flag indicating whether the regulatory authority acknowledged receipt."
+      comment: "Whether acknowledgement has been received from the regulatory authority — unacknowledged submissions carry compliance risk."
     - name: "is_confidential"
       expr: is_confidential
-      comment: "Flag indicating whether the submission is confidential."
-    - name: "currency_code"
-      expr: currency_code
-      comment: "Currency for fee reporting."
-    - name: "submission_date_month"
-      expr: DATE_TRUNC('month', submission_date)
-      comment: "Month of submission for regulatory calendar analysis."
+      comment: "Whether the submission is confidential for access control and governance reporting."
+    - name: "submission_month"
+      expr: DATE_TRUNC('MONTH', submission_date)
+      comment: "Month of submission for temporal trend analysis of regulatory reporting activity."
   measures:
     - name: "total_submissions"
       expr: COUNT(1)
-      comment: "Total regulatory submissions made. Baseline measure of regulatory reporting compliance activity."
-    - name: "acknowledged_submission_count"
+      comment: "Total number of regulatory submissions. Baseline measure of regulatory reporting activity."
+    - name: "acknowledged_submissions"
       expr: COUNT(CASE WHEN acknowledgement_received = TRUE THEN 1 END)
-      comment: "Number of submissions acknowledged by regulatory authorities. Tracks submission acceptance rate."
-    - name: "unacknowledged_submission_count"
+      comment: "Number of submissions acknowledged by the regulatory authority. Unacknowledged submissions may indicate compliance gaps."
+    - name: "unacknowledged_submissions"
       expr: COUNT(CASE WHEN acknowledgement_received = FALSE OR acknowledgement_received IS NULL THEN 1 END)
-      comment: "Number of submissions not yet acknowledged. Indicates potential regulatory compliance gaps."
-    - name: "total_submission_fees"
+      comment: "Count of submissions without acknowledgement. Drives follow-up actions with regulatory authorities."
+    - name: "total_fee_amount"
       expr: SUM(CAST(fee_amount AS DOUBLE))
-      comment: "Total fees paid for regulatory submissions. Core financial KPI for compliance cost management."
-    - name: "avg_submission_fee"
+      comment: "Total fees paid for regulatory submissions. Tracks cost of regulatory compliance for budget management."
+    - name: "avg_fee_amount"
       expr: AVG(CAST(fee_amount AS DOUBLE))
-      comment: "Average fee per regulatory submission. Benchmarks regulatory cost per submission type."
-    - name: "acknowledgement_rate_pct"
-      expr: ROUND(100.0 * COUNT(CASE WHEN acknowledgement_received = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
-      comment: "Percentage of submissions acknowledged by regulators. KPI for submission quality and completeness."
+      comment: "Average fee per regulatory submission. Benchmarks submission cost by type and authority."
+    - name: "confidential_submissions"
+      expr: COUNT(CASE WHEN is_confidential = TRUE THEN 1 END)
+      comment: "Count of confidential regulatory submissions. Tracks sensitive regulatory communications for governance oversight."
+$$;
+
+CREATE OR REPLACE VIEW `vibe_construction_v1`.`_metrics`.`compliance_privacy_incident`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Tracks privacy and data breach incidents including severity, financial exposure, notification obligations, and remediation status. Critical for GDPR compliance, DPO reporting, and regulatory breach management."
+  source: "`vibe_construction_v1`.`compliance`.`privacy_incident`"
+  dimensions:
+    - name: "breach_type"
+      expr: breach_type
+      comment: "Type of privacy breach (e.g. unauthorised access, data loss, accidental disclosure) for incident categorisation."
+    - name: "breach_severity"
+      expr: breach_severity
+      comment: "Severity level of the breach (e.g. critical, high, medium, low) for risk-tiered response management."
+    - name: "privacy_incident_status"
+      expr: privacy_incident_status
+      comment: "Current status of the privacy incident (e.g. open, under investigation, closed) for pipeline management."
+    - name: "data_subject_type"
+      expr: data_subject_type
+      comment: "Type of data subject affected (e.g. employee, customer, contractor) for impact scoping."
+    - name: "data_category"
+      expr: data_category
+      comment: "Category of personal data involved (e.g. health, financial, identity) for regulatory classification."
+    - name: "notification_obligation_triggered"
+      expr: notification_obligation_triggered
+      comment: "Whether the incident triggered a regulatory notification obligation (e.g. GDPR 72-hour rule) — a critical compliance flag."
+    - name: "regulatory_report_submitted"
+      expr: regulatory_report_submitted
+      comment: "Whether the regulatory report has been submitted, for compliance deadline tracking."
+    - name: "incident_month"
+      expr: DATE_TRUNC('MONTH', incident_timestamp)
+      comment: "Month of incident for temporal trend analysis of privacy breach frequency."
+  measures:
+    - name: "total_privacy_incidents"
+      expr: COUNT(1)
+      comment: "Total number of privacy incidents recorded. Baseline measure of data protection risk exposure."
+    - name: "notification_obligation_incidents"
+      expr: COUNT(CASE WHEN notification_obligation_triggered = TRUE THEN 1 END)
+      comment: "Count of incidents triggering regulatory notification obligations. Directly measures GDPR breach reporting exposure."
+    - name: "unreported_notifiable_incidents"
+      expr: COUNT(CASE WHEN notification_obligation_triggered = TRUE AND regulatory_report_submitted = FALSE THEN 1 END)
+      comment: "Count of notifiable incidents where regulatory report has not been submitted. Critical compliance gap — triggers immediate escalation."
+    - name: "total_estimated_fine"
+      expr: SUM(CAST(estimated_fine_amount AS DOUBLE))
+      comment: "Total estimated regulatory fines across all privacy incidents. Quantifies financial exposure from data breaches."
+    - name: "avg_estimated_fine"
+      expr: AVG(CAST(estimated_fine_amount AS DOUBLE))
+      comment: "Average estimated fine per privacy incident. Benchmarks typical financial exposure per breach event."
+    - name: "total_data_volume_records"
+      expr: SUM(CAST(data_volume_records AS DOUBLE))
+      comment: "Total number of personal data records affected across all incidents. Measures scale of data exposure for regulatory reporting."
+    - name: "individuals_notified_count"
+      expr: COUNT(CASE WHEN individuals_notified_flag = TRUE THEN 1 END)
+      comment: "Count of incidents where affected individuals have been notified. Tracks GDPR individual notification compliance."
+    - name: "legal_hold_incidents"
+      expr: COUNT(CASE WHEN legal_hold_flag = TRUE THEN 1 END)
+      comment: "Count of incidents under legal hold. Indicates active litigation or regulatory investigation exposure."
+$$;
+
+CREATE OR REPLACE VIEW `vibe_construction_v1`.`_metrics`.`compliance_authority_notice`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Tracks regulatory authority notices including penalties, response compliance, appeal activity, and resolution outcomes. Enables proactive management of regulatory enforcement actions."
+  source: "`vibe_construction_v1`.`compliance`.`authority_notice`"
+  dimensions:
+    - name: "notice_type"
+      expr: notice_type
+      comment: "Type of authority notice (e.g. infringement, stop-work, improvement) for enforcement action categorisation."
+    - name: "authority_type"
+      expr: authority_type
+      comment: "Type of issuing authority (e.g. environmental, safety, planning) for authority-level analysis."
+    - name: "authority_notice_status"
+      expr: authority_notice_status
+      comment: "Current status of the notice (e.g. open, appealed, resolved) for enforcement pipeline management."
+    - name: "severity_level"
+      expr: severity_level
+      comment: "Severity of the notice (e.g. critical, major, minor) for risk-tiered response prioritisation."
+    - name: "compliance_category"
+      expr: compliance_category
+      comment: "Compliance category of the notice for domain-level enforcement analysis."
+    - name: "appeal_lodged_flag"
+      expr: appeal_lodged_flag
+      comment: "Whether an appeal has been lodged against the notice, for legal proceedings tracking."
+    - name: "response_submitted_flag"
+      expr: response_submitted_flag
+      comment: "Whether a response has been submitted to the authority, for deadline compliance tracking."
+    - name: "notice_month"
+      expr: DATE_TRUNC('MONTH', notice_date)
+      comment: "Month the notice was issued for temporal trend analysis of enforcement activity."
+  measures:
+    - name: "total_notices"
+      expr: COUNT(1)
+      comment: "Total number of authority notices received. Baseline measure of regulatory enforcement exposure."
+    - name: "total_penalty_amount"
+      expr: SUM(CAST(penalty_amount AS DOUBLE))
+      comment: "Total financial penalties across all authority notices. Key financial risk metric for CFO and legal teams."
+    - name: "avg_penalty_amount"
+      expr: AVG(CAST(penalty_amount AS DOUBLE))
+      comment: "Average penalty per authority notice. Benchmarks typical enforcement financial exposure."
+    - name: "notices_without_response"
+      expr: COUNT(CASE WHEN response_submitted_flag = FALSE OR response_submitted_flag IS NULL THEN 1 END)
+      comment: "Count of notices where no response has been submitted. Unresponded notices risk escalation and additional penalties."
+    - name: "appealed_notices"
+      expr: COUNT(CASE WHEN appeal_lodged_flag = TRUE THEN 1 END)
+      comment: "Number of notices under appeal. Tracks legal challenge activity and associated cost exposure."
+    - name: "open_notices"
+      expr: COUNT(CASE WHEN authority_notice_status = 'open' THEN 1 END)
+      comment: "Count of open authority notices. Measures outstanding enforcement exposure requiring active management."
+$$;
+
+CREATE OR REPLACE VIEW `vibe_construction_v1`.`_metrics`.`compliance_pci_assessment`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Tracks PCI DSS assessment performance including compliance levels, risk scores, remediation costs, and control pass/fail rates. Supports payment card security governance and audit readiness."
+  source: "`vibe_construction_v1`.`compliance`.`assessment`"
+  dimensions:
+    - name: "assessment_type"
+      expr: assessment_type
+      comment: "Type of PCI assessment (e.g. SAQ, QSA, ISA) for assessment programme segmentation."
+    - name: "assessment_date_month"
+      expr: DATE_TRUNC('MONTH', assessment_date)
+      comment: "Month of assessment for temporal trend analysis of PCI compliance posture."
+  measures:
+    - name: "total_pci_assessments"
+      expr: COUNT(1)
+      comment: "Total number of PCI assessments conducted. Baseline measure of payment security audit programme activity."
 $$;
 
 CREATE OR REPLACE VIEW `vibe_construction_v1`.`_metrics`.`compliance_waiver_exemption`
@@ -829,53 +750,50 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Tracks regulatory waivers and exemptions, their financial impact, and renewal status. Enables leadership to manage exemption portfolio value and renewal risk."
+  comment: "Monitors regulatory waivers and exemptions including financial impact, expiry risk, and monitoring compliance. Enables proactive management of conditional regulatory relief and associated obligations."
   source: "`vibe_construction_v1`.`compliance`.`waiver_exemption`"
   dimensions:
     - name: "waiver_type"
       expr: waiver_type
-      comment: "Type of waiver or exemption (temporary, permanent, conditional) for portfolio classification."
+      comment: "Type of waiver or exemption (e.g. environmental, planning, safety) for portfolio segmentation."
     - name: "waiver_category"
       expr: waiver_category
-      comment: "Category of the waiver for compliance domain analysis."
+      comment: "Category of the waiver for domain-level analysis of regulatory relief."
     - name: "waiver_exemption_status"
       expr: waiver_exemption_status
-      comment: "Current status of the waiver for portfolio health monitoring."
+      comment: "Current status of the waiver (e.g. active, expired, revoked) for portfolio health monitoring."
     - name: "compliance_status"
       expr: compliance_status
-      comment: "Compliance status associated with the waiver conditions."
+      comment: "Compliance status of the waiver conditions for regulatory standing reporting."
     - name: "risk_level"
       expr: risk_level
-      comment: "Risk level of the waiver for executive risk reporting."
+      comment: "Risk level associated with the waiver for prioritised monitoring and renewal management."
     - name: "renewal_required_flag"
       expr: renewal_required_flag
-      comment: "Flag indicating whether the waiver requires renewal."
-    - name: "is_confidential"
-      expr: is_confidential
-      comment: "Flag indicating whether the waiver is confidential."
+      comment: "Whether the waiver requires renewal, for proactive renewal pipeline management."
     - name: "jurisdiction"
       expr: jurisdiction
       comment: "Jurisdiction of the waiver for geographic compliance analysis."
-    - name: "currency_code"
-      expr: currency_code
-      comment: "Currency for financial impact reporting."
-    - name: "effective_from_year"
-      expr: DATE_TRUNC('year', effective_from)
-      comment: "Year the waiver became effective for portfolio vintage analysis."
+    - name: "effective_from_month"
+      expr: DATE_TRUNC('MONTH', effective_from)
+      comment: "Month waiver became effective for temporal portfolio analysis."
   measures:
     - name: "total_waivers"
       expr: COUNT(1)
-      comment: "Total waivers and exemptions in the portfolio. Baseline measure of regulatory flexibility utilisation."
-    - name: "renewal_required_count"
-      expr: COUNT(CASE WHEN renewal_required_flag = TRUE THEN 1 END)
-      comment: "Number of waivers requiring renewal. Drives proactive renewal management to avoid compliance gaps."
-    - name: "total_financial_impact"
+      comment: "Total number of regulatory waivers and exemptions. Baseline measure of conditional regulatory relief portfolio."
+    - name: "total_financial_impact_estimate"
       expr: SUM(CAST(financial_impact_estimate AS DOUBLE))
-      comment: "Total estimated financial impact of waivers and exemptions. Quantifies the financial value of the exemption portfolio."
-    - name: "avg_financial_impact"
+      comment: "Total estimated financial impact of waivers. Quantifies the value of regulatory relief obtained."
+    - name: "avg_financial_impact_estimate"
       expr: AVG(CAST(financial_impact_estimate AS DOUBLE))
-      comment: "Average financial impact per waiver. Benchmarks value per exemption for portfolio prioritisation."
-    - name: "high_risk_waiver_count"
-      expr: COUNT(CASE WHEN risk_level = 'High' THEN 1 END)
-      comment: "Number of high-risk waivers. High-risk waivers require enhanced monitoring and executive oversight."
+      comment: "Average financial impact per waiver. Benchmarks the value of individual regulatory exemptions."
+    - name: "waivers_requiring_renewal"
+      expr: COUNT(CASE WHEN renewal_required_flag = TRUE THEN 1 END)
+      comment: "Count of waivers flagged for renewal. Drives proactive renewal workload planning to avoid lapses."
+    - name: "expiring_waivers"
+      expr: COUNT(CASE WHEN effective_until <= DATE_ADD(CURRENT_DATE(), 90) AND waiver_exemption_status = 'active' THEN 1 END)
+      comment: "Count of active waivers expiring within 90 days. Triggers proactive renewal actions to maintain regulatory relief."
+    - name: "non_compliant_waivers"
+      expr: COUNT(CASE WHEN compliance_status = 'non-compliant' THEN 1 END)
+      comment: "Count of waivers where conditions are not being met. Non-compliance with waiver conditions risks revocation and penalties."
 $$;
