@@ -1,109 +1,62 @@
--- Metric views for domain: supply | Business: Restaurants | Version: 2 | Generated on: 2026-07-02 03:10:25
-
-CREATE OR REPLACE VIEW `vibe_restaurants_v1`.`_metrics`.`supply_supplier_performance`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Operational KPIs measuring supplier delivery reliability, quality, and invoice accuracy to drive sourcing decisions and supplier relationship management."
-  source: "`vibe_restaurants_v1`.`supply`.`supplier_performance`"
-  dimensions:
-    - name: "rating_tier"
-      expr: rating_tier
-      comment: "Supplier performance tier (e.g., Gold, Silver, Bronze) used to segment suppliers by overall performance level."
-    - name: "measurement_period_start"
-      expr: DATE_TRUNC('month', measurement_period_start)
-      comment: "Month bucket of the measurement period start date for trend analysis over time."
-    - name: "measurement_period_end"
-      expr: DATE_TRUNC('month', measurement_period_end)
-      comment: "Month bucket of the measurement period end date for period-over-period comparisons."
-    - name: "contract_compliance_flag"
-      expr: contract_compliance_flag
-      comment: "Indicates whether the supplier was in compliance with contract terms during the measurement period."
-    - name: "corrective_action_flag"
-      expr: corrective_action_flag
-      comment: "Flags suppliers that required corrective action during the measurement period, enabling risk prioritization."
-  measures:
-    - name: "avg_on_time_delivery_rate"
-      expr: AVG(CAST(on_time_delivery_rate AS DOUBLE))
-      comment: "Average on-time delivery rate across evaluated suppliers. A key logistics KPI — declining rates signal supply chain risk and potential stockouts."
-    - name: "avg_fill_rate"
-      expr: AVG(CAST(fill_rate AS DOUBLE))
-      comment: "Average order fill rate across suppliers. Low fill rates indicate supply shortfalls that can disrupt restaurant operations."
-    - name: "avg_quality_rejection_rate"
-      expr: AVG(CAST(quality_rejection_rate AS DOUBLE))
-      comment: "Average rate at which received goods are rejected for quality failures. Drives food safety risk and rework cost decisions."
-    - name: "avg_invoice_accuracy_rate"
-      expr: AVG(CAST(invoice_accuracy_rate AS DOUBLE))
-      comment: "Average invoice accuracy rate across suppliers. Low accuracy increases AP processing cost and payment disputes."
-    - name: "avg_food_safety_compliance_score"
-      expr: AVG(CAST(food_safety_compliance_score AS DOUBLE))
-      comment: "Average food safety compliance score across suppliers. Critical for regulatory risk management and brand protection."
-    - name: "avg_order_accuracy_rate"
-      expr: AVG(CAST(order_accuracy_rate AS DOUBLE))
-      comment: "Average order accuracy rate — measures how often suppliers ship exactly what was ordered, impacting kitchen operations."
-    - name: "avg_lead_time_days"
-      expr: AVG(CAST(average_lead_time_days AS DOUBLE))
-      comment: "Average supplier lead time in days. Longer lead times require higher safety stock and increase working capital requirements."
-    - name: "supplier_evaluation_count"
-      expr: COUNT(1)
-      comment: "Total number of supplier performance evaluations in the period. Baseline volume metric for coverage analysis."
-    - name: "suppliers_requiring_corrective_action"
-      expr: COUNT(CASE WHEN corrective_action_flag = TRUE THEN 1 END)
-      comment: "Count of supplier evaluations where corrective action was required. Executives use this to gauge supply chain health and intervention needs."
-    - name: "suppliers_non_compliant_contract"
-      expr: COUNT(CASE WHEN contract_compliance_flag = FALSE THEN 1 END)
-      comment: "Count of evaluations where the supplier was not in contract compliance. Drives contract enforcement and renegotiation decisions."
-$$;
+-- Metric views for domain: supply | Business: Restaurants | Version: 2 | Generated on: 2026-07-10 18:21:26
 
 CREATE OR REPLACE VIEW `vibe_restaurants_v1`.`_metrics`.`supply_goods_receipt`
 WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Receiving operations KPIs tracking inbound goods volume, cost, temperature compliance, and quality at the point of receipt across distribution centers and restaurant units."
+  comment: "Operational KPIs for inbound goods receipts — tracks receiving volume, cost, temperature compliance, and cold-chain integrity to steer supplier delivery quality and food-safety posture."
   source: "`vibe_restaurants_v1`.`supply`.`goods_receipt`"
   dimensions:
-    - name: "receipt_month"
-      expr: DATE_TRUNC('month', receipt_timestamp)
-      comment: "Month of goods receipt for trend analysis of inbound supply volume and cost."
     - name: "goods_receipt_status"
       expr: goods_receipt_status
-      comment: "Status of the goods receipt (e.g., Accepted, Rejected, Partial) for operational filtering."
+      comment: "Current status of the goods receipt (e.g. pending, accepted, rejected) — used to filter active vs. closed receipts."
     - name: "receiving_method"
       expr: receiving_method
-      comment: "Method used to receive goods (e.g., dock, direct store delivery) for process efficiency analysis."
-    - name: "is_cold_chain_compliant"
-      expr: is_cold_chain_compliant
-      comment: "Indicates whether the receipt maintained cold chain integrity — critical for food safety compliance."
-    - name: "temperature_deviation_flag"
-      expr: temperature_deviation_flag
-      comment: "Flags receipts where temperature deviated from acceptable range, enabling food safety risk monitoring."
+      comment: "Method used to receive goods (e.g. dock, direct-store) — supports analysis of receiving efficiency by channel."
     - name: "currency_code"
       expr: currency_code
-      comment: "Currency of the receipt transaction for multi-currency cost analysis."
+      comment: "Currency in which receipt costs are denominated — required for multi-currency cost analysis."
+    - name: "condition"
+      expr: condition
+      comment: "Physical condition of goods at receipt (e.g. good, damaged, partial) — key quality dimension."
+    - name: "temperature_deviation_flag"
+      expr: temperature_deviation_flag
+      comment: "Indicates whether a temperature deviation was recorded at receipt — critical food-safety dimension."
+    - name: "is_cold_chain_compliant"
+      expr: is_cold_chain_compliant
+      comment: "Whether the cold chain was maintained end-to-end for this receipt — regulatory and food-safety dimension."
+    - name: "receipt_date"
+      expr: DATE_TRUNC('day', receipt_timestamp)
+      comment: "Calendar day of receipt — enables daily and weekly receiving trend analysis."
+    - name: "receipt_month"
+      expr: DATE_TRUNC('month', receipt_timestamp)
+      comment: "Calendar month of receipt — supports monthly receiving volume and cost trending."
   measures:
+    - name: "total_receipts"
+      expr: COUNT(1)
+      comment: "Total number of goods receipt events — baseline volume KPI for receiving operations."
+    - name: "total_received_quantity"
+      expr: SUM(CAST(total_quantity AS DOUBLE))
+      comment: "Total quantity of goods received across all receipts — measures inbound supply volume."
     - name: "total_receipt_cost"
       expr: SUM(CAST(total_cost AS DOUBLE))
-      comment: "Total cost of all goods received. Primary spend metric for supply cost management and budget tracking."
-    - name: "total_quantity_received"
-      expr: SUM(CAST(total_quantity AS DOUBLE))
-      comment: "Total quantity of goods received across all receipts. Volume baseline for supply chain throughput analysis."
-    - name: "receipt_count"
-      expr: COUNT(1)
-      comment: "Total number of goods receipts processed. Operational throughput metric for receiving capacity planning."
-    - name: "temperature_deviation_receipt_count"
-      expr: COUNT(CASE WHEN temperature_deviation_flag = TRUE THEN 1 END)
-      comment: "Number of receipts with temperature deviations. Elevated counts signal cold chain failures requiring immediate supplier or logistics intervention."
-    - name: "cold_chain_non_compliant_count"
-      expr: COUNT(CASE WHEN is_cold_chain_compliant = FALSE THEN 1 END)
-      comment: "Count of receipts that failed cold chain compliance. Directly tied to food safety risk and potential regulatory exposure."
+      comment: "Total cost of all goods received — primary cost-of-goods input for supply chain finance."
     - name: "avg_receipt_cost"
       expr: AVG(CAST(total_cost AS DOUBLE))
-      comment: "Average cost per goods receipt. Benchmarks receiving efficiency and detects cost anomalies per delivery."
+      comment: "Average cost per goods receipt event — benchmarks typical receipt size for budget planning."
     - name: "avg_temperature_celsius"
       expr: AVG(CAST(temperature_celsius AS DOUBLE))
-      comment: "Average recorded temperature at receipt. Used to monitor cold chain performance trends across suppliers and routes."
+      comment: "Average recorded temperature at receipt — monitors cold-chain compliance and food-safety risk."
+    - name: "temperature_deviation_receipt_count"
+      expr: COUNT(CASE WHEN temperature_deviation_flag = TRUE THEN 1 END)
+      comment: "Number of receipts with a recorded temperature deviation — direct food-safety risk indicator."
+    - name: "cold_chain_non_compliant_count"
+      expr: COUNT(CASE WHEN is_cold_chain_compliant = FALSE THEN 1 END)
+      comment: "Number of receipts where cold-chain compliance was not maintained — triggers supplier corrective action."
+    - name: "cold_chain_compliance_rate"
+      expr: ROUND(100.0 * COUNT(CASE WHEN is_cold_chain_compliant = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percentage of receipts that maintained full cold-chain compliance — executive food-safety KPI."
 $$;
 
 CREATE OR REPLACE VIEW `vibe_restaurants_v1`.`_metrics`.`supply_goods_receipt_line`
@@ -111,477 +64,67 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Line-level receiving quality and cost KPIs tracking variance, rejection rates, and unit economics for inbound ingredients."
+  comment: "Line-level receiving quality and variance KPIs — tracks accepted vs. rejected quantities, cost variances, quality scores, and inspection outcomes to drive supplier accountability."
   source: "`vibe_restaurants_v1`.`supply`.`goods_receipt_line`"
   dimensions:
     - name: "inspection_status"
       expr: inspection_status
-      comment: "Quality inspection result at the line level (e.g., Passed, Failed, Pending) for quality segmentation."
-    - name: "is_perishable"
-      expr: is_perishable
-      comment: "Indicates whether the received item is perishable — used to prioritize cold chain and waste risk analysis."
-    - name: "is_returned"
-      expr: is_returned
-      comment: "Flags lines where goods were returned to the supplier, enabling return rate and cost recovery analysis."
-    - name: "compliance_flag"
-      expr: compliance_flag
-      comment: "Indicates whether the received line item met compliance requirements."
-    - name: "unit_of_measure"
-      expr: unit_of_measure
-      comment: "Unit of measure for the received item, enabling normalized quantity comparisons."
-  measures:
-    - name: "total_received_cost"
-      expr: SUM(CAST(total_cost AS DOUBLE))
-      comment: "Total cost of all received line items. Core supply cost metric for COGS and food cost management."
-    - name: "total_received_quantity"
-      expr: SUM(CAST(received_quantity AS DOUBLE))
-      comment: "Total quantity received across all lines. Volume baseline for inventory replenishment and demand fulfillment tracking."
-    - name: "total_rejected_quantity"
-      expr: SUM(CAST(rejected_quantity AS DOUBLE))
-      comment: "Total quantity rejected at receiving. High rejection volumes signal supplier quality issues and increase effective food cost."
-    - name: "total_variance_amount"
-      expr: SUM(CAST(variance_amount AS DOUBLE))
-      comment: "Total financial variance between ordered and received amounts. Drives AP reconciliation and supplier dispute resolution."
-    - name: "total_variance_quantity"
-      expr: SUM(CAST(variance_quantity AS DOUBLE))
-      comment: "Total quantity variance between ordered and received. Persistent variances indicate supplier fulfillment reliability issues."
-    - name: "avg_unit_price"
-      expr: AVG(CAST(unit_price AS DOUBLE))
-      comment: "Average unit price across received line items. Benchmarks against contract prices to detect pricing compliance issues."
-    - name: "avg_quality_score"
-      expr: AVG(CAST(quality_score AS DOUBLE))
-      comment: "Average quality score assigned at receiving inspection. Declining scores trigger supplier corrective action processes."
-    - name: "total_weight_kg"
-      expr: SUM(CAST(weight_kg AS DOUBLE))
-      comment: "Total weight in kilograms of received goods. Used for freight cost benchmarking and logistics capacity planning."
-    - name: "returned_line_count"
-      expr: COUNT(CASE WHEN is_returned = TRUE THEN 1 END)
-      comment: "Number of receipt lines where goods were returned. Elevated return counts indicate systemic supplier quality or specification issues."
-$$;
-
-CREATE OR REPLACE VIEW `vibe_restaurants_v1`.`_metrics`.`supply_purchase_order`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Purchase order management KPIs tracking order volume, spend, approval status, and delivery performance for supply chain procurement operations."
-  source: "`vibe_restaurants_v1`.`supply`.`supply_purchase_order`"
-  dimensions:
-    - name: "purchase_order_status"
-      expr: purchase_order_status
-      comment: "Current status of the purchase order (e.g., Open, Approved, Received, Cancelled) for pipeline visibility."
-    - name: "approval_status"
-      expr: approval_status
-      comment: "Approval workflow status of the PO — used to identify bottlenecks in the procurement approval process."
-    - name: "order_month"
-      expr: DATE_TRUNC('month', order_date)
-      comment: "Month the purchase order was placed for spend trend analysis."
-    - name: "expected_delivery_month"
-      expr: DATE_TRUNC('month', expected_delivery_date)
-      comment: "Month of expected delivery for supply planning and inventory forecasting."
-    - name: "shipping_method"
-      expr: shipping_method
-      comment: "Shipping method used for the order — enables freight cost and lead time analysis by transport mode."
-    - name: "payment_terms"
-      expr: payment_terms
-      comment: "Payment terms on the PO (e.g., Net 30, Net 60) for cash flow and working capital analysis."
-    - name: "currency_code"
-      expr: currency_code
-      comment: "Currency of the purchase order for multi-currency spend consolidation."
-    - name: "is_approved"
-      expr: is_approved
-      comment: "Boolean flag indicating whether the PO has been formally approved."
-  measures:
-    - name: "total_po_spend"
-      expr: SUM(CAST(total_amount AS DOUBLE))
-      comment: "Total spend committed across all purchase orders. Primary supply procurement cost metric for budget management."
-    - name: "avg_po_value"
-      expr: AVG(CAST(total_amount AS DOUBLE))
-      comment: "Average purchase order value. Benchmarks order sizing and identifies unusually large or small orders for review."
-    - name: "purchase_order_count"
-      expr: COUNT(1)
-      comment: "Total number of purchase orders issued. Operational volume metric for procurement workload and supplier activity."
-    - name: "approved_po_count"
-      expr: COUNT(CASE WHEN is_approved = TRUE THEN 1 END)
-      comment: "Count of approved purchase orders. Tracks approval throughput and identifies approval bottlenecks."
-    - name: "pending_approval_po_count"
-      expr: COUNT(CASE WHEN is_approved = FALSE THEN 1 END)
-      comment: "Count of purchase orders pending approval. High pending counts signal procurement process delays that risk supply continuity."
-    - name: "total_approved_spend"
-      expr: SUM(CASE WHEN is_approved = TRUE THEN total_amount ELSE 0 END)
-      comment: "Total spend on approved purchase orders. Represents committed supply spend for cash flow forecasting."
-    - name: "distinct_supplier_count"
-      expr: COUNT(DISTINCT supply_supplier_id)
-      comment: "Number of distinct suppliers with active purchase orders. Measures supplier base breadth and concentration risk."
-    - name: "distinct_unit_count"
-      expr: COUNT(DISTINCT unit_id)
-      comment: "Number of distinct restaurant units receiving supply orders. Measures supply chain reach and distribution coverage."
-$$;
-
-CREATE OR REPLACE VIEW `vibe_restaurants_v1`.`_metrics`.`supply_purchase_order_line`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Line-level purchase order KPIs tracking ordered vs received quantities, unit economics, and fulfillment accuracy for ingredient procurement."
-  source: "`vibe_restaurants_v1`.`supply`.`purchase_order_line`"
-  dimensions:
-    - name: "line_status"
-      expr: line_status
-      comment: "Status of the individual PO line (e.g., Open, Received, Cancelled) for fulfillment tracking."
-    - name: "unit_of_measure"
-      expr: unit_of_measure
-      comment: "Unit of measure for the ordered ingredient — enables normalized quantity comparisons across items."
-    - name: "expected_delivery_month"
-      expr: DATE_TRUNC('month', expected_delivery_date)
-      comment: "Month of expected delivery for supply planning and inventory forecasting at the line level."
-    - name: "currency_code"
-      expr: currency_code
-      comment: "Currency of the line item for multi-currency cost analysis."
-  measures:
-    - name: "total_ordered_quantity"
-      expr: SUM(CAST(ordered_quantity AS DOUBLE))
-      comment: "Total quantity ordered across all PO lines. Baseline demand signal for supply planning and inventory management."
-    - name: "total_received_quantity"
-      expr: SUM(CAST(received_quantity AS DOUBLE))
-      comment: "Total quantity received against PO lines. Compared to ordered quantity to measure supplier fulfillment performance."
-    - name: "total_extended_amount"
-      expr: SUM(CAST(extended_amount AS DOUBLE))
-      comment: "Total extended line amount (quantity × price). Core supply spend metric for COGS and food cost management."
-    - name: "total_discount_amount"
-      expr: SUM(CAST(discount_amount AS DOUBLE))
-      comment: "Total discounts applied across PO lines. Measures negotiated savings and contract compliance benefits."
-    - name: "total_tax_amount"
-      expr: SUM(CAST(tax_amount AS DOUBLE))
-      comment: "Total tax on PO lines for tax liability tracking and AP reconciliation."
-    - name: "avg_unit_price"
-      expr: AVG(CAST(unit_price AS DOUBLE))
-      comment: "Average unit price across ordered lines. Benchmarks against contract prices to detect pricing drift or non-compliance."
-    - name: "fulfillment_quantity_gap"
-      expr: SUM(CAST(ordered_quantity AS DOUBLE) - CAST(received_quantity AS DOUBLE))
-      comment: "Total unfulfilled quantity (ordered minus received). Persistent gaps indicate supplier reliability issues that risk restaurant operations."
-    - name: "po_line_count"
-      expr: COUNT(1)
-      comment: "Total number of PO lines. Operational volume metric for procurement complexity and workload analysis."
-    - name: "distinct_ingredient_count"
-      expr: COUNT(DISTINCT ingredient_id)
-      comment: "Number of distinct ingredients ordered. Measures ingredient portfolio breadth and sourcing complexity."
-$$;
-
-CREATE OR REPLACE VIEW `vibe_restaurants_v1`.`_metrics`.`supply_invoice`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Supplier invoice KPIs tracking payables volume, payment status, matching accuracy, and financial exposure for supply chain AP management."
-  source: "`vibe_restaurants_v1`.`supply`.`invoice`"
-  dimensions:
-    - name: "invoice_status"
-      expr: invoice_status
-      comment: "Current status of the invoice (e.g., Open, Paid, Disputed, Cancelled) for AP pipeline management."
-    - name: "payment_status"
-      expr: payment_status
-      comment: "Payment status of the invoice (e.g., Unpaid, Partial, Paid) for cash flow and working capital analysis."
-    - name: "match_status"
-      expr: match_status
-      comment: "Three-way match status (e.g., Matched, Unmatched, Exception) — unmatched invoices drive AP dispute and audit risk."
-    - name: "invoice_month"
-      expr: DATE_TRUNC('month', invoice_date)
-      comment: "Month of invoice date for payables trend and spend periodization."
-    - name: "due_month"
-      expr: DATE_TRUNC('month', due_date)
-      comment: "Month payment is due for cash flow forecasting and early payment discount analysis."
-    - name: "payment_terms"
-      expr: payment_terms
-      comment: "Payment terms on the invoice (e.g., Net 30) for working capital and DPO analysis."
-    - name: "currency_code"
-      expr: currency_code
-      comment: "Invoice currency for multi-currency payables consolidation."
-  measures:
-    - name: "total_invoice_amount"
-      expr: SUM(CAST(total_amount AS DOUBLE))
-      comment: "Total invoiced amount across all supplier invoices. Primary AP spend metric for supply cost management."
-    - name: "total_net_amount"
-      expr: SUM(CAST(net_amount AS DOUBLE))
-      comment: "Total net invoice amount (before tax). Used for COGS and food cost reporting."
-    - name: "total_tax_amount"
-      expr: SUM(CAST(tax_amount AS DOUBLE))
-      comment: "Total tax on supplier invoices for tax liability tracking and compliance reporting."
-    - name: "invoice_count"
-      expr: COUNT(1)
-      comment: "Total number of supplier invoices. AP workload and supplier activity volume metric."
-    - name: "unpaid_invoice_count"
-      expr: COUNT(CASE WHEN payment_status = 'Unpaid' THEN 1 END)
-      comment: "Count of unpaid invoices. Elevated counts signal AP processing bottlenecks or cash flow constraints."
-    - name: "unmatched_invoice_count"
-      expr: COUNT(CASE WHEN match_status = 'Unmatched' THEN 1 END)
-      comment: "Count of invoices that failed three-way match. Drives AP exception resolution workload and supplier dispute risk."
-    - name: "total_unpaid_amount"
-      expr: SUM(CASE WHEN payment_status = 'Unpaid' THEN total_amount ELSE 0 END)
-      comment: "Total financial exposure from unpaid invoices. Critical for cash flow management and working capital optimization."
-    - name: "distinct_supplier_count"
-      expr: COUNT(DISTINCT procurement_supplier_id)
-      comment: "Number of distinct suppliers with invoices in the period. Measures AP supplier base breadth."
-$$;
-
-CREATE OR REPLACE VIEW `vibe_restaurants_v1`.`_metrics`.`supply_ingredient`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Ingredient master KPIs tracking cost, nutritional profile, compliance attributes, and waste characteristics to support menu engineering, food safety, and procurement decisions."
-  source: "`vibe_restaurants_v1`.`supply`.`ingredient`"
-  dimensions:
-    - name: "ingredient_category"
-      expr: ingredient_category
-      comment: "Category of the ingredient (e.g., Protein, Produce, Dairy) for spend and nutrition analysis by category."
-    - name: "ingredient_status"
-      expr: ingredient_status
-      comment: "Active/inactive status of the ingredient for portfolio management and discontinuation tracking."
-    - name: "haccp_classification"
-      expr: haccp_classification
-      comment: "HACCP risk classification of the ingredient — drives food safety monitoring and critical control point assignment."
-    - name: "country_of_origin"
-      expr: country_of_origin
-      comment: "Country of origin for trade compliance, tariff impact, and supply chain diversification analysis."
-    - name: "organic_flag"
-      expr: organic_flag
-      comment: "Indicates organic certification — used for menu labeling compliance and premium cost analysis."
-    - name: "halal_flag"
-      expr: halal_flag
-      comment: "Indicates halal certification for menu compliance and market segment targeting."
-    - name: "kosher_flag"
-      expr: kosher_flag
-      comment: "Indicates kosher certification for menu compliance and market segment targeting."
-    - name: "non_gmo_flag"
-      expr: non_gmo_flag
-      comment: "Indicates non-GMO status for menu labeling and consumer transparency requirements."
-    - name: "unit_of_measure"
-      expr: unit_of_measure
-      comment: "Unit of measure for the ingredient for normalized cost and quantity comparisons."
-    - name: "sub_category"
-      expr: sub_category
-      comment: "Sub-category of the ingredient for granular spend and nutrition analysis."
-  measures:
-    - name: "avg_cost_per_unit"
-      expr: AVG(CAST(cost_per_unit AS DOUBLE))
-      comment: "Average cost per unit across ingredients. Benchmarks ingredient economics and tracks cost inflation trends."
-    - name: "total_ingredient_cost"
-      expr: SUM(CAST(cost_per_unit AS DOUBLE))
-      comment: "Sum of unit costs across the ingredient portfolio. Proxy for total ingredient cost exposure in the supply base."
-    - name: "avg_waste_percentage"
-      expr: AVG(CAST(waste_percentage AS DOUBLE))
-      comment: "Average waste percentage across ingredients. High waste rates increase effective food cost and drive yield improvement initiatives."
-    - name: "avg_calories_per_unit"
-      expr: AVG(CAST(nutritional_calories_per_unit AS DOUBLE))
-      comment: "Average caloric content per unit across ingredients. Supports menu nutrition analysis and regulatory labeling compliance."
-    - name: "avg_sodium_mg_per_unit"
-      expr: AVG(CAST(sodium_mg_per_unit AS DOUBLE))
-      comment: "Average sodium content per unit. Supports health-conscious menu engineering and regulatory sodium reduction targets."
-    - name: "avg_protein_content_percent"
-      expr: AVG(CAST(protein_content_percent AS DOUBLE))
-      comment: "Average protein content percentage across ingredients. Supports nutritional menu engineering and health positioning."
-    - name: "ingredient_count"
-      expr: COUNT(1)
-      comment: "Total number of active ingredients in the supply portfolio. Measures ingredient complexity and sourcing breadth."
-    - name: "organic_ingredient_count"
-      expr: COUNT(CASE WHEN organic_flag = TRUE THEN 1 END)
-      comment: "Count of organic-certified ingredients. Tracks progress toward organic sourcing commitments and premium menu positioning."
-    - name: "avg_storage_temperature_c"
-      expr: AVG(CAST(storage_temperature_c AS DOUBLE))
-      comment: "Average required storage temperature across ingredients. Used for cold chain infrastructure planning and compliance."
-$$;
-
-CREATE OR REPLACE VIEW `vibe_restaurants_v1`.`_metrics`.`supply_ingredient_lot`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Lot-level traceability and quality KPIs tracking ingredient lot status, recall exposure, yield, waste, and cost for food safety and inventory management."
-  source: "`vibe_restaurants_v1`.`supply`.`ingredient_lot`"
-  dimensions:
-    - name: "lot_status"
-      expr: lot_status
-      comment: "Current status of the ingredient lot (e.g., Active, Quarantined, Consumed, Recalled) for traceability and risk management."
-    - name: "lot_type"
-      expr: lot_type
-      comment: "Type of lot (e.g., Production, Replenishment) for supply chain segmentation."
-    - name: "inspection_status"
-      expr: inspection_status
-      comment: "Quality inspection result for the lot — drives disposition decisions and food safety compliance."
-    - name: "recall_flag"
-      expr: recall_flag
-      comment: "Flags lots subject to a recall event — critical for food safety response and regulatory reporting."
-    - name: "organic_certified"
-      expr: organic_certified
-      comment: "Indicates whether the lot is organically certified for menu labeling and compliance."
-    - name: "temperature_controlled"
-      expr: temperature_controlled
-      comment: "Indicates whether the lot requires temperature-controlled storage for cold chain compliance."
-    - name: "received_month"
-      expr: DATE_TRUNC('month', received_date)
-      comment: "Month the lot was received for inbound supply trend analysis."
-    - name: "best_by_month"
-      expr: DATE_TRUNC('month', best_by_date)
-      comment: "Month of best-by date for shelf life and waste risk analysis."
-    - name: "country_of_origin"
-      expr: country_of_origin
-      comment: "Country of origin for trade compliance and supply chain diversification analysis."
-  measures:
-    - name: "total_lot_quantity"
-      expr: SUM(CAST(quantity AS DOUBLE))
-      comment: "Total quantity across all ingredient lots. Baseline inventory volume metric for supply availability planning."
-    - name: "total_lot_cost"
-      expr: SUM(CAST(total_cost AS DOUBLE))
-      comment: "Total cost of all ingredient lots. Core food cost and inventory valuation metric."
-    - name: "avg_cost_per_unit"
-      expr: AVG(CAST(cost_per_unit AS DOUBLE))
-      comment: "Average cost per unit across lots. Tracks ingredient cost trends and variance from contract prices."
-    - name: "avg_quality_score"
-      expr: AVG(CAST(quality_score AS DOUBLE))
-      comment: "Average quality score across ingredient lots. Declining scores signal supplier quality degradation requiring intervention."
-    - name: "avg_yield_percentage"
-      expr: AVG(CAST(yield_percentage AS DOUBLE))
-      comment: "Average yield percentage across lots. Low yields increase effective food cost and drive prep process improvement."
-    - name: "avg_waste_percentage"
-      expr: AVG(CAST(waste_percentage AS DOUBLE))
-      comment: "Average waste percentage across lots. High waste rates directly increase food cost and reduce margin."
-    - name: "recalled_lot_count"
-      expr: COUNT(CASE WHEN recall_flag = TRUE THEN 1 END)
-      comment: "Number of lots subject to a recall. Executives use this to assess food safety exposure and regulatory response scope."
-    - name: "total_recalled_quantity"
-      expr: SUM(CASE WHEN recall_flag = TRUE THEN quantity ELSE 0 END)
-      comment: "Total quantity of recalled ingredient lots. Measures the operational and financial scale of recall events."
-    - name: "avg_storage_temperature_c"
-      expr: AVG(CAST(storage_temperature_c AS DOUBLE))
-      comment: "Average storage temperature across lots. Used to monitor cold chain compliance and detect temperature drift."
-    - name: "lot_count"
-      expr: COUNT(1)
-      comment: "Total number of ingredient lots. Baseline traceability volume metric for lot management complexity."
-$$;
-
-CREATE OR REPLACE VIEW `vibe_restaurants_v1`.`_metrics`.`supply_quality_inspection`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Quality inspection KPIs tracking inspection outcomes, defect rates, corrective action requirements, and compliance for supplier quality management."
-  source: "`vibe_restaurants_v1`.`supply`.`quality_inspection`"
-  dimensions:
-    - name: "inspection_type"
-      expr: inspection_type
-      comment: "Type of quality inspection (e.g., Incoming, In-Process, Final) for quality process segmentation."
-    - name: "inspection_result"
-      expr: inspection_result
-      comment: "Outcome of the inspection (e.g., Pass, Fail, Conditional) — primary quality disposition dimension."
-    - name: "quality_inspection_status"
-      expr: quality_inspection_status
-      comment: "Current status of the inspection record (e.g., Open, Closed, Pending Review)."
-    - name: "defect_category"
-      expr: defect_category
-      comment: "Category of defect identified (e.g., Temperature, Contamination, Packaging) for root cause analysis."
-    - name: "disposition_action"
-      expr: disposition_action
-      comment: "Action taken on failed items (e.g., Return, Destroy, Accept with Deviation) for cost and compliance tracking."
-    - name: "corrective_action_required"
-      expr: corrective_action_required
-      comment: "Flags inspections requiring corrective action — drives supplier quality improvement programs."
-    - name: "compliance_flag"
-      expr: compliance_flag
-      comment: "Indicates whether the inspected goods met compliance requirements."
-    - name: "inspection_month"
-      expr: DATE_TRUNC('month', inspection_timestamp)
-      comment: "Month of inspection for quality trend analysis over time."
-    - name: "inspection_method"
-      expr: inspection_method
-      comment: "Method used for inspection (e.g., Visual, Lab Test, Temperature Check) for process analysis."
-  measures:
-    - name: "inspection_count"
-      expr: COUNT(1)
-      comment: "Total number of quality inspections performed. Baseline quality program activity metric."
-    - name: "failed_inspection_count"
-      expr: COUNT(CASE WHEN inspection_result = 'Fail' THEN 1 END)
-      comment: "Count of failed inspections. Elevated failure counts signal systemic supplier quality issues requiring escalation."
-    - name: "corrective_action_required_count"
-      expr: COUNT(CASE WHEN corrective_action_required = TRUE THEN 1 END)
-      comment: "Count of inspections requiring corrective action. Drives supplier quality improvement program prioritization."
-    - name: "total_rejection_quantity"
-      expr: SUM(CAST(rejection_quantity AS DOUBLE))
-      comment: "Total quantity rejected across all inspections. Measures the operational impact of quality failures on supply availability."
-    - name: "avg_temperature_c"
-      expr: AVG(CAST(temperature_c AS DOUBLE))
-      comment: "Average temperature recorded during inspections. Monitors cold chain compliance trends across suppliers and shipments."
-    - name: "avg_humidity_percent"
-      expr: AVG(CAST(humidity_percent AS DOUBLE))
-      comment: "Average humidity recorded during inspections. Relevant for produce and dry goods quality compliance."
-    - name: "non_compliant_inspection_count"
-      expr: COUNT(CASE WHEN compliance_flag = FALSE THEN 1 END)
-      comment: "Count of inspections where compliance requirements were not met. Directly tied to regulatory risk and food safety exposure."
-    - name: "distinct_supplier_inspected_count"
-      expr: COUNT(DISTINCT procurement_supplier_id)
-      comment: "Number of distinct suppliers inspected. Measures quality program coverage across the supply base."
-$$;
-
-CREATE OR REPLACE VIEW `vibe_restaurants_v1`.`_metrics`.`supply_recall_event`
-WITH METRICS
-LANGUAGE YAML
-AS $$
-  version: 1.1
-  comment: "Food safety recall KPIs tracking recall volume, severity, financial impact, and regulatory compliance to manage supply chain risk and brand protection."
-  source: "`vibe_restaurants_v1`.`supply`.`recall_event`"
-  dimensions:
+      comment: "Result of the line-level inspection (e.g. passed, failed, pending) — primary quality dimension."
     - name: "recall_status"
       expr: recall_status
-      comment: "Current status of the recall (e.g., Active, Closed, Under Investigation) for response management."
-    - name: "recall_class"
-      expr: recall_class
-      comment: "FDA recall class (Class I, II, III) indicating severity — Class I represents the highest consumer risk."
-    - name: "recall_severity"
-      expr: recall_severity
-      comment: "Severity rating of the recall for risk prioritization and executive escalation."
-    - name: "recall_type"
-      expr: recall_type
-      comment: "Type of recall (e.g., Voluntary, Mandatory, Market Withdrawal) for regulatory compliance tracking."
-    - name: "recall_reason"
-      expr: recall_reason
-      comment: "Root cause of the recall (e.g., Contamination, Mislabeling, Foreign Object) for systemic risk analysis."
-    - name: "product_category"
-      expr: product_category
-      comment: "Category of the recalled product for supply chain risk segmentation."
-    - name: "regulatory_notification_status"
-      expr: regulatory_notification_status
-      comment: "Status of regulatory notification (e.g., Notified, Pending) for compliance tracking."
-    - name: "recall_initiation_month"
-      expr: DATE_TRUNC('month', recall_initiation_timestamp)
-      comment: "Month the recall was initiated for trend analysis of food safety incidents over time."
-    - name: "compliance_fda"
-      expr: compliance_fda
-      comment: "Indicates FDA compliance status of the recall response — critical for regulatory risk management."
-    - name: "compliance_haccp"
-      expr: compliance_haccp
-      comment: "Indicates HACCP compliance status of the recall response."
+      comment: "Whether this receipt line is subject to an active recall — critical food-safety and compliance dimension."
+    - name: "is_perishable"
+      expr: is_perishable
+      comment: "Whether the received item is perishable — drives cold-chain and shelf-life analysis."
+    - name: "is_returned"
+      expr: is_returned
+      comment: "Whether the line item was returned to the supplier — measures return rate and supplier quality."
+    - name: "compliance_flag"
+      expr: compliance_flag
+      comment: "Whether the line passed all compliance checks — regulatory and quality gate dimension."
+    - name: "temperature_control_required"
+      expr: temperature_control_required
+      comment: "Whether temperature control was required for this line — used to segment cold-chain analysis."
+    - name: "currency_code"
+      expr: currency_code
+      comment: "Currency of line-level cost — required for multi-currency cost analysis."
+    - name: "received_month"
+      expr: DATE_TRUNC('month', received_timestamp)
+      comment: "Month goods were received — supports monthly quality and variance trending."
   measures:
-    - name: "recall_event_count"
-      expr: COUNT(1)
-      comment: "Total number of recall events. Baseline food safety risk metric — executives use this to assess supply chain safety performance."
-    - name: "total_quantity_recalled"
-      expr: SUM(CAST(quantity_recalled AS DOUBLE))
-      comment: "Total quantity of product recalled. Measures the operational scale of recall events and supply disruption impact."
-    - name: "total_recall_cost"
+    - name: "total_received_quantity"
+      expr: SUM(CAST(received_quantity AS DOUBLE))
+      comment: "Total quantity of goods accepted at line level — primary inbound volume measure."
+    - name: "total_rejected_quantity"
+      expr: SUM(CAST(rejected_quantity AS DOUBLE))
+      comment: "Total quantity rejected at receipt — measures supplier quality failure volume."
+    - name: "rejection_rate"
+      expr: ROUND(100.0 * SUM(CAST(rejected_quantity AS DOUBLE)) / NULLIF(SUM(CAST(received_quantity AS DOUBLE)) + SUM(CAST(rejected_quantity AS DOUBLE)), 0), 2)
+      comment: "Percentage of inbound quantity rejected — key supplier quality KPI used in performance reviews."
+    - name: "total_line_cost"
       expr: SUM(CAST(total_cost AS DOUBLE))
-      comment: "Total financial cost of recall events including disposal, logistics, and remediation. Directly impacts P&L and brand value."
-    - name: "avg_risk_score"
-      expr: AVG(CAST(risk_score AS DOUBLE))
-      comment: "Average risk score across recall events. Tracks overall supply chain food safety risk level over time."
-    - name: "active_recall_count"
-      expr: COUNT(CASE WHEN recall_status = 'Active' THEN 1 END)
-      comment: "Count of currently active recall events. Executives use this as a real-time food safety risk indicator."
-    - name: "fda_non_compliant_recall_count"
-      expr: COUNT(CASE WHEN compliance_fda = FALSE THEN 1 END)
-      comment: "Count of recalls where FDA compliance was not achieved. Regulatory non-compliance exposes the business to fines and enforcement actions."
-    - name: "temperature_deviation_recall_count"
-      expr: COUNT(CASE WHEN temperature_deviation_flag = TRUE THEN 1 END)
-      comment: "Count of recalls triggered by temperature deviations. Identifies cold chain failures as a systemic recall risk driver."
+      comment: "Total cost of goods received at line level — feeds COGS and procurement spend analysis."
+    - name: "total_cogs_amount"
+      expr: SUM(CAST(cogs_amount AS DOUBLE))
+      comment: "Total cost-of-goods-sold amount from received lines — direct input to margin calculations."
+    - name: "total_variance_amount"
+      expr: SUM(CAST(variance_amount AS DOUBLE))
+      comment: "Total cost variance between PO price and actual receipt cost — measures procurement pricing accuracy."
+    - name: "total_variance_quantity"
+      expr: SUM(CAST(variance_quantity AS DOUBLE))
+      comment: "Total quantity variance between ordered and received — measures supplier fill-rate accuracy."
+    - name: "avg_quality_score"
+      expr: AVG(CAST(quality_score AS DOUBLE))
+      comment: "Average quality score across received lines — composite supplier quality indicator for scorecards."
+    - name: "avg_unit_price"
+      expr: AVG(CAST(unit_price AS DOUBLE))
+      comment: "Average unit price paid across receipt lines — benchmarks against contract prices for compliance."
+    - name: "return_rate"
+      expr: ROUND(100.0 * COUNT(CASE WHEN is_returned = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percentage of receipt lines that were returned to supplier — measures supplier delivery quality."
+    - name: "compliance_pass_rate"
+      expr: ROUND(100.0 * COUNT(CASE WHEN compliance_flag = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percentage of receipt lines passing all compliance checks — regulatory and food-safety KPI."
 $$;
 
 CREATE OR REPLACE VIEW `vibe_restaurants_v1`.`_metrics`.`supply_inbound_shipment`
@@ -589,64 +132,324 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Inbound logistics KPIs tracking shipment on-time performance, freight cost, temperature compliance, and carrier efficiency for supply chain operations."
+  comment: "Inbound logistics KPIs — tracks on-time delivery, freight cost, shipment exceptions, and temperature compliance to optimize carrier performance and supply chain reliability."
   source: "`vibe_restaurants_v1`.`supply`.`inbound_shipment`"
   dimensions:
     - name: "shipment_status"
       expr: shipment_status
-      comment: "Current status of the inbound shipment (e.g., In Transit, Delivered, Delayed, Exception) for logistics visibility."
+      comment: "Current status of the inbound shipment (e.g. in-transit, delivered, delayed) — primary logistics dimension."
     - name: "transport_mode"
       expr: transport_mode
-      comment: "Mode of transport (e.g., Truck, Rail, Air) for freight cost and lead time analysis by mode."
+      comment: "Mode of transport (e.g. truck, rail, air) — used to analyze cost and reliability by carrier type."
     - name: "carrier_name"
       expr: carrier_name
-      comment: "Name of the carrier for carrier performance benchmarking and contract management."
+      comment: "Name of the carrier — enables carrier-level performance benchmarking."
     - name: "freight_terms"
       expr: freight_terms
-      comment: "Freight terms (e.g., FOB, CIF) for cost responsibility and logistics contract analysis."
+      comment: "Freight payment terms (e.g. FOB, CIF) — affects cost allocation and liability analysis."
     - name: "temperature_control_flag"
       expr: temperature_control_flag
-      comment: "Indicates whether the shipment required temperature control — used for cold chain compliance monitoring."
+      comment: "Whether temperature control was required for this shipment — segments cold-chain analysis."
     - name: "is_expedited"
       expr: is_expedited
-      comment: "Flags expedited shipments — high expedite rates signal supply planning failures and drive premium freight costs."
+      comment: "Whether the shipment was expedited — used to measure and control premium freight spend."
+    - name: "payment_status"
+      expr: payment_status
+      comment: "Payment status of the freight invoice — tracks outstanding freight payables."
+    - name: "customs_clearance_status"
+      expr: customs_clearance_status
+      comment: "Status of customs clearance — critical for international supply chain compliance tracking."
     - name: "scheduled_arrival_month"
       expr: DATE_TRUNC('month', scheduled_arrival_timestamp)
-      comment: "Month of scheduled arrival for supply planning and receiving capacity analysis."
+      comment: "Month of scheduled arrival — supports monthly inbound volume and on-time delivery trending."
     - name: "currency_code"
       expr: currency_code
-      comment: "Currency of freight costs for multi-currency logistics spend analysis."
+      comment: "Currency of freight cost — required for multi-currency freight spend analysis."
   measures:
+    - name: "total_shipments"
+      expr: COUNT(1)
+      comment: "Total number of inbound shipments — baseline logistics volume KPI."
     - name: "total_freight_cost"
       expr: SUM(CAST(freight_cost AS DOUBLE))
-      comment: "Total freight cost across all inbound shipments. Key logistics cost metric for supply chain cost management."
+      comment: "Total freight cost across all inbound shipments — primary logistics cost KPI for budget management."
     - name: "avg_freight_cost"
       expr: AVG(CAST(freight_cost AS DOUBLE))
-      comment: "Average freight cost per shipment. Benchmarks carrier efficiency and identifies cost outliers."
-    - name: "shipment_count"
-      expr: COUNT(1)
-      comment: "Total number of inbound shipments. Baseline logistics volume metric for receiving capacity planning."
-    - name: "expedited_shipment_count"
-      expr: COUNT(CASE WHEN is_expedited = TRUE THEN 1 END)
-      comment: "Count of expedited shipments. High expedite counts signal supply planning failures and drive premium freight cost increases."
-    - name: "total_expedited_freight_cost"
-      expr: SUM(CASE WHEN is_expedited = TRUE THEN freight_cost ELSE 0 END)
-      comment: "Total freight cost attributable to expedited shipments. Quantifies the financial penalty of supply planning failures."
+      comment: "Average freight cost per shipment — benchmarks carrier pricing and identifies cost outliers."
     - name: "total_weight_kg"
       expr: SUM(CAST(weight_kg AS DOUBLE))
-      comment: "Total weight of inbound shipments in kilograms. Used for freight cost per kg benchmarking and logistics capacity planning."
+      comment: "Total inbound weight in kilograms — measures physical supply volume for capacity planning."
     - name: "total_volume_cubic_m"
       expr: SUM(CAST(volume_cubic_m AS DOUBLE))
-      comment: "Total volume of inbound shipments in cubic meters. Used for truck utilization and logistics capacity planning."
-    - name: "avg_temperature_min_c"
-      expr: AVG(CAST(temperature_min_c AS DOUBLE))
-      comment: "Average minimum temperature recorded across temperature-controlled shipments. Monitors cold chain lower bound compliance."
+      comment: "Total inbound volume in cubic meters — supports DC capacity and dock scheduling decisions."
+    - name: "on_time_delivery_count"
+      expr: COUNT(CASE WHEN actual_arrival_timestamp <= scheduled_arrival_timestamp THEN 1 END)
+      comment: "Number of shipments that arrived on or before scheduled time — measures carrier reliability."
+    - name: "on_time_delivery_rate"
+      expr: ROUND(100.0 * COUNT(CASE WHEN actual_arrival_timestamp <= scheduled_arrival_timestamp THEN 1 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percentage of shipments delivered on time — top-tier carrier performance KPI for executive scorecards."
+    - name: "expedited_shipment_count"
+      expr: COUNT(CASE WHEN is_expedited = TRUE THEN 1 END)
+      comment: "Number of expedited shipments — measures premium freight usage; high values signal supply chain stress."
+    - name: "expedited_freight_cost"
+      expr: SUM(CASE WHEN is_expedited = TRUE THEN freight_cost ELSE 0 END)
+      comment: "Total freight cost attributable to expedited shipments — quantifies premium freight spend for cost reduction."
     - name: "avg_temperature_max_c"
       expr: AVG(CAST(temperature_max_c AS DOUBLE))
-      comment: "Average maximum temperature recorded across temperature-controlled shipments. Monitors cold chain upper bound compliance."
-    - name: "distinct_supplier_count"
+      comment: "Average maximum recorded temperature across temperature-controlled shipments — food-safety compliance indicator."
+$$;
+
+CREATE OR REPLACE VIEW `vibe_restaurants_v1`.`_metrics`.`supply_quality_inspection`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Supply quality inspection KPIs — tracks inspection pass/fail rates, corrective action requirements, defect categories, and quality scores to manage food safety and supplier compliance."
+  source: "`vibe_restaurants_v1`.`supply`.`quality_inspection`"
+  dimensions:
+    - name: "quality_inspection_status"
+      expr: quality_inspection_status
+      comment: "Current status of the quality inspection (e.g. pass, fail, pending) — primary quality gate dimension."
+    - name: "inspection_type"
+      expr: inspection_type
+      comment: "Type of inspection performed (e.g. incoming, periodic, HACCP) — segments quality analysis by inspection program."
+    - name: "inspection_method"
+      expr: inspection_method
+      comment: "Method used for inspection (e.g. visual, lab, sensor) — supports methodology effectiveness analysis."
+    - name: "inspection_result"
+      expr: inspection_result
+      comment: "Outcome of the inspection (e.g. pass, fail, conditional) — key quality outcome dimension."
+    - name: "defect_category"
+      expr: defect_category
+      comment: "Category of defect identified (e.g. temperature, contamination, packaging) — drives root-cause analysis."
+    - name: "disposition_action"
+      expr: disposition_action
+      comment: "Action taken on failed items (e.g. reject, quarantine, accept-with-deviation) — measures response severity."
+    - name: "corrective_action_required"
+      expr: corrective_action_required
+      comment: "Whether a corrective action was required — flags systemic supplier quality issues."
+    - name: "compliance_flag"
+      expr: compliance_flag
+      comment: "Whether the inspection result was compliant with regulatory standards — regulatory reporting dimension."
+    - name: "inspection_month"
+      expr: DATE_TRUNC('month', inspection_timestamp)
+      comment: "Month of inspection — supports monthly quality trend analysis."
+  measures:
+    - name: "total_inspections"
+      expr: COUNT(1)
+      comment: "Total number of quality inspections performed — baseline quality program volume KPI."
+    - name: "pass_count"
+      expr: COUNT(CASE WHEN inspection_result = 'pass' THEN 1 END)
+      comment: "Number of inspections with a passing result — measures quality acceptance volume."
+    - name: "fail_count"
+      expr: COUNT(CASE WHEN inspection_result = 'fail' THEN 1 END)
+      comment: "Number of inspections with a failing result — primary quality failure volume KPI."
+    - name: "inspection_pass_rate"
+      expr: ROUND(100.0 * COUNT(CASE WHEN inspection_result = 'pass' THEN 1 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percentage of inspections passing — top-level supplier quality KPI for executive scorecards and QBRs."
+    - name: "corrective_action_rate"
+      expr: ROUND(100.0 * COUNT(CASE WHEN corrective_action_required = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percentage of inspections requiring corrective action — measures systemic quality failure frequency."
+    - name: "total_rejection_quantity"
+      expr: SUM(CAST(rejection_quantity AS DOUBLE))
+      comment: "Total quantity rejected across all quality inspections — measures physical waste from quality failures."
+    - name: "avg_temperature_c"
+      expr: AVG(CAST(temperature_c AS DOUBLE))
+      comment: "Average temperature recorded during inspections — monitors cold-chain and storage compliance."
+    - name: "avg_humidity_percent"
+      expr: AVG(CAST(humidity_percent AS DOUBLE))
+      comment: "Average humidity recorded during inspections — monitors storage environment compliance."
+    - name: "compliance_rate"
+      expr: ROUND(100.0 * COUNT(CASE WHEN compliance_flag = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percentage of inspections meeting all regulatory compliance requirements — regulatory reporting KPI."
+    - name: "distinct_suppliers_inspected"
       expr: COUNT(DISTINCT procurement_supplier_id)
-      comment: "Number of distinct suppliers with inbound shipments. Measures supply base activity and logistics network breadth."
+      comment: "Number of distinct suppliers with quality inspections in the period — measures breadth of quality program coverage."
+$$;
+
+CREATE OR REPLACE VIEW `vibe_restaurants_v1`.`_metrics`.`supply_supplier_performance`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Supplier scorecard KPIs — aggregates on-time delivery, fill rate, quality rejection, invoice accuracy, and food-safety compliance scores to drive supplier selection, development, and contract decisions."
+  source: "`vibe_restaurants_v1`.`supply`.`supplier_performance`"
+  dimensions:
+    - name: "rating_tier"
+      expr: rating_tier
+      comment: "Supplier performance tier (e.g. preferred, approved, probation) — primary segmentation for supplier management."
+    - name: "contract_compliance_flag"
+      expr: contract_compliance_flag
+      comment: "Whether the supplier met contract compliance requirements in the period — contract management dimension."
+    - name: "corrective_action_flag"
+      expr: corrective_action_flag
+      comment: "Whether a corrective action was issued to the supplier in the period — quality escalation dimension."
+    - name: "measurement_period_start"
+      expr: DATE_TRUNC('month', measurement_period_start)
+      comment: "Start of the measurement period — enables time-series trending of supplier performance."
+    - name: "measurement_period_end"
+      expr: DATE_TRUNC('month', measurement_period_end)
+      comment: "End of the measurement period — supports period-over-period supplier performance comparison."
+  measures:
+    - name: "avg_on_time_delivery_rate"
+      expr: AVG(CAST(on_time_delivery_rate AS DOUBLE))
+      comment: "Average on-time delivery rate across suppliers — primary logistics reliability KPI for supplier scorecards."
+    - name: "avg_fill_rate"
+      expr: AVG(CAST(fill_rate AS DOUBLE))
+      comment: "Average fill rate across suppliers — measures supplier ability to fulfill ordered quantities; low values signal supply risk."
+    - name: "avg_quality_rejection_rate"
+      expr: AVG(CAST(quality_rejection_rate AS DOUBLE))
+      comment: "Average quality rejection rate across suppliers — key quality KPI; high values trigger supplier development programs."
+    - name: "avg_invoice_accuracy_rate"
+      expr: AVG(CAST(invoice_accuracy_rate AS DOUBLE))
+      comment: "Average invoice accuracy rate — measures billing compliance; low values increase AP processing cost."
+    - name: "avg_food_safety_compliance_score"
+      expr: AVG(CAST(food_safety_compliance_score AS DOUBLE))
+      comment: "Average food safety compliance score across suppliers — regulatory and brand-risk KPI for executive review."
+    - name: "avg_lead_time_days"
+      expr: AVG(CAST(average_lead_time_days AS DOUBLE))
+      comment: "Average supplier lead time in days — measures supply chain responsiveness and inventory planning accuracy."
+    - name: "total_orders_evaluated"
+      expr: SUM(CAST(total_orders_evaluated AS DOUBLE))
+      comment: "Total number of orders evaluated in supplier performance measurement — provides statistical confidence context."
+    - name: "total_invoices_evaluated"
+      expr: SUM(CAST(total_invoices_evaluated AS DOUBLE))
+      comment: "Total number of invoices evaluated — supports invoice accuracy rate significance assessment."
+    - name: "corrective_action_supplier_count"
+      expr: COUNT(CASE WHEN corrective_action_flag = TRUE THEN 1 END)
+      comment: "Number of supplier-period records with an active corrective action — measures breadth of quality escalations."
+    - name: "preferred_supplier_count"
+      expr: COUNT(DISTINCT CASE WHEN rating_tier = 'preferred' THEN procurement_supplier_id END)
+      comment: "Number of distinct suppliers in the preferred tier — tracks strategic supplier base health."
+$$;
+
+CREATE OR REPLACE VIEW `vibe_restaurants_v1`.`_metrics`.`supply_recall_event`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Food safety recall KPIs — tracks recall volume, severity, cost, regulatory compliance, and closure rates to manage brand risk, regulatory obligations, and supply chain integrity."
+  source: "`vibe_restaurants_v1`.`supply`.`recall_event`"
+  dimensions:
+    - name: "recall_status"
+      expr: recall_status
+      comment: "Current status of the recall (e.g. active, closed, monitoring) — primary recall management dimension."
+    - name: "recall_class"
+      expr: recall_class
+      comment: "FDA recall class (I, II, III) — indicates severity and regulatory urgency of the recall."
+    - name: "recall_severity"
+      expr: recall_severity
+      comment: "Business-defined severity level of the recall — used to prioritize response resources."
+    - name: "recall_type"
+      expr: recall_type
+      comment: "Type of recall (e.g. voluntary, mandatory, market withdrawal) — affects regulatory reporting requirements."
+    - name: "recall_reason"
+      expr: recall_reason
+      comment: "Root cause of the recall (e.g. contamination, mislabeling, allergen) — drives preventive action programs."
+    - name: "product_category"
+      expr: product_category
+      comment: "Category of the recalled product — enables category-level risk analysis."
+    - name: "compliance_fda"
+      expr: compliance_fda
+      comment: "Whether FDA notification requirements were met — regulatory compliance dimension."
+    - name: "compliance_usda"
+      expr: compliance_usda
+      comment: "Whether USDA notification requirements were met — regulatory compliance dimension."
+    - name: "recall_initiation_month"
+      expr: DATE_TRUNC('month', recall_initiation_timestamp)
+      comment: "Month recall was initiated — supports trend analysis of recall frequency over time."
+    - name: "currency_code"
+      expr: currency_code
+      comment: "Currency of recall cost — required for multi-currency financial impact analysis."
+  measures:
+    - name: "total_recall_events"
+      expr: COUNT(1)
+      comment: "Total number of recall events — baseline food safety risk volume KPI for executive and regulatory reporting."
+    - name: "active_recall_count"
+      expr: COUNT(CASE WHEN recall_status = 'active' THEN 1 END)
+      comment: "Number of currently active recalls — real-time brand and regulatory risk indicator."
+    - name: "total_quantity_recalled"
+      expr: SUM(CAST(quantity_recalled AS DOUBLE))
+      comment: "Total quantity of product recalled — measures physical scale of supply chain disruption."
+    - name: "total_recall_cost"
+      expr: SUM(CAST(total_cost AS DOUBLE))
+      comment: "Total financial cost of recall events — quantifies brand and operational impact for executive review."
+    - name: "avg_recall_cost"
+      expr: AVG(CAST(total_cost AS DOUBLE))
+      comment: "Average cost per recall event — benchmarks recall response efficiency and severity."
+    - name: "class_one_recall_count"
+      expr: COUNT(CASE WHEN recall_class = 'I' THEN 1 END)
+      comment: "Number of Class I (highest severity) recalls — most critical food safety KPI for board-level reporting."
+    - name: "fda_compliance_rate"
+      expr: ROUND(100.0 * COUNT(CASE WHEN compliance_fda = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percentage of recalls meeting FDA notification compliance — regulatory obligation KPI."
+    - name: "distinct_suppliers_with_recalls"
+      expr: COUNT(DISTINCT procurement_supplier_id)
+      comment: "Number of distinct suppliers involved in recall events — identifies high-risk supplier concentration."
+$$;
+
+CREATE OR REPLACE VIEW `vibe_restaurants_v1`.`_metrics`.`supply_ingredient_lot`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Ingredient lot traceability and yield KPIs — tracks lot quality, waste, yield, recall exposure, and cost to optimize ingredient procurement and food safety traceability programs."
+  source: "`vibe_restaurants_v1`.`supply`.`ingredient_lot`"
+  dimensions:
+    - name: "lot_status"
+      expr: lot_status
+      comment: "Current status of the ingredient lot (e.g. available, quarantine, consumed, disposed) — primary lot management dimension."
+    - name: "lot_type"
+      expr: lot_type
+      comment: "Type of lot (e.g. production, purchased, returned) — segments lot analysis by origin."
+    - name: "inspection_status"
+      expr: inspection_status
+      comment: "Quality inspection status of the lot — food safety gate dimension."
+    - name: "recall_flag"
+      expr: recall_flag
+      comment: "Whether this lot is subject to an active recall — critical food safety and traceability dimension."
+    - name: "organic_certified"
+      expr: organic_certified
+      comment: "Whether the lot is certified organic — supports premium ingredient sourcing analysis."
+    - name: "temperature_controlled"
+      expr: temperature_controlled
+      comment: "Whether the lot requires temperature control — cold-chain compliance dimension."
+    - name: "ingredient_category"
+      expr: ingredient_category
+      comment: "Category of the ingredient — enables category-level cost and quality analysis."
+    - name: "country_of_origin"
+      expr: country_of_origin
+      comment: "Country where the ingredient was produced — supports origin-based compliance and risk analysis."
+    - name: "received_month"
+      expr: DATE_TRUNC('month', received_date)
+      comment: "Month the lot was received — supports monthly inbound ingredient volume trending."
+  measures:
+    - name: "total_lots"
+      expr: COUNT(1)
+      comment: "Total number of ingredient lots — baseline traceability program volume KPI."
+    - name: "total_lot_quantity"
+      expr: SUM(CAST(quantity AS DOUBLE))
+      comment: "Total quantity across all ingredient lots — measures physical ingredient inventory volume."
+    - name: "total_lot_cost"
+      expr: SUM(CAST(total_cost AS DOUBLE))
+      comment: "Total cost of all ingredient lots — primary ingredient procurement spend KPI."
+    - name: "avg_cost_per_unit"
+      expr: AVG(CAST(cost_per_unit AS DOUBLE))
+      comment: "Average cost per unit across ingredient lots — benchmarks ingredient pricing for procurement negotiations."
+    - name: "avg_quality_score"
+      expr: AVG(CAST(quality_score AS DOUBLE))
+      comment: "Average quality score across ingredient lots — composite ingredient quality indicator."
+    - name: "avg_waste_percentage"
+      expr: AVG(CAST(waste_percentage AS DOUBLE))
+      comment: "Average waste percentage across ingredient lots — measures ingredient utilization efficiency; drives cost reduction."
+    - name: "avg_yield_percentage"
+      expr: AVG(CAST(yield_percentage AS DOUBLE))
+      comment: "Average yield percentage across ingredient lots — measures usable output per lot; key for recipe costing accuracy."
+    - name: "recalled_lot_count"
+      expr: COUNT(CASE WHEN recall_flag = TRUE THEN 1 END)
+      comment: "Number of lots subject to an active recall — food safety risk volume KPI for regulatory reporting."
+    - name: "avg_storage_temperature_c"
+      expr: AVG(CAST(storage_temperature_c AS DOUBLE))
+      comment: "Average storage temperature across lots — monitors cold-chain and storage compliance."
 $$;
 
 CREATE OR REPLACE VIEW `vibe_restaurants_v1`.`_metrics`.`supply_supplier_contract`
@@ -654,61 +457,132 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Supplier contract KPIs tracking contract value, compliance, rebate economics, and renewal risk for strategic sourcing and vendor management."
+  comment: "Supplier contract portfolio KPIs — tracks contract value, rebate exposure, exclusivity, compliance status, and renewal pipeline to manage procurement risk and commercial terms."
   source: "`vibe_restaurants_v1`.`supply`.`supplier_contract`"
   dimensions:
     - name: "supplier_contract_status"
       expr: supplier_contract_status
-      comment: "Current status of the supplier contract (e.g., Active, Expired, Terminated, Pending) for portfolio management."
+      comment: "Current status of the supplier contract (e.g. active, expired, terminated) — primary contract portfolio dimension."
     - name: "contract_type"
       expr: contract_type
-      comment: "Type of contract (e.g., Master Supply Agreement, Spot, Framework) for contract portfolio segmentation."
+      comment: "Type of contract (e.g. master, spot, framework) — segments contract analysis by commercial structure."
     - name: "compliance_status"
       expr: compliance_status
-      comment: "Compliance status of the contract — non-compliant contracts drive legal and operational risk."
+      comment: "Compliance status of the contract — identifies contracts at risk of breach or regulatory non-compliance."
+    - name: "audit_status"
+      expr: audit_status
+      comment: "Audit status of the contract — tracks audit completion and findings for governance reporting."
     - name: "renewal_type"
       expr: renewal_type
-      comment: "Renewal type (e.g., Auto-Renew, Manual, Evergreen) for contract lifecycle management."
+      comment: "Type of contract renewal (e.g. auto-renew, manual, evergreen) — supports renewal pipeline management."
     - name: "exclusivity_flag"
       expr: exclusivity_flag
-      comment: "Indicates exclusive supply arrangements — relevant for supply concentration risk analysis."
-    - name: "effective_from_month"
-      expr: DATE_TRUNC('month', effective_from)
-      comment: "Month the contract became effective for contract vintage analysis."
-    - name: "effective_until_month"
-      expr: DATE_TRUNC('month', effective_until)
-      comment: "Month the contract expires for renewal pipeline management."
+      comment: "Whether the contract includes an exclusivity clause — measures supplier lock-in risk."
+    - name: "payment_method"
+      expr: payment_method
+      comment: "Payment method specified in the contract — supports AP and cash flow analysis."
     - name: "currency_code"
       expr: currency_code
-      comment: "Contract currency for multi-currency spend consolidation."
+      comment: "Currency of the contract — required for multi-currency contract value analysis."
+    - name: "effective_from_month"
+      expr: DATE_TRUNC('month', effective_from)
+      comment: "Month the contract became effective — supports contract vintage and cohort analysis."
+    - name: "effective_until_month"
+      expr: DATE_TRUNC('month', effective_until)
+      comment: "Month the contract expires — enables renewal pipeline and expiry risk analysis."
   measures:
+    - name: "total_contracts"
+      expr: COUNT(1)
+      comment: "Total number of supplier contracts — baseline contract portfolio volume KPI."
+    - name: "active_contract_count"
+      expr: COUNT(CASE WHEN supplier_contract_status = 'active' THEN 1 END)
+      comment: "Number of currently active supplier contracts — measures active commercial relationship coverage."
     - name: "total_default_price"
       expr: SUM(CAST(default_price AS DOUBLE))
-      comment: "Sum of default contract prices across active contracts. Proxy for contracted supply cost exposure."
+      comment: "Sum of default contract prices — approximates total contracted spend commitment across the portfolio."
     - name: "avg_default_price"
       expr: AVG(CAST(default_price AS DOUBLE))
-      comment: "Average default contract price. Benchmarks pricing across the supplier portfolio."
+      comment: "Average default contract price — benchmarks contract pricing for negotiation and renewal planning."
     - name: "total_liability_limit"
       expr: SUM(CAST(liability_limit AS DOUBLE))
-      comment: "Total liability limit across supplier contracts. Measures contractual risk coverage and legal exposure."
+      comment: "Total liability limit exposure across all contracts — measures maximum financial risk from supplier failures."
     - name: "avg_rebate_percentage"
       expr: AVG(CAST(rebate_percentage AS DOUBLE))
-      comment: "Average rebate percentage across contracts. Tracks negotiated rebate economics and savings opportunity."
+      comment: "Average rebate percentage across contracts — measures commercial benefit from volume commitments."
     - name: "total_rebate_threshold"
       expr: SUM(CAST(rebate_threshold_amount AS DOUBLE))
-      comment: "Total rebate threshold amount across contracts. Measures the spend level required to unlock rebate benefits."
-    - name: "contract_count"
-      expr: COUNT(1)
-      comment: "Total number of supplier contracts. Baseline contract portfolio size metric."
-    - name: "non_compliant_contract_count"
-      expr: COUNT(CASE WHEN compliance_status = 'Non-Compliant' THEN 1 END)
-      comment: "Count of contracts with non-compliant status. Drives legal risk management and supplier corrective action."
-    - name: "exclusive_contract_count"
+      comment: "Total rebate threshold amount across contracts — measures spend required to unlock rebate benefits."
+    - name: "exclusivity_contract_count"
       expr: COUNT(CASE WHEN exclusivity_flag = TRUE THEN 1 END)
-      comment: "Count of exclusive supply contracts. High exclusivity concentration increases supply chain vulnerability."
-    - name: "distinct_supplier_count"
+      comment: "Number of contracts with exclusivity clauses — measures supplier lock-in concentration risk."
+    - name: "non_compliant_contract_count"
+      expr: COUNT(CASE WHEN compliance_status != 'compliant' THEN 1 END)
+      comment: "Number of contracts not in full compliance — flags procurement governance risk for executive review."
+    - name: "distinct_suppliers_under_contract"
       expr: COUNT(DISTINCT procurement_supplier_id)
-      comment: "Number of distinct suppliers under contract. Measures supply base breadth and sourcing diversification."
+      comment: "Number of distinct suppliers with active contracts — measures breadth of contracted supplier base."
+$$;
+
+CREATE OR REPLACE VIEW `vibe_restaurants_v1`.`_metrics`.`supply_distribution_center`
+WITH METRICS
+LANGUAGE YAML
+AS $$
+  version: 1.1
+  comment: "Distribution center capacity and compliance KPIs — tracks storage utilization, HACCP compliance, inspection scores, and facility characteristics to optimize DC network performance."
+  source: "`vibe_restaurants_v1`.`supply`.`distribution_center`"
+  dimensions:
+    - name: "distribution_center_status"
+      expr: distribution_center_status
+      comment: "Operational status of the DC (e.g. active, closed, under-renovation) — primary facility dimension."
+    - name: "facility_type"
+      expr: facility_type
+      comment: "Type of facility (e.g. ambient, refrigerated, frozen) — segments capacity analysis by storage type."
+    - name: "ownership_type"
+      expr: ownership_type
+      comment: "Whether the DC is owned, leased, or 3PL-operated — affects cost structure and strategic flexibility."
+    - name: "region"
+      expr: region
+      comment: "Geographic region of the DC — enables regional supply chain coverage and cost analysis."
+    - name: "country"
+      expr: country
+      comment: "Country where the DC is located — supports international supply chain compliance analysis."
+    - name: "haccp_compliant"
+      expr: haccp_compliant
+      comment: "Whether the DC is HACCP compliant — food safety regulatory compliance dimension."
+    - name: "cross_dock_enabled"
+      expr: cross_dock_enabled
+      comment: "Whether the DC supports cross-docking — affects throughput capacity and logistics network design."
+    - name: "third_party_logistics_flag"
+      expr: third_party_logistics_flag
+      comment: "Whether the DC is operated by a third-party logistics provider — affects cost and control analysis."
+    - name: "refrigeration_type"
+      expr: refrigeration_type
+      comment: "Type of refrigeration system — supports cold-chain capability and compliance analysis."
+  measures:
+    - name: "total_distribution_centers"
+      expr: COUNT(1)
+      comment: "Total number of distribution centers in the network — baseline DC network coverage KPI."
+    - name: "total_storage_capacity_cubic_meters"
+      expr: SUM(CAST(storage_capacity_cubic_meters AS DOUBLE))
+      comment: "Total storage capacity across all DCs in cubic meters — measures network-wide storage capacity for planning."
+    - name: "avg_storage_capacity_cubic_meters"
+      expr: AVG(CAST(storage_capacity_cubic_meters AS DOUBLE))
+      comment: "Average storage capacity per DC — benchmarks facility sizing for network optimization."
+    - name: "avg_cost_per_square_meter"
+      expr: AVG(CAST(cost_per_square_meter AS DOUBLE))
+      comment: "Average cost per square meter across DCs — benchmarks facility cost efficiency for lease negotiations."
+    - name: "avg_inspection_score"
+      expr: AVG(CAST(inspection_score AS DOUBLE))
+      comment: "Average inspection score across DCs — composite facility compliance and quality KPI."
+    - name: "haccp_compliant_dc_count"
+      expr: COUNT(CASE WHEN haccp_compliant = TRUE THEN 1 END)
+      comment: "Number of HACCP-compliant DCs — measures food safety regulatory coverage across the DC network."
+    - name: "haccp_compliance_rate"
+      expr: ROUND(100.0 * COUNT(CASE WHEN haccp_compliant = TRUE THEN 1 END) / NULLIF(COUNT(1), 0), 2)
+      comment: "Percentage of DCs that are HACCP compliant — executive food safety network KPI."
+    - name: "third_party_dc_count"
+      expr: COUNT(CASE WHEN third_party_logistics_flag = TRUE THEN 1 END)
+      comment: "Number of DCs operated by third-party logistics providers — measures outsourcing exposure in the DC network."
 $$;
 
 CREATE OR REPLACE VIEW `vibe_restaurants_v1`.`_metrics`.`supply_commodity_category`
@@ -716,50 +590,56 @@ WITH METRICS
 LANGUAGE YAML
 AS $$
   version: 1.1
-  comment: "Commodity category KPIs tracking spend concentration, cost benchmarks, risk profiles, and strategic sourcing tier distribution across the ingredient supply base."
+  comment: "Commodity category spend and risk KPIs — tracks average cost, spend concentration, lead times, and strategic sourcing tiers to inform category management and procurement strategy."
   source: "`vibe_restaurants_v1`.`supply`.`commodity_category`"
   dimensions:
     - name: "commodity_category_status"
       expr: commodity_category_status
-      comment: "Active/inactive status of the commodity category for portfolio management."
+      comment: "Status of the commodity category (e.g. active, deprecated) — filters analysis to active categories."
+    - name: "category_type"
+      expr: category_type
+      comment: "Type of category (e.g. direct, indirect, perishable) — primary category management dimension."
     - name: "commodity_type"
       expr: commodity_type
-      comment: "Type of commodity (e.g., Protein, Produce, Packaging) for spend and risk segmentation."
+      comment: "Type of commodity (e.g. protein, produce, dairy) — enables commodity-level spend and risk analysis."
+    - name: "strategic_sourcing_tier"
+      expr: strategic_sourcing_tier
+      comment: "Strategic sourcing tier (e.g. strategic, leverage, bottleneck, non-critical) — Kraljic matrix dimension for procurement strategy."
     - name: "risk_level"
       expr: risk_level
-      comment: "Risk level assigned to the category (e.g., High, Medium, Low) for strategic sourcing prioritization."
+      comment: "Supply risk level of the category — prioritizes risk mitigation investment."
     - name: "is_perishable"
       expr: is_perishable
-      comment: "Indicates whether the category contains perishable items — drives cold chain and waste risk analysis."
+      comment: "Whether the category contains perishable items — drives cold-chain and inventory policy decisions."
     - name: "is_leaf_category"
       expr: is_leaf_category
-      comment: "Indicates whether this is a leaf-level category in the hierarchy for granular analysis."
+      comment: "Whether this is a leaf-level category in the hierarchy — filters to most granular category level for analysis."
     - name: "hierarchy_level"
       expr: hierarchy_level
-      comment: "Level in the commodity category hierarchy for roll-up and drill-down analysis."
-    - name: "unit_of_measure"
-      expr: unit_of_measure
-      comment: "Unit of measure for the category for normalized cost comparisons."
+      comment: "Level in the category hierarchy — supports hierarchical roll-up and drill-down analysis."
+    - name: "compliance_fda"
+      expr: compliance_fda
+      comment: "FDA compliance requirement for the category — regulatory dimension for sourcing decisions."
   measures:
-    - name: "avg_cost_per_unit"
-      expr: AVG(CAST(average_cost_per_unit AS DOUBLE))
-      comment: "Average cost per unit across commodity categories. Benchmarks category economics and tracks inflation trends."
+    - name: "total_categories"
+      expr: COUNT(1)
+      comment: "Total number of commodity categories — baseline category portfolio size KPI."
     - name: "total_spend_percentage"
       expr: SUM(CAST(spend_percentage AS DOUBLE))
-      comment: "Sum of spend percentages across categories. Used to validate spend concentration and Pareto analysis of supply costs."
-    - name: "avg_risk_score"
-      expr: AVG(CAST(risk_score AS DOUBLE))
-      comment: "Average risk score across commodity categories. Drives strategic sourcing investment and risk mitigation prioritization."
+      comment: "Sum of spend percentage across categories — measures spend concentration for Pareto analysis."
+    - name: "avg_cost_per_unit"
+      expr: AVG(CAST(average_cost_per_unit AS DOUBLE))
+      comment: "Average cost per unit across commodity categories — benchmarks category pricing for procurement strategy."
     - name: "avg_typical_cogs_percent"
       expr: AVG(CAST(typical_cogs_percent AS DOUBLE))
-      comment: "Average typical COGS percentage across categories. Benchmarks food cost contribution by commodity type."
+      comment: "Average typical COGS percentage across categories — informs menu pricing and margin management decisions."
     - name: "high_risk_category_count"
-      expr: COUNT(CASE WHEN risk_level = 'High' THEN 1 END)
-      comment: "Count of high-risk commodity categories. Executives use this to prioritize supply chain risk mitigation investments."
-    - name: "category_count"
-      expr: COUNT(1)
-      comment: "Total number of commodity categories. Baseline portfolio complexity metric for sourcing organization design."
+      expr: COUNT(CASE WHEN risk_level = 'high' THEN 1 END)
+      comment: "Number of high-risk commodity categories — measures supply chain vulnerability concentration."
+    - name: "strategic_category_count"
+      expr: COUNT(CASE WHEN strategic_sourcing_tier = 'strategic' THEN 1 END)
+      comment: "Number of categories in the strategic sourcing tier — measures scope of strategic procurement programs."
     - name: "perishable_category_count"
       expr: COUNT(CASE WHEN is_perishable = TRUE THEN 1 END)
-      comment: "Count of perishable commodity categories. Measures cold chain dependency and waste risk exposure in the supply base."
+      comment: "Number of perishable commodity categories — measures cold-chain dependency in the supply base."
 $$;

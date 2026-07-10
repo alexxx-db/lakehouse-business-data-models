@@ -1,5 +1,5 @@
 -- Schema for Domain: restaurant | Business:  | Version: v2_ecm
--- Generated on: 2026-07-02 03:00:45
+-- Generated on: 2026-07-10 18:45:44
 
 -- ========= DATABASE =========
 CREATE DATABASE IF NOT EXISTS `vibe_restaurants_v1`.`restaurant` COMMENT 'Master record for every restaurant unit — company-owned and franchised — including location attributes, format (QSR/casual/fine-dining), FOH/BOH configuration, operating hours, daypart schedules, equipment, throughput capacity, speed-of-service (SOS) benchmarks, table turns, cover counts, AUV, SSS, and comp sales. Operational anchor for brand standards and SOPs.';
@@ -36,7 +36,7 @@ CREATE OR REPLACE TABLE `vibe_restaurants_v1`.`restaurant`.`unit` (
     `haccp_certified` BOOLEAN COMMENT 'Indicates whether this unit maintains current HACCP certification for food safety management.',
     `has_online_ordering` BOOLEAN COMMENT 'Indicates whether this unit supports online ordering through web or mobile app channels.',
     `has_third_party_delivery` BOOLEAN COMMENT 'Indicates whether this unit is enabled for third-party delivery services such as DoorDash, Uber Eats, or Grubhub.',
-    `health_inspection_score` DECIMAL(18,2) COMMENT 'Most recent health inspection score from local health department. Scale and passing thresholds vary by jurisdiction.',
+    `health_inspection_score` STRING COMMENT 'Most recent health inspection score from local health department. Scale and passing thresholds vary by jurisdiction.',
     `kds_station_count` STRING COMMENT 'Number of KDS stations installed in the BOH for order routing and kitchen workflow management.',
     `last_inspection_date` DATE COMMENT 'Date of the most recent health and safety inspection by local regulatory authority.',
     `last_modified_timestamp` TIMESTAMP COMMENT 'Timestamp when this unit record was most recently updated.',
@@ -44,7 +44,7 @@ CREATE OR REPLACE TABLE `vibe_restaurants_v1`.`restaurant`.`unit` (
     `longitude` DECIMAL(18,2) COMMENT 'Geographic longitude coordinate of the restaurant unit in decimal degrees.',
     `opening_date` DATE COMMENT 'The date this restaurant unit first opened for business to customers.',
     `operating_hours` STRING COMMENT 'Standard operating hours for the unit, typically formatted as day ranges with time windows (e.g., Mon-Fri 6:00-22:00, Sat-Sun 7:00-23:00).',
-    `operational_status` DECIMAL(18,2) COMMENT 'Current lifecycle state of the restaurant unit. Active indicates normal operations, temporarily closed for renovations or seasonal closure, permanently closed for shut down units, under construction for new builds, pending opening for units awaiting launch.',
+    `operational_status` STRING COMMENT 'Current lifecycle state of the restaurant unit. Active indicates normal operations, temporarily closed for renovations or seasonal closure, permanently closed for shut down units, under construction for new builds, pending opening for units awaiting launch.. Valid values are `active|temporarily_closed|permanently_closed|under_construction|pending_opening`',
     `ownership_model` STRING COMMENT 'The operating model for this unit: company-owned (corporate operated), franchised (independent franchisee), joint venture (shared ownership), or licensed (brand licensing agreement).. Valid values are `company_owned|franchised|joint_venture|licensed`',
     `parking_spaces` STRING COMMENT 'Number of dedicated parking spaces available for guest use at this location.',
     `phone_number` STRING COMMENT 'Primary contact phone number for the restaurant unit.',
@@ -87,7 +87,7 @@ CREATE OR REPLACE TABLE `vibe_restaurants_v1`.`restaurant`.`location_profile` (
     `last_remodel_date` DATE COMMENT 'Date of the most recent major remodel or renovation. Used for CapEx tracking and brand standard compliance.',
     `last_updated_timestamp` TIMESTAMP COMMENT 'Timestamp when this location profile record was last modified. Audit trail for data lineage and change tracking.',
     `latitude` DECIMAL(18,2) COMMENT 'Geographic latitude coordinate of the restaurant location in decimal degrees. Used for mapping, delivery radius calculation, and proximity analytics.',
-    `lease_expiration_date` DECIMAL(18,2) COMMENT 'Date when the current lease agreement expires. Critical for real estate planning and renewal negotiations.',
+    `lease_expiration_date` DATE COMMENT 'Date when the current lease agreement expires. Critical for real estate planning and renewal negotiations.',
     `locale` STRING COMMENT 'Locale identifier for language and regional formatting preferences. Used for menu display, signage, and customer communications.',
     `longitude` DECIMAL(18,2) COMMENT 'Geographic longitude coordinate of the restaurant location in decimal degrees. Used for mapping, delivery radius calculation, and proximity analytics.',
     `lot_size_sqft` STRING COMMENT 'Total lot size in square feet including building, parking, and landscaping. Used for site selection and property management.',
@@ -111,6 +111,7 @@ CREATE OR REPLACE TABLE `vibe_restaurants_v1`.`restaurant`.`location_profile` (
 
 CREATE OR REPLACE TABLE `vibe_restaurants_v1`.`restaurant`.`format_config` (
     `format_config_id` BIGINT COMMENT 'Unique identifier for the restaurant format configuration record. Primary key.',
+    `brand_id` BIGINT COMMENT 'add column brand_id (BIGINT) with FK to restaurant.brand.brand_id - format configurations (QSR/casual/fine-dining) should be brand-specific',
     `unit_id` BIGINT COMMENT 'Identifier of the restaurant unit to which this format configuration applies.',
     `format_unit_id` BIGINT COMMENT 'Identifier of the restaurant unit to which this format configuration applies.',
     `alcohol_service_flag` BOOLEAN COMMENT 'Indicates whether the restaurant format is licensed and configured to serve alcoholic beverages.',
@@ -127,7 +128,7 @@ CREATE OR REPLACE TABLE `vibe_restaurants_v1`.`restaurant`.`format_config` (
     `drive_thru_lane_config` STRING COMMENT 'Drive-Thru (DT) lane configuration: none (no drive-thru), single lane, dual lane, or triple lane.. Valid values are `none|single|dual|triple`',
     `drive_thru_window_count` STRING COMMENT 'Number of Drive-Thru (DT) service windows available for order pickup.',
     `effective_date` DATE COMMENT 'Date when this format configuration became or will become effective for the restaurant unit.',
-    `expiration_date` DECIMAL(18,2) COMMENT 'Date when this format configuration expires or is superseded by a new configuration. Null indicates current active configuration.',
+    `expiration_date` DATE COMMENT 'Date when this format configuration expires or is superseded by a new configuration. Null indicates current active configuration.',
     `foh_bar_seating_count` STRING COMMENT 'Number of bar seats available in the Front of House (FOH) area, if applicable.',
     `foh_outdoor_seating_count` STRING COMMENT 'Number of outdoor patio or sidewalk seats available in the Front of House (FOH) area.',
     `foh_seating_capacity` STRING COMMENT 'Total number of guest seats available in the Front of House (FOH) dining area, including indoor and outdoor seating.',
@@ -147,7 +148,7 @@ CREATE OR REPLACE TABLE `vibe_restaurants_v1`.`restaurant`.`format_config` (
     `table_turn_target_minutes` STRING COMMENT 'Target table turn time in minutes for table-service formats, representing the average time from guest seating to table availability.',
     `third_party_delivery_enabled_flag` BOOLEAN COMMENT 'Indicates whether the restaurant format supports Third-Party Delivery (3PD) integration with external delivery platforms.',
     `throughput_capacity_per_hour` STRING COMMENT 'Maximum number of customer transactions the restaurant can process per hour under optimal conditions, based on format configuration.',
-    `twenty_four_hour_operation_flag` DECIMAL(18,2) COMMENT 'Indicates whether the restaurant operates 24 hours per day, 7 days per week.',
+    `twenty_four_hour_operation_flag` BOOLEAN COMMENT 'Indicates whether the restaurant operates 24 hours per day, 7 days per week.',
     CONSTRAINT pk_format_config PRIMARY KEY(`format_config_id`)
 ) COMMENT 'Defines the operational format, physical configuration, and total capacity of a restaurant unit. Includes dining format (QSR, fast-casual, casual, fine-dining), service model (counter, table, drive-thru, kiosk), FOH layout (total indoor seating capacity, outdoor/patio seating capacity, bar seating count, private dining room capacity, ADA-compliant seating count, table count, cover count), BOH layout (kitchen footprint sq ft, cooking lines, prep stations), drive-thru configuration (lane count, stacking capacity for vehicles), kiosk count, counter service positions, and maximum cover count per daypart. This is the single source of truth for all physical capacity and layout attributes of a unit — governs brand standard compliance, throughput benchmarking, labor staffing ratios, health department permit compliance, and fire marshal occupancy limits.';
 
@@ -175,7 +176,7 @@ CREATE OR REPLACE TABLE `vibe_restaurants_v1`.`restaurant`.`operating_hours` (
     `expected_table_turn_count` DECIMAL(18,2) COMMENT 'The expected number of table turns (times a table is occupied and vacated) during this daypart for casual and fine-dining establishments. Used for capacity planning and revenue forecasting.',
     `holiday_name` STRING COMMENT 'The name of the holiday for which this schedule override applies (e.g., Christmas, Thanksgiving, New Years Day). Null if not a holiday override.',
     `holiday_schedule_override_flag` BOOLEAN COMMENT 'Indicates whether these operating hours represent a holiday schedule override. True if this is a holiday exception, False for regular schedule.',
-    `is_24_hour_operation` DECIMAL(18,2) COMMENT 'Indicates whether the restaurant operates 24 hours a day for the specified day. True if open continuously, False otherwise.',
+    `is_24_hour_operation` BOOLEAN COMMENT 'Indicates whether the restaurant operates 24 hours a day for the specified day. True if open continuously, False otherwise.',
     `is_closed` BOOLEAN COMMENT 'Indicates whether the restaurant is closed for the specified day and daypart. True if closed, False if open.',
     `last_modified_timestamp` TIMESTAMP COMMENT 'The date and time when this operating hours record was last modified, in yyyy-MM-ddTHH:mm:ss.SSSXXX format. Used for audit trail and change tracking.',
     `last_order_cutoff_time` TIMESTAMP COMMENT 'The time by which the last order must be placed before the restaurant stops accepting new orders, in 24-hour HH:mm format. Used for Online Ordering (OLO) and Third-Party Delivery (3PD) routing.',
@@ -222,7 +223,7 @@ CREATE OR REPLACE TABLE `vibe_restaurants_v1`.`restaurant`.`equipment_asset` (
     `model_number` STRING COMMENT 'Manufacturer-assigned model number or designation for the equipment.',
     `next_scheduled_maintenance_date` DATE COMMENT 'Planned date for the next preventive maintenance service visit based on manufacturer recommendations and SOP (Standard Operating Procedure) schedules.',
     `notes` STRING COMMENT 'Free-text field for additional comments, special handling instructions, or historical context about the equipment asset.',
-    `operational_status` DECIMAL(18,2) COMMENT 'Current lifecycle status indicating whether the equipment is actively in use, under maintenance, or retired from service.',
+    `operational_status` STRING COMMENT 'Current lifecycle status indicating whether the equipment is actively in use, under maintenance, or retired from service.. Valid values are `in_service|out_of_service|under_repair|scheduled_replacement|decommissioned`',
     `ownership_type` STRING COMMENT 'Indicates whether the equipment is owned outright by the restaurant, leased under a capital or operating lease, or rented short-term.. Valid values are `owned|leased|rented`',
     `power_consumption_watts` STRING COMMENT 'Rated electrical power consumption of the equipment in watts under normal operating conditions, used for energy cost forecasting.',
     `replacement_cost_usd` DECIMAL(18,2) COMMENT 'Estimated current market cost to replace this equipment asset with a comparable new unit, used for R&M (Repairs and Maintenance) budgeting and insurance valuation.',
@@ -289,7 +290,7 @@ CREATE OR REPLACE TABLE `vibe_restaurants_v1`.`restaurant`.`sos_measurement` (
     `measurement_source` STRING COMMENT 'System or device that captured the SOS measurement. Point of Sale (POS) timer, Kitchen Display System (KDS), drive-thru sensor array, manual staff entry, Online Ordering (OLO) platform, or third-party delivery API.. Valid values are `pos_timer|kds_system|drive_thru_sensor|manual_entry|olo_platform|third_party_api`',
     `measurement_timestamp` TIMESTAMP COMMENT 'Precise date and time when the speed-of-service measurement was captured, in format yyyy-MM-ddTHH:mm:ss.SSSXXX. Represents the business event time of the service completion.',
     `modified_timestamp` TIMESTAMP COMMENT 'Timestamp when this SOS measurement record was last modified in the data system, in format yyyy-MM-ddTHH:mm:ss.SSSXXX. Audit trail for data lineage and change tracking.',
-    `nps_score` DECIMAL(18,2) COMMENT 'Net Promoter Score (NPS) rating provided by the guest for this service event, typically on a scale of 0-10. Measures guest loyalty and likelihood to recommend.',
+    `nps_score` STRING COMMENT 'Net Promoter Score (NPS) rating provided by the guest for this service event, typically on a scale of 0-10. Measures guest loyalty and likelihood to recommend.',
     `order_complexity_score` DECIMAL(18,2) COMMENT 'Calculated complexity score for the order based on item count, customizations, and preparation requirements. Higher scores indicate more complex orders that may require longer service times.',
     `order_item_count` STRING COMMENT 'Total number of menu items in the order associated with this SOS measurement. Used to analyze SOS performance relative to order complexity.',
     `order_to_delivery_time_seconds` STRING COMMENT 'Total elapsed time in seconds from order placement to order delivered to guest. Includes preparation time plus handoff time. End-to-end service time metric.',
@@ -309,7 +310,7 @@ CREATE OR REPLACE TABLE `vibe_restaurants_v1`.`restaurant`.`sos_measurement` (
 
 CREATE OR REPLACE TABLE `vibe_restaurants_v1`.`restaurant`.`brand_standard` (
     `brand_standard_id` BIGINT COMMENT 'Unique identifier for the brand standard record. Primary key.',
-    `brand_id` BIGINT COMMENT 'Foreign key to restaurant.brand.brand_id',
+    `brand_id` BIGINT COMMENT 'add column brand_id (BIGINT) with FK to restaurant.brand.brand_id - brand standards must explicitly reference which brand they belong to',
     `superseded_by_standard_brand_standard_id` BIGINT COMMENT 'Reference to the brand_standard_id of the newer standard that replaces this one. Null if this standard is current and has not been superseded.',
     `applicable_format` STRING COMMENT 'Restaurant format(s) to which this brand standard applies. QSR (Quick-Service Restaurant) for fast food, casual for casual dining, fine_dining for upscale establishments, or combinations/all formats. [ENUM-REF-CANDIDATE: all|qsr|casual|fine_dining|qsr_casual|qsr_fine_dining|casual_fine_dining — 7 candidates stripped; promote to reference product]',
     `applicable_ownership_model` STRING COMMENT 'Ownership model(s) to which this standard applies: company-owned units, franchised units, or all units regardless of ownership.. Valid values are `all|company_owned|franchised`',
@@ -355,7 +356,6 @@ CREATE OR REPLACE TABLE `vibe_restaurants_v1`.`restaurant`.`unit_performance` (
     `cogs_percent` DECIMAL(18,2) COMMENT 'Cost of Goods Sold (COGS) Percentage - COGS as a percentage of total revenue. Key metric for food cost management.',
     `comp_sales_amount` DECIMAL(18,2) COMMENT 'Comparable Store Sales (Comp Sales) - revenue for the current period for units that were operational in both the current and prior comparison period.',
     `comp_sales_variance_amount` DECIMAL(18,2) COMMENT 'Variance in Comparable Store Sales between current period and prior period, expressed as an absolute amount.',
-    `created_timestamp` TIMESTAMP COMMENT 'Record created',
     `currency_code` STRING COMMENT 'Three-letter ISO 4217 currency code for all monetary amounts in this performance record (e.g., USD, EUR, GBP).. Valid values are `^[A-Z]{3}$`',
     `ebitda_amount` DECIMAL(18,2) COMMENT 'Earnings Before Interest, Taxes, Depreciation, and Amortization (EBITDA) - key profitability metric for unit-level P&L management.',
     `fiscal_month` STRING COMMENT 'Fiscal month within the fiscal year (1-12) to which this performance period belongs.',
@@ -459,7 +459,7 @@ CREATE OR REPLACE TABLE `vibe_restaurants_v1`.`restaurant`.`capacity_config` (
     `private_dining_capacity` STRING COMMENT 'Total seating capacity in private dining rooms or event spaces within the restaurant.',
     `sos_target_seconds` STRING COMMENT 'Target time in seconds from order placement to order delivery, used as a key operational performance metric.',
     `table_turn_target_minutes` STRING COMMENT 'Target time in minutes for a complete table turn cycle from guest seating to table reset for the next guest.',
-    `total_seating_capacity` DECIMAL(18,2) COMMENT 'Aggregate seating capacity across all dining areas including indoor, outdoor, bar, and private dining.',
+    `total_seating_capacity` STRING COMMENT 'Aggregate seating capacity across all dining areas including indoor, outdoor, bar, and private dining.',
     `updated_timestamp` TIMESTAMP COMMENT 'Timestamp when this capacity configuration record was last modified.',
     CONSTRAINT pk_capacity_config PRIMARY KEY(`capacity_config_id`)
 ) COMMENT 'Defines the seating and service capacity configuration for each restaurant unit including total indoor seating capacity, outdoor/patio seating capacity, bar seating count, private dining room capacity, drive-thru stacking capacity (number of vehicles), kiosk count, counter service positions, maximum cover count per daypart, and ADA-compliant seating count. Used for throughput planning, labor staffing ratios, and health department permit compliance.';
@@ -475,7 +475,6 @@ CREATE OR REPLACE TABLE `vibe_restaurants_v1`.`restaurant`.`unit_status_history`
     `approved_by` STRING COMMENT 'Name or identifier of the individual or role that approved the status change. Used for governance and audit trail purposes.',
     `closure_type` STRING COMMENT 'Classification of the closure event distinguishing between planned maintenance closures, emergency shutdowns, regulatory actions, and other closure scenarios. [ENUM-REF-CANDIDATE: planned|unplanned|emergency|seasonal|regulatory|voluntary|involuntary — 7 candidates stripped; promote to reference product]',
     `compliance_notes` STRING COMMENT 'Free-text field capturing compliance-related information associated with the status change, including regulatory requirements, corrective actions, or legal considerations.',
-    `created_timestamp` TIMESTAMP COMMENT 'The created timestamp attribute value for this unit status history record in the restaurant domain',
     `effective_date` DATE COMMENT 'The date on which this status became effective for the restaurant unit. Used to determine SSS eligibility windows and operational reporting periods.',
     `end_date` DATE COMMENT 'The date on which this status ceased to be effective, marking the transition to the next status. Null for the current active status record.',
     `estimated_revenue_impact` DECIMAL(18,2) COMMENT 'Projected financial impact on unit revenue during the status period, expressed in local currency. Used for financial planning and P&L forecasting.',
@@ -504,7 +503,7 @@ CREATE OR REPLACE TABLE `vibe_restaurants_v1`.`restaurant`.`area_management` (
     `area_management_id` BIGINT COMMENT 'Unique identifier for the area management record. Primary key.',
     `employee_id` BIGINT COMMENT 'Identifier of the area manager or district manager responsible for this area. Links to workforce management system.',
     `parent_area_area_management_id` BIGINT COMMENT 'Identifier of the parent area in the management hierarchy. Null for top-level areas.',
-    `primary_area_manager_employee_id` BIGINT COMMENT 'Unique identifier referencing the primary area manager employee associated with this area management record',
+    `unit_id` BIGINT COMMENT 'add column restaurant_unit_id (BIGINT) with FK to restaurant.unit.unit_id - area management structures must link to the units they oversee',
     `area_code` STRING COMMENT 'Business identifier code for the area or district. Used in operational reporting and area manager assignment.. Valid values are `^[A-Z0-9]{3,10}$`',
     `area_name` STRING COMMENT 'Descriptive name of the area or district (e.g., Northeast Metro, Southern California Region).',
     `area_status` STRING COMMENT 'Current operational status of the area management record.. Valid values are `active|inactive|pending|closed`',
@@ -518,7 +517,7 @@ CREATE OR REPLACE TABLE `vibe_restaurants_v1`.`restaurant`.`area_management` (
     `csat_target_score` DECIMAL(18,2) COMMENT 'Target Customer Satisfaction (CSAT) score for this area, typically measured on a scale of 0-100.',
     `division` STRING COMMENT 'Corporate division or business unit to which this area is assigned.',
     `effective_date` DATE COMMENT 'Date when this area management configuration became effective.',
-    `expiration_date` DECIMAL(18,2) COMMENT 'Date when this area management configuration expires or is superseded. Null for current configurations.',
+    `expiration_date` DATE COMMENT 'Date when this area management configuration expires or is superseded. Null for current configurations.',
     `franchise_agreement_flag` BOOLEAN COMMENT 'Indicates whether this area is governed by a franchise area development agreement.',
     `franchise_unit_count` STRING COMMENT 'Number of franchised restaurant units within this area.',
     `geographic_region` STRING COMMENT 'Broader geographic region to which this area belongs (e.g., West Coast, Midwest, Southeast).',
@@ -556,7 +555,7 @@ CREATE OR REPLACE TABLE `vibe_restaurants_v1`.`restaurant`.`renovation_project` 
     `budget_variance_usd` DECIMAL(18,2) COMMENT 'Difference between actual and estimated CapEx (actual minus estimated) in US dollars, indicating over or under budget performance.',
     `building_permit_number` STRING COMMENT 'Official building permit number issued by local authorities for the renovation work.',
     `cancellation_reason` STRING COMMENT 'Explanation for why the renovation project was cancelled, if applicable.',
-    `closure_duration_days` DECIMAL(18,2) COMMENT 'Number of days the restaurant was closed to customers during the renovation project.',
+    `closure_duration_days` STRING COMMENT 'Number of days the restaurant was closed to customers during the renovation project.',
     `contractor_license_number` STRING COMMENT 'State or local license number of the contractor performing the renovation work.',
     `contractor_name` STRING COMMENT 'Name of the primary general contractor or construction firm responsible for executing the renovation project.',
     `created_timestamp` TIMESTAMP COMMENT 'Timestamp when the renovation project record was first created in the system.',
@@ -580,7 +579,7 @@ CREATE OR REPLACE TABLE `vibe_restaurants_v1`.`restaurant`.`renovation_project` 
     `project_type` STRING COMMENT 'Classification of the renovation project type indicating the scope and nature of work (full remodel, refresh, equipment upgrade, ADA retrofit, brand reimaging, expansion).. Valid values are `full_remodel|refresh|equipment_upgrade|ada_retrofit|brand_reimaging|expansion`',
     `roi_payback_period_months` STRING COMMENT 'Estimated number of months required to recover the renovation investment through increased revenue and operational savings.',
     `scope_description` STRING COMMENT 'Detailed description of the renovation scope including specific areas, systems, and improvements included in the project.',
-    `warranty_expiration_date` DECIMAL(18,2) COMMENT 'Date when the contractor warranty for the renovation work expires.',
+    `warranty_expiration_date` DATE COMMENT 'Date when the contractor warranty for the renovation work expires.',
     `warranty_period_months` STRING COMMENT 'Duration in months of the contractor warranty covering workmanship and materials for the renovation.',
     CONSTRAINT pk_renovation_project PRIMARY KEY(`renovation_project_id`)
 ) COMMENT 'Tracks restaurant unit renovation, remodel, and refresh projects including project type (full remodel, refresh, equipment upgrade, ADA retrofit, brand reimaging), project status (planned, approved, in-progress, completed, cancelled), planned start date, actual start date, planned completion date, actual completion date, estimated CapEx, actual CapEx, contractor name, closure duration (days), and expected AUV lift post-renovation. Coordinates with realestate domain for facility management and finance domain for CapEx tracking.';
@@ -614,7 +613,7 @@ CREATE OR REPLACE TABLE `vibe_restaurants_v1`.`restaurant`.`ops_visit` (
     `staff_count_observed` STRING COMMENT 'Number of staff members (Full-Time Equivalent or FTE) observed working during the visit, relevant for labor efficiency and service quality assessment.',
     `visit_category` STRING COMMENT 'Broad category of the operational visit indicating whether it is routine, targeted at specific issues, driven by customer complaints, regulatory-mandated, or pre-opening inspection.. Valid values are `routine|targeted|complaint_driven|regulatory|pre_opening`',
     `visit_date` DATE COMMENT 'The calendar date on which the operational field visit was conducted at the restaurant unit.',
-    `visit_duration_minutes` DECIMAL(18,2) COMMENT 'Total duration of the operational visit in minutes, calculated from start to end timestamp.',
+    `visit_duration_minutes` STRING COMMENT 'Total duration of the operational visit in minutes, calculated from start to end timestamp.',
     `visit_end_timestamp` TIMESTAMP COMMENT 'The precise date and time when the operational visit concluded, marking the completion of the on-site inspection or audit.',
     `visit_notes` STRING COMMENT 'Free-text field capturing detailed observations, comments, recommendations, and contextual information from the operational visit.',
     `visit_number` STRING COMMENT 'Business-facing unique identifier for the operational visit, used for tracking and reference in operational compliance systems.. Valid values are `^[A-Z0-9]{8,20}$`',
@@ -642,7 +641,7 @@ CREATE OR REPLACE TABLE `vibe_restaurants_v1`.`restaurant`.`ops_visit_finding` (
     `corrective_action_completed_flag` BOOLEAN COMMENT 'Indicates whether the required corrective action has been completed and verified. True when action is complete and verified; False when pending or in progress.',
     `corrective_action_completion_date` DATE COMMENT 'Actual date when the corrective action was completed and verified. Populated when corrective_action_completed_flag is set to True. Used to calculate resolution time and track overdue items.',
     `corrective_action_due_date` DATE COMMENT 'Target date by which the corrective action must be completed. Set based on severity level: critical findings typically require same-day or next-day resolution, major findings within 7 days, minor findings within 30 days.',
-    `corrective_action_required` BOOLEAN COMMENT 'Detailed description of the corrective action that must be taken to resolve the finding. Specifies what needs to be done, by whom, and any specific requirements or standards that must be met.',
+    `corrective_action_required` STRING COMMENT 'Detailed description of the corrective action that must be taken to resolve the finding. Specifies what needs to be done, by whom, and any specific requirements or standards that must be met.',
     `corrective_action_verification_method` STRING COMMENT 'Method used to verify that the corrective action was completed satisfactorily. Options include on-site inspection by field manager, photographic evidence submitted by unit, document review, manager attestation, or scheduled follow-up visit.. Valid values are `on_site_inspection|photo_evidence|document_review|manager_attestation|follow_up_visit`',
     `created_timestamp` TIMESTAMP COMMENT 'Date and time when this finding record was first created in the system. System-generated audit field for data lineage and compliance tracking.',
     `escalation_level` STRING COMMENT 'Organizational level to which this finding has been escalated. Unit: handled at restaurant level. Area: escalated to area manager. Region: escalated to regional director. Corporate: escalated to corporate compliance or executive leadership.. Valid values are `unit|area|region|corporate`',
@@ -682,7 +681,7 @@ CREATE OR REPLACE TABLE `vibe_restaurants_v1`.`restaurant`.`unit_ownership` (
     `compliance_status` STRING COMMENT 'Current compliance status of this ownership arrangement with franchise agreement terms and brand standards. Used for franchise compliance reporting and risk management.. Valid values are `compliant|non_compliant|under_review|remediation_in_progress`',
     `created_timestamp` TIMESTAMP COMMENT 'The timestamp when this ownership record was first created in the system. Used for audit trail and data lineage tracking.',
     `financial_reporting_entity_code` STRING COMMENT 'The code identifying the financial reporting entity for P&L consolidation. Maps to the ERP system company code or business unit for financial reporting.',
-    `franchise_agreement_expiration_date` DECIMAL(18,2) COMMENT 'The expiration date of the franchise agreement. Used for renewal planning and compliance tracking.',
+    `franchise_agreement_expiration_date` DATE COMMENT 'The expiration date of the franchise agreement. Used for renewal planning and compliance tracking.',
     `franchise_agreement_number` STRING COMMENT 'The legal agreement number governing this franchise ownership arrangement. Null for company-owned units. Used for compliance tracking and legal reference.',
     `franchise_agreement_start_date` DATE COMMENT 'The start date of the franchise agreement governing this ownership. May differ from ownership_effective_start_date if ownership transferred mid-agreement.',
     `initial_franchise_fee_usd` DECIMAL(18,2) COMMENT 'The one-time initial franchise fee paid at the start of this ownership arrangement. Null for company-owned units. Used for revenue recognition and franchise economics analysis.',
@@ -693,7 +692,7 @@ CREATE OR REPLACE TABLE `vibe_restaurants_v1`.`restaurant`.`unit_ownership` (
     `master_franchise_flag` BOOLEAN COMMENT 'Indicates whether this ownership operates under a master franchise arrangement with sub-franchising rights. Used for franchise hierarchy management and royalty flow tracking.',
     `next_compliance_audit_due_date` DATE COMMENT 'The scheduled date for the next compliance audit. Used for audit planning and compliance management.',
     `operating_entity_legal_name` STRING COMMENT 'The full legal name of the entity that owns and operates this restaurant unit. Used for legal compliance, tax reporting, and franchise agreement documentation.',
-    `operating_license_expiration_date` DECIMAL(18,2) COMMENT 'The expiration date of the operating license. Used for renewal tracking and compliance management.',
+    `operating_license_expiration_date` DATE COMMENT 'The expiration date of the operating license. Used for renewal tracking and compliance management.',
     `operating_license_number` STRING COMMENT 'The business operating license number issued by local authorities for this ownership entity. Used for regulatory compliance and legal documentation.',
     `ownership_effective_end_date` DATE COMMENT 'The date on which this ownership arrangement ended or will end. Null for current active ownership. Used to close out royalty periods and finalize P&L attribution.',
     `ownership_effective_start_date` DATE COMMENT 'The date on which this ownership arrangement became effective. Used to determine royalty calculation periods and P&L attribution windows.',
@@ -705,7 +704,7 @@ CREATE OR REPLACE TABLE `vibe_restaurants_v1`.`restaurant`.`unit_ownership` (
     `ownership_type` STRING COMMENT 'Classification of the ownership model for this restaurant unit. Determines royalty calculation, P&L attribution, and compliance reporting requirements.. Valid values are `company_owned|franchised|licensed|joint_venture|master_franchise|area_development`',
     `previous_owner_name` STRING COMMENT 'The name of the previous owner if this ownership record represents a transfer or resale. Used for historical tracking and franchise relationship management.',
     `royalty_rate_percent` DECIMAL(18,2) COMMENT 'The percentage of gross sales paid as royalty fees under this ownership arrangement. Null for company-owned units. Used for royalty calculation and financial forecasting.',
-    `tax_identification_number` DECIMAL(18,2) COMMENT 'The tax identification number (EIN, VAT, or equivalent) of the operating entity. Used for tax reporting and regulatory compliance.',
+    `tax_identification_number` STRING COMMENT 'The tax identification number (EIN, VAT, or equivalent) of the operating entity. Used for tax reporting and regulatory compliance.',
     `territory_code` STRING COMMENT 'The geographic territory code assigned to this franchise ownership. Used for territory management, market planning, and franchise compliance.',
     `transfer_approval_date` DATE COMMENT 'The date on which the franchisor approved the ownership transfer. Used for compliance tracking and transfer timeline analysis.',
     `transfer_approved_by` STRING COMMENT 'The name or identifier of the franchisor representative who approved the ownership transfer. Used for audit trail and compliance documentation.',
@@ -718,6 +717,7 @@ CREATE OR REPLACE TABLE `vibe_restaurants_v1`.`restaurant`.`performance_period` 
     `performance_prior_period_id` BIGINT COMMENT 'Reference to the immediately preceding performance period of the same type. Used for sequential period-over-period trending and variance analysis.',
     `performance_prior_year_period_id` BIGINT COMMENT 'Reference to the corresponding performance period from the prior fiscal year. Used for year-over-year variance analysis and SSS calculations.',
     `primary_prior_performance_period_id` BIGINT COMMENT 'Self-referencing FK on performance_period (prior_performance_period_id)',
+    `unit_id` BIGINT COMMENT 'add column restaurant_unit_id (BIGINT) with FK to restaurant.unit.unit_id - performance periods need unit context unless they are global calendar periods, in which case they should link to finance.financial_period',
     `auv_calculation_window_months` STRING COMMENT 'The number of trailing months used to calculate Average Unit Volume (AUV) for this period. Typically 12 months for annual AUV or 3 months for quarterly AUV. Defines the rolling window for revenue averaging.',
     `business_day_count` STRING COMMENT 'The number of operating days in this performance period, excluding holidays and closures. Used for calculating business-day-adjusted metrics.',
     `calendar_month` STRING COMMENT 'The calendar month number (1-12) in which the period starts. Used for month-over-month trending and seasonality analysis.',
@@ -741,7 +741,7 @@ CREATE OR REPLACE TABLE `vibe_restaurants_v1`.`restaurant`.`performance_period` 
     `period_category` STRING COMMENT 'High‑level business domain the period is primarily used for.. Valid values are `operational|financial|marketing|workforce|supply_chain`',
     `period_close_date` DATE COMMENT 'The date on which the performance period was officially closed for reporting. Represents when preliminary financial and operational results were finalized.',
     `period_code` STRING COMMENT 'Business-friendly code used to reference the period in reports and systems.',
-    `period_duration_days` DECIMAL(18,2) COMMENT 'Number of calendar days covered by the period (derived from start and end dates).',
+    `period_duration_days` STRING COMMENT 'Number of calendar days covered by the period (derived from start and end dates).',
     `period_end_date` DATE COMMENT 'The last calendar date included in this performance period. Defines the ending boundary for all transactions and metrics captured within this period.',
     `period_lock_date` DATE COMMENT 'The date on which the performance period was locked, preventing any further transactional or adjustment entries. Ensures data integrity for audited financial reporting.',
     `period_name` STRING COMMENT 'Human-readable name or label for the performance period (e.g., FY2024 Period 3, Q1 2024, Week 12). Used for reporting displays and user interfaces.',
@@ -791,7 +791,7 @@ CREATE OR REPLACE TABLE `vibe_restaurants_v1`.`restaurant`.`pos_terminal` (
     `next_pci_audit_date` DATE COMMENT 'Scheduled date for the next PCI DSS compliance audit or assessment.',
     `next_scheduled_maintenance_date` DATE COMMENT 'Scheduled date for the next preventive maintenance or service check.',
     `notes` STRING COMMENT 'Free-text notes for additional context, special configurations, or operational remarks about the terminal.',
-    `operational_status` DECIMAL(18,2) COMMENT 'Current lifecycle status of the POS terminal in the restaurant operations.',
+    `operational_status` STRING COMMENT 'Current lifecycle status of the POS terminal in the restaurant operations.. Valid values are `active|inactive|maintenance|decommissioned|pending_install`',
     `payment_methods_supported` STRING COMMENT 'Comma‑separated list of payment method codes the terminal can accept (e.g., "credit,debit,cash,applepay").',
     `payment_processing_capability` STRING COMMENT 'Comma-separated list of payment methods supported by this terminal (e.g., credit, debit, NFC, gift_card, mobile_wallet).',
     `payment_processing_vendor` STRING COMMENT 'Name of the third‑party processor handling card authorizations for this terminal.',
@@ -820,7 +820,7 @@ CREATE OR REPLACE TABLE `vibe_restaurants_v1`.`restaurant`.`pos_terminal` (
     `terminal_number` STRING COMMENT 'Business-facing terminal number or code used for operational identification and reporting.',
     `terminal_type` STRING COMMENT 'Classification of the POS terminal by its operational role and form factor.. Valid values are `counter_pos|drive_thru_pos|kiosk|handheld|mobile_pos|kitchen_display`',
     `updated_timestamp` TIMESTAMP COMMENT 'Timestamp of the most recent update to the terminal record.',
-    `warranty_expiration_date` DECIMAL(18,2) COMMENT 'Date when the manufacturer warranty for the POS terminal hardware expires.',
+    `warranty_expiration_date` DATE COMMENT 'Date when the manufacturer warranty for the POS terminal hardware expires.',
     `zone` STRING COMMENT 'Area of the restaurant where the terminal operates.. Valid values are `FOH|BOH|kitchen|drive_thru|outside`',
     CONSTRAINT pk_pos_terminal PRIMARY KEY(`pos_terminal_id`)
 ) COMMENT 'Master reference table for pos_terminal. Referenced by: loyalty.offer_redemption.pos_terminal_id, loyalty.payment_method_link.pos_terminal_id, loyalty.redemption.pos_terminal_id, loyalty.visit.pos_terminal_id, order.drive_thru_event.pos_terminal_id';
@@ -828,8 +828,7 @@ CREATE OR REPLACE TABLE `vibe_restaurants_v1`.`restaurant`.`pos_terminal` (
 CREATE OR REPLACE TABLE `vibe_restaurants_v1`.`restaurant`.`store_campaign_assignment` (
     `store_campaign_assignment_id` BIGINT COMMENT 'Primary key for the store_campaign_assignment association',
     `campaign_id` BIGINT COMMENT 'Foreign key linking to the marketing campaign',
-    `unit_id` BIGINT COMMENT 'Unique identifier for the store restaurant unit associated with this store campaign assignment',
-    `store_sponsor_restaurant_unit_id` BIGINT COMMENT 'Identifier of the sponsoring restaurant (if applicable)',
+    `unit_id` BIGINT COMMENT 'Identifier of the sponsoring restaurant (if applicable)',
     `store_unit_id` BIGINT COMMENT 'Foreign key linking to the restaurant unit',
     `actual_adt_lift_percent` DECIMAL(18,2) COMMENT 'Measured lift in average daily transactions',
     `actual_comp_sales_lift_percent` DECIMAL(18,2) COMMENT 'Measured lift in comparable store sales',
@@ -837,12 +836,8 @@ CREATE OR REPLACE TABLE `vibe_restaurants_v1`.`restaurant`.`store_campaign_assig
     `approval_date` DATE COMMENT 'Date when the assignment was approved',
     `approval_status` STRING COMMENT 'Approval status of the units participation',
     `approved_by` STRING COMMENT 'Name of approver for the units campaign assignment',
-    `assignment_status` STRING COMMENT 'The current status of the assignment for this store campaign assignment',
     `channel` STRING COMMENT 'Marketing channel(s) used for the unit',
     `compliance_flag` BOOLEAN COMMENT 'Indicates whether the unit complies with campaign guidelines',
-    `created_timestamp` TIMESTAMP COMMENT 'Record created',
-    `effective_end_date` DATE COMMENT 'The date and time when the effective end event occurred for this store campaign assignment',
-    `effective_start_date` DATE COMMENT 'The date and time when the effective start event occurred for this store campaign assignment',
     `end_date` DATE COMMENT 'Planned end date of the campaign for the unit',
     `execution_end_date` DATE COMMENT 'Actual execution end date at the unit',
     `execution_start_date` DATE COMMENT 'Actual execution start date at the unit',
@@ -859,208 +854,111 @@ CREATE OR REPLACE TABLE `vibe_restaurants_v1`.`restaurant`.`store_campaign_assig
     `start_date` DATE COMMENT 'Planned start date of the campaign for the unit',
     `store_campaign_assignment_status` STRING COMMENT 'Current status of the units participation in the campaign',
     `target_audience` STRING COMMENT 'Target guest segment for the unit',
-    `updated_timestamp` TIMESTAMP COMMENT 'The updated timestamp attribute value for this store campaign assignment record in the restaurant domain',
     CONSTRAINT pk_store_campaign_assignment PRIMARY KEY(`store_campaign_assignment_id`)
 ) COMMENT 'Represents the assignment of a marketing campaign to a specific restaurant unit. Each record captures spend, performance, compliance, and other campaign‑specific attributes that exist only in the context of that unit‑campaign pairing.. Existence Justification: A restaurant unit can participate in multiple marketing campaigns, and each campaign is executed across many units. The business actively tracks per‑unit spend, performance metrics, compliance flags, and other campaign‑specific details, making the relationship a managed entity rather than a simple reference.';
 
 CREATE OR REPLACE TABLE `vibe_restaurants_v1`.`restaurant`.`kitchen_station` (
     `kitchen_station_id` BIGINT COMMENT 'Primary key for kitchen_station',
     `employee_id` BIGINT COMMENT 'Identifier of the employee responsible for the station.',
-    `equipment_asset_id` BIGINT COMMENT 'Unique identifier for the equipment asset associated with this kitchen station',
-    `unit_id` BIGINT COMMENT 'Unique identifier for the kitchen restaurant unit associated with this kitchen station',
-    `kitchen_unit_id` BIGINT COMMENT 'Foreign key linking to restaurant.unit. Business justification: Kitchen stations belong to a specific restaurant unit; adding unit_id creates the necessary parent link and eliminates isolation.',
     `location_profile_id` BIGINT COMMENT 'Reference to the restaurant location where the station resides.',
+    `unit_id` BIGINT COMMENT 'Foreign key linking to restaurant.unit. Business justification: Kitchen stations belong to a specific restaurant unit; adding unit_id creates the necessary parent link and eliminates isolation.',
     `upstream_kitchen_station_id` BIGINT COMMENT 'Self-referencing FK on kitchen_station (upstream_kitchen_station_id)',
     `area_sqft` DECIMAL(18,2) COMMENT 'Physical floor area occupied by the station.',
     `average_ticket_time_seconds` STRING COMMENT 'Average time a ticket spends at this station.',
     `capacity_dishes` STRING COMMENT 'Maximum number of dishes the station can handle concurrently.',
-    `created_timestamp` TIMESTAMP COMMENT 'Record created',
     `daypart_schedule` STRING COMMENT 'Meal periods during which the station is active.',
     `effective_from` DATE COMMENT 'Date when the station became operational.',
     `effective_until` DATE COMMENT 'Date when the station is scheduled to be retired or decommissioned (null if open‑ended).',
     `equipment_list` STRING COMMENT 'Comma‑separated list of major equipment assigned to the station.',
     `health_inspection_date` DATE COMMENT 'Date of the most recent health inspection.',
     `health_inspection_status` STRING COMMENT 'Result of the most recent health inspection for the station.',
-    `is_active` BOOLEAN COMMENT 'Active flag',
     `is_automated` BOOLEAN COMMENT 'Indicates whether the station includes automated equipment.',
-    `kds_screen_count` STRING COMMENT 'The count or quantity of kds screen items in this kitchen station',
-    `kds_screen_number` STRING COMMENT 'KDS screen',
-    `kds_screen_reference` STRING COMMENT 'The kds screen reference attribute value for this kitchen station record in the restaurant domain',
     `last_maintenance_date` DATE COMMENT 'Date when the station last underwent preventive maintenance.',
-    `last_modified_timestamp` TIMESTAMP COMMENT 'The last modified timestamp attribute value for this kitchen station record in the restaurant domain',
     `maintenance_interval_days` STRING COMMENT 'Scheduled number of days between routine maintenance events.',
-    `max_capacity_orders_per_hour` STRING COMMENT 'The max capacity orders per hour attribute value for this kitchen station record in the restaurant domain',
-    `notes` STRING COMMENT 'Free-text notes field providing additional context for this kitchen station',
-    `operational_hours` DECIMAL(18,2) COMMENT 'Standard daily operating window (e.g., "08:00-22:00").',
+    `operational_hours` STRING COMMENT 'Standard daily operating window (e.g., "08:00-22:00").',
     `power_rating_kw` DECIMAL(18,2) COMMENT 'Maximum electrical power consumption of the station.',
     `record_audit_created` TIMESTAMP COMMENT 'Timestamp when the kitchen station record was first created.',
     `record_audit_updated` TIMESTAMP COMMENT 'Timestamp of the most recent update to the kitchen station record.',
-    `routing_priority` STRING COMMENT 'The routing priority attribute value for this kitchen station record in the restaurant domain',
     `speed_of_service_sos_seconds` STRING COMMENT 'Target time in seconds to complete a dish at this station.',
-    `staffing_requirement` STRING COMMENT 'The staffing requirement attribute value for this kitchen station record in the restaurant domain',
     `station_code` STRING COMMENT 'Business identifier code used in operational systems and SOPs.',
     `station_name` STRING COMMENT 'Human‑readable name of the kitchen station (e.g., "Grill Station 1").',
-    `station_status` STRING COMMENT 'The current status of the station for this kitchen station',
     `station_type` STRING COMMENT 'Category of the station based on function (e.g., prep, cook, plating).',
     `kitchen_station_status` STRING COMMENT 'Current operational status of the station.',
-    `target_prep_time_seconds` STRING COMMENT 'The target prep time seconds attribute value for this kitchen station record in the restaurant domain',
     `temperature_control` BOOLEAN COMMENT 'Indicates if the station has temperature‑control capabilities.',
     `temperature_range_c` STRING COMMENT 'Allowed temperature range for the station (e.g., "0-5").',
-    `temperature_zone` STRING COMMENT 'The temperature zone attribute value for this kitchen station record in the restaurant domain',
     `throughput_per_hour` STRING COMMENT 'Average number of dishes processed by the station each hour.',
-    `updated_timestamp` TIMESTAMP COMMENT 'The updated timestamp attribute value for this kitchen station record in the restaurant domain',
     CONSTRAINT pk_kitchen_station PRIMARY KEY(`kitchen_station_id`)
 ) COMMENT 'Master reference table for kitchen_station. Referenced by station_id.';
 
 CREATE OR REPLACE TABLE `vibe_restaurants_v1`.`restaurant`.`brand` (
     `brand_id` BIGINT COMMENT 'Primary key for brand',
-    `legal_entity_id` BIGINT COMMENT 'Unique identifier for the legal entity associated with this brand',
     `parent_brand_id` BIGINT COMMENT 'Identifier of the parent brand in a brand hierarchy, if applicable.',
     `average_annual_sales_usd` DECIMAL(18,2) COMMENT 'Typical yearly sales revenue per brand unit, expressed in US dollars.',
     `average_check_amount_usd` DECIMAL(18,2) COMMENT 'Typical spend per guest (average ticket) in US dollars.',
     `average_daily_customers` STRING COMMENT 'Mean number of guests served per day across brand locations.',
     `average_employee_count` STRING COMMENT 'Typical number of staff employed per restaurant for the brand.',
     `average_store_size_sqft` DECIMAL(18,2) COMMENT 'Mean square‑footage of restaurants operating under the brand.',
-    `brand_segment` STRING COMMENT 'Target consumer segment for the brand.',
     `brand_type` STRING COMMENT 'Classification of the brand by service format.',
     `brand_category` STRING COMMENT 'High‑level category describing the brands product focus.',
     `brand_code` STRING COMMENT 'External alphanumeric code used to reference the brand in corporate systems.',
     `color_hex` STRING COMMENT 'Hexadecimal representation of the brands primary color.',
-    `company_owned_unit_count` STRING COMMENT 'The count or quantity of company owned unit items in this brand',
-    `concept_type` STRING COMMENT 'The classification type for concept in this brand',
     `created_timestamp` TIMESTAMP COMMENT 'Date‑time when the brand record was first created in the system.',
-    `cuisine_type` STRING COMMENT 'The classification type for cuisine in this brand',
     `brand_description` STRING COMMENT 'Narrative description of the brands positioning and concept.',
     `established_date` DATE COMMENT 'Date the brand was first launched.',
-    `founded_date` DATE COMMENT 'The date and time when the founded event occurred for this brand',
     `franchise_allowed` BOOLEAN COMMENT 'Indicates whether the brand is offered as a franchise model.',
     `franchise_fee_percent` DECIMAL(18,2) COMMENT 'Initial franchise fee expressed as a percent of initial investment.',
-    `franchise_unit_count` STRING COMMENT 'The count or quantity of franchise unit items in this brand',
     `headquarters_city` STRING COMMENT 'City where the brands corporate headquarters is located.',
     `headquarters_country_code` STRING COMMENT 'Three‑letter ISO country code of the brands headquarters.',
-    `headquarters_location` STRING COMMENT 'HQ location',
-    `is_active` BOOLEAN COMMENT 'Active flag',
-    `last_modified_timestamp` TIMESTAMP COMMENT 'The last modified timestamp attribute value for this brand record in the restaurant domain',
-    `launch_date` DATE COMMENT 'The date and time when the launch event occurred for this brand',
     `logo_url` STRING COMMENT 'Link to the brands primary logo image.',
     `market_share_percent` DECIMAL(18,2) COMMENT 'Estimated share of the market segment held by the brand.',
     `brand_name` STRING COMMENT 'Human‑readable name of the brand.',
-    `notes` STRING COMMENT 'Free-text notes field providing additional context for this brand',
-    `parent_company` STRING COMMENT 'The parent company attribute value for this brand record in the restaurant domain',
-    `parent_company_name` STRING COMMENT 'The display name or label for the parent company in this brand',
-    `positioning_segment` STRING COMMENT 'The positioning segment attribute value for this brand record in the restaurant domain',
     `primary_market_region` STRING COMMENT 'Geographic region where the brand has its strongest presence.',
     `royalty_fee_percent` DECIMAL(18,2) COMMENT 'Ongoing royalty fee charged to franchisees, expressed as a percent of sales.',
-    `segment` STRING COMMENT 'The segment attribute value for this brand record in the restaurant domain',
-    `service_model` STRING COMMENT 'The service model attribute value for this brand record in the restaurant domain',
+    `segment` STRING COMMENT 'Target consumer segment for the brand.',
     `social_media_handle` STRING COMMENT 'Primary social media identifier (e.g., @brand) used for marketing.',
     `sos_target_seconds` STRING COMMENT 'Targeted service time from order to delivery for the brand.',
     `brand_status` STRING COMMENT 'Current lifecycle state of the brand.',
     `tagline` STRING COMMENT 'Short marketing slogan associated with the brand.',
-    `total_unit_count` STRING COMMENT 'The count or quantity of total unit items in this brand',
     `updated_timestamp` TIMESTAMP COMMENT 'Date‑time of the most recent modification to the brand record.',
     `website_url` STRING COMMENT 'Public website address for the brand.',
     CONSTRAINT pk_brand PRIMARY KEY(`brand_id`)
 ) COMMENT 'Master reference table for brand. Referenced by brand_id.';
 
-CREATE OR REPLACE TABLE `vibe_restaurants_v1`.`restaurant`.`department` (
-    `department_id` BIGINT COMMENT 'Primary key for department',
-    `cost_center_id` BIGINT COMMENT 'Unique identifier for the cost center associated with this department',
-    `franchisee_id` BIGINT COMMENT 'Identifier of the franchise to which the department belongs (null for company‑owned).',
-    `parent_department_id` BIGINT COMMENT 'Identifier of the immediate parent department in the organizational hierarchy.',
-    `address_line1` STRING COMMENT 'Primary street address of the department.',
-    `address_line2` STRING COMMENT 'Secondary address information (suite, floor, etc.).',
-    `area_sqft` DECIMAL(18,2) COMMENT 'Square‑footage occupied by the department.',
-    `average_service_time_minutes` STRING COMMENT 'Average time in minutes to complete a core service task for the department.',
-    `budget_amount` DECIMAL(18,2) COMMENT 'Annual budget allocated to the department (in USD).',
-    `city` STRING COMMENT 'City in which the department is situated.',
-    `classification` STRING COMMENT 'Higher‑level classification used for reporting and cost allocation.',
-    `closing_date` DATE COMMENT 'Date the department was closed (null if still operating).',
-    `department_code` STRING COMMENT 'Business‑assigned short code that uniquely identifies the department within the enterprise.',
-    `country_code` STRING COMMENT 'ISO 3166‑1 alpha‑3 country code where the department is located.',
-    `created_timestamp` TIMESTAMP COMMENT 'Timestamp when the department record was first created in the system.',
-    `department_description` STRING COMMENT 'Free‑form text describing the departments purpose and responsibilities.',
-    `effective_date` DATE COMMENT 'The date and time when the effective event occurred for this department',
-    `effective_from` DATE COMMENT 'Date when the department became operational.',
-    `effective_until` DATE COMMENT 'Date when the department ceased operation (null if still active).',
-    `email` STRING COMMENT 'Primary email address for department communications.',
-    `end_date` DATE COMMENT 'The date and time when the end event occurred for this department',
-    `floor_number` STRING COMMENT 'Physical floor on which the department is located.',
-    `headcount` STRING COMMENT 'Number of full‑time equivalent staff assigned to the department.',
-    `is_active` BOOLEAN COMMENT 'Active flag',
-    `is_franchise` BOOLEAN COMMENT 'True if the department belongs to a franchised unit.',
-    `is_primary` BOOLEAN COMMENT 'Indicates whether this department is the primary unit for its location.',
-    `last_modified_timestamp` TIMESTAMP COMMENT 'The last modified timestamp attribute value for this department record in the restaurant domain',
-    `manager_name` STRING COMMENT 'The display name or label for the manager in this department',
-    `department_name` STRING COMMENT 'Human‑readable name of the department.',
-    `notes` STRING COMMENT 'Free-text notes field providing additional context for this department',
-    `opening_date` DATE COMMENT 'Date the department first opened for business.',
-    `operational_hours` DECIMAL(18,2) COMMENT 'Standard daily operating hours expressed as HH:MM‑HH:MM.',
-    `phone_number` STRING COMMENT 'Primary contact telephone number for the department.',
-    `postal_code` STRING COMMENT 'Postal code for the departments address.',
-    `region_code` STRING COMMENT 'Three‑letter code representing the geographic region.',
-    `service_level` STRING COMMENT 'Level of service the department is expected to deliver.',
-    `shift_schedule` STRING COMMENT 'Primary shift schedule pattern used by the department.',
-    `department_status` STRING COMMENT 'Current lifecycle status of the department.',
-    `turnover_rate` DECIMAL(18,2) COMMENT 'Annual percentage of staff turnover in the department.',
-    `department_type` STRING COMMENT 'Categorizes the department by its functional area.',
-    `updated_timestamp` TIMESTAMP COMMENT 'Timestamp of the most recent update to the department record.',
-    CONSTRAINT pk_department PRIMARY KEY(`department_id`)
-) COMMENT 'Organizational departments within a restaurant unit (kitchen, front-of-house, drive-thru); used for operational management.';
-
 CREATE OR REPLACE TABLE `vibe_restaurants_v1`.`restaurant`.`checklist_template` (
     `checklist_template_id` BIGINT COMMENT 'Primary key for checklist_template',
-    `brand_id` BIGINT COMMENT 'Unique identifier for the brand associated with this checklist template',
+    `brand_id` BIGINT COMMENT 'add column brand_id (BIGINT) with FK to restaurant.brand.brand_id - checklist templates should be scoped to a brand for multi-brand operations',
     `parent_checklist_template_id` BIGINT COMMENT 'Self-referencing FK on checklist_template (parent_checklist_template_id)',
-    `applicable_format` STRING COMMENT 'The applicable format attribute value for this checklist template record in the restaurant domain',
     `applicable_restaurant_type` STRING COMMENT 'Restaurant format(s) for which the checklist is intended.',
     `approval_required` BOOLEAN COMMENT 'True if the checklist must be approved before use.',
     `checklist_template_code` STRING COMMENT 'Business identifier or code used to reference the template in operational systems.',
     `created_timestamp` TIMESTAMP COMMENT 'Date‑time when the template record was first created.',
     `checklist_template_description` STRING COMMENT 'Detailed free‑text description of the template purpose and scope.',
-    `duration_minutes` DECIMAL(18,2) COMMENT 'Typical time required to complete the checklist, in minutes.',
-    `effective_date` DATE COMMENT 'The date and time when the effective event occurred for this checklist template',
+    `duration_minutes` STRING COMMENT 'Typical time required to complete the checklist, in minutes.',
     `effective_from` DATE COMMENT 'Date when the checklist template becomes effective for use.',
     `effective_until` DATE COMMENT 'Date when the checklist template expires or is superseded (null if open‑ended).',
-    `expiration_date` DECIMAL(18,2) COMMENT 'The date and time when the expiration event occurred for this checklist template',
     `frequency` STRING COMMENT 'How often the checklist should be executed.',
-    `is_active` BOOLEAN COMMENT 'Active flag',
     `is_mandatory` BOOLEAN COMMENT 'Indicates whether completion of the checklist is mandatory.',
-    `item_count` STRING COMMENT 'Number of items',
     `language` STRING COMMENT 'ISO 639‑1 language code of the template content.',
-    `last_modified_timestamp` TIMESTAMP COMMENT 'The last modified timestamp attribute value for this checklist template record in the restaurant domain',
     `last_reviewed_timestamp` TIMESTAMP COMMENT 'Date‑time when the template was last reviewed.',
-    `max_score` DECIMAL(18,2) COMMENT 'The max score attribute value for this checklist template record in the restaurant domain',
     `checklist_template_name` STRING COMMENT 'Human‑readable name of the checklist template.',
-    `notes` STRING COMMENT 'Free-text notes field providing additional context for this checklist template',
     `owner_role` STRING COMMENT 'Organizational role responsible for maintaining the template (e.g., Operations Manager).',
-    `passing_score` DECIMAL(18,2) COMMENT 'The passing score attribute value for this checklist template record in the restaurant domain',
     `region` STRING COMMENT 'Three‑letter ISO country/region code where the template is applicable.',
     `review_cycle` STRING COMMENT 'Scheduled interval for formal review of the template.',
     `checklist_template_status` STRING COMMENT 'Current lifecycle status of the template.',
-    `template_category` STRING COMMENT 'The template category attribute value for this checklist template record in the restaurant domain',
-    `template_code` STRING COMMENT 'A standardized code representing the template classification for this checklist template',
-    `template_description` STRING COMMENT 'The template description attribute value for this checklist template record in the restaurant domain',
     `template_file_path` STRING COMMENT 'File system or storage path where the template document resides.',
     `template_format` STRING COMMENT 'File format of the stored template.',
-    `template_name` STRING COMMENT 'The display name or label for the template in this checklist template',
-    `template_status` STRING COMMENT 'The current status of the template for this checklist template',
-    `template_type` STRING COMMENT 'The classification type for template in this checklist template',
-    `template_version` STRING COMMENT 'The template version attribute value for this checklist template record in the restaurant domain',
     `checklist_template_type` STRING COMMENT 'Category that defines the purpose of the checklist (e.g., safety, training).',
     `updated_timestamp` TIMESTAMP COMMENT 'Date‑time of the most recent update to the template record.',
     `version` STRING COMMENT 'Version identifier for change control (e.g., v1.2).',
-    `version_number` STRING COMMENT 'The version number attribute value for this checklist template record in the restaurant domain',
-    `created_by` STRING COMMENT 'The created by attribute value for this checklist template record in the restaurant domain',
     CONSTRAINT pk_checklist_template PRIMARY KEY(`checklist_template_id`)
 ) COMMENT 'Master reference table for checklist_template. Referenced by checklist_template_id.';
 
 -- ========= FOREIGN KEYS =========
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit` ADD CONSTRAINT `fk_restaurant_unit_brand_id` FOREIGN KEY (`brand_id`) REFERENCES `vibe_restaurants_v1`.`restaurant`.`brand`(`brand_id`);
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit` ADD CONSTRAINT `fk_restaurant_unit_brand_standard_id` FOREIGN KEY (`brand_standard_id`) REFERENCES `vibe_restaurants_v1`.`restaurant`.`brand_standard`(`brand_standard_id`);
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit` ADD CONSTRAINT `fk_restaurant_unit_department_id` FOREIGN KEY (`department_id`) REFERENCES `vibe_restaurants_v1`.`restaurant`.`department`(`department_id`);
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`location_profile` ADD CONSTRAINT `fk_restaurant_location_profile_unit_id` FOREIGN KEY (`unit_id`) REFERENCES `vibe_restaurants_v1`.`restaurant`.`unit`(`unit_id`);
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`location_profile` ADD CONSTRAINT `fk_restaurant_location_profile_location_unit_id` FOREIGN KEY (`location_unit_id`) REFERENCES `vibe_restaurants_v1`.`restaurant`.`unit`(`unit_id`);
+ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`format_config` ADD CONSTRAINT `fk_restaurant_format_config_brand_id` FOREIGN KEY (`brand_id`) REFERENCES `vibe_restaurants_v1`.`restaurant`.`brand`(`brand_id`);
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`format_config` ADD CONSTRAINT `fk_restaurant_format_config_unit_id` FOREIGN KEY (`unit_id`) REFERENCES `vibe_restaurants_v1`.`restaurant`.`unit`(`unit_id`);
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`format_config` ADD CONSTRAINT `fk_restaurant_format_config_format_unit_id` FOREIGN KEY (`format_unit_id`) REFERENCES `vibe_restaurants_v1`.`restaurant`.`unit`(`unit_id`);
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`operating_hours` ADD CONSTRAINT `fk_restaurant_operating_hours_unit_id` FOREIGN KEY (`unit_id`) REFERENCES `vibe_restaurants_v1`.`restaurant`.`unit`(`unit_id`);
@@ -1082,6 +980,7 @@ ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`capacity_config` ADD CONSTRAINT 
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`capacity_config` ADD CONSTRAINT `fk_restaurant_capacity_config_capacity_unit_id` FOREIGN KEY (`capacity_unit_id`) REFERENCES `vibe_restaurants_v1`.`restaurant`.`unit`(`unit_id`);
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit_status_history` ADD CONSTRAINT `fk_restaurant_unit_status_history_unit_id` FOREIGN KEY (`unit_id`) REFERENCES `vibe_restaurants_v1`.`restaurant`.`unit`(`unit_id`);
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`area_management` ADD CONSTRAINT `fk_restaurant_area_management_parent_area_area_management_id` FOREIGN KEY (`parent_area_area_management_id`) REFERENCES `vibe_restaurants_v1`.`restaurant`.`area_management`(`area_management_id`);
+ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`area_management` ADD CONSTRAINT `fk_restaurant_area_management_unit_id` FOREIGN KEY (`unit_id`) REFERENCES `vibe_restaurants_v1`.`restaurant`.`unit`(`unit_id`);
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`renovation_project` ADD CONSTRAINT `fk_restaurant_renovation_project_unit_id` FOREIGN KEY (`unit_id`) REFERENCES `vibe_restaurants_v1`.`restaurant`.`unit`(`unit_id`);
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`renovation_project` ADD CONSTRAINT `fk_restaurant_renovation_project_renovation_unit_id` FOREIGN KEY (`renovation_unit_id`) REFERENCES `vibe_restaurants_v1`.`restaurant`.`unit`(`unit_id`);
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`ops_visit` ADD CONSTRAINT `fk_restaurant_ops_visit_checklist_template_id` FOREIGN KEY (`checklist_template_id`) REFERENCES `vibe_restaurants_v1`.`restaurant`.`checklist_template`(`checklist_template_id`);
@@ -1095,20 +994,17 @@ ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit_ownership` ADD CONSTRAINT `
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`performance_period` ADD CONSTRAINT `fk_restaurant_performance_period_performance_prior_period_id` FOREIGN KEY (`performance_prior_period_id`) REFERENCES `vibe_restaurants_v1`.`restaurant`.`performance_period`(`performance_period_id`);
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`performance_period` ADD CONSTRAINT `fk_restaurant_performance_period_performance_prior_year_period_id` FOREIGN KEY (`performance_prior_year_period_id`) REFERENCES `vibe_restaurants_v1`.`restaurant`.`performance_period`(`performance_period_id`);
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`performance_period` ADD CONSTRAINT `fk_restaurant_performance_period_primary_prior_performance_period_id` FOREIGN KEY (`primary_prior_performance_period_id`) REFERENCES `vibe_restaurants_v1`.`restaurant`.`performance_period`(`performance_period_id`);
+ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`performance_period` ADD CONSTRAINT `fk_restaurant_performance_period_unit_id` FOREIGN KEY (`unit_id`) REFERENCES `vibe_restaurants_v1`.`restaurant`.`unit`(`unit_id`);
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`pos_terminal` ADD CONSTRAINT `fk_restaurant_pos_terminal_pos_replacement_terminal_id` FOREIGN KEY (`pos_replacement_terminal_id`) REFERENCES `vibe_restaurants_v1`.`restaurant`.`pos_terminal`(`pos_terminal_id`);
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`pos_terminal` ADD CONSTRAINT `fk_restaurant_pos_terminal_unit_id` FOREIGN KEY (`unit_id`) REFERENCES `vibe_restaurants_v1`.`restaurant`.`unit`(`unit_id`);
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`pos_terminal` ADD CONSTRAINT `fk_restaurant_pos_terminal_pos_unit_id` FOREIGN KEY (`pos_unit_id`) REFERENCES `vibe_restaurants_v1`.`restaurant`.`unit`(`unit_id`);
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`pos_terminal` ADD CONSTRAINT `fk_restaurant_pos_terminal_primary_replaced_pos_terminal_id` FOREIGN KEY (`primary_replaced_pos_terminal_id`) REFERENCES `vibe_restaurants_v1`.`restaurant`.`pos_terminal`(`pos_terminal_id`);
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`store_campaign_assignment` ADD CONSTRAINT `fk_restaurant_store_campaign_assignment_unit_id` FOREIGN KEY (`unit_id`) REFERENCES `vibe_restaurants_v1`.`restaurant`.`unit`(`unit_id`);
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`store_campaign_assignment` ADD CONSTRAINT `fk_restaurant_store_campaign_assignment_store_sponsor_restaurant_unit_id` FOREIGN KEY (`store_sponsor_restaurant_unit_id`) REFERENCES `vibe_restaurants_v1`.`restaurant`.`unit`(`unit_id`);
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`store_campaign_assignment` ADD CONSTRAINT `fk_restaurant_store_campaign_assignment_store_unit_id` FOREIGN KEY (`store_unit_id`) REFERENCES `vibe_restaurants_v1`.`restaurant`.`unit`(`unit_id`);
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`kitchen_station` ADD CONSTRAINT `fk_restaurant_kitchen_station_equipment_asset_id` FOREIGN KEY (`equipment_asset_id`) REFERENCES `vibe_restaurants_v1`.`restaurant`.`equipment_asset`(`equipment_asset_id`);
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`kitchen_station` ADD CONSTRAINT `fk_restaurant_kitchen_station_unit_id` FOREIGN KEY (`unit_id`) REFERENCES `vibe_restaurants_v1`.`restaurant`.`unit`(`unit_id`);
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`kitchen_station` ADD CONSTRAINT `fk_restaurant_kitchen_station_kitchen_unit_id` FOREIGN KEY (`kitchen_unit_id`) REFERENCES `vibe_restaurants_v1`.`restaurant`.`unit`(`unit_id`);
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`kitchen_station` ADD CONSTRAINT `fk_restaurant_kitchen_station_location_profile_id` FOREIGN KEY (`location_profile_id`) REFERENCES `vibe_restaurants_v1`.`restaurant`.`location_profile`(`location_profile_id`);
+ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`kitchen_station` ADD CONSTRAINT `fk_restaurant_kitchen_station_unit_id` FOREIGN KEY (`unit_id`) REFERENCES `vibe_restaurants_v1`.`restaurant`.`unit`(`unit_id`);
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`kitchen_station` ADD CONSTRAINT `fk_restaurant_kitchen_station_upstream_kitchen_station_id` FOREIGN KEY (`upstream_kitchen_station_id`) REFERENCES `vibe_restaurants_v1`.`restaurant`.`kitchen_station`(`kitchen_station_id`);
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`brand` ADD CONSTRAINT `fk_restaurant_brand_parent_brand_id` FOREIGN KEY (`parent_brand_id`) REFERENCES `vibe_restaurants_v1`.`restaurant`.`brand`(`brand_id`);
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`department` ADD CONSTRAINT `fk_restaurant_department_parent_department_id` FOREIGN KEY (`parent_department_id`) REFERENCES `vibe_restaurants_v1`.`restaurant`.`department`(`department_id`);
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`checklist_template` ADD CONSTRAINT `fk_restaurant_checklist_template_brand_id` FOREIGN KEY (`brand_id`) REFERENCES `vibe_restaurants_v1`.`restaurant`.`brand`(`brand_id`);
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`checklist_template` ADD CONSTRAINT `fk_restaurant_checklist_template_parent_checklist_template_id` FOREIGN KEY (`parent_checklist_template_id`) REFERENCES `vibe_restaurants_v1`.`restaurant`.`checklist_template`(`checklist_template_id`);
 
@@ -1116,11 +1012,7 @@ ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`checklist_template` ADD CONSTRAI
 ALTER SCHEMA `vibe_restaurants_v1`.`restaurant` SET TAGS ('dbx_division' = 'operations');
 ALTER SCHEMA `vibe_restaurants_v1`.`restaurant` SET TAGS ('dbx_domain' = 'restaurant');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit` SET TAGS ('dbx_subdomain' = 'unit_identity');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit` SET TAGS ('dbx_reviewer_review' = 'section2_colH_no_directives');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit` SET TAGS ('dbx_reviewer_authority' = 'section2_column_h');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit` SET TAGS ('dbx_reviewer_notes' = 'none_for_restaurants');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit` SET TAGS ('dbx_reviewer_precedence' = 'section2_supreme_authority');
+ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit` SET TAGS ('dbx_subdomain' = 'location_management');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit` ALTER COLUMN `unit_id` SET TAGS ('dbx_business_glossary_term' = 'Unit ID');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit` ALTER COLUMN `brand_id` SET TAGS ('dbx_business_glossary_term' = 'Brand Id (Foreign Key)');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit` ALTER COLUMN `brand_standard_id` SET TAGS ('dbx_business_glossary_term' = 'Brand Standard Id (Foreign Key)');
@@ -1138,26 +1030,21 @@ ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit` ALTER COLUMN `sop_document
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit` ALTER COLUMN `address_line1` SET TAGS ('dbx_business_glossary_term' = 'Address Line 1');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit` ALTER COLUMN `address_line1` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit` ALTER COLUMN `address_line1` SET TAGS ('dbx_pii_address' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit` ALTER COLUMN `address_line1` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit` ALTER COLUMN `address_line1` SET TAGS ('dbx_mask_in_nonprod' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit` ALTER COLUMN `address_line1` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit` ALTER COLUMN `address_line2` SET TAGS ('dbx_business_glossary_term' = 'Address Line 2');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit` ALTER COLUMN `address_line2` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit` ALTER COLUMN `address_line2` SET TAGS ('dbx_pii_address' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit` ALTER COLUMN `address_line2` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit` ALTER COLUMN `address_line2` SET TAGS ('dbx_mask_in_nonprod' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit` ALTER COLUMN `address_line2` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit` ALTER COLUMN `average_cover_count` SET TAGS ('dbx_business_glossary_term' = 'Average Cover Count');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit` ALTER COLUMN `average_ticket_time_seconds` SET TAGS ('dbx_business_glossary_term' = 'Average Ticket Time Seconds');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit` ALTER COLUMN `average_unit_volume_usd` SET TAGS ('dbx_business_glossary_term' = 'Average Unit Volume (AUV) USD');
+ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit` ALTER COLUMN `average_unit_volume_usd` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit` ALTER COLUMN `city` SET TAGS ('dbx_business_glossary_term' = 'City');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit` ALTER COLUMN `city` SET TAGS ('dbx_pii_detected' = 'true');
+ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit` ALTER COLUMN `city` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit` ALTER COLUMN `city` SET TAGS ('dbx_pii_address' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit` ALTER COLUMN `closure_date` SET TAGS ('dbx_business_glossary_term' = 'Closure Date');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit` ALTER COLUMN `concept_type` SET TAGS ('dbx_business_glossary_term' = 'Concept Type');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit` ALTER COLUMN `concept_type` SET TAGS ('dbx_value_regex' = 'QSR|casual_dining|fast_casual|fine_dining|food_court|ghost_kitchen');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit` ALTER COLUMN `country_code` SET TAGS ('dbx_business_glossary_term' = 'Country Code');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit` ALTER COLUMN `country_code` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit` ALTER COLUMN `country_code` SET TAGS ('dbx_pii_detected' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit` ALTER COLUMN `daypart_schedule` SET TAGS ('dbx_business_glossary_term' = 'Daypart Schedule');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit` ALTER COLUMN `drive_thru_lanes` SET TAGS ('dbx_business_glossary_term' = 'Drive-Thru (DT) Lanes');
@@ -1165,9 +1052,6 @@ ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit` ALTER COLUMN `email_addres
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit` ALTER COLUMN `email_address` SET TAGS ('dbx_value_regex' = '^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+.[a-zA-Z]{2,}$');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit` ALTER COLUMN `email_address` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit` ALTER COLUMN `email_address` SET TAGS ('dbx_pii_email' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit` ALTER COLUMN `email_address` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit` ALTER COLUMN `email_address` SET TAGS ('dbx_mask_in_nonprod' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit` ALTER COLUMN `email_address` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit` ALTER COLUMN `haccp_certified` SET TAGS ('dbx_business_glossary_term' = 'Hazard Analysis Critical Control Points (HACCP) Certified');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit` ALTER COLUMN `has_online_ordering` SET TAGS ('dbx_business_glossary_term' = 'Has Online Ordering (OLO)');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit` ALTER COLUMN `has_third_party_delivery` SET TAGS ('dbx_business_glossary_term' = 'Has Third-Party Delivery (3PD)');
@@ -1186,65 +1070,47 @@ ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit` ALTER COLUMN `longitude` S
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit` ALTER COLUMN `opening_date` SET TAGS ('dbx_business_glossary_term' = 'Opening Date');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit` ALTER COLUMN `operating_hours` SET TAGS ('dbx_business_glossary_term' = 'Operating Hours');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit` ALTER COLUMN `operational_status` SET TAGS ('dbx_business_glossary_term' = 'Operational Status');
+ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit` ALTER COLUMN `operational_status` SET TAGS ('dbx_value_regex' = 'active|temporarily_closed|permanently_closed|under_construction|pending_opening');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit` ALTER COLUMN `ownership_model` SET TAGS ('dbx_business_glossary_term' = 'Ownership Model');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit` ALTER COLUMN `ownership_model` SET TAGS ('dbx_value_regex' = 'company_owned|franchised|joint_venture|licensed');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit` ALTER COLUMN `parking_spaces` SET TAGS ('dbx_business_glossary_term' = 'Parking Spaces');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit` ALTER COLUMN `phone_number` SET TAGS ('dbx_business_glossary_term' = 'Phone Number');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit` ALTER COLUMN `phone_number` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit` ALTER COLUMN `phone_number` SET TAGS ('dbx_pii_phone' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit` ALTER COLUMN `phone_number` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit` ALTER COLUMN `phone_number` SET TAGS ('dbx_mask_in_nonprod' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit` ALTER COLUMN `phone_number` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit` ALTER COLUMN `pos_system_version` SET TAGS ('dbx_business_glossary_term' = 'Point of Sale (POS) System Version');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit` ALTER COLUMN `postal_code` SET TAGS ('dbx_business_glossary_term' = 'Postal Code');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit` ALTER COLUMN `postal_code` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit` ALTER COLUMN `postal_code` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit` ALTER COLUMN `postal_code` SET TAGS ('dbx_pii_address' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit` ALTER COLUMN `same_store_sales_pct` SET TAGS ('dbx_business_glossary_term' = 'Same-Store Sales (SSS) Percentage');
+ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit` ALTER COLUMN `same_store_sales_pct` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit` ALTER COLUMN `seating_capacity` SET TAGS ('dbx_business_glossary_term' = 'Seating Capacity');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit` ALTER COLUMN `speed_of_service_seconds` SET TAGS ('dbx_business_glossary_term' = 'Speed of Service (SOS) Seconds');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit` ALTER COLUMN `square_footage` SET TAGS ('dbx_business_glossary_term' = 'Square Footage');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit` ALTER COLUMN `state_province` SET TAGS ('dbx_business_glossary_term' = 'State or Province');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit` ALTER COLUMN `state_province` SET TAGS ('dbx_value_regex' = '^[A-Z]{2}$');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit` ALTER COLUMN `state_province` SET TAGS ('dbx_pii_detected' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit` ALTER COLUMN `table_turn_rate` SET TAGS ('dbx_business_glossary_term' = 'Table Turn Rate');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit` ALTER COLUMN `throughput_capacity_orders_per_hour` SET TAGS ('dbx_business_glossary_term' = 'Throughput Capacity Orders Per Hour');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit` ALTER COLUMN `trade_name` SET TAGS ('dbx_business_glossary_term' = 'Trade Name');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit` ALTER COLUMN `trade_name` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit` ALTER COLUMN `trade_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit` ALTER COLUMN `trade_name` SET TAGS ('dbx_pii_detected' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit` ALTER COLUMN `unit_number` SET TAGS ('dbx_business_glossary_term' = 'Unit Number');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit` ALTER COLUMN `unit_number` SET TAGS ('dbx_value_regex' = '^[A-Z0-9]{4,12}$');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`location_profile` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`location_profile` SET TAGS ('dbx_subdomain' = 'unit_identity');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`location_profile` SET TAGS ('dbx_reviewer_review' = 'section2_colH_no_directives');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`location_profile` SET TAGS ('dbx_reviewer_authority' = 'section2_column_h');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`location_profile` SET TAGS ('dbx_reviewer_notes' = 'none_for_restaurants');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`location_profile` SET TAGS ('dbx_reviewer_precedence' = 'section2_supreme_authority');
+ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`location_profile` SET TAGS ('dbx_subdomain' = 'location_management');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`location_profile` ALTER COLUMN `location_profile_id` SET TAGS ('dbx_business_glossary_term' = 'Location Profile ID');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`location_profile` ALTER COLUMN `location_profile_id` SET TAGS ('dbx_pii_detected' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`location_profile` ALTER COLUMN `unit_id` SET TAGS ('dbx_business_glossary_term' = 'Restaurant ID');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`location_profile` ALTER COLUMN `unit_id` SET TAGS ('dbx_pii_detected' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`location_profile` ALTER COLUMN `location_unit_id` SET TAGS ('dbx_business_glossary_term' = 'Restaurant ID');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`location_profile` ALTER COLUMN `location_unit_id` SET TAGS ('dbx_pii_detected' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`location_profile` ALTER COLUMN `address_line_1` SET TAGS ('dbx_business_glossary_term' = 'Address Line 1');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`location_profile` ALTER COLUMN `address_line_1` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`location_profile` ALTER COLUMN `address_line_1` SET TAGS ('dbx_pii_address' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`location_profile` ALTER COLUMN `address_line_1` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`location_profile` ALTER COLUMN `address_line_1` SET TAGS ('dbx_mask_in_nonprod' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`location_profile` ALTER COLUMN `address_line_1` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`location_profile` ALTER COLUMN `address_line_2` SET TAGS ('dbx_business_glossary_term' = 'Address Line 2');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`location_profile` ALTER COLUMN `address_line_2` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`location_profile` ALTER COLUMN `address_line_2` SET TAGS ('dbx_pii_address' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`location_profile` ALTER COLUMN `address_line_2` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`location_profile` ALTER COLUMN `address_line_2` SET TAGS ('dbx_mask_in_nonprod' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`location_profile` ALTER COLUMN `address_line_2` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`location_profile` ALTER COLUMN `building_ownership_type` SET TAGS ('dbx_business_glossary_term' = 'Building Ownership Type');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`location_profile` ALTER COLUMN `building_ownership_type` SET TAGS ('dbx_value_regex' = 'owned|leased|franchisee_owned|ground_lease');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`location_profile` ALTER COLUMN `city` SET TAGS ('dbx_business_glossary_term' = 'City');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`location_profile` ALTER COLUMN `city` SET TAGS ('dbx_pii_detected' = 'true');
+ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`location_profile` ALTER COLUMN `city` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`location_profile` ALTER COLUMN `city` SET TAGS ('dbx_pii_address' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`location_profile` ALTER COLUMN `country_code` SET TAGS ('dbx_business_glossary_term' = 'Country Code');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`location_profile` ALTER COLUMN `country_code` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`location_profile` ALTER COLUMN `country_code` SET TAGS ('dbx_pii_detected' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`location_profile` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`location_profile` ALTER COLUMN `delivery_radius_km` SET TAGS ('dbx_business_glossary_term' = 'Delivery Radius (Kilometers)');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`location_profile` ALTER COLUMN `dma_code` SET TAGS ('dbx_business_glossary_term' = 'Designated Market Area (DMA) Code');
@@ -1253,11 +1119,9 @@ ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`location_profile` ALTER COLUMN `
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`location_profile` ALTER COLUMN `email_address` SET TAGS ('dbx_value_regex' = '^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+.[a-zA-Z]{2,}$');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`location_profile` ALTER COLUMN `email_address` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`location_profile` ALTER COLUMN `email_address` SET TAGS ('dbx_pii_email' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`location_profile` ALTER COLUMN `email_address` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`location_profile` ALTER COLUMN `email_address` SET TAGS ('dbx_mask_in_nonprod' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`location_profile` ALTER COLUMN `email_address` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`location_profile` ALTER COLUMN `fax_number` SET TAGS ('dbx_business_glossary_term' = 'Fax Number');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`location_profile` ALTER COLUMN `fax_number` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`location_profile` ALTER COLUMN `fax_number` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`location_profile` ALTER COLUMN `fax_number` SET TAGS ('dbx_pii_phone' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`location_profile` ALTER COLUMN `has_accessible_parking` SET TAGS ('dbx_business_glossary_term' = 'Has Accessible Parking');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`location_profile` ALTER COLUMN `has_drive_thru` SET TAGS ('dbx_business_glossary_term' = 'Has Drive-Thru (DT)');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`location_profile` ALTER COLUMN `has_patio_seating` SET TAGS ('dbx_business_glossary_term' = 'Has Patio Seating');
@@ -1281,11 +1145,8 @@ ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`location_profile` ALTER COLUMN `
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`location_profile` ALTER COLUMN `phone_number` SET TAGS ('dbx_business_glossary_term' = 'Phone Number');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`location_profile` ALTER COLUMN `phone_number` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`location_profile` ALTER COLUMN `phone_number` SET TAGS ('dbx_pii_phone' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`location_profile` ALTER COLUMN `phone_number` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`location_profile` ALTER COLUMN `phone_number` SET TAGS ('dbx_mask_in_nonprod' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`location_profile` ALTER COLUMN `phone_number` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`location_profile` ALTER COLUMN `postal_code` SET TAGS ('dbx_business_glossary_term' = 'Postal Code');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`location_profile` ALTER COLUMN `postal_code` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`location_profile` ALTER COLUMN `postal_code` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`location_profile` ALTER COLUMN `postal_code` SET TAGS ('dbx_pii_address' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`location_profile` ALTER COLUMN `proximity_to_airport_km` SET TAGS ('dbx_business_glossary_term' = 'Proximity to Airport (Kilometers)');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`location_profile` ALTER COLUMN `proximity_to_highway_km` SET TAGS ('dbx_business_glossary_term' = 'Proximity to Highway (Kilometers)');
@@ -1297,15 +1158,12 @@ ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`location_profile` ALTER COLUMN `
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`location_profile` ALTER COLUMN `site_status` SET TAGS ('dbx_value_regex' = 'active|under_construction|planned|closed|temporarily_closed');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`location_profile` ALTER COLUMN `square_footage` SET TAGS ('dbx_business_glossary_term' = 'Square Footage');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`location_profile` ALTER COLUMN `state_province` SET TAGS ('dbx_business_glossary_term' = 'State or Province');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`location_profile` ALTER COLUMN `state_province` SET TAGS ('dbx_pii_detected' = 'true');
+ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`location_profile` ALTER COLUMN `state_province` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`location_profile` ALTER COLUMN `state_province` SET TAGS ('dbx_pii_address' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`location_profile` ALTER COLUMN `timezone` SET TAGS ('dbx_business_glossary_term' = 'Timezone');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`location_profile` ALTER COLUMN `trade_area_classification` SET TAGS ('dbx_business_glossary_term' = 'Trade Area Classification');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`format_config` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`format_config` SET TAGS ('dbx_subdomain' = 'unit_identity');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`format_config` SET TAGS ('dbx_reviewer_review' = 'section2_colH_no_directives');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`format_config` SET TAGS ('dbx_reviewer_authority' = 'section2_column_h');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`format_config` SET TAGS ('dbx_reviewer_notes' = 'none_for_restaurants');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`format_config` SET TAGS ('dbx_reviewer_precedence' = 'section2_supreme_authority');
+ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`format_config` SET TAGS ('dbx_subdomain' = 'location_management');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`format_config` ALTER COLUMN `format_config_id` SET TAGS ('dbx_business_glossary_term' = 'Format Configuration ID');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`format_config` ALTER COLUMN `unit_id` SET TAGS ('dbx_business_glossary_term' = 'Restaurant ID');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`format_config` ALTER COLUMN `format_unit_id` SET TAGS ('dbx_business_glossary_term' = 'Restaurant ID');
@@ -1332,9 +1190,6 @@ ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`format_config` ALTER COLUMN `foh
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`format_config` ALTER COLUMN `foh_seating_capacity` SET TAGS ('dbx_business_glossary_term' = 'Front of House (FOH) Seating Capacity');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`format_config` ALTER COLUMN `foh_table_count` SET TAGS ('dbx_business_glossary_term' = 'Front of House (FOH) Table Count');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`format_config` ALTER COLUMN `format_name` SET TAGS ('dbx_business_glossary_term' = 'Format Name');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`format_config` ALTER COLUMN `format_name` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`format_config` ALTER COLUMN `format_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`format_config` ALTER COLUMN `format_name` SET TAGS ('dbx_pii_detected' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`format_config` ALTER COLUMN `kds_screen_count` SET TAGS ('dbx_business_glossary_term' = 'Kitchen Display System (KDS) Screen Count');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`format_config` ALTER COLUMN `kiosk_count` SET TAGS ('dbx_business_glossary_term' = 'Digital Ordering Kiosk Count');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`format_config` ALTER COLUMN `last_modified_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Last Modified Timestamp');
@@ -1352,11 +1207,7 @@ ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`format_config` ALTER COLUMN `thi
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`format_config` ALTER COLUMN `throughput_capacity_per_hour` SET TAGS ('dbx_business_glossary_term' = 'Throughput Capacity Per Hour');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`format_config` ALTER COLUMN `twenty_four_hour_operation_flag` SET TAGS ('dbx_business_glossary_term' = '24-Hour Operation Flag');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`operating_hours` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`operating_hours` SET TAGS ('dbx_subdomain' = 'unit_identity');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`operating_hours` SET TAGS ('dbx_reviewer_review' = 'section2_colH_no_directives');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`operating_hours` SET TAGS ('dbx_reviewer_authority' = 'section2_column_h');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`operating_hours` SET TAGS ('dbx_reviewer_notes' = 'none_for_restaurants');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`operating_hours` SET TAGS ('dbx_reviewer_precedence' = 'section2_supreme_authority');
+ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`operating_hours` SET TAGS ('dbx_subdomain' = 'location_management');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`operating_hours` ALTER COLUMN `operating_hours_id` SET TAGS ('dbx_business_glossary_term' = 'Operating Hours ID');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`operating_hours` ALTER COLUMN `scheduling_template_id` SET TAGS ('dbx_business_glossary_term' = 'Labor Scheduling Template ID');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`operating_hours` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Approved By User ID');
@@ -1384,9 +1235,6 @@ ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`operating_hours` ALTER COLUMN `e
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`operating_hours` ALTER COLUMN `expected_cover_count` SET TAGS ('dbx_business_glossary_term' = 'Expected Cover Count');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`operating_hours` ALTER COLUMN `expected_table_turn_count` SET TAGS ('dbx_business_glossary_term' = 'Expected Table Turn Count');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`operating_hours` ALTER COLUMN `holiday_name` SET TAGS ('dbx_business_glossary_term' = 'Holiday Name');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`operating_hours` ALTER COLUMN `holiday_name` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`operating_hours` ALTER COLUMN `holiday_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`operating_hours` ALTER COLUMN `holiday_name` SET TAGS ('dbx_pii_detected' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`operating_hours` ALTER COLUMN `holiday_schedule_override_flag` SET TAGS ('dbx_business_glossary_term' = 'Holiday Schedule Override Flag');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`operating_hours` ALTER COLUMN `is_24_hour_operation` SET TAGS ('dbx_business_glossary_term' = 'Is 24-Hour Operation');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`operating_hours` ALTER COLUMN `is_closed` SET TAGS ('dbx_business_glossary_term' = 'Is Closed');
@@ -1400,28 +1248,19 @@ ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`operating_hours` ALTER COLUMN `s
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`operating_hours` ALTER COLUMN `schedule_type` SET TAGS ('dbx_value_regex' = 'regular|holiday|seasonal|temporary|special_event');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`operating_hours` ALTER COLUMN `seasonal_adjustment_flag` SET TAGS ('dbx_business_glossary_term' = 'Seasonal Adjustment Flag');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`operating_hours` ALTER COLUMN `seasonal_period_name` SET TAGS ('dbx_business_glossary_term' = 'Seasonal Period Name');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`operating_hours` ALTER COLUMN `seasonal_period_name` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`operating_hours` ALTER COLUMN `seasonal_period_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`operating_hours` ALTER COLUMN `seasonal_period_name` SET TAGS ('dbx_pii_detected' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`operating_hours` ALTER COLUMN `special_event_name` SET TAGS ('dbx_business_glossary_term' = 'Special Event Name');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`operating_hours` ALTER COLUMN `special_event_name` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`operating_hours` ALTER COLUMN `special_event_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`operating_hours` ALTER COLUMN `special_event_name` SET TAGS ('dbx_pii_detected' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`operating_hours` ALTER COLUMN `target_speed_of_service_seconds` SET TAGS ('dbx_business_glossary_term' = 'Target Speed of Service (SOS) Seconds');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`operating_hours` ALTER COLUMN `target_ticket_time_seconds` SET TAGS ('dbx_business_glossary_term' = 'Target Ticket Time Seconds');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`operating_hours` ALTER COLUMN `throughput_capacity_per_hour` SET TAGS ('dbx_business_glossary_term' = 'Throughput Capacity Per Hour');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`equipment_asset` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`equipment_asset` SET TAGS ('dbx_subdomain' = 'operational_performance');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`equipment_asset` SET TAGS ('dbx_reviewer_review' = 'section2_colH_no_directives');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`equipment_asset` SET TAGS ('dbx_reviewer_authority' = 'section2_column_h');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`equipment_asset` SET TAGS ('dbx_reviewer_notes' = 'none_for_restaurants');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`equipment_asset` SET TAGS ('dbx_reviewer_precedence' = 'section2_supreme_authority');
+ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`equipment_asset` SET TAGS ('dbx_subdomain' = 'equipment_operations');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`equipment_asset` ALTER COLUMN `equipment_asset_id` SET TAGS ('dbx_business_glossary_term' = 'Equipment Asset ID');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`equipment_asset` ALTER COLUMN `unit_id` SET TAGS ('dbx_business_glossary_term' = 'Restaurant ID');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`equipment_asset` ALTER COLUMN `equipment_unit_id` SET TAGS ('dbx_business_glossary_term' = 'Restaurant ID');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`equipment_asset` ALTER COLUMN `fixed_asset_id` SET TAGS ('dbx_business_glossary_term' = 'Fixed Asset Id (Foreign Key)');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`equipment_asset` ALTER COLUMN `procurement_supplier_id` SET TAGS ('dbx_business_glossary_term' = 'Vendor ID');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`equipment_asset` ALTER COLUMN `acquisition_cost_usd` SET TAGS ('dbx_business_glossary_term' = 'Acquisition Cost (USD)');
+ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`equipment_asset` ALTER COLUMN `acquisition_cost_usd` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`equipment_asset` ALTER COLUMN `asset_condition_rating` SET TAGS ('dbx_business_glossary_term' = 'Asset Condition Rating');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`equipment_asset` ALTER COLUMN `asset_condition_rating` SET TAGS ('dbx_value_regex' = 'excellent|good|fair|poor|critical');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`equipment_asset` ALTER COLUMN `asset_tag_number` SET TAGS ('dbx_business_glossary_term' = 'Asset Tag Number');
@@ -1437,9 +1276,6 @@ ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`equipment_asset` ALTER COLUMN `d
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`equipment_asset` ALTER COLUMN `energy_rating` SET TAGS ('dbx_business_glossary_term' = 'Energy Rating');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`equipment_asset` ALTER COLUMN `equipment_category` SET TAGS ('dbx_business_glossary_term' = 'Equipment Category');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`equipment_asset` ALTER COLUMN `equipment_name` SET TAGS ('dbx_business_glossary_term' = 'Equipment Name');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`equipment_asset` ALTER COLUMN `equipment_name` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`equipment_asset` ALTER COLUMN `equipment_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`equipment_asset` ALTER COLUMN `equipment_name` SET TAGS ('dbx_pii_detected' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`equipment_asset` ALTER COLUMN `equipment_type` SET TAGS ('dbx_business_glossary_term' = 'Equipment Type');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`equipment_asset` ALTER COLUMN `installation_date` SET TAGS ('dbx_business_glossary_term' = 'Installation Date');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`equipment_asset` ALTER COLUMN `last_modified_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Last Modified Timestamp');
@@ -1448,22 +1284,22 @@ ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`equipment_asset` ALTER COLUMN `l
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`equipment_asset` ALTER COLUMN `lease_expiry_date` SET TAGS ('dbx_business_glossary_term' = 'Lease Expiry Date');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`equipment_asset` ALTER COLUMN `location_zone` SET TAGS ('dbx_business_glossary_term' = 'Location Zone');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`equipment_asset` ALTER COLUMN `location_zone` SET TAGS ('dbx_value_regex' = 'boh|foh|drive_thru|storage|outdoor');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`equipment_asset` ALTER COLUMN `location_zone` SET TAGS ('dbx_pii_detected' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`equipment_asset` ALTER COLUMN `maintenance_frequency_days` SET TAGS ('dbx_business_glossary_term' = 'Maintenance Frequency Days');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`equipment_asset` ALTER COLUMN `manufacturer_name` SET TAGS ('dbx_business_glossary_term' = 'Manufacturer Name');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`equipment_asset` ALTER COLUMN `manufacturer_name` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`equipment_asset` ALTER COLUMN `manufacturer_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`equipment_asset` ALTER COLUMN `manufacturer_name` SET TAGS ('dbx_pii_detected' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`equipment_asset` ALTER COLUMN `model_number` SET TAGS ('dbx_business_glossary_term' = 'Model Number');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`equipment_asset` ALTER COLUMN `next_scheduled_maintenance_date` SET TAGS ('dbx_business_glossary_term' = 'Next Scheduled Maintenance Date');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`equipment_asset` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Notes');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`equipment_asset` ALTER COLUMN `operational_status` SET TAGS ('dbx_business_glossary_term' = 'Operational Status');
+ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`equipment_asset` ALTER COLUMN `operational_status` SET TAGS ('dbx_value_regex' = 'in_service|out_of_service|under_repair|scheduled_replacement|decommissioned');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`equipment_asset` ALTER COLUMN `ownership_type` SET TAGS ('dbx_business_glossary_term' = 'Ownership Type');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`equipment_asset` ALTER COLUMN `ownership_type` SET TAGS ('dbx_value_regex' = 'owned|leased|rented');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`equipment_asset` ALTER COLUMN `power_consumption_watts` SET TAGS ('dbx_business_glossary_term' = 'Power Consumption Watts');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`equipment_asset` ALTER COLUMN `replacement_cost_usd` SET TAGS ('dbx_business_glossary_term' = 'Replacement Cost (USD)');
+ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`equipment_asset` ALTER COLUMN `replacement_cost_usd` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`equipment_asset` ALTER COLUMN `serial_number` SET TAGS ('dbx_business_glossary_term' = 'Serial Number');
+ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`equipment_asset` ALTER COLUMN `serial_number` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`equipment_asset` ALTER COLUMN `service_contract_number` SET TAGS ('dbx_business_glossary_term' = 'Service Contract Number');
+ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`equipment_asset` ALTER COLUMN `service_contract_number` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`equipment_asset` ALTER COLUMN `temperature_critical_flag` SET TAGS ('dbx_business_glossary_term' = 'Temperature Critical Flag');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`equipment_asset` ALTER COLUMN `temperature_max_f` SET TAGS ('dbx_business_glossary_term' = 'Temperature Maximum Fahrenheit');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`equipment_asset` ALTER COLUMN `temperature_min_f` SET TAGS ('dbx_business_glossary_term' = 'Temperature Minimum Fahrenheit');
@@ -1471,18 +1307,13 @@ ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`equipment_asset` ALTER COLUMN `u
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`equipment_asset` ALTER COLUMN `warranty_expiry_date` SET TAGS ('dbx_business_glossary_term' = 'Warranty Expiry Date');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`equipment_asset` ALTER COLUMN `warranty_start_date` SET TAGS ('dbx_business_glossary_term' = 'Warranty Start Date');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`throughput_benchmark` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`throughput_benchmark` SET TAGS ('dbx_subdomain' = 'operational_performance');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`throughput_benchmark` SET TAGS ('dbx_reviewer_review' = 'section2_colH_no_directives');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`throughput_benchmark` SET TAGS ('dbx_reviewer_authority' = 'section2_column_h');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`throughput_benchmark` SET TAGS ('dbx_reviewer_notes' = 'none_for_restaurants');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`throughput_benchmark` SET TAGS ('dbx_reviewer_precedence' = 'section2_supreme_authority');
+ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`throughput_benchmark` SET TAGS ('dbx_subdomain' = 'performance_tracking');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`throughput_benchmark` ALTER COLUMN `throughput_benchmark_id` SET TAGS ('dbx_business_glossary_term' = 'Throughput Benchmark ID');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`throughput_benchmark` ALTER COLUMN `daypart_id` SET TAGS ('dbx_business_glossary_term' = 'Daypart ID');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`throughput_benchmark` ALTER COLUMN `unit_id` SET TAGS ('dbx_business_glossary_term' = 'Restaurant ID');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`throughput_benchmark` ALTER COLUMN `throughput_unit_id` SET TAGS ('dbx_business_glossary_term' = 'Restaurant ID');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`throughput_benchmark` ALTER COLUMN `approval_date` SET TAGS ('dbx_business_glossary_term' = 'Approval Date');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`throughput_benchmark` ALTER COLUMN `approved_by` SET TAGS ('dbx_business_glossary_term' = 'Approved By');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`throughput_benchmark` ALTER COLUMN `approved_by` SET TAGS ('dbx_sensitivity' = 'pii');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`throughput_benchmark` ALTER COLUMN `benchmark_source` SET TAGS ('dbx_business_glossary_term' = 'Benchmark Source');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`throughput_benchmark` ALTER COLUMN `benchmark_source` SET TAGS ('dbx_value_regex' = 'corporate_standard|franchise_agreement|regional_target|unit_specific|industry_benchmark');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`throughput_benchmark` ALTER COLUMN `benchmark_type` SET TAGS ('dbx_business_glossary_term' = 'Benchmark Type');
@@ -1516,11 +1347,7 @@ ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`throughput_benchmark` ALTER COLU
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`throughput_benchmark` ALTER COLUMN `throughput_benchmark_status` SET TAGS ('dbx_business_glossary_term' = 'Benchmark Status');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`throughput_benchmark` ALTER COLUMN `throughput_benchmark_status` SET TAGS ('dbx_value_regex' = 'active|inactive|draft|archived');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`sos_measurement` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`sos_measurement` SET TAGS ('dbx_subdomain' = 'operational_performance');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`sos_measurement` SET TAGS ('dbx_reviewer_review' = 'section2_colH_no_directives');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`sos_measurement` SET TAGS ('dbx_reviewer_authority' = 'section2_column_h');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`sos_measurement` SET TAGS ('dbx_reviewer_notes' = 'none_for_restaurants');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`sos_measurement` SET TAGS ('dbx_reviewer_precedence' = 'section2_supreme_authority');
+ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`sos_measurement` SET TAGS ('dbx_subdomain' = 'performance_tracking');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`sos_measurement` ALTER COLUMN `sos_measurement_id` SET TAGS ('dbx_business_glossary_term' = 'Speed of Service (SOS) Measurement ID');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`sos_measurement` ALTER COLUMN `daypart_id` SET TAGS ('dbx_business_glossary_term' = 'Daypart ID');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`sos_measurement` ALTER COLUMN `guest_order_id` SET TAGS ('dbx_business_glossary_term' = 'Order ID');
@@ -1553,11 +1380,7 @@ ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`sos_measurement` ALTER COLUMN `t
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`sos_measurement` ALTER COLUMN `ticket_time_seconds` SET TAGS ('dbx_business_glossary_term' = 'Ticket Time (Seconds)');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`sos_measurement` ALTER COLUMN `weather_condition` SET TAGS ('dbx_business_glossary_term' = 'Weather Condition');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`brand_standard` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`brand_standard` SET TAGS ('dbx_subdomain' = 'operational_performance');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`brand_standard` SET TAGS ('dbx_reviewer_review' = 'section2_colH_no_directives');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`brand_standard` SET TAGS ('dbx_reviewer_authority' = 'section2_column_h');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`brand_standard` SET TAGS ('dbx_reviewer_notes' = 'none_for_restaurants');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`brand_standard` SET TAGS ('dbx_reviewer_precedence' = 'section2_supreme_authority');
+ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`brand_standard` SET TAGS ('dbx_subdomain' = 'brand_standards');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`brand_standard` ALTER COLUMN `brand_standard_id` SET TAGS ('dbx_business_glossary_term' = 'Brand Standard ID');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`brand_standard` ALTER COLUMN `superseded_by_standard_brand_standard_id` SET TAGS ('dbx_business_glossary_term' = 'Superseded By Brand Standard ID');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`brand_standard` ALTER COLUMN `applicable_format` SET TAGS ('dbx_business_glossary_term' = 'Applicable Restaurant Format');
@@ -1590,9 +1413,6 @@ ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`brand_standard` ALTER COLUMN `st
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`brand_standard` ALTER COLUMN `standard_code` SET TAGS ('dbx_value_regex' = '^[A-Z]{2,4}-[0-9]{3,5}$');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`brand_standard` ALTER COLUMN `standard_description` SET TAGS ('dbx_business_glossary_term' = 'Standard Description');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`brand_standard` ALTER COLUMN `standard_name` SET TAGS ('dbx_business_glossary_term' = 'Standard Name');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`brand_standard` ALTER COLUMN `standard_name` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`brand_standard` ALTER COLUMN `standard_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`brand_standard` ALTER COLUMN `standard_name` SET TAGS ('dbx_pii_detected' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`brand_standard` ALTER COLUMN `target_metric_unit` SET TAGS ('dbx_business_glossary_term' = 'Target Metric Unit of Measure');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`brand_standard` ALTER COLUMN `target_metric_value` SET TAGS ('dbx_business_glossary_term' = 'Target Metric Value');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`brand_standard` ALTER COLUMN `training_module_reference` SET TAGS ('dbx_business_glossary_term' = 'Training Module Reference');
@@ -1601,11 +1421,7 @@ ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`brand_standard` ALTER COLUMN `up
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`brand_standard` ALTER COLUMN `version_number` SET TAGS ('dbx_business_glossary_term' = 'Version Number');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`brand_standard` ALTER COLUMN `version_number` SET TAGS ('dbx_value_regex' = '^[0-9]+.[0-9]+$');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit_performance` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit_performance` SET TAGS ('dbx_subdomain' = 'operational_performance');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit_performance` SET TAGS ('dbx_reviewer_review' = 'section2_colH_no_directives');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit_performance` SET TAGS ('dbx_reviewer_authority' = 'section2_column_h');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit_performance` SET TAGS ('dbx_reviewer_notes' = 'none_for_restaurants');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit_performance` SET TAGS ('dbx_reviewer_precedence' = 'section2_supreme_authority');
+ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit_performance` SET TAGS ('dbx_subdomain' = 'performance_tracking');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit_performance` ALTER COLUMN `unit_performance_id` SET TAGS ('dbx_business_glossary_term' = 'Unit Performance ID');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit_performance` ALTER COLUMN `performance_period_id` SET TAGS ('dbx_business_glossary_term' = 'Performance Period Id (Foreign Key)');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit_performance` ALTER COLUMN `unit_id` SET TAGS ('dbx_business_glossary_term' = 'Restaurant ID');
@@ -1629,11 +1445,9 @@ ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit_performance` ALTER COLUMN `
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit_performance` ALTER COLUMN `labor_percent` SET TAGS ('dbx_business_glossary_term' = 'Labor Cost Percentage');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit_performance` ALTER COLUMN `marketing_expense_amount` SET TAGS ('dbx_business_glossary_term' = 'Marketing Expense Amount');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit_performance` ALTER COLUMN `net_income_amount` SET TAGS ('dbx_business_glossary_term' = 'Net Income Amount');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit_performance` ALTER COLUMN `net_income_amount` SET TAGS ('dbx_pii_detected' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit_performance` ALTER COLUMN `net_revenue_amount` SET TAGS ('dbx_business_glossary_term' = 'Net Revenue Amount');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit_performance` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Performance Notes');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit_performance` ALTER COLUMN `operating_income_amount` SET TAGS ('dbx_business_glossary_term' = 'Operating Income Amount');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit_performance` ALTER COLUMN `operating_income_amount` SET TAGS ('dbx_pii_detected' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit_performance` ALTER COLUMN `performance_status` SET TAGS ('dbx_business_glossary_term' = 'Performance Record Status');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit_performance` ALTER COLUMN `performance_status` SET TAGS ('dbx_value_regex' = 'draft|preliminary|final|revised|archived');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit_performance` ALTER COLUMN `record_created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
@@ -1646,11 +1460,7 @@ ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit_performance` ALTER COLUMN `
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit_performance` ALTER COLUMN `waste_amount` SET TAGS ('dbx_business_glossary_term' = 'Food Waste Amount');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit_performance` ALTER COLUMN `waste_percent` SET TAGS ('dbx_business_glossary_term' = 'Food Waste Percentage');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`table_turn_log` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`table_turn_log` SET TAGS ('dbx_subdomain' = 'operational_performance');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`table_turn_log` SET TAGS ('dbx_reviewer_review' = 'section2_colH_no_directives');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`table_turn_log` SET TAGS ('dbx_reviewer_authority' = 'section2_column_h');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`table_turn_log` SET TAGS ('dbx_reviewer_notes' = 'none_for_restaurants');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`table_turn_log` SET TAGS ('dbx_reviewer_precedence' = 'section2_supreme_authority');
+ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`table_turn_log` SET TAGS ('dbx_subdomain' = 'performance_tracking');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`table_turn_log` ALTER COLUMN `table_turn_log_id` SET TAGS ('dbx_business_glossary_term' = 'Table Turn Log ID');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`table_turn_log` ALTER COLUMN `guest_order_id` SET TAGS ('dbx_business_glossary_term' = 'Guest Order ID');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`table_turn_log` ALTER COLUMN `performance_period_id` SET TAGS ('dbx_business_glossary_term' = 'Service Period ID');
@@ -1698,11 +1508,7 @@ ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`table_turn_log` ALTER COLUMN `tu
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`table_turn_log` ALTER COLUMN `turn_status` SET TAGS ('dbx_value_regex' = 'completed|incomplete|voided|abandoned');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`table_turn_log` ALTER COLUMN `wait_time_minutes` SET TAGS ('dbx_business_glossary_term' = 'Wait Time (Minutes)');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`capacity_config` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`capacity_config` SET TAGS ('dbx_subdomain' = 'unit_identity');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`capacity_config` SET TAGS ('dbx_reviewer_review' = 'section2_colH_no_directives');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`capacity_config` SET TAGS ('dbx_reviewer_authority' = 'section2_column_h');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`capacity_config` SET TAGS ('dbx_reviewer_notes' = 'none_for_restaurants');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`capacity_config` SET TAGS ('dbx_reviewer_precedence' = 'section2_supreme_authority');
+ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`capacity_config` SET TAGS ('dbx_subdomain' = 'location_management');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`capacity_config` ALTER COLUMN `capacity_config_id` SET TAGS ('dbx_business_glossary_term' = 'Capacity Configuration ID');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`capacity_config` ALTER COLUMN `unit_id` SET TAGS ('dbx_business_glossary_term' = 'Restaurant ID');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`capacity_config` ALTER COLUMN `capacity_unit_id` SET TAGS ('dbx_business_glossary_term' = 'Restaurant ID');
@@ -1740,37 +1546,32 @@ ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`capacity_config` ALTER COLUMN `t
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`capacity_config` ALTER COLUMN `total_seating_capacity` SET TAGS ('dbx_business_glossary_term' = 'Total Seating Capacity');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`capacity_config` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Updated Timestamp');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit_status_history` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit_status_history` SET TAGS ('dbx_subdomain' = 'unit_identity');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit_status_history` SET TAGS ('dbx_reviewer_review' = 'section2_colH_no_directives');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit_status_history` SET TAGS ('dbx_reviewer_authority' = 'section2_column_h');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit_status_history` SET TAGS ('dbx_reviewer_notes' = 'none_for_restaurants');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit_status_history` SET TAGS ('dbx_reviewer_precedence' = 'section2_supreme_authority');
+ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit_status_history` SET TAGS ('dbx_subdomain' = 'location_management');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit_status_history` ALTER COLUMN `unit_status_history_id` SET TAGS ('dbx_business_glossary_term' = 'Unit Status History ID');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit_status_history` ALTER COLUMN `unit_id` SET TAGS ('dbx_business_glossary_term' = 'Restaurant ID');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit_status_history` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Initiating User ID');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit_status_history` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit_status_history` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit_status_history` ALTER COLUMN `unit_initiated_by_user_employee_id` SET TAGS ('dbx_business_glossary_term' = 'Initiating User ID');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit_status_history` ALTER COLUMN `unit_initiated_by_user_employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit_status_history` ALTER COLUMN `unit_initiated_by_user_employee_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit_status_history` ALTER COLUMN `actual_reopen_date` SET TAGS ('dbx_business_glossary_term' = 'Actual Reopen Date');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit_status_history` ALTER COLUMN `approval_date` SET TAGS ('dbx_business_glossary_term' = 'Approval Date');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit_status_history` ALTER COLUMN `approval_required` SET TAGS ('dbx_business_glossary_term' = 'Approval Required Flag');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit_status_history` ALTER COLUMN `approved_by` SET TAGS ('dbx_business_glossary_term' = 'Approved By');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit_status_history` ALTER COLUMN `approved_by` SET TAGS ('dbx_sensitivity' = 'pii');
+ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit_status_history` ALTER COLUMN `approved_by` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit_status_history` ALTER COLUMN `closure_type` SET TAGS ('dbx_business_glossary_term' = 'Closure Type');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit_status_history` ALTER COLUMN `compliance_notes` SET TAGS ('dbx_business_glossary_term' = 'Compliance Notes');
+ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit_status_history` ALTER COLUMN `compliance_notes` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit_status_history` ALTER COLUMN `effective_date` SET TAGS ('dbx_business_glossary_term' = 'Status Effective Date');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit_status_history` ALTER COLUMN `end_date` SET TAGS ('dbx_business_glossary_term' = 'Status End Date');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit_status_history` ALTER COLUMN `estimated_revenue_impact` SET TAGS ('dbx_business_glossary_term' = 'Estimated Revenue Impact');
+ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit_status_history` ALTER COLUMN `estimated_revenue_impact` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit_status_history` ALTER COLUMN `expected_reopen_date` SET TAGS ('dbx_business_glossary_term' = 'Expected Reopen Date');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit_status_history` ALTER COLUMN `grand_opening_date` SET TAGS ('dbx_business_glossary_term' = 'Grand Opening Date');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit_status_history` ALTER COLUMN `health_department_case_number` SET TAGS ('dbx_business_glossary_term' = 'Health Department Case Number');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit_status_history` ALTER COLUMN `health_department_case_number` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit_status_history` ALTER COLUMN `health_department_case_number` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit_status_history` ALTER COLUMN `health_department_case_number` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit_status_history` ALTER COLUMN `impact_on_franchise_agreement` SET TAGS ('dbx_business_glossary_term' = 'Impact on Franchise Agreement');
+ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit_status_history` ALTER COLUMN `impact_on_franchise_agreement` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit_status_history` ALTER COLUMN `initiated_by` SET TAGS ('dbx_business_glossary_term' = 'Status Change Initiated By');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit_status_history` ALTER COLUMN `initiated_by` SET TAGS ('dbx_sensitivity' = 'pii');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit_status_history` ALTER COLUMN `is_sss_eligible` SET TAGS ('dbx_business_glossary_term' = 'Same-Store Sales (SSS) Eligible Flag');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit_status_history` ALTER COLUMN `notification_sent_date` SET TAGS ('dbx_business_glossary_term' = 'Notification Sent Date');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit_status_history` ALTER COLUMN `nro_flag` SET TAGS ('dbx_business_glossary_term' = 'New Restaurant Opening (NRO) Flag');
@@ -1788,24 +1589,15 @@ ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit_status_history` ALTER COLUM
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit_status_history` ALTER COLUMN `unit_status_history_status` SET TAGS ('dbx_business_glossary_term' = 'Unit Status');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit_status_history` ALTER COLUMN `unit_status_history_status` SET TAGS ('dbx_value_regex' = 'active|temporarily_closed|permanently_closed|under_renovation|pre_opening|soft_open');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`area_management` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`area_management` SET TAGS ('dbx_subdomain' = 'unit_identity');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`area_management` SET TAGS ('dbx_reviewer_review' = 'section2_colH_no_directives');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`area_management` SET TAGS ('dbx_reviewer_authority' = 'section2_column_h');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`area_management` SET TAGS ('dbx_reviewer_notes' = 'none_for_restaurants');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`area_management` SET TAGS ('dbx_reviewer_precedence' = 'section2_supreme_authority');
+ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`area_management` SET TAGS ('dbx_subdomain' = 'location_management');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`area_management` ALTER COLUMN `area_management_id` SET TAGS ('dbx_business_glossary_term' = 'Area Management ID');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`area_management` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Area Manager ID');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`area_management` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`area_management` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`area_management` ALTER COLUMN `parent_area_area_management_id` SET TAGS ('dbx_business_glossary_term' = 'Parent Area ID');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`area_management` ALTER COLUMN `primary_area_manager_employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`area_management` ALTER COLUMN `primary_area_manager_employee_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`area_management` ALTER COLUMN `area_code` SET TAGS ('dbx_business_glossary_term' = 'Area Code');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`area_management` ALTER COLUMN `area_code` SET TAGS ('dbx_value_regex' = '^[A-Z0-9]{3,10}$');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`area_management` ALTER COLUMN `area_name` SET TAGS ('dbx_business_glossary_term' = 'Area Name');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`area_management` ALTER COLUMN `area_name` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`area_management` ALTER COLUMN `area_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`area_management` ALTER COLUMN `area_name` SET TAGS ('dbx_pii_detected' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`area_management` ALTER COLUMN `area_status` SET TAGS ('dbx_business_glossary_term' = 'Area Status');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`area_management` ALTER COLUMN `area_status` SET TAGS ('dbx_value_regex' = 'active|inactive|pending|closed');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`area_management` ALTER COLUMN `area_type` SET TAGS ('dbx_business_glossary_term' = 'Area Type');
@@ -1816,7 +1608,6 @@ ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`area_management` ALTER COLUMN `c
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`area_management` ALTER COLUMN `company_owned_unit_count` SET TAGS ('dbx_business_glossary_term' = 'Company-Owned Unit Count');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`area_management` ALTER COLUMN `country_code` SET TAGS ('dbx_business_glossary_term' = 'Country Code');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`area_management` ALTER COLUMN `country_code` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`area_management` ALTER COLUMN `country_code` SET TAGS ('dbx_pii_detected' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`area_management` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`area_management` ALTER COLUMN `csat_target_score` SET TAGS ('dbx_business_glossary_term' = 'Customer Satisfaction (CSAT) Target Score');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`area_management` ALTER COLUMN `division` SET TAGS ('dbx_business_glossary_term' = 'Division');
@@ -1829,22 +1620,19 @@ ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`area_management` ALTER COLUMN `h
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`area_management` ALTER COLUMN `labor_percent_target` SET TAGS ('dbx_business_glossary_term' = 'Labor Cost Percentage Target');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`area_management` ALTER COLUMN `last_modified_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Last Modified Timestamp');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`area_management` ALTER COLUMN `marketing_fund_contribution_percent` SET TAGS ('dbx_business_glossary_term' = 'Marketing Fund Contribution Percentage');
+ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`area_management` ALTER COLUMN `marketing_fund_contribution_percent` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`area_management` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Notes');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`area_management` ALTER COLUMN `nps_target_score` SET TAGS ('dbx_business_glossary_term' = 'Net Promoter Score (NPS) Target');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`area_management` ALTER COLUMN `nro_target_count` SET TAGS ('dbx_business_glossary_term' = 'New Restaurant Opening (NRO) Target Count');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`area_management` ALTER COLUMN `royalty_rate_percent` SET TAGS ('dbx_business_glossary_term' = 'Royalty Rate Percentage');
+ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`area_management` ALTER COLUMN `royalty_rate_percent` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`area_management` ALTER COLUMN `sos_target_seconds` SET TAGS ('dbx_business_glossary_term' = 'Speed of Service (SOS) Target Seconds');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`area_management` ALTER COLUMN `sss_target_percent` SET TAGS ('dbx_business_glossary_term' = 'Same-Store Sales (SSS) Target Percentage');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`area_management` ALTER COLUMN `state_province` SET TAGS ('dbx_business_glossary_term' = 'State or Province');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`area_management` ALTER COLUMN `state_province` SET TAGS ('dbx_pii_detected' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`area_management` ALTER COLUMN `territory_boundary_description` SET TAGS ('dbx_business_glossary_term' = 'Territory Boundary Description');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`area_management` ALTER COLUMN `unit_count` SET TAGS ('dbx_business_glossary_term' = 'Unit Count');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`renovation_project` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`renovation_project` SET TAGS ('dbx_subdomain' = 'facility_management');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`renovation_project` SET TAGS ('dbx_reviewer_review' = 'section2_colH_no_directives');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`renovation_project` SET TAGS ('dbx_reviewer_authority' = 'section2_column_h');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`renovation_project` SET TAGS ('dbx_reviewer_notes' = 'none_for_restaurants');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`renovation_project` SET TAGS ('dbx_reviewer_precedence' = 'section2_supreme_authority');
+ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`renovation_project` SET TAGS ('dbx_subdomain' = 'equipment_operations');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`renovation_project` ALTER COLUMN `renovation_project_id` SET TAGS ('dbx_business_glossary_term' = 'Renovation Project ID');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`renovation_project` ALTER COLUMN `franchisee_id` SET TAGS ('dbx_business_glossary_term' = 'Franchisee Id (Foreign Key)');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`renovation_project` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Approved By User ID');
@@ -1862,21 +1650,15 @@ ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`renovation_project` ALTER COLUMN
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`renovation_project` ALTER COLUMN `ada_compliance_flag` SET TAGS ('dbx_business_glossary_term' = 'Americans with Disabilities Act (ADA) Compliance Flag');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`renovation_project` ALTER COLUMN `approval_date` SET TAGS ('dbx_business_glossary_term' = 'Approval Date');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`renovation_project` ALTER COLUMN `architect_firm_name` SET TAGS ('dbx_business_glossary_term' = 'Architect Firm Name');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`renovation_project` ALTER COLUMN `architect_firm_name` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`renovation_project` ALTER COLUMN `architect_firm_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`renovation_project` ALTER COLUMN `architect_firm_name` SET TAGS ('dbx_pii_detected' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`renovation_project` ALTER COLUMN `brand_standard_version` SET TAGS ('dbx_business_glossary_term' = 'Brand Standard Version');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`renovation_project` ALTER COLUMN `budget_variance_usd` SET TAGS ('dbx_business_glossary_term' = 'Budget Variance USD');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`renovation_project` ALTER COLUMN `building_permit_number` SET TAGS ('dbx_business_glossary_term' = 'Building Permit Number');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`renovation_project` ALTER COLUMN `cancellation_reason` SET TAGS ('dbx_business_glossary_term' = 'Cancellation Reason');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`renovation_project` ALTER COLUMN `closure_duration_days` SET TAGS ('dbx_business_glossary_term' = 'Closure Duration Days');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`renovation_project` ALTER COLUMN `contractor_license_number` SET TAGS ('dbx_business_glossary_term' = 'Contractor License Number');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`renovation_project` ALTER COLUMN `contractor_license_number` SET TAGS ('dbx_pii_detected' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`renovation_project` ALTER COLUMN `contractor_name` SET TAGS ('dbx_business_glossary_term' = 'Contractor Name');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`renovation_project` ALTER COLUMN `contractor_name` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`renovation_project` ALTER COLUMN `contractor_name` SET TAGS ('dbx_pii_identifier' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`renovation_project` ALTER COLUMN `contractor_name` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`renovation_project` ALTER COLUMN `contractor_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`renovation_project` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`renovation_project` ALTER COLUMN `energy_efficiency_upgrade_flag` SET TAGS ('dbx_business_glossary_term' = 'Energy Efficiency Upgrade Flag');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`renovation_project` ALTER COLUMN `estimated_capex_usd` SET TAGS ('dbx_business_glossary_term' = 'Estimated Capital Expenditure (CapEx) USD');
@@ -1893,13 +1675,7 @@ ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`renovation_project` ALTER COLUMN
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`renovation_project` ALTER COLUMN `planned_completion_date` SET TAGS ('dbx_business_glossary_term' = 'Planned Completion Date');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`renovation_project` ALTER COLUMN `planned_start_date` SET TAGS ('dbx_business_glossary_term' = 'Planned Start Date');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`renovation_project` ALTER COLUMN `project_manager_name` SET TAGS ('dbx_business_glossary_term' = 'Project Manager Name');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`renovation_project` ALTER COLUMN `project_manager_name` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`renovation_project` ALTER COLUMN `project_manager_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`renovation_project` ALTER COLUMN `project_manager_name` SET TAGS ('dbx_pii_detected' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`renovation_project` ALTER COLUMN `project_name` SET TAGS ('dbx_business_glossary_term' = 'Project Name');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`renovation_project` ALTER COLUMN `project_name` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`renovation_project` ALTER COLUMN `project_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`renovation_project` ALTER COLUMN `project_name` SET TAGS ('dbx_pii_detected' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`renovation_project` ALTER COLUMN `project_number` SET TAGS ('dbx_business_glossary_term' = 'Project Number');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`renovation_project` ALTER COLUMN `project_number` SET TAGS ('dbx_value_regex' = '^[A-Z0-9]{8,20}$');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`renovation_project` ALTER COLUMN `project_priority` SET TAGS ('dbx_business_glossary_term' = 'Project Priority');
@@ -1913,11 +1689,7 @@ ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`renovation_project` ALTER COLUMN
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`renovation_project` ALTER COLUMN `warranty_expiration_date` SET TAGS ('dbx_business_glossary_term' = 'Warranty Expiration Date');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`renovation_project` ALTER COLUMN `warranty_period_months` SET TAGS ('dbx_business_glossary_term' = 'Warranty Period Months');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`ops_visit` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`ops_visit` SET TAGS ('dbx_subdomain' = 'facility_management');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`ops_visit` SET TAGS ('dbx_reviewer_review' = 'section2_colH_no_directives');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`ops_visit` SET TAGS ('dbx_reviewer_authority' = 'section2_column_h');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`ops_visit` SET TAGS ('dbx_reviewer_notes' = 'none_for_restaurants');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`ops_visit` SET TAGS ('dbx_reviewer_precedence' = 'section2_supreme_authority');
+ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`ops_visit` SET TAGS ('dbx_subdomain' = 'performance_tracking');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`ops_visit` ALTER COLUMN `ops_visit_id` SET TAGS ('dbx_business_glossary_term' = 'Operational Visit ID');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`ops_visit` ALTER COLUMN `checklist_template_id` SET TAGS ('dbx_business_glossary_term' = 'Checklist Template ID');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`ops_visit` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Approved By Manager ID');
@@ -1965,17 +1737,10 @@ ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`ops_visit` ALTER COLUMN `visit_s
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`ops_visit` ALTER COLUMN `visit_type` SET TAGS ('dbx_business_glossary_term' = 'Visit Type');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`ops_visit` ALTER COLUMN `visit_type` SET TAGS ('dbx_value_regex' = 'scheduled|unannounced|follow_up|nro_opening_support|compliance_audit|quality_inspection');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`ops_visit` ALTER COLUMN `visitor_name` SET TAGS ('dbx_business_glossary_term' = 'Visitor Name');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`ops_visit` ALTER COLUMN `visitor_name` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`ops_visit` ALTER COLUMN `visitor_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`ops_visit` ALTER COLUMN `visitor_name` SET TAGS ('dbx_pii_detected' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`ops_visit` ALTER COLUMN `visitor_role` SET TAGS ('dbx_business_glossary_term' = 'Visitor Role');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`ops_visit` ALTER COLUMN `weather_conditions` SET TAGS ('dbx_business_glossary_term' = 'Weather Conditions');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`ops_visit_finding` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`ops_visit_finding` SET TAGS ('dbx_subdomain' = 'facility_management');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`ops_visit_finding` SET TAGS ('dbx_reviewer_review' = 'section2_colH_no_directives');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`ops_visit_finding` SET TAGS ('dbx_reviewer_authority' = 'section2_column_h');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`ops_visit_finding` SET TAGS ('dbx_reviewer_notes' = 'none_for_restaurants');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`ops_visit_finding` SET TAGS ('dbx_reviewer_precedence' = 'section2_supreme_authority');
+ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`ops_visit_finding` SET TAGS ('dbx_subdomain' = 'performance_tracking');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`ops_visit_finding` ALTER COLUMN `ops_visit_finding_id` SET TAGS ('dbx_business_glossary_term' = 'Operational Visit Finding ID');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`ops_visit_finding` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Auditor Employee ID');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`ops_visit_finding` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
@@ -1988,14 +1753,8 @@ ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`ops_visit_finding` ALTER COLUMN 
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`ops_visit_finding` ALTER COLUMN `primary_ops_employee_id` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`ops_visit_finding` ALTER COLUMN `primary_ops_employee_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`ops_visit_finding` ALTER COLUMN `auditor_name` SET TAGS ('dbx_business_glossary_term' = 'Auditor Name');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`ops_visit_finding` ALTER COLUMN `auditor_name` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`ops_visit_finding` ALTER COLUMN `auditor_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`ops_visit_finding` ALTER COLUMN `auditor_name` SET TAGS ('dbx_pii_detected' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`ops_visit_finding` ALTER COLUMN `brand_standard_code` SET TAGS ('dbx_business_glossary_term' = 'Brand Standard Code');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`ops_visit_finding` ALTER COLUMN `brand_standard_name` SET TAGS ('dbx_business_glossary_term' = 'Brand Standard Name');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`ops_visit_finding` ALTER COLUMN `brand_standard_name` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`ops_visit_finding` ALTER COLUMN `brand_standard_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`ops_visit_finding` ALTER COLUMN `brand_standard_name` SET TAGS ('dbx_pii_detected' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`ops_visit_finding` ALTER COLUMN `corrective_action_completed_flag` SET TAGS ('dbx_business_glossary_term' = 'Corrective Action Completed Flag');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`ops_visit_finding` ALTER COLUMN `corrective_action_completion_date` SET TAGS ('dbx_business_glossary_term' = 'Corrective Action Completion Date');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`ops_visit_finding` ALTER COLUMN `corrective_action_due_date` SET TAGS ('dbx_business_glossary_term' = 'Corrective Action Due Date');
@@ -2007,6 +1766,7 @@ ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`ops_visit_finding` ALTER COLUMN 
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`ops_visit_finding` ALTER COLUMN `escalation_level` SET TAGS ('dbx_value_regex' = 'unit|area|region|corporate');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`ops_visit_finding` ALTER COLUMN `escalation_required_flag` SET TAGS ('dbx_business_glossary_term' = 'Escalation Required Flag');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`ops_visit_finding` ALTER COLUMN `financial_impact_usd` SET TAGS ('dbx_business_glossary_term' = 'Financial Impact (USD)');
+ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`ops_visit_finding` ALTER COLUMN `financial_impact_usd` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`ops_visit_finding` ALTER COLUMN `finding_category` SET TAGS ('dbx_business_glossary_term' = 'Finding Category');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`ops_visit_finding` ALTER COLUMN `finding_description` SET TAGS ('dbx_business_glossary_term' = 'Finding Description');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`ops_visit_finding` ALTER COLUMN `finding_sequence_number` SET TAGS ('dbx_business_glossary_term' = 'Finding Sequence Number');
@@ -2018,26 +1778,18 @@ ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`ops_visit_finding` ALTER COLUMN 
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`ops_visit_finding` ALTER COLUMN `ops_visit_finding_status` SET TAGS ('dbx_business_glossary_term' = 'Finding Status');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`ops_visit_finding` ALTER COLUMN `ops_visit_finding_status` SET TAGS ('dbx_value_regex' = 'open|in_progress|resolved|closed|waived');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`ops_visit_finding` ALTER COLUMN `photo_evidence_url` SET TAGS ('dbx_business_glossary_term' = 'Photo Evidence URL');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`ops_visit_finding` ALTER COLUMN `photo_evidence_url` SET TAGS ('dbx_pii_detected' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`ops_visit_finding` ALTER COLUMN `regulatory_reference` SET TAGS ('dbx_business_glossary_term' = 'Regulatory Reference');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`ops_visit_finding` ALTER COLUMN `regulatory_violation_flag` SET TAGS ('dbx_business_glossary_term' = 'Regulatory Violation Flag');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`ops_visit_finding` ALTER COLUMN `repeat_finding_flag` SET TAGS ('dbx_business_glossary_term' = 'Repeat Finding Flag');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`ops_visit_finding` ALTER COLUMN `repeat_occurrence_count` SET TAGS ('dbx_business_glossary_term' = 'Repeat Occurrence Count');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`ops_visit_finding` ALTER COLUMN `responsible_party_name` SET TAGS ('dbx_business_glossary_term' = 'Responsible Party Name');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`ops_visit_finding` ALTER COLUMN `responsible_party_name` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`ops_visit_finding` ALTER COLUMN `responsible_party_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`ops_visit_finding` ALTER COLUMN `responsible_party_name` SET TAGS ('dbx_pii_detected' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`ops_visit_finding` ALTER COLUMN `responsible_party_role` SET TAGS ('dbx_business_glossary_term' = 'Responsible Party Role');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`ops_visit_finding` ALTER COLUMN `severity_level` SET TAGS ('dbx_business_glossary_term' = 'Severity Level');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`ops_visit_finding` ALTER COLUMN `severity_level` SET TAGS ('dbx_value_regex' = 'critical|major|minor|observation');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`ops_visit_finding` ALTER COLUMN `waiver_approval_date` SET TAGS ('dbx_business_glossary_term' = 'Waiver Approval Date');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`ops_visit_finding` ALTER COLUMN `waiver_reason` SET TAGS ('dbx_business_glossary_term' = 'Waiver Reason');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit_ownership` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit_ownership` SET TAGS ('dbx_subdomain' = 'unit_identity');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit_ownership` SET TAGS ('dbx_reviewer_review' = 'section2_colH_no_directives');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit_ownership` SET TAGS ('dbx_reviewer_authority' = 'section2_column_h');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit_ownership` SET TAGS ('dbx_reviewer_notes' = 'none_for_restaurants');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit_ownership` SET TAGS ('dbx_reviewer_precedence' = 'section2_supreme_authority');
+ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit_ownership` SET TAGS ('dbx_subdomain' = 'location_management');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit_ownership` ALTER COLUMN `unit_ownership_id` SET TAGS ('dbx_business_glossary_term' = 'Unit Ownership ID');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit_ownership` ALTER COLUMN `unit_id` SET TAGS ('dbx_business_glossary_term' = 'Restaurant ID');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit_ownership` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Created By User ID');
@@ -2058,30 +1810,27 @@ ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit_ownership` ALTER COLUMN `cr
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit_ownership` ALTER COLUMN `financial_reporting_entity_code` SET TAGS ('dbx_business_glossary_term' = 'Financial Reporting Entity Code');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit_ownership` ALTER COLUMN `franchise_agreement_expiration_date` SET TAGS ('dbx_business_glossary_term' = 'Franchise Agreement Expiration Date');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit_ownership` ALTER COLUMN `franchise_agreement_number` SET TAGS ('dbx_business_glossary_term' = 'Franchise Agreement Number');
+ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit_ownership` ALTER COLUMN `franchise_agreement_number` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit_ownership` ALTER COLUMN `franchise_agreement_start_date` SET TAGS ('dbx_business_glossary_term' = 'Franchise Agreement Start Date');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit_ownership` ALTER COLUMN `initial_franchise_fee_usd` SET TAGS ('dbx_business_glossary_term' = 'Initial Franchise Fee (USD)');
+ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit_ownership` ALTER COLUMN `initial_franchise_fee_usd` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit_ownership` ALTER COLUMN `joint_venture_partner_name` SET TAGS ('dbx_business_glossary_term' = 'Joint Venture Partner Name');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit_ownership` ALTER COLUMN `joint_venture_partner_name` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit_ownership` ALTER COLUMN `joint_venture_partner_name` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit_ownership` ALTER COLUMN `joint_venture_partner_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit_ownership` ALTER COLUMN `joint_venture_partner_name` SET TAGS ('dbx_pii_detected' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit_ownership` ALTER COLUMN `last_compliance_audit_date` SET TAGS ('dbx_business_glossary_term' = 'Last Compliance Audit Date');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit_ownership` ALTER COLUMN `last_modified_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Last Modified Timestamp');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit_ownership` ALTER COLUMN `marketing_fee_percent` SET TAGS ('dbx_business_glossary_term' = 'Marketing Fee Percentage');
+ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit_ownership` ALTER COLUMN `marketing_fee_percent` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit_ownership` ALTER COLUMN `master_franchise_flag` SET TAGS ('dbx_business_glossary_term' = 'Master Franchise Flag');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit_ownership` ALTER COLUMN `next_compliance_audit_due_date` SET TAGS ('dbx_business_glossary_term' = 'Next Compliance Audit Due Date');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit_ownership` ALTER COLUMN `operating_entity_legal_name` SET TAGS ('dbx_business_glossary_term' = 'Operating Entity Legal Name');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit_ownership` ALTER COLUMN `operating_entity_legal_name` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit_ownership` ALTER COLUMN `operating_entity_legal_name` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit_ownership` ALTER COLUMN `operating_entity_legal_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit_ownership` ALTER COLUMN `operating_entity_legal_name` SET TAGS ('dbx_pii_detected' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit_ownership` ALTER COLUMN `operating_license_expiration_date` SET TAGS ('dbx_business_glossary_term' = 'Operating License Expiration Date');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit_ownership` ALTER COLUMN `operating_license_number` SET TAGS ('dbx_business_glossary_term' = 'Operating License Number');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit_ownership` ALTER COLUMN `operating_license_number` SET TAGS ('dbx_pii_detected' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit_ownership` ALTER COLUMN `ownership_effective_end_date` SET TAGS ('dbx_business_glossary_term' = 'Ownership Effective End Date');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit_ownership` ALTER COLUMN `ownership_effective_start_date` SET TAGS ('dbx_business_glossary_term' = 'Ownership Effective Start Date');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit_ownership` ALTER COLUMN `ownership_notes` SET TAGS ('dbx_business_glossary_term' = 'Ownership Notes');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit_ownership` ALTER COLUMN `ownership_percentage` SET TAGS ('dbx_business_glossary_term' = 'Ownership Percentage');
+ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit_ownership` ALTER COLUMN `ownership_percentage` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit_ownership` ALTER COLUMN `ownership_record_number` SET TAGS ('dbx_business_glossary_term' = 'Ownership Record Number');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit_ownership` ALTER COLUMN `ownership_record_number` SET TAGS ('dbx_value_regex' = '^OWN-[0-9]{8}$');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit_ownership` ALTER COLUMN `ownership_status` SET TAGS ('dbx_business_glossary_term' = 'Ownership Status');
@@ -2091,31 +1840,22 @@ ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit_ownership` ALTER COLUMN `ow
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit_ownership` ALTER COLUMN `ownership_type` SET TAGS ('dbx_value_regex' = 'company_owned|franchised|licensed|joint_venture|master_franchise|area_development');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit_ownership` ALTER COLUMN `previous_owner_name` SET TAGS ('dbx_business_glossary_term' = 'Previous Owner Name');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit_ownership` ALTER COLUMN `previous_owner_name` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit_ownership` ALTER COLUMN `previous_owner_name` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit_ownership` ALTER COLUMN `previous_owner_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit_ownership` ALTER COLUMN `previous_owner_name` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit_ownership` ALTER COLUMN `royalty_rate_percent` SET TAGS ('dbx_business_glossary_term' = 'Royalty Rate Percentage');
+ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit_ownership` ALTER COLUMN `royalty_rate_percent` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit_ownership` ALTER COLUMN `tax_identification_number` SET TAGS ('dbx_business_glossary_term' = 'Tax Identification Number');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit_ownership` ALTER COLUMN `tax_identification_number` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit_ownership` ALTER COLUMN `tax_identification_number` SET TAGS ('dbx_pii_identifier' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit_ownership` ALTER COLUMN `tax_identification_number` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit_ownership` ALTER COLUMN `tax_identification_number` SET TAGS ('dbx_mask_in_nonprod' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit_ownership` ALTER COLUMN `tax_identification_number` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit_ownership` ALTER COLUMN `territory_code` SET TAGS ('dbx_business_glossary_term' = 'Territory Code');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit_ownership` ALTER COLUMN `transfer_approval_date` SET TAGS ('dbx_business_glossary_term' = 'Transfer Approval Date');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit_ownership` ALTER COLUMN `transfer_approved_by` SET TAGS ('dbx_business_glossary_term' = 'Transfer Approved By');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit_ownership` ALTER COLUMN `transfer_approved_by` SET TAGS ('dbx_sensitivity' = 'pii');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`unit_ownership` ALTER COLUMN `transfer_reason` SET TAGS ('dbx_business_glossary_term' = 'Transfer Reason');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`performance_period` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`performance_period` SET TAGS ('dbx_subdomain' = 'operational_performance');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`performance_period` SET TAGS ('dbx_reviewer_review' = 'section2_colH_no_directives');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`performance_period` SET TAGS ('dbx_reviewer_authority' = 'section2_column_h');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`performance_period` SET TAGS ('dbx_reviewer_notes' = 'none_for_restaurants');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`performance_period` SET TAGS ('dbx_reviewer_precedence' = 'section2_supreme_authority');
+ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`performance_period` SET TAGS ('dbx_subdomain' = 'performance_tracking');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`performance_period` ALTER COLUMN `performance_period_id` SET TAGS ('dbx_business_glossary_term' = 'Performance Period Identifier (ID)');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`performance_period` ALTER COLUMN `performance_prior_period_id` SET TAGS ('dbx_business_glossary_term' = 'Prior Performance Period Identifier (ID)');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`performance_period` ALTER COLUMN `performance_prior_year_period_id` SET TAGS ('dbx_business_glossary_term' = 'Prior Year Performance Period Identifier (ID)');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`performance_period` ALTER COLUMN `primary_prior_performance_period_id` SET TAGS ('dbx_business_glossary_term' = 'Prior Performance Period Id');
+ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`performance_period` ALTER COLUMN `primary_prior_performance_period_id` SET TAGS ('dbx_self_ref_fk' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`performance_period` ALTER COLUMN `auv_calculation_window_months` SET TAGS ('dbx_business_glossary_term' = 'Average Unit Volume (AUV) Calculation Window Months');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`performance_period` ALTER COLUMN `business_day_count` SET TAGS ('dbx_business_glossary_term' = 'Business Day Count');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`performance_period` ALTER COLUMN `calendar_month` SET TAGS ('dbx_business_glossary_term' = 'Calendar Month');
@@ -2145,9 +1885,6 @@ ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`performance_period` ALTER COLUMN
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`performance_period` ALTER COLUMN `period_end_date` SET TAGS ('dbx_business_glossary_term' = 'Period End Date');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`performance_period` ALTER COLUMN `period_lock_date` SET TAGS ('dbx_business_glossary_term' = 'Period Lock Date');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`performance_period` ALTER COLUMN `period_name` SET TAGS ('dbx_business_glossary_term' = 'Period Name');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`performance_period` ALTER COLUMN `period_name` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`performance_period` ALTER COLUMN `period_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`performance_period` ALTER COLUMN `period_name` SET TAGS ('dbx_pii_detected' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`performance_period` ALTER COLUMN `period_number` SET TAGS ('dbx_business_glossary_term' = 'Period Number');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`performance_period` ALTER COLUMN `period_start_date` SET TAGS ('dbx_business_glossary_term' = 'Period Start Date');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`performance_period` ALTER COLUMN `period_status` SET TAGS ('dbx_business_glossary_term' = 'Period Status');
@@ -2163,30 +1900,26 @@ ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`performance_period` ALTER COLUMN
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`performance_period` ALTER COLUMN `version_number` SET TAGS ('dbx_business_glossary_term' = 'Version Number');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`performance_period` ALTER COLUMN `week_number` SET TAGS ('dbx_business_glossary_term' = 'Week Number');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`pos_terminal` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`pos_terminal` SET TAGS ('dbx_subdomain' = 'operational_performance');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`pos_terminal` SET TAGS ('dbx_reviewer_review' = 'section2_colH_no_directives');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`pos_terminal` SET TAGS ('dbx_reviewer_authority' = 'section2_column_h');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`pos_terminal` SET TAGS ('dbx_reviewer_notes' = 'none_for_restaurants');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`pos_terminal` SET TAGS ('dbx_reviewer_precedence' = 'section2_supreme_authority');
+ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`pos_terminal` SET TAGS ('dbx_subdomain' = 'equipment_operations');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`pos_terminal` ALTER COLUMN `pos_terminal_id` SET TAGS ('dbx_business_glossary_term' = 'Point of Sale (POS) Terminal ID');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`pos_terminal` ALTER COLUMN `pos_replacement_terminal_id` SET TAGS ('dbx_business_glossary_term' = 'Replacement Terminal ID');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`pos_terminal` ALTER COLUMN `unit_id` SET TAGS ('dbx_business_glossary_term' = 'Restaurant ID');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`pos_terminal` ALTER COLUMN `pos_unit_id` SET TAGS ('dbx_business_glossary_term' = 'Restaurant ID');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`pos_terminal` ALTER COLUMN `primary_replaced_pos_terminal_id` SET TAGS ('dbx_business_glossary_term' = 'Replaced Pos Terminal Id');
+ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`pos_terminal` ALTER COLUMN `primary_replaced_pos_terminal_id` SET TAGS ('dbx_self_ref_fk' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`pos_terminal` ALTER COLUMN `assigned_station` SET TAGS ('dbx_business_glossary_term' = 'Assigned Station');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`pos_terminal` ALTER COLUMN `cash_drawer_attached` SET TAGS ('dbx_business_glossary_term' = 'Cash Drawer Attached');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`pos_terminal` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`pos_terminal` ALTER COLUMN `decommission_date` SET TAGS ('dbx_business_glossary_term' = 'Decommission Date');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`pos_terminal` ALTER COLUMN `encryption_key_reference` SET TAGS ('dbx_business_glossary_term' = 'Encryption Key Identifier');
+ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`pos_terminal` ALTER COLUMN `encryption_key_reference` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`pos_terminal` ALTER COLUMN `encryption_key_reference` SET TAGS ('dbx_pii_identifier' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`pos_terminal` ALTER COLUMN `firmware_version` SET TAGS ('dbx_business_glossary_term' = 'Firmware Version');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`pos_terminal` ALTER COLUMN `floor_number` SET TAGS ('dbx_business_glossary_term' = 'Floor Number');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`pos_terminal` ALTER COLUMN `hardware_model` SET TAGS ('dbx_business_glossary_term' = 'Hardware Model');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`pos_terminal` ALTER COLUMN `installation_date` SET TAGS ('dbx_business_glossary_term' = 'Installation Date');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`pos_terminal` ALTER COLUMN `ip_address` SET TAGS ('dbx_business_glossary_term' = 'Internet Protocol (IP) Address');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`pos_terminal` ALTER COLUMN `ip_address` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`pos_terminal` ALTER COLUMN `ip_address` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`pos_terminal` ALTER COLUMN `ip_address` SET TAGS ('dbx_mask_in_nonprod' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`pos_terminal` ALTER COLUMN `ip_address` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`pos_terminal` ALTER COLUMN `is_active` SET TAGS ('dbx_business_glossary_term' = 'Active Flag');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`pos_terminal` ALTER COLUMN `last_audit_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Last Audit Timestamp');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`pos_terminal` ALTER COLUMN `last_maintenance_date` SET TAGS ('dbx_business_glossary_term' = 'Last Maintenance Date');
@@ -2194,12 +1927,8 @@ ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`pos_terminal` ALTER COLUMN `last
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`pos_terminal` ALTER COLUMN `last_pci_audit_date` SET TAGS ('dbx_business_glossary_term' = 'Last Payment Card Industry (PCI) Audit Date');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`pos_terminal` ALTER COLUMN `last_software_update_date` SET TAGS ('dbx_business_glossary_term' = 'Last Software Update Date');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`pos_terminal` ALTER COLUMN `location_description` SET TAGS ('dbx_business_glossary_term' = 'Location Description');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`pos_terminal` ALTER COLUMN `location_description` SET TAGS ('dbx_pii_detected' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`pos_terminal` ALTER COLUMN `mac_address` SET TAGS ('dbx_business_glossary_term' = 'Media Access Control (MAC) Address');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`pos_terminal` ALTER COLUMN `mac_address` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`pos_terminal` ALTER COLUMN `mac_address` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`pos_terminal` ALTER COLUMN `mac_address` SET TAGS ('dbx_mask_in_nonprod' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`pos_terminal` ALTER COLUMN `mac_address` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`pos_terminal` ALTER COLUMN `maintenance_frequency_days` SET TAGS ('dbx_business_glossary_term' = 'Maintenance Frequency (Days)');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`pos_terminal` ALTER COLUMN `manufacturer` SET TAGS ('dbx_business_glossary_term' = 'Terminal Manufacturer');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`pos_terminal` ALTER COLUMN `model_number` SET TAGS ('dbx_business_glossary_term' = 'Terminal Model Number');
@@ -2210,6 +1939,7 @@ ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`pos_terminal` ALTER COLUMN `next
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`pos_terminal` ALTER COLUMN `next_scheduled_maintenance_date` SET TAGS ('dbx_business_glossary_term' = 'Next Scheduled Maintenance Date');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`pos_terminal` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Notes');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`pos_terminal` ALTER COLUMN `operational_status` SET TAGS ('dbx_business_glossary_term' = 'Operational Status');
+ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`pos_terminal` ALTER COLUMN `operational_status` SET TAGS ('dbx_value_regex' = 'active|inactive|maintenance|decommissioned|pending_install');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`pos_terminal` ALTER COLUMN `payment_methods_supported` SET TAGS ('dbx_business_glossary_term' = 'Payment Methods Supported');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`pos_terminal` ALTER COLUMN `payment_processing_capability` SET TAGS ('dbx_business_glossary_term' = 'Payment Processing Capability');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`pos_terminal` ALTER COLUMN `payment_processing_vendor` SET TAGS ('dbx_business_glossary_term' = 'Payment Processing Vendor');
@@ -2221,6 +1951,7 @@ ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`pos_terminal` ALTER COLUMN `prin
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`pos_terminal` ALTER COLUMN `security_compliance` SET TAGS ('dbx_business_glossary_term' = 'Security Compliance Level');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`pos_terminal` ALTER COLUMN `security_compliance` SET TAGS ('dbx_value_regex' = 'PCI_DSS|PCI_SA|PCI_SAQ');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`pos_terminal` ALTER COLUMN `serial_number` SET TAGS ('dbx_business_glossary_term' = 'Serial Number');
+ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`pos_terminal` ALTER COLUMN `serial_number` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`pos_terminal` ALTER COLUMN `service_channel` SET TAGS ('dbx_business_glossary_term' = 'Service Channel');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`pos_terminal` ALTER COLUMN `service_channel` SET TAGS ('dbx_value_regex' = 'dine_in|drive_thru|takeout|delivery|curbside|kiosk');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`pos_terminal` ALTER COLUMN `software_version` SET TAGS ('dbx_business_glossary_term' = 'Software Version');
@@ -2228,23 +1959,13 @@ ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`pos_terminal` ALTER COLUMN `stat
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`pos_terminal` ALTER COLUMN `station_type` SET TAGS ('dbx_value_regex' = 'foh|boh|drive_thru|kiosk|mobile');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`pos_terminal` ALTER COLUMN `supports_chip` SET TAGS ('dbx_business_glossary_term' = 'Chip Card Support Flag');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`pos_terminal` ALTER COLUMN `supports_contactless` SET TAGS ('dbx_business_glossary_term' = 'Contactless Support Flag');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`pos_terminal` ALTER COLUMN `supports_contactless` SET TAGS ('dbx_sensitivity' = 'pii');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`pos_terminal` ALTER COLUMN `supports_credit_card` SET TAGS ('dbx_business_glossary_term' = 'Supports Credit Card');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`pos_terminal` ALTER COLUMN `supports_credit_card` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`pos_terminal` ALTER COLUMN `supports_credit_card` SET TAGS ('dbx_pii_financial' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`pos_terminal` ALTER COLUMN `supports_credit_card` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`pos_terminal` ALTER COLUMN `supports_credit_card` SET TAGS ('dbx_mask_in_nonprod' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`pos_terminal` ALTER COLUMN `supports_credit_card` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`pos_terminal` ALTER COLUMN `supports_debit_card` SET TAGS ('dbx_business_glossary_term' = 'Supports Debit Card');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`pos_terminal` ALTER COLUMN `supports_debit_card` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`pos_terminal` ALTER COLUMN `supports_debit_card` SET TAGS ('dbx_pii_financial' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`pos_terminal` ALTER COLUMN `supports_debit_card` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`pos_terminal` ALTER COLUMN `supports_debit_card` SET TAGS ('dbx_mask_in_nonprod' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`pos_terminal` ALTER COLUMN `supports_debit_card` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`pos_terminal` ALTER COLUMN `supports_gift_card` SET TAGS ('dbx_business_glossary_term' = 'Supports Gift Card');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`pos_terminal` ALTER COLUMN `supports_gift_card` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`pos_terminal` ALTER COLUMN `supports_gift_card` SET TAGS ('dbx_mask_in_nonprod' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`pos_terminal` ALTER COLUMN `supports_gift_card` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`pos_terminal` ALTER COLUMN `supports_magstripe` SET TAGS ('dbx_business_glossary_term' = 'Magstripe Support Flag');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`pos_terminal` ALTER COLUMN `supports_mobile_wallet` SET TAGS ('dbx_business_glossary_term' = 'Supports Mobile Wallet');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`pos_terminal` ALTER COLUMN `supports_mobile_wallet` SET TAGS ('dbx_restricted' = 'true');
@@ -2257,9 +1978,6 @@ ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`pos_terminal` ALTER COLUMN `term
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`pos_terminal` ALTER COLUMN `terminal_currency_code` SET TAGS ('dbx_business_glossary_term' = 'Terminal Currency Code');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`pos_terminal` ALTER COLUMN `terminal_currency_code` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`pos_terminal` ALTER COLUMN `terminal_name` SET TAGS ('dbx_business_glossary_term' = 'POS Terminal Name');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`pos_terminal` ALTER COLUMN `terminal_name` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`pos_terminal` ALTER COLUMN `terminal_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`pos_terminal` ALTER COLUMN `terminal_name` SET TAGS ('dbx_pii_detected' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`pos_terminal` ALTER COLUMN `terminal_number` SET TAGS ('dbx_business_glossary_term' = 'Terminal Number');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`pos_terminal` ALTER COLUMN `terminal_type` SET TAGS ('dbx_business_glossary_term' = 'Terminal Type');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`pos_terminal` ALTER COLUMN `terminal_type` SET TAGS ('dbx_value_regex' = 'counter_pos|drive_thru_pos|kiosk|handheld|mobile_pos|kitchen_display');
@@ -2268,15 +1986,11 @@ ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`pos_terminal` ALTER COLUMN `warr
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`pos_terminal` ALTER COLUMN `zone` SET TAGS ('dbx_business_glossary_term' = 'Operational Zone');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`pos_terminal` ALTER COLUMN `zone` SET TAGS ('dbx_value_regex' = 'FOH|BOH|kitchen|drive_thru|outside');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`store_campaign_assignment` SET TAGS ('dbx_data_type' = 'association_data');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`store_campaign_assignment` SET TAGS ('dbx_subdomain' = 'facility_management');
+ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`store_campaign_assignment` SET TAGS ('dbx_subdomain' = 'performance_tracking');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`store_campaign_assignment` SET TAGS ('dbx_association_edges' = 'restaurant.unit,marketing.campaign');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`store_campaign_assignment` SET TAGS ('dbx_reviewer_review' = 'section2_colH_no_directives');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`store_campaign_assignment` SET TAGS ('dbx_reviewer_authority' = 'section2_column_h');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`store_campaign_assignment` SET TAGS ('dbx_reviewer_notes' = 'none_for_restaurants');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`store_campaign_assignment` SET TAGS ('dbx_reviewer_precedence' = 'section2_supreme_authority');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`store_campaign_assignment` ALTER COLUMN `store_campaign_assignment_id` SET TAGS ('dbx_business_glossary_term' = 'Store Campaign Assignment - Store Campaign Assignment Id');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`store_campaign_assignment` ALTER COLUMN `campaign_id` SET TAGS ('dbx_business_glossary_term' = 'Store Campaign Assignment - Campaign Id');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`store_campaign_assignment` ALTER COLUMN `store_sponsor_restaurant_unit_id` SET TAGS ('dbx_business_glossary_term' = 'Store Campaign Assignment - Sponsor Restaurant Id');
+ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`store_campaign_assignment` ALTER COLUMN `unit_id` SET TAGS ('dbx_business_glossary_term' = 'Store Campaign Assignment - Sponsor Restaurant Id');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`store_campaign_assignment` ALTER COLUMN `store_unit_id` SET TAGS ('dbx_business_glossary_term' = 'Store Campaign Assignment - Unit Id');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`store_campaign_assignment` ALTER COLUMN `actual_adt_lift_percent` SET TAGS ('dbx_business_glossary_term' = 'Store Campaign Assignment - Actual Adt Lift Percent');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`store_campaign_assignment` ALTER COLUMN `actual_comp_sales_lift_percent` SET TAGS ('dbx_business_glossary_term' = 'Store Campaign Assignment - Actual Comp Sales Lift Percent');
@@ -2284,7 +1998,6 @@ ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`store_campaign_assignment` ALTER
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`store_campaign_assignment` ALTER COLUMN `approval_date` SET TAGS ('dbx_business_glossary_term' = 'Store Campaign Assignment - Approval Date');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`store_campaign_assignment` ALTER COLUMN `approval_status` SET TAGS ('dbx_business_glossary_term' = 'Store Campaign Assignment - Approval Status');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`store_campaign_assignment` ALTER COLUMN `approved_by` SET TAGS ('dbx_business_glossary_term' = 'Store Campaign Assignment - Approved By');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`store_campaign_assignment` ALTER COLUMN `approved_by` SET TAGS ('dbx_sensitivity' = 'pii');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`store_campaign_assignment` ALTER COLUMN `channel` SET TAGS ('dbx_business_glossary_term' = 'Store Campaign Assignment - Channel');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`store_campaign_assignment` ALTER COLUMN `compliance_flag` SET TAGS ('dbx_business_glossary_term' = 'Store Campaign Assignment - Compliance Flag');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`store_campaign_assignment` ALTER COLUMN `end_date` SET TAGS ('dbx_business_glossary_term' = 'Store Campaign Assignment - End Date');
@@ -2294,9 +2007,6 @@ ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`store_campaign_assignment` ALTER
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`store_campaign_assignment` ALTER COLUMN `expected_comp_sales_lift_percent` SET TAGS ('dbx_business_glossary_term' = 'Store Campaign Assignment - Expected Comp Sales Lift Percent');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`store_campaign_assignment` ALTER COLUMN `initiative_code` SET TAGS ('dbx_business_glossary_term' = 'Store Campaign Assignment - Initiative Code');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`store_campaign_assignment` ALTER COLUMN `initiative_name` SET TAGS ('dbx_business_glossary_term' = 'Store Campaign Assignment - Initiative Name');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`store_campaign_assignment` ALTER COLUMN `initiative_name` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`store_campaign_assignment` ALTER COLUMN `initiative_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`store_campaign_assignment` ALTER COLUMN `initiative_name` SET TAGS ('dbx_pii_detected' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`store_campaign_assignment` ALTER COLUMN `lmf_fund_amount` SET TAGS ('dbx_business_glossary_term' = 'Store Campaign Assignment - Lmf Fund Amount');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`store_campaign_assignment` ALTER COLUMN `lmf_fund_used` SET TAGS ('dbx_business_glossary_term' = 'Store Campaign Assignment - Lmf Fund Used');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`store_campaign_assignment` ALTER COLUMN `lmf_remaining_amount` SET TAGS ('dbx_business_glossary_term' = 'Store Campaign Assignment - Lmf Remaining Amount');
@@ -2307,19 +2017,15 @@ ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`store_campaign_assignment` ALTER
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`store_campaign_assignment` ALTER COLUMN `store_campaign_assignment_status` SET TAGS ('dbx_business_glossary_term' = 'Store Campaign Assignment - Status');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`store_campaign_assignment` ALTER COLUMN `target_audience` SET TAGS ('dbx_business_glossary_term' = 'Store Campaign Assignment - Target Audience');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`kitchen_station` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`kitchen_station` SET TAGS ('dbx_subdomain' = 'operational_performance');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`kitchen_station` SET TAGS ('dbx_reviewer_review' = 'section2_colH_no_directives');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`kitchen_station` SET TAGS ('dbx_reviewer_authority' = 'section2_column_h');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`kitchen_station` SET TAGS ('dbx_reviewer_notes' = 'none_for_restaurants');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`kitchen_station` SET TAGS ('dbx_reviewer_precedence' = 'section2_supreme_authority');
+ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`kitchen_station` SET TAGS ('dbx_subdomain' = 'brand_standards');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`kitchen_station` ALTER COLUMN `kitchen_station_id` SET TAGS ('dbx_business_glossary_term' = 'Kitchen Station Identifier');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`kitchen_station` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Employee Id');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`kitchen_station` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`kitchen_station` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`kitchen_station` ALTER COLUMN `kitchen_unit_id` SET TAGS ('dbx_business_glossary_term' = 'Unit Id (Foreign Key)');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`kitchen_station` ALTER COLUMN `location_profile_id` SET TAGS ('dbx_business_glossary_term' = 'Location Profile Id');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`kitchen_station` ALTER COLUMN `location_profile_id` SET TAGS ('dbx_pii_detected' = 'true');
+ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`kitchen_station` ALTER COLUMN `unit_id` SET TAGS ('dbx_business_glossary_term' = 'Unit Id (Foreign Key)');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`kitchen_station` ALTER COLUMN `upstream_kitchen_station_id` SET TAGS ('dbx_business_glossary_term' = 'Upstream Kitchen Station Id');
+ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`kitchen_station` ALTER COLUMN `upstream_kitchen_station_id` SET TAGS ('dbx_self_ref_fk' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`kitchen_station` ALTER COLUMN `area_sqft` SET TAGS ('dbx_business_glossary_term' = 'Area Sqft');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`kitchen_station` ALTER COLUMN `average_ticket_time_seconds` SET TAGS ('dbx_business_glossary_term' = 'Average Ticket Time Seconds');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`kitchen_station` ALTER COLUMN `capacity_dishes` SET TAGS ('dbx_business_glossary_term' = 'Capacity Dishes');
@@ -2343,20 +2049,13 @@ ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`kitchen_station` ALTER COLUMN `r
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`kitchen_station` ALTER COLUMN `speed_of_service_sos_seconds` SET TAGS ('dbx_business_glossary_term' = 'Speed Of Service Sos Seconds');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`kitchen_station` ALTER COLUMN `station_code` SET TAGS ('dbx_business_glossary_term' = 'Station Code');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`kitchen_station` ALTER COLUMN `station_name` SET TAGS ('dbx_business_glossary_term' = 'Station Name');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`kitchen_station` ALTER COLUMN `station_name` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`kitchen_station` ALTER COLUMN `station_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`kitchen_station` ALTER COLUMN `station_name` SET TAGS ('dbx_pii_detected' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`kitchen_station` ALTER COLUMN `station_type` SET TAGS ('dbx_business_glossary_term' = 'Station Type');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`kitchen_station` ALTER COLUMN `kitchen_station_status` SET TAGS ('dbx_business_glossary_term' = 'Status');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`kitchen_station` ALTER COLUMN `temperature_control` SET TAGS ('dbx_business_glossary_term' = 'Temperature Control');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`kitchen_station` ALTER COLUMN `temperature_range_c` SET TAGS ('dbx_business_glossary_term' = 'Temperature Range C');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`kitchen_station` ALTER COLUMN `throughput_per_hour` SET TAGS ('dbx_business_glossary_term' = 'Throughput Per Hour');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`brand` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`brand` SET TAGS ('dbx_subdomain' = 'unit_identity');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`brand` SET TAGS ('dbx_reviewer_review' = 'section2_colH_no_directives');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`brand` SET TAGS ('dbx_reviewer_authority' = 'section2_column_h');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`brand` SET TAGS ('dbx_reviewer_notes' = 'none_for_restaurants');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`brand` SET TAGS ('dbx_reviewer_precedence' = 'section2_supreme_authority');
+ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`brand` SET TAGS ('dbx_subdomain' = 'brand_standards');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`brand` ALTER COLUMN `brand_id` SET TAGS ('dbx_business_glossary_term' = 'Brand Identifier');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`brand` ALTER COLUMN `parent_brand_id` SET TAGS ('dbx_business_glossary_term' = 'Parent Brand Id');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`brand` ALTER COLUMN `average_annual_sales_usd` SET TAGS ('dbx_business_glossary_term' = 'Average Annual Sales Usd');
@@ -2364,7 +2063,6 @@ ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`brand` ALTER COLUMN `average_che
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`brand` ALTER COLUMN `average_daily_customers` SET TAGS ('dbx_business_glossary_term' = 'Average Daily Customers');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`brand` ALTER COLUMN `average_employee_count` SET TAGS ('dbx_business_glossary_term' = 'Average Employee Count');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`brand` ALTER COLUMN `average_store_size_sqft` SET TAGS ('dbx_business_glossary_term' = 'Average Store Size Sqft');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`brand` ALTER COLUMN `brand_segment` SET TAGS ('dbx_business_glossary_term' = 'Brand Segment');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`brand` ALTER COLUMN `brand_type` SET TAGS ('dbx_business_glossary_term' = 'Brand Type');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`brand` ALTER COLUMN `brand_category` SET TAGS ('dbx_business_glossary_term' = 'Brand Category');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`brand` ALTER COLUMN `brand_code` SET TAGS ('dbx_business_glossary_term' = 'Brand Code');
@@ -2375,104 +2073,24 @@ ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`brand` ALTER COLUMN `established
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`brand` ALTER COLUMN `franchise_allowed` SET TAGS ('dbx_business_glossary_term' = 'Franchise Allowed');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`brand` ALTER COLUMN `franchise_fee_percent` SET TAGS ('dbx_business_glossary_term' = 'Franchise Fee Percent');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`brand` ALTER COLUMN `headquarters_city` SET TAGS ('dbx_business_glossary_term' = 'Headquarters City');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`brand` ALTER COLUMN `headquarters_city` SET TAGS ('dbx_pii_detected' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`brand` ALTER COLUMN `headquarters_country_code` SET TAGS ('dbx_business_glossary_term' = 'Headquarters Country Code');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`brand` ALTER COLUMN `headquarters_country_code` SET TAGS ('dbx_pii_detected' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`brand` ALTER COLUMN `headquarters_location` SET TAGS ('dbx_pii_detected' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`brand` ALTER COLUMN `logo_url` SET TAGS ('dbx_business_glossary_term' = 'Logo Url');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`brand` ALTER COLUMN `market_share_percent` SET TAGS ('dbx_business_glossary_term' = 'Market Share Percent');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`brand` ALTER COLUMN `brand_name` SET TAGS ('dbx_business_glossary_term' = 'Name');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`brand` ALTER COLUMN `brand_name` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`brand` ALTER COLUMN `brand_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`brand` ALTER COLUMN `brand_name` SET TAGS ('dbx_pii_detected' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`brand` ALTER COLUMN `parent_company_name` SET TAGS ('dbx_pii_detected' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`brand` ALTER COLUMN `primary_market_region` SET TAGS ('dbx_business_glossary_term' = 'Primary Market Region');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`brand` ALTER COLUMN `royalty_fee_percent` SET TAGS ('dbx_business_glossary_term' = 'Royalty Fee Percent');
+ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`brand` ALTER COLUMN `segment` SET TAGS ('dbx_business_glossary_term' = 'Brand Segment');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`brand` ALTER COLUMN `social_media_handle` SET TAGS ('dbx_business_glossary_term' = 'Social Media Handle');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`brand` ALTER COLUMN `sos_target_seconds` SET TAGS ('dbx_business_glossary_term' = 'Brand Sos Target Seconds');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`brand` ALTER COLUMN `brand_status` SET TAGS ('dbx_business_glossary_term' = 'Status');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`brand` ALTER COLUMN `tagline` SET TAGS ('dbx_business_glossary_term' = 'Brand Tagline');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`brand` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Updated Timestamp');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`brand` ALTER COLUMN `website_url` SET TAGS ('dbx_business_glossary_term' = 'Website Url');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`department` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`department` SET TAGS ('dbx_subdomain' = 'unit_identity');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`department` SET TAGS ('dbx_ssot_canonical' = 'workforce.department');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`department` SET TAGS ('dbx_ssot' = 'canonical');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`department` SET TAGS ('dbx_ssot_role' = 'source_of_truth');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`department` SET TAGS ('dbx_ssot_pair' = 'workforce.department');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`department` SET TAGS ('dbx_reviewer_review' = 'section2_colH_no_directives');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`department` SET TAGS ('dbx_reviewer_authority' = 'section2_column_h');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`department` SET TAGS ('dbx_reviewer_notes' = 'none_for_restaurants');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`department` SET TAGS ('dbx_ssot_context' = 'restaurant_operational_departments');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`department` SET TAGS ('dbx_reviewer_precedence' = 'section2_supreme_authority');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`department` SET TAGS ('dbx_ssot_deprecated' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`department` SET TAGS ('dbx_ssot_canonical' = 'workforce.workforce_department');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`department` ALTER COLUMN `department_id` SET TAGS ('dbx_business_glossary_term' = 'Department Identifier');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`department` ALTER COLUMN `franchisee_id` SET TAGS ('dbx_business_glossary_term' = 'Franchisee Id');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`department` ALTER COLUMN `parent_department_id` SET TAGS ('dbx_business_glossary_term' = 'Parent Department Id');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`department` ALTER COLUMN `address_line1` SET TAGS ('dbx_business_glossary_term' = 'Address Line1');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`department` ALTER COLUMN `address_line1` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`department` ALTER COLUMN `address_line1` SET TAGS ('dbx_mask_in_nonprod' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`department` ALTER COLUMN `address_line1` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`department` ALTER COLUMN `address_line2` SET TAGS ('dbx_business_glossary_term' = 'Address Line2');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`department` ALTER COLUMN `address_line2` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`department` ALTER COLUMN `address_line2` SET TAGS ('dbx_mask_in_nonprod' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`department` ALTER COLUMN `address_line2` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`department` ALTER COLUMN `area_sqft` SET TAGS ('dbx_business_glossary_term' = 'Area Sqft');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`department` ALTER COLUMN `average_service_time_minutes` SET TAGS ('dbx_business_glossary_term' = 'Average Service Time Minutes');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`department` ALTER COLUMN `budget_amount` SET TAGS ('dbx_business_glossary_term' = 'Budget Amount');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`department` ALTER COLUMN `city` SET TAGS ('dbx_business_glossary_term' = 'City');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`department` ALTER COLUMN `city` SET TAGS ('dbx_pii_detected' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`department` ALTER COLUMN `classification` SET TAGS ('dbx_business_glossary_term' = 'Classification');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`department` ALTER COLUMN `closing_date` SET TAGS ('dbx_business_glossary_term' = 'Closing Date');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`department` ALTER COLUMN `department_code` SET TAGS ('dbx_business_glossary_term' = 'Code');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`department` ALTER COLUMN `country_code` SET TAGS ('dbx_business_glossary_term' = 'Country Code');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`department` ALTER COLUMN `country_code` SET TAGS ('dbx_pii_detected' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`department` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`department` ALTER COLUMN `department_description` SET TAGS ('dbx_business_glossary_term' = 'Description');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`department` ALTER COLUMN `effective_from` SET TAGS ('dbx_business_glossary_term' = 'Effective From');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`department` ALTER COLUMN `effective_until` SET TAGS ('dbx_business_glossary_term' = 'Effective Until');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`department` ALTER COLUMN `email` SET TAGS ('dbx_business_glossary_term' = 'Email');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`department` ALTER COLUMN `email` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`department` ALTER COLUMN `email` SET TAGS ('dbx_pii_email' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`department` ALTER COLUMN `email` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`department` ALTER COLUMN `email` SET TAGS ('dbx_mask_in_nonprod' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`department` ALTER COLUMN `email` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`department` ALTER COLUMN `floor_number` SET TAGS ('dbx_business_glossary_term' = 'Floor Number');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`department` ALTER COLUMN `headcount` SET TAGS ('dbx_business_glossary_term' = 'Headcount');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`department` ALTER COLUMN `is_franchise` SET TAGS ('dbx_business_glossary_term' = 'Is Franchise');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`department` ALTER COLUMN `is_primary` SET TAGS ('dbx_business_glossary_term' = 'Is Primary');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`department` ALTER COLUMN `manager_name` SET TAGS ('dbx_pii_detected' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`department` ALTER COLUMN `department_name` SET TAGS ('dbx_business_glossary_term' = 'Name');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`department` ALTER COLUMN `department_name` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`department` ALTER COLUMN `department_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`department` ALTER COLUMN `department_name` SET TAGS ('dbx_pii_detected' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`department` ALTER COLUMN `opening_date` SET TAGS ('dbx_business_glossary_term' = 'Opening Date');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`department` ALTER COLUMN `operational_hours` SET TAGS ('dbx_business_glossary_term' = 'Operational Hours');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`department` ALTER COLUMN `phone_number` SET TAGS ('dbx_business_glossary_term' = 'Phone Number');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`department` ALTER COLUMN `phone_number` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`department` ALTER COLUMN `phone_number` SET TAGS ('dbx_pii_phone' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`department` ALTER COLUMN `phone_number` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`department` ALTER COLUMN `phone_number` SET TAGS ('dbx_mask_in_nonprod' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`department` ALTER COLUMN `phone_number` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`department` ALTER COLUMN `postal_code` SET TAGS ('dbx_business_glossary_term' = 'Postal Code');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`department` ALTER COLUMN `postal_code` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`department` ALTER COLUMN `postal_code` SET TAGS ('dbx_pii_address' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`department` ALTER COLUMN `region_code` SET TAGS ('dbx_business_glossary_term' = 'Region Code');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`department` ALTER COLUMN `service_level` SET TAGS ('dbx_business_glossary_term' = 'Service Level');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`department` ALTER COLUMN `shift_schedule` SET TAGS ('dbx_business_glossary_term' = 'Shift Schedule');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`department` ALTER COLUMN `department_status` SET TAGS ('dbx_business_glossary_term' = 'Status');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`department` ALTER COLUMN `turnover_rate` SET TAGS ('dbx_business_glossary_term' = 'Turnover Rate');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`department` ALTER COLUMN `department_type` SET TAGS ('dbx_business_glossary_term' = 'Type');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`department` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Updated Timestamp');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`checklist_template` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`checklist_template` SET TAGS ('dbx_subdomain' = 'facility_management');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`checklist_template` SET TAGS ('dbx_reviewer_review' = 'section2_colH_no_directives');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`checklist_template` SET TAGS ('dbx_reviewer_authority' = 'section2_column_h');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`checklist_template` SET TAGS ('dbx_reviewer_notes' = 'none_for_restaurants');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`checklist_template` SET TAGS ('dbx_reviewer_precedence' = 'section2_supreme_authority');
+ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`checklist_template` SET TAGS ('dbx_subdomain' = 'brand_standards');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`checklist_template` ALTER COLUMN `checklist_template_id` SET TAGS ('dbx_business_glossary_term' = 'Checklist Template Identifier');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`checklist_template` ALTER COLUMN `parent_checklist_template_id` SET TAGS ('dbx_business_glossary_term' = 'Parent Checklist Template Id');
+ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`checklist_template` ALTER COLUMN `parent_checklist_template_id` SET TAGS ('dbx_self_ref_fk' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`checklist_template` ALTER COLUMN `applicable_restaurant_type` SET TAGS ('dbx_business_glossary_term' = 'Applicable Restaurant Type');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`checklist_template` ALTER COLUMN `approval_required` SET TAGS ('dbx_business_glossary_term' = 'Approval Required');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`checklist_template` ALTER COLUMN `checklist_template_code` SET TAGS ('dbx_business_glossary_term' = 'Code');
@@ -2486,16 +2104,12 @@ ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`checklist_template` ALTER COLUMN
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`checklist_template` ALTER COLUMN `language` SET TAGS ('dbx_business_glossary_term' = 'Language');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`checklist_template` ALTER COLUMN `last_reviewed_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Last Reviewed Timestamp');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`checklist_template` ALTER COLUMN `checklist_template_name` SET TAGS ('dbx_business_glossary_term' = 'Name');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`checklist_template` ALTER COLUMN `checklist_template_name` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`checklist_template` ALTER COLUMN `checklist_template_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`checklist_template` ALTER COLUMN `checklist_template_name` SET TAGS ('dbx_pii_detected' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`checklist_template` ALTER COLUMN `owner_role` SET TAGS ('dbx_business_glossary_term' = 'Owner Role');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`checklist_template` ALTER COLUMN `region` SET TAGS ('dbx_business_glossary_term' = 'Region');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`checklist_template` ALTER COLUMN `review_cycle` SET TAGS ('dbx_business_glossary_term' = 'Review Cycle');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`checklist_template` ALTER COLUMN `checklist_template_status` SET TAGS ('dbx_business_glossary_term' = 'Status');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`checklist_template` ALTER COLUMN `template_file_path` SET TAGS ('dbx_business_glossary_term' = 'Template File Path');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`checklist_template` ALTER COLUMN `template_format` SET TAGS ('dbx_business_glossary_term' = 'Template Format');
-ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`checklist_template` ALTER COLUMN `template_name` SET TAGS ('dbx_pii_detected' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`checklist_template` ALTER COLUMN `checklist_template_type` SET TAGS ('dbx_business_glossary_term' = 'Type');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`checklist_template` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Updated Timestamp');
 ALTER TABLE `vibe_restaurants_v1`.`restaurant`.`checklist_template` ALTER COLUMN `version` SET TAGS ('dbx_business_glossary_term' = 'Version');

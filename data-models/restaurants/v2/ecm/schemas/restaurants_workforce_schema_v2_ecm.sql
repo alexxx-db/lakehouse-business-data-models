@@ -1,5 +1,5 @@
 -- Schema for Domain: workforce | Business:  | Version: v2_ecm
--- Generated on: 2026-07-02 03:00:45
+-- Generated on: 2026-07-10 18:45:45
 
 -- ========= DATABASE =========
 CREATE DATABASE IF NOT EXISTS `vibe_restaurants_v1`.`workforce` COMMENT 'Manages employee lifecycle including recruiting, onboarding, scheduling, time and attendance, labor forecasting, Labor% optimization, FTE tracking, certifications (ServSafe), performance management, and payroll integration via Workday HCM and Planday. Optimizes labor deployment across dayparts, BOH/FOH staffing ratios, and restaurant locations.';
@@ -7,6 +7,7 @@ CREATE DATABASE IF NOT EXISTS `vibe_restaurants_v1`.`workforce` COMMENT 'Manages
 -- ========= TABLES =========
 CREATE OR REPLACE TABLE `vibe_restaurants_v1`.`workforce`.`employee` (
     `employee_id` BIGINT COMMENT 'Unique system-generated identifier for each employee.',
+    `payroll_group_id` BIGINT COMMENT 'Foreign key linking to workforce.payroll_group. Business justification: Every employee belongs to a payroll group that governs pay frequency, currency, tax rules, and default benefit plan. The employee table has no payroll_group_id FK today, forcing downstream systems to ',
     `unit_id` BIGINT COMMENT 'Primary restaurant location to which the employee is assigned.',
     `employee_unit_id` BIGINT COMMENT 'Primary restaurant location to which the employee is assigned.',
     `employee_work_location_unit_id` BIGINT COMMENT 'Specific work site (e.g., kitchen, dining area) within the restaurant.',
@@ -27,11 +28,10 @@ CREATE OR REPLACE TABLE `vibe_restaurants_v1`.`workforce`.`employee` (
     `first_name` STRING COMMENT 'Legal first name of the employee.',
     `full_name` STRING COMMENT 'Concatenated first and last name for display purposes.',
     `hire_date` DATE COMMENT 'Date the employee started employment with the company.',
-    `job_title` STRING COMMENT 'Official title or position held by the employee.',
     `labor_percentage_target` DECIMAL(18,2) COMMENT 'Target labor cost as a percentage of sales for the employees role.',
     `last_name` STRING COMMENT 'Legal last name of the employee.',
     `overtime_eligible` BOOLEAN COMMENT 'Indicates if the employee is eligible for overtime pay.',
-    `pay_grade` DECIMAL(18,2) COMMENT 'Internal pay grade code used for compensation planning.',
+    `pay_grade` STRING COMMENT 'Internal pay grade code used for compensation planning.',
     `phone_number` STRING COMMENT 'Primary contact phone number for the employee.',
     `postal_code` STRING COMMENT 'Postal or ZIP code of the employees residence.',
     `record_audit_created` TIMESTAMP COMMENT 'Timestamp when the employee record was first created in the system.',
@@ -40,10 +40,10 @@ CREATE OR REPLACE TABLE `vibe_restaurants_v1`.`workforce`.`employee` (
     `salary_amount` DECIMAL(18,2) COMMENT 'Annual base salary amount before bonuses or overtime.',
     `salary_currency` STRING COMMENT 'Three‑letter ISO currency code for the salary amount.. Valid values are `USD|CAD|EUR|GBP|JPY`',
     `servsafe_certified` BOOLEAN COMMENT 'Indicates whether the employee holds a valid ServSafe food safety certification.',
-    `servsafe_expiration_date` DECIMAL(18,2) COMMENT 'Expiration date of the employees ServSafe certification.',
+    `servsafe_expiration_date` DATE COMMENT 'Expiration date of the employees ServSafe certification.',
     `shift_pattern` STRING COMMENT 'Standard shift pattern assigned to the employee.. Valid values are `morning|evening|night|flex|rotating`',
     `state` STRING COMMENT 'State or province of the employees residence.',
-    `tax_identifier` DECIMAL(18,2) COMMENT 'Government‑issued tax identification number (e.g., SSN, SIN).',
+    `tax_identifier` STRING COMMENT 'Government‑issued tax identification number (e.g., SSN, SIN).',
     `termination_date` DATE COMMENT 'Date the employees employment ended, if applicable.',
     `union_member` BOOLEAN COMMENT 'True if the employee is a member of a labor union.',
     `work_schedule_type` STRING COMMENT 'Scheduling model applied to the employee.. Valid values are `fixed|flex|rotating`',
@@ -52,6 +52,7 @@ CREATE OR REPLACE TABLE `vibe_restaurants_v1`.`workforce`.`employee` (
 
 CREATE OR REPLACE TABLE `vibe_restaurants_v1`.`workforce`.`position` (
     `position_id` BIGINT COMMENT 'System-generated unique identifier for the job position.',
+    `workforce_department_id` BIGINT COMMENT 'add column department_id (BIGINT) with FK to workforce.department.department_id - positions must belong to a department for org structure',
     `reports_to_position_id` BIGINT COMMENT 'Identifier of the supervisory position to which this role reports.',
     `classification` STRING COMMENT 'Primary classification indicating whether the role is Back‑of‑House (BOH), Front‑of‑House (FOH), or Support.. Valid values are `BOH|FOH|Support`',
     `position_code` STRING COMMENT 'Business identifier code used to reference the position in HR and scheduling systems.',
@@ -68,7 +69,7 @@ CREATE OR REPLACE TABLE `vibe_restaurants_v1`.`workforce`.`position` (
     `position_level` STRING COMMENT 'Career level of the position within the organization hierarchy.. Valid values are `Entry|Mid|Senior|Lead`',
     `minimum_age` STRING COMMENT 'Minimum legal age required to be eligible for the position.',
     `overtime_eligible` BOOLEAN COMMENT 'Indicates whether the position is eligible for overtime pay.',
-    `pay_band` DECIMAL(18,2) COMMENT 'Compensation band used for salary or hourly rate determination.',
+    `pay_band` STRING COMMENT 'Compensation band used for salary or hourly rate determination.. Valid values are `A|B|C|D|E`',
     `position_status` STRING COMMENT 'Current lifecycle status of the position.. Valid values are `Active|Inactive|Archived`',
     `required_certifications` STRING COMMENT 'Comma‑separated list of mandatory certifications (e.g., ServSafe, Food Handler).',
     `required_experience_years` STRING COMMENT 'Minimum years of relevant experience required for the position.',
@@ -84,20 +85,20 @@ CREATE OR REPLACE TABLE `vibe_restaurants_v1`.`workforce`.`position` (
 CREATE OR REPLACE TABLE `vibe_restaurants_v1`.`workforce`.`shift` (
     `shift_id` BIGINT COMMENT 'Unique identifier for the shift record.',
     `employee_id` BIGINT COMMENT 'Identifier of the user who scheduled the shift.',
-    `facility_id` BIGINT COMMENT 'Restaurant location where the shift occurs.',
     `primary_shift_employee_id` BIGINT COMMENT 'Identifier of the employee assigned to the shift.',
+    `position_id` BIGINT COMMENT 'Foreign key linking to workforce.position. Business justification: Each shift is worked in a specific authorized position (e.g., Crew Member, Shift Lead, BOH Cook). The shift table currently stores station (STRING) but has no FK to the canonical position record. Addi',
     `unit_id` BIGINT COMMENT 'Restaurant location where the shift occurs.',
     `actual_end` TIMESTAMP COMMENT 'Actual clock‑out timestamp recorded for the shift.',
     `actual_hours` DECIMAL(18,2) COMMENT 'Actual worked hours for the shift (excluding breaks).',
     `actual_start` TIMESTAMP COMMENT 'Actual clock‑in timestamp recorded for the shift.',
-    `break_duration_minutes` DECIMAL(18,2) COMMENT 'Total break time in minutes allocated for the shift.',
+    `break_duration_minutes` STRING COMMENT 'Total break time in minutes allocated for the shift.',
     `shift_code` STRING COMMENT 'Human‑readable code for the shift (e.g., SHIFT20230915-001).',
     `created_timestamp` TIMESTAMP COMMENT 'Timestamp when the shift record was created.',
     `daypart` STRING COMMENT 'Part of the day the shift is scheduled for.. Valid values are `breakfast|lunch|dinner|late_night`',
     `is_deleted` BOOLEAN COMMENT 'Flag indicating soft deletion of the shift record.',
     `labor_cost` DECIMAL(18,2) COMMENT 'Total labor cost for the shift (rate multiplied by actual hours).',
     `labor_percentage` DECIMAL(18,2) COMMENT 'Labor cost expressed as a percentage of projected sales for the shift.',
-    `labor_rate_currency_code` DECIMAL(18,2) COMMENT 'Three‑letter ISO currency code for the labor rate.',
+    `labor_rate_currency_code` STRING COMMENT 'Three‑letter ISO currency code for the labor rate.. Valid values are `USD|CAD|EUR|GBP|JPY|AUD`',
     `labor_rate_per_hour` DECIMAL(18,2) COMMENT 'Pay rate per hour for the employee on this shift.',
     `notes` STRING COMMENT 'Free‑form notes or comments about the shift.',
     `on_call_flag` BOOLEAN COMMENT 'Indicates if the shift is an on‑call assignment.',
@@ -118,6 +119,8 @@ CREATE OR REPLACE TABLE `vibe_restaurants_v1`.`workforce`.`schedule` (
     `employee_id` BIGINT COMMENT 'Unique identifier of the manager or supervisor who approved the schedule.',
     `schedule_manager_employee_id` BIGINT COMMENT 'Unique identifier of the manager or supervisor who approved the schedule.',
     `unit_id` BIGINT COMMENT 'Unique identifier of the restaurant unit for which the schedule is created.',
+    `schedule_unit_id` BIGINT COMMENT 'Unique identifier of the restaurant unit for which the schedule is created.',
+    `shift_id` BIGINT COMMENT 'add column shift_id (BIGINT) with FK to workforce.shift.shift_id - schedules should reference the shifts they contain',
     `approval_timestamp` TIMESTAMP COMMENT 'Date‑time when the schedule was formally approved by the manager.',
     `approved_by` STRING COMMENT 'Display name of the manager who approved the schedule.',
     `created_timestamp` TIMESTAMP COMMENT 'Date‑time when the schedule record was first created in the system.',
@@ -144,9 +147,11 @@ CREATE OR REPLACE TABLE `vibe_restaurants_v1`.`workforce`.`schedule` (
 
 CREATE OR REPLACE TABLE `vibe_restaurants_v1`.`workforce`.`time_entry` (
     `time_entry_id` BIGINT COMMENT 'Unique surrogate key for the time entry record.',
+    `payroll_record_id` BIGINT COMMENT 'Foreign key linking to workforce.payroll_record. Business justification: Time entries are the source data that payroll records aggregate. Linking time_entry.payroll_record_id to payroll_record creates a direct audit trail from individual clock-in/out events to the period p',
     `employee_id` BIGINT COMMENT 'Identifier of the employee who performed the time entry.',
     `shift_id` BIGINT COMMENT 'Identifier of the scheduled shift associated with this time entry.',
     `time_employee_id` BIGINT COMMENT 'Identifier of the manager who performed the approval.',
+    `position_id` BIGINT COMMENT 'Foreign key linking to workforce.position. Business justification: Time entries capture actual clock-in/out events per role. The time_entry table stores job_role as a STRING, which duplicates the canonical position definition. Adding time_position_id normalizes this ',
     `unit_id` BIGINT COMMENT 'Identifier of the restaurant location where the work was performed.',
     `approved_by_manager` BOOLEAN COMMENT 'True when a manager has approved the time entry.',
     `approved_timestamp` TIMESTAMP COMMENT 'Date‑time when the entry was approved by a manager.',
@@ -156,14 +161,13 @@ CREATE OR REPLACE TABLE `vibe_restaurants_v1`.`workforce`.`time_entry` (
     `clock_out_timestamp` TIMESTAMP COMMENT 'Exact date‑time when the employee clocked out.',
     `created_timestamp` TIMESTAMP COMMENT 'Timestamp when the time entry record was first created.',
     `entry_number` STRING COMMENT 'Human‑readable unique code for the time entry.',
-    `job_role` STRING COMMENT 'Functional role of the employee during the shift.. Valid values are `front_of_house|back_of_house|management|support|other`',
     `labor_cost` DECIMAL(18,2) COMMENT 'Monetary cost of the labor for this entry (total_hours * labor_rate).',
     `labor_rate` DECIMAL(18,2) COMMENT 'Hourly wage rate applicable to the employee for this entry (in local currency).',
     `missed_punch_flag` BOOLEAN COMMENT 'True if the employee missed a clock‑in or clock‑out punch.',
     `notes` STRING COMMENT 'Optional free‑form comments or remarks about the time entry.',
     `overtime_flag` BOOLEAN COMMENT 'True if any overtime hours were recorded.',
     `overtime_hours` DECIMAL(18,2) COMMENT 'Number of overtime hours worked.',
-    `pay_code` DECIMAL(18,2) COMMENT 'Payroll code indicating the type of pay (regular, overtime, sick leave, etc.).',
+    `pay_code` STRING COMMENT 'Payroll code indicating the type of pay (regular, overtime, sick leave, etc.).. Valid values are `REG|OT|SL|VAC|OTHER`',
     `regular_hours` DECIMAL(18,2) COMMENT 'Number of non‑overtime hours worked.',
     `scheduled_end_timestamp` TIMESTAMP COMMENT 'Planned end date‑time of the shift according to the schedule.',
     `scheduled_start_timestamp` TIMESTAMP COMMENT 'Planned start date‑time of the shift according to the schedule.',
@@ -177,7 +181,9 @@ CREATE OR REPLACE TABLE `vibe_restaurants_v1`.`workforce`.`time_entry` (
 
 CREATE OR REPLACE TABLE `vibe_restaurants_v1`.`workforce`.`labor_forecast` (
     `labor_forecast_id` BIGINT COMMENT 'Unique identifier for the labor forecast record. _canonical_skip_reason: Entity does not fit standard role categories; treated as OTHER.',
+    `financial_period_id` BIGINT COMMENT 'add column financial_period_id (BIGINT) with FK to finance.financial_period.financial_period_id - labor forecasts need temporal boundaries',
     `unit_id` BIGINT COMMENT 'Identifier of the restaurant location for which the labor forecast is generated.',
+    `labor_unit_id` BIGINT COMMENT 'Identifier of the restaurant location for which the labor forecast is generated.',
     `confidence_score` DECIMAL(18,2) COMMENT 'Statistical confidence level (0‑100) of the forecast output.',
     `currency_code` STRING COMMENT 'Three‑letter ISO currency code for monetary values.. Valid values are `^[A-Z]{3}$`',
     `daypart` STRING COMMENT 'Time segment of the day for which labor is forecasted.. Valid values are `breakfast|lunch|dinner|late_night`',
@@ -209,6 +215,7 @@ CREATE OR REPLACE TABLE `vibe_restaurants_v1`.`workforce`.`payroll_record` (
     `department_id` BIGINT COMMENT 'Identifier of the internal department (e.g., FOH, BOH) for cost allocation.',
     `employee_id` BIGINT COMMENT 'Unique identifier of the employee to whom the payroll pertains.',
     `facility_id` BIGINT COMMENT 'Identifier of the restaurant/location where the employee works.',
+    `payroll_group_id` BIGINT COMMENT 'Foreign key linking to workforce.payroll_group. Business justification: Payroll records belong to a payroll group that governs pay frequency, currency, and tax rules. The payroll_record table currently stores pay_group as a STRING, which is a denormalized reference to the',
     `payroll_run_id` BIGINT COMMENT 'Identifier of the payroll run batch that generated this record.',
     `unit_id` BIGINT COMMENT 'Identifier of the restaurant/location where the employee works.',
     `benefit_deduction` DECIMAL(18,2) COMMENT 'Sum of employee benefit contributions deducted.',
@@ -229,14 +236,13 @@ CREATE OR REPLACE TABLE `vibe_restaurants_v1`.`workforce`.`payroll_record` (
     `overtime_hours` DECIMAL(18,2) COMMENT 'Total overtime hours worked.',
     `overtime_rate` DECIMAL(18,2) COMMENT 'Hourly rate applied to overtime hours.',
     `pay_date` DATE COMMENT 'Date on which the net amount is disbursed to the employee.',
-    `pay_group` DECIMAL(18,2) COMMENT 'Grouping used for payroll processing (e.g., weekly, bi‑weekly).',
     `pay_period_end` DATE COMMENT 'Last calendar day of the payroll period.',
     `pay_period_start` DATE COMMENT 'First calendar day of the payroll period.',
     `pay_rate` DECIMAL(18,2) COMMENT 'Standard hourly or salary rate for the employee.',
     `payroll_date` TIMESTAMP COMMENT 'Exact time the payroll was run in the source system.',
-    `payroll_number` DECIMAL(18,2) COMMENT 'Human‑readable payroll reference number assigned by the payroll system.',
-    `payroll_record_status` DECIMAL(18,2) COMMENT 'Current processing state of the payroll record.',
-    `payroll_type` DECIMAL(18,2) COMMENT 'Nature of compensation for the period.',
+    `payroll_number` STRING COMMENT 'Human‑readable payroll reference number assigned by the payroll system.',
+    `payroll_record_status` STRING COMMENT 'Current processing state of the payroll record.. Valid values are `processed|pending|error|cancelled`',
+    `payroll_type` STRING COMMENT 'Nature of compensation for the period.. Valid values are `salary|hourly|commission|bonus`',
     `regular_hours` DECIMAL(18,2) COMMENT 'Total non‑overtime hours worked.',
     `tax_withheld` DECIMAL(18,2) COMMENT 'Total tax amount deducted from gross pay.',
     `tax_year` STRING COMMENT 'Fiscal year applicable for tax reporting.',
@@ -252,12 +258,13 @@ CREATE OR REPLACE TABLE `vibe_restaurants_v1`.`workforce`.`recruitment` (
     `facility_id` BIGINT COMMENT 'Identifier of the restaurant or site where the role is located.',
     `primary_recruitment_employee_id` BIGINT COMMENT 'Identifier of the manager responsible for the hire.',
     `unit_id` BIGINT COMMENT 'FK to restaurant.unit',
+    `position_id` BIGINT COMMENT 'Foreign key linking to workforce.position. Business justification: Recruitment requisitions are opened to fill authorized positions. The recruitment table stores position_title as a STRING, duplicating the canonical position definition. Adding recruiting_position_id ',
+    `workforce_department_id` BIGINT COMMENT 'Foreign key linking to workforce.workforce_department. Business justification: Recruitment requisitions are opened for a specific department. The recruitment table stores department as a STRING, which is a denormalized reference to the workforce_department master. Adding recruit',
     `applicant_count` STRING COMMENT 'Total number of applicants received.',
     `budget_usd` DECIMAL(18,2) COMMENT 'Allocated budget for recruitment advertising and agency fees.',
     `closing_date` DATE COMMENT 'Date the requisition was closed to new applications.',
     `compliance_status` STRING COMMENT 'Indicates whether the recruitment process meets internal and regulatory compliance (e.g., equal‑opportunity reporting).. Valid values are `compliant|non_compliant|pending`',
     `created_timestamp` TIMESTAMP COMMENT 'Timestamp when the recruitment record was first created.',
-    `department` STRING COMMENT 'Business department or functional area the position belongs to.',
     `employment_type` STRING COMMENT 'Classification of employment relationship for the role.. Valid values are `full-time|part-time|seasonal|contract|intern|temporary`',
     `interview_stage_count` STRING COMMENT 'Number of interview stages defined for the requisition.',
     `job_level` STRING COMMENT 'Organizational level of the position.. Valid values are `entry|associate|manager|director|executive`',
@@ -266,7 +273,6 @@ CREATE OR REPLACE TABLE `vibe_restaurants_v1`.`workforce`.`recruitment` (
     `notes` STRING COMMENT 'Free‑form notes captured by recruiters or hiring managers.',
     `offers_accepted` STRING COMMENT 'Count of offers that were accepted by candidates.',
     `offers_extended` STRING COMMENT 'Count of job offers that have been extended.',
-    `position_title` STRING COMMENT 'Official title of the position being recruited for.',
     `posting_channel` STRING COMMENT 'Channel used to publish the job opening.. Valid values are `internal|job_board|recruiter|social|referral|agency`',
     `posting_date` DATE COMMENT 'Date the job was first posted.',
     `recruitment_status` STRING COMMENT 'Current lifecycle status of the recruitment process.. Valid values are `open|closed|on_hold|cancelled|filled`',
@@ -284,10 +290,12 @@ CREATE OR REPLACE TABLE `vibe_restaurants_v1`.`workforce`.`recruitment` (
 
 CREATE OR REPLACE TABLE `vibe_restaurants_v1`.`workforce`.`onboarding` (
     `onboarding_id` BIGINT COMMENT 'Unique system-generated identifier for the onboarding process instance.',
+    `scheduling_template_id` BIGINT COMMENT 'Foreign key linking to workforce.scheduling_template. Business justification: During onboarding, new employees are assigned a default scheduling template that governs their initial shift patterns (daypart, shift length, FTE target). Linking onboarding.default_scheduling_templat',
     `workforce_department_id` BIGINT COMMENT 'Identifier of the department (e.g., FOH, BOH, HR) the employee belongs to.',
     `employee_id` BIGINT COMMENT 'Employee identifier of the colleague assigned to mentor the new hire.',
     `facility_id` BIGINT COMMENT 'Identifier of the restaurant location where the employee will work.',
     `manager_employee_id` BIGINT COMMENT 'Identifier of the manager who signs off on onboarding completion.',
+    `payroll_group_id` BIGINT COMMENT 'Foreign key linking to workforce.payroll_group. Business justification: During onboarding, new employees are assigned to a payroll group that determines their pay frequency, benefit eligibility, and tax withholding setup. Capturing payroll_group_id on the onboarding recor',
     `position_id` BIGINT COMMENT 'Identifier of the specific job role (e.g., Shift Lead, Server, Cook).',
     `primary_onboarding_assigned_buddy_employee_id` BIGINT COMMENT 'Employee identifier of the colleague assigned to mentor the new hire.',
     `tertiary_onboarding_manager_employee_id` BIGINT COMMENT 'Identifier of the manager who signs off on onboarding completion.',
@@ -319,20 +327,21 @@ CREATE OR REPLACE TABLE `vibe_restaurants_v1`.`workforce`.`onboarding` (
 CREATE OR REPLACE TABLE `vibe_restaurants_v1`.`workforce`.`certification` (
     `certification_id` BIGINT COMMENT 'System-generated unique identifier for the certification record.',
     `employee_id` BIGINT COMMENT 'Identifier of the employee who holds this certification.',
+    `position_id` BIGINT COMMENT 'Foreign key linking to workforce.position. Business justification: Certifications (ServSafe, food handler cards, allergen training) are required for specific authorized positions. The certification table stores related_role as a STRING, which is a denormalized refere',
+    `unit_id` BIGINT COMMENT 'add column restaurant_unit_id (BIGINT) with FK to restaurant.unit.unit_id - certifications should be trackable at the unit level for compliance reporting',
     `certification_status` STRING COMMENT 'Current lifecycle status of the certification.. Valid values are `active|expired|revoked|pending`',
     `certification_type` STRING COMMENT 'Category of certification required for foodservice operations.. Valid values are `food_handler|manager|allergen|haccp|alcohol|osha`',
     `certification_code` STRING COMMENT 'Business identifier or code assigned to the certification by the issuing body.',
     `compliance_status` STRING COMMENT 'Regulatory compliance assessment of the certification.. Valid values are `compliant|non_compliant|under_review`',
     `created_timestamp` TIMESTAMP COMMENT 'Timestamp when the certification record was first created in the system.',
     `document_url` STRING COMMENT 'Link to the scanned certification document stored in the document repository.',
-    `expiration_date` DECIMAL(18,2) COMMENT 'Date the certification expires and must be renewed.',
+    `expiration_date` DATE COMMENT 'Date the certification expires and must be renewed.',
     `is_mandatory` BOOLEAN COMMENT 'Indicates if the certification is required for the employees role.',
     `issue_date` DATE COMMENT 'Date the certification was originally issued.',
     `issuing_body` STRING COMMENT 'Organization that issued the certification.. Valid values are `NRA_ServSafe|Local_Health_Department|OSHA|Other`',
     `last_verified_date` DATE COMMENT 'Date when the certification was last validated by internal audit.',
     `certification_name` STRING COMMENT 'Human‑readable name of the certification (e.g., ServSafe Food Handler).',
     `notes` STRING COMMENT 'Free‑form notes regarding the certification (e.g., special conditions, comments).',
-    `related_role` STRING COMMENT 'Operational role(s) for which the certification is applicable.. Valid values are `BOH|FOH|Management|Support|All`',
     `renewal_notice_date` DATE COMMENT 'Date a renewal reminder is sent to the employee.',
     `renewal_required` BOOLEAN COMMENT 'Indicates whether the certification must be renewed before expiration.',
     `updated_timestamp` TIMESTAMP COMMENT 'Timestamp of the most recent update to the certification record.',
@@ -341,6 +350,7 @@ CREATE OR REPLACE TABLE `vibe_restaurants_v1`.`workforce`.`certification` (
 
 CREATE OR REPLACE TABLE `vibe_restaurants_v1`.`workforce`.`training_completion` (
     `training_completion_id` BIGINT COMMENT 'System-generated unique identifier for each training completion record.',
+    `certification_id` BIGINT COMMENT 'Foreign key linking to workforce.certification. Business justification: Completing a training program often results in earning a certification (e.g., completing ServSafe training → ServSafe certification). The training_completion table has certification_required (BOOLEAN)',
     `facility_id` BIGINT COMMENT 'Identifier of the restaurant location where the training was completed.',
     `employee_id` BIGINT COMMENT 'Unique identifier of the employee who completed the training.',
     `shift_id` BIGINT COMMENT 'Identifier of the work shift associated with the training session.',
@@ -349,7 +359,7 @@ CREATE OR REPLACE TABLE `vibe_restaurants_v1`.`workforce`.`training_completion` 
     `assessment_max_score` DECIMAL(18,2) COMMENT 'Maximum possible score for the assessment.',
     `assessment_passed` BOOLEAN COMMENT 'Indicates whether the employee passed the assessment (true) or not (false).',
     `assessment_score` DECIMAL(18,2) COMMENT 'Score achieved by the employee on the training assessment.',
-    `certification_expiration_date` DECIMAL(18,2) COMMENT 'Date when the certification earned from this training expires, if applicable.',
+    `certification_expiration_date` DATE COMMENT 'Date when the certification earned from this training expires, if applicable.',
     `certification_required` BOOLEAN COMMENT 'True if the training results in a required certification for the employee.',
     `completion_number` STRING COMMENT 'Business-assigned code for the training completion event.',
     `completion_timestamp` TIMESTAMP COMMENT 'Date and time when the employee finished the training.',
@@ -362,7 +372,7 @@ CREATE OR REPLACE TABLE `vibe_restaurants_v1`.`workforce`.`training_completion` 
     `trainer_name` STRING COMMENT 'Full name of the trainer or facilitator.',
     `training_category` STRING COMMENT 'More specific category or module within the training type.',
     `training_completion_status` STRING COMMENT 'Current lifecycle status of the training completion record.. Valid values are `completed|in_progress|failed|cancelled`',
-    `training_duration_minutes` DECIMAL(18,2) COMMENT 'Total length of the training session in minutes.',
+    `training_duration_minutes` STRING COMMENT 'Total length of the training session in minutes.',
     `training_type` STRING COMMENT 'Broad classification of the training content.. Valid values are `safety|operations|customer_service|leadership`',
     `updated_timestamp` TIMESTAMP COMMENT 'Timestamp of the most recent update to the training completion record.',
     CONSTRAINT pk_training_completion PRIMARY KEY(`training_completion_id`)
@@ -370,8 +380,10 @@ CREATE OR REPLACE TABLE `vibe_restaurants_v1`.`workforce`.`training_completion` 
 
 CREATE OR REPLACE TABLE `vibe_restaurants_v1`.`workforce`.`performance_review` (
     `performance_review_id` BIGINT COMMENT 'Unique identifier for the performance review record.',
+    `facility_id` BIGINT COMMENT 'Identifier of the restaurant location where the employee works.',
     `employee_id` BIGINT COMMENT 'Identifier of the manager or peer who performed the review.',
     `primary_performance_employee_id` BIGINT COMMENT 'Identifier of the employee being reviewed.',
+    `position_id` BIGINT COMMENT 'Foreign key linking to workforce.position. Business justification: Performance reviews evaluate an employee in the context of a specific position (e.g., a Shift Lead review uses different criteria than a Crew Member review). The performance_review table stores depart',
     `reviewer_employee_id` BIGINT COMMENT 'Identifier of the manager or peer who performed the review.',
     `unit_id` BIGINT COMMENT 'Identifier of the restaurant location where the employee works.',
     `accuracy_score` DECIMAL(18,2) COMMENT 'Score reflecting the employees order accuracy.',
@@ -384,7 +396,6 @@ CREATE OR REPLACE TABLE `vibe_restaurants_v1`.`workforce`.`performance_review` (
     `confidentiality_level` STRING COMMENT 'Data classification of the review record.. Valid values are `restricted|confidential|internal|public`',
     `corrective_action_flag` BOOLEAN COMMENT 'True if corrective action is required based on the review.',
     `created_timestamp` TIMESTAMP COMMENT 'Timestamp when the review record was first created in the system.',
-    `department` STRING COMMENT 'Organizational department of the employee.. Valid values are `BOH|FOH|Management|Support`',
     `development_goals` STRING COMMENT 'Narrative of agreed‑upon development objectives.',
     `food_safety_score` DECIMAL(18,2) COMMENT 'Score reflecting adherence to food safety standards.',
     `guest_service_score` DECIMAL(18,2) COMMENT 'Score reflecting the employees guest service quality.',
@@ -413,7 +424,9 @@ CREATE OR REPLACE TABLE `vibe_restaurants_v1`.`workforce`.`performance_review` (
 
 CREATE OR REPLACE TABLE `vibe_restaurants_v1`.`workforce`.`leave_request` (
     `leave_request_id` BIGINT COMMENT 'System-generated unique identifier for the leave request record.',
+    `facility_id` BIGINT COMMENT 'Identifier of the restaurant/location where the employee is scheduled, used for shift‑coverage planning.',
     `employee_id` BIGINT COMMENT 'Identifier of the manager who reviewed and approved/denied the request (source: Workday HCM).',
+    `payroll_record_id` BIGINT COMMENT 'Foreign key linking to workforce.payroll_record. Business justification: Leave requests with payroll_impact_flag=TRUE directly affect payroll calculations (paid leave deductions, FMLA pay continuation, PTO payout). Linking leave_request.payroll_record_id to payroll_record ',
     `primary_leave_employee_id` BIGINT COMMENT 'Unique identifier of the employee submitting the leave request (source: Workday HCM).',
     `unit_id` BIGINT COMMENT 'Identifier of the restaurant/location where the employee is scheduled, used for shift‑coverage planning.',
     `approved_timestamp` TIMESTAMP COMMENT 'Date‑time when the leave request was approved or denied.',
@@ -442,6 +455,7 @@ CREATE OR REPLACE TABLE `vibe_restaurants_v1`.`workforce`.`leave_request` (
 CREATE OR REPLACE TABLE `vibe_restaurants_v1`.`workforce`.`labor_violation` (
     `labor_violation_id` BIGINT COMMENT 'System‑generated unique identifier for each labor violation record.',
     `employee_id` BIGINT COMMENT 'Unique identifier of the employee involved in the violation.',
+    `facility_id` BIGINT COMMENT 'Identifier of the specific site (e.g., store, kitchen) within the restaurant.',
     `unit_id` BIGINT COMMENT 'Identifier of the restaurant location where the violation occurred.',
     `labor_unit_id` BIGINT COMMENT 'Identifier of the restaurant location where the violation occurred.',
     `shift_id` BIGINT COMMENT 'Identifier of the work shift during which the violation occurred.',
@@ -472,15 +486,17 @@ CREATE OR REPLACE TABLE `vibe_restaurants_v1`.`workforce`.`labor_violation` (
 
 CREATE OR REPLACE TABLE `vibe_restaurants_v1`.`workforce`.`labor_budget` (
     `labor_budget_id` BIGINT COMMENT 'System-generated unique identifier for each labor budget record.',
+    `workforce_department_id` BIGINT COMMENT 'Foreign key linking to workforce.workforce_department. Business justification: Labor budgets are planned at the intersection of unit, daypart, and department. The labor_budget table already has unit-level FKs but no department_id FK, forcing department-level budget analysis to r',
+    `financial_period_id` BIGINT COMMENT 'add column financial_period_id (BIGINT) with FK to finance.financial_period.financial_period_id - labor budgets must reference a time period for planning',
     `unit_id` BIGINT COMMENT 'Unique identifier of the restaurant location to which the labor budget applies.',
     `labor_unit_id` BIGINT COMMENT 'Unique identifier of the restaurant location to which the labor budget applies.',
     `approved_timestamp` TIMESTAMP COMMENT 'Date‑time when the budget was approved by finance.',
-    `budget_category` DECIMAL(18,2) COMMENT 'Classification of the budget purpose (e.g., operational labor, training, benefits).',
-    `budget_code` DECIMAL(18,2) COMMENT 'External business code used to reference the budget in financial systems.',
-    `budget_name` DECIMAL(18,2) COMMENT 'Human‑readable name for the labor budget (e.g., "2024 Q1 Labor Budget").',
-    `budget_source` DECIMAL(18,2) COMMENT 'Origin of the budget figures (historical data, forecasting model, or manager input).',
-    `budget_status` DECIMAL(18,2) COMMENT 'Current lifecycle state of the budget record.',
-    `budget_type` DECIMAL(18,2) COMMENT 'Granularity of the budget (annual, quarterly, monthly, weekly, or daypart specific).',
+    `budget_category` STRING COMMENT 'Classification of the budget purpose (e.g., operational labor, training, benefits).. Valid values are `operational|capital|training|benefits`',
+    `budget_code` STRING COMMENT 'External business code used to reference the budget in financial systems.',
+    `budget_name` STRING COMMENT 'Human‑readable name for the labor budget (e.g., "2024 Q1 Labor Budget").',
+    `budget_source` STRING COMMENT 'Origin of the budget figures (historical data, forecasting model, or manager input).. Valid values are `historical|model|manager_input`',
+    `budget_status` STRING COMMENT 'Current lifecycle state of the budget record.. Valid values are `draft|submitted|approved|active|closed|rejected`',
+    `budget_type` STRING COMMENT 'Granularity of the budget (annual, quarterly, monthly, weekly, or daypart specific).. Valid values are `annual|quarterly|monthly|weekly|daypart`',
     `created_timestamp` TIMESTAMP COMMENT 'Date‑time when the budget record was first created.',
     `currency_code` STRING COMMENT 'Three‑letter ISO 4217 currency code for monetary amounts.. Valid values are `^[A-Z]{3}$`',
     `daypart` STRING COMMENT 'Specific daypart the budget applies to; use "all_day" for full‑day budgets.. Valid values are `breakfast|lunch|dinner|late_night|all_day`',
@@ -512,59 +528,16 @@ CREATE OR REPLACE TABLE `vibe_restaurants_v1`.`workforce`.`tip_compliance` (
     `tip_compliance_id` BIGINT COMMENT 'Unique identifier for the tip_compliance data product (auto-inserted pre-linking).',
     `corrected_tip_compliance_id` BIGINT COMMENT 'Self-referencing FK on tip_compliance (corrected_tip_compliance_id)',
     `employee_id` BIGINT COMMENT 'Foreign key linking to workforce.employee. Business justification: Tip compliance records are specific to an employee; adding employee_id FK enables joining to employee for employee details and eliminates any redundant employee attributes.',
-    `unit_id` BIGINT COMMENT 'Unique identifier for the restaurant unit associated with this tip compliance',
-    `adjustment_amount` DECIMAL(18,2) COMMENT 'Adjustment amount for tip_compliance',
-    `allocated_tips` DECIMAL(18,2) COMMENT 'The allocated tips attribute value for this tip compliance record in the workforce domain',
-    `allocated_tips_amount` DECIMAL(18,2) COMMENT 'The monetary or numeric amount for allocated tips in this tip compliance',
-    `base_wage_rate` DECIMAL(18,2) COMMENT 'Base hourly wage rate',
-    `cash_tips` DECIMAL(18,2) COMMENT 'The cash tips attribute value for this tip compliance record in the workforce domain',
-    `compliance_date` DATE COMMENT 'Date of tip compliance record',
-    `compliance_status` STRING COMMENT 'Compliance status for tip_compliance',
-    `created_at` TIMESTAMP COMMENT 'The date and time when the created event occurred for this tip compliance',
-    `created_timestamp` TIMESTAMP COMMENT 'The created timestamp attribute value for this tip compliance record in the workforce domain',
-    `credit_card_tips` DECIMAL(18,2) COMMENT 'The credit card tips attribute value for this tip compliance record in the workforce domain',
-    `currency_code` STRING COMMENT 'A standardized code representing the currency classification for this tip compliance',
-    `declared_tips` DECIMAL(18,2) COMMENT 'The declared tips attribute value for this tip compliance record in the workforce domain',
-    `declared_tips_amount` DECIMAL(18,2) COMMENT 'The monetary or numeric amount for declared tips in this tip compliance',
-    `effective_hourly_rate` DECIMAL(18,2) COMMENT 'Effective hourly rate including tips',
-    `hours_worked` DECIMAL(18,2) COMMENT 'Hours worked in period',
-    `is_compliant` BOOLEAN COMMENT 'Boolean indicator flag for is compliant status in this tip compliance',
-    `minimum_wage_gap` DECIMAL(18,2) COMMENT 'Minimum wage gap for tip_compliance',
-    `minimum_wage_shortfall` DECIMAL(18,2) COMMENT 'The minimum wage shortfall attribute value for this tip compliance record in the workforce domain',
-    `notes` STRING COMMENT 'Free-text notes field providing additional context for this tip compliance',
-    `pay_period_end` DECIMAL(18,2) COMMENT 'Pay period end for tip_compliance',
-    `pay_period_end_date` DATE COMMENT 'End of pay period',
-    `pay_period_start` DECIMAL(18,2) COMMENT 'Pay period start for tip_compliance',
-    `pay_period_start_date` DATE COMMENT 'Start of pay period',
-    `period_end` DATE COMMENT 'The period end attribute value for this tip compliance record in the workforce domain',
-    `period_end_date` DATE COMMENT 'The date and time when the period end event occurred for this tip compliance',
-    `period_start` DATE COMMENT 'The period start attribute value for this tip compliance record in the workforce domain',
-    `period_start_date` DATE COMMENT 'The date and time when the period start event occurred for this tip compliance',
-    `reported_tips` DECIMAL(18,2) COMMENT 'The reported tips attribute value for this tip compliance record in the workforce domain',
-    `reported_tips_amount` DECIMAL(18,2) COMMENT 'Reported tips amount for tip_compliance',
-    `reporting_period` STRING COMMENT 'The reporting period attribute value for this tip compliance record in the workforce domain',
-    `reporting_period_end` DATE COMMENT 'The reporting period end attribute value for this tip compliance record in the workforce domain',
-    `reporting_period_start` DATE COMMENT 'The reporting period start attribute value for this tip compliance record in the workforce domain',
-    `review_date` DATE COMMENT 'The date and time when the review event occurred for this tip compliance',
-    `reviewed_at` TIMESTAMP COMMENT 'The date and time when the reviewed event occurred for this tip compliance',
-    `reviewed_by` STRING COMMENT 'The reviewed by attribute value for this tip compliance record in the workforce domain',
-    `sales_amount` DECIMAL(18,2) COMMENT 'Total sales for the period',
-    `shortfall_amount` DECIMAL(18,2) COMMENT 'The monetary or numeric amount for shortfall in this tip compliance',
-    `tip_credit` DECIMAL(18,2) COMMENT 'The tip credit attribute value for this tip compliance record in the workforce domain',
-    `tip_credit_amount` DECIMAL(18,2) COMMENT 'Tip credit amount for tip_compliance',
-    `tip_pool_contribution` DECIMAL(18,2) COMMENT 'Amount contributed to tip pool',
-    `tip_pool_distribution` DECIMAL(18,2) COMMENT 'Amount received from tip pool',
-    `tip_rate_pct` DECIMAL(18,2) COMMENT 'Tip rate as percentage of sales',
-    `total_tips_allocated` DECIMAL(18,2) COMMENT 'The total tips allocated attribute value for this tip compliance record in the workforce domain',
-    `total_tips_reported` DECIMAL(18,2) COMMENT 'Total tips reported by employee',
-    `updated_at` TIMESTAMP COMMENT 'The date and time when the updated event occurred for this tip compliance',
-    `updated_timestamp` TIMESTAMP COMMENT 'The updated timestamp attribute value for this tip compliance record in the workforce domain',
+    `payroll_record_id` BIGINT COMMENT 'Foreign key linking to workforce.payroll_record. Business justification: Tip compliance records track tip pooling, tip credits, and tip sharing arrangements that directly affect payroll calculations. Linking tip_compliance.payroll_record_id to payroll_record creates a dire',
+    `payroll_group_id` BIGINT COMMENT 'Foreign key linking to workforce.payroll_group. Business justification: Tip pooling arrangements and tip credit elections are governed at the payroll group level, as different groups may have different tip policies (e.g., tipped vs. non-tipped employee classes). Adding ti',
     CONSTRAINT pk_tip_compliance PRIMARY KEY(`tip_compliance_id`)
 ) COMMENT 'Tracks tip pooling arrangements, tip credit elections, tip sharing ratios, and employee-level tip declarations required for DOL FLSA §3(m) compliance. Captures tip pool participant roster, contribution percentages, distribution method (hours-based, points-based), tip credit amount claimed per pay period, employee tip declaration forms, and audit trail for tip pool changes. Supports compliance with federal and state tip credit regulations, tip pooling legality verification (front-of-house vs back-of-house eligibility per 2021 DOL final rule), and provides evidence for DOL Wage & Hour Division audits.';
 
 CREATE OR REPLACE TABLE `vibe_restaurants_v1`.`workforce`.`scheduling_template` (
     `scheduling_template_id` BIGINT COMMENT 'Primary key for scheduling_template',
     `base_scheduling_template_id` BIGINT COMMENT 'Self-referencing FK on scheduling_template (base_scheduling_template_id)',
+    `unit_id` BIGINT COMMENT 'add column restaurant_unit_id (BIGINT) with FK to restaurant.unit.unit_id - scheduling templates should be assignable to specific units',
+    `workforce_department_id` BIGINT COMMENT 'Foreign key linking to workforce.workforce_department. Business justification: Scheduling templates are designed for specific departments (e.g., a BOH template differs from an FOH template). The scheduling_template table has role_applicability (STRING) but no department_id FK. A',
     `daypart` STRING COMMENT 'Primary daypart(s) the template applies to.',
     `default_shift_length_minutes` STRING COMMENT 'Standard length of a shift defined by the template, expressed in minutes.',
     `scheduling_template_description` STRING COMMENT 'Detailed free‑text description of the scheduling templates purpose and usage.',
@@ -591,10 +564,11 @@ CREATE OR REPLACE TABLE `vibe_restaurants_v1`.`workforce`.`workforce_department`
     `employee_id` BIGINT COMMENT 'Identifier of the employee who manages the department.',
     `parent_department_id` BIGINT COMMENT 'Identifier of the parent department in the organizational hierarchy.',
     `unit_id` BIGINT COMMENT 'Identifier of the restaurant location where the department operates.',
+    `department_id` BIGINT COMMENT '',
     `budget_amount` DECIMAL(18,2) COMMENT 'Annual budget allocated to the department.',
-    `budget_currency` DECIMAL(18,2) COMMENT 'Three-letter ISO 4217 currency code for the department budget.',
+    `budget_currency` STRING COMMENT 'Three-letter ISO 4217 currency code for the department budget.',
     `compliance_status` STRING COMMENT 'Current compliance status of the department with regulatory requirements.',
-    `cost_center_code` DECIMAL(18,2) COMMENT 'Financial cost center code associated with the department.',
+    `cost_center_code` STRING COMMENT 'Financial cost center code associated with the department.',
     `created_timestamp` TIMESTAMP COMMENT 'Timestamp when the department record was first created in the system.',
     `department_type` STRING COMMENT 'Category of department indicating its functional area (e.g., Front of House, Back of House).',
     `workforce_department_description` STRING COMMENT 'Detailed description of the departments purpose and responsibilities.',
@@ -606,7 +580,7 @@ CREATE OR REPLACE TABLE `vibe_restaurants_v1`.`workforce`.`workforce_department`
     `workforce_department_status` STRING COMMENT 'Current lifecycle status of the department.',
     `updated_timestamp` TIMESTAMP COMMENT 'Timestamp of the most recent update to the department record.',
     CONSTRAINT pk_workforce_department PRIMARY KEY(`workforce_department_id`)
-) COMMENT 'Workforce departments for labor scheduling, payroll allocation, and HR organizational structure. [SSOT: canonical source is restaurant.department]';
+) COMMENT 'Master reference table for department. Referenced by department_id.';
 
 CREATE OR REPLACE TABLE `vibe_restaurants_v1`.`workforce`.`payroll_run` (
     `payroll_run_id` BIGINT COMMENT 'Primary key for payroll_run',
@@ -617,18 +591,18 @@ CREATE OR REPLACE TABLE `vibe_restaurants_v1`.`workforce`.`payroll_run` (
     `approval_status` STRING COMMENT 'Approval status of the payroll run.',
     `approval_timestamp` TIMESTAMP COMMENT 'Timestamp when the payroll run was approved.',
     `batch_number` STRING COMMENT 'Batch number assigned by the external payroll processor.',
-    `cost_center_code` DECIMAL(18,2) COMMENT 'Business cost center code linked to the payroll run.',
+    `cost_center_code` STRING COMMENT 'Business cost center code linked to the payroll run.',
     `currency_code` STRING COMMENT 'Three-letter ISO 4217 currency code for payroll amounts.',
     `deductions_amount` DECIMAL(18,2) COMMENT 'Total amount of taxes, benefits, and other deductions for the payroll run.',
-    `payroll_run_description` DECIMAL(18,2) COMMENT 'Free-text notes or description about the payroll run.',
+    `payroll_run_description` STRING COMMENT 'Free-text notes or description about the payroll run.',
     `fiscal_period` STRING COMMENT 'Fiscal period (e.g., Q1, Q2) for the payroll run.',
     `gross_amount` DECIMAL(18,2) COMMENT 'Total gross payroll amount before any deductions.',
     `is_finalized` BOOLEAN COMMENT 'Indicates whether the payroll run has been finalized and posted to the payroll ledger.',
     `net_amount` DECIMAL(18,2) COMMENT 'Net payroll amount after deductions.',
-    `pay_cycle` DECIMAL(18,2) COMMENT 'Frequency at which employees are paid for this run.',
+    `pay_cycle` STRING COMMENT 'Frequency at which employees are paid for this run.',
     `pay_period_end_date` DATE COMMENT 'Last calendar date of the pay period covered by the payroll run.',
     `pay_period_start_date` DATE COMMENT 'First calendar date of the pay period covered by the payroll run.',
-    `payroll_type` DECIMAL(18,2) COMMENT 'Category of payroll processing for the run.',
+    `payroll_type` STRING COMMENT 'Category of payroll processing for the run.',
     `record_audit_created` TIMESTAMP COMMENT 'Timestamp when the payroll run record was first created in the data lake.',
     `record_audit_updated` TIMESTAMP COMMENT 'Timestamp of the most recent update to the payroll run record.',
     `run_number` STRING COMMENT 'External reference number assigned by the payroll system.',
@@ -641,10 +615,11 @@ CREATE OR REPLACE TABLE `vibe_restaurants_v1`.`workforce`.`payroll_run` (
 
 CREATE OR REPLACE TABLE `vibe_restaurants_v1`.`workforce`.`payroll_group` (
     `payroll_group_id` BIGINT COMMENT 'Primary key for payroll_group',
+    `benefit_plan_id` BIGINT COMMENT 'Identifier of the default benefit plan applied to employees in this payroll group.',
+    `legal_entity_id` BIGINT COMMENT 'add column legal_entity_id (BIGINT) with FK to finance.legal_entity.legal_entity_id - payroll groups must be scoped to legal entities for tax and compliance',
     `parent_payroll_group_id` BIGINT COMMENT 'Self-referencing FK on payroll_group (parent_payroll_group_id)',
-    `cost_center_code` DECIMAL(18,2) COMMENT 'Internal cost center associated with the payroll group for financial allocation.',
+    `cost_center_code` STRING COMMENT 'Internal cost center associated with the payroll group for financial allocation.',
     `created_timestamp` TIMESTAMP COMMENT 'Timestamp when the payroll group record was created in the system.',
-    `default_benefit_plan_code` BIGINT COMMENT 'Identifier of the default benefit plan applied to employees in this payroll group.',
     `default_tax_rate` DECIMAL(18,2) COMMENT 'Standard tax withholding rate applied to payrolls in this group.',
     `payroll_group_description` STRING COMMENT 'Detailed description of the payroll group purpose and scope.',
     `effective_from` DATE COMMENT 'Date when the payroll group becomes effective.',
@@ -655,66 +630,185 @@ CREATE OR REPLACE TABLE `vibe_restaurants_v1`.`workforce`.`payroll_group` (
     `group_manager_phone` STRING COMMENT 'Contact phone number of the payroll group manager.',
     `group_name` STRING COMMENT 'Descriptive name of the payroll group used in reporting and payroll processing.',
     `group_type` STRING COMMENT 'Classification of the payroll group based on employee compensation model.',
-    `payroll_currency_code` DECIMAL(18,2) COMMENT 'ISO 4217 currency code for payroll payments.',
-    `payroll_frequency` DECIMAL(18,2) COMMENT 'Regular interval at which payroll is processed for this group.',
+    `payroll_currency_code` STRING COMMENT 'ISO 4217 currency code for payroll payments.',
+    `payroll_frequency` STRING COMMENT 'Regular interval at which payroll is processed for this group.',
     `payroll_group_status` STRING COMMENT 'Current lifecycle status of the payroll group.',
     `updated_timestamp` TIMESTAMP COMMENT 'Timestamp of the most recent update to the payroll group record.',
     CONSTRAINT pk_payroll_group PRIMARY KEY(`payroll_group_id`)
 ) COMMENT 'Master reference table for payroll_group. Referenced by payroll_group_id.';
 
+CREATE OR REPLACE TABLE `vibe_restaurants_v1`.`workforce`.`benefit_plan` (
+    `benefit_plan_id` BIGINT COMMENT 'Primary key for benefit_plan',
+    `workday_benefit_plan_id` BIGINT COMMENT 'Unique identifier of this benefit plan in the Workday HCM system of record. Used for system integration, enrollment synchronization, and payroll deduction mapping.',
+    `default_benefit_plan_id` BIGINT COMMENT 'Self-referencing FK on benefit_plan (default_benefit_plan_id)',
+    `aca_minimum_essential_coverage` BOOLEAN COMMENT 'Indicates whether this plan qualifies as Minimum Essential Coverage (MEC) under the ACA, satisfying the individual mandate and employer shared responsibility requirements.',
+    `aca_minimum_value` BOOLEAN COMMENT 'Indicates whether this health plan meets the ACA minimum value standard (covers at least 60% of total allowed costs). Required for ACA employer mandate compliance and Form 1095-C reporting.',
+    `annual_deductible_amount` DECIMAL(18,2) COMMENT 'Dollar amount an employee must pay out-of-pocket for covered services before the insurance carrier begins paying. Applicable primarily to medical and dental plans.',
+    `auto_enroll_default_contribution_pct` DECIMAL(18,2) COMMENT 'Default contribution percentage applied when an employee is auto-enrolled in a retirement plan. Null for non-auto-enroll plans or non-retirement plan types.',
+    `auto_enroll_eligible` BOOLEAN COMMENT 'Indicates whether eligible employees are automatically enrolled in this plan upon meeting eligibility criteria (e.g., 401(k) auto-enrollment). Employees may opt out after automatic enrollment.',
+    `carrier_name` STRING COMMENT 'Name of the insurance carrier or benefits administrator underwriting or administering this plan (e.g., Aetna, UnitedHealthcare, Fidelity, Principal).',
+    `carrier_plan_code` STRING COMMENT 'The insurance carriers own identifier for this plan, used for EDI 834 enrollment transmissions, claims adjudication, and carrier reconciliation.',
+    `cobra_eligible` BOOLEAN COMMENT 'Indicates whether this plan is subject to COBRA continuation coverage requirements, allowing terminated or qualifying-event-affected employees to continue coverage at their own cost.',
+    `coverage_tier` STRING COMMENT 'Enrollment tier defining which dependents are covered under this plan election. Drives premium contribution calculations and payroll deduction amounts.',
+    `created_timestamp` TIMESTAMP COMMENT 'Timestamp when this benefit plan record was first created in the data platform. Used for audit trail and data lineage tracking.',
+    `currency_code` STRING COMMENT 'ISO 4217 three-letter currency code for all monetary amounts on this benefit plan record (e.g., USD). Supports multi-currency operations for international restaurant brands.',
+    `deduction_frequency` STRING COMMENT 'Frequency at which employee premium contributions are deducted from payroll. Must align with the restaurants payroll cycle configuration in Workday.',
+    `dependent_coverage_allowed` BOOLEAN COMMENT 'Indicates whether dependents (spouse, domestic partner, children) may be enrolled under this benefit plan. ACA requires dependent coverage up to age 26 for qualifying health plans.',
+    `effective_date` DATE COMMENT 'Date on which the benefit plan becomes active and available for employee enrollment. Marks the start of the plan year or mid-year amendment.',
+    `eligibility_waiting_period_days` STRING COMMENT 'Number of days a new employee must be employed before becoming eligible to enroll in this benefit plan. ACA limits medical waiting periods to 90 days for qualifying health plans.',
+    `eligible_employee_class` STRING COMMENT 'Employee classification(s) eligible for this plan (e.g., full-time, part-time, salaried, hourly, manager, crew). Drives enrollment eligibility rules in Workday HCM. [ENUM-REF-CANDIDATE: full_time|part_time|salaried|hourly|manager|crew|seasonal|temporary — promote to reference product]',
+    `employee_contribution_amount` DECIMAL(18,2) COMMENT 'Fixed dollar amount deducted from the employees paycheck per pay period for this benefit plan at the applicable coverage tier. Drives payroll deduction setup in Workday.',
+    `employer_contribution_amount` DECIMAL(18,2) COMMENT 'Fixed dollar amount the employer contributes per pay period toward the cost of this benefit plan per enrolled employee at the applicable coverage tier. Used in labor cost modeling and total compensation reporting.',
+    `employer_contribution_pct` DECIMAL(18,2) COMMENT 'Percentage of the total premium cost covered by the employer. Used when employer contribution is expressed as a percentage rather than a fixed amount (e.g., 80% of premium). Mutually informative with employer_contribution_amount.',
+    `erisa_plan_number` STRING COMMENT 'Three-digit plan number assigned by the plan sponsor for DOL Form 5500 filing purposes. Required for ERISA-covered welfare and pension benefit plans.',
+    `expiration_date` DATE COMMENT 'Date on which the benefit plan ceases to be available. Null for open-ended plans. Used to manage plan year transitions and sunset legacy offerings.',
+    `fsa_annual_limit_amount` DECIMAL(18,2) COMMENT 'Maximum annual employee contribution allowed to a Flexible Spending Account (FSA) under this plan. IRS sets the annual limit; this field captures the plan-specific limit which may be lower.',
+    `funding_type` STRING COMMENT 'Indicates how the plan is financially structured. Fully insured plans transfer risk to the carrier; self-funded plans retain risk with the employer; level-funded plans blend fixed monthly costs with self-insurance.',
+    `geographic_scope` STRING COMMENT 'Geographic scope of plan availability. National plans are available to all eligible employees; regional or state plans may be offered in specific markets due to carrier network or regulatory differences.',
+    `group_number` STRING COMMENT 'Employer group number assigned by the insurance carrier, printed on member ID cards and used for claims processing and eligibility verification.',
+    `hsa_employer_contribution_amount` DECIMAL(18,2) COMMENT 'Annual dollar amount the employer seeds into the employees Health Savings Account (HSA) for HSA-compatible High Deductible Health Plans (HDHPs). Null for non-HDHP plans.',
+    `minimum_hours_per_week` DECIMAL(18,2) COMMENT 'Minimum average weekly hours an employee must work to be eligible for this benefit plan. Critical for restaurant operations where part-time and variable-hour employees are common. ACA defines full-time as 30+ hours/week.',
+    `notes` STRING COMMENT 'Internal administrative notes regarding plan amendments, carrier negotiations, compliance exceptions, or operational considerations. Not displayed to employees.',
+    `open_enrollment_end_date` DATE COMMENT 'Last day of the annual open enrollment window. Elections made after this date require a qualifying life event.',
+    `open_enrollment_start_date` DATE COMMENT 'First day of the annual open enrollment window during which employees may elect, change, or waive coverage under this plan.',
+    `out_of_pocket_max_amount` DECIMAL(18,2) COMMENT 'Maximum dollar amount an employee pays in a plan year before the carrier covers 100% of covered in-network costs. ACA-mandated limit for qualifying health plans.',
+    `plan_code` STRING COMMENT 'Externally-known alphanumeric code uniquely identifying the benefit plan, used in HR systems, payroll integrations, and employee communications (e.g., MED-PPO-2024, DEN-BASIC).',
+    `plan_description` STRING COMMENT 'Free-text description of the benefit plan summarizing key features, coverage highlights, and intended employee population. Used in HR communications and enrollment portals.',
+    `plan_document_url` STRING COMMENT 'URL or document management system path to the official Summary Plan Description (SPD) or plan document. ERISA requires SPDs be provided to participants.',
+    `plan_name` STRING COMMENT 'Human-readable name of the benefit plan as displayed to employees during open enrollment and on pay stubs (e.g., PPO Medical Gold, Basic Dental, 401(k) Standard).',
+    `plan_status` STRING COMMENT 'Current lifecycle state of the benefit plan. Active plans are available for enrollment; discontinued plans are closed to new enrollees but may retain existing participants.',
+    `plan_subtype` STRING COMMENT 'Further classification within the plan type, distinguishing plan design variants (e.g., PPO, HMO, HDHP for medical; term vs. whole for life; traditional vs. Roth for retirement). [ENUM-REF-CANDIDATE: ppo|hmo|hdhp|epo|pos|term|whole|traditional|roth|basic|enhanced — promote to reference product]',
+    `plan_type` STRING COMMENT 'Category of benefit coverage offered by this plan. Drives enrollment eligibility rules, payroll deduction codes, and regulatory reporting. [ENUM-REF-CANDIDATE: medical|dental|vision|life|disability|retirement|fsa|hsa|supplemental|commuter|legal|pet — promote to reference product]',
+    `plan_year_end_date` DATE COMMENT 'Last day of the benefit plan year. Marks the close of the annual benefit period for deductible accumulation, FSA use-or-lose deadlines, and ACA reporting.',
+    `plan_year_start_date` DATE COMMENT 'First day of the benefit plan year. Determines the annual reset of deductibles, out-of-pocket maximums, FSA/HSA contribution limits, and ACA reporting periods.',
+    `planday_integration_code` STRING COMMENT 'Reference code used to link this benefit plan to Planday scheduling and labor management system for labor cost allocation and benefit-eligible hours tracking.',
+    `pretax_eligible` BOOLEAN COMMENT 'Indicates whether employee contributions to this plan are deducted on a pre-tax basis under a Section 125 Cafeteria Plan, reducing the employees taxable income.',
+    `retirement_match_cap_pct` DECIMAL(18,2) COMMENT 'Maximum percentage of employee compensation up to which the employer match applies for retirement plans (e.g., employer matches 50% of contributions up to 6% of salary). Null for non-retirement plans.',
+    `retirement_match_pct` DECIMAL(18,2) COMMENT 'Percentage of employee 401(k) or retirement contributions matched by the employer, up to the match cap. Applicable only to retirement plan types. Null for non-retirement plans.',
+    `state_code` STRING COMMENT 'Two-letter US state code for state-specific benefit plans. Null for national plans. Used to apply state-mandated benefit requirements and carrier network restrictions.',
+    `summary_plan_description_version` STRING COMMENT 'Version identifier of the Summary Plan Description document associated with this plan, used to track amendments and ensure employees receive current plan information.',
+    `updated_timestamp` TIMESTAMP COMMENT 'Timestamp when this benefit plan record was last modified. Used to detect plan amendments, contribution rate changes, and eligibility rule updates.',
+    `vesting_period_months` STRING COMMENT 'Total number of months required for full vesting of employer contributions under cliff or graded vesting schedules. Null for immediate vesting plans.',
+    `vesting_schedule_type` STRING COMMENT 'Type of vesting schedule governing when employer contributions to retirement or equity plans become fully owned by the employee. Immediate vesting grants full ownership at enrollment; cliff and graded schedules apply time-based milestones.',
+    CONSTRAINT pk_benefit_plan PRIMARY KEY(`benefit_plan_id`)
+) COMMENT 'Master reference table for benefit_plan. Referenced by default_benefit_plan_id.';
+
+CREATE OR REPLACE TABLE `vibe_restaurants_v1`.`workforce`.`department` (
+    `department_id` BIGINT COMMENT 'Primary key for department',
+    `franchisee_id` BIGINT COMMENT 'Identifier of the franchise to which the department belongs (null for company‑owned).',
+    `parent_department_id` BIGINT COMMENT 'Identifier of the immediate parent department in the organizational hierarchy.',
+    `address_line1` STRING COMMENT 'Primary street address of the department.',
+    `address_line2` STRING COMMENT 'Secondary address information (suite, floor, etc.).',
+    `area_sqft` DECIMAL(18,2) COMMENT 'Square‑footage occupied by the department.',
+    `average_service_time_minutes` STRING COMMENT 'Average time in minutes to complete a core service task for the department.',
+    `budget_amount` DECIMAL(18,2) COMMENT 'Annual budget allocated to the department (in USD).',
+    `city` STRING COMMENT 'City in which the department is situated.',
+    `classification` STRING COMMENT 'Higher‑level classification used for reporting and cost allocation.',
+    `closing_date` DATE COMMENT 'Date the department was closed (null if still operating).',
+    `cost_center_code` STRING COMMENT 'Internal cost‑center identifier used for financial reporting.',
+    `country_code` STRING COMMENT 'ISO 3166‑1 alpha‑3 country code where the department is located.',
+    `created_timestamp` TIMESTAMP COMMENT 'Timestamp when the department record was first created in the system.',
+    `department_description` STRING COMMENT 'Free‑form text describing the departments purpose and responsibilities.',
+    `effective_from` DATE COMMENT 'Date when the department became operational.',
+    `effective_until` DATE COMMENT 'Date when the department ceased operation (null if still active).',
+    `email` STRING COMMENT 'Primary email address for department communications.',
+    `floor_number` STRING COMMENT 'Physical floor on which the department is located.',
+    `headcount` STRING COMMENT 'Number of full‑time equivalent staff assigned to the department.',
+    `is_franchise` BOOLEAN COMMENT 'True if the department belongs to a franchised unit.',
+    `is_primary` BOOLEAN COMMENT 'Indicates whether this department is the primary unit for its location.',
+    `department_name` STRING COMMENT 'Human‑readable name of the department.',
+    `opening_date` DATE COMMENT 'Date the department first opened for business.',
+    `operational_hours` STRING COMMENT 'Standard daily operating hours expressed as HH:MM‑HH:MM.',
+    `phone_number` STRING COMMENT 'Primary contact telephone number for the department.',
+    `postal_code` STRING COMMENT 'Postal code for the departments address.',
+    `region_code` STRING COMMENT 'Three‑letter code representing the geographic region.',
+    `service_level` STRING COMMENT 'Level of service the department is expected to deliver.',
+    `shift_schedule` STRING COMMENT 'Primary shift schedule pattern used by the department.',
+    `department_status` STRING COMMENT 'Current lifecycle status of the department.',
+    `turnover_rate` DECIMAL(18,2) COMMENT 'Annual percentage of staff turnover in the department.',
+    `department_type` STRING COMMENT 'Categorizes the department by its functional area.',
+    `updated_timestamp` TIMESTAMP COMMENT 'Timestamp of the most recent update to the department record.',
+    CONSTRAINT pk_department PRIMARY KEY(`department_id`)
+) COMMENT 'Master reference table for department. Referenced by department_id.';
+
 -- ========= FOREIGN KEYS =========
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`employee` ADD CONSTRAINT `fk_workforce_employee_payroll_group_id` FOREIGN KEY (`payroll_group_id`) REFERENCES `vibe_restaurants_v1`.`workforce`.`payroll_group`(`payroll_group_id`);
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`employee` ADD CONSTRAINT `fk_workforce_employee_manager_employee_id` FOREIGN KEY (`manager_employee_id`) REFERENCES `vibe_restaurants_v1`.`workforce`.`employee`(`employee_id`);
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`position` ADD CONSTRAINT `fk_workforce_position_workforce_department_id` FOREIGN KEY (`workforce_department_id`) REFERENCES `vibe_restaurants_v1`.`workforce`.`workforce_department`(`workforce_department_id`);
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`position` ADD CONSTRAINT `fk_workforce_position_reports_to_position_id` FOREIGN KEY (`reports_to_position_id`) REFERENCES `vibe_restaurants_v1`.`workforce`.`position`(`position_id`);
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`shift` ADD CONSTRAINT `fk_workforce_shift_employee_id` FOREIGN KEY (`employee_id`) REFERENCES `vibe_restaurants_v1`.`workforce`.`employee`(`employee_id`);
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`shift` ADD CONSTRAINT `fk_workforce_shift_primary_shift_employee_id` FOREIGN KEY (`primary_shift_employee_id`) REFERENCES `vibe_restaurants_v1`.`workforce`.`employee`(`employee_id`);
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`shift` ADD CONSTRAINT `fk_workforce_shift_position_id` FOREIGN KEY (`position_id`) REFERENCES `vibe_restaurants_v1`.`workforce`.`position`(`position_id`);
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`schedule` ADD CONSTRAINT `fk_workforce_schedule_employee_id` FOREIGN KEY (`employee_id`) REFERENCES `vibe_restaurants_v1`.`workforce`.`employee`(`employee_id`);
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`schedule` ADD CONSTRAINT `fk_workforce_schedule_schedule_manager_employee_id` FOREIGN KEY (`schedule_manager_employee_id`) REFERENCES `vibe_restaurants_v1`.`workforce`.`employee`(`employee_id`);
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`schedule` ADD CONSTRAINT `fk_workforce_schedule_shift_id` FOREIGN KEY (`shift_id`) REFERENCES `vibe_restaurants_v1`.`workforce`.`shift`(`shift_id`);
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`time_entry` ADD CONSTRAINT `fk_workforce_time_entry_payroll_record_id` FOREIGN KEY (`payroll_record_id`) REFERENCES `vibe_restaurants_v1`.`workforce`.`payroll_record`(`payroll_record_id`);
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`time_entry` ADD CONSTRAINT `fk_workforce_time_entry_employee_id` FOREIGN KEY (`employee_id`) REFERENCES `vibe_restaurants_v1`.`workforce`.`employee`(`employee_id`);
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`time_entry` ADD CONSTRAINT `fk_workforce_time_entry_shift_id` FOREIGN KEY (`shift_id`) REFERENCES `vibe_restaurants_v1`.`workforce`.`shift`(`shift_id`);
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`time_entry` ADD CONSTRAINT `fk_workforce_time_entry_time_employee_id` FOREIGN KEY (`time_employee_id`) REFERENCES `vibe_restaurants_v1`.`workforce`.`employee`(`employee_id`);
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`time_entry` ADD CONSTRAINT `fk_workforce_time_entry_position_id` FOREIGN KEY (`position_id`) REFERENCES `vibe_restaurants_v1`.`workforce`.`position`(`position_id`);
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`payroll_record` ADD CONSTRAINT `fk_workforce_payroll_record_department_id` FOREIGN KEY (`department_id`) REFERENCES `vibe_restaurants_v1`.`workforce`.`department`(`department_id`);
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`payroll_record` ADD CONSTRAINT `fk_workforce_payroll_record_employee_id` FOREIGN KEY (`employee_id`) REFERENCES `vibe_restaurants_v1`.`workforce`.`employee`(`employee_id`);
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`payroll_record` ADD CONSTRAINT `fk_workforce_payroll_record_payroll_group_id` FOREIGN KEY (`payroll_group_id`) REFERENCES `vibe_restaurants_v1`.`workforce`.`payroll_group`(`payroll_group_id`);
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`payroll_record` ADD CONSTRAINT `fk_workforce_payroll_record_payroll_run_id` FOREIGN KEY (`payroll_run_id`) REFERENCES `vibe_restaurants_v1`.`workforce`.`payroll_run`(`payroll_run_id`);
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`recruitment` ADD CONSTRAINT `fk_workforce_recruitment_employee_id` FOREIGN KEY (`employee_id`) REFERENCES `vibe_restaurants_v1`.`workforce`.`employee`(`employee_id`);
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`recruitment` ADD CONSTRAINT `fk_workforce_recruitment_primary_recruitment_employee_id` FOREIGN KEY (`primary_recruitment_employee_id`) REFERENCES `vibe_restaurants_v1`.`workforce`.`employee`(`employee_id`);
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`recruitment` ADD CONSTRAINT `fk_workforce_recruitment_position_id` FOREIGN KEY (`position_id`) REFERENCES `vibe_restaurants_v1`.`workforce`.`position`(`position_id`);
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`recruitment` ADD CONSTRAINT `fk_workforce_recruitment_workforce_department_id` FOREIGN KEY (`workforce_department_id`) REFERENCES `vibe_restaurants_v1`.`workforce`.`workforce_department`(`workforce_department_id`);
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`onboarding` ADD CONSTRAINT `fk_workforce_onboarding_scheduling_template_id` FOREIGN KEY (`scheduling_template_id`) REFERENCES `vibe_restaurants_v1`.`workforce`.`scheduling_template`(`scheduling_template_id`);
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`onboarding` ADD CONSTRAINT `fk_workforce_onboarding_workforce_department_id` FOREIGN KEY (`workforce_department_id`) REFERENCES `vibe_restaurants_v1`.`workforce`.`workforce_department`(`workforce_department_id`);
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`onboarding` ADD CONSTRAINT `fk_workforce_onboarding_employee_id` FOREIGN KEY (`employee_id`) REFERENCES `vibe_restaurants_v1`.`workforce`.`employee`(`employee_id`);
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`onboarding` ADD CONSTRAINT `fk_workforce_onboarding_manager_employee_id` FOREIGN KEY (`manager_employee_id`) REFERENCES `vibe_restaurants_v1`.`workforce`.`employee`(`employee_id`);
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`onboarding` ADD CONSTRAINT `fk_workforce_onboarding_payroll_group_id` FOREIGN KEY (`payroll_group_id`) REFERENCES `vibe_restaurants_v1`.`workforce`.`payroll_group`(`payroll_group_id`);
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`onboarding` ADD CONSTRAINT `fk_workforce_onboarding_position_id` FOREIGN KEY (`position_id`) REFERENCES `vibe_restaurants_v1`.`workforce`.`position`(`position_id`);
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`onboarding` ADD CONSTRAINT `fk_workforce_onboarding_primary_onboarding_assigned_buddy_employee_id` FOREIGN KEY (`primary_onboarding_assigned_buddy_employee_id`) REFERENCES `vibe_restaurants_v1`.`workforce`.`employee`(`employee_id`);
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`onboarding` ADD CONSTRAINT `fk_workforce_onboarding_tertiary_onboarding_manager_employee_id` FOREIGN KEY (`tertiary_onboarding_manager_employee_id`) REFERENCES `vibe_restaurants_v1`.`workforce`.`employee`(`employee_id`);
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`certification` ADD CONSTRAINT `fk_workforce_certification_employee_id` FOREIGN KEY (`employee_id`) REFERENCES `vibe_restaurants_v1`.`workforce`.`employee`(`employee_id`);
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`certification` ADD CONSTRAINT `fk_workforce_certification_position_id` FOREIGN KEY (`position_id`) REFERENCES `vibe_restaurants_v1`.`workforce`.`position`(`position_id`);
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`training_completion` ADD CONSTRAINT `fk_workforce_training_completion_certification_id` FOREIGN KEY (`certification_id`) REFERENCES `vibe_restaurants_v1`.`workforce`.`certification`(`certification_id`);
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`training_completion` ADD CONSTRAINT `fk_workforce_training_completion_employee_id` FOREIGN KEY (`employee_id`) REFERENCES `vibe_restaurants_v1`.`workforce`.`employee`(`employee_id`);
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`training_completion` ADD CONSTRAINT `fk_workforce_training_completion_shift_id` FOREIGN KEY (`shift_id`) REFERENCES `vibe_restaurants_v1`.`workforce`.`shift`(`shift_id`);
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`training_completion` ADD CONSTRAINT `fk_workforce_training_completion_training_employee_id` FOREIGN KEY (`training_employee_id`) REFERENCES `vibe_restaurants_v1`.`workforce`.`employee`(`employee_id`);
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`performance_review` ADD CONSTRAINT `fk_workforce_performance_review_employee_id` FOREIGN KEY (`employee_id`) REFERENCES `vibe_restaurants_v1`.`workforce`.`employee`(`employee_id`);
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`performance_review` ADD CONSTRAINT `fk_workforce_performance_review_primary_performance_employee_id` FOREIGN KEY (`primary_performance_employee_id`) REFERENCES `vibe_restaurants_v1`.`workforce`.`employee`(`employee_id`);
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`performance_review` ADD CONSTRAINT `fk_workforce_performance_review_position_id` FOREIGN KEY (`position_id`) REFERENCES `vibe_restaurants_v1`.`workforce`.`position`(`position_id`);
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`performance_review` ADD CONSTRAINT `fk_workforce_performance_review_reviewer_employee_id` FOREIGN KEY (`reviewer_employee_id`) REFERENCES `vibe_restaurants_v1`.`workforce`.`employee`(`employee_id`);
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`leave_request` ADD CONSTRAINT `fk_workforce_leave_request_employee_id` FOREIGN KEY (`employee_id`) REFERENCES `vibe_restaurants_v1`.`workforce`.`employee`(`employee_id`);
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`leave_request` ADD CONSTRAINT `fk_workforce_leave_request_payroll_record_id` FOREIGN KEY (`payroll_record_id`) REFERENCES `vibe_restaurants_v1`.`workforce`.`payroll_record`(`payroll_record_id`);
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`leave_request` ADD CONSTRAINT `fk_workforce_leave_request_primary_leave_employee_id` FOREIGN KEY (`primary_leave_employee_id`) REFERENCES `vibe_restaurants_v1`.`workforce`.`employee`(`employee_id`);
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`labor_violation` ADD CONSTRAINT `fk_workforce_labor_violation_employee_id` FOREIGN KEY (`employee_id`) REFERENCES `vibe_restaurants_v1`.`workforce`.`employee`(`employee_id`);
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`labor_violation` ADD CONSTRAINT `fk_workforce_labor_violation_shift_id` FOREIGN KEY (`shift_id`) REFERENCES `vibe_restaurants_v1`.`workforce`.`shift`(`shift_id`);
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`labor_budget` ADD CONSTRAINT `fk_workforce_labor_budget_workforce_department_id` FOREIGN KEY (`workforce_department_id`) REFERENCES `vibe_restaurants_v1`.`workforce`.`workforce_department`(`workforce_department_id`);
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`tip_compliance` ADD CONSTRAINT `fk_workforce_tip_compliance_corrected_tip_compliance_id` FOREIGN KEY (`corrected_tip_compliance_id`) REFERENCES `vibe_restaurants_v1`.`workforce`.`tip_compliance`(`tip_compliance_id`);
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`tip_compliance` ADD CONSTRAINT `fk_workforce_tip_compliance_employee_id` FOREIGN KEY (`employee_id`) REFERENCES `vibe_restaurants_v1`.`workforce`.`employee`(`employee_id`);
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`tip_compliance` ADD CONSTRAINT `fk_workforce_tip_compliance_payroll_record_id` FOREIGN KEY (`payroll_record_id`) REFERENCES `vibe_restaurants_v1`.`workforce`.`payroll_record`(`payroll_record_id`);
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`tip_compliance` ADD CONSTRAINT `fk_workforce_tip_compliance_payroll_group_id` FOREIGN KEY (`payroll_group_id`) REFERENCES `vibe_restaurants_v1`.`workforce`.`payroll_group`(`payroll_group_id`);
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`scheduling_template` ADD CONSTRAINT `fk_workforce_scheduling_template_base_scheduling_template_id` FOREIGN KEY (`base_scheduling_template_id`) REFERENCES `vibe_restaurants_v1`.`workforce`.`scheduling_template`(`scheduling_template_id`);
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`scheduling_template` ADD CONSTRAINT `fk_workforce_scheduling_template_workforce_department_id` FOREIGN KEY (`workforce_department_id`) REFERENCES `vibe_restaurants_v1`.`workforce`.`workforce_department`(`workforce_department_id`);
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`workforce_department` ADD CONSTRAINT `fk_workforce_workforce_department_employee_id` FOREIGN KEY (`employee_id`) REFERENCES `vibe_restaurants_v1`.`workforce`.`employee`(`employee_id`);
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`workforce_department` ADD CONSTRAINT `fk_workforce_workforce_department_parent_department_id` FOREIGN KEY (`parent_department_id`) REFERENCES `vibe_restaurants_v1`.`workforce`.`workforce_department`(`workforce_department_id`);
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`workforce_department` ADD CONSTRAINT `fk_workforce_workforce_department_department_id` FOREIGN KEY (`department_id`) REFERENCES `vibe_restaurants_v1`.`workforce`.`department`(`department_id`);
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`payroll_run` ADD CONSTRAINT `fk_workforce_payroll_run_employee_id` FOREIGN KEY (`employee_id`) REFERENCES `vibe_restaurants_v1`.`workforce`.`employee`(`employee_id`);
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`payroll_run` ADD CONSTRAINT `fk_workforce_payroll_run_payroll_group_id` FOREIGN KEY (`payroll_group_id`) REFERENCES `vibe_restaurants_v1`.`workforce`.`payroll_group`(`payroll_group_id`);
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`payroll_run` ADD CONSTRAINT `fk_workforce_payroll_run_reversal_payroll_run_id` FOREIGN KEY (`reversal_payroll_run_id`) REFERENCES `vibe_restaurants_v1`.`workforce`.`payroll_run`(`payroll_run_id`);
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`payroll_group` ADD CONSTRAINT `fk_workforce_payroll_group_benefit_plan_id` FOREIGN KEY (`benefit_plan_id`) REFERENCES `vibe_restaurants_v1`.`workforce`.`benefit_plan`(`benefit_plan_id`);
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`payroll_group` ADD CONSTRAINT `fk_workforce_payroll_group_parent_payroll_group_id` FOREIGN KEY (`parent_payroll_group_id`) REFERENCES `vibe_restaurants_v1`.`workforce`.`payroll_group`(`payroll_group_id`);
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`benefit_plan` ADD CONSTRAINT `fk_workforce_benefit_plan_workday_benefit_plan_id` FOREIGN KEY (`workday_benefit_plan_id`) REFERENCES `vibe_restaurants_v1`.`workforce`.`benefit_plan`(`benefit_plan_id`);
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`benefit_plan` ADD CONSTRAINT `fk_workforce_benefit_plan_default_benefit_plan_id` FOREIGN KEY (`default_benefit_plan_id`) REFERENCES `vibe_restaurants_v1`.`workforce`.`benefit_plan`(`benefit_plan_id`);
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`department` ADD CONSTRAINT `fk_workforce_department_parent_department_id` FOREIGN KEY (`parent_department_id`) REFERENCES `vibe_restaurants_v1`.`workforce`.`department`(`department_id`);
 
 -- ========= TAGS =========
 ALTER SCHEMA `vibe_restaurants_v1`.`workforce` SET TAGS ('dbx_division' = 'operations');
 ALTER SCHEMA `vibe_restaurants_v1`.`workforce` SET TAGS ('dbx_domain' = 'workforce');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`employee` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_restaurants_v1`.`workforce`.`employee` SET TAGS ('dbx_subdomain' = 'employee_management');
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`employee` SET TAGS ('dbx_subdomain' = 'employee_records');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`employee` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Employee Identifier');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`employee` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`employee` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`employee` ALTER COLUMN `payroll_group_id` SET TAGS ('dbx_business_glossary_term' = 'Employee Payroll Group Id (Foreign Key)');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`employee` ALTER COLUMN `unit_id` SET TAGS ('dbx_business_glossary_term' = 'Home Restaurant Identifier');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`employee` ALTER COLUMN `employee_unit_id` SET TAGS ('dbx_business_glossary_term' = 'Home Restaurant Identifier');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`employee` ALTER COLUMN `employee_work_location_unit_id` SET TAGS ('dbx_business_glossary_term' = 'Work Location Identifier');
-ALTER TABLE `vibe_restaurants_v1`.`workforce`.`employee` ALTER COLUMN `employee_work_location_unit_id` SET TAGS ('dbx_pii_detected' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`employee` ALTER COLUMN `facility_id` SET TAGS ('dbx_business_glossary_term' = 'Work Location Identifier');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`employee` ALTER COLUMN `manager_employee_id` SET TAGS ('dbx_business_glossary_term' = 'Employee Manager Identifier');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`employee` ALTER COLUMN `manager_employee_id` SET TAGS ('dbx_confidential' = 'true');
@@ -722,50 +816,32 @@ ALTER TABLE `vibe_restaurants_v1`.`workforce`.`employee` ALTER COLUMN `manager_e
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`employee` ALTER COLUMN `address_line1` SET TAGS ('dbx_business_glossary_term' = 'Employee Address Line 1');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`employee` ALTER COLUMN `address_line1` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`employee` ALTER COLUMN `address_line1` SET TAGS ('dbx_pii_address' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`workforce`.`employee` ALTER COLUMN `address_line1` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_restaurants_v1`.`workforce`.`employee` ALTER COLUMN `address_line1` SET TAGS ('dbx_mask_in_nonprod' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`workforce`.`employee` ALTER COLUMN `address_line1` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`employee` ALTER COLUMN `address_line2` SET TAGS ('dbx_business_glossary_term' = 'Employee Address Line 2');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`employee` ALTER COLUMN `address_line2` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`employee` ALTER COLUMN `address_line2` SET TAGS ('dbx_pii_address' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`workforce`.`employee` ALTER COLUMN `address_line2` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_restaurants_v1`.`workforce`.`employee` ALTER COLUMN `address_line2` SET TAGS ('dbx_mask_in_nonprod' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`workforce`.`employee` ALTER COLUMN `address_line2` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`employee` ALTER COLUMN `bank_account_number` SET TAGS ('dbx_business_glossary_term' = 'Employee Bank Account Number');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`employee` ALTER COLUMN `bank_account_number` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`employee` ALTER COLUMN `bank_account_number` SET TAGS ('dbx_pii_financial' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`workforce`.`employee` ALTER COLUMN `bank_account_number` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_restaurants_v1`.`workforce`.`employee` ALTER COLUMN `bank_account_number` SET TAGS ('dbx_mask_in_nonprod' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`workforce`.`employee` ALTER COLUMN `bank_account_number` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`employee` ALTER COLUMN `city` SET TAGS ('dbx_business_glossary_term' = 'Employee City');
-ALTER TABLE `vibe_restaurants_v1`.`workforce`.`employee` ALTER COLUMN `city` SET TAGS ('dbx_pii_detected' = 'true');
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`employee` ALTER COLUMN `city` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`employee` ALTER COLUMN `city` SET TAGS ('dbx_pii_address' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`employee` ALTER COLUMN `country` SET TAGS ('dbx_business_glossary_term' = 'Employee Country Code');
-ALTER TABLE `vibe_restaurants_v1`.`workforce`.`employee` ALTER COLUMN `country` SET TAGS ('dbx_pii_detected' = 'true');
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`employee` ALTER COLUMN `country` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`employee` ALTER COLUMN `country` SET TAGS ('dbx_pii_address' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`employee` ALTER COLUMN `date_of_birth` SET TAGS ('dbx_business_glossary_term' = 'Employee Date of Birth');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`employee` ALTER COLUMN `date_of_birth` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`employee` ALTER COLUMN `date_of_birth` SET TAGS ('dbx_pii_dob' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`workforce`.`employee` ALTER COLUMN `date_of_birth` SET TAGS ('dbx_sensitivity' = 'phi');
-ALTER TABLE `vibe_restaurants_v1`.`workforce`.`employee` ALTER COLUMN `date_of_birth` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`employee` ALTER COLUMN `department` SET TAGS ('dbx_business_glossary_term' = 'Employee Department');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`employee` ALTER COLUMN `email` SET TAGS ('dbx_business_glossary_term' = 'Employee Email Address');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`employee` ALTER COLUMN `email` SET TAGS ('dbx_value_regex' = '^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+.[a-zA-Z]{2,}$');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`employee` ALTER COLUMN `email` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`employee` ALTER COLUMN `email` SET TAGS ('dbx_pii_email' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`workforce`.`employee` ALTER COLUMN `email` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_restaurants_v1`.`workforce`.`employee` ALTER COLUMN `email` SET TAGS ('dbx_mask_in_nonprod' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`workforce`.`employee` ALTER COLUMN `email` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`employee` ALTER COLUMN `emergency_contact_name` SET TAGS ('dbx_business_glossary_term' = 'Emergency Contact Name');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`employee` ALTER COLUMN `emergency_contact_name` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`employee` ALTER COLUMN `emergency_contact_name` SET TAGS ('dbx_pii_name' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`workforce`.`employee` ALTER COLUMN `emergency_contact_name` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_restaurants_v1`.`workforce`.`employee` ALTER COLUMN `emergency_contact_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`workforce`.`employee` ALTER COLUMN `emergency_contact_name` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`employee` ALTER COLUMN `emergency_contact_phone` SET TAGS ('dbx_business_glossary_term' = 'Emergency Contact Phone');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`employee` ALTER COLUMN `emergency_contact_phone` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`employee` ALTER COLUMN `emergency_contact_phone` SET TAGS ('dbx_pii_phone' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`workforce`.`employee` ALTER COLUMN `emergency_contact_phone` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_restaurants_v1`.`workforce`.`employee` ALTER COLUMN `emergency_contact_phone` SET TAGS ('dbx_mask_in_nonprod' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`workforce`.`employee` ALTER COLUMN `emergency_contact_phone` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`employee` ALTER COLUMN `employment_status` SET TAGS ('dbx_business_glossary_term' = 'Employee Employment Status');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`employee` ALTER COLUMN `employment_status` SET TAGS ('dbx_value_regex' = 'active|inactive|terminated|on_leave|retired');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`employee` ALTER COLUMN `employment_type` SET TAGS ('dbx_business_glossary_term' = 'Employee Employment Type');
@@ -773,33 +849,19 @@ ALTER TABLE `vibe_restaurants_v1`.`workforce`.`employee` ALTER COLUMN `employmen
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`employee` ALTER COLUMN `first_name` SET TAGS ('dbx_business_glossary_term' = 'Employee First Name');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`employee` ALTER COLUMN `first_name` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`employee` ALTER COLUMN `first_name` SET TAGS ('dbx_pii_name' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`workforce`.`employee` ALTER COLUMN `first_name` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_restaurants_v1`.`workforce`.`employee` ALTER COLUMN `first_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`workforce`.`employee` ALTER COLUMN `first_name` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`employee` ALTER COLUMN `full_name` SET TAGS ('dbx_business_glossary_term' = 'Employee Full Name');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`employee` ALTER COLUMN `full_name` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`employee` ALTER COLUMN `full_name` SET TAGS ('dbx_pii_name' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`workforce`.`employee` ALTER COLUMN `full_name` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_restaurants_v1`.`workforce`.`employee` ALTER COLUMN `full_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`workforce`.`employee` ALTER COLUMN `full_name` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`employee` ALTER COLUMN `hire_date` SET TAGS ('dbx_business_glossary_term' = 'Employee Hire Date');
-ALTER TABLE `vibe_restaurants_v1`.`workforce`.`employee` ALTER COLUMN `job_title` SET TAGS ('dbx_business_glossary_term' = 'Employee Job Title');
-ALTER TABLE `vibe_restaurants_v1`.`workforce`.`employee` ALTER COLUMN `job_title` SET TAGS ('dbx_pii_detected' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`employee` ALTER COLUMN `labor_percentage_target` SET TAGS ('dbx_business_glossary_term' = 'Target Labor Percentage');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`employee` ALTER COLUMN `last_name` SET TAGS ('dbx_business_glossary_term' = 'Employee Last Name');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`employee` ALTER COLUMN `last_name` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`employee` ALTER COLUMN `last_name` SET TAGS ('dbx_pii_name' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`workforce`.`employee` ALTER COLUMN `last_name` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_restaurants_v1`.`workforce`.`employee` ALTER COLUMN `last_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`workforce`.`employee` ALTER COLUMN `last_name` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`employee` ALTER COLUMN `overtime_eligible` SET TAGS ('dbx_business_glossary_term' = 'Overtime Eligibility Flag');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`employee` ALTER COLUMN `pay_grade` SET TAGS ('dbx_business_glossary_term' = 'Employee Pay Grade');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`employee` ALTER COLUMN `phone_number` SET TAGS ('dbx_business_glossary_term' = 'Employee Phone Number');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`employee` ALTER COLUMN `phone_number` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`employee` ALTER COLUMN `phone_number` SET TAGS ('dbx_pii_phone' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`workforce`.`employee` ALTER COLUMN `phone_number` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_restaurants_v1`.`workforce`.`employee` ALTER COLUMN `phone_number` SET TAGS ('dbx_mask_in_nonprod' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`workforce`.`employee` ALTER COLUMN `phone_number` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`employee` ALTER COLUMN `postal_code` SET TAGS ('dbx_business_glossary_term' = 'Employee Postal Code');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`employee` ALTER COLUMN `postal_code` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`employee` ALTER COLUMN `postal_code` SET TAGS ('dbx_pii_address' = 'true');
@@ -808,7 +870,7 @@ ALTER TABLE `vibe_restaurants_v1`.`workforce`.`employee` ALTER COLUMN `record_au
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`employee` ALTER COLUMN `role_classification` SET TAGS ('dbx_business_glossary_term' = 'Employee Role Classification');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`employee` ALTER COLUMN `role_classification` SET TAGS ('dbx_value_regex' = 'boh|foh|admin|support');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`employee` ALTER COLUMN `salary_amount` SET TAGS ('dbx_business_glossary_term' = 'Employee Base Salary Amount');
-ALTER TABLE `vibe_restaurants_v1`.`workforce`.`employee` ALTER COLUMN `salary_amount` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`employee` ALTER COLUMN `salary_amount` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`employee` ALTER COLUMN `salary_amount` SET TAGS ('dbx_pii_financial' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`employee` ALTER COLUMN `salary_currency` SET TAGS ('dbx_business_glossary_term' = 'Employee Salary Currency');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`employee` ALTER COLUMN `salary_currency` SET TAGS ('dbx_value_regex' = 'USD|CAD|EUR|GBP|JPY');
@@ -819,19 +881,17 @@ ALTER TABLE `vibe_restaurants_v1`.`workforce`.`employee` ALTER COLUMN `servsafe_
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`employee` ALTER COLUMN `shift_pattern` SET TAGS ('dbx_business_glossary_term' = 'Employee Shift Pattern');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`employee` ALTER COLUMN `shift_pattern` SET TAGS ('dbx_value_regex' = 'morning|evening|night|flex|rotating');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`employee` ALTER COLUMN `state` SET TAGS ('dbx_business_glossary_term' = 'Employee State/Province');
-ALTER TABLE `vibe_restaurants_v1`.`workforce`.`employee` ALTER COLUMN `state` SET TAGS ('dbx_pii_detected' = 'true');
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`employee` ALTER COLUMN `state` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`employee` ALTER COLUMN `state` SET TAGS ('dbx_pii_address' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`employee` ALTER COLUMN `tax_identifier` SET TAGS ('dbx_business_glossary_term' = 'Employee Tax Identifier');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`employee` ALTER COLUMN `tax_identifier` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`employee` ALTER COLUMN `tax_identifier` SET TAGS ('dbx_pii_identifier' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`workforce`.`employee` ALTER COLUMN `tax_identifier` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_restaurants_v1`.`workforce`.`employee` ALTER COLUMN `tax_identifier` SET TAGS ('dbx_mask_in_nonprod' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`workforce`.`employee` ALTER COLUMN `tax_identifier` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`employee` ALTER COLUMN `termination_date` SET TAGS ('dbx_business_glossary_term' = 'Employee Termination Date');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`employee` ALTER COLUMN `union_member` SET TAGS ('dbx_business_glossary_term' = 'Union Membership Flag');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`employee` ALTER COLUMN `work_schedule_type` SET TAGS ('dbx_business_glossary_term' = 'Work Schedule Type');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`employee` ALTER COLUMN `work_schedule_type` SET TAGS ('dbx_value_regex' = 'fixed|flex|rotating');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`position` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_restaurants_v1`.`workforce`.`position` SET TAGS ('dbx_subdomain' = 'employee_management');
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`position` SET TAGS ('dbx_subdomain' = 'employee_records');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`position` ALTER COLUMN `position_id` SET TAGS ('dbx_business_glossary_term' = 'Position ID');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`position` ALTER COLUMN `reports_to_position_id` SET TAGS ('dbx_business_glossary_term' = 'Reports To Position ID');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`position` ALTER COLUMN `classification` SET TAGS ('dbx_business_glossary_term' = 'Position Classification');
@@ -850,9 +910,9 @@ ALTER TABLE `vibe_restaurants_v1`.`workforce`.`position` ALTER COLUMN `labor_per
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`position` ALTER COLUMN `position_level` SET TAGS ('dbx_business_glossary_term' = 'Job Level');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`position` ALTER COLUMN `position_level` SET TAGS ('dbx_value_regex' = 'Entry|Mid|Senior|Lead');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`position` ALTER COLUMN `minimum_age` SET TAGS ('dbx_business_glossary_term' = 'Minimum Age Requirement');
-ALTER TABLE `vibe_restaurants_v1`.`workforce`.`position` ALTER COLUMN `minimum_age` SET TAGS ('dbx_pii_detected' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`position` ALTER COLUMN `overtime_eligible` SET TAGS ('dbx_business_glossary_term' = 'Overtime Eligibility');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`position` ALTER COLUMN `pay_band` SET TAGS ('dbx_business_glossary_term' = 'Pay Band');
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`position` ALTER COLUMN `pay_band` SET TAGS ('dbx_value_regex' = 'A|B|C|D|E');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`position` ALTER COLUMN `position_status` SET TAGS ('dbx_business_glossary_term' = 'Position Status');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`position` ALTER COLUMN `position_status` SET TAGS ('dbx_value_regex' = 'Active|Inactive|Archived');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`position` ALTER COLUMN `required_certifications` SET TAGS ('dbx_business_glossary_term' = 'Required Certifications');
@@ -866,7 +926,6 @@ ALTER TABLE `vibe_restaurants_v1`.`workforce`.`position` ALTER COLUMN `salary_mi
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`position` ALTER COLUMN `shift_type` SET TAGS ('dbx_business_glossary_term' = 'Shift Type');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`position` ALTER COLUMN `shift_type` SET TAGS ('dbx_value_regex' = 'Day|Night|Flex|Split');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`position` ALTER COLUMN `title` SET TAGS ('dbx_business_glossary_term' = 'Position Title');
-ALTER TABLE `vibe_restaurants_v1`.`workforce`.`position` ALTER COLUMN `title` SET TAGS ('dbx_pii_detected' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`position` ALTER COLUMN `union_eligible` SET TAGS ('dbx_business_glossary_term' = 'Union Eligibility');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`position` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Update Timestamp');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`shift` SET TAGS ('dbx_data_type' = 'transactional_data');
@@ -875,10 +934,11 @@ ALTER TABLE `vibe_restaurants_v1`.`workforce`.`shift` ALTER COLUMN `shift_id` SE
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`shift` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Scheduled By User ID');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`shift` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`shift` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`workforce`.`shift` ALTER COLUMN `facility_id` SET TAGS ('dbx_business_glossary_term' = 'Restaurant Location ID');
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`shift` ALTER COLUMN `employee_id` SET TAGS ('dbx_renamed_from' = 'employee_id');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`shift` ALTER COLUMN `primary_shift_employee_id` SET TAGS ('dbx_business_glossary_term' = 'Employee ID');
-ALTER TABLE `vibe_restaurants_v1`.`workforce`.`shift` ALTER COLUMN `primary_shift_employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`workforce`.`shift` ALTER COLUMN `primary_shift_employee_id` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`shift` ALTER COLUMN `primary_shift_employee_id` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`shift` ALTER COLUMN `primary_shift_employee_id` SET TAGS ('dbx_pii_identifier' = 'true');
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`shift` ALTER COLUMN `position_id` SET TAGS ('dbx_business_glossary_term' = 'Shift Position Id (Foreign Key)');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`shift` ALTER COLUMN `unit_id` SET TAGS ('dbx_business_glossary_term' = 'Restaurant Location ID');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`shift` ALTER COLUMN `actual_end` SET TAGS ('dbx_business_glossary_term' = 'Actual Clock‑Out Timestamp');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`shift` ALTER COLUMN `actual_hours` SET TAGS ('dbx_business_glossary_term' = 'Actual Worked Hours');
@@ -892,6 +952,7 @@ ALTER TABLE `vibe_restaurants_v1`.`workforce`.`shift` ALTER COLUMN `is_deleted` 
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`shift` ALTER COLUMN `labor_cost` SET TAGS ('dbx_business_glossary_term' = 'Labor Cost');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`shift` ALTER COLUMN `labor_percentage` SET TAGS ('dbx_business_glossary_term' = 'Labor Cost Percentage');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`shift` ALTER COLUMN `labor_rate_currency_code` SET TAGS ('dbx_business_glossary_term' = 'Labor Rate Currency Code');
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`shift` ALTER COLUMN `labor_rate_currency_code` SET TAGS ('dbx_value_regex' = 'USD|CAD|EUR|GBP|JPY|AUD');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`shift` ALTER COLUMN `labor_rate_per_hour` SET TAGS ('dbx_business_glossary_term' = 'Labor Rate Per Hour');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`shift` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Shift Notes');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`shift` ALTER COLUMN `on_call_flag` SET TAGS ('dbx_business_glossary_term' = 'On‑Call Flag');
@@ -917,6 +978,7 @@ ALTER TABLE `vibe_restaurants_v1`.`workforce`.`schedule` ALTER COLUMN `schedule_
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`schedule` ALTER COLUMN `schedule_manager_employee_id` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`schedule` ALTER COLUMN `schedule_manager_employee_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`schedule` ALTER COLUMN `unit_id` SET TAGS ('dbx_business_glossary_term' = 'Restaurant Identifier');
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`schedule` ALTER COLUMN `schedule_unit_id` SET TAGS ('dbx_business_glossary_term' = 'Restaurant Identifier');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`schedule` ALTER COLUMN `approval_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Schedule Approval Timestamp');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`schedule` ALTER COLUMN `approved_by` SET TAGS ('dbx_business_glossary_term' = 'Schedule Approved By');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`schedule` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Schedule Record Created Timestamp');
@@ -942,13 +1004,15 @@ ALTER TABLE `vibe_restaurants_v1`.`workforce`.`schedule` ALTER COLUMN `version` 
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`time_entry` SET TAGS ('dbx_data_type' = 'transactional_data');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`time_entry` SET TAGS ('dbx_subdomain' = 'labor_scheduling');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`time_entry` ALTER COLUMN `time_entry_id` SET TAGS ('dbx_business_glossary_term' = 'Time Entry ID (TEID)');
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`time_entry` ALTER COLUMN `payroll_record_id` SET TAGS ('dbx_business_glossary_term' = 'Payroll Record Id (Foreign Key)');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`time_entry` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Employee Identifier (EMP_ID)');
-ALTER TABLE `vibe_restaurants_v1`.`workforce`.`time_entry` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`workforce`.`time_entry` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`time_entry` ALTER COLUMN `employee_id` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`time_entry` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii_identifier' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`time_entry` ALTER COLUMN `shift_id` SET TAGS ('dbx_business_glossary_term' = 'Shift Identifier (SHIFT_ID)');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`time_entry` ALTER COLUMN `time_employee_id` SET TAGS ('dbx_business_glossary_term' = 'Manager Identifier (MGR_ID)');
-ALTER TABLE `vibe_restaurants_v1`.`workforce`.`time_entry` ALTER COLUMN `time_employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`workforce`.`time_entry` ALTER COLUMN `time_employee_id` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`time_entry` ALTER COLUMN `time_employee_id` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`time_entry` ALTER COLUMN `time_employee_id` SET TAGS ('dbx_pii_identifier' = 'true');
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`time_entry` ALTER COLUMN `position_id` SET TAGS ('dbx_business_glossary_term' = 'Time Position Id (Foreign Key)');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`time_entry` ALTER COLUMN `unit_id` SET TAGS ('dbx_business_glossary_term' = 'Location Identifier (LOC_ID)');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`time_entry` ALTER COLUMN `approved_by_manager` SET TAGS ('dbx_business_glossary_term' = 'Manager Approval Indicator (MGR_APPROVED)');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`time_entry` ALTER COLUMN `approved_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Approval Timestamp (APPROVAL_TS)');
@@ -958,8 +1022,6 @@ ALTER TABLE `vibe_restaurants_v1`.`workforce`.`time_entry` ALTER COLUMN `clock_i
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`time_entry` ALTER COLUMN `clock_out_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Clock‑Out Timestamp (CO_TS)');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`time_entry` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Creation Timestamp (CREATED_TS)');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`time_entry` ALTER COLUMN `entry_number` SET TAGS ('dbx_business_glossary_term' = 'Time Entry Number (TE_NUM)');
-ALTER TABLE `vibe_restaurants_v1`.`workforce`.`time_entry` ALTER COLUMN `job_role` SET TAGS ('dbx_business_glossary_term' = 'Job Role (JOB_ROLE)');
-ALTER TABLE `vibe_restaurants_v1`.`workforce`.`time_entry` ALTER COLUMN `job_role` SET TAGS ('dbx_value_regex' = 'front_of_house|back_of_house|management|support|other');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`time_entry` ALTER COLUMN `labor_cost` SET TAGS ('dbx_business_glossary_term' = 'Labor Cost (LABOR_COST)');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`time_entry` ALTER COLUMN `labor_rate` SET TAGS ('dbx_business_glossary_term' = 'Labor Rate (LABOR_RATE)');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`time_entry` ALTER COLUMN `missed_punch_flag` SET TAGS ('dbx_business_glossary_term' = 'Missed Punch Indicator (MISSED_PUNCH)');
@@ -967,6 +1029,7 @@ ALTER TABLE `vibe_restaurants_v1`.`workforce`.`time_entry` ALTER COLUMN `notes` 
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`time_entry` ALTER COLUMN `overtime_flag` SET TAGS ('dbx_business_glossary_term' = 'Overtime Indicator (OT_FLAG)');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`time_entry` ALTER COLUMN `overtime_hours` SET TAGS ('dbx_business_glossary_term' = 'Overtime Hours (OT_HRS)');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`time_entry` ALTER COLUMN `pay_code` SET TAGS ('dbx_business_glossary_term' = 'Pay Code (PAY_CODE)');
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`time_entry` ALTER COLUMN `pay_code` SET TAGS ('dbx_value_regex' = 'REG|OT|SL|VAC|OTHER');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`time_entry` ALTER COLUMN `regular_hours` SET TAGS ('dbx_business_glossary_term' = 'Regular Hours (REG_HRS)');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`time_entry` ALTER COLUMN `scheduled_end_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Scheduled Shift End (SCH_END_TS)');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`time_entry` ALTER COLUMN `scheduled_start_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Scheduled Shift Start (SCH_START_TS)');
@@ -981,6 +1044,7 @@ ALTER TABLE `vibe_restaurants_v1`.`workforce`.`labor_forecast` SET TAGS ('dbx_da
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`labor_forecast` SET TAGS ('dbx_subdomain' = 'labor_scheduling');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`labor_forecast` ALTER COLUMN `labor_forecast_id` SET TAGS ('dbx_business_glossary_term' = 'Labor Forecast ID');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`labor_forecast` ALTER COLUMN `unit_id` SET TAGS ('dbx_business_glossary_term' = 'Restaurant ID');
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`labor_forecast` ALTER COLUMN `labor_unit_id` SET TAGS ('dbx_business_glossary_term' = 'Restaurant ID');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`labor_forecast` ALTER COLUMN `confidence_score` SET TAGS ('dbx_business_glossary_term' = 'Forecast Confidence Score');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`labor_forecast` ALTER COLUMN `currency_code` SET TAGS ('dbx_business_glossary_term' = 'Currency Code');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`labor_forecast` ALTER COLUMN `currency_code` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
@@ -1008,7 +1072,7 @@ ALTER TABLE `vibe_restaurants_v1`.`workforce`.`labor_forecast` ALTER COLUMN `sce
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`labor_forecast` ALTER COLUMN `week_number` SET TAGS ('dbx_business_glossary_term' = 'Week Number');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`labor_forecast` ALTER COLUMN `year` SET TAGS ('dbx_business_glossary_term' = 'Year');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`payroll_record` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_restaurants_v1`.`workforce`.`payroll_record` SET TAGS ('dbx_subdomain' = 'payroll_compliance');
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`payroll_record` SET TAGS ('dbx_subdomain' = 'payroll_benefits');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`payroll_record` ALTER COLUMN `payroll_record_id` SET TAGS ('dbx_business_glossary_term' = 'Payroll Record ID');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`payroll_record` ALTER COLUMN `cost_center_id` SET TAGS ('dbx_business_glossary_term' = 'Cost Center ID');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`payroll_record` ALTER COLUMN `department_id` SET TAGS ('dbx_business_glossary_term' = 'Department ID');
@@ -1016,6 +1080,7 @@ ALTER TABLE `vibe_restaurants_v1`.`workforce`.`payroll_record` ALTER COLUMN `emp
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`payroll_record` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`payroll_record` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`payroll_record` ALTER COLUMN `facility_id` SET TAGS ('dbx_business_glossary_term' = 'Location ID');
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`payroll_record` ALTER COLUMN `payroll_group_id` SET TAGS ('dbx_business_glossary_term' = 'Payroll Group Id (Foreign Key)');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`payroll_record` ALTER COLUMN `payroll_run_id` SET TAGS ('dbx_business_glossary_term' = 'Payroll Run ID');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`payroll_record` ALTER COLUMN `unit_id` SET TAGS ('dbx_business_glossary_term' = 'Location ID');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`payroll_record` ALTER COLUMN `benefit_deduction` SET TAGS ('dbx_business_glossary_term' = 'Benefit Deduction Amount');
@@ -1027,9 +1092,6 @@ ALTER TABLE `vibe_restaurants_v1`.`workforce`.`payroll_record` ALTER COLUMN `cur
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`payroll_record` ALTER COLUMN `employee_address` SET TAGS ('dbx_business_glossary_term' = 'Employee Address');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`payroll_record` ALTER COLUMN `employee_address` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`payroll_record` ALTER COLUMN `employee_address` SET TAGS ('dbx_pii_address' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`workforce`.`payroll_record` ALTER COLUMN `employee_address` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_restaurants_v1`.`workforce`.`payroll_record` ALTER COLUMN `employee_address` SET TAGS ('dbx_mask_in_nonprod' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`workforce`.`payroll_record` ALTER COLUMN `employee_address` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`payroll_record` ALTER COLUMN `employee_type` SET TAGS ('dbx_business_glossary_term' = 'Employee Type');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`payroll_record` ALTER COLUMN `employee_type` SET TAGS ('dbx_value_regex' = 'full_time|part_time|seasonal|contractor');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`payroll_record` ALTER COLUMN `fiscal_period` SET TAGS ('dbx_business_glossary_term' = 'Fiscal Period');
@@ -1038,7 +1100,6 @@ ALTER TABLE `vibe_restaurants_v1`.`workforce`.`payroll_record` ALTER COLUMN `gro
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`payroll_record` ALTER COLUMN `gross_pay` SET TAGS ('dbx_pii_financial' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`payroll_record` ALTER COLUMN `is_bonus` SET TAGS ('dbx_business_glossary_term' = 'Bonus Indicator');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`payroll_record` ALTER COLUMN `job_title` SET TAGS ('dbx_business_glossary_term' = 'Job Title');
-ALTER TABLE `vibe_restaurants_v1`.`workforce`.`payroll_record` ALTER COLUMN `job_title` SET TAGS ('dbx_pii_detected' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`payroll_record` ALTER COLUMN `labor_percent` SET TAGS ('dbx_business_glossary_term' = 'Labor Percentage');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`payroll_record` ALTER COLUMN `net_pay` SET TAGS ('dbx_business_glossary_term' = 'Net Pay Amount');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`payroll_record` ALTER COLUMN `net_pay` SET TAGS ('dbx_restricted' = 'true');
@@ -1048,14 +1109,15 @@ ALTER TABLE `vibe_restaurants_v1`.`workforce`.`payroll_record` ALTER COLUMN `oth
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`payroll_record` ALTER COLUMN `overtime_hours` SET TAGS ('dbx_business_glossary_term' = 'Overtime Hours Worked');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`payroll_record` ALTER COLUMN `overtime_rate` SET TAGS ('dbx_business_glossary_term' = 'Overtime Pay Rate');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`payroll_record` ALTER COLUMN `pay_date` SET TAGS ('dbx_business_glossary_term' = 'Pay Date');
-ALTER TABLE `vibe_restaurants_v1`.`workforce`.`payroll_record` ALTER COLUMN `pay_group` SET TAGS ('dbx_business_glossary_term' = 'Pay Group');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`payroll_record` ALTER COLUMN `pay_period_end` SET TAGS ('dbx_business_glossary_term' = 'Pay Period End Date');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`payroll_record` ALTER COLUMN `pay_period_start` SET TAGS ('dbx_business_glossary_term' = 'Pay Period Start Date');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`payroll_record` ALTER COLUMN `pay_rate` SET TAGS ('dbx_business_glossary_term' = 'Base Pay Rate');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`payroll_record` ALTER COLUMN `payroll_date` SET TAGS ('dbx_business_glossary_term' = 'Payroll Execution Timestamp');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`payroll_record` ALTER COLUMN `payroll_number` SET TAGS ('dbx_business_glossary_term' = 'Payroll Number');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`payroll_record` ALTER COLUMN `payroll_record_status` SET TAGS ('dbx_business_glossary_term' = 'Payroll Status');
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`payroll_record` ALTER COLUMN `payroll_record_status` SET TAGS ('dbx_value_regex' = 'processed|pending|error|cancelled');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`payroll_record` ALTER COLUMN `payroll_type` SET TAGS ('dbx_business_glossary_term' = 'Payroll Type');
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`payroll_record` ALTER COLUMN `payroll_type` SET TAGS ('dbx_value_regex' = 'salary|hourly|commission|bonus');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`payroll_record` ALTER COLUMN `regular_hours` SET TAGS ('dbx_business_glossary_term' = 'Regular Hours Worked');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`payroll_record` ALTER COLUMN `tax_withheld` SET TAGS ('dbx_business_glossary_term' = 'Tax Withheld Amount');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`payroll_record` ALTER COLUMN `tax_year` SET TAGS ('dbx_business_glossary_term' = 'Tax Year');
@@ -1063,24 +1125,27 @@ ALTER TABLE `vibe_restaurants_v1`.`workforce`.`payroll_record` ALTER COLUMN `tip
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`payroll_record` ALTER COLUMN `union_member_flag` SET TAGS ('dbx_business_glossary_term' = 'Union Membership Indicator');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`payroll_record` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Update Timestamp');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`recruitment` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_restaurants_v1`.`workforce`.`recruitment` SET TAGS ('dbx_subdomain' = 'employee_management');
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`recruitment` SET TAGS ('dbx_subdomain' = 'employee_records');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`recruitment` ALTER COLUMN `recruitment_id` SET TAGS ('dbx_business_glossary_term' = 'Recruitment ID');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`recruitment` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Hiring Manager ID');
-ALTER TABLE `vibe_restaurants_v1`.`workforce`.`recruitment` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`workforce`.`recruitment` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`recruitment` ALTER COLUMN `employee_id` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`recruitment` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii_identifier' = 'true');
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`recruitment` ALTER COLUMN `employee_id` SET TAGS ('dbx_renamed_from' = 'employee_id');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`recruitment` ALTER COLUMN `facility_id` SET TAGS ('dbx_business_glossary_term' = 'Location ID');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`recruitment` ALTER COLUMN `primary_recruitment_employee_id` SET TAGS ('dbx_business_glossary_term' = 'Hiring Manager ID');
-ALTER TABLE `vibe_restaurants_v1`.`workforce`.`recruitment` ALTER COLUMN `primary_recruitment_employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`workforce`.`recruitment` ALTER COLUMN `primary_recruitment_employee_id` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`recruitment` ALTER COLUMN `primary_recruitment_employee_id` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`recruitment` ALTER COLUMN `primary_recruitment_employee_id` SET TAGS ('dbx_pii_identifier' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`recruitment` ALTER COLUMN `unit_id` SET TAGS ('dbx_business_glossary_term' = 'Recruitment Location Unit Id');
-ALTER TABLE `vibe_restaurants_v1`.`workforce`.`recruitment` ALTER COLUMN `unit_id` SET TAGS ('dbx_pii_detected' = 'true');
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`recruitment` ALTER COLUMN `unit_id` SET TAGS ('dbx_internal' = 'true');
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`recruitment` ALTER COLUMN `position_id` SET TAGS ('dbx_business_glossary_term' = 'Recruiting Position Id (Foreign Key)');
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`recruitment` ALTER COLUMN `workforce_department_id` SET TAGS ('dbx_business_glossary_term' = 'Recruiting Workforce Department Id (Foreign Key)');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`recruitment` ALTER COLUMN `applicant_count` SET TAGS ('dbx_business_glossary_term' = 'Applicant Count');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`recruitment` ALTER COLUMN `budget_usd` SET TAGS ('dbx_business_glossary_term' = 'Recruitment Budget (USD)');
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`recruitment` ALTER COLUMN `budget_usd` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`recruitment` ALTER COLUMN `closing_date` SET TAGS ('dbx_business_glossary_term' = 'Closing Date');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`recruitment` ALTER COLUMN `compliance_status` SET TAGS ('dbx_business_glossary_term' = 'Compliance Status');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`recruitment` ALTER COLUMN `compliance_status` SET TAGS ('dbx_value_regex' = 'compliant|non_compliant|pending');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`recruitment` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Created Timestamp');
-ALTER TABLE `vibe_restaurants_v1`.`workforce`.`recruitment` ALTER COLUMN `department` SET TAGS ('dbx_business_glossary_term' = 'Department');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`recruitment` ALTER COLUMN `employment_type` SET TAGS ('dbx_business_glossary_term' = 'Employment Type');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`recruitment` ALTER COLUMN `employment_type` SET TAGS ('dbx_value_regex' = 'full-time|part-time|seasonal|contract|intern|temporary');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`recruitment` ALTER COLUMN `interview_stage_count` SET TAGS ('dbx_business_glossary_term' = 'Interview Stage Count');
@@ -1088,14 +1153,9 @@ ALTER TABLE `vibe_restaurants_v1`.`workforce`.`recruitment` ALTER COLUMN `job_le
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`recruitment` ALTER COLUMN `job_level` SET TAGS ('dbx_value_regex' = 'entry|associate|manager|director|executive');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`recruitment` ALTER COLUMN `last_updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Last Updated Timestamp');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`recruitment` ALTER COLUMN `location_name` SET TAGS ('dbx_business_glossary_term' = 'Location Name');
-ALTER TABLE `vibe_restaurants_v1`.`workforce`.`recruitment` ALTER COLUMN `location_name` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_restaurants_v1`.`workforce`.`recruitment` ALTER COLUMN `location_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`workforce`.`recruitment` ALTER COLUMN `location_name` SET TAGS ('dbx_pii_detected' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`recruitment` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Recruitment Notes');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`recruitment` ALTER COLUMN `offers_accepted` SET TAGS ('dbx_business_glossary_term' = 'Offers Accepted');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`recruitment` ALTER COLUMN `offers_extended` SET TAGS ('dbx_business_glossary_term' = 'Offers Extended');
-ALTER TABLE `vibe_restaurants_v1`.`workforce`.`recruitment` ALTER COLUMN `position_title` SET TAGS ('dbx_business_glossary_term' = 'Position Title');
-ALTER TABLE `vibe_restaurants_v1`.`workforce`.`recruitment` ALTER COLUMN `position_title` SET TAGS ('dbx_pii_detected' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`recruitment` ALTER COLUMN `posting_channel` SET TAGS ('dbx_business_glossary_term' = 'Posting Channel');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`recruitment` ALTER COLUMN `posting_channel` SET TAGS ('dbx_value_regex' = 'internal|job_board|recruiter|social|referral|agency');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`recruitment` ALTER COLUMN `posting_date` SET TAGS ('dbx_business_glossary_term' = 'Posting Date');
@@ -1107,26 +1167,27 @@ ALTER TABLE `vibe_restaurants_v1`.`workforce`.`recruitment` ALTER COLUMN `requir
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`recruitment` ALTER COLUMN `required_experience_years` SET TAGS ('dbx_business_glossary_term' = 'Required Experience (Years)');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`recruitment` ALTER COLUMN `requisition_number` SET TAGS ('dbx_business_glossary_term' = 'Requisition Number');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`recruitment` ALTER COLUMN `salary_range_max` SET TAGS ('dbx_business_glossary_term' = 'Salary Range Maximum');
-ALTER TABLE `vibe_restaurants_v1`.`workforce`.`recruitment` ALTER COLUMN `salary_range_max` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`workforce`.`recruitment` ALTER COLUMN `salary_range_max` SET TAGS ('dbx_pii_financial' = 'true');
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`recruitment` ALTER COLUMN `salary_range_max` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`recruitment` ALTER COLUMN `salary_range_min` SET TAGS ('dbx_business_glossary_term' = 'Salary Range Minimum');
-ALTER TABLE `vibe_restaurants_v1`.`workforce`.`recruitment` ALTER COLUMN `salary_range_min` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`workforce`.`recruitment` ALTER COLUMN `salary_range_min` SET TAGS ('dbx_pii_financial' = 'true');
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`recruitment` ALTER COLUMN `salary_range_min` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`recruitment` ALTER COLUMN `source_of_candidate` SET TAGS ('dbx_business_glossary_term' = 'Source of Candidate');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`recruitment` ALTER COLUMN `source_of_candidate` SET TAGS ('dbx_value_regex' = 'internal|referral|agency|online|walk-in');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`recruitment` ALTER COLUMN `target_headcount` SET TAGS ('dbx_business_glossary_term' = 'Target Headcount');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`recruitment` ALTER COLUMN `time_to_fill_days` SET TAGS ('dbx_business_glossary_term' = 'Time to Fill (Days)');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`onboarding` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_restaurants_v1`.`workforce`.`onboarding` SET TAGS ('dbx_subdomain' = 'employee_management');
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`onboarding` SET TAGS ('dbx_subdomain' = 'employee_records');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`onboarding` ALTER COLUMN `onboarding_id` SET TAGS ('dbx_business_glossary_term' = 'Onboarding ID');
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`onboarding` ALTER COLUMN `scheduling_template_id` SET TAGS ('dbx_business_glossary_term' = 'Default Scheduling Template Id (Foreign Key)');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`onboarding` ALTER COLUMN `workforce_department_id` SET TAGS ('dbx_business_glossary_term' = 'Department ID');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`onboarding` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Assigned Buddy ID');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`onboarding` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`onboarding` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`onboarding` ALTER COLUMN `employee_id` SET TAGS ('dbx_renamed_from' = 'employee_id');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`onboarding` ALTER COLUMN `facility_id` SET TAGS ('dbx_business_glossary_term' = 'Location ID');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`onboarding` ALTER COLUMN `manager_employee_id` SET TAGS ('dbx_business_glossary_term' = 'Manager ID');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`onboarding` ALTER COLUMN `manager_employee_id` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`onboarding` ALTER COLUMN `manager_employee_id` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`onboarding` ALTER COLUMN `payroll_group_id` SET TAGS ('dbx_business_glossary_term' = 'Onboarding Payroll Group Id (Foreign Key)');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`onboarding` ALTER COLUMN `position_id` SET TAGS ('dbx_business_glossary_term' = 'Position ID');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`onboarding` ALTER COLUMN `primary_onboarding_assigned_buddy_employee_id` SET TAGS ('dbx_business_glossary_term' = 'Assigned Buddy ID');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`onboarding` ALTER COLUMN `primary_onboarding_assigned_buddy_employee_id` SET TAGS ('dbx_confidential' = 'true');
@@ -1138,13 +1199,7 @@ ALTER TABLE `vibe_restaurants_v1`.`workforce`.`onboarding` ALTER COLUMN `unit_id
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`onboarding` ALTER COLUMN `completion_percentage` SET TAGS ('dbx_business_glossary_term' = 'Onboarding Completion Percentage');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`onboarding` ALTER COLUMN `end_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Onboarding End Timestamp');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`onboarding` ALTER COLUMN `food_handler_card_date` SET TAGS ('dbx_business_glossary_term' = 'Food Handler Card Submission Timestamp');
-ALTER TABLE `vibe_restaurants_v1`.`workforce`.`onboarding` ALTER COLUMN `food_handler_card_date` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_restaurants_v1`.`workforce`.`onboarding` ALTER COLUMN `food_handler_card_date` SET TAGS ('dbx_mask_in_nonprod' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`workforce`.`onboarding` ALTER COLUMN `food_handler_card_date` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`onboarding` ALTER COLUMN `food_handler_card_submitted` SET TAGS ('dbx_business_glossary_term' = 'Food Handler Card Submitted Flag');
-ALTER TABLE `vibe_restaurants_v1`.`workforce`.`onboarding` ALTER COLUMN `food_handler_card_submitted` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_restaurants_v1`.`workforce`.`onboarding` ALTER COLUMN `food_handler_card_submitted` SET TAGS ('dbx_mask_in_nonprod' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`workforce`.`onboarding` ALTER COLUMN `food_handler_card_submitted` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`onboarding` ALTER COLUMN `i9_completed` SET TAGS ('dbx_business_glossary_term' = 'I-9 Completed Flag');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`onboarding` ALTER COLUMN `i9_completion_date` SET TAGS ('dbx_business_glossary_term' = 'I-9 Completion Timestamp');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`onboarding` ALTER COLUMN `method` SET TAGS ('dbx_business_glossary_term' = 'Onboarding Method (IN_PERSON, VIRTUAL, HYBRID)');
@@ -1166,11 +1221,12 @@ ALTER TABLE `vibe_restaurants_v1`.`workforce`.`onboarding` ALTER COLUMN `trainin
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`onboarding` ALTER COLUMN `uniform_issuance_date` SET TAGS ('dbx_business_glossary_term' = 'Uniform Issuance Timestamp');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`onboarding` ALTER COLUMN `uniform_issued` SET TAGS ('dbx_business_glossary_term' = 'Uniform Issued Flag');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`certification` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_restaurants_v1`.`workforce`.`certification` SET TAGS ('dbx_subdomain' = 'employee_management');
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`certification` SET TAGS ('dbx_subdomain' = 'employee_records');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`certification` ALTER COLUMN `certification_id` SET TAGS ('dbx_business_glossary_term' = 'Certification ID');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`certification` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Employee ID');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`certification` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`certification` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`certification` ALTER COLUMN `position_id` SET TAGS ('dbx_business_glossary_term' = 'Required For Position Id (Foreign Key)');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`certification` ALTER COLUMN `certification_status` SET TAGS ('dbx_business_glossary_term' = 'Certification Status');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`certification` ALTER COLUMN `certification_status` SET TAGS ('dbx_value_regex' = 'active|expired|revoked|pending');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`certification` ALTER COLUMN `certification_type` SET TAGS ('dbx_business_glossary_term' = 'Certification Type');
@@ -1187,18 +1243,14 @@ ALTER TABLE `vibe_restaurants_v1`.`workforce`.`certification` ALTER COLUMN `issu
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`certification` ALTER COLUMN `issuing_body` SET TAGS ('dbx_value_regex' = 'NRA_ServSafe|Local_Health_Department|OSHA|Other');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`certification` ALTER COLUMN `last_verified_date` SET TAGS ('dbx_business_glossary_term' = 'Last Verified Date');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`certification` ALTER COLUMN `certification_name` SET TAGS ('dbx_business_glossary_term' = 'Certification Name');
-ALTER TABLE `vibe_restaurants_v1`.`workforce`.`certification` ALTER COLUMN `certification_name` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_restaurants_v1`.`workforce`.`certification` ALTER COLUMN `certification_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`workforce`.`certification` ALTER COLUMN `certification_name` SET TAGS ('dbx_pii_detected' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`certification` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Certification Notes');
-ALTER TABLE `vibe_restaurants_v1`.`workforce`.`certification` ALTER COLUMN `related_role` SET TAGS ('dbx_business_glossary_term' = 'Related Role');
-ALTER TABLE `vibe_restaurants_v1`.`workforce`.`certification` ALTER COLUMN `related_role` SET TAGS ('dbx_value_regex' = 'BOH|FOH|Management|Support|All');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`certification` ALTER COLUMN `renewal_notice_date` SET TAGS ('dbx_business_glossary_term' = 'Renewal Notice Date');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`certification` ALTER COLUMN `renewal_required` SET TAGS ('dbx_business_glossary_term' = 'Renewal Required Flag');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`certification` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Update Timestamp');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`training_completion` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_restaurants_v1`.`workforce`.`training_completion` SET TAGS ('dbx_subdomain' = 'employee_management');
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`training_completion` SET TAGS ('dbx_subdomain' = 'employee_records');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`training_completion` ALTER COLUMN `training_completion_id` SET TAGS ('dbx_business_glossary_term' = 'Training Completion ID');
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`training_completion` ALTER COLUMN `certification_id` SET TAGS ('dbx_business_glossary_term' = 'Earned Certification Id (Foreign Key)');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`training_completion` ALTER COLUMN `facility_id` SET TAGS ('dbx_business_glossary_term' = 'Restaurant Location Identifier');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`training_completion` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Employee Identifier');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`training_completion` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
@@ -1227,8 +1279,6 @@ ALTER TABLE `vibe_restaurants_v1`.`workforce`.`training_completion` ALTER COLUMN
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`training_completion` ALTER COLUMN `trainer_name` SET TAGS ('dbx_business_glossary_term' = 'Trainer Full Name');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`training_completion` ALTER COLUMN `trainer_name` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`training_completion` ALTER COLUMN `trainer_name` SET TAGS ('dbx_pii_name' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`workforce`.`training_completion` ALTER COLUMN `trainer_name` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_restaurants_v1`.`workforce`.`training_completion` ALTER COLUMN `trainer_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`training_completion` ALTER COLUMN `training_category` SET TAGS ('dbx_business_glossary_term' = 'Training Category');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`training_completion` ALTER COLUMN `training_completion_status` SET TAGS ('dbx_business_glossary_term' = 'Training Completion Status');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`training_completion` ALTER COLUMN `training_completion_status` SET TAGS ('dbx_value_regex' = 'completed|in_progress|failed|cancelled');
@@ -1237,17 +1287,19 @@ ALTER TABLE `vibe_restaurants_v1`.`workforce`.`training_completion` ALTER COLUMN
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`training_completion` ALTER COLUMN `training_type` SET TAGS ('dbx_value_regex' = 'safety|operations|customer_service|leadership');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`training_completion` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Last Updated Timestamp');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`performance_review` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_restaurants_v1`.`workforce`.`performance_review` SET TAGS ('dbx_subdomain' = 'employee_management');
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`performance_review` SET TAGS ('dbx_subdomain' = 'employee_records');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`performance_review` ALTER COLUMN `performance_review_id` SET TAGS ('dbx_business_glossary_term' = 'Performance Review ID');
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`performance_review` ALTER COLUMN `facility_id` SET TAGS ('dbx_business_glossary_term' = 'Restaurant Location Identifier');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`performance_review` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Reviewer Identifier (Reviewer ID)');
-ALTER TABLE `vibe_restaurants_v1`.`workforce`.`performance_review` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`workforce`.`performance_review` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`performance_review` ALTER COLUMN `employee_id` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`performance_review` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii_identifier' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`performance_review` ALTER COLUMN `primary_performance_employee_id` SET TAGS ('dbx_business_glossary_term' = 'Employee Identifier (Employee ID)');
-ALTER TABLE `vibe_restaurants_v1`.`workforce`.`performance_review` ALTER COLUMN `primary_performance_employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`workforce`.`performance_review` ALTER COLUMN `primary_performance_employee_id` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`performance_review` ALTER COLUMN `primary_performance_employee_id` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`performance_review` ALTER COLUMN `primary_performance_employee_id` SET TAGS ('dbx_pii_identifier' = 'true');
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`performance_review` ALTER COLUMN `position_id` SET TAGS ('dbx_business_glossary_term' = 'Reviewed Position Id (Foreign Key)');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`performance_review` ALTER COLUMN `reviewer_employee_id` SET TAGS ('dbx_business_glossary_term' = 'Reviewer Identifier (Reviewer ID)');
-ALTER TABLE `vibe_restaurants_v1`.`workforce`.`performance_review` ALTER COLUMN `reviewer_employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`workforce`.`performance_review` ALTER COLUMN `reviewer_employee_id` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`performance_review` ALTER COLUMN `reviewer_employee_id` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`performance_review` ALTER COLUMN `reviewer_employee_id` SET TAGS ('dbx_pii_identifier' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`performance_review` ALTER COLUMN `unit_id` SET TAGS ('dbx_business_glossary_term' = 'Restaurant Location Identifier');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`performance_review` ALTER COLUMN `accuracy_score` SET TAGS ('dbx_business_glossary_term' = 'Accuracy Competency Score');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`performance_review` ALTER COLUMN `acknowledgment_status` SET TAGS ('dbx_business_glossary_term' = 'Acknowledgment Status (Employee Confirmation)');
@@ -1261,8 +1313,6 @@ ALTER TABLE `vibe_restaurants_v1`.`workforce`.`performance_review` ALTER COLUMN 
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`performance_review` ALTER COLUMN `confidentiality_level` SET TAGS ('dbx_value_regex' = 'restricted|confidential|internal|public');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`performance_review` ALTER COLUMN `corrective_action_flag` SET TAGS ('dbx_business_glossary_term' = 'Corrective Action Required Flag');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`performance_review` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Creation Timestamp');
-ALTER TABLE `vibe_restaurants_v1`.`workforce`.`performance_review` ALTER COLUMN `department` SET TAGS ('dbx_business_glossary_term' = 'Department (Back of House, Front of House, Management, Support)');
-ALTER TABLE `vibe_restaurants_v1`.`workforce`.`performance_review` ALTER COLUMN `department` SET TAGS ('dbx_value_regex' = 'BOH|FOH|Management|Support');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`performance_review` ALTER COLUMN `development_goals` SET TAGS ('dbx_business_glossary_term' = 'Development Goals and Action Items');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`performance_review` ALTER COLUMN `food_safety_score` SET TAGS ('dbx_business_glossary_term' = 'Food Safety Competency Score');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`performance_review` ALTER COLUMN `guest_service_score` SET TAGS ('dbx_business_glossary_term' = 'Guest Service Competency Score');
@@ -1292,14 +1342,16 @@ ALTER TABLE `vibe_restaurants_v1`.`workforce`.`performance_review` ALTER COLUMN 
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`performance_review` ALTER COLUMN `training_completed` SET TAGS ('dbx_business_glossary_term' = 'Training Completion Flag');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`performance_review` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Last Updated Timestamp');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`leave_request` SET TAGS ('dbx_data_type' = 'transactional_data');
-ALTER TABLE `vibe_restaurants_v1`.`workforce`.`leave_request` SET TAGS ('dbx_subdomain' = 'employee_management');
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`leave_request` SET TAGS ('dbx_subdomain' = 'employee_records');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`leave_request` ALTER COLUMN `leave_request_id` SET TAGS ('dbx_business_glossary_term' = 'Leave Request Identifier');
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`leave_request` ALTER COLUMN `facility_id` SET TAGS ('dbx_business_glossary_term' = 'Work Location Identifier');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`leave_request` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Approving Manager Identifier');
-ALTER TABLE `vibe_restaurants_v1`.`workforce`.`leave_request` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`workforce`.`leave_request` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`leave_request` ALTER COLUMN `employee_id` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`leave_request` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii_identifier' = 'true');
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`leave_request` ALTER COLUMN `payroll_record_id` SET TAGS ('dbx_business_glossary_term' = 'Payroll Record Id (Foreign Key)');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`leave_request` ALTER COLUMN `primary_leave_employee_id` SET TAGS ('dbx_business_glossary_term' = 'Employee Identifier');
-ALTER TABLE `vibe_restaurants_v1`.`workforce`.`leave_request` ALTER COLUMN `primary_leave_employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`workforce`.`leave_request` ALTER COLUMN `primary_leave_employee_id` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`leave_request` ALTER COLUMN `primary_leave_employee_id` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`leave_request` ALTER COLUMN `primary_leave_employee_id` SET TAGS ('dbx_pii_identifier' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`leave_request` ALTER COLUMN `unit_id` SET TAGS ('dbx_business_glossary_term' = 'Work Location Identifier');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`leave_request` ALTER COLUMN `approved_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Leave Approval Timestamp');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`leave_request` ALTER COLUMN `attachment_present` SET TAGS ('dbx_business_glossary_term' = 'Supporting Document Attachment Indicator');
@@ -1327,8 +1379,9 @@ ALTER TABLE `vibe_restaurants_v1`.`workforce`.`labor_violation` SET TAGS ('dbx_d
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`labor_violation` SET TAGS ('dbx_subdomain' = 'labor_scheduling');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`labor_violation` ALTER COLUMN `labor_violation_id` SET TAGS ('dbx_business_glossary_term' = 'Labor Violation ID');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`labor_violation` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Employee Identifier (EMP_ID)');
-ALTER TABLE `vibe_restaurants_v1`.`workforce`.`labor_violation` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`workforce`.`labor_violation` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`labor_violation` ALTER COLUMN `employee_id` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`labor_violation` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii_identifier' = 'true');
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`labor_violation` ALTER COLUMN `facility_id` SET TAGS ('dbx_business_glossary_term' = 'Location Identifier (LOC_ID)');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`labor_violation` ALTER COLUMN `unit_id` SET TAGS ('dbx_business_glossary_term' = 'Restaurant Identifier (REST_ID)');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`labor_violation` ALTER COLUMN `labor_unit_id` SET TAGS ('dbx_business_glossary_term' = 'Restaurant Identifier (REST_ID)');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`labor_violation` ALTER COLUMN `shift_id` SET TAGS ('dbx_business_glossary_term' = 'Work Shift Identifier (SHIFT_ID)');
@@ -1345,10 +1398,12 @@ ALTER TABLE `vibe_restaurants_v1`.`workforce`.`labor_violation` ALTER COLUMN `de
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`labor_violation` ALTER COLUMN `detection_source` SET TAGS ('dbx_business_glossary_term' = 'Source System Detecting Violation');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`labor_violation` ALTER COLUMN `detection_source` SET TAGS ('dbx_value_regex' = 'workday|planday|zenput|manual_audit');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`labor_violation` ALTER COLUMN `fine_amount` SET TAGS ('dbx_business_glossary_term' = 'Fine Amount Assessed (USD)');
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`labor_violation` ALTER COLUMN `fine_amount` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`labor_violation` ALTER COLUMN `labor_violation_status` SET TAGS ('dbx_business_glossary_term' = 'Current Violation Status');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`labor_violation` ALTER COLUMN `labor_violation_status` SET TAGS ('dbx_value_regex' = 'open|closed|in_progress|dismissed');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`labor_violation` ALTER COLUMN `overtime_hours` SET TAGS ('dbx_business_glossary_term' = 'Overtime Hours Exceeded');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`labor_violation` ALTER COLUMN `penalty_amount` SET TAGS ('dbx_business_glossary_term' = 'Penalty Amount Assessed (USD)');
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`labor_violation` ALTER COLUMN `penalty_amount` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`labor_violation` ALTER COLUMN `regulatory_body` SET TAGS ('dbx_business_glossary_term' = 'Regulatory Body Reporting Requirement');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`labor_violation` ALTER COLUMN `regulatory_body` SET TAGS ('dbx_value_regex' = 'OSHA|DOL|state_labour');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`labor_violation` ALTER COLUMN `reported_by` SET TAGS ('dbx_business_glossary_term' = 'Reported By Identifier');
@@ -1362,20 +1417,22 @@ ALTER TABLE `vibe_restaurants_v1`.`workforce`.`labor_violation` ALTER COLUMN `vi
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`labor_violation` ALTER COLUMN `violation_type` SET TAGS ('dbx_business_glossary_term' = 'Labor Violation Type');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`labor_violation` ALTER COLUMN `violation_type` SET TAGS ('dbx_value_regex' = 'missed_break|overtime|underage_work|certification_mismatch|osha_incident');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`labor_budget` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_restaurants_v1`.`workforce`.`labor_budget` SET TAGS ('dbx_subdomain' = 'payroll_compliance');
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`labor_budget` SET TAGS ('dbx_subdomain' = 'labor_scheduling');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`labor_budget` ALTER COLUMN `labor_budget_id` SET TAGS ('dbx_business_glossary_term' = 'Labor Budget Identifier');
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`labor_budget` ALTER COLUMN `workforce_department_id` SET TAGS ('dbx_business_glossary_term' = 'Budget Workforce Department Id (Foreign Key)');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`labor_budget` ALTER COLUMN `unit_id` SET TAGS ('dbx_business_glossary_term' = 'Restaurant Identifier');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`labor_budget` ALTER COLUMN `labor_unit_id` SET TAGS ('dbx_business_glossary_term' = 'Restaurant Identifier');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`labor_budget` ALTER COLUMN `approved_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Budget Approval Timestamp');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`labor_budget` ALTER COLUMN `budget_category` SET TAGS ('dbx_business_glossary_term' = 'Labor Budget Category');
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`labor_budget` ALTER COLUMN `budget_category` SET TAGS ('dbx_value_regex' = 'operational|capital|training|benefits');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`labor_budget` ALTER COLUMN `budget_code` SET TAGS ('dbx_business_glossary_term' = 'Labor Budget Code');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`labor_budget` ALTER COLUMN `budget_name` SET TAGS ('dbx_business_glossary_term' = 'Labor Budget Name');
-ALTER TABLE `vibe_restaurants_v1`.`workforce`.`labor_budget` ALTER COLUMN `budget_name` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_restaurants_v1`.`workforce`.`labor_budget` ALTER COLUMN `budget_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`workforce`.`labor_budget` ALTER COLUMN `budget_name` SET TAGS ('dbx_pii_detected' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`labor_budget` ALTER COLUMN `budget_source` SET TAGS ('dbx_business_glossary_term' = 'Labor Budget Source');
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`labor_budget` ALTER COLUMN `budget_source` SET TAGS ('dbx_value_regex' = 'historical|model|manager_input');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`labor_budget` ALTER COLUMN `budget_status` SET TAGS ('dbx_business_glossary_term' = 'Labor Budget Status');
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`labor_budget` ALTER COLUMN `budget_status` SET TAGS ('dbx_value_regex' = 'draft|submitted|approved|active|closed|rejected');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`labor_budget` ALTER COLUMN `budget_type` SET TAGS ('dbx_business_glossary_term' = 'Labor Budget Type');
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`labor_budget` ALTER COLUMN `budget_type` SET TAGS ('dbx_value_regex' = 'annual|quarterly|monthly|weekly|daypart');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`labor_budget` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Creation Timestamp');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`labor_budget` ALTER COLUMN `currency_code` SET TAGS ('dbx_business_glossary_term' = 'Currency Code');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`labor_budget` ALTER COLUMN `currency_code` SET TAGS ('dbx_value_regex' = '^[A-Z]{3}$');
@@ -1404,24 +1461,21 @@ ALTER TABLE `vibe_restaurants_v1`.`workforce`.`labor_budget` ALTER COLUMN `scena
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`labor_budget` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Record Update Timestamp');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`labor_budget` ALTER COLUMN `version` SET TAGS ('dbx_business_glossary_term' = 'Budget Version');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`tip_compliance` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_restaurants_v1`.`workforce`.`tip_compliance` SET TAGS ('dbx_subdomain' = 'payroll_compliance');
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`tip_compliance` SET TAGS ('dbx_subdomain' = 'payroll_benefits');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`tip_compliance` ALTER COLUMN `tip_compliance_id` SET TAGS ('dbx_business_glossary_term' = 'Primary Key for tip_compliance');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`tip_compliance` ALTER COLUMN `corrected_tip_compliance_id` SET TAGS ('dbx_business_glossary_term' = 'Corrected Tip Compliance Id');
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`tip_compliance` ALTER COLUMN `corrected_tip_compliance_id` SET TAGS ('dbx_self_ref_fk' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`tip_compliance` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Employee Id (Foreign Key)');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`tip_compliance` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`tip_compliance` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`workforce`.`tip_compliance` ALTER COLUMN `base_wage_rate` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`workforce`.`tip_compliance` ALTER COLUMN `base_wage_rate` SET TAGS ('dbx_pii_financial' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`workforce`.`tip_compliance` ALTER COLUMN `credit_card_tips` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_restaurants_v1`.`workforce`.`tip_compliance` ALTER COLUMN `credit_card_tips` SET TAGS ('dbx_pii_detected' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`workforce`.`tip_compliance` ALTER COLUMN `minimum_wage_gap` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`workforce`.`tip_compliance` ALTER COLUMN `minimum_wage_gap` SET TAGS ('dbx_pii_financial' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`workforce`.`tip_compliance` ALTER COLUMN `minimum_wage_shortfall` SET TAGS ('dbx_restricted' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`workforce`.`tip_compliance` ALTER COLUMN `minimum_wage_shortfall` SET TAGS ('dbx_pii_financial' = 'true');
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`tip_compliance` ALTER COLUMN `payroll_record_id` SET TAGS ('dbx_business_glossary_term' = 'Payroll Record Id (Foreign Key)');
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`tip_compliance` ALTER COLUMN `payroll_group_id` SET TAGS ('dbx_business_glossary_term' = 'Tip Payroll Group Id (Foreign Key)');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`scheduling_template` SET TAGS ('dbx_data_type' = 'master_data');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`scheduling_template` SET TAGS ('dbx_subdomain' = 'labor_scheduling');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`scheduling_template` ALTER COLUMN `scheduling_template_id` SET TAGS ('dbx_business_glossary_term' = 'Scheduling Template Identifier');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`scheduling_template` ALTER COLUMN `base_scheduling_template_id` SET TAGS ('dbx_business_glossary_term' = 'Base Scheduling Template Id');
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`scheduling_template` ALTER COLUMN `base_scheduling_template_id` SET TAGS ('dbx_self_ref_fk' = 'true');
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`scheduling_template` ALTER COLUMN `workforce_department_id` SET TAGS ('dbx_business_glossary_term' = 'Template Workforce Department Id (Foreign Key)');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`scheduling_template` ALTER COLUMN `daypart` SET TAGS ('dbx_business_glossary_term' = 'Daypart');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`scheduling_template` ALTER COLUMN `default_shift_length_minutes` SET TAGS ('dbx_business_glossary_term' = 'Default Shift Length Minutes');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`scheduling_template` ALTER COLUMN `scheduling_template_description` SET TAGS ('dbx_business_glossary_term' = 'Description');
@@ -1431,7 +1485,6 @@ ALTER TABLE `vibe_restaurants_v1`.`workforce`.`scheduling_template` ALTER COLUMN
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`scheduling_template` ALTER COLUMN `is_default_template` SET TAGS ('dbx_business_glossary_term' = 'Is Default Template');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`scheduling_template` ALTER COLUMN `labor_percentage` SET TAGS ('dbx_business_glossary_term' = 'Labor Percentage');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`scheduling_template` ALTER COLUMN `location_scope` SET TAGS ('dbx_business_glossary_term' = 'Location Scope');
-ALTER TABLE `vibe_restaurants_v1`.`workforce`.`scheduling_template` ALTER COLUMN `location_scope` SET TAGS ('dbx_pii_detected' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`scheduling_template` ALTER COLUMN `notes` SET TAGS ('dbx_business_glossary_term' = 'Notes');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`scheduling_template` ALTER COLUMN `record_audit_created` SET TAGS ('dbx_business_glossary_term' = 'Record Audit Created');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`scheduling_template` ALTER COLUMN `record_audit_updated` SET TAGS ('dbx_business_glossary_term' = 'Record Audit Updated');
@@ -1439,32 +1492,17 @@ ALTER TABLE `vibe_restaurants_v1`.`workforce`.`scheduling_template` ALTER COLUMN
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`scheduling_template` ALTER COLUMN `scheduling_template_status` SET TAGS ('dbx_business_glossary_term' = 'Status');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`scheduling_template` ALTER COLUMN `template_code` SET TAGS ('dbx_business_glossary_term' = 'Template Code');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`scheduling_template` ALTER COLUMN `template_name` SET TAGS ('dbx_business_glossary_term' = 'Template Name');
-ALTER TABLE `vibe_restaurants_v1`.`workforce`.`scheduling_template` ALTER COLUMN `template_name` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_restaurants_v1`.`workforce`.`scheduling_template` ALTER COLUMN `template_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`workforce`.`scheduling_template` ALTER COLUMN `template_name` SET TAGS ('dbx_pii_detected' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`scheduling_template` ALTER COLUMN `template_type` SET TAGS ('dbx_business_glossary_term' = 'Template Type');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`scheduling_template` ALTER COLUMN `version_number` SET TAGS ('dbx_business_glossary_term' = 'Version Number');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`workforce_department` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_restaurants_v1`.`workforce`.`workforce_department` SET TAGS ('dbx_subdomain' = 'employee_management');
-ALTER TABLE `vibe_restaurants_v1`.`workforce`.`workforce_department` SET TAGS ('dbx_ssot_canonical' = 'restaurant.department');
-ALTER TABLE `vibe_restaurants_v1`.`workforce`.`workforce_department` SET TAGS ('dbx_ssot' = 'deprecated_duplicate');
-ALTER TABLE `vibe_restaurants_v1`.`workforce`.`workforce_department` SET TAGS ('dbx_ssot_role' = 'reference');
-ALTER TABLE `vibe_restaurants_v1`.`workforce`.`workforce_department` SET TAGS ('dbx_ssot_canonical_of' = 'restaurant.department');
-ALTER TABLE `vibe_restaurants_v1`.`workforce`.`workforce_department` SET TAGS ('dbx_ssot_of' = 'restaurant.department');
-ALTER TABLE `vibe_restaurants_v1`.`workforce`.`workforce_department` SET TAGS ('dbx_ssot_source' = 'restaurant.department');
-ALTER TABLE `vibe_restaurants_v1`.`workforce`.`workforce_department` SET TAGS ('dbx_ssot_ref' = 'restaurant.department');
-ALTER TABLE `vibe_restaurants_v1`.`workforce`.`workforce_department` SET TAGS ('dbx_ssot_context' = 'hr_organizational_departments');
-ALTER TABLE `vibe_restaurants_v1`.`workforce`.`workforce_department` SET TAGS ('dbx_ssot_duplicate' = 'restaurant.department');
-ALTER TABLE `vibe_restaurants_v1`.`workforce`.`workforce_department` SET TAGS ('dbx_ssot_master' = 'restaurant.department');
-ALTER TABLE `vibe_restaurants_v1`.`workforce`.`workforce_department` SET TAGS ('dbx_ssot_canonical' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`workforce`.`workforce_department` SET TAGS ('dbx_ssot_deprecated_duplicate' = 'restaurant.department');
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`workforce_department` SET TAGS ('dbx_subdomain' = 'employee_records');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`workforce_department` ALTER COLUMN `workforce_department_id` SET TAGS ('dbx_business_glossary_term' = 'Department Identifier');
-ALTER TABLE `vibe_restaurants_v1`.`workforce`.`workforce_department` ALTER COLUMN `workforce_department_id` SET TAGS ('dbx_ssot_reference' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`workforce_department` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Employee Id');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`workforce_department` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`workforce_department` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`workforce_department` ALTER COLUMN `parent_department_id` SET TAGS ('dbx_business_glossary_term' = 'Parent Department Id');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`workforce_department` ALTER COLUMN `unit_id` SET TAGS ('dbx_business_glossary_term' = 'Unit Id');
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`workforce_department` ALTER COLUMN `department_id` SET TAGS ('dbx_ssot_reference' = 'restaurant.department');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`workforce_department` ALTER COLUMN `budget_amount` SET TAGS ('dbx_business_glossary_term' = 'Budget Amount');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`workforce_department` ALTER COLUMN `budget_currency` SET TAGS ('dbx_business_glossary_term' = 'Budget Currency');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`workforce_department` ALTER COLUMN `compliance_status` SET TAGS ('dbx_business_glossary_term' = 'Compliance Status');
@@ -1480,13 +1518,14 @@ ALTER TABLE `vibe_restaurants_v1`.`workforce`.`workforce_department` ALTER COLUM
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`workforce_department` ALTER COLUMN `workforce_department_status` SET TAGS ('dbx_business_glossary_term' = 'Status');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`workforce_department` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Updated Timestamp');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`payroll_run` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_restaurants_v1`.`workforce`.`payroll_run` SET TAGS ('dbx_subdomain' = 'payroll_compliance');
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`payroll_run` SET TAGS ('dbx_subdomain' = 'payroll_benefits');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`payroll_run` ALTER COLUMN `payroll_run_id` SET TAGS ('dbx_business_glossary_term' = 'Payroll Run Identifier');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`payroll_run` ALTER COLUMN `employee_id` SET TAGS ('dbx_business_glossary_term' = 'Employee Id');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`payroll_run` ALTER COLUMN `employee_id` SET TAGS ('dbx_confidential' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`payroll_run` ALTER COLUMN `employee_id` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`payroll_run` ALTER COLUMN `payroll_group_id` SET TAGS ('dbx_business_glossary_term' = 'Payroll Group Id');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`payroll_run` ALTER COLUMN `reversal_payroll_run_id` SET TAGS ('dbx_business_glossary_term' = 'Reversal Payroll Run Id');
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`payroll_run` ALTER COLUMN `reversal_payroll_run_id` SET TAGS ('dbx_self_ref_fk' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`payroll_run` ALTER COLUMN `unit_id` SET TAGS ('dbx_business_glossary_term' = 'Unit Id');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`payroll_run` ALTER COLUMN `approval_status` SET TAGS ('dbx_business_glossary_term' = 'Approval Status');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`payroll_run` ALTER COLUMN `approval_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Approval Timestamp');
@@ -1511,12 +1550,13 @@ ALTER TABLE `vibe_restaurants_v1`.`workforce`.`payroll_run` ALTER COLUMN `payrol
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`payroll_run` ALTER COLUMN `tax_year` SET TAGS ('dbx_business_glossary_term' = 'Tax Year');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`payroll_run` ALTER COLUMN `total_employee_count` SET TAGS ('dbx_business_glossary_term' = 'Total Employee Count');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`payroll_group` SET TAGS ('dbx_data_type' = 'master_data');
-ALTER TABLE `vibe_restaurants_v1`.`workforce`.`payroll_group` SET TAGS ('dbx_subdomain' = 'payroll_compliance');
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`payroll_group` SET TAGS ('dbx_subdomain' = 'payroll_benefits');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`payroll_group` ALTER COLUMN `payroll_group_id` SET TAGS ('dbx_business_glossary_term' = 'Payroll Group Identifier');
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`payroll_group` ALTER COLUMN `benefit_plan_id` SET TAGS ('dbx_business_glossary_term' = 'Default Benefit Plan Id');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`payroll_group` ALTER COLUMN `parent_payroll_group_id` SET TAGS ('dbx_business_glossary_term' = 'Parent Payroll Group Id');
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`payroll_group` ALTER COLUMN `parent_payroll_group_id` SET TAGS ('dbx_self_ref_fk' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`payroll_group` ALTER COLUMN `cost_center_code` SET TAGS ('dbx_business_glossary_term' = 'Cost Center Code');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`payroll_group` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
-ALTER TABLE `vibe_restaurants_v1`.`workforce`.`payroll_group` ALTER COLUMN `default_benefit_plan_code` SET TAGS ('dbx_business_glossary_term' = 'Default Benefit Plan Id');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`payroll_group` ALTER COLUMN `default_tax_rate` SET TAGS ('dbx_business_glossary_term' = 'Default Tax Rate');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`payroll_group` ALTER COLUMN `payroll_group_description` SET TAGS ('dbx_business_glossary_term' = 'Description');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`payroll_group` ALTER COLUMN `effective_from` SET TAGS ('dbx_business_glossary_term' = 'Effective From');
@@ -1525,26 +1565,82 @@ ALTER TABLE `vibe_restaurants_v1`.`workforce`.`payroll_group` ALTER COLUMN `grou
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`payroll_group` ALTER COLUMN `group_manager_email` SET TAGS ('dbx_business_glossary_term' = 'Group Manager Email');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`payroll_group` ALTER COLUMN `group_manager_email` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`payroll_group` ALTER COLUMN `group_manager_email` SET TAGS ('dbx_pii_email' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`workforce`.`payroll_group` ALTER COLUMN `group_manager_email` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_restaurants_v1`.`workforce`.`payroll_group` ALTER COLUMN `group_manager_email` SET TAGS ('dbx_mask_in_nonprod' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`workforce`.`payroll_group` ALTER COLUMN `group_manager_email` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`payroll_group` ALTER COLUMN `group_manager_name` SET TAGS ('dbx_business_glossary_term' = 'Group Manager Name');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`payroll_group` ALTER COLUMN `group_manager_name` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`payroll_group` ALTER COLUMN `group_manager_name` SET TAGS ('dbx_pii_name' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`workforce`.`payroll_group` ALTER COLUMN `group_manager_name` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_restaurants_v1`.`workforce`.`payroll_group` ALTER COLUMN `group_manager_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`payroll_group` ALTER COLUMN `group_manager_phone` SET TAGS ('dbx_business_glossary_term' = 'Group Manager Phone');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`payroll_group` ALTER COLUMN `group_manager_phone` SET TAGS ('dbx_restricted' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`payroll_group` ALTER COLUMN `group_manager_phone` SET TAGS ('dbx_pii_phone' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`workforce`.`payroll_group` ALTER COLUMN `group_manager_phone` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_restaurants_v1`.`workforce`.`payroll_group` ALTER COLUMN `group_manager_phone` SET TAGS ('dbx_mask_in_nonprod' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`workforce`.`payroll_group` ALTER COLUMN `group_manager_phone` SET TAGS ('dbx_pii' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`payroll_group` ALTER COLUMN `group_name` SET TAGS ('dbx_business_glossary_term' = 'Group Name');
-ALTER TABLE `vibe_restaurants_v1`.`workforce`.`payroll_group` ALTER COLUMN `group_name` SET TAGS ('dbx_sensitivity' = 'pii');
-ALTER TABLE `vibe_restaurants_v1`.`workforce`.`payroll_group` ALTER COLUMN `group_name` SET TAGS ('dbx_mask_in_nonprod' = 'true');
-ALTER TABLE `vibe_restaurants_v1`.`workforce`.`payroll_group` ALTER COLUMN `group_name` SET TAGS ('dbx_pii_detected' = 'true');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`payroll_group` ALTER COLUMN `group_type` SET TAGS ('dbx_business_glossary_term' = 'Group Type');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`payroll_group` ALTER COLUMN `payroll_currency_code` SET TAGS ('dbx_business_glossary_term' = 'Payroll Currency Code');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`payroll_group` ALTER COLUMN `payroll_frequency` SET TAGS ('dbx_business_glossary_term' = 'Payroll Frequency');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`payroll_group` ALTER COLUMN `payroll_group_status` SET TAGS ('dbx_business_glossary_term' = 'Status');
 ALTER TABLE `vibe_restaurants_v1`.`workforce`.`payroll_group` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Updated Timestamp');
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`benefit_plan` SET TAGS ('dbx_data_type' = 'master_data');
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`benefit_plan` SET TAGS ('dbx_subdomain' = 'payroll_benefits');
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`benefit_plan` ALTER COLUMN `benefit_plan_id` SET TAGS ('dbx_business_glossary_term' = 'Benefit Plan Identifier');
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`benefit_plan` ALTER COLUMN `default_benefit_plan_id` SET TAGS ('dbx_self_ref_fk' = 'true');
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`benefit_plan` ALTER COLUMN `employee_contribution_amount` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`benefit_plan` ALTER COLUMN `employer_contribution_amount` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`benefit_plan` ALTER COLUMN `employer_contribution_pct` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`benefit_plan` ALTER COLUMN `group_number` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`benefit_plan` ALTER COLUMN `hsa_employer_contribution_amount` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`benefit_plan` ALTER COLUMN `retirement_match_cap_pct` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`benefit_plan` ALTER COLUMN `retirement_match_pct` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`department` SET TAGS ('dbx_data_type' = 'master_data');
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`department` SET TAGS ('dbx_subdomain' = 'brand_standards');
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`department` ALTER COLUMN `department_id` SET TAGS ('dbx_business_glossary_term' = 'Department Identifier');
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`department` ALTER COLUMN `franchisee_id` SET TAGS ('dbx_business_glossary_term' = 'Franchisee Id');
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`department` ALTER COLUMN `parent_department_id` SET TAGS ('dbx_business_glossary_term' = 'Parent Department Id');
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`department` ALTER COLUMN `address_line1` SET TAGS ('dbx_business_glossary_term' = 'Address Line1');
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`department` ALTER COLUMN `address_line1` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`department` ALTER COLUMN `address_line1` SET TAGS ('dbx_pii_address' = 'true');
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`department` ALTER COLUMN `address_line1` SET TAGS ('dbx_classification' = 'restricted');
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`department` ALTER COLUMN `address_line1` SET TAGS ('dbx_confidentiality' = 'confidential');
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`department` ALTER COLUMN `address_line1` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`department` ALTER COLUMN `address_line2` SET TAGS ('dbx_business_glossary_term' = 'Address Line2');
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`department` ALTER COLUMN `address_line2` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`department` ALTER COLUMN `address_line2` SET TAGS ('dbx_pii_address' = 'true');
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`department` ALTER COLUMN `address_line2` SET TAGS ('dbx_classification' = 'restricted');
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`department` ALTER COLUMN `address_line2` SET TAGS ('dbx_confidentiality' = 'confidential');
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`department` ALTER COLUMN `address_line2` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`department` ALTER COLUMN `area_sqft` SET TAGS ('dbx_business_glossary_term' = 'Area Sqft');
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`department` ALTER COLUMN `average_service_time_minutes` SET TAGS ('dbx_business_glossary_term' = 'Average Service Time Minutes');
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`department` ALTER COLUMN `budget_amount` SET TAGS ('dbx_business_glossary_term' = 'Budget Amount');
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`department` ALTER COLUMN `budget_amount` SET TAGS ('dbx_confidential' = 'true');
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`department` ALTER COLUMN `city` SET TAGS ('dbx_business_glossary_term' = 'City');
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`department` ALTER COLUMN `classification` SET TAGS ('dbx_business_glossary_term' = 'Classification');
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`department` ALTER COLUMN `closing_date` SET TAGS ('dbx_business_glossary_term' = 'Closing Date');
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`department` ALTER COLUMN `cost_center_code` SET TAGS ('dbx_business_glossary_term' = 'Cost Center Code');
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`department` ALTER COLUMN `country_code` SET TAGS ('dbx_business_glossary_term' = 'Country Code');
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`department` ALTER COLUMN `created_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Created Timestamp');
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`department` ALTER COLUMN `department_description` SET TAGS ('dbx_business_glossary_term' = 'Description');
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`department` ALTER COLUMN `effective_from` SET TAGS ('dbx_business_glossary_term' = 'Effective From');
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`department` ALTER COLUMN `effective_until` SET TAGS ('dbx_business_glossary_term' = 'Effective Until');
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`department` ALTER COLUMN `email` SET TAGS ('dbx_business_glossary_term' = 'Email');
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`department` ALTER COLUMN `email` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`department` ALTER COLUMN `email` SET TAGS ('dbx_pii_email' = 'true');
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`department` ALTER COLUMN `floor_number` SET TAGS ('dbx_business_glossary_term' = 'Floor Number');
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`department` ALTER COLUMN `headcount` SET TAGS ('dbx_business_glossary_term' = 'Headcount');
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`department` ALTER COLUMN `is_franchise` SET TAGS ('dbx_business_glossary_term' = 'Is Franchise');
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`department` ALTER COLUMN `is_primary` SET TAGS ('dbx_business_glossary_term' = 'Is Primary');
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`department` ALTER COLUMN `department_name` SET TAGS ('dbx_business_glossary_term' = 'Name');
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`department` ALTER COLUMN `opening_date` SET TAGS ('dbx_business_glossary_term' = 'Opening Date');
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`department` ALTER COLUMN `operational_hours` SET TAGS ('dbx_business_glossary_term' = 'Operational Hours');
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`department` ALTER COLUMN `phone_number` SET TAGS ('dbx_business_glossary_term' = 'Phone Number');
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`department` ALTER COLUMN `phone_number` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`department` ALTER COLUMN `phone_number` SET TAGS ('dbx_pii_phone' = 'true');
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`department` ALTER COLUMN `postal_code` SET TAGS ('dbx_business_glossary_term' = 'Postal Code');
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`department` ALTER COLUMN `postal_code` SET TAGS ('dbx_restricted' = 'true');
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`department` ALTER COLUMN `postal_code` SET TAGS ('dbx_pii_address' = 'true');
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`department` ALTER COLUMN `postal_code` SET TAGS ('dbx_classification' = 'restricted');
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`department` ALTER COLUMN `postal_code` SET TAGS ('dbx_confidentiality' = 'confidential');
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`department` ALTER COLUMN `postal_code` SET TAGS ('dbx_pii' = 'true');
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`department` ALTER COLUMN `region_code` SET TAGS ('dbx_business_glossary_term' = 'Region Code');
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`department` ALTER COLUMN `service_level` SET TAGS ('dbx_business_glossary_term' = 'Service Level');
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`department` ALTER COLUMN `shift_schedule` SET TAGS ('dbx_business_glossary_term' = 'Shift Schedule');
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`department` ALTER COLUMN `department_status` SET TAGS ('dbx_business_glossary_term' = 'Status');
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`department` ALTER COLUMN `turnover_rate` SET TAGS ('dbx_business_glossary_term' = 'Turnover Rate');
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`department` ALTER COLUMN `department_type` SET TAGS ('dbx_business_glossary_term' = 'Type');
+ALTER TABLE `vibe_restaurants_v1`.`workforce`.`department` ALTER COLUMN `updated_timestamp` SET TAGS ('dbx_business_glossary_term' = 'Updated Timestamp');
